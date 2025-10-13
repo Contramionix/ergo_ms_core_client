@@ -1,0 +1,64 @@
+{
+  "menuSections": [
+    {
+      "icon": "CircleUserRound",
+      "routeName": "User",
+      "title": "Личный кабинет",
+      "list": [
+        { 
+          "routeName": "Account", 
+          "name": "Профиль"
+        },
+        { 
+          "routeName": "SecuritySettings", 
+          "name": "Безопасность"
+        }
+      ]
+    },
+    {
+      "icon": "UserCog",
+      "routeName": "Settings",
+      "title": "Настройки сайта",
+      "children": [
+        {
+          "icon": "KeySquare",
+          "routeName": "AdminPanel",
+          "name": "Админ-панель",
+          "children": [
+            { 
+              "routeName": "UsersPanel", 
+              "name": "Пользователи"
+            },
+            { 
+              "routeName": "CategoriesPanel", 
+              "name": "Категории"
+            },
+            { 
+              "routeName": "GroupsPanel", 
+              "name": "Группы"
+            },
+            { 
+              "routeName": "PermissionsPanel", 
+              "name": "Права"
+            },
+            { 
+              "routeName": "LiminationPanel", 
+              "name": "Ограничения"
+            }
+          ]
+        }
+      ],
+      "list": [
+        { 
+          "routeName": "SiteSettings", 
+          "name": "Общие настройки"
+        },
+        {
+          "routeName": "FileManager",
+          "name": "Управление файлами"
+        }
+      ]
+    }
+  ]
+}
+

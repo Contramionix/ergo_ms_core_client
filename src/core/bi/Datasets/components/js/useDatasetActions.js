@@ -1,0 +1,1099 @@
+import { useRouter } from 'vue-router'
+import datasetService from '@/core/bi/MainPage/Sidebar/components/js/datasetService'
+import connectionService from '@/core/bi/MainPage/Sidebar/components/js/connectionService'
+
+export function useDatasetActions(state) {
+  const router = useRouter()
+  
+  function getCachedParamsKey(id) {
+    const keyId = (id === null || id === undefined) ? 'new' : String(id)
+    return `bi:dataset:params:${keyId}`
+  }
+  
+  function readCachedParams(id) {
+    try {
+      const raw = sessionStorage.getItem(getCachedParamsKey(id))
+      if (!raw) return undefined
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed
+      return undefined
+    } catch (e) {
+      console.warn('[useDatasetActions] failed to read cached params', e)
+      return undefined
+    }
+  }
+  
+  function clearCachedParams(id) {
+    try { sessionStorage.removeItem(getCachedParamsKey(id)) } catch (e) {
+      console.warn('[useDatasetActions] failed to clear cached params', e)
+    }
+  }
+  
+  // Функции для работы с датасетом
+  async function saveDataset(finalName) {
+    state.saving.value = true
+    try {
+      let dsId = state.dataset.value?.id
+
+      const fieldsAgg = state.fields.value
+        .filter(f => f.name)
+        .map(f => ({
+          name: f.name,
+          aggregation: f.aggregation
+        }))
+
+      if (!dsId) {
+        const payload = {
+          name: finalName,
+          description: state.dataset.value?.description || '',
+          connection: state.selectedConnection.value?.id || null,
+          file_source: state.mainTable.value?.file_id || null,
+          table_ref: state.mainTable.value?.table_ref || null,
+          fields: fieldsAgg.length ? fieldsAgg : undefined,
+          params: readCachedParams(null)
+        }
+        
+        const res = await datasetService.createDataset(payload)
+        if (!res?.data?.id) throw new Error('Ошибка при создании датасета')
+        dsId = res.data.id
+        
+        // Переносим кэш параметров под новый id
+        const newKey = getCachedParamsKey(dsId)
+        const oldKey = getCachedParamsKey(null)
+        try {
+          const raw = sessionStorage.getItem(oldKey)
+          if (raw) {
+            sessionStorage.setItem(newKey, raw)
+            sessionStorage.removeItem(oldKey)
+          }
+        } catch (e) {
+          console.warn('[useDatasetActions] Не удалось перенести кэш параметров:', e)
+        }
+        
+        for (const rel of state.relations.value) {
+          await datasetService.addRelation({
+            datasetId: dsId,
+            rightTableId: rel.rightTableId,
+            joinType: rel.joinType,
+            lines: rel.lines,
+          })
+        }
+        
+        const { data: updated } = await datasetService.getDataset(dsId)
+        state.dataset.value = updated
+        // Синхронизируем кэш параметров с БД, чтобы черновик соответствовал сохранённому состоянию
+        try {
+          const key = getCachedParamsKey(dsId)
+          const paramsFromDb = Array.isArray(updated.params) ? updated.params : []
+          sessionStorage.setItem(key, JSON.stringify(paramsFromDb))
+        } catch (e) { console.warn('[useDatasetActions] failed to sync params cache after create', e) }
+      } else {
+        const payload = { name: finalName, params: readCachedParams(dsId) }
+        const putOk = await safeUpdateDataset(
+          datasetService.updateDataset(dsId, payload)
+        )
+        if (!putOk) throw new Error('Ошибка при обновлении датасета')
+        const { data: updated } = await datasetService.getDataset(dsId)
+        state.dataset.value = updated
+        // Синхронизируем кэш параметров с БД
+        try {
+          const key = getCachedParamsKey(dsId)
+          const paramsFromDb = Array.isArray(updated.params) ? updated.params : []
+          sessionStorage.setItem(key, JSON.stringify(paramsFromDb))
+        } catch (e) { console.warn('[useDatasetActions] failed to sync params cache after update', e) }
+      }
+
+      router.replace({ name: 'DatasetPage', params: { id: dsId } })
+    } catch (error) {
+      console.error('[useDatasetActions] Ошибка при сохранении датасета:', error)
+      throw error
+    } finally {
+      state.saving.value = false
+    }
+  }
+  
+  async function editDataset(finalName = state.dataset.value?.name) {
+    state.saving.value = true
+    state.saveSuccess.value = false
+    try {
+      if (!state.dataset.value?.id) return
+      
+      const dsId = state.dataset.value.id
+      let datasetName = finalName
+      
+      if (typeof datasetName === 'object' && datasetName !== null) {
+        if ('name' in datasetName) {
+          datasetName = datasetName.name
+        } else if ('target' in datasetName && typeof datasetName.target.value === 'string') {
+          datasetName = datasetName.target.value
+        } else {
+          datasetName = undefined
+        }
+      }
+
+      const fieldsAgg = state.fields.value
+        .filter(f => f.name)
+        .map(f => ({
+          id: (typeof f.id === 'number' || (typeof f.id === 'string' && !f.id.toString().startsWith('new_'))) ? f.id : undefined,
+          name: f.name,
+          aggregation: f.aggregation,
+          type: f.type,
+          description: f.description,
+          source_column: f.source?.column,
+          source_table: f.source_table,
+        }))
+
+      const patch = {}
+      if (state.selectedConnection.value?.id !== state.origDatasetRef.value.connection)
+        patch.connection = state.selectedConnection.value.id
+      if (state.mainTable.value?.file_id !== state.origDatasetRef.value.file_source) {
+        patch.file_source = state.mainTable.value.file_id
+        patch.table_ref = state.mainTable.value.table_ref
+      }
+      if (datasetName && datasetName !== state.origDatasetRef.value.name)
+        patch.name = datasetName
+
+      if (fieldsAgg.length) {
+        patch.fields = fieldsAgg
+      }
+
+      // Подхватываем черновые параметры из sessionStorage
+      const paramsDraft = readCachedParams(dsId)
+      // Всегда передаём массив параметров, даже пустой (позволяет удалять все параметры)
+      if (Array.isArray(paramsDraft)) {
+        patch.params = paramsDraft
+      }
+
+      if (Object.keys(patch).length) {
+        await datasetService.updateDataset(dsId, patch)
+      }
+
+      const origMain = (state.origDatasetRef.value.tables || []).find(t => t.order === 0)
+      const origMap = new Map(state.getRelationsFromDataset(state.origDatasetRef.value, origMain ? origMain.id : null).map(r => [String(r.rightTableId), r]))
+      const curMap = new Map(state.relations.value.map(r => [String(r.rightTableId), r]))
+
+      for (const [id, rel] of curMap) {
+        const orig = origMap.get(id)
+        if (
+          orig &&
+          orig.joinType === rel.joinType &&
+          JSON.stringify(orig.lines) === JSON.stringify(rel.lines)
+        ) {
+          continue
+        }
+        const tableObj = state.allTablesOfConnection.value.find(
+          t => Number(t.id) === Number(rel.rightTableId)
+        )
+        const relationPayload = {
+          datasetId: state.dataset.value.id,
+          rightTableId: rel.rightTableId,
+          joinType: rel.joinType,
+          lines: rel.lines,
+        }
+        if (tableObj?.file_id) relationPayload.file_id = tableObj.file_id
+
+        await datasetService.addRelation(relationPayload)
+      }
+
+      const origMainId = origMain ? String(origMain.id) : null
+      for (const id of origMap.keys()) {
+        if (id === origMainId) continue
+        if (!curMap.has(id)) {
+          await datasetService.removeRelation({ datasetId: dsId, rightTableId: id })
+        }
+      }
+
+      const { data: fresh } = await datasetService.getDataset(dsId)
+      const { data: files } = await connectionService.getFiles(fresh.connection)
+      state.fileUploadsCache.value = files
+      
+      await hydrateFromDataset(fresh)
+      state.relations.value = state.getRelationsFromDataset(fresh, state.mainTable.value?.id)
+      state.dataset.value = fresh
+      state.origDatasetRef.value = JSON.parse(JSON.stringify(fresh))
+      state.saveSuccess.value = true
+      setTimeout(() => state.saveSuccess.value = false, 1000)
+
+      // Дёргаем тикер грязности, чтобы пересчитать isDirty
+      if (state.paramsDirtyTick) state.paramsDirtyTick.value++
+      // Синхронизируем кэш параметров с БД, чтобы черновик соответствовал сохранённому состоянию
+      try {
+        const key = getCachedParamsKey(dsId)
+        const paramsFromDb = Array.isArray(fresh.params) ? fresh.params : []
+        sessionStorage.setItem(key, JSON.stringify(paramsFromDb))
+      } catch (e) { console.warn('[useDatasetActions] failed to sync params cache after edit', e) }
+    } finally {
+      state.saving.value = false
+    }
+  }
+  
+  async function safeUpdateDataset(promise) {
+    try {
+      const resp = await promise
+      const payload = resp && resp.data ? resp.data : resp
+
+      let ok = false
+      let ds = null
+      if (payload && typeof payload === 'object') {
+        if ('success' in payload) {
+          ok = payload.success
+          ds = payload.dataset ?? payload.data
+        } else if ('id' in payload) {
+          ok = true
+          ds = payload
+        }
+      }
+
+      if (!ok || !ds?.id) {
+        if (payload?.error) console.error('[useDatasetActions] Ошибка в safeUpdateDataset:', payload.error)
+        return false
+      }
+
+      state.dataset.value = ds
+      
+      if (Array.isArray(ds.tables) && ds.tables.length) {
+        await hydrateFromDataset(ds)
+        const validTables = ds.tables.map(mapTable).filter(Boolean)
+        state.selectedTables.value = validTables
+        buildAllTables()
+      } else {
+        await loadDataset(ds.id)
+      }
+      
+      return true
+    } catch (err) {
+      console.error('[useDatasetActions] Исключение в safeUpdateDataset:', err)
+      return false
+    }
+  }
+  
+  async function loadDataset(id) {
+    const { data } = await datasetService.getDataset(id)
+    state.dataset.value = data
+    state.origDatasetRef.value = JSON.parse(JSON.stringify(data))
+    // Синхронизируем кэш параметров из БД при загрузке датасета,
+    // чтобы после перезагрузки страницы параметры были доступны как черновик
+    try {
+      const key = getCachedParamsKey(id)
+      const paramsFromDb = Array.isArray(data.params) ? data.params : []
+      sessionStorage.setItem(key, JSON.stringify(paramsFromDb))
+    } catch (e) {
+      console.warn('[useDatasetActions] failed to sync params cache on loadDataset', e)
+    }
+    
+    const validTables = data.tables.map(mapTable).filter(Boolean)
+    state.selectedTables.value = validTables
+    
+    buildAllTables()
+    await hydrateFromDataset(data)
+    await loadPreview()
+  }
+  
+  async function hydrateFromDataset(ds) {
+    const main = (ds.tables || []).find(t => t.order === 0 || !t.joined_on_type) || (ds.tables ? ds.tables[0] : null)
+    
+    if (main) {
+      const mappedTable = mapTable(main)
+      
+      if (state.selectedConnection.value) {
+        let belongsToCurrentConnection = false
+        
+        if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+            state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+          belongsToCurrentConnection = mappedTable.file_id === state.selectedConnection.value.id
+        } else {
+          belongsToCurrentConnection = !mappedTable.connection_id || mappedTable.connection_id === state.selectedConnection.value.id
+        }
+        
+        if (!belongsToCurrentConnection) {
+          state.mainTable.value = null
+          state.relations.value = []
+          state.selectedTables.value = []
+        } else {
+          state.mainTable.value = mappedTable
+        }
+      } else {
+        state.mainTable.value = mappedTable
+      }
+    }
+
+    const connId = main?.connection || ds.selectedConnection
+    if (connId) {
+      if (!state.selectedConnection.value)
+        state.selectedConnection.value = { id: connId, name: `Connection #${connId}` }
+
+      await fetchConnectionFiles(connId)
+      state.relations.value = state.getRelationsFromDataset(ds, main ? main.id : null)
+      buildAllTables(state.fileUploadsCache.value, ds.tables)
+
+      try {
+        const resp = await connectionService.get(connId)
+        const conn = resp?.data ?? resp
+        if (conn && conn.name) {
+          state.selectedConnection.value = {
+            ...state.selectedConnection.value,
+            name: conn.name || state.selectedConnection.value.name,
+            connector_type: conn.connector_type ?? state.selectedConnection.value.connector_type
+          }
+        }
+        
+        if (state.fileUploadsCache.value) {
+          updateConnectionStatus(state.fileUploadsCache.value)
+        }
+      } catch (e) {
+        console.warn('[useDatasetActions] Не удалось получить название подключения:', e)
+      }
+    } else {
+      state.selectedConnection.value = null
+      state.relations.value = state.getRelationsFromDataset(ds, main ? main.id : null)
+      buildAllTables(state.fileUploadsCache.value, ds.tables)
+    }
+    
+    sanitizeRelations()
+  }
+  
+  // Функции для работы с подключениями
+  async function fetchConnectionFiles(connId) {
+    try {
+      const { data } = await connectionService.getFiles(connId)
+      state.fileUploadsCache.value = data
+      
+      if (state.selectedConnection.value && state.selectedConnection.value.id === connId) {
+        updateConnectionStatus(data)
+      }
+      
+      if (state.relations.value.length > 0) {
+        const validRelations = state.relations.value.filter(rel => {
+          const rightTable = state.allTablesOfConnection.value.find(t => t.id === rel.rightTableId)
+          if (!rightTable) return false
+          
+          let belongsToCurrentConnection = false
+          
+          if (state.selectedConnection.value?.connector_type_display?.toLowerCase().includes('file') || 
+              state.selectedConnection.value?.connector_type?.toLowerCase().includes('файл')) {
+            belongsToCurrentConnection = rightTable.file_id === state.selectedConnection.value.id
+          } else {
+            belongsToCurrentConnection = !rightTable.connection_id || rightTable.connection_id === state.selectedConnection.value.id
+          }
+          
+          return belongsToCurrentConnection
+        })
+        
+        if (validRelations.length < state.relations.value.length) {
+          state.relations.value = validRelations
+        }
+      }
+      
+      if (state.mainTable.value && state.selectedConnection.value) {
+        let belongsToCurrentConnection = false
+        
+        if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+            state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+          belongsToCurrentConnection = state.mainTable.value.file_id === state.selectedConnection.value.id
+        } else {
+          belongsToCurrentConnection = !state.mainTable.value.connection_id || state.mainTable.value.connection_id === state.selectedConnection.value.id
+        }
+        
+        if (!belongsToCurrentConnection) {
+          state.mainTable.value = null
+          state.relations.value = []
+          state.selectedTables.value = []
+        }
+      }
+    } catch (e) {
+      console.warn('[useDatasetActions] Не удалось получить файлы подключения:', e)
+    }
+  }
+  
+  function updateConnectionStatus(files) {
+    if (!state.selectedConnection.value || !files) return
+    
+    const fileStatus = analyzeFileStatus(files)
+    
+    state.selectedConnection.value = {
+      ...state.selectedConnection.value,
+      hasMissingFiles: fileStatus.hasMissingFiles,
+      hasProblematicFiles: fileStatus.hasProblematicFiles,
+      missing_files: fileStatus.missingFiles,
+      problematic_files: fileStatus.problematicFiles
+    }
+    
+    if (state.mainTable.value || state.relations.value.length > 0) {
+      if (state.mainTable.value && state.selectedConnection.value) {
+        let belongsToCurrentConnection = false
+        
+        if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+            state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+          belongsToCurrentConnection = state.mainTable.value.file_id === state.selectedConnection.value.id
+        } else {
+          belongsToCurrentConnection = !state.mainTable.value.connection_id || state.mainTable.value.connection_id === state.selectedConnection.value.id
+        }
+        
+        if (!belongsToCurrentConnection) {
+          state.mainTable.value = null
+          state.relations.value = []
+          state.selectedTables.value = []
+          return
+        }
+      }
+      
+      if (state.relations.value.length > 0) {
+        const validRelations = state.relations.value.filter(rel => {
+          const rightTable = state.allTablesOfConnection.value.find(t => t.id === rel.rightTableId)
+          if (!rightTable) return false
+          
+          let belongsToCurrentConnection = false
+          if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+              state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+            belongsToCurrentConnection = rightTable.file_id === state.selectedConnection.value.id
+          } else {
+            belongsToCurrentConnection = !rightTable.connection_id || rightTable.connection_id === state.selectedConnection.value.id
+          }
+          
+          return belongsToCurrentConnection
+        })
+        
+        if (validRelations.length !== state.relations.value.length) {
+          state.relations.value = validRelations
+        }
+      }
+    }
+  }
+  
+  function analyzeFileStatus(files) {
+    const missingFiles = []
+    const problematicFiles = []
+    
+    files.forEach(file => {
+      if (file.status === 'error' || file.status === 'failed' || file.problematic) {
+        problematicFiles.push(file)
+      }
+      
+      if (file.status === 'missing' || file.missing || !file.original_filename) {
+        missingFiles.push(file)
+      }
+      
+      if (file.connector_type && (file.connector_type.includes('file') || file.connector_type.includes('файл'))) {
+        if (!file.columns_info && file.expected_columns) {
+          problematicFiles.push(file)
+        }
+      }
+      
+      if (state.selectedConnection.value) {
+        let belongsToCurrentConnection = false
+        
+        if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+            state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+          belongsToCurrentConnection = file.connection_id === state.selectedConnection.value.id || file.id === state.selectedConnection.value.id
+        } else {
+          belongsToCurrentConnection = !file.connection_id || file.connection_id === state.selectedConnection.value.id
+        }
+        
+        if (!belongsToCurrentConnection) {
+          return
+        }
+      }
+    })
+    
+    return {
+      hasMissingFiles: missingFiles.length > 0,
+      hasProblematicFiles: problematicFiles.length > 0,
+      missingFiles: missingFiles,
+      problematicFiles: problematicFiles
+    }
+  }
+  
+  // Функции для работы с таблицами
+  function buildAllTables(files = state.fileUploadsCache.value, freshTables) {
+    const dsTablesRaw = freshTables || state.dataset.value?.tables || []
+    const mainTableId = dsTablesRaw.find(t => t.order === 0)?.id
+
+    const dsTables = dsTablesRaw.map(t => ({
+      ...t,
+      id: Number(t.id),
+      file_id: t.file_upload_id,
+      display_name: t.display_name || t.file_upload_name || t.table_name,
+      name: t.display_name || t.file_upload_name || t.table_name,
+      columns_info: t.columns_info || null,
+      file_upload_name: t.file_upload_name || null,
+      isMain: Number(t.id) === Number(mainTableId),
+    }))
+
+    const uniqueStaging = new Map()
+    
+    if (files && Array.isArray(files)) {
+      files.forEach(f => {
+        if (state.selectedConnection.value) {
+          let belongsToCurrentConnection = false
+          
+          if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+              state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+            belongsToCurrentConnection = f.connection_id === state.selectedConnection.value.id || f.id === state.selectedConnection.value.id
+          } else {
+            belongsToCurrentConnection = !f.connection_id || f.connection_id === state.selectedConnection.value.id
+          }
+          
+          if (!belongsToCurrentConnection) {
+            return
+          }
+        }
+        
+        uniqueStaging.set(f.id, {
+          ...f,
+          id: -f.id,
+          file_id: f.id,
+          order: 1,
+          display_name: f.original_filename,
+          name: f.original_filename,
+          columns_info: f.columns_info || null,
+          isMain: false
+        })
+      })
+    }
+
+    dsTables.forEach(t => {
+      const key = t.file_id || t.id
+      if (t.file_id && uniqueStaging.has(t.file_id)) {
+        const fileData = uniqueStaging.get(t.file_id)
+        const mergedData = { ...fileData, ...t, id: t.id }
+
+        mergedData.display_name = t.display_name || fileData.display_name
+        mergedData.name = mergedData.display_name
+
+        uniqueStaging.set(t.file_id, mergedData)
+      } else if (key) {
+        uniqueStaging.set(key, t)
+      }
+    })
+
+    state.allTablesOfConnection.value = Array.from(uniqueStaging.values())
+    
+    // Проверяем принадлежность главной таблицы к текущему подключению
+    if (state.mainTable.value && state.selectedConnection.value) {
+      let belongsToCurrentConnection = false
+      
+      if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+          state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+        belongsToCurrentConnection = state.mainTable.value.file_id === state.selectedConnection.value.id
+      } else {
+        belongsToCurrentConnection = !state.mainTable.value.connection_id || state.mainTable.value.connection_id === state.selectedConnection.value.id
+      }
+      
+      if (!belongsToCurrentConnection) {
+        // Сбрасываем все связанные данные при несоответствии подключения
+        state.mainTable.value = null
+        state.relations.value = []
+        state.selectedTables.value = []
+        state.fields.value = []
+        state.previewCols.value = []
+        state.previewRows.value = []
+      }
+    }
+    
+    updateSelectedTables()
+  }
+  
+  function mapTable(t) {
+    const isMain = t.order === 0
+    
+    if (state.selectedConnection.value) {
+      let belongsToCurrentConnection = false
+      
+      if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+          state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+        belongsToCurrentConnection = t.file_upload_id === state.selectedConnection.value.id || t.file_id === state.selectedConnection.value.id
+      } else {
+        belongsToCurrentConnection = !t.connection_id || t.connection_id === state.selectedConnection.value.id
+      }
+      
+      if (!belongsToCurrentConnection) {
+        return null
+      }
+    }
+    
+    if (!isMain &&
+      /^temp_[a-f0-9]{32}/.test(t.table_name) &&
+      !t.columns_info &&
+      (t.file_upload_id == null && t.file_id == null)) {
+      return null
+    }
+    
+    return {
+      ...t,
+      id: Number(t.id),
+      file_id: t.file_upload_id,
+      display_name: t.display_name || t.file_upload_name || t.table_name,
+      name: t.display_name || t.file_upload_name || t.table_name,
+      columns_info: t.columns_info || null,
+      file_upload_name: t.file_upload_name || null,
+      isMain
+    }
+  }
+  
+  function updateSelectedTables() {
+    const tables = new Set()
+    
+    if (state.mainTable.value && state.selectedConnection.value) {
+      let belongsToCurrentConnection = false
+      
+      if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+          state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+        belongsToCurrentConnection = state.mainTable.value.file_id === state.selectedConnection.value.id
+      } else {
+        belongsToCurrentConnection = !state.mainTable.value.connection_id || state.mainTable.value.connection_id === state.selectedConnection.value.id
+      }
+      
+      if (belongsToCurrentConnection) {
+        tables.add(state.mainTable.value)
+      } else {
+        // Сбрасываем все связанные данные при несоответствии подключения
+        state.mainTable.value = null
+        state.relations.value = []
+        state.fields.value = []
+        state.previewCols.value = []
+        state.previewRows.value = []
+      }
+    }
+
+    state.relations.value = state.relations.value.filter(rel => {
+      const tbl = state.allTablesOfConnection.value.find(t => t.id === rel.rightTableId)
+      if (tbl) {
+        let belongsToCurrentConnection = false
+        
+        if (state.selectedConnection.value?.connector_type_display?.toLowerCase().includes('file') || 
+            state.selectedConnection.value?.connector_type?.toLowerCase().includes('файл')) {
+          belongsToCurrentConnection = tbl.file_id === state.selectedConnection.value.id
+        } else {
+          belongsToCurrentConnection = !tbl.connection_id || tbl.connection_id === state.selectedConnection.value.id
+        }
+        
+        if (belongsToCurrentConnection) {
+          tables.add(tbl)
+          return true
+        } else {
+          return false
+        }
+      } else {
+        return false
+      }
+    })
+
+    state.selectedTables.value = Array.from(tables)
+  }
+  
+  function sanitizeRelations() {
+    const mainId = state.mainTable.value?.id
+    if (!mainId) return
+
+    const originalLength = state.relations.value.length
+    
+    const filteredRelations = state.relations.value.filter(rel => {
+      if (String(rel.rightTableId) === String(mainId)) {
+        return false
+      }
+      
+      const rightTable = state.allTablesOfConnection.value.find(t => t.id === rel.rightTableId)
+      if (!rightTable) {
+        return false
+      }
+      
+      if (state.selectedConnection.value) {
+        let belongsToCurrentConnection = false
+        
+        if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+            state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+          belongsToCurrentConnection = rightTable.file_id === state.selectedConnection.value.id
+        } else {
+          belongsToCurrentConnection = !rightTable.connection_id || rightTable.connection_id === state.selectedConnection.value.id
+        }
+        
+        if (!belongsToCurrentConnection) {
+          return false
+        }
+      }
+      
+      return true
+    })
+
+    if (filteredRelations.length < originalLength) {
+      state.relations.value = filteredRelations
+      
+      // Если были удалены связи, также очищаем поля и предпросмотр
+      if (filteredRelations.length === 0) {
+        state.fields.value = []
+        state.previewCols.value = []
+        state.previewRows.value = []
+      }
+    }
+  }
+  
+  // Функции для работы с preview
+  async function loadPreview() {
+    state.isPreviewLoading.value = true
+    try {
+      const main = state.mainTable.value
+      
+      if (main && state.selectedConnection.value) {
+        let belongsToCurrentConnection = false
+        
+        if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+            state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+          belongsToCurrentConnection = main.file_id === state.selectedConnection.value.id
+        } else {
+          belongsToCurrentConnection = !main.connection_id || main.connection_id === state.selectedConnection.value.id
+        }
+        
+        if (!belongsToCurrentConnection) {
+          // Сбрасываем все связанные данные при несоответствии подключения
+          state.mainTable.value = null
+          state.relations.value = []
+          state.selectedTables.value = []
+          state.fields.value = []
+          state.previewCols.value = []
+          state.previewRows.value = []
+          return
+        }
+      }
+      
+      const joined = state.relations.value.map(rel => {
+        const tbl = state.allTablesOfConnection.value.find(t => t.id === rel.rightTableId)
+        if (!tbl) return null
+        
+        if (state.selectedConnection.value) {
+          let belongsToCurrentConnection = false
+          
+          if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+              state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+            belongsToCurrentConnection = tbl.file_id === state.selectedConnection.value.id
+          } else {
+            belongsToCurrentConnection = !tbl.connection_id || tbl.connection_id === state.selectedConnection.value.id
+          }
+          
+          if (!belongsToCurrentConnection) {
+            return null
+          }
+        }
+        
+        return {
+          ...tbl,
+          joinType: rel.joinType,
+          lines: rel.lines
+        }
+      }).filter(Boolean)
+      
+      if (joined.length < state.relations.value.length) {
+        state.relations.value = state.relations.value.filter(rel => 
+          joined.some(joinedTbl => joinedTbl.id === rel.rightTableId)
+        )
+      }
+      
+      const resp = await datasetService.draftPreview({
+        connection_id: state.selectedConnection.value?.id,
+        mainTable: main,
+        joinedTables: joined,
+        limit: state.previewLimit.value,
+      })
+      
+      if (resp && resp.data) {
+        state.previewCols.value = resp.data.columns || []
+        state.previewRows.value = resp.data.rows || []
+        await loadFields()
+      } else {
+        state.previewCols.value = []
+        state.previewRows.value = []
+      }
+    } finally {
+      state.isPreviewLoading.value = false
+    }
+  }
+  
+  async function loadFields() {
+    if (state.previewCols.value.length && state.previewRows.value.length) {
+      const allDraftTables = [
+        state.mainTable.value,
+        ...state.relations.value.map(r => state.allTablesOfConnection.value.find(t => t.id === r.rightTableId)).filter(Boolean)
+      ]
+      
+      const col2Table = {}
+      state.previewCols.value.forEach(col => {
+        let foundTable = allDraftTables.find(t =>
+          t?.columns_info?.columns?.includes(col)
+        )
+        col2Table[col] = foundTable || state.mainTable.value
+      })
+
+      if (state.dataset.value?.id && Array.isArray(state.origDatasetRef.value?.fields) && state.origDatasetRef.value.fields.length) {
+        const origFieldsMap = new Map(
+          state.origDatasetRef.value.fields.map(f => [String(f.id ?? f.name), f])
+        )
+
+        const fieldsList = state.previewCols.value.map((col, idx) => {
+          let orig = state.origDatasetRef.value.fields.find(f => f.source_column === col || f.name === col)
+          if (origFieldsMap.has(String(orig?.id))) orig = origFieldsMap.get(String(orig.id))
+          const tableObj = col2Table[col] || state.mainTable.value
+          const columnValues = state.previewRows.value.map(row => row[idx])
+          const colType = detectColumnType(columnValues)
+
+          return {
+            id: orig?.id,
+            name: orig?.name || col,
+            aggregation: orig?.aggregation || 'none',
+            type: orig?.type || colType,
+            description: orig?.description || '',
+            source: { column: col },
+            source_table: tableObj
+          }
+        })
+
+        state.fields.value = fieldsList
+      } else {
+        const fieldsList = state.previewCols.value.map((col, idx) => {
+          const tableObj = col2Table[col] || state.mainTable.value
+          const columnValues = state.previewRows.value.map(row => row[idx])
+          const colType = detectColumnType(columnValues)
+
+          return {
+            name: col,
+            aggregation: 'none',
+            type: colType,
+            description: '',
+            source: { column: col },
+            source_table: tableObj
+          }
+        })
+
+        state.fields.value = fieldsList
+      }
+    }
+  }
+  
+  function detectColumnType(values) {
+    const filtered = values.filter(v => v !== null && v !== undefined && v !== '')
+    
+    if (!filtered.length) return 'string'
+    
+    if (filtered.every(v => /^(\d{4}-\d{2}-\d{2})$/.test(v) || v instanceof Date)) {
+      return 'date'
+    }
+    
+    if (filtered.every(v => /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?)$/.test(v))) {
+      return 'date&time'
+    }
+    
+    if (filtered.every(v => v === 'true' || v === 'false' || typeof v === 'boolean')) {
+      return 'bool'
+    }
+    
+    if (filtered.every(v => !isNaN(v) && Number.isInteger(+v))) {
+      return 'integer'
+    }
+    
+    if (filtered.every(v => !isNaN(v) && !Number.isNaN(parseFloat(v)))) {
+      return 'float'
+    }
+    
+    return 'string'
+  }
+  
+  // Функции для работы с полями
+  async function refreshFields() {
+    if (!state.dataset.value || !state.dataset.value.id) return
+    
+    if (state.mainTable.value && state.selectedConnection.value) {
+      let belongsToCurrentConnection = false
+      
+      if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+          state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+        belongsToCurrentConnection = state.mainTable.value.file_id === state.selectedConnection.value.id
+      } else {
+        belongsToCurrentConnection = !state.mainTable.value.connection_id || state.mainTable.value.connection_id === state.selectedConnection.value.id
+      }
+      
+      if (!belongsToCurrentConnection) {
+        // Сбрасываем все связанные данные при несоответствии подключения
+        state.mainTable.value = null
+        state.relations.value = []
+        state.selectedTables.value = []
+        state.fields.value = []
+        state.previewCols.value = []
+        state.previewRows.value = []
+        return
+      }
+    }
+    
+    const renames = state.fields.value
+      .filter(f => f.name && f.source && f.source.column)
+      .map(f => ({
+        old_name: f.source.column,
+        new_name: f.name,
+      }))
+
+    if (renames.length && state.dataset.value && state.dataset.value.id) {
+      const { error } = await datasetService.renameColumns(state.dataset.value.id, renames)
+      if (error) return
+
+      const fieldsResp = await datasetService.listFields({ dataset: state.dataset.value.id })
+      if (fieldsResp && fieldsResp.data) {
+        state.fields.value = fieldsResp.data
+      }
+    }
+    
+    await loadPreview()
+  }
+  
+  // Функции для работы со связями
+  function handleRelationApply(relation) {
+    let rightId = relation.rightTableId
+    let staging = state.allTablesOfConnection.value.find(tbl => tbl.id === rightId)
+
+    if (!staging) {
+      staging = state.allTablesOfConnection.value.find(tbl => tbl.file_id === rightId && tbl.id > 0)
+      if (staging) rightId = staging.id
+    }
+
+    if (!staging) return
+    
+    if (state.selectedConnection.value) {
+      let belongsToCurrentConnection = false
+      
+      if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+          state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+        belongsToCurrentConnection = staging.file_id === state.selectedConnection.value.id
+      } else {
+        belongsToCurrentConnection = !staging.connection_id || staging.connection_id === state.selectedConnection.value.id
+      }
+      
+      if (!belongsToCurrentConnection) {
+        return
+      }
+    }
+    
+    const idx = state.relations.value.findIndex(r => r.rightTableId === rightId)
+    const fixedRel = { ...relation, rightTableId: rightId }
+    
+    if (idx !== -1) {
+      state.relations.value[idx] = fixedRel
+    } else {
+      state.relations.value.push(fixedRel)
+    }
+    
+    buildAllTables()
+    updateSelectedTables()
+    loadPreview()
+    sanitizeRelations()
+  }
+  
+  function removeRelationById(rightTableId) {
+    const relation = state.relations.value.find(rel => rel.rightTableId === rightTableId)
+    if (!relation) return
+    
+    if (state.selectedConnection.value) {
+      const rightTable = state.allTablesOfConnection.value.find(t => t.id === rightTableId)
+      if (rightTable) {
+        let belongsToCurrentConnection = false
+        
+        if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+            state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+          belongsToCurrentConnection = rightTable.file_id === state.selectedConnection.value.id
+        } else {
+          belongsToCurrentConnection = !rightTable.connection_id || rightTable.connection_id === state.selectedConnection.value.id
+        }
+        
+        if (!belongsToCurrentConnection) {
+          // Связь не принадлежит текущему подключению
+        }
+      }
+    }
+    
+    state.relations.value = state.relations.value.filter(rel => rel.rightTableId !== rightTableId)
+    loadPreview()
+  }
+  
+  // Функции для UI
+  function togglePreview() {
+  if (state.isPreviewVisible.value) {
+    state.isPreviewVisible.value = false
+  } else {
+    if (state.mainTable.value && state.selectedConnection.value) {
+      let belongsToCurrentConnection = false
+      
+      if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+          state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
+        belongsToCurrentConnection = state.mainTable.value.file_id === state.selectedConnection.value.id
+      } else {
+        belongsToCurrentConnection = !state.mainTable.value.connection_id || state.mainTable.value.connection_id === state.selectedConnection.value.id
+      }
+      
+      if (!belongsToCurrentConnection) {
+        // Сбрасываем все связанные данные при несоответствии подключения
+        state.mainTable.value = null
+        state.relations.value = []
+        state.selectedTables.value = []
+        state.fields.value = []
+        state.previewCols.value = []
+        state.previewRows.value = []
+        state.isPreviewVisible.value = false
+        return
+      }
+    }
+    
+    state.isPreviewVisible.value = true
+    loadPreview()
+  }
+}
+  
+  function addField() {
+    state.selectedField.value = null
+    state.showModal.value = true
+  }
+  
+  function handleRemoveTable(t) {
+  const i = state.selectedTables.value.indexOf(t)
+  if (i !== -1) {
+    state.selectedTables.value.splice(i, 1)
+  }
+  
+  // Если удаляемая таблица была главной, сбрасываем связанные данные
+  if (state.mainTable.value && state.mainTable.value.id === t.id) {
+    state.mainTable.value = null
+    state.relations.value = []
+    state.fields.value = []
+    state.previewCols.value = []
+    state.previewRows.value = []
+  }
+  
+  // Удаляем связи, связанные с удаляемой таблицей
+  state.relations.value = state.relations.value.filter(rel => rel.rightTableId !== t.id)
+}
+  
+  function onSourceSave(newField) {
+    state.fields.value = [...state.fields.value, newField]
+    state.showModal.value = false
+  }
+  
+  // Экспортируем все функции
+  return {
+    saveDataset,
+    editDataset,
+    safeUpdateDataset,
+    loadDataset,
+    hydrateFromDataset,
+    fetchConnectionFiles,
+    updateConnectionStatus,
+    analyzeFileStatus,
+    buildAllTables,
+    mapTable,
+    updateSelectedTables,
+    sanitizeRelations,
+    loadPreview,
+    loadFields,
+    detectColumnType,
+    refreshFields,
+    handleRelationApply,
+    removeRelationById,
+    togglePreview,
+    addField,
+    handleRemoveTable,
+    onSourceSave
+  }
+}

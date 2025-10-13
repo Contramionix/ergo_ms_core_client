@@ -1,0 +1,31 @@
+{
+  "menuOrder": [
+    "User",
+    "Settings", 
+
+    "BI",
+    "CRM",
+    
+    "ProjectEd",
+    
+    "LMS",
+    "EducationAnalyticModule",
+    "ExpertSystem",
+
+    "AssetsAnalyse",
+    
+    "PorosityAnalysis",
+    "ImpulsAnalysis",
+    "VideoAnalysis",
+    "ErgoCityStruct"
+  ],
+  
+  "separators": {
+    "0": "Настройки",
+    "2": "Модули",
+    "4": "Управление проектами",
+    "5": "Обучение",
+    "8": "Трендовая аналитика",
+    "9": "Цифровая лаборатория"
+  }
+} 
