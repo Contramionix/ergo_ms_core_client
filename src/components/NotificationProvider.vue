@@ -1,5 +1,5 @@
 <script setup>
-import { useNotifications } from '@/modules/lms/composables/useNotifications'
+import { useNotifications } from '@/js/utils/useNotifications'
 import ConfirmDialog from './ConfirmDialog.vue'
 import ChoiceDialog from './ChoiceDialog.vue'
 import NotificationToast from './NotificationToast.vue'
