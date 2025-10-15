@@ -7,21 +7,16 @@ import vueDevTools from 'vite-plugin-vue-devtools' // Импорт плагин�
 import dotenv from 'dotenv'
 import path from 'path'
 import fs from 'fs'
-import { collectEnvFilesFromConfigs } from './src/js/environment/methods.js'
 
-// Получение абсолютного пути к файлу .env, находящемуся на одну папку выше
+// Получение абсолютного пути к файлу .env в корне проекта
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// Сначала загружаем основной .env файл (если существует)
-const mainEnvPath = path.resolve(__dirname, '../.env')
+// Загружаем основной .env файл из корня проекта (/projects/ergo_ms/.env)
+const mainEnvPath = path.resolve(__dirname, '../../.env')
 if (fs.existsSync(mainEnvPath)) {
   dotenv.config({ path: mainEnvPath })
-}
-
-// Затем загружаем переменные из папки configs (они имеют приоритет)
-const configsEnvVars = collectEnvFilesFromConfigs()
-for (const [key, value] of Object.entries(configsEnvVars)) {
-  process.env[key] = value
+} else {
+  console.warn('⚠️  Файл .env не найден в корне проекта:', mainEnvPath)
 }
 
 // Определение конфигурации Vite
