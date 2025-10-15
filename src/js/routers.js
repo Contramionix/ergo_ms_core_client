@@ -21,19 +21,23 @@
 
 import { createRouter, createWebHistory } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
-import { generateAllRoutes, validateRoutesConfig } from '@/config/routes-generator.js'
+import { generateAllRoutes, validateRoutesConfig, getComponentsDebugInfo } from '@/config/routes-generator.js'
 
-// Валидация конфигурации при запуске
-const validation = validateRoutesConfig()
+// Выводим информацию о доступных компонентах
+const componentsInfo = getComponentsDebugInfo()
+console.log('🔍 Информация о компонентах:', componentsInfo)
+
+// Генерация маршрутов из JSON конфигурации (async)
+const routes = await generateAllRoutes()
+
+// Валидация конфигурации при запуске (async)
+const validation = await validateRoutesConfig()
 if (!validation.isValid) {
   console.error('❌ Обнаружены ошибки в конфигурации маршрутов:', validation.errors)
 }
 if (validation.warnings.length > 0) {
   console.warn('⚠️ Предупреждения конфигурации маршрутов:', validation.warnings)
 }
-
-// Генерация маршрутов из JSON конфигурации (async)
-const routes = await generateAllRoutes()
 
 routes.forEach((route) => {
   if (!route.meta || !Object.prototype.hasOwnProperty.call(route.meta, 'startRoute')) {
@@ -42,7 +46,7 @@ routes.forEach((route) => {
   }
 })
 
-console.log(routes)
+console.log('📍 Сгенерированные маршруты:', routes)
 
 const router = createRouter({
   history: createWebHistory(),

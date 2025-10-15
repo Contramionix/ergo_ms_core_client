@@ -6,7 +6,9 @@ let mappingCache = null
 
 // Ленивая загрузка menu-config.json (не eager)
 const coreModulesLoader = import.meta.glob('../core/**/js/menu-config.json')
-const modulesLoader = import.meta.glob('../modules/**/js/menu-config.json')
+// Модули из папки modules/ ищутся по структуре modules/<module_name>/client/js/
+// Путь от src/config/menu-loader.js до modules/: ../../../../modules/
+const modulesLoader = import.meta.glob('../../../../modules/*/client/js/menu-config.json')
 
 /**
  * Автоматически загружает все menu-config.json из всех модулей
@@ -29,7 +31,11 @@ export async function loadAllModuleMenuConfigs() {
   // Загружаем все menu-config.json из modules
   const modulesPromises = Object.entries(modulesLoader).map(async ([path, loader]) => {
     const module = await loader()
-    const modulePath = path.replace('../', '').replace('/js/menu-config.json', '')
+    // Путь вида: ../../../../modules/video_analysis/client/js/menu-config.json
+    // Преобразуем в: modules/video_analysis
+    const modulePath = path
+      .replace('../../../../modules/', 'modules/')
+      .replace('/client/js/menu-config.json', '')
     allConfigs[modulePath] = module.default || module
   })
   

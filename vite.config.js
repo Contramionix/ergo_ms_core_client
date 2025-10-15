@@ -31,8 +31,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)), // Создание псевдонима '@' для пути './src'
+      '@/modules': fileURLToPath(new URL('../../modules', import.meta.url)), // Алиас для модулей из папки modules/
       'vue': 'vue/dist/vue.esm-bundler.js',
     },
+    // Убеждаемся что Vite правильно обрабатывает расширения файлов
+    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue']
   },
 
   // Настройка обработки CSS
@@ -52,6 +55,15 @@ export default defineConfig({
     port: parseInt(process.env.CLIENT_PORT, 10) || 8001, // Установка порта для сервера разработки
     host: process.env.CLIENT_HOST || 'localhost', // Установка хоста для сервера разработки
     https: false, // Отключение HTTPS для сервера разработки
+    fs: {
+      // Разрешаем Vite обслуживать файлы из папки modules вне корня проекта
+      allow: [
+        // Корень workspace (client)
+        '..',
+        // Корень проекта (ergo_ms)
+        '../..',
+      ],
+    },
   },
 
   // Экспорт переменных окружения в клиентский код
@@ -60,5 +72,11 @@ export default defineConfig({
     'import.meta.env.VITE_API_PORT': JSON.stringify(process.env.API_PORT),
     'import.meta.env.VITE_DEFAULT_THEME': JSON.stringify(process.env.VITE_DEFAULT_THEME || 'light'),
     'import.meta.env.VITE_LOG_LEVEL': JSON.stringify(process.env.VITE_LOG_LEVEL || (process.env.CLIENT_DEPLOY_TYPE === 'production' ? 'critical' : 'debug')),
+  },
+
+  // Оптимизация сборки
+  optimizeDeps: {
+    // Исключаем динамически загружаемые модули из предварительной оптимизации
+    exclude: ['@vite-ignore'],
   },
 })

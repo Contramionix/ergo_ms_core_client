@@ -32,6 +32,51 @@ async function getMenuConfig() {
   return menuConfigCache
 }
 
+// Предварительная загрузка всех компонентов из модулей и core
+// Используем import.meta.glob для создания маппинга всех .vue файлов
+const coreComponents = import.meta.glob('../**/*.vue')
+const modulesComponents = import.meta.glob('../../../../modules/**/client/**/*.vue')
+
+// Создаем единый маппинг компонентов
+const componentsMap = {
+  ...coreComponents,
+  ...modulesComponents
+}
+
+// Отладочная информация о загруженных компонентах
+console.log('📦 Загружено компонентов из core:', Object.keys(coreComponents).length)
+console.log('📦 Загружено компонентов из modules:', Object.keys(modulesComponents).length)
+console.log('📦 Всего компонентов в маппинге:', Object.keys(componentsMap).length)
+
+/**
+ * Получает функцию загрузки компонента по пути
+ * @param {string} componentPath - путь к компоненту с алиасом (@/... или @/modules/...)
+ * @returns {Function|null} - функция для загрузки компонента или null
+ */
+function getComponentLoader(componentPath) {
+  // Преобразуем путь с алиасом в относительный путь для поиска в маппинге
+  let searchPath
+  
+  if (componentPath.startsWith('@/modules/')) {
+    // @/modules/video_analysis/client/... -> ../../../../modules/video_analysis/client/...
+    searchPath = componentPath.replace('@/modules/', '../../../../modules/')
+  } else if (componentPath.startsWith('@/')) {
+    // @/core/... -> ../core/...
+    searchPath = componentPath.replace('@/', '../')
+  } else {
+    return null
+  }
+  
+  // Ищем компонент в маппинге
+  const loader = componentsMap[searchPath]
+  
+  if (!loader) {
+    console.warn(`Компонент не найден в маппинге: ${componentPath} (искали: ${searchPath})`)
+  }
+  
+  return loader || null
+}
+
 /**
  * Автоматически загружает все routes.js из core модулей
  * @returns {Object} - объект со всеми роутами из core модулей
@@ -42,8 +87,8 @@ function loadCoreModuleRoutes() {
   // Используем import.meta.glob для автоматической загрузки всех routes.js из core
   // Паттерн **/js/routes.js находит routes.js на любом уровне вложенности
   const coreModules = import.meta.glob('../core/**/js/routes.js', { eager: true })
-  
-  Object.entries(coreModules).forEach(([path, module]) => {
+
+  Object.entries(coreModules).forEach(([, module]) => {
     const routes = module.default || {}
     Object.assign(coreRoutes, routes)
   })
@@ -58,11 +103,10 @@ function loadCoreModuleRoutes() {
 function loadModulesRoutes() {
   const modulesRoutes = {}
   
-  // Используем import.meta.glob для автоматической загрузки всех routes.js из modules
-  // Паттерн **/js/routes.js находит routes.js на любом уровне вложенности
-  const modules = import.meta.glob('../modules/**/js/routes.js', { eager: true })
+  // Модули из папки modules/ ищутся по структуре modules/<module_name>/client/js/
+  const modules = import.meta.glob('../../../../modules/*/client/js/routes.js', { eager: true })
   
-  Object.entries(modules).forEach(([path, module]) => {
+  Object.entries(modules).forEach(([, module]) => {
     const routes = module.default || {}
     Object.assign(modulesRoutes, routes)
   })
@@ -105,9 +149,18 @@ function getRouteConfig(routeName) {
  * @returns {Function} - функция для ленивой загрузки компонента
  */
 function createLazyImport(componentPath) {
-  // Убираем префикс @/ и добавляем ./ для relative import
-  const relativePath = componentPath.replace('@/', '../')
-  return () => import(/* @vite-ignore */ relativePath)
+  // Используем предзагруженный маппинг компонентов
+  const loader = getComponentLoader(componentPath)
+  
+  if (loader) {
+    return loader
+  }
+  
+  // Fallback: если компонент не найден в маппинге, показываем предупреждение
+  console.error(`Не удалось создать lazy import для: ${componentPath}`)
+  
+  // Возвращаем заглушку
+  return () => Promise.reject(new Error(`Component not found: ${componentPath}`))
 }
 
 /**
@@ -309,9 +362,18 @@ export async function generateRoutesFromConfig() {
  * @returns {Function} - функция динамического импорта
  */
 function transformComponentPath(componentPath) {
-  // Убираем префикс @/ и добавляем ./ для relative import (аналогично createLazyImport)
-  const relativePath = componentPath.replace('@/', '../')
-  return () => import(/* @vite-ignore */ relativePath)
+  // Используем предзагруженный маппинг компонентов
+  const loader = getComponentLoader(componentPath)
+  
+  if (loader) {
+    return loader
+  }
+  
+  // Fallback: если компонент не найден в маппинге
+  console.error(`Не удалось преобразовать путь компонента: ${componentPath}`)
+  
+  // Возвращаем заглушку
+  return () => Promise.reject(new Error(`Component not found: ${componentPath}`))
 }
 
 /**
@@ -510,10 +572,11 @@ export async function generateAllRoutes() {
 
 /**
  * Генерирует адаптивные separators на основе текущих элементов меню
- * @returns {Object} - объект с позициями separators
+ * @returns {Promise<Object>} - объект с позициями separators
  */
-export function generateAdaptiveSeparators() {
+export async function generateAdaptiveSeparators() {
   const separators = {}
+  const menuConfig = await getMenuConfig()
   const menuSections = menuConfig.menuSections
   
   // Обрабатываем каждый раздел и ищем места для separators
@@ -556,29 +619,31 @@ export function generateAdaptiveSeparators() {
 /**
  * Получает позицию separator для указанного индекса
  * @param {number} index - индекс элемента меню
- * @returns {string|null} - название separator или null
+ * @returns {Promise<string|null>} - название separator или null
  */
-export function getSeparatorByIndex(index) {
-  const separators = generateAdaptiveSeparators()
+export async function getSeparatorByIndex(index) {
+  const separators = await generateAdaptiveSeparators()
   return separators[index] || null
 }
 
 /**
  * Проверяет, должен ли отображаться separator перед указанным элементом
  * @param {number} index - индекс элемента меню
- * @returns {boolean} - должен ли отображаться separator
+ * @returns {Promise<boolean>} - должен ли отображаться separator
  */
-export function shouldShowSeparator(index) {
-  return getSeparatorByIndex(index) !== null
+export async function shouldShowSeparator(index) {
+  const separator = await getSeparatorByIndex(index)
+  return separator !== null
 }
 
 /**
  * Получает структуру меню с информацией о separators
- * @returns {Object} - объект с массивом элементов меню и информацией о separators
+ * @returns {Promise<Object>} - объект с массивом элементов меню и информацией о separators
  */
-export function getMenuWithSeparators() {
+export async function getMenuWithSeparators() {
+  const menuConfig = await getMenuConfig()
   const menuSections = menuConfig.menuSections
-  const separators = generateAdaptiveSeparators()
+  const separators = await generateAdaptiveSeparators()
   
   return {
     sections: menuSections,
@@ -591,11 +656,12 @@ export function getMenuWithSeparators() {
 /**
  * Обновляет конфигурацию separators новыми значениями
  * @param {Object} newSeparators - новая конфигурация separators
- * @returns {Object} - обновленная конфигурация меню
+ * @returns {Promise<Object>} - обновленная конфигурация меню
  */
-export function updateSeparatorsConfig(newSeparators) {
+export async function updateSeparatorsConfig(newSeparators) {
   // Примечание: эта функция возвращает обновленную конфигурацию
   // Для применения изменений нужно сохранить файл menu-config.json
+  const menuConfig = await getMenuConfig()
   return {
     ...menuConfig,
     separators: newSeparators
@@ -608,10 +674,10 @@ export function updateSeparatorsConfig(newSeparators) {
 
 /**
  * Получает все названия маршрутов из конфигурации
- * @returns {Array} - массив имен маршрутов
+ * @returns {Promise<Array>} - массив имен маршрутов
  */
-export function getAllRouteNames() {
-  const routes = generateRoutesFromConfig()
+export async function getAllRouteNames() {
+  const routes = await generateRoutesFromConfig()
   const names = []
   
   function extractNames(routeArray) {
@@ -644,11 +710,11 @@ export function getRouteConfigByName(routeName) {
 
 /**
  * Получает информацию о всех созданных маршрутах для отладки
- * @returns {Object} - объект с информацией о маршрутах
+ * @returns {Promise<Object>} - объект с информацией о маршрутах
  */
-export function getRoutesDebugInfo() {
+export async function getRoutesDebugInfo() {
   const coreRoutes = generateCoreRoutes()
-  const menuRoutes = generateRoutesFromConfig()
+  const menuRoutes = await generateRoutesFromConfig()
   const createdRouteNames = getCreatedRouteNames([...coreRoutes, ...menuRoutes])
   const missingRoutes = generateMissingRoutes(createdRouteNames)
   const allModuleRoutes = loadAllModuleRoutes()
@@ -673,13 +739,14 @@ export function getRoutesDebugInfo() {
 
 /**
  * Валидирует конфигурацию маршрутов
- * @returns {Object} - объект с результатами валидации
+ * @returns {Promise<Object>} - объект с результатами валидации
  */
-export function validateRoutesConfig() {
+export async function validateRoutesConfig() {
   const errors = []
   const warnings = []
   
   try {
+    const menuConfig = await getMenuConfig()
     menuConfig.menuSections.forEach((section, index) => {
       const routeConfig = getRouteConfig(section.routeName)
       if (!routeConfig) {
@@ -695,12 +762,25 @@ export function validateRoutesConfig() {
         errors.push(`Секция "${section.title}" не содержит path`)
       }
       
+      // Проверяем, что компонент существует в маппинге
+      if (routeConfig.component) {
+        const loader = getComponentLoader(routeConfig.component)
+        if (!loader) {
+          errors.push(`Компонент "${routeConfig.component}" для секции "${section.title}" не найден`)
+        }
+      }
+      
       // Валидация дочерних маршрутов
       if (section.list) {
         section.list.forEach(item => {
           const itemConfig = getRouteConfig(item.routeName || item.path)
           if (!item.isOffcanvas && !itemConfig) {
             errors.push(`Подраздел "${item.name}" в секции "${section.title}" не найден в конфигурации маршрутов`)
+          } else if (itemConfig && itemConfig.component) {
+            const loader = getComponentLoader(itemConfig.component)
+            if (!loader) {
+              errors.push(`Компонент "${itemConfig.component}" для подраздела "${item.name}" не найден`)
+            }
           }
         })
       }
@@ -713,5 +793,20 @@ export function validateRoutesConfig() {
     isValid: errors.length === 0,
     errors,
     warnings
+  }
+}
+
+/**
+ * Получает список всех доступных компонентов для отладки
+ * @returns {Object} - объект с информацией о компонентах
+ */
+export function getComponentsDebugInfo() {
+  return {
+    totalComponents: Object.keys(componentsMap).length,
+    coreComponentsCount: Object.keys(coreComponents).length,
+    modulesComponentsCount: Object.keys(modulesComponents).length,
+    coreComponentsPaths: Object.keys(coreComponents),
+    modulesComponentsPaths: Object.keys(modulesComponents),
+    allComponentsPaths: Object.keys(componentsMap)
   }
 }

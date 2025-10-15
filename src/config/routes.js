@@ -75,7 +75,7 @@ export default {
     {
       "path": "/two-steps",
       "name": "TwoSteps",
-      "component": "@/modules/auth/TwoStepsPage.vue",
+      "component": "@/core/cms/adp/pages/TwoStepsPage.vue",
       "meta": {
         "startRoute": true,
         "requiresAuth": false

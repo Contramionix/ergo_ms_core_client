@@ -1,6 +1,8 @@
 // Автоматически импортируем все endpoints.js файлы из core и modules
 const coreEndpointsModules = import.meta.glob('@/core/**/endpoints.js', { eager: true });
-const modulesEndpointsModules = import.meta.glob('@/modules/**/endpoints.js', { eager: true });
+// Модули из папки modules/ ищутся по структуре modules/<module_name>/client/js/
+// Путь от src/js/api/endpoints.js до modules/: ../../../../../modules/
+const modulesEndpointsModules = import.meta.glob('../../../../../modules/*/client/js/endpoints.js', { eager: true });
 
 // Объединяем все импортированные эндпоинты
 const allEndpoints = {};
