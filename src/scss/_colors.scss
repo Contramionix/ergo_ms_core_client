@@ -8,9 +8,9 @@ $danger: #dc3545;
 $light: #f8f9fa;
 $dark: #212529;
 
-@import '/node_modules/bootstrap/scss/_functions';
-@import '/node_modules/bootstrap/scss/_variables';
-@import '/node_modules/bootstrap/scss/_variables-dark';
+@import 'bootstrap/scss/functions';
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
 
 // Дополнительные цвета
 $custom-colors: (
@@ -24,7 +24,7 @@ $custom-colors: (
 // Добавление цветов к цветам по умолчанию
 $theme-colors: map-merge($theme-colors, $custom-colors);
 
-@import '/node_modules/bootstrap/scss/_maps';
+@import 'bootstrap/scss/maps';
 
 // Добавление оттенков к фону, тексту и границам
 
