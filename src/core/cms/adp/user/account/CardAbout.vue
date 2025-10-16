@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useToast } from 'vue-toastification'
-import { 
-  Check, Crown, Flag, Languages, Link, Mail, Phone, UserRound, 
+import {
+  Check, Crown, Flag, Languages, Link, Mail, Phone, UserRound,
   Edit3, Save, X, MapPin, Globe, Calendar, Shield, User, Upload, RotateCcw
 } from 'lucide-vue-next'
 import { useProfile } from '@/core/cms/js/profileService.js'
@@ -56,16 +56,16 @@ const changeAvatar = async (event) => {
     toast.error('Пожалуйста, выберите изображение!')
     return
   }
-  
+
   // Показываем предварительный просмотр
   avatarUrl.value = URL.createObjectURL(file)
   avatarLoading.value = true
   avatarError.value = ''
-  
+
   try {
     // Используем функцию обновления из userStore для синхронизации всех компонентов
     const success = await userStore.updateAvatar(file)
-    
+
     if (success) {
       // Обновляем локальный аватар
       await fetchAvatar()
@@ -88,10 +88,10 @@ async function cancelAvatarUpload() {
   try {
     // Сначала меняем изображение локально для мгновенного отображения
     avatarUrl.value = null // Используем стандартный аватар
-    
+
     // Используем функцию сброса из userStore для синхронизации всех компонентов
     const success = await userStore.resetAvatar()
-    
+
     if (success) {
       // Обновляем локальный аватар
       await fetchAvatar()
@@ -113,12 +113,13 @@ const fetchProfile = async () => {
     loading.value = true
     const response = await getProfile()
     profileData.value = formatProfileData(response)
-    
+
     // Инициализируем форму данными профиля
     if (profileData.value) {
       formData.value = {
         first_name: profileData.value.firstName === ' ' ? '' : (profileData.value.firstName || ''),
         last_name: profileData.value.lastName === ' ' ? '' : (profileData.value.lastName || ''),
+        middle_name: profileData.value.middleName === ' ' ? '' : (profileData.value.middleName || ''),
         email: profileData.value.email,
         phone: profileData.value.phone,
         website: profileData.value.website,
@@ -140,7 +141,7 @@ const fetchProfile = async () => {
 // Вычисляемые свойства для отображения
 const displayData = computed(() => {
   if (!profileData.value) return null
-  
+
   return {
     fullName: profileData.value.fullName || 'Не указано',
     status: profileData.value.isActive,
@@ -193,6 +194,7 @@ const cancelEditing = () => {
     formData.value = {
       first_name: profileData.value.firstName === ' ' ? '' : (profileData.value.firstName || ''),
       last_name: profileData.value.lastName === ' ' ? '' : (profileData.value.lastName || ''),
+      middle_name: profileData.value.middleName === ' ' ? '' : (profileData.value.middleName || ''),
       email: profileData.value.email,
       phone: profileData.value.phone,
       website: profileData.value.website,
@@ -221,6 +223,7 @@ const saveProfile = async () => {
       ...formData.value,
       first_name: formData.value.first_name?.trim() || '',
       last_name: formData.value.last_name?.trim() || '',
+      middle_name: formData.value.middle_name?.trim() || '',
       phone: formData.value.phone?.trim() || '',
       website: formData.value.website?.trim() || '',
       bio: formData.value.bio?.trim() || '',
@@ -233,16 +236,16 @@ const saveProfile = async () => {
     // Отправка данных
     const response = await updateProfile(dataToSend)
     profileData.value = formatProfileData(response)
-    
+
     // Обновляем userStore для мгновенного отображения изменений во всех компонентах
     await userStore.loadProfile()
     await userStore.loadAvatar()
-    
+
     editing.value = false
     toast.success('Профиль успешно обновлен')
   } catch (error) {
     console.error('Ошибка сохранения профиля:', error)
-    
+
     // Обработка ошибок валидации от сервера
     if (error.response?.data) {
       errors.value = error.response.data
@@ -269,30 +272,18 @@ onMounted(() => {
         <span>Профиль</span>
       </h5>
       <div class="btn-group btn-group-sm">
-        <button 
-          v-if="!editing" 
-          @click="startEditing" 
-          class="btn btn-outline-primary"
-          :disabled="loading || !profileData"
-        >
+        <button v-if="!editing" @click="startEditing" class="btn btn-outline-primary"
+          :disabled="loading || !profileData">
           <Edit3 :size="16" class="me-1" />
           Редактировать
         </button>
         <template v-else>
-          <button 
-            @click="saveProfile" 
-            class="btn btn-danger"
-            :disabled="saving"
-          >
+          <button @click="saveProfile" class="btn btn-danger" :disabled="saving">
             <Save :size="16" class="me-1" />
             <span v-if="saving">Сохранение...</span>
             <span v-else>Сохранить</span>
           </button>
-          <button 
-            @click="cancelEditing" 
-            class="btn btn-light"
-            :disabled="saving"
-          >
+          <button @click="cancelEditing" class="btn btn-light" :disabled="saving">
             <X :size="16" class="me-1" />
             Отмена
           </button>
@@ -317,37 +308,19 @@ onMounted(() => {
             <span>Фотография профиля</span>
           </h6>
           <div class="avatar-section">
-            <img
-              v-if="avatarUrl" 
-              :src="avatarUrl"
-              alt="Avatar"
-              class="mb-3 hq-avatar hq-avatar-primary"
-              style="width: 120px; height: 120px; object-fit: cover;"
-            />
+            <img v-if="avatarUrl" :src="avatarUrl" alt="Avatar" class="mb-3 hq-avatar hq-avatar-primary"
+              style="width: 120px; height: 120px; object-fit: cover;" />
             <div v-else class="mb-3 d-flex justify-content-center">
-              <DefaultAvatar 
-                size="large"
-                :title="userStore.displayName"
-              />
+              <DefaultAvatar size="large" :title="userStore.displayName" />
             </div>
             <div class="button-wrapper d-flex gap-2 justify-content-center">
               <label for="avatarFileInput" class="btn btn-sm btn-primary" tabindex="0">
                 <Upload :size="16" class="me-1" />
                 Загрузить фото
-                <input
-                  type="file"
-                  accept="image/png, image/jpeg"
-                  ref="avatarInput"
-                  @change="changeAvatar"
-                  id="avatarFileInput"
-                  style="display: none"
-                />
+                <input type="file" accept="image/png, image/jpeg" ref="avatarInput" @change="changeAvatar"
+                  id="avatarFileInput" style="display: none" />
               </label>
-              <button
-                type="button"
-                class="btn btn-sm btn-secondary"
-                @click="cancelAvatarUpload"
-              >
+              <button type="button" class="btn btn-sm btn-secondary" @click="cancelAvatarUpload">
                 <RotateCcw :size="16" class="me-1" />
                 Сбросить
               </button>
@@ -371,22 +344,17 @@ onMounted(() => {
             <UserRound :size="18" class="me-1" />
             <span>Основная информация</span>
           </h6>
-          
+
           <div class="row g-3">
             <!-- Имя -->
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label text-muted small">Имя</label>
               <div v-if="!editing" class="fw-medium">
                 {{ (formData.first_name && formData.first_name.trim()) ? formData.first_name.trim() : 'Не указано' }}
               </div>
               <div v-else>
-                <input 
-                  v-model="formData.first_name" 
-                  type="text" 
-                  class="form-control form-control-sm"
-                  :class="{ 'is-invalid': errors.first_name }"
-                  placeholder="Введите имя"
-                />
+                <input v-model="formData.first_name" type="text" class="form-control form-control-sm"
+                  :class="{ 'is-invalid': errors.first_name }" placeholder="Введите имя" />
                 <div v-if="errors.first_name" class="invalid-feedback">
                   {{ errors.first_name }}
                 </div>
@@ -394,21 +362,31 @@ onMounted(() => {
             </div>
 
             <!-- Фамилия -->
-            <div class="col-md-6">
+            <div class="col-md-4">
               <label class="form-label text-muted small">Фамилия</label>
               <div v-if="!editing" class="fw-medium">
                 {{ (formData.last_name && formData.last_name.trim()) ? formData.last_name.trim() : 'Не указано' }}
               </div>
               <div v-else>
-                <input 
-                  v-model="formData.last_name" 
-                  type="text" 
-                  class="form-control form-control-sm"
-                  :class="{ 'is-invalid': errors.last_name }"
-                  placeholder="Введите фамилию"
-                />
+                <input v-model="formData.last_name" type="text" class="form-control form-control-sm"
+                  :class="{ 'is-invalid': errors.last_name }" placeholder="Введите фамилию" />
                 <div v-if="errors.last_name" class="invalid-feedback">
                   {{ errors.last_name }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Отчество -->
+            <div class="col-md-4">
+              <label class="form-label text-muted small">Отчество</label>
+              <div v-if="!editing" class="fw-medium">
+                {{ (formData.middle_name && formData.middle_name.trim()) ? formData.middle_name.trim() : 'Не указано' }}
+              </div>
+              <div v-else>
+                <input v-model="formData.middle_name" type="text" class="form-control form-control-sm"
+                  :class="{ 'is-invalid': errors.middle_name }" placeholder="Введите отчество" />
+                <div v-if="errors.middle_name" class="invalid-feedback">
+                  {{ errors.middle_name }}
                 </div>
               </div>
             </div>
@@ -441,7 +419,7 @@ onMounted(() => {
             <Mail :size="18" class="me-1" />
             <span>Контактная информация</span>
           </h6>
-          
+
           <div class="row g-3">
             <!-- Email -->
             <div class="col-md-6">
@@ -451,13 +429,8 @@ onMounted(() => {
                 <span>{{ displayData.email }}</span>
               </div>
               <div v-else>
-                <input 
-                  v-model="formData.email" 
-                  type="email" 
-                  class="form-control form-control-sm"
-                  :class="{ 'is-invalid': errors.email }"
-                  placeholder="email@example.com"
-                />
+                <input v-model="formData.email" type="email" class="form-control form-control-sm"
+                  :class="{ 'is-invalid': errors.email }" placeholder="email@example.com" />
                 <div v-if="errors.email" class="invalid-feedback">
                   {{ errors.email }}
                 </div>
@@ -472,13 +445,8 @@ onMounted(() => {
                 <span>{{ displayData.phone || 'Не указан' }}</span>
               </div>
               <div v-else>
-                <input 
-                  v-model="formData.phone" 
-                  type="tel" 
-                  class="form-control form-control-sm"
-                  :class="{ 'is-invalid': errors.phone }"
-                  placeholder="+7 (900) 123-45-67"
-                />
+                <input v-model="formData.phone" type="tel" class="form-control form-control-sm"
+                  :class="{ 'is-invalid': errors.phone }" placeholder="+7 (900) 123-45-67" />
                 <div v-if="errors.phone" class="invalid-feedback">
                   {{ errors.phone }}
                 </div>
@@ -490,22 +458,15 @@ onMounted(() => {
               <label class="form-label text-muted small">Веб-сайт</label>
               <div v-if="!editing" class="fw-medium d-flex align-items-center">
                 <Link :size="16" class="text-muted me-2" />
-                <a v-if="displayData.website !== 'Не указан'" 
-                   :href="displayData.website" 
-                   target="_blank" 
-                   class="text-decoration-none">
+                <a v-if="displayData.website !== 'Не указан'" :href="displayData.website" target="_blank"
+                  class="text-decoration-none">
                   {{ displayData.website }}
                 </a>
                 <span v-else>{{ displayData.website }}</span>
               </div>
               <div v-else>
-                <input 
-                  v-model="formData.website" 
-                  type="url" 
-                  class="form-control form-control-sm"
-                  :class="{ 'is-invalid': errors.website }"
-                  placeholder="https://example.com"
-                />
+                <input v-model="formData.website" type="url" class="form-control form-control-sm"
+                  :class="{ 'is-invalid': errors.website }" placeholder="https://example.com" />
                 <div v-if="errors.website" class="invalid-feedback">
                   {{ errors.website }}
                 </div>
@@ -520,7 +481,7 @@ onMounted(() => {
             <Globe :size="18" class="me-1" />
             <span>Местоположение и предпочтения</span>
           </h6>
-          
+
           <div class="row g-3">
             <!-- Страна -->
             <div class="col-md-6">
@@ -530,13 +491,8 @@ onMounted(() => {
                 <span>{{ displayData.country }}</span>
               </div>
               <div v-else>
-                <input 
-                  v-model="formData.country" 
-                  type="text" 
-                  class="form-control form-control-sm"
-                  :class="{ 'is-invalid': errors.country }"
-                  placeholder="Россия"
-                />
+                <input v-model="formData.country" type="text" class="form-control form-control-sm"
+                  :class="{ 'is-invalid': errors.country }" placeholder="Россия" />
                 <div v-if="errors.country" class="invalid-feedback">
                   {{ errors.country }}
                 </div>
@@ -551,13 +507,8 @@ onMounted(() => {
                 <span>{{ displayData.city }}</span>
               </div>
               <div v-else>
-                <input 
-                  v-model="formData.city" 
-                  type="text" 
-                  class="form-control form-control-sm"
-                  :class="{ 'is-invalid': errors.city }"
-                  placeholder="Москва"
-                />
+                <input v-model="formData.city" type="text" class="form-control form-control-sm"
+                  :class="{ 'is-invalid': errors.city }" placeholder="Москва" />
                 <div v-if="errors.city" class="invalid-feedback">
                   {{ errors.city }}
                 </div>
@@ -572,11 +523,8 @@ onMounted(() => {
                 <span>{{ displayData.language }}</span>
               </div>
               <div v-else>
-                <select 
-                  v-model="formData.language" 
-                  class="form-select form-select-sm"
-                  :class="{ 'is-invalid': errors.language }"
-                >
+                <select v-model="formData.language" class="form-select form-select-sm"
+                  :class="{ 'is-invalid': errors.language }">
                   <option value="ru">Русский</option>
                   <option value="en">English</option>
                   <option value="uk">Українська</option>
@@ -596,19 +544,13 @@ onMounted(() => {
             <Shield :size="18" class="me-1" />
             <span>О себе</span>
           </h6>
-          
+
           <div v-if="!editing" class="fw-medium">
             {{ displayData.bio }}
           </div>
           <div v-else>
-            <textarea 
-              v-model="formData.bio" 
-              class="form-control form-control-sm"
-              :class="{ 'is-invalid': errors.bio }"
-              rows="3"
-              placeholder="Расскажите немного о себе..."
-              maxlength="500"
-            ></textarea>
+            <textarea v-model="formData.bio" class="form-control form-control-sm" :class="{ 'is-invalid': errors.bio }"
+              rows="3" placeholder="Расскажите немного о себе..." maxlength="500"></textarea>
             <div class="form-text">
               {{ (formData.bio || '').length }}/500 символов
             </div>
@@ -617,7 +559,7 @@ onMounted(() => {
             </div>
           </div>
         </div>
-        </div>
+      </div>
 
       <!-- Ошибка загрузки -->
       <div v-else class="text-center py-4 text-muted">
@@ -626,8 +568,8 @@ onMounted(() => {
         <button @click="fetchProfile" class="btn btn-outline-primary btn-sm">
           Попробовать снова
         </button>
-        </div>
-        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -655,7 +597,7 @@ onMounted(() => {
 
 .btn-group .btn {
   border-radius: 0.375rem;
-  
+
   &:not(:last-child) {
     margin-right: 0.5rem;
   }
@@ -672,7 +614,7 @@ onMounted(() => {
 h6 {
   font-weight: 600;
   color: #495057;
-  
+
   // Выравнивание иконок с текстом в заголовках
   svg {
     vertical-align: middle;
@@ -689,8 +631,9 @@ h6 {
 // Общий класс для выравнивания всех иконок
 svg {
   vertical-align: text-top;
-  
-  &.me-1, &.me-2 {
+
+  &.me-1,
+  &.me-2 {
     vertical-align: middle;
   }
 }
@@ -700,12 +643,10 @@ svg {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  
+
   svg {
     vertical-align: baseline;
     margin-top: -1px;
   }
 }
-
-
 </style>

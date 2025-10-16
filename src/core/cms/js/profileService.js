@@ -148,7 +148,8 @@ export const profileService = {
       email: user.email,
       firstName: user.first_name || '',
       lastName: user.last_name || '',
-      fullName: profile.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
+      middleName: profile.middle_name || '',
+      fullName: profile.full_name || `${user.first_name || ''} ${profile.middle_name || ''} ${user.last_name || ''}`.trim() || user.username,
       isActive: user.is_active,
       dateJoined: user.date_joined,
 

@@ -22,11 +22,14 @@ export const useUserStore = defineStore('userStore', () => {
     if (!user.value) return 'Гость'
     if (profile.value?.fullName) return profile.value.fullName
     
-    // Обрабатываем имя и фамилию
+    // Обрабатываем имя, отчество и фамилию
     const firstName = user.value.first_name?.trim() || ''
+    const middleName = profile.value?.middleName?.trim() || ''
     const lastName = user.value.last_name?.trim() || ''
-    const fullName = `${firstName} ${lastName}`.trim()
     
+    const nameParts = [firstName, middleName, lastName].filter(part => part && part.trim())
+    const fullName = nameParts.join(' ')
+
     // Если нет ни имени, ни фамилии, возвращаем "Гость"
     if (!fullName) return 'Гость'
     
