@@ -43,11 +43,6 @@ const componentsMap = {
   ...modulesComponents
 }
 
-// Отладочная информация о загруженных компонентах
-console.log('📦 Загружено компонентов из core:', Object.keys(coreComponents).length)
-console.log('📦 Загружено компонентов из modules:', Object.keys(modulesComponents).length)
-console.log('📦 Всего компонентов в маппинге:', Object.keys(componentsMap).length)
-
 /**
  * Получает функцию загрузки компонента по пути
  * @param {string} componentPath - путь к компоненту с алиасом (@/... или @/modules/...)
@@ -709,35 +704,6 @@ export function getRouteConfigByName(routeName) {
 }
 
 /**
- * Получает информацию о всех созданных маршрутах для отладки
- * @returns {Promise<Object>} - объект с информацией о маршрутах
- */
-export async function getRoutesDebugInfo() {
-  const coreRoutes = generateCoreRoutes()
-  const menuRoutes = await generateRoutesFromConfig()
-  const createdRouteNames = getCreatedRouteNames([...coreRoutes, ...menuRoutes])
-  const missingRoutes = generateMissingRoutes(createdRouteNames)
-  const allModuleRoutes = loadAllModuleRoutes()
-  
-  return {
-    totalRoutes: coreRoutes.length + menuRoutes.length + missingRoutes.length,
-    coreRoutesCount: coreRoutes.length,
-    menuRoutesCount: menuRoutes.length,
-    missingRoutesCount: missingRoutes.length,
-    coreRouteNames: coreRoutes.map(r => r.name).filter(Boolean),
-    menuRouteNames: Array.from(createdRouteNames).filter(name => 
-      !coreRoutes.some(r => r.name === name)
-    ),
-    missingRouteNames: missingRoutes.map(r => r.name).filter(Boolean),
-    allAvailableRoutes: Object.keys(allModuleRoutes),
-    loadedModules: {
-      core: Object.keys(loadCoreModuleRoutes()),
-      modules: Object.keys(loadModulesRoutes())
-    }
-  }
-}
-
-/**
  * Валидирует конфигурацию маршрутов
  * @returns {Promise<Object>} - объект с результатами валидации
  */
@@ -793,20 +759,5 @@ export async function validateRoutesConfig() {
     isValid: errors.length === 0,
     errors,
     warnings
-  }
-}
-
-/**
- * Получает список всех доступных компонентов для отладки
- * @returns {Object} - объект с информацией о компонентах
- */
-export function getComponentsDebugInfo() {
-  return {
-    totalComponents: Object.keys(componentsMap).length,
-    coreComponentsCount: Object.keys(coreComponents).length,
-    modulesComponentsCount: Object.keys(modulesComponents).length,
-    coreComponentsPaths: Object.keys(coreComponents),
-    modulesComponentsPaths: Object.keys(modulesComponents),
-    allComponentsPaths: Object.keys(componentsMap)
   }
 }

@@ -21,11 +21,7 @@
 
 import { createRouter, createWebHistory } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
-import { generateAllRoutes, validateRoutesConfig, getComponentsDebugInfo } from '@/config/routes-generator.js'
-
-// Выводим информацию о доступных компонентах
-const componentsInfo = getComponentsDebugInfo()
-console.log('🔍 Информация о компонентах:', componentsInfo)
+import { generateAllRoutes, validateRoutesConfig } from '@/config/routes-generator.js'
 
 // Генерация маршрутов из JSON конфигурации (async)
 const routes = await generateAllRoutes()
@@ -45,8 +41,6 @@ routes.forEach((route) => {
     route.meta.startRoute = false
   }
 })
-
-console.log('📍 Сгенерированные маршруты:', routes)
 
 const router = createRouter({
   history: createWebHistory(),
