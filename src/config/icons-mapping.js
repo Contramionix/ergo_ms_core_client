@@ -1,32 +1,12 @@
 /**
  * МАППИНГ ИКОНОК ДЛЯ КОНФИГУРАЦИОННОГО МЕНЮ
  * 
- * Данный файл содержит маппинг строковых имен иконок на компоненты
- * из библиотеки lucide-vue-next. Используется для преобразования
- * JSON конфигурации меню в реальные Vue компоненты иконок.
- * 
- * Позволяет использовать строковые имена в menu-config.json
- * вместо прямого импорта компонентов, что делает конфигурацию
- * более простой и доступной для редактирования.
- * 
- * Все иконки импортируются автоматически из lucide-vue-next,
- * поэтому добавление новых иконок в menu-config.json не требует
- * изменений в этом файле.
+ * Управление иконками через модульную систему (IconManager).
+ * Предоставляет доступ к иконкам из lucide-vue-next.
  */
 
-import * as LucideIcons from 'lucide-vue-next'
+import { getIcon, moduleManager } from '@/modules/index.js'
 
-/**
- * Объект маппинга строковых имен иконок на Vue компоненты
- * Автоматически включает все иконки из библиотеки lucide-vue-next
- */
-export const iconMapping = LucideIcons
+export const iconMapping = moduleManager.icons.iconMapping
 
-/**
- * Функция получения компонента иконки по строковому имени
- * @param {string} iconName - имя иконки из JSON конфигурации
- * @returns {Object|null} - Vue компонент иконки или null если не найден
- */
-export function getIcon(iconName) {
-  return iconMapping[iconName] || null
-} 
+export { getIcon }

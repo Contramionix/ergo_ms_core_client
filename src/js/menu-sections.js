@@ -1,9 +1,12 @@
+/**
+ * СЕКЦИИ МЕНЮ
+ * 
+ * Загружает и трансформирует секции меню через модульную систему.
+ * Использует ModuleManager для получения конфигурации меню из всех модулей.
+ */
 
-
-import { getIcon } from '@/config/icons-mapping.js'
-import { generateMenuConfig } from '@/config/menu-loader.js'
+import { getIcon, generateMenuConfig, getSeparatorAt, shouldShowSeparator } from '@/modules/index.js'
 import menuOrderConfig from '@/config/menu-order-config.json'
-import { AdaptiveSeparators } from '@/config/adaptive-separators.js'
 
 // Кеш для конфигурации меню
 let menuConfigCache = null
@@ -68,7 +71,6 @@ function generateExportName(routeName) {
 // Инициализация меню - вызывается один раз
 let sectionsPromise = null
 let menuSectionsData = {}
-let separatorManagerInstance = null
 
 function initializeMenu() {
   if (!sectionsPromise) {
@@ -80,21 +82,6 @@ function initializeMenu() {
         }
       })
 
-      const menuConfig = await getMenuConfig()
-      const extendedConfig = {
-        ...menuConfig,
-        separators: {
-          ...(menuConfig.separators || {}),
-          byOrderIndex: menuOrderConfig.separators || {}
-        },
-        separatorSettings: {
-          ...(menuConfig.separatorSettings || {}),
-          useOrderBased: true,
-          useCategories: false
-        }
-      }
-
-      separatorManagerInstance = new AdaptiveSeparators(extendedConfig)
       return sections
     })
   }
@@ -109,9 +96,7 @@ export const menuSections = menuSectionsData
 export const AdminPanelMenuSection = menuSectionsData.AdminPanelMenuSection
 
 export const getSeparator = (index) => {
-  return separatorManagerInstance?.getSeparatorAt(index) || null
+  return getSeparatorAt(index)
 }
 
-export const shouldShowSeparator = (index) => {
-  return separatorManagerInstance?.shouldShowSeparator(index) || false
-}
+export { shouldShowSeparator }

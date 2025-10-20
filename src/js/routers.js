@@ -1,38 +1,39 @@
 /**
- * КОНФИГУРАЦИЯ МАРШРУТИЗАЦИИ ПРИЛОЖЕНИЯ ERGO MS (JSON-BASED)
+ * КОНФИГУРАЦИЯ МАРШРУТИЗАЦИИ ПРИЛОЖЕНИЯ ERGO MS
  * 
  * Данный файл содержит инициализацию Vue Router с автоматической генерацией
- * маршрутов из JSON конфигурации меню. Это обеспечивает единый источник истины
+ * маршрутов из модульной системы. Это обеспечивает единый источник истины
  * для структуры приложения и устраняет дублирование кода.
  * 
  * Архитектура:
- * - menu-config.json: содержит всю структуру маршрутов
- * - routes-generator.js: генерирует маршруты из JSON конфигурации
+ * - modules/: модульная система управления роутами, меню, эндпоинтами и иконками
+ * - menu-config.json: конфигурация меню модулей
+ * - routes.js: конфигурация роутов модулей
  * - routers.js: инициализирует Vue Router с сгенерированными маршрутами
  * 
  * Функциональность:
- * - Автоматическая генерация маршрутов из JSON конфигурации
- * - Сохранение всех существующих функций (guards, метаданные и др.)
+ * - Автоматическая генерация маршрутов через ModuleManager
  * - Валидация конфигурации при инициализации
  * - Поддержка ленивой загрузки компонентов
  * - Настроена защита маршрутов через beforeEach guard
  * - Интегрирована система управления доступом через GroupsPolitics
+ * - ООП подход с использованием менеджеров (RouteManager, MenuManager и др.)
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
-import { generateAllRoutes, validateRoutesConfig } from '@/config/routes-generator.js'
+import { generateAllRoutes, validateAll } from '@/modules/index.js'
 
 // Генерация маршрутов из JSON конфигурации (async)
 const routes = await generateAllRoutes()
 
 // Валидация конфигурации при запуске (async)
-const validation = await validateRoutesConfig()
+const validation = await validateAll()
 if (!validation.isValid) {
-  console.error('❌ Обнаружены ошибки в конфигурации маршрутов:', validation.errors)
+  console.error('❌ Обнаружены ошибки в конфигурации:', validation)
 }
-if (validation.warnings.length > 0) {
-  console.warn('⚠️ Предупреждения конфигурации маршрутов:', validation.warnings)
+if (validation.routes?.warnings?.length > 0 || validation.menu?.warnings?.length > 0) {
+  console.warn('⚠️ Предупреждения конфигурации:', validation)
 }
 
 routes.forEach((route) => {
