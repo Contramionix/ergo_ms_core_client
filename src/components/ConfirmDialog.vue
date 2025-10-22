@@ -1,5 +1,6 @@
 <script setup>
 import { AlertTriangle, Check, X } from 'lucide-vue-next'
+import { watch, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -12,6 +13,29 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['confirm', 'cancel', 'close'])
+
+// Управление прокруткой страницы
+const disableBodyScroll = () => { 
+  document.body.style.overflow = 'hidden' 
+}
+
+const enableBodyScroll = () => { 
+  document.body.style.overflow = '' 
+}
+
+// Отслеживаем изменения show и управляем прокруткой
+watch(() => props.show, (isOpen) => {
+  if (isOpen) {
+    disableBodyScroll()
+  } else {
+    enableBodyScroll()
+  }
+})
+
+// Очищаем при размонтировании
+onUnmounted(() => {
+  enableBodyScroll()
+})
 
 function handleConfirm() {
   if (!props.loading) {
