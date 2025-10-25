@@ -11,11 +11,11 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AssistantButton from './AssistantButton.vue'
 import AssistantChat from './AssistantChat.vue'
-import { intentAnalyzer } from '@/js/ai-assistant/intent-analyzer.js'
-import { routerActions } from '@/js/ai-assistant/router-actions.js'
-import { componentAnalyzer } from '@/js/ai-assistant/component-analyzer.js'
-import { connectionStatus } from '@/js/ai-assistant/connection-status.js'
-import '@/js/ai-assistant/test-connection.js'
+import { intentAnalyzer } from '@/core/ai-assistant/js/intent-analyzer.js'
+import { routerActions } from '@/core/ai-assistant/js/router-actions.js'
+import { componentAnalyzer } from '@/core/ai-assistant/js/component-analyzer.js'
+import { connectionStatus } from '@/core/ai-assistant/js/connection-status.js'
+import '@/core/ai-assistant/js/test-connection.js'
 
 const route = useRoute()
 const assistantButton = ref(null)
