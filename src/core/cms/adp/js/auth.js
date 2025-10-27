@@ -2,6 +2,7 @@ import { apiClient } from '../../../../js/api/manager';
 import { endpoints } from '../../../../js/api/endpoints';
 import Cookies from 'js-cookie';
 import tokenService from '@/core/cms/js/tokenService'
+import { authGuard } from '@/core/cms/js/authGuard.js'
 
 export const authService = {
     async login(username, password) {
@@ -16,9 +17,7 @@ export const authService = {
 
             // Запускаем проверку токена после успешной авторизации
             if (typeof window !== 'undefined') {
-                import('@/core/cms/js/authGuard.js').then(({ authGuard }) => {
-                    authGuard.startTokenValidation();
-                });
+                authGuard.startTokenValidation();
             }
         }
         
@@ -77,9 +76,7 @@ export const authService = {
         
         // Останавливаем проверку токена
         if (typeof window !== 'undefined') {
-            import('@/core/cms/js/authGuard.js').then(({ authGuard }) => {
-                authGuard.stopTokenValidation();
-            });
+            authGuard.stopTokenValidation();
         }
     }
 };  

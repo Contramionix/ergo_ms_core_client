@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, defineProps, defineEmits, toRef } from 'vue'
+import { ref, computed, watch, toRef } from 'vue'
 import { Loader2 }             from 'lucide-vue-next'
 import ChartPlaceholder        from './components/ChartPlaceholder.vue'
 import ChartRenderer           from './components/ChartRenderer.vue'

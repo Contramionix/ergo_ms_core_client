@@ -1,5 +1,5 @@
 import router from '@/js/routers.js'
-import '@/core/cms/js/authGuard.js' // Подключаем защиту аутентификации
+import { authGuard } from '@/core/cms/js/authGuard.js' // Подключаем защиту аутентификации
 
 // Подключаем систему логирования (автоматически переопределяет console)
 import '@/js/utils/logger.js'
@@ -52,3 +52,8 @@ app.use(setupCalendar, {
 })
 
 app.mount('#app')
+
+// Запускаем проверку токена после полной инициализации приложения
+if (authGuard.isAuthenticated()) {
+  authGuard.startTokenValidation()
+}

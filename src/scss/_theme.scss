@@ -6,10 +6,6 @@ $dark-header-background: rgba(30, 30, 30, 0.85);
 $light-auth-background: rgba(255, 255, 255, 0.7);
 $dark-auth-background: rgba(30, 30, 30, 0.7);
 
-// Логотип
-$light-logo: url('/src/assets/img/logo/Logo.png');
-$dark-logo: url('/src/assets/img/logo/LogoWhite.png');
-
 // Светлая тема
 $light-background: #f2f2f2;
 $light-border: #e0e0e0;
@@ -32,7 +28,6 @@ $dark-accent: #f14336;
 
 // Миксин для применения цветовой схемы
 @mixin theme-colors(
-  $logo,
   $header-background,
   $auth-background,
   $background,
@@ -44,7 +39,6 @@ $dark-accent: #f14336;
   $hover-bg,
   $accent
 ) {
-  --logo: #{$logo};
   --color-header-background: #{$header-background};
   --color-auth-background: #{$auth-background};
   --color-background: #{$background};
@@ -60,7 +54,6 @@ $dark-accent: #f14336;
 // Применение миксина к каждой теме
 [data-bs-theme='light'] {
   @include theme-colors(
-    $light-logo,
     $light-header-background,
     $light-auth-background,
     $light-background,
@@ -76,7 +69,6 @@ $dark-accent: #f14336;
 
 [data-bs-theme='dark'] {
   @include theme-colors(
-    $dark-logo,
     $dark-header-background,
     $dark-auth-background,
     $dark-background,

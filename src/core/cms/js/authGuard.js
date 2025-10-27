@@ -1,4 +1,3 @@
-import { authService } from '@/core/cms/adp/js/auth'
 import Cookies from 'js-cookie'
 import tokenService from '@/core/cms/js/tokenService'
 
@@ -58,7 +57,8 @@ export class AuthGuard {
         try { await tokenService.tryRefresh(); return } catch (_) { /* пойдём к серверной проверке */ }
       }
 
-      // Опционально валидация на сервере
+      // Опционально валидация на сервере (динамический импорт для избежания циркулярной зависимости)
+      const { authService } = await import('@/core/cms/adp/js/auth')
       const isValid = await authService.checkToken()
       if (!isValid) this.forceLogout()
     } catch (error) {
@@ -73,8 +73,9 @@ export class AuthGuard {
   /**
    * Принудительно выполняет logout и перенаправляет на стартовую страницу
    */
-  forceLogout() {
-    // Очищаем токены
+  async forceLogout() {
+    // Очищаем токены (динамический импорт для избежания циркулярной зависимости)
+    const { authService } = await import('@/core/cms/adp/js/auth')
     authService.logout()
     
     // Останавливаем проверку токена
@@ -101,10 +102,4 @@ export class AuthGuard {
 // Создаем глобальный экземпляр
 export const authGuard = new AuthGuard()
 
-// Автоматически запускаем проверку токена при загрузке модуля
-if (typeof window !== 'undefined') {
-  // Запускаем проверку только если пользователь авторизован
-  if (authGuard.isAuthenticated()) {
-    authGuard.startTokenValidation()
-  }
-} 
+// Запуск проверки токена вынесен в main.js для избежания циркулярных зависимостей при инициализации 

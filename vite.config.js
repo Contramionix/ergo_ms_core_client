@@ -21,6 +21,9 @@ if (fs.existsSync(mainEnvPath)) {
 
 // Определение конфигурации Vite
 export default defineConfig({
+  build: {
+    target: 'esnext',
+  },
   // Подключение плагинов
   plugins: [
     vue(), // Подключение плагина Vue для Vite
