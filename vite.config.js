@@ -2,7 +2,7 @@ import { fileURLToPath, URL } from 'node:url' // Импорт функций д�
 
 import vue from '@vitejs/plugin-vue' // Импорт плагина Vue для Vite
 import { defineConfig } from 'vite' // Импорт функции для определения конфигурации Vite
-import vueDevTools from 'vite-plugin-vue-devtools' // Импорт плагина Vue DevTools для Vite
+// import vueDevTools from 'vite-plugin-vue-devtools' // Импорт плагина Vue DevTools для Vite
 
 import dotenv from 'dotenv'
 import path from 'path'
