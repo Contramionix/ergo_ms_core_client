@@ -48,7 +48,6 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
-import ExcelJS from 'exceljs'
 
 const props = defineProps({ 
   file: Object,
@@ -100,6 +99,10 @@ const filteredRows = computed(() => {
 
 async function previewXlsxLocally(file, sheetName) {
   if (!(file instanceof Blob)) throw new Error('Требуется файл типа Blob');
+  
+  // Динамический импорт ExcelJS для уменьшения начального размера бандла
+  const { default: ExcelJS } = await import('exceljs');
+  
   const workbook = new ExcelJS.Workbook();
   const reader = new FileReader();
 

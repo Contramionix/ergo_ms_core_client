@@ -14,7 +14,6 @@ import '@/scss/styles.scss'
 
 import { PerfectScrollbarPlugin } from 'vue3-perfect-scrollbar'
 import { autoAnimatePlugin } from '@formkit/auto-animate/vue'
-import VueApexCharts from 'vue3-apexcharts'
 import { setupCalendar } from 'v-calendar'
 import { plugin as Slicksort } from 'vue-slicksort'
 import Toast from 'vue-toastification'
@@ -37,7 +36,6 @@ app.use(pinia)
 app.use(router)
 app.use(PerfectScrollbarPlugin)
 app.use(autoAnimatePlugin)
-app.use(VueApexCharts)
 app.use(Slicksort)
 
 app.use(Toast, {

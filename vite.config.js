@@ -23,6 +23,107 @@ if (fs.existsSync(mainEnvPath)) {
 export default defineConfig({
   build: {
     target: 'esnext',
+    minify: 'esbuild',
+    cssCodeSplit: true,
+    sourcemap: false,
+    rollupOptions: {
+      treeshake: {
+        preset: 'recommended',
+      },
+      output: {
+        manualChunks: (id) => {
+          // Разделяем node_modules на отдельные чанки по основным библиотекам
+          if (id.includes('node_modules')) {
+            // Разделяем Vue на более мелкие части
+            if (id.includes('node_modules/vue/')) {
+              return 'vue-core';
+            }
+            if (id.includes('vue-router')) {
+              return 'vue-router';
+            }
+            if (id.includes('pinia')) {
+              return 'pinia';
+            }
+            
+            // Разделяем @vue пакеты более детально
+            if (id.includes('@vue/compiler-sfc') || id.includes('@vue/compiler-core')) {
+              return 'vue-compiler';
+            }
+            if (id.includes('@vue/reactivity')) {
+              return 'vue-reactivity';
+            }
+            if (id.includes('@vue/runtime')) {
+              return 'vue-runtime';
+            }
+            if (id.includes('@vue/shared')) {
+              return 'vue-shared';
+            }
+            
+            // Остальные Vue библиотеки
+            if (id.includes('vue-toastification')) {
+              return 'vue-toast';
+            }
+            if (id.includes('vue-slicksort')) {
+              return 'vue-slicksort';
+            }
+            if (id.includes('vue3-perfect-scrollbar')) {
+              return 'vue-scrollbar';
+            }
+            if (id.includes('v-calendar')) {
+              return 'vue-calendar';
+            }
+            if (id.includes('@vue') || id.includes('vue-')) {
+              return 'vue-other';
+            }
+            
+            // Bootstrap и связанные стили
+            if (id.includes('bootstrap')) {
+              return 'bootstrap-vendor';
+            }
+            
+            // Библиотеки для работы с Excel/таблицами (динамически загружаются)
+            if (id.includes('xlsx') || id.includes('exceljs') || id.includes('sheetjs')) {
+              return 'excel-vendor';
+            }
+            
+            // Библиотеки для работы с графиками (динамически загружаются)
+            if (id.includes('apexcharts') || id.includes('vue3-apexcharts')) {
+              return 'apexcharts-vendor';
+            }
+            if (id.includes('chart.js')) {
+              return 'chartjs-vendor';
+            }
+            if (id.includes('echarts') || id.includes('d3')) {
+              return 'charts-vendor';
+            }
+            
+            // Библиотеки для работы с PDF
+            if (id.includes('pdf')) {
+              return 'pdf-vendor';
+            }
+            
+            // Lucide иконки
+            if (id.includes('lucide')) {
+              return 'lucide-vendor';
+            }
+            
+            // Axios и API библиотеки
+            if (id.includes('axios')) {
+              return 'axios-vendor';
+            }
+            
+            // UI библиотеки
+            if (id.includes('perfect-scrollbar') || id.includes('formkit')) {
+              return 'ui-vendor';
+            }
+            
+            // Все остальные node_modules
+            return 'vendor';
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 500, // Возвращаем стандартный лимит
   },
   // Подключение плагинов
   plugins: [
@@ -51,6 +152,7 @@ export default defineConfig({
         `,
       },
     },
+    devSourcemap: false,
   },
 
   // Настройка сервера разработки
@@ -80,6 +182,13 @@ export default defineConfig({
   // Оптимизация сборки
   optimizeDeps: {
     // Исключаем динамически загружаемые модули из предварительной оптимизации
-    exclude: ['@vite-ignore'],
+    exclude: ['@vite-ignore', 'exceljs', 'vue3-apexcharts'],
+    include: [
+      'vue',
+      'vue-router',
+      'pinia',
+      'axios',
+      'bootstrap',
+    ],
   },
 })

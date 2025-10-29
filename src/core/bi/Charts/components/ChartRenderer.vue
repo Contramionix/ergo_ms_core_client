@@ -1,8 +1,15 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
-import ApexChartsComponent  from '../ApexChartsComponent.vue'
-import ChartJsComponent     from '../ChartJsComponent.vue'
+import { ref, computed, watch, defineAsyncComponent } from 'vue'
 import { CircleAlert }      from 'lucide-vue-next'
+
+// Динамические импорты графических компонентов для уменьшения размера бандла
+const ChartJsComponent = defineAsyncComponent(() =>
+  import('../ChartJsComponent.vue')
+)
+
+const ApexChartsComponent = defineAsyncComponent(() =>
+  import('../ApexChartsComponent.vue')
+)
 
 const props = defineProps({
   type   : { type: [String, Number], default: '' },

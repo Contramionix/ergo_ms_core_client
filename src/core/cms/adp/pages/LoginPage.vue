@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { authorization } from '@/core/cms/adp/js/auth-index'
 import { validateLoginForm } from '@/js/validation'
+import { authGuard } from '@/core/cms/js/authGuard'
 
 const router = useRouter()
 const isLoading = ref(false)
@@ -46,6 +47,8 @@ const submitForm = async () => {
     const authResult = await authorization(form.login, form.password)
 
     if (authResult.success === true) {
+      // Запускаем проверку токена после успешной авторизации
+      authGuard.startTokenValidation()
       router.push({ name: 'Account' })
     } else {
       // Обработка ошибок от сервера
