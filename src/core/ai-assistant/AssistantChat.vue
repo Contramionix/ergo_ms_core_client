@@ -73,9 +73,12 @@ const inputMessage = ref('')
 const isTyping = ref(false)
 const selectedFile = ref(null)
 
+// Счетчик для уникальных ID сообщений
+let messageIdCounter = 1
+
 const messages = ref([
   {
-    id: 1,
+    id: messageIdCounter++,
     type: 'assistant',
     content:
       'Привет! Я ваш AI ассистент для анализа данных.\n\n**Что я умею:**\n• Анализировать табличные данные\n• Генерировать SQL запросы\n• Находить закономерности\n• Предоставлять статистику\n\n**Начните с выбора файла** для анализа данных!',
@@ -104,7 +107,7 @@ const sendMessage = () => {
   
   // Добавляем сообщение пользователя в чат
   const userMessage = {
-    id: Date.now(),
+    id: messageIdCounter++,
     type: 'user',
     content: messageText,
     timestamp: new Date(),
@@ -126,7 +129,7 @@ const sendMessage = () => {
 
 const addAssistantMessage = (content, data = null) => {
   const assistantMessage = {
-    id: Date.now(),
+    id: messageIdCounter++,
     type: 'assistant',
     content: content,
     data: data, // Дополнительные данные (SQL, таблица и т.д.)
@@ -144,10 +147,10 @@ const updateStreamingMessage = (messageId, updates) => {
   let message = messages.value.find(m => m.id === messageId)
   
   if (!message) {
-    // Создаем новое streaming сообщение
+    // Создаем новое streaming сообщение от ассистента
     message = {
       id: messageId,
-      type: 'assistant',
+      type: 'assistant', // ВАЖНО: это сообщение от ассистента!
       content: '',
       streaming: true,
       stage: '',

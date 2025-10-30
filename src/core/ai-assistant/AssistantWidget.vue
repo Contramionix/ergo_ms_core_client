@@ -28,6 +28,9 @@ const toggleChat = (isOpen) => {
   }
 }
 
+// Счетчик для уникальных ID streaming сообщений
+let streamingMessageIdCounter = 10000
+
 const handleBIQuery = async ({ fileId, question }) => {
   console.log('BI Query:', { fileId, question })
 
@@ -38,7 +41,7 @@ const handleBIQuery = async ({ fileId, question }) => {
   let stageMessage = ''
   let tableData = null
 
-  const messageId = Date.now()
+  const messageId = streamingMessageIdCounter++
 
   try {
     // Используем streaming запрос

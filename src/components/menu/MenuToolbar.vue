@@ -149,6 +149,9 @@ const toggleAssistant = () => {
   isAssistantVisible.value = !isAssistantVisible.value
 }
 
+// Счетчик для уникальных ID streaming сообщений
+let streamingMessageIdCounter = 20000
+
 const handleBIQuery = async ({ fileId, question }) => {
   console.log('BI Query from toolbar:', { fileId, question })
 
@@ -157,7 +160,7 @@ const handleBIQuery = async ({ fileId, question }) => {
   let stageMessage = ''
   let tableData = null
 
-  const messageId = Date.now()
+  const messageId = streamingMessageIdCounter++
 
   try {
     // Используем streaming запрос
