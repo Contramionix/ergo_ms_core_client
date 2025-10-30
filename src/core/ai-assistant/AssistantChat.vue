@@ -2,9 +2,25 @@
   <div v-if="isVisible" class="assistant-chat" :class="{ 'assistant-chat--visible': isVisible }">
     <div class="assistant-chat__header">
       <div class="assistant-chat__title">
-        <Bot :size="20" class="me-2" />
-        <span>AI Ассистент</span>
+        <Database :size="20" class="me-2" />
+        <span>AI Ассистент - BI Анализ</span>
       </div>
+    </div>
+
+    <!-- Выбор файла -->
+    <div v-if="!selectedFile" class="assistant-chat__file-selector">
+      <FileSelector ref="fileSelector" @file-selected="onFileSelected" />
+    </div>
+
+    <!-- Информация о выбранном файле -->
+    <div v-if="selectedFile" class="assistant-chat__selected-file">
+      <div class="selected-file-info">
+        <FileSpreadsheet :size="16" />
+        <span>{{ selectedFile.name }}</span>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" @click="changeFile">
+        Сменить файл
+      </button>
     </div>
 
     <div ref="messagesContainer" class="assistant-chat__messages">
@@ -19,14 +35,14 @@
           v-model="inputMessage"
           type="text"
           class="form-control"
-          placeholder="Спросите что-нибудь..."
+          :placeholder="!selectedFile ? 'Сначала выберите файл для анализа' : 'Задайте вопрос к данным...'"
           @keypress.enter="sendMessage"
-          :disabled="isTyping"
+          :disabled="isTyping || !selectedFile"
         />
         <button
           class="btn btn-danger"
           @click="sendMessage"
-          :disabled="!inputMessage.trim() || isTyping"
+          :disabled="!inputMessage.trim() || isTyping || !selectedFile"
         >
           <Send :size="18" />
         </button>
@@ -37,11 +53,12 @@
 
 <script setup>
 import { ref, nextTick, watch } from 'vue'
-import { Bot, Send } from 'lucide-vue-next'
+import { Send, Database, FileSpreadsheet } from 'lucide-vue-next'
 import AssistantMessage from './AssistantMessage.vue'
 import AssistantTyping from './AssistantTyping.vue'
+import FileSelector from './FileSelector.vue'
 
-const emit = defineEmits(['close', 'send-message'])
+const emit = defineEmits(['bi-query'])
 
 defineProps({
   isVisible: {
@@ -51,49 +68,112 @@ defineProps({
 })
 
 const messagesContainer = ref(null)
+const fileSelector = ref(null)
 const inputMessage = ref('')
 const isTyping = ref(false)
+const selectedFile = ref(null)
 
 const messages = ref([
   {
     id: 1,
     type: 'assistant',
     content:
-      'Привет! Я ваш AI ассистент. Могу помочь с навигацией по системе, объяснить как работают компоненты или ответить на вопросы.',
+      'Привет! Я ваш AI ассистент для анализа данных.\n\n**Что я умею:**\n• Анализировать табличные данные\n• Генерировать SQL запросы\n• Находить закономерности\n• Предоставлять статистику\n\n**Начните с выбора файла** для анализа данных!',
     timestamp: new Date(),
   },
 ])
 
-const sendMessage = () => {
-  if (!inputMessage.value.trim() || isTyping.value) return
+const onFileSelected = (file) => {
+  selectedFile.value = file
+  addAssistantMessage(
+    `✅ Выбран файл: **${file.name}**\n\nТеперь вы можете задавать вопросы к данным. Например:\n• "Покажи первые 10 строк"\n• "Какие колонки в файле?"\n• "Посчитай среднее значение"\n• "Найди максимум по категориям"`,
+  )
+}
 
+const changeFile = () => {
+  selectedFile.value = null
+  addAssistantMessage('Выберите другой файл для анализа.')
+}
+
+const sendMessage = () => {
+  if (!inputMessage.value.trim() || isTyping.value || !selectedFile.value) {
+    return
+  }
+
+  const messageText = inputMessage.value.trim()
+  
+  // Добавляем сообщение пользователя в чат
   const userMessage = {
     id: Date.now(),
     type: 'user',
-    content: inputMessage.value.trim(),
+    content: messageText,
     timestamp: new Date(),
   }
-
   messages.value.push(userMessage)
 
-  emit('send-message', inputMessage.value.trim())
-
+  // Очищаем поле ввода
   inputMessage.value = ''
-
   isTyping.value = true
+
+  // Отправляем запрос
+  emit('bi-query', {
+    fileId: selectedFile.value.id,
+    question: messageText,
+  })
 
   scrollToBottom()
 }
 
-const addAssistantMessage = (content) => {
+const addAssistantMessage = (content, data = null) => {
   const assistantMessage = {
     id: Date.now(),
     type: 'assistant',
     content: content,
+    data: data, // Дополнительные данные (SQL, таблица и т.д.)
     timestamp: new Date(),
   }
 
   messages.value.push(assistantMessage)
+  isTyping.value = false
+  scrollToBottom()
+}
+
+const updateStreamingMessage = (messageId, updates) => {
+  isTyping.value = false
+  
+  let message = messages.value.find(m => m.id === messageId)
+  
+  if (!message) {
+    // Создаем новое streaming сообщение
+    message = {
+      id: messageId,
+      type: 'assistant',
+      content: '',
+      streaming: true,
+      stage: '',
+      sql: '',
+      sqlGenerating: '',
+      data: null,
+      error: null,
+      timestamp: new Date(),
+    }
+    messages.value.push(message)
+  }
+  
+  // Обновляем сообщение
+  Object.assign(message, updates)
+  
+  scrollToBottom()
+}
+
+const finalizeStreamingMessage = (messageId) => {
+  const message = messages.value.find(m => m.id === messageId)
+  
+  if (message) {
+    message.streaming = false
+    message.stage = ''
+  }
+  
   isTyping.value = false
   scrollToBottom()
 }
@@ -119,6 +199,8 @@ watch(
 
 defineExpose({
   addAssistantMessage,
+  updateStreamingMessage,
+  finalizeStreamingMessage,
   setTyping,
 })
 </script>
@@ -130,7 +212,7 @@ defineExpose({
   left: 0;
   right: 0;
   width: auto;
-  height: 400px;
+  height: 550px;
   background: linear-gradient(145deg, #ffffff, #f8f9fa);
   border-radius: 12px;
   box-shadow:
@@ -155,7 +237,7 @@ defineExpose({
 .assistant-chat__header {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   padding: 16px 20px;
   background: linear-gradient(135deg, #dc3545, #c82333);
   border-radius: 12px 12px 0 0;
@@ -167,6 +249,31 @@ defineExpose({
   align-items: center;
   font-weight: 600;
   font-size: 14px;
+}
+
+.assistant-chat__file-selector {
+  max-height: 350px;
+  overflow-y: auto;
+  background: white;
+  border-bottom: 1px solid rgba(220, 53, 69, 0.1);
+}
+
+.assistant-chat__selected-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #e7f3ff;
+  border-bottom: 1px solid rgba(13, 110, 253, 0.2);
+}
+
+.selected-file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #0d6efd;
 }
 
 .assistant-chat__messages {
