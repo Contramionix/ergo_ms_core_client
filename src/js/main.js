@@ -1,5 +1,5 @@
 import router from '@/js/routers.js'
-import '@/core/cms/js/authGuard.js' // Подключаем защиту аутентификации
+import { authGuard } from '@/core/cms/js/authGuard.js' // Подключаем защиту аутентификации
 
 // Подключаем систему логирования (автоматически переопределяет console)
 import '@/js/utils/logger.js'
@@ -14,7 +14,6 @@ import '@/scss/styles.scss'
 
 import { PerfectScrollbarPlugin } from 'vue3-perfect-scrollbar'
 import { autoAnimatePlugin } from '@formkit/auto-animate/vue'
-import VueApexCharts from 'vue3-apexcharts'
 import { setupCalendar } from 'v-calendar'
 import { plugin as Slicksort } from 'vue-slicksort'
 import Toast from 'vue-toastification'
@@ -37,7 +36,6 @@ app.use(pinia)
 app.use(router)
 app.use(PerfectScrollbarPlugin)
 app.use(autoAnimatePlugin)
-app.use(VueApexCharts)
 app.use(Slicksort)
 
 app.use(Toast, {
@@ -52,3 +50,8 @@ app.use(setupCalendar, {
 })
 
 app.mount('#app')
+
+// Запускаем проверку токена после полной инициализации приложения
+if (authGuard.isAuthenticated()) {
+  authGuard.startTokenValidation()
+}

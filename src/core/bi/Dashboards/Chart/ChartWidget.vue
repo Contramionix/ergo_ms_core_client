@@ -167,10 +167,18 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue';
 import { Star, MoreHorizontal, Loader2, AlertCircle, BarChart3, CircleHelp } from 'lucide-vue-next';
-import ApexChartsComponent from '../../Charts/ApexChartsComponent.vue';
-import ChartJsComponent from '../../Charts/ChartJsComponent.vue';
+
+// Динамические импорты графических компонентов для уменьшения размера бандла
+const ChartJsComponent = defineAsyncComponent(() =>
+  import('../../Charts/ChartJsComponent.vue')
+);
+
+const ApexChartsComponent = defineAsyncComponent(() =>
+  import('../../Charts/ApexChartsComponent.vue')
+);
+
 import chartService from '@/core/bi/MainPage/Sidebar/components/js/chartService.js';
 
 const props = defineProps({

@@ -13,13 +13,6 @@ export const authService = {
         if (response.success) {
             tokenService.setTokens(response.data.access, response.data.refresh)
             Cookies.set('userId', response.data.user_id)
-
-            // Запускаем проверку токена после успешной авторизации
-            if (typeof window !== 'undefined') {
-                import('@/core/cms/js/authGuard.js').then(({ authGuard }) => {
-                    authGuard.startTokenValidation();
-                });
-            }
         }
         
         return response;
@@ -73,13 +66,6 @@ export const authService = {
     
     logout() {
         tokenService.clear()
-        Cookies.remove('userId'); 
-        
-        // Останавливаем проверку токена
-        if (typeof window !== 'undefined') {
-            import('@/core/cms/js/authGuard.js').then(({ authGuard }) => {
-                authGuard.stopTokenValidation();
-            });
-        }
+        Cookies.remove('userId');
     }
 };  

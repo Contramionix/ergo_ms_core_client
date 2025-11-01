@@ -114,7 +114,7 @@ watch(() => route.fullPath, (newPath) => {
 .banner-wrapper {
   height: 260px;
   border-radius: 10px;
-  background-image: linear-gradient(to right, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0)), url('/src/core/bi/assets/carousel/photo-3.png');
+  background-image: linear-gradient(to right, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0)), url('/src/core/bi/assets/photo-3.png');
   background-size: cover;
   background-position: center;
   display: flex;

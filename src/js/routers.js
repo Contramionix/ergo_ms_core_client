@@ -23,6 +23,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll } from '@/modules/index.js'
+import { useUserStore } from '@/core/cms/js/userStore.js'
 
 // Генерация маршрутов из JSON конфигурации (async)
 const routes = await generateAllRoutes()
@@ -72,7 +73,6 @@ router.beforeEach(async (to, from, next) => {
     if (to.meta && to.meta.requiresAdmin) {
       let isAdmin = false
       try {
-        const { useUserStore } = await import('@/core/cms/js/userStore.js')
         const userStore = useUserStore()
         if (!userStore.isInitialized) {
           try { await userStore.initializeUser() } catch {
@@ -92,7 +92,6 @@ router.beforeEach(async (to, from, next) => {
       }
 
       if (!isAdmin) {
-        const { useUserStore } = await import('@/core/cms/js/userStore.js')
         const userStore = useUserStore()
         const uid = userStore.user?.id
         if (uid === undefined || uid === null) {

@@ -1,9 +1,35 @@
-import { authService } from '@/core/cms/adp/js/auth';
+// Динамические экспорты для избежания конфликта с динамическим импортом в authGuard.js
+export const authorization = async (...args) => {
+    const { authService } = await import('@/core/cms/adp/js/auth');
+    return authService.login(...args);
+};
 
-export const authorization = authService.login;
-export const validateRegistration = authService.validateRegistration;
-export const sendConfirmationCode = authService.sendConfirmationCode;
-export const verifyConfirmationCode = authService.verifyConfirmationCode;
-export const registration = authService.registration;
-export const checkToken = authService.checkToken;
-export const logout = authService.logout;
+export const validateRegistration = async (...args) => {
+    const { authService } = await import('@/core/cms/adp/js/auth');
+    return authService.validateRegistration(...args);
+};
+
+export const sendConfirmationCode = async (...args) => {
+    const { authService } = await import('@/core/cms/adp/js/auth');
+    return authService.sendConfirmationCode(...args);
+};
+
+export const verifyConfirmationCode = async (...args) => {
+    const { authService } = await import('@/core/cms/adp/js/auth');
+    return authService.verifyConfirmationCode(...args);
+};
+
+export const registration = async (...args) => {
+    const { authService } = await import('@/core/cms/adp/js/auth');
+    return authService.registration(...args);
+};
+
+export const checkToken = async (...args) => {
+    const { authService } = await import('@/core/cms/adp/js/auth');
+    return authService.checkToken(...args);
+};
+
+export const logout = async (...args) => {
+    const { authService } = await import('@/core/cms/adp/js/auth');
+    return authService.logout(...args);
+};
