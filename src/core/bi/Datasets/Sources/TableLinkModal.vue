@@ -177,17 +177,37 @@ const availableTables = computed(() => {
     return [];
   }
   
+  const isFileConnection = props.selectedConnection.connector_type_display?.toLowerCase().includes('file') || 
+                          props.selectedConnection.connector_type?.toLowerCase().includes('файл');
+  
   const filteredTables = props.allTables.filter(t => {
     // Строгая проверка принадлежности к текущему подключению
     let belongsToCurrentConnection = false
     
-    if (props.selectedConnection.connector_type_display?.toLowerCase().includes('file') || 
-        props.selectedConnection.connector_type?.toLowerCase().includes('файл')) {
-      // Для файловых подключений проверяем file_id
-      belongsToCurrentConnection = t.file_id === props.selectedConnection.id
+    // Если у таблицы есть file_id, значит это файловая таблица
+    // Такие таблицы уже были отфильтрованы в buildAllTables по подключению
+    // Если главная таблица тоже имеет file_id, значит это файловое подключение
+    // В таком случае разрешаем все таблицы с file_id (они уже из нужного подключения)
+    const isFileTable = t.file_id != null;
+    const isMainTableFileBased = props.mainTable.file_id != null;
+    
+    if (isFileConnection) {
+      const check1 = t.connection_id === props.selectedConnection.id;
+      const check2 = t.file_id === props.selectedConnection.id;
+      const check3 = props.mainTable.connection_id && t.connection_id === props.mainTable.connection_id;
+      // Для файловых таблиц разрешаем, если главная таблица тоже файловая
+      const check4 = isFileTable && isMainTableFileBased;
+      
+      belongsToCurrentConnection = check1 || check2 || check3 || check4;
     } else {
       // Для базовых подключений проверяем connection_id
-      belongsToCurrentConnection = t.connection_id === props.selectedConnection.id
+      const check1 = t.connection_id === props.selectedConnection.id;
+      const check2 = props.mainTable.connection_id && t.connection_id === props.mainTable.connection_id;
+      // Если у таблицы нет connection_id, но есть file_id и главная таблица тоже файловая,
+      // это может быть файловое подключение, которое не определилось правильно
+      const check3 = isFileTable && isMainTableFileBased && !t.connection_id;
+      
+      belongsToCurrentConnection = check1 || check2 || check3;
     }
     
     if (!belongsToCurrentConnection) {
@@ -211,12 +231,10 @@ const availableTables = computed(() => {
     
     // Исключаем уже использованные таблицы (кроме редактируемой)
     if (isEditMode.value && props.editRelation?.rightTableId) {
-      // В режиме редактирования исключаем все использованные таблицы кроме текущей редактируемой
       if (usedStagingIds.value.includes(t.id) && t.id !== props.editRelation.rightTableId) {
         return false;
       }
     } else {
-      // В обычном режиме исключаем все использованные таблицы
       if (usedStagingIds.value.includes(t.id)) {
         return false;
       }
@@ -231,8 +249,13 @@ const availableTables = computed(() => {
       }
     }
     
-    // Исключаем таблицы без file_upload_id и file_id
-    if (t.file_upload_id == null && t.file_id == null) {
+    // В новой архитектуре таблицы создаются без БД, поэтому достаточно иметь file_id
+    if (!t.file_id) {
+      return false;
+    }
+    
+    // Проверяем наличие columns_info (может быть получен позже из файла)
+    if (t.columns_info && (!t.columns_info.columns || t.columns_info.columns.length === 0)) {
       return false;
     }
     
@@ -530,13 +553,18 @@ watch(
        // Исключаем главную таблицу
        if (props.mainTable && t.id === props.mainTable.id) return false
        
-       // Исключаем таблицы из того же файла, что и главная таблица
-       if (props.mainTable && t.file_id && t.file_id === props.mainTable.file_id) return false
-       
-       // Исключаем таблицы без file_upload_id и file_id
-       if (t.file_upload_id == null && t.file_id == null) return false
-       
-       return true
+      // Исключаем таблицы из того же файла, что и главная таблица
+      if (props.mainTable && t.file_id && t.file_id === props.mainTable.file_id) return false
+      
+      // В новой архитектуре таблицы создаются без БД, поэтому достаточно иметь file_id
+      if (!t.file_id) return false
+      
+      // Проверяем наличие columns_info (может быть получен позже из файла)
+      // Не исключаем таблицу, если columns_info отсутствует - он может быть получен из file_id
+      // Но если columns_info есть, проверяем что в нем есть колонки
+      if (t.columns_info && (!t.columns_info.columns || t.columns_info.columns.length === 0)) return false
+      
+      return true
      })
      
      if (!isAvailable) {

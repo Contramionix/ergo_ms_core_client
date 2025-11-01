@@ -160,14 +160,11 @@ const availableTablesForRelation = computed(() => {
 })
 
 function openTooltip(event) {
-    console.log('[DatasetCreating] openTooltip вызван')
     tooltipPosition.value = { x: event.clientX, y: event.clientY + 8 }
     showTooltip.value = true
 }
 
 function openTableTooltip(event) {
-    console.log('[DatasetCreating] openTableTooltip вызван')
-    
     // Просто открываем тултип для выбора таблицы, без дополнительных проверок
     // Проверки принадлежности таблицы к подключению уже выполнены в других местах
     showTableTooltip.value = true
@@ -175,40 +172,30 @@ function openTableTooltip(event) {
 }
 
 function closeTooltip() {
-    console.log('[DatasetCreating] closeTooltip вызван')
     showTooltip.value = false
     showTableTooltip.value = false
 }
 
 function handleSelect(connection) {
-    console.log('[DatasetCreating] handleSelect вызван с подключением:', connection?.id)
-    
     // Если подключение изменилось, сбрасываем все связанные данные
     if (props.selectedConnection && connection.id !== props.selectedConnection.id) {
-        console.log('[DatasetCreating] Подключение изменилось, сбрасываем главную таблицу и связи')
-        
         // Сбрасываем главную таблицу всегда при смене подключения (в режиме черновика)
         if (props.mainTable) {
-            console.log('[DatasetCreating] Сбрасываем главную таблицу при смене подключения')
             emit('update:mainTable', null)
         }
         
         // Сбрасываем все связи при смене подключения
         if (props.relations && props.relations.length > 0) {
-            console.log('[DatasetCreating] Сбрасываем все связи при смене подключения')
             // Эмитим специальное событие для массового сброса связей
             emit('resetAllRelations')
         }
     }
     
-    console.log('[DatasetCreating] Эмитим update:selectedConnection с подключением:', connection?.id)
     emit('update:selectedConnection', connection)
     showTooltip.value = false
 }
 
 async function handleTableSelect(table) {
-  console.log('[DatasetCreating] handleTableSelect вызван с таблицей:', table?.id)
-  
   // Проверяем, что выбранная таблица принадлежит текущему подключению
   if (props.selectedConnection && table) {
     let belongsToCurrentConnection = false
@@ -223,17 +210,9 @@ async function handleTableSelect(table) {
     }
     
     if (!belongsToCurrentConnection) {
-      console.warn('[DatasetCreating] Попытка выбрать таблицу из другого подключения:', {
-        table: table.id,
-        tableConnection: table.connection_id || table.file_id,
-        currentConnection: props.selectedConnection.id,
-        tableType: table.connector_type || 'unknown',
-        connectionType: props.selectedConnection.connector_type || 'unknown'
-      })
+      console.warn('[DatasetCreating] Попытка выбрать таблицу из другого подключения')
       return
     }
-    
-    console.log('[DatasetCreating] Таблица принадлежит текущему подключению, проверяем существование в allTables')
     
     // Дополнительная проверка: убеждаемся, что таблица действительно существует в текущем подключении
     // Используем более гибкую проверку, так как allTables может еще не обновиться
@@ -249,12 +228,6 @@ async function handleTableSelect(table) {
     // Если таблица не найдена в allTables, но она принадлежит текущему подключению,
     // все равно позволяем её выбрать (возможно, allTables еще не обновился)
     if (!tableExists) {
-      console.log('[DatasetCreating] Таблица не найдена в allTables, но принадлежит подключению, разрешаем выбор:', {
-        table: table.id,
-        connection: props.selectedConnection.id,
-        allTablesCount: props.allTables.length
-      })
-      
       // Дополнительная проверка: убеждаемся, что таблица действительно загружена
       // и принадлежит текущему подключению
       if (table.connection_id && table.connection_id !== props.selectedConnection.id) {
@@ -266,29 +239,23 @@ async function handleTableSelect(table) {
         console.warn('[DatasetCreating] Таблица имеет file_id, который не совпадает с текущим подключением')
         return
       }
-    } else {
-      console.log('[DatasetCreating] Таблица найдена в allTables, все проверки пройдены')
     }
   }
   
-  console.log('[DatasetCreating] Эмитим update:mainTable с таблицей:', table?.id)
   emit('update:mainTable', table)
   showTableTooltip.value = false
 }
 
 function handleResetSelection() {
-  console.log('[DatasetCreating] handleResetSelection вызван, сбрасываем главную таблицу')
   emit('update:mainTable', null)
 }
 
 function handleTablesLoaded(tables) {
-  console.log('[DatasetCreating] handleTablesLoaded вызван с таблицами:', tables?.length || 0)
   emit('tablesLoaded', tables)
 }
 
 // Функции для тултипа проблемных подключений
 function onIconHover(event, text) {
-  console.log('[DatasetCreating] onIconHover вызван с текстом:', text)
   problemTooltipText.value = text
   showProblemTooltip.value = true
   const rect = event.target.getBoundingClientRect()
@@ -300,7 +267,6 @@ function onIconHover(event, text) {
 }
 
 function hideTooltip() {
-  console.log('[DatasetCreating] hideTooltip вызван')
   showProblemTooltip.value = false
 }
 
@@ -323,14 +289,10 @@ function getConnectionProblemTooltip() {
     tooltipText = 'Проблема с подключением'
   }
   
-  console.log('[DatasetCreating] getConnectionProblemTooltip возвращает:', tooltipText)
-  
   return tooltipText
 }
 
 function getTableNameById(tableId) {
-  console.log('[DatasetCreating] getTableNameById вызван для ID:', tableId)
-  
   const arr = Array.isArray(props.allTables) ? props.allTables : (props.allTables?.value ?? []);
   const found = arr.find(t => String(t.id) === String(tableId));
   
@@ -342,8 +304,6 @@ function getTableNameById(tableId) {
     found?.sheet_name ||
     found?.id ||
     'Неизвестно'
-  
-  console.log('[DatasetCreating] getTableNameById возвращает:', tableName, 'для таблицы:', found?.id)
   
   return tableName
 }
@@ -364,8 +324,6 @@ function getIconComponent(connection) {
         icon = { src: FileIcon }
     }
     
-    console.log('[DatasetCreating] getIconComponent возвращает иконку для типа:', type, 'результат:', icon ? 'найдена' : 'не найдена')
-    
     return icon
 }
 
@@ -381,8 +339,6 @@ function getJoinIcon(type) {
     default:      icon = JoinInnerIcon; break
   }
   
-  console.log('[DatasetCreating] getJoinIcon возвращает иконку для типа:', joinType, 'результат:', icon.name)
-  
   return icon
 }
 
@@ -393,22 +349,18 @@ function onClickOutside(event) {
         tooltipEl && !tooltipEl.contains(event.target) &&
         buttonEl && !buttonEl.contains(event.target)
     ) {
-        console.log('[DatasetCreating] Клик вне тултипа, закрываем')
         closeTooltip()
     }
 }
 
 function onEditRelation(rel, idx) {
-  console.log('[DatasetCreating] onEditRelation вызван для связи:', rel?.rightTableId, 'с индексом:', idx)
   emit('editRelation', rel, idx)
 }
 
 onMounted(() => {
-    console.log('[DatasetCreating] Компонент смонтирован, добавляем обработчик клика вне тултипа')
     document.addEventListener('mousedown', onClickOutside)
 })
 onBeforeUnmount(() => {
-    console.log('[DatasetCreating] Компонент размонтируется, удаляем обработчик клика вне тултипа')
     document.removeEventListener('mousedown', onClickOutside)
 })
 </script>
