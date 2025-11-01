@@ -73,8 +73,6 @@ class BIClient {
    */
   async askQuestion(fileId, question, wantCommentary = true) {
     try {
-      console.log('🤖 Отправляю вопрос к BI Assistant...', { fileId, question })
-
       const response = await apiClient.post(endpoints.biQuery, {
         file_id: fileId,
         question: question,
@@ -83,7 +81,6 @@ class BIClient {
       })
 
       if (response.success) {
-        console.log('✅ Получен ответ от BI Assistant')
         
         return {
           success: true,
@@ -102,7 +99,79 @@ class BIClient {
         error: response.data?.error || 'Ошибка обработки запроса',
       }
     } catch (error) {
-      console.error('❌ Ошибка BI Assistant:', error)
+      return {
+        success: false,
+        error: error.message || 'Неизвестная ошибка',
+      }
+    }
+  }
+
+  /**
+   * Анализ данных графика
+   * @param {number} chartId - ID графика
+   * @param {Function} onEvent - Callback для streaming событий
+   */
+  async analyzeChart(chartId, onEvent) {
+    try {
+      const baseURL = apiClient.getBaseUrl() + apiClient.apiPath
+      const token = apiClient.getAuthToken()
+      
+      const url = `${baseURL}${endpoints.chartAnalysis}`
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          chart_id: chartId,
+          stream: true,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        
+        if (done) {
+          break
+        }
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (onEvent) {
+                onEvent(data)
+              }
+            } catch {
+              // Игнорируем ошибки парсинга
+            }
+          }
+        }
+      }
+
+      return { success: true }
+    } catch (error) {
+      
+      if (onEvent) {
+        onEvent({
+          type: 'error',
+          message: error.message || 'Ошибка подключения',
+        })
+      }
       
       return {
         success: false,
@@ -120,8 +189,6 @@ class BIClient {
    */
   async askQuestionStream(fileId, question, wantCommentary = true, onEvent) {
     try {
-      console.log('🤖 Начинаю streaming запрос к BI Assistant...', { fileId, question })
-
       const baseURL = apiClient.getBaseUrl() + apiClient.apiPath
       const token = apiClient.getAuthToken()
       
@@ -153,7 +220,6 @@ class BIClient {
         const { done, value } = await reader.read()
         
         if (done) {
-          console.log('✅ Streaming завершен')
           break
         }
 
@@ -177,7 +243,6 @@ class BIClient {
 
       return { success: true }
     } catch (error) {
-      console.error('❌ Ошибка streaming:', error)
       
       if (onEvent) {
         onEvent({
