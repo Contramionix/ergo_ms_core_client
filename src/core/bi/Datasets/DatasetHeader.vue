@@ -2,15 +2,24 @@
   <header class="file_area_header">
     <div class="file_area_header_label">
       <Database />
-      <div style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
-        <h4 class="header-label" style="margin-bottom:3px;">{{ headerName }}</h4>
+      <div class="header-name-input-wrapper">
+        <input 
+          v-if="!isNewPage"
+          v-model="localName" 
+          @input="onNameInput"
+          @focus="onFocus"
+          @blur="onBlur"
+          class="header-name-input" 
+          placeholder="Название датасета…"
+        />
+        <h4 v-else class="header-label" style="margin-bottom:3px;">{{ headerName }}</h4>
       </div>
     </div>
     <div class="file_area_header_buttons">
       <button v-if="isNewPage" class="btn btn-primary" :disabled="!canCreateDataset || saving"
         @click="$emit('showDatasetDialog')">Создать датасет</button>
 
-      <button class="btn btn-success save-btn" :hidden="isNewPage" :disabled="!isDirty || saving" @click="$emit('editDataset')"
+      <button class="btn btn-success save-btn" :hidden="isNewPage" :disabled="!isDirty || saving" @click="handleSave"
         style="color: var(--color-primary-background); position: relative;">
         <span v-if="!saving && !saveSuccess">Сохранить датасет</span>
         <span v-else-if="saving" class="saving-spinner">
@@ -28,7 +37,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, watch } from 'vue'
 import { Database } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -40,7 +49,63 @@ const props = defineProps({
   isDirty: Boolean
 })
 
-defineEmits(['showDatasetDialog', 'editDataset'])
+const emit = defineEmits(['showDatasetDialog', 'editDataset', 'update:headerName'])
+
+const localName = ref(props.headerName)
+const originalName = ref(props.headerName)
+
+watch(() => props.headerName, (newVal) => {
+  if (newVal !== localName.value) {
+    localName.value = newVal
+    originalName.value = newVal
+  }
+})
+
+function isValidName(name) {
+  if (!name || typeof name !== 'string') return false
+  const trimmed = name.trim()
+  return trimmed.length > 0
+}
+
+function onFocus() {
+  // Сохраняем исходное значение при фокусе
+  originalName.value = props.headerName || ''
+}
+
+function onBlur() {
+  // Проверяем валидность имени
+  if (!isValidName(localName.value)) {
+    // Возвращаем исходное значение
+    localName.value = originalName.value
+    emit('update:headerName', originalName.value)
+  } else {
+    // Обрезаем пробелы по краям
+    const trimmed = localName.value.trim()
+    if (trimmed !== localName.value) {
+      localName.value = trimmed
+      emit('update:headerName', trimmed)
+    }
+  }
+}
+
+function onNameInput() {
+  emit('update:headerName', localName.value)
+}
+
+function handleSave() {
+  // Перед сохранением тоже проверяем валидность
+  if (!isValidName(localName.value)) {
+    localName.value = originalName.value
+    emit('update:headerName', originalName.value)
+    return
+  }
+  const trimmed = localName.value.trim()
+  if (trimmed !== localName.value) {
+    localName.value = trimmed
+    emit('update:headerName', trimmed)
+  }
+  emit('editDataset', trimmed)
+}
 </script>
 
 <style scoped lang="scss">
@@ -61,8 +126,38 @@ defineEmits(['showDatasetDialog', 'editDataset'])
 .file_area_header_label {
   display: flex;
   justify-content: center;
-  gap: 15px;
+  gap: 5px;
   align-items: center;
+}
+
+.header-name-input-wrapper {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 200px;
+  max-width: 500px;
+  width: 100%;
+}
+
+.header-name-input {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: .25rem .5rem;
+  color: inherit;
+  font-size: 1.25rem;
+  font-weight: 500;
+  width: 100%;
+  transition: background-color .2s ease, border-radius .2s ease;
+  font-family: inherit;
+  margin-bottom: 3px;
+}
+
+.header-name-input:hover,
+.header-name-input:focus {
+  background-color: var(--color-hover-background) !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .file_area_header_buttons {

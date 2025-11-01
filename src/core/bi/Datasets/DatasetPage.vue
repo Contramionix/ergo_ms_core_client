@@ -4,14 +4,15 @@
   }">
     <!-- Заголовок страницы -->
     <DatasetHeader 
-      :header-name="headerName"
+      :header-name="editableDatasetName"
       :is-new-page="isNewPage"
       :can-create-dataset="canCreateDataset"
       :saving="saving"
       :save-success="saveSuccess"
-      :is-dirty="isDirty"
+      :is-dirty="computedIsDirty"
       @show-dataset-dialog="showDatasetDialog = true"
-      @edit-dataset="editDataset"
+      @edit-dataset="handleEditDataset"
+      @update:header-name="editableDatasetName = $event"
     />
 
     <!-- Панель инструментов -->
@@ -93,7 +94,7 @@
 </template>
 
 <script setup>
-import { onMounted, watch } from 'vue'
+import { onMounted, watch, ref, computed } from 'vue'
 import { useDatasetState } from '@/core/bi/Datasets/components/js/useDatasetState'
 import { useDatasetActions } from '@/core/bi/Datasets/components/js/useDatasetActions'
 
@@ -107,6 +108,25 @@ import DatasetModals from '@/core/bi/Datasets/Sources/DatasetModals.vue'
 // Используем композаблы
 const state = useDatasetState()
 const actions = useDatasetActions(state)
+
+// Локальное состояние для редактируемого имени датасета (не сохраняется моментально)
+const editableDatasetName = ref('')
+
+// Вычисляемое свойство, учитывающее изменения имени датасета
+const computedIsDirty = computed(() => {
+  // Проверяем базовые изменения через isDirty из state
+  if (isDirty.value) return true
+  
+  // Проверяем изменения имени датасета
+  if (origDatasetRef.value && editableDatasetName.value) {
+    const origName = origDatasetRef.value.name || ''
+    if (editableDatasetName.value !== origName) {
+      return true
+    }
+  }
+  
+  return false
+})
 
 // Деструктурируем состояние
 const {
@@ -171,6 +191,10 @@ const {
 } = actions
 
 // Функции для обработки событий
+
+function handleEditDataset(datasetName) {
+  editDataset(datasetName || editableDatasetName.value)
+}
 
 function onEditField(field) {
   selectedField.value = field
@@ -432,6 +456,20 @@ watch(datasetId, async (newId, oldId) => {
     if (selectedConnection.value && fileUploadsCache.value) {
       updateConnectionStatus(fileUploadsCache.value)
     }
+  }
+})
+
+// Синхронизируем редактируемое имя с headerName при его изменении
+watch(() => headerName.value, (newName) => {
+  if (newName !== editableDatasetName.value) {
+    editableDatasetName.value = newName
+  }
+}, { immediate: true })
+
+// Синхронизируем редактируемое имя после успешного сохранения
+watch(() => dataset.value?.name, (newName) => {
+  if (newName && newName !== editableDatasetName.value) {
+    editableDatasetName.value = newName
   }
 })
 
