@@ -82,8 +82,8 @@ export function useDatasetState() {
           if (curStr !== origStr) return true
         }
       }
-    } catch {
-      // безопасно игнорируем
+    } catch (e) {
+      console.warn('[isDirty] Ошибка при проверке параметров:', e)
     }
     
     const origMain = (origDatasetRef.value.tables || []).find(t => t.order === 0)
@@ -131,22 +131,40 @@ export function useDatasetState() {
       return false
     }
     
-    const keysToCheck = ['name', 'aggregation', 'type', 'description']
-    const origMap = new Map(origDatasetRef.value.fields.map(f => [f.name, f]))
-    
-    const curNames = new Set(fields.value.map(f => f.name))
-    const origNames = new Set(origDatasetRef.value.fields.map(f => f.name))
-    
-    if (curNames.size !== origNames.size || ![...curNames].every(n => origNames.has(n))) {
-      return true
+    // Если в origDatasetRef есть поля, а текущие fields пусты - возможно данные еще загружаются
+    // В этом случае не считаем это изменением
+    if (origDatasetRef.value.fields.length > 0 && fields.value.length === 0) {
+      return false
     }
     
-    for (const f of fields.value) {
-      const orig = origMap.get(f.name)
-      if (!orig) return true
+    // Нормализуем значения для сравнения
+    const normalize = (val) => {
+      if (val === null || val === undefined) return ''
+      return String(val).trim()
+    }
+    
+    const keysToCheck = ['name', 'aggregation', 'type', 'description']
+    
+    // Создаем карту текущих полей по имени
+    const curMap = new Map(fields.value.filter(f => f.name).map(f => [f.name, f]))
+    
+    // Проверяем ТОЛЬКО поля из оригинала
+    // Новые поля из связанных таблиц не считаются изменением
+    for (const origField of origDatasetRef.value.fields) {
+      if (!origField.name) continue
       
+      const curField = curMap.get(origField.name)
+      
+      // Если поле из оригинала отсутствует в текущих полях - это изменение
+      if (!curField) {
+        return true
+      }
+      
+      // Сравниваем свойства поля
       for (const key of keysToCheck) {
-        if ((f[key] || '') !== (orig[key] || '')) {
+        const curVal = normalize(curField[key])
+        const origVal = normalize(origField[key])
+        if (curVal !== origVal) {
           return true
         }
       }
@@ -240,3 +258,5 @@ export function useDatasetState() {
     getTabComponent
   }
 }
+
+

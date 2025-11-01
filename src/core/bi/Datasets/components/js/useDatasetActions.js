@@ -39,7 +39,8 @@ export function useDatasetActions(state) {
         .filter(f => f.name)
         .map(f => ({
           name: f.name,
-          aggregation: f.aggregation
+          aggregation: f.aggregation,
+          type: f.type || 'string'
         }))
 
       if (!dsId) {
@@ -81,6 +82,44 @@ export function useDatasetActions(state) {
         
         const { data: updated } = await datasetService.getDataset(dsId)
         state.dataset.value = updated
+        // Обновляем origDatasetRef, чтобы isDirty корректно определял изменения после создания
+        state.origDatasetRef.value = JSON.parse(JSON.stringify(updated))
+        
+        // Синхронизируем данные датасета, включая поля
+        await hydrateFromDataset(updated)
+        state.relations.value = state.getRelationsFromDataset(updated, state.mainTable.value?.id)
+        
+        // Загружаем предпросмотр и синхронизируем поля с данными из API
+        if (state.mainTable.value) {
+          await loadPreview()
+          
+          // Синхронизируем поля напрямую из origDatasetRef, чтобы они точно совпадали
+          // Это гарантирует, что isDirty не будет считать поля измененными
+          if (Array.isArray(state.origDatasetRef.value?.fields) && state.origDatasetRef.value.fields.length > 0) {
+            if (state.previewCols.value.length && state.previewRows.value.length) {
+              // Вызываем loadFields() для правильной синхронизации
+              await loadFields()
+              
+              // Дополнительная синхронизация: обновляем поля из origDatasetRef, чтобы гарантировать совпадение
+              const origFieldsMap = new Map(state.origDatasetRef.value.fields.map(f => [f.name || f.source_column, f]))
+              state.fields.value = state.fields.value.map(f => {
+                const orig = origFieldsMap.get(f.name) || origFieldsMap.get(f.source?.column)
+                if (orig) {
+                  // Синхронизируем только те поля, которые проверяет isDirty
+                  return {
+                    ...f,
+                    name: orig.name || f.name,
+                    aggregation: orig.aggregation || f.aggregation || 'none',
+                    type: orig.type || f.type || 'string',
+                    description: orig.description || f.description || ''
+                  }
+                }
+                return f
+              })
+            }
+          }
+        }
+        
         // Синхронизируем кэш параметров с БД, чтобы черновик соответствовал сохранённому состоянию
         try {
           const key = getCachedParamsKey(dsId)
@@ -211,6 +250,34 @@ export function useDatasetActions(state) {
       state.relations.value = state.getRelationsFromDataset(fresh, state.mainTable.value?.id)
       state.dataset.value = fresh
       state.origDatasetRef.value = JSON.parse(JSON.stringify(fresh))
+      
+      // Загружаем предпросмотр и синхронизируем поля
+      if (state.mainTable.value) {
+        await loadPreview()
+        
+        // Синхронизируем поля напрямую из origDatasetRef, чтобы они точно совпадали
+        if (Array.isArray(state.origDatasetRef.value?.fields) && state.origDatasetRef.value.fields.length > 0) {
+          if (state.previewCols.value.length && state.previewRows.value.length) {
+            // Дополнительная синхронизация: обновляем поля из origDatasetRef, чтобы гарантировать совпадение
+            const origFieldsMap = new Map(state.origDatasetRef.value.fields.map(f => [f.name || f.source_column, f]))
+            state.fields.value = state.fields.value.map(f => {
+              const orig = origFieldsMap.get(f.name) || origFieldsMap.get(f.source?.column)
+              if (orig) {
+                // Синхронизируем только те поля, которые проверяет isDirty
+                return {
+                  ...f,
+                  name: orig.name || f.name,
+                  aggregation: orig.aggregation || f.aggregation || 'none',
+                  type: orig.type || f.type || 'string',
+                  description: orig.description || f.description || ''
+                }
+              }
+              return f
+            })
+          }
+        }
+      }
+      
       state.saveSuccess.value = true
       setTimeout(() => state.saveSuccess.value = false, 1000)
 
@@ -270,7 +337,7 @@ export function useDatasetActions(state) {
   async function loadDataset(id) {
     const { data } = await datasetService.getDataset(id)
     state.dataset.value = data
-    state.origDatasetRef.value = JSON.parse(JSON.stringify(data))
+    
     // Синхронизируем кэш параметров из БД при загрузке датасета,
     // чтобы после перезагрузки страницы параметры были доступны как черновик
     try {
@@ -287,6 +354,40 @@ export function useDatasetActions(state) {
     buildAllTables()
     await hydrateFromDataset(data)
     await loadPreview()
+    
+    // Синхронизируем поля напрямую из данных датасета, чтобы они точно совпадали
+    // Это гарантирует, что isDirty не будет считать поля измененными
+    if (Array.isArray(data.fields) && data.fields.length > 0) {
+      if (state.previewCols.value.length && state.previewRows.value.length) {
+        // Дополнительная синхронизация: обновляем поля из данных датасета, чтобы гарантировать совпадение
+        const origFieldsMap = new Map(data.fields.map(f => [f.name || f.source_column, f]))
+        state.fields.value = state.fields.value.map(f => {
+          const orig = origFieldsMap.get(f.name) || origFieldsMap.get(f.source?.column)
+          if (orig) {
+            // Синхронизируем только те поля, которые проверяет isDirty
+            return {
+              ...f,
+              name: orig.name || f.name,
+              aggregation: orig.aggregation || f.aggregation || 'none',
+              type: orig.type || f.type || 'string',
+              description: orig.description || f.description || ''
+            }
+          }
+          return f
+        })
+      }
+    }
+    
+    // Устанавливаем origDatasetRef ПОСЛЕ полной синхронизации всех данных (relations и fields),
+    // чтобы isDirty не считал датасет измененным при начальной загрузке
+    // ВАЖНО: origDatasetRef должен содержать relations и fields в том же формате, что и текущее состояние
+    state.origDatasetRef.value = JSON.parse(JSON.stringify(data))
+    
+    // Обновляем relations в origDatasetRef, чтобы они совпадали с текущим состоянием
+    const origMain = (state.origDatasetRef.value.tables || []).find(t => t.order === 0)
+    state.origDatasetRef.value._cachedRelations = state.normalizeRelations(
+      state.getRelationsFromDataset(state.origDatasetRef.value, origMain ? origMain.id : null)
+    )
   }
   
   async function hydrateFromDataset(ds) {

@@ -1,35 +1,44 @@
 <template>
-  <div class="modal">
-    <div class="header">
-      <h4>Связь</h4>
-      <button type="button" class="btn-close" aria-label="Закрыть" @click="emit('close')"></button>
-    </div>
+  <div class="table-link-content">
     <div class="body">
       <div class="body-label body-label-sheet">
         <div>Таблица:</div>
-        <select v-model="selectedTableId" class="form-select">
-          <option v-for="table in availableTables" :key="table.id" :value="table.id">
-            {{ getTableName(table) }}
-          </option>
-        </select>
+        <SelectBox
+          v-model="selectedTableId"
+          :options="availableTables"
+          value-key="id"
+          label-key="display_name"
+          :include-all-option="false"
+          :cast-to-number="true"
+          :current-label-formatter="formatTableName"
+        />
       </div>
       <div class="body-label">
         <div>Тип связи:</div>
-        <select v-model="joinType" class="form-select" style="max-width:140px;">
-          <option value="inner">INNER JOIN</option>
-          <option value="left">LEFT JOIN</option>
-          <option value="right">RIGHT JOIN</option>
-          <option value="full">FULL JOIN</option>
-        </select>
+        <SelectBox
+          v-model="joinType"
+          :options="joinTypeOptions"
+          :include-all-option="false"
+          value-key="value"
+          label-key="label"
+        />
       </div>
       <div v-for="(line, idx) in relationLines" v-if="relationLines.length" :key="idx" class="body-line">
-        <select v-model="line.left" class="form-select" style="max-width:220px;">
-          <option v-for="col in mainTableColumns" :key="col" :value="col">{{ col }}</option>
-        </select>
+        <SelectBox
+          v-model="line.left"
+          :options="mainTableColumns.map(col => ({ value: col, label: col }))"
+          :include-all-option="false"
+          value-key="value"
+          label-key="label"
+        />
         <div>=</div>
-        <select v-model="line.right" class="form-select" style="max-width:220px;">
-          <option v-for="col in linkedTableColumns" :key="col" :value="col">{{ col }}</option>
-        </select>
+        <SelectBox
+          v-model="line.right"
+          :options="linkedTableColumns.map(col => ({ value: col, label: col }))"
+          :include-all-option="false"
+          value-key="value"
+          label-key="label"
+        />
         <button type="button" class="btn-remove" aria-label="Удалить связь" @click="removeRelationLine(idx)">
           <div class="icon-button">
             <Trash2 size="29" />
@@ -61,6 +70,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { Trash2, Loader } from 'lucide-vue-next'
+import SelectBox from '@/components/SelectBox.vue'
 
 const joinType = ref('inner')
 const relationLines  = ref([])
@@ -167,17 +177,37 @@ const availableTables = computed(() => {
     return [];
   }
   
+  const isFileConnection = props.selectedConnection.connector_type_display?.toLowerCase().includes('file') || 
+                          props.selectedConnection.connector_type?.toLowerCase().includes('файл');
+  
   const filteredTables = props.allTables.filter(t => {
     // Строгая проверка принадлежности к текущему подключению
     let belongsToCurrentConnection = false
     
-    if (props.selectedConnection.connector_type_display?.toLowerCase().includes('file') || 
-        props.selectedConnection.connector_type?.toLowerCase().includes('файл')) {
-      // Для файловых подключений проверяем file_id
-      belongsToCurrentConnection = t.file_id === props.selectedConnection.id
+    // Если у таблицы есть file_id, значит это файловая таблица
+    // Такие таблицы уже были отфильтрованы в buildAllTables по подключению
+    // Если главная таблица тоже имеет file_id, значит это файловое подключение
+    // В таком случае разрешаем все таблицы с file_id (они уже из нужного подключения)
+    const isFileTable = t.file_id != null;
+    const isMainTableFileBased = props.mainTable.file_id != null;
+    
+    if (isFileConnection) {
+      const check1 = t.connection_id === props.selectedConnection.id;
+      const check2 = t.file_id === props.selectedConnection.id;
+      const check3 = props.mainTable.connection_id && t.connection_id === props.mainTable.connection_id;
+      // Для файловых таблиц разрешаем, если главная таблица тоже файловая
+      const check4 = isFileTable && isMainTableFileBased;
+      
+      belongsToCurrentConnection = check1 || check2 || check3 || check4;
     } else {
       // Для базовых подключений проверяем connection_id
-      belongsToCurrentConnection = t.connection_id === props.selectedConnection.id
+      const check1 = t.connection_id === props.selectedConnection.id;
+      const check2 = props.mainTable.connection_id && t.connection_id === props.mainTable.connection_id;
+      // Если у таблицы нет connection_id, но есть file_id и главная таблица тоже файловая,
+      // это может быть файловое подключение, которое не определилось правильно
+      const check3 = isFileTable && isMainTableFileBased && !t.connection_id;
+      
+      belongsToCurrentConnection = check1 || check2 || check3;
     }
     
     if (!belongsToCurrentConnection) {
@@ -201,12 +231,10 @@ const availableTables = computed(() => {
     
     // Исключаем уже использованные таблицы (кроме редактируемой)
     if (isEditMode.value && props.editRelation?.rightTableId) {
-      // В режиме редактирования исключаем все использованные таблицы кроме текущей редактируемой
       if (usedStagingIds.value.includes(t.id) && t.id !== props.editRelation.rightTableId) {
         return false;
       }
     } else {
-      // В обычном режиме исключаем все использованные таблицы
       if (usedStagingIds.value.includes(t.id)) {
         return false;
       }
@@ -221,8 +249,13 @@ const availableTables = computed(() => {
       }
     }
     
-    // Исключаем таблицы без file_upload_id и file_id
-    if (t.file_upload_id == null && t.file_id == null) {
+    // В новой архитектуре таблицы создаются без БД, поэтому достаточно иметь file_id
+    if (!t.file_id) {
+      return false;
+    }
+    
+    // Проверяем наличие columns_info (может быть получен позже из файла)
+    if (t.columns_info && (!t.columns_info.columns || t.columns_info.columns.length === 0)) {
       return false;
     }
     
@@ -231,6 +264,17 @@ const availableTables = computed(() => {
   
   return filteredTables;
 });
+
+const joinTypeOptions = [
+  { value: 'inner', label: 'INNER JOIN' },
+  { value: 'left', label: 'LEFT JOIN' },
+  { value: 'right', label: 'RIGHT JOIN' },
+  { value: 'full', label: 'FULL JOIN' }
+]
+
+function formatTableName({ option }) {
+  return getTableName(option)
+}
 
 function getTableName(table) {
   if (!table) {
@@ -509,13 +553,18 @@ watch(
        // Исключаем главную таблицу
        if (props.mainTable && t.id === props.mainTable.id) return false
        
-       // Исключаем таблицы из того же файла, что и главная таблица
-       if (props.mainTable && t.file_id && t.file_id === props.mainTable.file_id) return false
-       
-       // Исключаем таблицы без file_upload_id и file_id
-       if (t.file_upload_id == null && t.file_id == null) return false
-       
-       return true
+      // Исключаем таблицы из того же файла, что и главная таблица
+      if (props.mainTable && t.file_id && t.file_id === props.mainTable.file_id) return false
+      
+      // В новой архитектуре таблицы создаются без БД, поэтому достаточно иметь file_id
+      if (!t.file_id) return false
+      
+      // Проверяем наличие columns_info (может быть получен позже из файла)
+      // Не исключаем таблицу, если columns_info отсутствует - он может быть получен из file_id
+      // Но если columns_info есть, проверяем что в нем есть колонки
+      if (t.columns_info && (!t.columns_info.columns || t.columns_info.columns.length === 0)) return false
+      
+      return true
      })
      
      if (!isAvailable) {
@@ -636,35 +685,12 @@ watch(
 </script>
 
 <style scoped lang="scss">
-.modal {
+.table-link-content {
   display: flex;
   flex-direction: column;
   padding: 15px 15px 0 15px;
-  overflow: hidden;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-button {
-  border: none;
-  background: var(--color-primary-background);
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-  cursor: pointer;
-  padding: 0;
-}
-
-.header-button:hover {
-  background: var(--color-hover-background);
+  height: 100%;
+  width: 100%;
 }
 
 .body {
@@ -672,6 +698,8 @@ watch(
   flex-direction: column;
   gap: 15px;
   padding: 10px 10px 0 10px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -682,11 +710,31 @@ watch(
   gap: 10px;
 }
 
+.body-label > div:first-child {
+  flex-shrink: 0;
+  min-width: 100px;
+}
+
+.body-label .select-box {
+  flex: 1;
+  min-width: 0;
+}
+
 .body-line {
   display: flex;
   align-items: center;
   width: 100%;
   justify-content: space-between;
+  gap: 10px;
+}
+
+.body-line .select-box {
+  flex: 1;
+  min-width: 0;
+}
+
+.body-line > div:not(.select-box) {
+  flex-shrink: 0;
 }
 
 .footer {
@@ -694,6 +742,7 @@ watch(
   justify-content: flex-end;
   padding-bottom: 15px;
   padding-top: 20px;
+  flex-shrink: 0;
 }
 
 .footer-buttons {

@@ -26,7 +26,11 @@ const shouldAutoCloseOnRoute = (path) => {
     /^\/bi\/connection\/\d+(?:\/files\/)?/,
     /^\/bi\/datasets?\/\d+\/?/,
     /^\/bi\/charts?\/\d+\/?/,
-    /^\/bi\/dashboards?\/\d+\/?/
+    /^\/bi\/dashboards?\/\d+\/?/,
+    /^\/bi\/dashboard\/new/,
+    /^\/bi\/chart\/new/,
+    /^\/bi\/datasets\/new/,
+    /^\/bi\/connections\/new/
   ]
   return patterns.some((re) => re.test(path))
 }
