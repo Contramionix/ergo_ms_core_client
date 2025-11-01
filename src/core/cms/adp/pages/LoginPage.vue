@@ -107,7 +107,7 @@ const submitForm = async () => {
 </script>
 
 <template>
-  <div class="d-flex justify-content-center align-items-center min-vh-100 bg-light">
+  <div class="d-flex justify-content-center align-items-center min-vh-100">
     <div class="card shadow-sm border-0" style="width: 500px">
       <div class="card-body p-5">
         <div class="text-center mb-4">
@@ -232,8 +232,8 @@ const submitForm = async () => {
   top: 50%;
   right: 10px;
   transform: translateY(-50%);
-  border: 2px solid #495057;
-  background: #495057;
+  border: 2px solid var(--color-border);
+  background: var(--color-secondary-background);
   border-radius: 8px;
   width: 42px;
   height: 42px;
@@ -247,8 +247,8 @@ const submitForm = async () => {
 }
 
 .password-toggle-btn:hover {
-  background: #343a40;
-  border-color: #343a40;
+  background: var(--color-hover-background);
+  border-color: var(--color-border);
   transform: translateY(-50%) scale(1.1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
@@ -261,8 +261,8 @@ const submitForm = async () => {
 .password-toggle-btn:disabled {
   cursor: not-allowed;
   opacity: 0.5;
-  background: #6c757d;
-  border-color: #6c757d;
+  background: var(--color-secondary-background);
+  border-color: var(--color-border);
 }
 
 .password-toggle-btn i {

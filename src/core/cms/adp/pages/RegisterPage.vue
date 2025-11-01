@@ -160,7 +160,7 @@ const showSuccessMessage = () => {
 </script>
 
 <template>
-  <div class="d-flex justify-content-center align-items-center min-vh-100 bg-light py-4">
+  <div class="d-flex justify-content-center align-items-center min-vh-100 py-4">
     <div class="card shadow-sm border-0" style="width: 500px">
       <div class="card-body p-5">
         <div class="text-center mb-4">
