@@ -101,9 +101,51 @@ async function previewXlsxLocally(file, sheetName) {
   if (!(file instanceof Blob)) throw new Error('Требуется файл типа Blob');
   
   // Динамический импорт ExcelJS для уменьшения начального размера бандла
-  const { default: ExcelJS } = await import('exceljs');
+  let ExcelJS;
+  try {
+    const ExcelJSModule = await import('exceljs');
+    
+    // Проверяем различные варианты экспорта
+    if (ExcelJSModule.default) {
+      ExcelJS = ExcelJSModule.default;
+    } else if (ExcelJSModule.ExcelJS) {
+      ExcelJS = ExcelJSModule.ExcelJS;
+    } else if (ExcelJSModule.Workbook) {
+      // Если Workbook экспортируется напрямую
+      ExcelJS = { Workbook: ExcelJSModule.Workbook };
+    } else {
+      ExcelJS = ExcelJSModule;
+    }
+    
+    // Отладочная информация
+    if (!ExcelJS || (!ExcelJS.Workbook && typeof ExcelJS !== 'function' && !ExcelJSModule.Workbook)) {
+      console.error('Структура импортированного модуля:', {
+        keys: Object.keys(ExcelJSModule),
+        hasDefault: !!ExcelJSModule.default,
+        hasExcelJS: !!ExcelJSModule.ExcelJS,
+        hasWorkbook: !!ExcelJSModule.Workbook,
+        moduleType: typeof ExcelJSModule,
+        defaultType: typeof ExcelJSModule.default
+      });
+    }
+  } catch (importError) {
+    console.error('Ошибка импорта ExcelJS:', importError);
+    throw new Error(`Не удалось импортировать библиотеку ExcelJS: ${importError.message}`);
+  }
   
-  const workbook = new ExcelJS.Workbook();
+  if (!ExcelJS) {
+    throw new Error('Модуль ExcelJS не найден после импорта');
+  }
+  
+  // Получаем Workbook конструктор
+  const Workbook = ExcelJS.Workbook || ExcelJS;
+  
+  if (typeof Workbook !== 'function') {
+    console.error('Workbook не является функцией. Тип:', typeof Workbook, 'ExcelJS:', ExcelJS);
+    throw new Error('Workbook не является конструктором. Проверьте консоль для деталей.');
+  }
+  
+  const workbook = new Workbook();
   const reader = new FileReader();
 
   return new Promise((resolve, reject) => {

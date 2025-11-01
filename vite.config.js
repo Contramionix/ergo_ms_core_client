@@ -182,13 +182,14 @@ export default defineConfig({
   // Оптимизация сборки
   optimizeDeps: {
     // Исключаем динамически загружаемые модули из предварительной оптимизации
-    exclude: ['@vite-ignore', 'exceljs', 'vue3-apexcharts'],
+    exclude: ['@vite-ignore', 'vue3-apexcharts'],
     include: [
       'vue',
       'vue-router',
       'pinia',
       'axios',
       'bootstrap',
+      'exceljs',
     ],
   },
 })
