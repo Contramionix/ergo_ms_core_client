@@ -724,6 +724,7 @@ onBeforeUnmount(() => {
     border-radius: 6px;
     padding: 4px 10px 4px 6px;
     font-size: 14px;
+    line-height: 1;
     margin-top: 7px;
     color: var(--color-primary-text, #222);
     transition: background 0.2s;
@@ -750,6 +751,10 @@ onBeforeUnmount(() => {
 
 .field-icon {
     color: var(--color-accent);
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn:hover {
