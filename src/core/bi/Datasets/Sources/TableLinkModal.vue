@@ -1,35 +1,44 @@
 <template>
-  <div class="modal">
-    <div class="header">
-      <h4>Связь</h4>
-      <button type="button" class="btn-close" aria-label="Закрыть" @click="emit('close')"></button>
-    </div>
+  <div class="table-link-content">
     <div class="body">
       <div class="body-label body-label-sheet">
         <div>Таблица:</div>
-        <select v-model="selectedTableId" class="form-select">
-          <option v-for="table in availableTables" :key="table.id" :value="table.id">
-            {{ getTableName(table) }}
-          </option>
-        </select>
+        <SelectBox
+          v-model="selectedTableId"
+          :options="availableTables"
+          value-key="id"
+          label-key="display_name"
+          :include-all-option="false"
+          :cast-to-number="true"
+          :current-label-formatter="formatTableName"
+        />
       </div>
       <div class="body-label">
         <div>Тип связи:</div>
-        <select v-model="joinType" class="form-select" style="max-width:140px;">
-          <option value="inner">INNER JOIN</option>
-          <option value="left">LEFT JOIN</option>
-          <option value="right">RIGHT JOIN</option>
-          <option value="full">FULL JOIN</option>
-        </select>
+        <SelectBox
+          v-model="joinType"
+          :options="joinTypeOptions"
+          :include-all-option="false"
+          value-key="value"
+          label-key="label"
+        />
       </div>
       <div v-for="(line, idx) in relationLines" v-if="relationLines.length" :key="idx" class="body-line">
-        <select v-model="line.left" class="form-select" style="max-width:220px;">
-          <option v-for="col in mainTableColumns" :key="col" :value="col">{{ col }}</option>
-        </select>
+        <SelectBox
+          v-model="line.left"
+          :options="mainTableColumns.map(col => ({ value: col, label: col }))"
+          :include-all-option="false"
+          value-key="value"
+          label-key="label"
+        />
         <div>=</div>
-        <select v-model="line.right" class="form-select" style="max-width:220px;">
-          <option v-for="col in linkedTableColumns" :key="col" :value="col">{{ col }}</option>
-        </select>
+        <SelectBox
+          v-model="line.right"
+          :options="linkedTableColumns.map(col => ({ value: col, label: col }))"
+          :include-all-option="false"
+          value-key="value"
+          label-key="label"
+        />
         <button type="button" class="btn-remove" aria-label="Удалить связь" @click="removeRelationLine(idx)">
           <div class="icon-button">
             <Trash2 size="29" />
@@ -61,6 +70,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { Trash2, Loader } from 'lucide-vue-next'
+import SelectBox from '@/components/SelectBox.vue'
 
 const joinType = ref('inner')
 const relationLines  = ref([])
@@ -231,6 +241,17 @@ const availableTables = computed(() => {
   
   return filteredTables;
 });
+
+const joinTypeOptions = [
+  { value: 'inner', label: 'INNER JOIN' },
+  { value: 'left', label: 'LEFT JOIN' },
+  { value: 'right', label: 'RIGHT JOIN' },
+  { value: 'full', label: 'FULL JOIN' }
+]
+
+function formatTableName({ option }) {
+  return getTableName(option)
+}
 
 function getTableName(table) {
   if (!table) {
@@ -636,35 +657,12 @@ watch(
 </script>
 
 <style scoped lang="scss">
-.modal {
+.table-link-content {
   display: flex;
   flex-direction: column;
   padding: 15px 15px 0 15px;
-  overflow: hidden;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-button {
-  border: none;
-  background: var(--color-primary-background);
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-  cursor: pointer;
-  padding: 0;
-}
-
-.header-button:hover {
-  background: var(--color-hover-background);
+  height: 100%;
+  width: 100%;
 }
 
 .body {
@@ -672,6 +670,8 @@ watch(
   flex-direction: column;
   gap: 15px;
   padding: 10px 10px 0 10px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -682,11 +682,31 @@ watch(
   gap: 10px;
 }
 
+.body-label > div:first-child {
+  flex-shrink: 0;
+  min-width: 100px;
+}
+
+.body-label .select-box {
+  flex: 1;
+  min-width: 0;
+}
+
 .body-line {
   display: flex;
   align-items: center;
   width: 100%;
   justify-content: space-between;
+  gap: 10px;
+}
+
+.body-line .select-box {
+  flex: 1;
+  min-width: 0;
+}
+
+.body-line > div:not(.select-box) {
+  flex-shrink: 0;
 }
 
 .footer {
@@ -694,6 +714,7 @@ watch(
   justify-content: flex-end;
   padding-bottom: 15px;
   padding-top: 20px;
+  flex-shrink: 0;
 }
 
 .footer-buttons {

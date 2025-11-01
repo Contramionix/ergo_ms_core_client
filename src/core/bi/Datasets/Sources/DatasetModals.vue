@@ -25,16 +25,22 @@
   <transition name="fade">
     <div v-if="showTableLinkModal" class="modal-overlay">
       <div class="modal-window table-link-modal">
-        <TableLinkModal 
-          :all-tables="allTablesOfConnection" 
-          :linked-table-ids="computedLinkedTableIds"
-          :main-table="mainTable" 
-          :edit-relation="editingRelation" 
-          :dataset-id="currentDatasetId"
-          :selected-connection="selectedConnection"
-          @close="$emit('closeTableLinkModal')" 
-          @apply="$emit('relationApply', $event)" 
-        />
+        <div class="modal-header">
+          <h5>Связь</h5>
+          <button class="close-btn" @click="$emit('closeTableLinkModal')">&times;</button>
+        </div>
+        <div class="modal-content-wrapper">
+          <TableLinkModal 
+            :all-tables="allTablesOfConnection" 
+            :linked-table-ids="computedLinkedTableIds"
+            :main-table="mainTable" 
+            :edit-relation="editingRelation" 
+            :dataset-id="currentDatasetId"
+            :selected-connection="selectedConnection"
+            @close="$emit('closeTableLinkModal')" 
+            @apply="$emit('relationApply', $event)" 
+          />
+        </div>
       </div>
     </div>
   </transition>
@@ -141,13 +147,16 @@ const computedLinkedTableIds = computed(() => {
 
 .table-link-modal {
   width: 624px;
+  min-width: 624px;
+  max-width: 624px;
   min-height: 310px;
+  max-height: 90vh;
   background: var(--color-primary-background);
   border-radius: 12px;
   box-shadow: 0 8px 32px #000b;
   padding: 0;
   position: relative;
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -167,6 +176,19 @@ const computedLinkedTableIds = computed(() => {
 .modal-window-fields > :not(.modal-header) {
   flex: 1 1 auto;
   min-height: 0; /* важно для корректной работы overflow у внутренних областей */
+}
+
+/* Контент после шапки занимает доступную высоту и не вываливается */
+.table-link-modal > .modal-header {
+  flex: 0 0 auto;
+  padding: 1rem;
+}
+.modal-content-wrapper {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .fade-enter-active,

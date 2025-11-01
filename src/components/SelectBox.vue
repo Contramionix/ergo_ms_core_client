@@ -293,21 +293,21 @@ watch(() => props.modelValue, async () => {
     right: 0;
     top: 100%;
     margin-top: .25rem;
-    z-index: 12000; /* поверх модалки Bootstrap */
+    z-index: 100002; /* поверх модалки */
     max-height: 260px;
     overflow-y: auto;
     overflow-x: hidden;
     width: auto;
     min-width: 100%;
     max-width: 100vw;
-    background-color: var(--bs-body-bg, #fff);
-    border: 1px solid var(--bs-border-color, #dee2e6);
+    background-color: var(--color-primary-background);
+    border: 1px solid var(--color-border);
     border-radius: .375rem;
     box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
 }
 .fixed-menu {
     position: fixed;
-    z-index: 12000; /* поверх модалки Bootstrap */
+    z-index: 100002; /* поверх модалки */
     left: auto; /* задаётся inline */
     right: auto; /* сбрасываем наследование */
     top: auto;  /* задаётся inline */
@@ -315,14 +315,36 @@ watch(() => props.modelValue, async () => {
 }
 .select-box { max-width: 100%; }
 .select-box .dropdown { position: relative; width: 100%; max-width: 100%; }
+
+.dropdown-item {
+    color: var(--color-primary-text);
+    background-color: transparent;
+    padding: 0.5rem 1rem;
+    display: block;
+    width: 100%;
+    clear: both;
+    font-weight: 400;
+    text-align: left;
+    text-decoration: none;
+    transition: all 0.15s ease-in-out;
+    border: 0;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background-color: var(--color-hover-background);
+    color: var(--color-primary-text);
+}
+
 .dropdown-item.multi-line {
     white-space: normal;
     overflow-wrap: anywhere;
     word-break: break-word;
 }
 .dropdown-item.active {
-    background-color: var(--bs-primary-bg-subtle, #e7f1ff);
-    color: var(--bs-primary, #0d6efd);
+    background-color: var(--color-accent-bg, rgba(var(--bs-primary-rgb), 0.1));
+    color: var(--color-accent, #0d6efd);
+    font-weight: 500;
 }
 .icon-center {
     width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
