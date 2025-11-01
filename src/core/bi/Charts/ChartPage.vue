@@ -464,17 +464,28 @@ onBeforeUnmount(() => {
     min-height: 100vh;
     gap: 30px;
     margin-bottom: 20px;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    padding: 0;
+    margin-left: 0;
+    margin-right: 0;
 }
 
 .body-grid {
     display: grid;
-    grid-template-columns: 17.5rem 20rem 1fr 1fr;
+    grid-template-columns: minmax(14rem, 17.5rem) minmax(14rem, 1fr) minmax(14rem, 1fr) minmax(14rem, 1fr);
     grid-template-rows: 6rem 6rem auto;
     grid-template-areas:
         "datasets   indicators measures parameters"
         "diagramtype indicators measures parameters"
         "fields     chart      chart    chart";
-    gap: 30px;
+    gap: 20px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .body-grid.fullscreen {
@@ -520,17 +531,29 @@ onBeforeUnmount(() => {
 
 .indicators {
     grid-area: indicators;
-    min-width: 20rem;
-    max-width: 20rem;
     overflow: hidden;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .measures {
     grid-area: measures;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .parameters {
     grid-area: parameters;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .body-chart {
@@ -543,6 +566,10 @@ onBeforeUnmount(() => {
     justify-content: space-between;
     padding: 15px 20px;
     flex-shrink: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .header-label-icon {
@@ -560,6 +587,9 @@ onBeforeUnmount(() => {
 .sectors {
     padding: 15px;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .sectors-body {
@@ -567,6 +597,11 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .dataset-selected:hover {
@@ -719,5 +754,42 @@ onBeforeUnmount(() => {
 
 .btn:hover {
     background-color: var(--color-hover-background);
+}
+
+@media (max-width: 1400px) {
+    .body-grid {
+        grid-template-columns: minmax(12rem, 15rem) minmax(12rem, 1fr) minmax(12rem, 1fr) minmax(12rem, 1fr);
+        gap: 15px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .body-grid {
+        grid-template-columns: minmax(10rem, 13rem) minmax(10rem, 1fr) minmax(10rem, 1fr) minmax(10rem, 1fr);
+        gap: 12px;
+    }
+}
+
+@media (max-width: 992px) {
+    .body-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "datasets"
+            "diagramtype"
+            "indicators"
+            "measures"
+            "parameters"
+            "fields"
+            "chart";
+        gap: 20px;
+    }
+
+    .body-grid .body-chart {
+        grid-column: 1;
+    }
+
+    .body-grid.no-fields .body-chart {
+        grid-column: 1;
+    }
 }
 </style>
