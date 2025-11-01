@@ -192,27 +192,6 @@ const typeIcon = {
   geopolygon: Globe,
 }
 
-// Функция для определения типа поля по его названию
-function detectFieldType(fieldName) {
-  const name = fieldName.toLowerCase()
-  
-  // Числовые поля
-  if (name.includes('количество') || name.includes('кол-во') || name.includes('часов') || 
-      name.includes('недель') || name.includes('номер') || name.includes('курс') ||
-      name.includes('семестр') || name.includes('коэффициент') || name.includes('вопросов') ||
-      name.includes('зет') || name.includes('итого')) {
-    return 'number'
-  }
-  
-  // Даты
-  if (name.includes('год') || name.includes('дата')) {
-    return 'date'
-  }
-  
-  // По умолчанию строковые
-  return 'string'
-}
-
 const chartRequiredFieldsFilled = computed(() => {
     if (!selectedDataset.value) {
         return false
@@ -294,19 +273,9 @@ async function fetchChartIfEditing() {
             console.log('ChartPage: fetchChartIfEditing - Loading columns for dataset ID:', dsObj.id)
             const { data: columnsResp } = await chartService.getColumns(dsObj.id)
             console.log('ChartPage: fetchChartIfEditing - Columns response:', columnsResp)
-            // Проверяем различные возможные структуры ответа
-            const columns = columnsResp?.columns || columnsResp?.data || columnsResp || []
-            
-            // Если columns - это массив строк, преобразуем в массив объектов
-            if (Array.isArray(columns) && columns.length > 0 && typeof columns[0] === 'string') {
-                indicators.value = columns.map((name, index) => ({
-                    id: index,
-                    name: name,
-                    type: detectFieldType(name) // Определяем тип по названию поля
-                }))
-            } else {
-                indicators.value = Array.isArray(columns) ? columns : []
-            }
+            // Получаем массив полей с типами из ответа API
+            const columns = columnsResp?.columns || []
+            indicators.value = Array.isArray(columns) ? columns : []
             console.log('ChartPage: fetchChartIfEditing - Indicators set to:', indicators.value)
         }
 
@@ -375,25 +344,13 @@ async function handleSelectDataset(ds) {
     if (ds?.id) {
         try {
             console.log('ChartPage: Loading columns for dataset ID:', ds.id)
-            // 1. Получаем список колонок (объекты с name/type)
+            // Получаем список полей с типами из API
             const { data: columnsResp } = await chartService.getColumns(ds.id)
             console.log('ChartPage: Columns response:', columnsResp)
-            // 2. Кладём в indicators (именно сюда смотрит твой UI)
-            // Проверяем различные возможные структуры ответа
-            const columns = columnsResp?.columns || columnsResp?.data || columnsResp || []
-            
-            // Если columns - это массив строк, преобразуем в массив объектов
-            if (Array.isArray(columns) && columns.length > 0 && typeof columns[0] === 'string') {
-                indicators.value = columns.map((name, index) => ({
-                    id: index,
-                    name: name,
-                    type: detectFieldType(name) // Определяем тип по названию поля
-                }))
-            } else {
-                indicators.value = Array.isArray(columns) ? columns : []
-            }
+            const columns = columnsResp?.columns || []
+            indicators.value = Array.isArray(columns) ? columns : []
             console.log('ChartPage: Indicators set to:', indicators.value)
-            // 3. Загружаем агрегированные строки
+            // Загружаем агрегированные строки
             const { data } = await chartService.getDatasetRowsAgg(ds.id, selectedFields.value)
             datasetRows.value = data
         } catch (error) {
