@@ -11,6 +11,9 @@ export default {
   
   // Проверка статуса Ollama
   ollamaStatus: 'ai_assistant/ollama_status/',
+  
+  // Анализ данных графика
+  chartAnalysis: 'ai_assistant/chart_analysis/',
 }
 
 

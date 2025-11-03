@@ -45,7 +45,8 @@ import ToggleTheme from '@/components/header/ToggleTheme.vue'
 import UserNotifications from '@/components/header/UserNotifications.vue'
 import AssistantChat from '@/core/ai-assistant/AssistantChat.vue'
 import { biClient } from '@/core/ai-assistant/js/bi-client.js'
-import { computed, ref } from 'vue'
+import { assistantService } from '@/core/ai-assistant/js/assistantService.js'
+import { computed, ref, onMounted } from 'vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 
 const props = defineProps({
@@ -149,6 +150,14 @@ const toggleAssistant = () => {
   isAssistantVisible.value = !isAssistantVisible.value
 }
 
+// Регистрируем функции в глобальном сервисе
+onMounted(() => {
+  assistantService.registerOpenChat(() => {
+    isAssistantVisible.value = true
+  })
+  assistantService.registerAnalyzeChart(handleChartAnalysis)
+})
+
 // Счетчик для уникальных ID streaming сообщений
 let streamingMessageIdCounter = 20000
 
@@ -240,6 +249,99 @@ const handleBIQuery = async ({ fileId, question }) => {
     if (assistantChat.value) {
       assistantChat.value.addAssistantMessage(
         `❌ **Ошибка подключения к BI Assistant:**\n\n${error.message}\n\nУбедитесь, что Ollama запущен и доступен.`
+      )
+    }
+  }
+}
+
+const handleChartAnalysis = async (chartId) => {
+  console.log('Chart Analysis from toolbar:', { chartId })
+
+  let currentMessage = ''
+  let sqlQuery = ''
+  let stageMessage = ''
+  let tableData = null
+
+  const messageId = streamingMessageIdCounter++
+
+  try {
+    // Используем streaming запрос для анализа графика
+    await biClient.analyzeChart(chartId, (event) => {
+      console.log('Chart analysis event:', event)
+
+      switch (event.type) {
+        case 'start':
+        case 'stage':
+          stageMessage = event.message || event.text || ''
+          assistantChat.value?.updateStreamingMessage(messageId, {
+            stage: stageMessage,
+            sql: sqlQuery,
+            content: currentMessage,
+            data: tableData,
+          })
+          break
+
+        case 'sql_generation':
+          currentMessage += event.text || ''
+          assistantChat.value?.updateStreamingMessage(messageId, {
+            stage: stageMessage,
+            sqlGenerating: currentMessage,
+            data: tableData,
+          })
+          break
+
+        case 'sql':
+          sqlQuery = event.text || ''
+          currentMessage = ''
+          assistantChat.value?.updateStreamingMessage(messageId, {
+            stage: stageMessage,
+            sql: sqlQuery,
+            content: currentMessage,
+            data: tableData,
+          })
+          break
+
+        case 'commentary':
+          currentMessage += event.text || ''
+          assistantChat.value?.updateStreamingMessage(messageId, {
+            stage: stageMessage,
+            sql: sqlQuery,
+            content: currentMessage,
+            data: tableData,
+          })
+          break
+
+        case 'complete':
+          tableData = {
+            rows: event.rows,
+            columns: event.columns,
+            data: event.data,
+          }
+          assistantChat.value?.updateStreamingMessage(messageId, {
+            sql: event.sql || sqlQuery,
+            content: currentMessage,
+            data: tableData,
+            completed: true,
+          })
+          break
+
+        case 'error':
+          assistantChat.value?.updateStreamingMessage(messageId, {
+            error: event.message || event.text,
+            completed: true,
+          })
+          break
+
+        case 'done':
+          assistantChat.value?.finalizeStreamingMessage(messageId)
+          break
+      }
+    })
+  } catch (error) {
+    console.error('Error analyzing chart:', error)
+    if (assistantChat.value) {
+      assistantChat.value.addAssistantMessage(
+        `❌ **Ошибка анализа графика:**\n\n${error.message}\n\nУбедитесь, что Ollama запущен и доступен.`
       )
     }
   }

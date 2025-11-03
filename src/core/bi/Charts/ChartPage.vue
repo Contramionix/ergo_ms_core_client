@@ -12,6 +12,12 @@
                 </button>
             </div>
             <div class="header-label-buttons">
+                <button v-if="isEditMode && datasetRows && datasetRows.length > 0" 
+                    class="btn text-white btn-sm btn-success" 
+                    @click="runChartAnalysis"
+                    style="display: flex; gap: 5px; justify-content: center; align-items: center;">
+                    <BrainCircuit :size="18" />Интеллектуальный анализ
+                </button>
                 <button class="btn btn-sm fw-bold" :class="{ active: isFullScreen }"
                     style="display: flex; gap: 5px; justify-content: center; align-items: center;"
                     @click="toggleFullScreen">
@@ -118,7 +124,7 @@
 </template>
 
 <script setup>
-import { ChartPie, Maximize, Type, Plus, Ellipsis, Database, Hash, Calendar, CheckCircle, X, MapPin, Globe } from 'lucide-vue-next'
+import { ChartPie, Maximize, Type, Plus, Ellipsis, Database, Hash, Calendar, CheckCircle, X, MapPin, Globe, BrainCircuit } from 'lucide-vue-next'
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 
 import { apiClient } from '@/js/api/manager'
@@ -135,8 +141,10 @@ import ChartNameDialog from '@/core/bi/Charts/components/ChartNameDialog.vue'
 import { useRouter, useRoute } from 'vue-router'
 import { chartSettingsConfig } from '@/core/bi/MainPage/Sidebar/components/js/chartSettingsConfig.js'
 import chartService from '@/core/bi/MainPage/Sidebar/components/js/chartService.js'
+import { useAssistant } from '@/core/ai-assistant/js/assistantService.js'
 
 const isFullScreen = ref(false)
+const assistant = useAssistant()
 
 const isDatasetTooltipVisible = ref(false)
 const tooltipPosition = ref({ x: 0, y: 0 })
@@ -245,7 +253,8 @@ async function onChartNameSaved({ name, description }) {
                 router.push({ name: 'ChartPage', params: { id: data.id } })
             }
         }
-    } catch (err) {
+    } catch {
+        // Игнорируем ошибку
     }
     isSaveModalVisible.value = false
 }
@@ -270,13 +279,10 @@ async function fetchChartIfEditing() {
         selectedFields.value = { ...(data.params ?? {}) }
 
         if (dsObj?.id) {
-            console.log('ChartPage: fetchChartIfEditing - Loading columns for dataset ID:', dsObj.id)
             const { data: columnsResp } = await chartService.getColumns(dsObj.id)
-            console.log('ChartPage: fetchChartIfEditing - Columns response:', columnsResp)
             // Получаем массив полей с типами из ответа API
             const columns = columnsResp?.columns || []
             indicators.value = Array.isArray(columns) ? columns : []
-            console.log('ChartPage: fetchChartIfEditing - Indicators set to:', indicators.value)
         }
 
         if (chartId.value) { 
@@ -290,10 +296,17 @@ async function fetchChartIfEditing() {
             engine: data.engine,
             params: JSON.parse(JSON.stringify(data.params ?? {})),
         }
-    } catch (error) {
-        console.error('Ошибка в fetchChartIfEditing:', error)
+    } catch {
+        // Игнорируем ошибку
     } finally {
         loading.value = false
+    }
+}
+
+function runChartAnalysis() {
+    if (chartId.value) {
+        // Открываем чат ассистента и запускаем анализ
+        assistant.openAndAnalyzeChart(chartId.value)
     }
 }
 
@@ -319,7 +332,7 @@ function openFieldsModal(event, settingKey) {
     currentAllowedTypes.value = setting?.allowedTypes || null
 }
 
-function openDatasetTooltip(event) {
+function openDatasetTooltip() {
   const rect = buttonRef.value.getBoundingClientRect()
   let x = rect.left
   let y = rect.bottom + 6
@@ -337,24 +350,20 @@ function closeDatasetTooltip() {
 }
 
 async function handleSelectDataset(ds) {
-    console.log('ChartPage: handleSelectDataset called with:', ds)
     selectedFields.value = { y: [], x: [], color: [], sort: [], labels: [], filters: [] }
     selectedDataset.value = ds
     closeDatasetTooltip()
     if (ds?.id) {
         try {
-            console.log('ChartPage: Loading columns for dataset ID:', ds.id)
             // Получаем список полей с типами из API
             const { data: columnsResp } = await chartService.getColumns(ds.id)
-            console.log('ChartPage: Columns response:', columnsResp)
             const columns = columnsResp?.columns || []
             indicators.value = Array.isArray(columns) ? columns : []
-            console.log('ChartPage: Indicators set to:', indicators.value)
             // Загружаем агрегированные строки
             const { data } = await chartService.getDatasetRowsAgg(ds.id, selectedFields.value)
             datasetRows.value = data
-        } catch (error) {
-            console.error('Ошибка при загрузке данных датасета:', error)
+        } catch {
+            // Игнорируем ошибку
         }
     }
 }
@@ -412,8 +421,8 @@ watch(
           selectedDataset.value.id, v
         )
         datasetRows.value = data
-      } catch (error) {
-        console.error('Ошибка при получении агрегированных данных:', error)
+      } catch {
+        // Игнорируем ошибку
       }
     }
   },
@@ -426,8 +435,8 @@ async function fetchDatasetsOnce() {
   try {
     const { data } = await apiClient.get(endpoints.bi.DatasetsList)
     datasets.value = Array.isArray(data) ? data : (data.results || [])
-  } catch (err) {
-    console.error('Ошибка загрузки датасетов:', err)
+  } catch {
+    // Игнорируем ошибку
   } finally {
     datasetsLoading.value = false
   }
