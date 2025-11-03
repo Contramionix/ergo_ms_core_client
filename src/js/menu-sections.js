@@ -6,7 +6,7 @@
  */
 
 import { getIcon, generateMenuConfig, getSeparatorAt, shouldShowSeparator } from '@/modules/index.js'
-import menuOrderConfig from '@/config/menu-order-config.json'
+import menuOrderConfig from '@menu-order-config'
 
 // Кеш для конфигурации меню
 let menuConfigCache = null

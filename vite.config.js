@@ -19,6 +19,17 @@ if (fs.existsSync(mainEnvPath)) {
   console.warn('⚠️  Файл .env не найден в корне проекта:', mainEnvPath)
 }
 
+// Определяем путь к конфигурации меню (пользовательский или стандартный)
+const customMenuConfigPath = path.resolve(__dirname, '../../menu-order-config.json')
+const defaultMenuConfigPath = path.resolve(__dirname, 'src/config/menu-order-config.json')
+const menuConfigPath = fs.existsSync(customMenuConfigPath) ? customMenuConfigPath : defaultMenuConfigPath
+
+if (fs.existsSync(customMenuConfigPath)) {
+  console.log('✓ Используется пользовательская конфигурация меню из корня системы')
+} else {
+  console.log('✓ Используется стандартная конфигурация меню')
+}
+
 // Определение конфигурации Vite
 export default defineConfig({
   build: {
@@ -136,6 +147,7 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)), // Создание псевдонима '@' для пути './src'
       '@/modules': fileURLToPath(new URL('../../modules', import.meta.url)), // Алиас для модулей из папки modules/
+      '@menu-order-config': menuConfigPath, // Алиас для конфигурации меню (пользовательский или стандартный)
       'vue': 'vue/dist/vue.esm-bundler.js',
     },
     // Убеждаемся что Vite правильно обрабатывает расширения файлов

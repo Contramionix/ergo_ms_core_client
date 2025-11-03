@@ -23,7 +23,9 @@ export class ModuleManager {
     this.menuManager = new MenuManager(config.menuOrder)
     this.endpointManager = new EndpointManager()
     this.iconManager = new IconManager()
-    this.separatorManager = new SeparatorManager()
+    this.separatorManager = new SeparatorManager({
+      separators: { byOrderIndex: config.menuOrder?.separators || {} }
+    })
     this.routeGenerator = null
 
     this.config = config
