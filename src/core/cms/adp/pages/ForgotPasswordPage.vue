@@ -41,6 +41,13 @@ const submitForm = async () => {
 
     if (result.success) {
       isSuccess.value = true
+      // Перенаправляем на страницу сброса пароля через 2 секунды
+      setTimeout(() => {
+        router.push({ 
+          name: 'ResetPassword', 
+          query: { email: form.email } 
+        })
+      }, 2000)
     } else {
       if (result.errors && result.errors.email) {
         errors.email = Array.isArray(result.errors.email) 

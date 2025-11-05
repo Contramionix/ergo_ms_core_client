@@ -3,6 +3,7 @@ import { reactive, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import PasswordInput from '@/core/cms/adp/components/PasswordInput.vue'
 import { validateFieldValue, validateFieldsOnEquality } from '@/js/validation'
+import { resetPassword } from '@/core/cms/adp/js/auth-index'
 
 const router = useRouter()
 const route = useRoute()
@@ -66,24 +67,73 @@ const submitForm = async () => {
   errors.general = null
   
   try {
-    // Здесь должен быть вызов API для сброса пароля
-    // const result = await resetPassword(form.email, form.code, form.password)
+    const result = await resetPassword(
+      form.email, 
+      form.code, 
+      form.password, 
+      form.passwordConfirm
+    )
     
-    // Временная имитация успешного сброса
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    isSuccess.value = true
-    setTimeout(() => {
-      router.push({ name: 'Login' })
-    }, 3000)
+    if (result && result.success) {
+      isSuccess.value = true
+      setTimeout(() => {
+        router.push({ name: 'Login' })
+      }, 2000)
+    } else {
+      // Обрабатываем ошибки из результата
+      if (result && result.errors) {
+        if (result.errors.error) {
+          const errorMsg = Array.isArray(result.errors.error)
+            ? result.errors.error[0]
+            : result.errors.error
+          
+          // Проверяем тип ошибки и устанавливаем в соответствующее поле
+          if (errorMsg.includes('код') || errorMsg.includes('Код')) {
+            errors.code = errorMsg
+          } else if (errorMsg.includes('пароль') || errorMsg.includes('Пароль')) {
+            errors.password = errorMsg
+          } else {
+            errors.general = errorMsg
+          }
+        } else if (result.errors.code) {
+          errors.code = Array.isArray(result.errors.code) 
+            ? result.errors.code[0] 
+            : result.errors.code
+        } else if (result.errors.password) {
+          errors.password = Array.isArray(result.errors.password)
+            ? result.errors.password[0]
+            : result.errors.password
+        }
+      } else if (result && result.message) {
+        errors.general = result.message
+      } else if (result && result.error) {
+        errors.general = Array.isArray(result.error) 
+          ? result.error[0] 
+          : result.error
+      } else {
+        errors.general = 'Не удалось изменить пароль'
+      }
+    }
     
   } catch (error) {
-    console.error('Reset password error:', error)
-    
     if (error.response) {
       if (error.response.status === 400) {
         const errorData = error.response.data
-        if (errorData && errorData.code) {
+        // Обрабатываем поле error из ответа API
+        if (errorData && errorData.error) {
+          const errorMsg = Array.isArray(errorData.error) 
+            ? errorData.error[0] 
+            : errorData.error
+          
+          // Проверяем тип ошибки и устанавливаем в соответствующее поле
+          if (errorMsg.includes('код') || errorMsg.includes('Код')) {
+            errors.code = errorMsg
+          } else if (errorMsg.includes('пароль') || errorMsg.includes('Пароль')) {
+            errors.password = errorMsg
+          } else {
+            errors.general = errorMsg
+          }
+        } else if (errorData && errorData.code) {
           errors.code = Array.isArray(errorData.code) 
             ? errorData.code[0] 
             : errorData.code
@@ -92,17 +142,17 @@ const submitForm = async () => {
             ? errorData.password[0]
             : errorData.password
         } else {
-          errors.general = 'Неверный код или данные'
+          errors.general = errorData?.detail || errorData?.message || 'Неверный код или данные'
         }
       } else if (error.response.status >= 500) {
-        errors.general = 'Ошибка сервера. Попробуйте позже'
+        errors.general = error.response.data?.detail || error.response.data?.error || 'Ошибка сервера. Попробуйте позже'
       } else {
-        errors.general = 'Ошибка сброса пароля'
+        errors.general = error.response.data?.error || error.response.data?.message || 'Ошибка сброса пароля'
       }
     } else if (error.request) {
       errors.general = 'Нет соединения с сервером'
     } else {
-      errors.general = 'Произошла неизвестная ошибка'
+      errors.general = error.message || 'Произошла неизвестная ошибка'
     }
   } finally {
     isLoading.value = false

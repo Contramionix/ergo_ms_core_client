@@ -19,6 +19,11 @@ export const verifyConfirmationCode = async (...args) => {
     return authService.verifyConfirmationCode(...args);
 };
 
+export const resetPassword = async (...args) => {
+    const { authService } = await import('@/core/cms/adp/js/auth');
+    return authService.resetPassword(...args);
+};
+
 export const registration = async (...args) => {
     const { authService } = await import('@/core/cms/adp/js/auth');
     return authService.registration(...args);

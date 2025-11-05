@@ -4,6 +4,7 @@ export const cmsEndpoints = {
         validateRegistration: 'cms/adp/validate-registration/',
         sendCode: 'cms/adp/send-code/',
         verifyCode: 'cms/adp/verify-code/',
+        resetPassword: 'cms/adp/reset-password/',
         registration: 'cms/adp/registration/',
         protected: 'cms/adp/protected/',
         changePassword: 'cms/adp/change-password/',

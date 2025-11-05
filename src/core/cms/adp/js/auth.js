@@ -36,6 +36,15 @@ export const authService = {
         return await apiClient.post(endpoints.auth.verifyCode, { email, code }, false);
     },
     
+    async resetPassword(email, code, newPassword, confirmPassword) {
+        return await apiClient.post(endpoints.auth.resetPassword, {
+            email,
+            code,
+            new_password: newPassword,
+            confirm_password: confirmPassword
+        }, false);
+    },
+    
     async registration(firstName, username, email, password) {
         return await apiClient.post(endpoints.auth.registration, {
             first_name: firstName,
