@@ -1,15 +1,49 @@
 <script setup>
 import { ref, onMounted, computed, onUnmounted, nextTick } from 'vue'
-import { CircleUserRound, Power } from 'lucide-vue-next'
+import { CircleUserRound, Power, Building2 } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import DefaultAvatar from '@/components/DefaultAvatar.vue'
 import { Dropdown } from 'bootstrap/dist/js/bootstrap.bundle.min.js'
+import { fetchUserOrganizations } from '../../../../../modules/organizations/client/js/userOrganizations.js'
 
 const userStore = useUserStore()
 const dropdownElement = ref(null)
 let dropdownInstance = null
 
+const organizations = ref([])
+const hasOrganizations = computed(() => organizations.value.length > 0)
+
 const emit = defineEmits(['dropdown-toggle'])
+
+const baseMenuItems = [
+  {
+    id: 1,
+    title: 'Профиль',
+    icon: CircleUserRound,
+    link: { name: 'User' },
+  },
+  {
+    id: 3,
+    title: 'Выход',
+    icon: Power,
+    link: { name: 'logout' },
+  },
+]
+
+const organizationMenuItem = {
+  id: 2,
+  title: 'Организация',
+  icon: Building2,
+  link: { name: 'Organizations' },
+}
+
+const menuItems = computed(() => {
+  const items = baseMenuItems.slice()
+  if (hasOrganizations.value) {
+    items.splice(1, 0, organizationMenuItem)
+  }
+  return items
+})
 
 // Обработка ошибки загрузки изображения
 const onImageError = () => {
@@ -18,8 +52,15 @@ const onImageError = () => {
 
 // Инициализируем пользователя при загрузке компонента
 onMounted(async () => {
-  if (!userStore.isInitialized) {
-    await userStore.initializeUser()
+  let isUserReady = userStore.isInitialized
+  if (!isUserReady) {
+    isUserReady = await userStore.initializeUser()
+  }
+
+  if (isUserReady) {
+    organizations.value = await fetchUserOrganizations()
+  } else {
+    organizations.value = []
   }
   
   // Инициализируем Bootstrap dropdown
@@ -45,23 +86,6 @@ onUnmounted(() => {
     dropdownInstance = null
   }
 })
-
-
-// Инициализация пользователя при загрузке
-const userDropdownMenu = ref([
-  {
-    id: 1,
-    title: 'Профиль',
-    icon: CircleUserRound,
-    link: { name: 'User' },
-  },
-  {
-    id: 2,
-    title: 'Выход',
-    icon: Power,
-    link: { name: 'logout' },
-  },
-])
 </script>
 
 <template>
@@ -122,12 +146,12 @@ const userDropdownMenu = ref([
       </li>
       
       <!-- Меню -->
-      <li v-for="item in userDropdownMenu" :key="item.id">
+      <li v-for="(item, index) in menuItems" :key="item.id">
         <RouterLink
           :to="item.link"
           class="dropdown-item header-dropdown-item"
           active-class="active"
-          :style="{ transitionDelay: `${item.id * 50}ms` }"
+          :style="{ transitionDelay: `${(index + 1) * 50}ms` }"
         >
           <span class="icon-flex">
             <component :is="item.icon" :size="22" />
