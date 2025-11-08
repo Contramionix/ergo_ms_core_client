@@ -4,7 +4,6 @@ import { CircleUserRound, Power, Building2 } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import DefaultAvatar from '@/components/DefaultAvatar.vue'
 import { Dropdown } from 'bootstrap/dist/js/bootstrap.bundle.min.js'
-import { fetchUserOrganizations } from '../../../../../modules/organizations/client/js/userOrganizations.js'
 
 const userStore = useUserStore()
 const dropdownElement = ref(null)
@@ -58,7 +57,14 @@ onMounted(async () => {
   }
 
   if (isUserReady) {
-    organizations.value = await fetchUserOrganizations()
+    try {
+      const { fetchUserOrganizations } = await import('../../../../../modules/organizations/client/js/userOrganizations.js')
+      organizations.value = await fetchUserOrganizations()
+    } catch (error) {
+      // Модуль organizations не найден или произошла ошибка при загрузке
+      console.warn('Модуль organizations не доступен:', error)
+      organizations.value = []
+    }
   } else {
     organizations.value = []
   }
