@@ -10,7 +10,7 @@
 </template>
 
 <script setup>
-import { ref, defineEmits } from 'vue'
+import { ref } from 'vue'
 import { Bot } from 'lucide-vue-next'
 
 const emit = defineEmits(['toggle-chat'])
@@ -151,3 +151,4 @@ defineExpose({
   }
 }
 </style>
+

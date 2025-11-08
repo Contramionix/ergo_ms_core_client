@@ -54,13 +54,14 @@
 <script setup>
 import { ref, nextTick, watch } from 'vue'
 import { Send, Database, FileSpreadsheet } from 'lucide-vue-next'
-import AssistantMessage from './AssistantMessage.vue'
-import AssistantTyping from './AssistantTyping.vue'
+import AssistantMessage from '../base/AssistantMessage.vue'
+import AssistantTyping from '../base/AssistantTyping.vue'
 import FileSelector from './FileSelector.vue'
+import { biClient } from './js/bi-client.js'
 
 const emit = defineEmits(['bi-query'])
 
-defineProps({
+const props = defineProps({
   isVisible: {
     type: Boolean,
     default: false,
@@ -72,6 +73,7 @@ const fileSelector = ref(null)
 const inputMessage = ref('')
 const isTyping = ref(false)
 const selectedFile = ref(null)
+const ollamaChecked = ref(false)
 
 // Счетчик для уникальных ID сообщений
 let messageIdCounter = 1
@@ -132,7 +134,7 @@ const addAssistantMessage = (content, data = null) => {
     id: messageIdCounter++,
     type: 'assistant',
     content: content,
-    data: data, // Дополнительные данные (SQL, таблица и т.д.)
+    data: data,
     timestamp: new Date(),
   }
 
@@ -147,10 +149,9 @@ const updateStreamingMessage = (messageId, updates) => {
   let message = messages.value.find(m => m.id === messageId)
   
   if (!message) {
-    // Создаем новое streaming сообщение от ассистента
     message = {
       id: messageId,
-      type: 'assistant', // ВАЖНО: это сообщение от ассистента!
+      type: 'assistant',
       content: '',
       streaming: true,
       stage: '',
@@ -163,7 +164,6 @@ const updateStreamingMessage = (messageId, updates) => {
     messages.value.push(message)
   }
   
-  // Обновляем сообщение
   Object.assign(message, updates)
   
   scrollToBottom()
@@ -199,6 +199,45 @@ watch(
     scrollToBottom()
   },
 )
+
+// Проверка Ollama при первом открытии чата
+watch(
+  () => props.isVisible,
+  async (newValue) => {
+    if (newValue && !ollamaChecked.value) {
+      ollamaChecked.value = true
+      await checkOllamaConnection()
+    }
+  },
+  { immediate: true }
+)
+
+const checkOllamaConnection = async () => {
+  try {
+    isTyping.value = true
+    const status = await biClient.checkOllamaStatus()
+    
+    if (!status.available) {
+      addAssistantMessage(
+        `⚠️ **Внимание:** Не удалось подключиться к Ollama.\n\n` +
+        `**Что нужно сделать:**\n` +
+        `1. Убедитесь, что Ollama установлен и запущен\n` +
+        `2. Проверьте доступность Ollama по адресу: http://localhost:11434\n` +
+        `3. Установите Ollama: https://ollama.com/download\n\n` +
+        `**Текущая ошибка:** ${status.message || 'Неизвестная ошибка'}\n\n` +
+        `Без подключения к Ollama анализ данных будет недоступен.`
+      )
+    }
+  } catch (error) {
+    console.error('Ошибка проверки Ollama:', error)
+    addAssistantMessage(
+      `⚠️ **Ошибка проверки подключения к Ollama:**\n\n${error.message}\n\n` +
+      `Пожалуйста, убедитесь, что Ollama запущен и доступен.`
+    )
+  } finally {
+    isTyping.value = false
+  }
+}
 
 defineExpose({
   addAssistantMessage,
@@ -348,3 +387,4 @@ defineExpose({
   }
 }
 </style>
+

@@ -297,9 +297,12 @@ class ApiClient {
    * Обработка ошибок
    */
   handleError(error) {
-    const errorMessage = error.response?.data?.message ||
+    // Извлекаем сообщение об ошибке из разных возможных мест
+    const errorMessage = 
+      error.response?.data?.error ||
+      error.response?.data?.message ||
       error.response?.data?.detail ||
-      error.response?.data ||
+      (typeof error.response?.data === 'string' ? error.response.data : null) ||
       error.message ||
       'Ошибка сервера'
 
