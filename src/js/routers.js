@@ -101,7 +101,33 @@ router.beforeEach(async (to, from, next) => {
       }
     }
 
-    // 3) page / component ACL (выполняем параллельно)
+    // 3) requiresOrganization для страниц настроек организации
+    if (to.meta && to.meta.requiresOrganization) {
+      try {
+        const { apiClient } = await import('./api/manager')
+        const resp = await apiClient.get('/organizations/organizations/')
+        
+        if (resp.success && resp.data) {
+          const organizations = Array.isArray(resp.data) 
+            ? resp.data 
+            : (resp.data.results || resp.data.items || [])
+          
+          if (organizations.length === 0) {
+            // Если у пользователя нет организаций - показываем NotFound
+            return next({ name: 'NotFound' })
+          }
+        } else {
+          // Если запрос не успешен или нет данных - показываем NotFound
+          return next({ name: 'NotFound' })
+        }
+      } catch (error) {
+        // При ошибке проверки также показываем NotFound
+        console.error('Ошибка проверки организации:', error)
+        return next({ name: 'NotFound' })
+      }
+    }
+
+    // 4) page / component ACL (выполняем параллельно)
     await Promise.all([
       checkAccessToPage(to.path),
       CheckAccessToComponents(to.path),
