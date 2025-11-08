@@ -4,6 +4,8 @@ import { CircleUserRound, Power, Building2 } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import DefaultAvatar from '@/components/DefaultAvatar.vue'
 import { Dropdown } from 'bootstrap/dist/js/bootstrap.bundle.min.js'
+import { apiClient } from '@/js/api/manager'
+import { endpoints } from '@/js/api/endpoints'
 
 const userStore = useUserStore()
 const dropdownElement = ref(null)
@@ -44,6 +46,34 @@ const menuItems = computed(() => {
   return items
 })
 
+// Нормализация ответа от API организаций
+const normalizeOrganizationsResponse = (data) => {
+  if (Array.isArray(data)) {
+    return data
+  }
+
+  if (Array.isArray(data?.results)) {
+    return data.results
+  }
+
+  return []
+}
+
+// Загрузка организаций пользователя
+const fetchUserOrganizations = async () => {
+  // Проверяем наличие эндпоинта (модуль organizations может быть не установлен)
+  if (!endpoints?.organizations?.list) {
+    return []
+  }
+
+  try {
+    const response = await apiClient.get(endpoints.organizations.list)
+    return normalizeOrganizationsResponse(response.data)
+  } catch {
+    return []
+  }
+}
+
 // Обработка ошибки загрузки изображения
 const onImageError = () => {
   console.error('Ошибка загрузки аватара в UserMenu')
@@ -57,14 +87,7 @@ onMounted(async () => {
   }
 
   if (isUserReady) {
-    try {
-      const { fetchUserOrganizations } = await import('../../../../../modules/organizations/client/js/userOrganizations.js')
-      organizations.value = await fetchUserOrganizations()
-    } catch (error) {
-      // Модуль organizations не найден или произошла ошибка при загрузке
-      console.warn('Модуль organizations не доступен:', error)
-      organizations.value = []
-    }
+    organizations.value = await fetchUserOrganizations()
   } else {
     organizations.value = []
   }
