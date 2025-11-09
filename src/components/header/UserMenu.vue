@@ -35,7 +35,7 @@ const organizationMenuItem = {
   id: 2,
   title: 'Организация',
   icon: Building2,
-  link: { name: 'Organizations' },
+  link: { name: 'OrganizationSettingsMain' },
 }
 
 const menuItems = computed(() => {
