@@ -52,8 +52,27 @@ const isOpen = computed(() => {
 // Проверка активности текущего элемента
 const isActive = computed(() => {
   // Для элементов с routeName
-  if (props.item.routeName && route.name === props.item.routeName) {
-    return true
+  if (props.item.routeName) {
+    // Точное совпадение
+    if (route.name === props.item.routeName) {
+      return true
+    }
+    
+    // Проверяем, является ли текущий роут дочерним роутом
+    // Например, OrganizationSettingsMain является дочерним для OrganizationSettings
+    if (route.name && route.name.startsWith(props.item.routeName) && route.name !== props.item.routeName) {
+      // Дополнительно проверяем путь для большей надежности
+      // Пытаемся найти родительский роут через router
+      try {
+        const parentRoute = router.resolve({ name: props.item.routeName })
+        if (parentRoute && parentRoute.path && route.path.startsWith(parentRoute.path)) {
+          return true
+        }
+      } catch (e) {
+        // Если не удалось разрешить роут, просто проверяем по имени
+        return true
+      }
+    }
   }
   
   // Для BI offcanvas страниц - проверяем что мы находимся на BI странице
@@ -90,6 +109,21 @@ function checkChildrenActiveRecursive(children, currentPage, currentRoute) {
   return children.some(child => {
     // Проверяем прямую активность
     if (child.routeName && currentRoute === child.routeName) return true
+    
+    // Проверяем, является ли текущий роут дочерним роутом для элемента меню
+    // Например, OrganizationSettingsMain является дочерним для OrganizationSettings
+    if (child.routeName && currentRoute && currentRoute.startsWith(child.routeName) && currentRoute !== child.routeName) {
+      // Дополнительно проверяем путь для большей надежности
+      try {
+        const parentRoute = router.resolve({ name: child.routeName })
+        if (parentRoute && parentRoute.path && route.path.startsWith(parentRoute.path)) {
+          return true
+        }
+      } catch (e) {
+        // Если не удалось разрешить роут, просто проверяем по имени
+        return true
+      }
+    }
     
     // Для BI offcanvas страниц
     if (child.isOffcanvas && child.page === currentPage) {
