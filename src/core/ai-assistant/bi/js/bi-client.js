@@ -1,5 +1,14 @@
 import { apiClient } from '@/js/api/manager'
-import endpoints from './endpoints'
+
+/**
+ * API Endpoints для BI модуля AI Assistant
+ */
+const endpoints = {
+  files: 'ai_assistant/files/',
+  biQuery: 'ai_assistant/bi_query/',
+  ollamaStatus: 'ai_assistant/ollama_status/',
+  chartAnalysis: 'ai_assistant/chart_analysis/',
+}
 
 /**
  * Клиент для работы с BI Assistant (Fast BI)
@@ -8,16 +17,21 @@ class BIClient {
   constructor() {
     this.ollamaAvailable = false
     this.lastCheck = 0
-    this.checkInterval = 60000 // Проверяем раз в минуту
+    this.checkInterval = 60000
+    this.ollamaConfig = null // Настройки Ollama из module-config
   }
 
   /**
-   * Проверка доступности Ollama
+   * Устанавливает настройки Ollama из конфига модуля
+   * @param {Object} config - настройки Ollama из module-config.json
    */
+  setOllamaConfig(config) {
+    this.ollamaConfig = config
+  }
+
   async checkOllamaStatus() {
     const now = Date.now()
     
-    // Кэшируем результат проверки
     if (this.lastCheck && (now - this.lastCheck < this.checkInterval)) {
       return { available: this.ollamaAvailable }
     }
@@ -35,17 +49,29 @@ class BIClient {
         }
       }
       
-      return { available: false, message: 'Ошибка проверки статуса' }
+      // Если success: false, но ответ получен
+      return { 
+        available: false, 
+        message: response.data?.message || response.data?.error || 'Ошибка проверки статуса' 
+      }
     } catch (error) {
       console.error('Ошибка проверки Ollama:', error)
       this.ollamaAvailable = false
-      return { available: false, message: error.message }
+      
+      // Извлекаем сообщение об ошибке из разных возможных мест
+      const errorMessage = 
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message ||
+        'Не удалось подключиться к Ollama'
+      
+      return { 
+        available: false, 
+        message: errorMessage
+      }
     }
   }
 
-  /**
-   * Получить список файлов пользователя
-   */
   async getUserFiles() {
     try {
       const response = await apiClient.get(endpoints.files)
@@ -65,23 +91,16 @@ class BIClient {
     }
   }
 
-  /**
-   * Отправить вопрос к выбранному файлу
-   * @param {number} fileId - ID файла
-   * @param {string} question - Вопрос
-   * @param {boolean} wantCommentary - Нужен ли комментарий от AI
-   */
   async askQuestion(fileId, question, wantCommentary = true) {
     try {
       const response = await apiClient.post(endpoints.biQuery, {
         file_id: fileId,
         question: question,
         want_commentary: wantCommentary,
-        stream: false, // Обычный режим
+        stream: false,
       })
 
       if (response.success) {
-        
         return {
           success: true,
           fileName: response.data.file_name,
@@ -106,11 +125,6 @@ class BIClient {
     }
   }
 
-  /**
-   * Анализ данных графика
-   * @param {number} chartId - ID графика
-   * @param {Function} onEvent - Callback для streaming событий
-   */
   async analyzeChart(chartId, onEvent) {
     try {
       const baseURL = apiClient.getBaseUrl() + apiClient.apiPath
@@ -165,7 +179,6 @@ class BIClient {
 
       return { success: true }
     } catch (error) {
-      
       if (onEvent) {
         onEvent({
           type: 'error',
@@ -180,19 +193,34 @@ class BIClient {
     }
   }
 
-  /**
-   * Отправить вопрос к выбранному файлу со streaming
-   * @param {number} fileId - ID файла
-   * @param {string} question - Вопрос
-   * @param {boolean} wantCommentary - Нужен ли комментарий от AI
-   * @param {Function} onEvent - Callback для streaming событий
-   */
-  async askQuestionStream(fileId, question, wantCommentary = true, onEvent) {
+  async askQuestionStream(fileId, question, wantCommentary = true, ollamaConfig = null, onEvent) {
     try {
       const baseURL = apiClient.getBaseUrl() + apiClient.apiPath
       const token = apiClient.getAuthToken()
       
       const url = `${baseURL}${endpoints.biQuery}`
+      
+      // Используем настройки из параметра или из сохраненного конфига
+      const config = ollamaConfig || this.ollamaConfig
+      
+      const requestBody = {
+        file_id: fileId,
+        question: question,
+        want_commentary: wantCommentary,
+        stream: true,
+      }
+      
+      // Добавляем настройки Ollama, если они есть
+      if (config) {
+        requestBody.ollama_config = {
+          base_url: config.baseUrl,
+          model: config.model,
+          temperature: config.temperature,
+          context_window: config.contextWindow,
+          sql_generation_tokens: config.sqlGenerationTokens,
+          commentary_tokens: config.commentaryTokens,
+        }
+      }
       
       const response = await fetch(url, {
         method: 'POST',
@@ -200,12 +228,7 @@ class BIClient {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          file_id: fileId,
-          question: question,
-          want_commentary: wantCommentary,
-          stream: true, // Включаем streaming
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       if (!response.ok) {
@@ -243,7 +266,6 @@ class BIClient {
 
       return { success: true }
     } catch (error) {
-      
       if (onEvent) {
         onEvent({
           type: 'error',
@@ -260,9 +282,5 @@ class BIClient {
 }
 
 export const biClient = new BIClient()
-
 export default BIClient
-
-
-
 

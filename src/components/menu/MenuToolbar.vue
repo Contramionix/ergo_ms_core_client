@@ -30,10 +30,13 @@
       </div>
     </div>
 
-    <AssistantChat
+    <component
+      v-if="currentModuleComponent"
+      :is="currentModuleComponent"
       ref="assistantChat"
       :is-visible="isAssistantVisible"
       @bi-query="handleBIQuery"
+      @chat-message="handleChatMessage"
     />
   </div>
 </template>
@@ -43,10 +46,10 @@ import { Bot } from 'lucide-vue-next'
 import UserMenu from '@/components/header/UserMenu.vue'
 import ToggleTheme from '@/components/header/ToggleTheme.vue'
 import UserNotifications from '@/components/header/UserNotifications.vue'
-import AssistantChat from '@/core/ai-assistant/AssistantChat.vue'
-import { biClient } from '@/core/ai-assistant/js/bi-client.js'
+import { assistantModuleManager } from '@/core/ai-assistant/core/AssistantModuleManager.js'
 import { assistantService } from '@/core/ai-assistant/js/assistantService.js'
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch, shallowRef } from 'vue'
+import { useRoute } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 
 const props = defineProps({
@@ -63,11 +66,51 @@ const props = defineProps({
 const emit = defineEmits(['dropdown-state-change'])
 
 const userStore = useUserStore()
+const route = useRoute()
 const isAssistantVisible = ref(false)
 const assistantChat = ref(null)
+const currentModuleComponent = shallowRef(null)
+const currentModuleClient = ref(null)
+const currentModuleConfig = ref(null)
 
 // Состояние для отслеживания активных выпадающих элементов
 const activeDropdowns = ref(new Set())
+
+// Загрузка модуля для текущего роута
+const loadModuleForRoute = async (routePath) => {
+  try {
+    const module = await assistantModuleManager.loadModuleForRoute(routePath)
+    if (module) {
+      currentModuleComponent.value = module.component
+      currentModuleClient.value = module.client
+      currentModuleConfig.value = module.config
+      
+      // Передаем настройки Ollama в клиент, если они есть
+      if (module.config.ollama && currentModuleClient.value && typeof currentModuleClient.value.setOllamaConfig === 'function') {
+        currentModuleClient.value.setOllamaConfig(module.config.ollama)
+      }
+    } else {
+      console.warn('AI Assistant: Module not found for route:', routePath)
+      currentModuleComponent.value = null
+      currentModuleClient.value = null
+      currentModuleConfig.value = null
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки модуля ассистента:', error)
+    currentModuleComponent.value = null
+    currentModuleClient.value = null
+    currentModuleConfig.value = null
+  }
+}
+
+// Загрузка модуля при изменении роута
+watch(
+  () => route.path,
+  async (newPath) => {
+    await loadModuleForRoute(newPath)
+  },
+  { immediate: true }
+)
 
 const shouldShowFullInfo = computed(() => {
   return !props.isCollapsed || props.isHovering
@@ -151,7 +194,9 @@ const toggleAssistant = () => {
 }
 
 // Регистрируем функции в глобальном сервисе
-onMounted(() => {
+onMounted(async () => {
+  await loadModuleForRoute(route.path)
+  
   assistantService.registerOpenChat(() => {
     isAssistantVisible.value = true
   })
@@ -162,6 +207,10 @@ onMounted(() => {
 let streamingMessageIdCounter = 20000
 
 const handleBIQuery = async ({ fileId, question }) => {
+  if (!currentModuleClient.value) {
+    console.error('BI клиент не загружен')
+    return
+  }
   console.log('BI Query from toolbar:', { fileId, question })
 
   let currentMessage = ''
@@ -172,8 +221,10 @@ const handleBIQuery = async ({ fileId, question }) => {
   const messageId = streamingMessageIdCounter++
 
   try {
-    // Используем streaming запрос
-    await biClient.askQuestionStream(fileId, question, true, (event) => {
+    // Используем streaming запрос через текущий клиент модуля
+    // Передаем настройки Ollama из конфига модуля
+    const ollamaConfig = currentModuleConfig.value?.ollama || null
+    await currentModuleClient.value.askQuestionStream(fileId, question, true, ollamaConfig, (event) => {
       console.log('Streaming event:', event)
 
       switch (event.type) {
@@ -254,7 +305,17 @@ const handleBIQuery = async ({ fileId, question }) => {
   }
 }
 
+const handleChatMessage = async ({ message }) => {
+  // Обработка сообщений для RAG модуля (если нужно)
+  console.log('Chat message:', message)
+}
+
 const handleChartAnalysis = async (chartId) => {
+  if (!currentModuleClient.value || !currentModuleClient.value.analyzeChart) {
+    console.warn('Анализ графиков доступен только в BI модуле')
+    return
+  }
+
   console.log('Chart Analysis from toolbar:', { chartId })
 
   let currentMessage = ''
@@ -266,7 +327,7 @@ const handleChartAnalysis = async (chartId) => {
 
   try {
     // Используем streaming запрос для анализа графика
-    await biClient.analyzeChart(chartId, (event) => {
+    await currentModuleClient.value.analyzeChart(chartId, (event) => {
       console.log('Chart analysis event:', event)
 
       switch (event.type) {

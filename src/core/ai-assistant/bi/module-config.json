@@ -1,0 +1,19 @@
+{
+  "name": "bi",
+  "routePatterns": [
+    "^/bi(/|$)",
+    "^/bi/datasets",
+    "^/bi/connections",
+    "^/bi/charts",
+    "^/bi/dashboards"
+  ],
+  "isDefault": false,
+  "ollama": {
+    "baseUrl": "http://localhost:11434",
+    "model": "mistral7b-tuned",
+    "temperature": 0.1,
+    "contextWindow": 4096,
+    "sqlGenerationTokens": 256,
+    "commentaryTokens": 192
+  }
+}
