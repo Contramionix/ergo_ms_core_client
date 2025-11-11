@@ -36,6 +36,10 @@ export class CoreRoutesManager {
    * @returns {Function|null}
    */
   getComponentLoader(componentPath) {
+    if (!componentPath || typeof componentPath !== 'string') {
+      return null
+    }
+
     if (!this.componentsMap) {
       this.loadComponentsMap()
     }

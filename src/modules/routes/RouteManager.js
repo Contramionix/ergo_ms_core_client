@@ -70,6 +70,10 @@ export class RouteManager extends ModuleLoader {
    * @returns {Function|null}
    */
   getComponentLoader(componentPath) {
+    if (!componentPath || typeof componentPath !== 'string') {
+      return null
+    }
+
     if (!this.componentsMap) {
       this.loadComponentsMap()
     }
@@ -150,7 +154,6 @@ export class RouteManager extends ModuleLoader {
     const route = {
       path: routeConfig.path,
       name: routeName,
-      component: this.createLazyImport(routeConfig.component),
       meta: {
         title: options.title || routeConfig.meta?.title,
         ...routeConfig.meta,
@@ -158,11 +161,19 @@ export class RouteManager extends ModuleLoader {
       }
     }
 
+    // Устанавливаем компонент только если он указан
+    if (routeConfig.component) {
+      route.component = this.createLazyImport(routeConfig.component)
+    }
+
+    // Обрабатываем redirect (если есть redirect, компонент не обязателен)
     if (routeConfig.redirect) {
-      if (routeConfig.redirect.startsWith('/')) {
+      if (typeof routeConfig.redirect === 'string' && routeConfig.redirect.startsWith('/')) {
         route.redirect = routeConfig.redirect
-      } else {
+      } else if (typeof routeConfig.redirect === 'string') {
         route.redirect = { name: routeConfig.redirect }
+      } else {
+        route.redirect = routeConfig.redirect
       }
     }
 
@@ -206,9 +217,10 @@ export class RouteManager extends ModuleLoader {
       errors.push(`Роут "${routeName}" не содержит path`)
     }
 
-    if (!routeConfig.component) {
-      errors.push(`Роут "${routeName}" не содержит component`)
-    } else {
+    // Компонент обязателен только если нет redirect
+    if (!routeConfig.component && !routeConfig.redirect) {
+      errors.push(`Роут "${routeName}" не содержит component и не имеет redirect`)
+    } else if (routeConfig.component) {
       const loader = this.getComponentLoader(routeConfig.component)
       if (!loader) {
         errors.push(`Компонент "${routeConfig.component}" для роута "${routeName}" не найден`)

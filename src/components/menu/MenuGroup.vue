@@ -80,12 +80,38 @@ const isCurrentGroupPage = computed(() => {
     return true
   }
   
+  // Проверяем, является ли текущий роут дочерним роутом для группы
+  // Например, OrganizationSettingsMain является дочерним для OrganizationSettings
+  if (props.data.routeName && route.name && route.name.startsWith(props.data.routeName) && route.name !== props.data.routeName) {
+    try {
+      const parentRoute = router.resolve({ name: props.data.routeName })
+      if (parentRoute && parentRoute.path && route.path.startsWith(parentRoute.path)) {
+        return true
+      }
+    } catch (e) {
+      // Если не удалось разрешить роут, просто проверяем по имени
+      return true
+    }
+  }
+  
   // Проверяем, находится ли пользователь на одной из подстраниц группы
   if (menuItems.value.length > 0) {
     return menuItems.value.some(item => {
       // Для обычных Vue страниц
       if (item.routeName && route.name === item.routeName) {
         return true
+      }
+      
+      // Проверяем, является ли текущий роут дочерним роутом для элемента меню
+      if (item.routeName && route.name && route.name.startsWith(item.routeName) && route.name !== item.routeName) {
+        try {
+          const parentRoute = router.resolve({ name: item.routeName })
+          if (parentRoute && parentRoute.path && route.path.startsWith(parentRoute.path)) {
+            return true
+          }
+        } catch (e) {
+          return true
+        }
       }
       
       // Для BI offcanvas страниц - проверяем что мы находимся на BI странице
@@ -138,6 +164,20 @@ const checkChildrenActiveRecursive = (children, currentPage, currentRoute) => {
     // Проверяем прямую активность элемента
     if (item.routeName && currentRoute === item.routeName) {
       return true
+    }
+    
+    // Проверяем, является ли текущий роут дочерним роутом для элемента меню
+    // Например, OrganizationSettingsMain является дочерним для OrganizationSettings
+    if (item.routeName && currentRoute && currentRoute.startsWith(item.routeName) && currentRoute !== item.routeName) {
+      try {
+        const parentRoute = router.resolve({ name: item.routeName })
+        if (parentRoute && parentRoute.path && route.path.startsWith(parentRoute.path)) {
+          return true
+        }
+      } catch (e) {
+        // Если не удалось разрешить роут, просто проверяем по имени
+        return true
+      }
     }
     
     // Для BI offcanvas страниц
