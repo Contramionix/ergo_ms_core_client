@@ -30,7 +30,7 @@
         </div>
 
         <!-- Таблица данных -->
-        <div v-if="message.data && message.data.rows" class="message-table">
+        <div v-if="message.data && message.data.data && message.data.data.length > 0" class="message-table">
           <div class="table-responsive">
             <table class="table table-sm table-bordered">
               <thead>
@@ -39,14 +39,14 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(row, idx) in message.data.rows" :key="idx">
+                <tr v-for="(row, idx) in message.data.data" :key="idx">
                   <td v-for="col in message.data.columns" :key="col">{{ row[col] }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div class="table-info">
-            Показано {{ message.data.rows.length }} строк
+            Показано {{ message.data.data.length }} строк
           </div>
         </div>
 
@@ -263,4 +263,7 @@ const formatTime = (timestamp) => {
   }
 }
 </style>
+
+
+
 
