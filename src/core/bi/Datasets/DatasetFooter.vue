@@ -10,6 +10,7 @@
             :rows="previewRows" 
             :fields="fields"
             :dataset-id="datasetId"
+            :is-preview-visible="isPreviewVisible"
           />
           <transition name="fade">
             <div v-if="isPreviewLoading" class="footer-overlay">

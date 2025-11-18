@@ -42,7 +42,10 @@
         <h4>Новое подключение</h4>
       </div>
       <div class="file_area_header_buttons">
-        <button type="button" class="btn btn-primary" @click="openConnectionDialog" :disabled="!tempUploadedFiles.length">Создать подключение</button>
+        <button type="button" class="btn btn-primary" @click="openConnectionDialog" :disabled="!tempUploadedFiles.length || isCreatingConnection">
+          <span v-if="isCreatingConnection" class="spinner-border spinner-border-sm me-2" role="status"></span>
+          {{ isCreatingConnection ? 'Создание...' : 'Создать подключение' }}
+        </button>
       </div>
     </header>
     <main class="file_area">
@@ -95,6 +98,7 @@ const tempUploadedFiles = ref([])
 const showConnectionDialog = ref(false)
 const connectorType = ref('')
 const connectionConfig = ref({})
+const isCreatingConnection = ref(false)
 
 
 function goToNewConnection() {
@@ -138,19 +142,26 @@ function openConnectionDialog() {
 
 async function createConnection(data) {
   showConnectionDialog.value = false
+  isCreatingConnection.value = true
+  
   try {
     const newConnectionId = data?.id
     if (!newConnectionId) {
       alert('Не удалось создать подключение')
+      isCreatingConnection.value = false
       return
     }
 
+    // Финализируем загрузки параллельно (уже оптимизировано в useFileUploader)
     await finalizeUploads(newConnectionId)
 
     alert('Подключение успешно создано и файлы загружены!')
     router.push(`/bi/connections/${newConnectionId}/files/`)
   } catch (err) {
-    alert('Произошла ошибка при создании подключения: ' + err)
+    console.error('[createConnection] Ошибка:', err)
+    alert('Произошла ошибка при создании подключения: ' + (err?.message || err))
+  } finally {
+    isCreatingConnection.value = false
   }
 }
 </script>
@@ -238,7 +249,11 @@ body {
   background-color: var(--color-primary-background);
   padding: 1rem;
   border-bottom-right-radius: 12px;
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
 }
 
 .icon-button {
@@ -393,5 +408,15 @@ body {
   .btn-outline-danger {
     font-size: 0.9375rem;
   }
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.15em;
+}
+
+.me-2 {
+  margin-right: 0.5rem;
 }
 </style>
