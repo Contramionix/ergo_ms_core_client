@@ -2,32 +2,55 @@
   <div class="preview-main">
     <div class="main-title">
       <div class="title-label" style="font-weight: bold; margin-right:2rem">Предпросмотр</div>
+      <div class="search-container">
+        <input 
+          type="text" 
+          v-model="searchQuery" 
+          class="form-control form-control-sm search-input" 
+          placeholder="Поиск по таблице..."
+          @input="handleSearchInput"
+        />
+      </div>
       <div class="title-input">
-        <div class="input-label-left">Количество строк:</div>
-        <input type="number" v-model.number="localLimit" class="form-control form-control-sm" min="1" max="1000"/>
-        <div class="input-label-right">не больше 1000</div>
+        <div class="input-label-left">Загружено строк:</div>
+        <div class="input-value">{{ loadedRowsCount }}</div>
       </div>
     </div>
     
     <!-- Таблица предпросмотра -->
     <div class="main-grid" style="position: relative;">
-      <Vue3Datatable
+      <VirtualizedTable
+        v-if="datatableColumns.length > 0 && visibleRows.length > 0"
         :columns="datatableColumns"
         :rows="visibleRows"
-        :loading="props.loading"
-        :is-preview-visible="isPreviewVisible"
-        :page-size="limit"
-        skin="table table-hover"
-        :selectRowOnClick="false"
-        noDataContent="Нет данных"
+        :loading="isLoading"
+        :row-height="40"
+        :overscan="10"
+        @sort="handleSort"
+        @scroll-end="handleScrollEnd"
       />
+      <div v-else-if="isLoading && visibleRows.length === 0" class="loading-placeholder">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">Загрузка...</span>
+        </div>
+      </div>
+      <div v-else-if="!isLoading && visibleRows.length === 0" class="no-data-placeholder">
+        {{ searchQuery ? 'Ничего не найдено' : 'Нет данных' }}
+      </div>
+      <div v-if="isLoadingMore" class="loading-more">
+        <div class="spinner-border spinner-border-sm" role="status">
+          <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <span>Загрузка следующих строк...</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
-import Vue3Datatable from '@bhplugin/vue3-datatable'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+import VirtualizedTable from './VirtualizedTable.vue'
+import datasetService from '@/core/bi/MainPage/Sidebar/components/js/datasetService.js'
 
 const props = defineProps({
   cols: Array,
@@ -38,42 +61,196 @@ const props = defineProps({
   datasetId: Number
 })
 
-const localLimit = ref(props.limit ?? 10)
-watch(() => props.limit, v => {
-  if (localLimit.value !== v) localLimit.value = v
+defineEmits(['update:limit', 'switch-to-sources'])
+
+// Состояние
+const searchQuery = ref('')
+const debouncedSearchQuery = ref('')
+const allRows = ref([])
+const allColumns = ref([])
+const isLoading = ref(false)
+const isLoadingMore = ref(false)
+const hasMore = ref(true)
+const currentOffset = ref(0)
+const searchDebounceTimer = ref(null)
+const PAGE_SIZE = 1000
+
+// Инициализация
+onMounted(async () => {
+  if (props.datasetId && props.isPreviewVisible) {
+    await loadInitialData()
+  }
 })
 
-const emit = defineEmits(['update:limit', 'switch-to-sources'])
+// Отслеживаем изменения datasetId и isPreviewVisible
+watch(() => [props.datasetId, props.isPreviewVisible], async ([datasetId, isVisible]) => {
+  if (datasetId && isVisible) {
+    // Сбрасываем состояние при смене датасета
+    allRows.value = []
+    allColumns.value = []
+    currentOffset.value = 0
+    hasMore.value = true
+    searchQuery.value = ''
+    debouncedSearchQuery.value = ''
+    await loadInitialData()
+  }
+}, { immediate: false })
 
-function clamp(val) {
-  const n = Number(val) || 1
-  return Math.max(1, Math.min(1000, n))
+// Если данные переданы через props (старый способ), используем их
+watch(() => [props.rows, props.cols], ([rows, cols]) => {
+  if (rows && rows.length > 0 && !props.datasetId) {
+    // Используем данные из props, если datasetId не указан (обратная совместимость)
+    allRows.value = rows
+    allColumns.value = cols || []
+  }
+}, { immediate: true })
+
+// Загрузка начальных данных
+async function loadInitialData() {
+  if (!props.datasetId) {
+    // Если datasetId не указан, используем данные из props (обратная совместимость)
+    if (props.rows && props.rows.length > 0) {
+      allRows.value = props.rows
+      allColumns.value = props.cols || []
+    }
+    return
+  }
+  
+  isLoading.value = true
+  currentOffset.value = 0
+  allRows.value = []
+  hasMore.value = true
+  
+  try {
+    const response = await datasetService.preview(props.datasetId, {
+      limit: PAGE_SIZE,
+      offset: 0,
+      search: debouncedSearchQuery.value || undefined
+    })
+    
+    if (response.success && response.data) {
+      allColumns.value = response.data.columns || props.cols || []
+      allRows.value = response.data.rows || []
+      hasMore.value = response.data.has_more || false
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки данных:', error)
+  } finally {
+    isLoading.value = false
+  }
 }
 
-watch(localLimit, v => {
-  emit('update:limit', clamp(v))
+// Загрузка следующих страниц
+async function loadMore() {
+  if (isLoadingMore.value || !hasMore.value || !props.datasetId) return
+  
+  isLoadingMore.value = true
+  
+  try {
+    const nextOffset = currentOffset.value + PAGE_SIZE
+    const response = await datasetService.preview(props.datasetId, {
+      limit: PAGE_SIZE,
+      offset: nextOffset,
+      search: debouncedSearchQuery.value || undefined
+    })
+    
+    if (response.success && response.data) {
+      allRows.value = [...allRows.value, ...(response.data.rows || [])]
+      hasMore.value = response.data.has_more || false
+      currentOffset.value = nextOffset
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки дополнительных данных:', error)
+  } finally {
+    isLoadingMore.value = false
+  }
+}
+
+// Обработка скролла до конца
+function handleScrollEnd() {
+  if (hasMore.value && !isLoadingMore.value) {
+    loadMore()
+  }
+}
+
+// Обработка поиска с debounce
+function handleSearchInput() {
+  if (searchDebounceTimer.value) {
+    clearTimeout(searchDebounceTimer.value)
+  }
+  
+  searchDebounceTimer.value = setTimeout(async () => {
+    debouncedSearchQuery.value = searchQuery.value
+    await loadInitialData()
+  }, 500) // 500ms debounce
+}
+
+// Очистка таймера
+onUnmounted(() => {
+  if (searchDebounceTimer.value) {
+    clearTimeout(searchDebounceTimer.value)
+  }
 })
 
 const nameMap = computed(() =>
   Object.fromEntries((props.fields || []).map(f => [f.source_column, f.name]))
 )
 
-const datatableColumns = computed(() =>
-  props.cols.map(col => ({
+const datatableColumns = computed(() => {
+  const cols = allColumns.value.length > 0 ? allColumns.value : (props.cols || [])
+  return cols.map(col => ({
     title: nameMap.value[col] || col,
     field: toField(nameMap.value[col] || col),
     sortable: true,
   }))
-)
+})
 
 const tableRows = computed(() => {
-  const fields = props.cols.map(toField)
-  return props.rows.map(rowArr =>
+  const fields = (allColumns.value.length > 0 ? allColumns.value : (props.cols || [])).map(toField)
+  return allRows.value.map(rowArr =>
     fields.reduce((obj, field, idx) => ({ ...obj, [field]: rowArr[idx] }), {})
   )
 })
 
-const visibleRows = computed(() => tableRows.value)
+const sortState = ref({ column: null, direction: null })
+
+const sortedRows = computed(() => {
+  if (!sortState.value.column || !sortState.value.direction) {
+    return tableRows.value
+  }
+  
+  const column = sortState.value.column
+  const direction = sortState.value.direction
+  
+  return [...tableRows.value].sort((a, b) => {
+    const aVal = a[column]
+    const bVal = b[column]
+    
+    if (aVal === null || aVal === undefined) return 1
+    if (bVal === null || bVal === undefined) return -1
+    
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return direction === 'asc' ? aVal - bVal : bVal - aVal
+    }
+    
+    const aStr = String(aVal).toLowerCase()
+    const bStr = String(bVal).toLowerCase()
+    
+    if (direction === 'asc') {
+      return aStr > bStr ? 1 : aStr < bStr ? -1 : 0
+    } else {
+      return aStr < bStr ? 1 : aStr > bStr ? -1 : 0
+    }
+  })
+})
+
+const visibleRows = computed(() => sortedRows.value)
+
+const loadedRowsCount = computed(() => allRows.value.length)
+
+function handleSort({ column, direction }) {
+  sortState.value = { column, direction }
+}
 
 function toField(str) {
   const map = {
@@ -98,16 +275,24 @@ function toField(str) {
   gap: 10px;
 }
 
-
-
-
-
 .main-title {
     display: flex;
     justify-content: start;
     align-items: center;
     flex: 0 0 auto;
     width: auto;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.search-container {
+  flex: 1;
+  min-width: 200px;
+  max-width: 400px;
+}
+
+.search-input {
+  width: 100%;
 }
 
 .title-input {
@@ -123,6 +308,11 @@ function toField(str) {
     text-align: right;
 }
 
+.input-value {
+  font-weight: bold;
+  min-width: 60px;
+}
+
 input {
     max-width: 70px;
 }
@@ -135,61 +325,49 @@ input {
   position: relative;
 }
 
-:deep(.vue3-datatable__table-wrapper) {
-  overflow-y: inherit !important;
-  padding-bottom: inherit !important;
-}
-
-:deep(.vue3-datatable__table-wrapper)::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-:deep(.bh-pagination-wrapper) {
-  padding: 1rem;
+.loading-more {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  justify-content: center;
   align-items: center;
-  background-color: var(--color-primary-background);
-  border-top: 1px solid var(--color-border);
-  font-size: 14px;
-  color: var(--color-secondary-text);
-}
-
-:deep(.bh-pagination) {
-  display: flex;
-  gap: 4px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-:deep(.bh-page-item) {
-  padding: 4px 10px;
-  background: var(--color-primary-background);
-  color: var(--color-secondary-text);
-  border: 1px solid var(--color-border);
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 8px 16px;
   border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  font-size: 0.875rem;
 }
 
-:deep(.bh-page-item:hover) {
-  background: var(--color-hover-background);
+.loading-placeholder,
+.no-data-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+  color: var(--color-secondary-text, #6c757d);
 }
 
-:deep(.bh-page-active) {
-  background: #007bff;
-  color: var(--color-primary-text);
-  border-color: #007bff;
+.no-data-placeholder {
+  font-size: 1.1rem;
 }
 
-:deep(.bh-pagination-info),
-:deep(.bh-pagination-wrapper > div:first-child),
-:deep(.bh-pagination-wrapper > span) {
-  display: none !important;
-}
-
-:deep(th .bh-flex) {
-  font-weight: bold !important;
+// Адаптивность для мобильных устройств
+@media (max-width: 768px) {
+  .main-title {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-container {
+    max-width: 100%;
+  }
+  
+  .title-input {
+    justify-content: flex-start;
+  }
 }
 </style>

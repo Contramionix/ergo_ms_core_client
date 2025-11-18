@@ -22,7 +22,7 @@ async function uploadFile(file, sheet = null) {
   }
 
   try {
-    const res = await apiClient.upload(endpoints.bi.Upload, formData)
+    const res = await apiClient.upload(endpoints.bi.Upload, formData, true)
 
     if (res.success) {
       const temp = {
@@ -35,10 +35,14 @@ async function uploadFile(file, sheet = null) {
         sheet: sheet
       }
       tempUploadedFiles.value.push(temp)
-      selectedFile.value = temp
+      // Выбираем последний загруженный файл только если нет выбранного
+      if (!selectedFile.value) {
+        selectedFile.value = temp
+      }
     }
   } catch (error) {
     console.error('[uploadFile] Исключение при загрузке:', error)
+    throw error
   }
 }
 
@@ -81,8 +85,13 @@ async function handleSheetSelection(sheets) {
   const file = currentUploadFile.value
   if (!file || !sheets.length) return
 
-  for (const sheet of sheets) {
-    await uploadFile(file.originalFile, sheet)
+  // Загружаем все выбранные листы параллельно
+  const uploadPromises = sheets.map(sheet => uploadFile(file.originalFile, sheet))
+  
+  try {
+    await Promise.all(uploadPromises)
+  } catch (error) {
+    console.error('[handleSheetSelection] Ошибка при параллельной загрузке листов:', error)
   }
 
   currentUploadFile.value = null
@@ -110,27 +119,68 @@ async function handleSheetSelection(sheets) {
       return
     }
 
-    for (const file of files) {
-      if (file.name.endsWith('.xlsx')) {
+    // Разделяем файлы на xlsx и остальные
+    const xlsxFiles = files.filter(f => f.name.endsWith('.xlsx'))
+    const otherFiles = files.filter(f => !f.name.endsWith('.xlsx'))
+
+    // Сначала проверяем xlsx файлы на наличие нескольких листов (параллельно)
+    const xlsxChecks = await Promise.all(
+      xlsxFiles.map(async (file) => {
         const formData = new FormData()
         formData.append('file', file)
-        const sheetRes = await apiClient.upload(endpoints.bi.xlsxSheets, formData)
-
-        if (sheetRes.success && sheetRes.data.sheets.length > 1) {
-          const tempFile = {
-            name: file.name,
-            originalFile: file,
-            pendingSheets: sheetRes.data.sheets,
-          }
-          currentUploadFile.value = tempFile
-          availableSheets.value = sheetRes.data.sheets
-          isSheetPickerVisible.value = true
-          event.target.value = ''
-          return
+        try {
+          const sheetRes = await apiClient.upload(endpoints.bi.xlsxSheets, formData)
+          return { file, sheetRes }
+        } catch (error) {
+          console.error(`[handleFileUpload] Ошибка проверки листов для ${file.name}:`, error)
+          return { file, sheetRes: null }
         }
-      }
+      })
+    )
 
-      await uploadFile(file)
+    // Проверяем, есть ли файлы с несколькими листами
+    const multiSheetFile = xlsxChecks.find(
+      check => check.sheetRes?.success && check.sheetRes?.data?.sheets?.length > 1
+    )
+
+    if (multiSheetFile) {
+      // Если нашли файл с несколькими листами, показываем диалог выбора
+      const tempFile = {
+        name: multiSheetFile.file.name,
+        originalFile: multiSheetFile.file,
+        pendingSheets: multiSheetFile.sheetRes.data.sheets,
+      }
+      currentUploadFile.value = tempFile
+      availableSheets.value = multiSheetFile.sheetRes.data.sheets
+      isSheetPickerVisible.value = true
+      event.target.value = ''
+      return
+    }
+
+    // Загружаем все файлы параллельно
+    const uploadPromises = []
+
+    // Загружаем xlsx файлы (с одним листом или без выбора)
+    for (const { file, sheetRes } of xlsxChecks) {
+      if (sheetRes?.success && sheetRes?.data?.sheets?.length === 1) {
+        // Если лист один, загружаем сразу с этим листом
+        uploadPromises.push(uploadFile(file, sheetRes.data.sheets[0]))
+      } else {
+        // Иначе загружаем без указания листа (будет использован первый)
+        uploadPromises.push(uploadFile(file))
+      }
+    }
+
+    // Загружаем остальные файлы
+    for (const file of otherFiles) {
+      uploadPromises.push(uploadFile(file))
+    }
+
+    // Ждем завершения всех загрузок параллельно
+    try {
+      await Promise.all(uploadPromises)
+    } catch (error) {
+      console.error('[handleFileUpload] Ошибка при параллельной загрузке:', error)
     }
 
     event.target.value = ''

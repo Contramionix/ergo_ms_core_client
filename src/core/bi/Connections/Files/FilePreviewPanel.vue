@@ -1,8 +1,8 @@
 <template>
-  <div v-if="file">
+  <div v-if="file" class="file-preview-panel">
     <CsvPreview v-if="isCsvFile(file)" :file="file" :isLoading="isLoading" :key="`csv-${file.id || file.temp_path || file.name}`" />
 
-    <XlsxPreview v-else-if="isXlsxFile(file)" :file="file" :isLoading="isLoading" :key="`xlsx-${file.id || file.temp_path || file.name}`"/>
+    <XlsxPreviewOptimized v-else-if="isXlsxFile(file)" :file="file" :isLoading="isLoading" :key="`xlsx-${file.id || file.temp_path || file.name}`"/>
 
     <TxtPreview v-else-if="isTxtFile(file)" :file="file" :isLoading="isLoading" :key="`txt-${file.id || file.temp_path || file.name}`" />
 
@@ -12,10 +12,10 @@
 
 <script setup>
 import CsvPreview from './FilePreview/CsvPreview.vue'
-import XlsxPreview from './FilePreview/XlsxPreview.vue'
+import XlsxPreviewOptimized from './FilePreview/XlsxPreviewOptimized.vue'
 import TxtPreview from './FilePreview/TxtPreview.vue'
 
-const props = defineProps({
+defineProps({
   file: Object,
   isLoading: Boolean
 })
@@ -38,5 +38,13 @@ function isCsvFile(file) {
 }
 </script>
   
-<style scoped></style>
+<style scoped>
+.file-preview-panel {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+</style>
   
