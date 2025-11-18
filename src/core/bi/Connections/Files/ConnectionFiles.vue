@@ -467,10 +467,56 @@ body {
     justify-content: flex-end;
     margin-left: auto;
     gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 .button-wrapper {
     display: inline-block;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    .file_area_header {
+        flex-wrap: wrap;
+        height: auto;
+        min-height: 61px;
+        padding: 0.5rem 1rem;
+    }
+    
+    .file_area_header_label {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .file_area_header_buttons {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+        gap: 8px;
+    }
+    
+    .file_area_header_buttons .btn-secondary,
+    .file_area_header_buttons .btn-success {
+        width: auto;
+        min-width: 120px;
+        flex: 1 1 auto;
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .file_area_header_buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .file_area_header_buttons .btn-secondary,
+    .file_area_header_buttons .btn-success {
+        width: 100%;
+        min-width: unset;
+    }
 }
 
 .file_area {
