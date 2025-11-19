@@ -57,14 +57,40 @@ const hasFileIssue = computed(() => {
          props.file.error
 })
 
+// Функция для определения расширения файла с учетом бинарного хранения
+function getFileExtension() {
+  const file = props.file
+  
+  // Если file_type равен 'bin', используем original_filename для определения типа
+  if (file.file_type?.toLowerCase() === 'bin' && file.original_filename) {
+    const m = file.original_filename.match(/\.(\w+)$/)
+    if (m) return m[1].toLowerCase()
+  }
+  
+  // Если file_type есть и не равен 'bin', используем его
+  if (file.file_type && file.file_type.toLowerCase() !== 'bin') {
+    return file.file_type.toLowerCase()
+  }
+  
+  // Пытаемся извлечь из original_filename
+  if (file.original_filename) {
+    const m = file.original_filename.match(/\.(\w+)$/)
+    if (m) return m[1].toLowerCase()
+  }
+  
+  // Пытаемся извлечь из name
+  if (file.name) {
+    const m = file.name.match(/\.(\w+)$/)
+    if (m) return m[1].toLowerCase()
+  }
+  
+  return null
+}
+
 const tooltipLabel = computed(() => {
   if (props.isTemp) {
-    let ext = props.file.file_type?.toLowerCase()
-    if (!ext && props.file.name) {
-      const m = props.file.name.match(/\.(\w+)$/)
-      if (m) ext = m[1].toLowerCase()
-    }
-    if (ext === 'csv' || ext === 'xlsx' || ext === 'xls' || ext === 'txt') {
+    const ext = getFileExtension()
+    if (ext && (ext === 'csv' || ext === 'xlsx' || ext === 'xls' || ext === 'txt')) {
       return `Файл формата .${ext} (черновик)`
     }
     return 'Файл неизвестного формата (черновик)'
@@ -74,12 +100,8 @@ const tooltipLabel = computed(() => {
     return 'Файл не найден'
   }
   
-  let ext = props.file.file_type?.toLowerCase()
-  if (!ext && props.file.name) {
-    const m = props.file.name.match(/\.(\w+)$/)
-    if (m) ext = m[1].toLowerCase()
-  }
-  if (ext === 'csv' || ext === 'xlsx' || ext === 'xls' || ext === 'txt') {
+  const ext = getFileExtension()
+  if (ext && (ext === 'csv' || ext === 'xlsx' || ext === 'xls' || ext === 'txt')) {
     return `Файл формата .${ext}`
   }
   return 'Файл неизвестного формата'
@@ -94,11 +116,7 @@ function onIconLeave() {
 }
 
 const iconPath = computed(() => {
-  let ext = props.file.file_type?.toLowerCase()
-  if (!ext && props.file.name) {
-    const m = props.file.name.match(/\.(\w+)$/)
-    if (m) ext = m[1].toLowerCase()
-  }
+  const ext = getFileExtension()
   switch (ext) {
     case 'csv': return new URL('@/core/bi/assets/icons/csv.svg', import.meta.url).href
     case 'xlsx':
