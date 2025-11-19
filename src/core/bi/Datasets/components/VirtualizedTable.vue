@@ -224,6 +224,8 @@ watch(() => props.rows.length, () => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
+  max-height: 100%;
 }
 
 .virtualized-table-header {
@@ -231,6 +233,7 @@ watch(() => props.rows.length, () => {
   overflow-x: auto;
   overflow-y: hidden;
   border-bottom: 2px solid var(--color-border, #dee2e6);
+  min-height: 0;
   
   table {
     width: 100%;
@@ -240,8 +243,11 @@ watch(() => props.rows.length, () => {
 
 .virtualized-table-body {
   flex: 1 1 auto;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: auto;
   position: relative;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
   
   table {
     width: 100%;

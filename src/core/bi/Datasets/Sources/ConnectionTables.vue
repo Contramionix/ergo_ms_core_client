@@ -139,11 +139,13 @@ watch(() => props.connectionId, async (id) => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 8px;
+  padding: 8px 10px;
   border-radius: 6px;
   transition: background 0.2s;
   width: 100%;
+  min-height: 40px;
   cursor: grab;
+  flex-wrap: wrap;
 
   &:active {
     cursor: grabbing;
@@ -172,9 +174,10 @@ watch(() => props.connectionId, async (id) => {
 .table-name {
     font-size: 14px;
     color: var(--color-primary-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow: visible;
+    word-wrap: break-word;
+    max-width: 100%;
 }
 
 .no-data {

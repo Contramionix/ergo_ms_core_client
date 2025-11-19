@@ -35,35 +35,37 @@
         <p>{{ errorState }}</p>
       </div>
   
-      <table class="csv-table" v-if="columns.length && !errorState">
-        <thead>
-          <tr>
-            <th v-for="(col, index) in columns" :key="index">
-              <div class="col-header">
-                <div class="type-button-wrapper" @click.stop="toggleMenu(index)">
-                  <span class="type-icon">{{ typeIcons[columnTypes[index]] }}</span>
-                  <div v-if="activeMenuIndex === index" class="type-menu">
-                    <div
-                      v-for="type in getAllowedTypes(index)"
-                      :key="type"
-                      :class="['type-option', { active: columnTypes[index] === type }]"
-                      @click.stop="setType(index, type)"
-                    >
-                      {{ typeLabels[type] }}
+      <div class="table-wrapper" v-if="columns.length && !errorState">
+        <table class="csv-table">
+          <thead>
+            <tr>
+              <th v-for="(col, index) in columns" :key="index">
+                <div class="col-header">
+                  <div class="type-button-wrapper" @click.stop="toggleMenu(index)">
+                    <span class="type-icon">{{ typeIcons[columnTypes[index]] }}</span>
+                    <div v-if="activeMenuIndex === index" class="type-menu">
+                      <div
+                        v-for="type in getAllowedTypes(index)"
+                        :key="type"
+                        :class="['type-option', { active: columnTypes[index] === type }]"
+                        @click.stop="setType(index, type)"
+                      >
+                        {{ typeLabels[type] }}
+                      </div>
                     </div>
                   </div>
+                  <span>{{ col }}</span>
                 </div>
-                <span>{{ col }}</span>
-              </div>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(row, rowIndex) in filteredRows" :key="rowIndex">
-            <td v-for="(cell, colIndex) in row" :key="colIndex">{{ cell }}</td>
-          </tr>
-        </tbody>
-      </table>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, rowIndex) in filteredRows" :key="rowIndex">
+              <td v-for="(cell, colIndex) in row" :key="colIndex">{{ cell }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </template>
   
@@ -253,6 +255,9 @@ watch([encoding, delimiter], async () => {
     padding: 1rem;
     color: var(--color-primary-text);
     font-size: 0.9rem;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .error-message {
@@ -271,9 +276,20 @@ watch([encoding, delimiter], async () => {
     letter-spacing: 0.3px;
   }
 
+  .csv-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: var(--color-primary-background);
+  }
+
   .csv-table th {
-  min-width: 120px;
-}
+    min-width: 120px;
+    position: sticky;
+    top: 0;
+    background-color: var(--color-primary-background);
+    z-index: 5;
+  }
   
   .toolbar {
     display: flex;
@@ -282,6 +298,7 @@ watch([encoding, delimiter], async () => {
     flex-wrap: wrap;
     gap: 0.75rem;
     margin-bottom: 1rem;
+    flex: 0 0 auto;
   }
   
   .toolbar label {
@@ -330,10 +347,39 @@ watch([encoding, delimiter], async () => {
     flex: 1;
     min-width: 0;
   }
+
+  .table-wrapper {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    position: relative;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background-color: var(--color-primary-background);
+  }
+
+  .table-wrapper::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .table-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .table-wrapper::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 4px;
+  }
+
+  .table-wrapper::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-hover-background);
+  }
   
   .csv-table {
     width: 100%;
     border-collapse: collapse;
+    position: relative;
   }
   
   .csv-table th,

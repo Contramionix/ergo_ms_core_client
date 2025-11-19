@@ -24,7 +24,7 @@ export function useDatasetState() {
   const selectedTables = ref([])
   const previewCols = ref([])
   const previewRows = ref([])
-  const previewLimit = ref(10)
+  const previewLimit = ref(1000)  // Увеличен лимит по умолчанию для предпросмотра
   
   // Модальные окна
   const showModal = ref(false)

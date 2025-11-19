@@ -57,14 +57,14 @@ const props = defineProps({
 
 const emit = defineEmits(['update:previewLimit', 'switch-to-sources'])
 
-const footerHeight = ref(200)
-const footerMin = 200
-let footerMax = 400
+const footerHeight = ref(400)
+const footerMin = 300
+let footerMax = 600
 let isFooterResizing = false
 let footerStartY = 0
 let footerStartHeight = 0
 
-const previewLimit = ref(10)
+const previewLimit = ref(1000)  // Увеличен лимит по умолчанию для предпросмотра
 
 // Синхронизируем previewLimit с родительским компонентом
 watch(previewLimit, (newValue) => {
@@ -124,7 +124,7 @@ onBeforeUnmount(() => {
 .footer-wrapper {
   position: relative;
   grid-area: footer;
-  overflow: hidden !important;
+  overflow: hidden;
 }
 
 .footer-resizer {
@@ -146,6 +146,10 @@ onBeforeUnmount(() => {
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
   overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
 }
 
 .preview-placeholder {

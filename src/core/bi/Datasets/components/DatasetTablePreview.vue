@@ -1,7 +1,7 @@
 <template>
   <div class="preview-main">
-    <div class="main-title">
-      <div class="title-label" style="font-weight: bold; margin-right:2rem">Предпросмотр</div>
+    <div class="toolbar">
+      <div class="title-label">Предпросмотр</div>
       <div class="search-container">
         <input 
           type="text" 
@@ -17,39 +17,71 @@
       </div>
     </div>
     
+    <div v-if="errorState" class="error-message">
+      <h2>Ошибка</h2>
+      <p>{{ errorState }}</p>
+    </div>
+    
     <!-- Таблица предпросмотра -->
-    <div class="main-grid" style="position: relative;">
-      <VirtualizedTable
-        v-if="datatableColumns.length > 0 && visibleRows.length > 0"
-        :columns="datatableColumns"
-        :rows="visibleRows"
-        :loading="isLoading"
-        :row-height="40"
-        :overscan="10"
-        @sort="handleSort"
-        @scroll-end="handleScrollEnd"
-      />
-      <div v-else-if="isLoading && visibleRows.length === 0" class="loading-placeholder">
-        <div class="spinner-border" role="status">
-          <span class="visually-hidden">Загрузка...</span>
-        </div>
-      </div>
-      <div v-else-if="!isLoading && visibleRows.length === 0" class="no-data-placeholder">
-        {{ searchQuery ? 'Ничего не найдено' : 'Нет данных' }}
-      </div>
-      <div v-if="isLoadingMore" class="loading-more">
-        <div class="spinner-border spinner-border-sm" role="status">
-          <span class="visually-hidden">Загрузка...</span>
-        </div>
-        <span>Загрузка следующих строк...</span>
-      </div>
+    <div class="table-wrapper" v-if="datatableColumns.length && !errorState">
+      <table class="preview-table">
+        <thead>
+          <tr>
+            <th v-for="(col, index) in datatableColumns" :key="index">
+              <div class="col-header">
+                <span>{{ col.title }}</span>
+                <span v-if="col.sortable" class="sort-indicator" @click="handleSort(col)">
+                  <ChevronUp v-if="sortState.column === col.field && sortState.direction === 'asc'" :size="14" />
+                  <ChevronDown v-else-if="sortState.column === col.field && sortState.direction === 'desc'" :size="14" />
+                  <ChevronsUpDown v-else :size="14" />
+                </span>
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <template v-if="isLoading && allRows.length === 0">
+            <tr>
+              <td :colspan="datatableColumns.length" class="loading-cell">
+                <div class="spinner-border spinner-border-sm" role="status">
+                  <span class="visually-hidden">Загрузка...</span>
+                </div>
+              </td>
+            </tr>
+          </template>
+          <template v-else-if="!isLoading && visibleRows.length === 0 && allRows.length === 0">
+            <tr>
+              <td :colspan="datatableColumns.length" class="no-data-cell">
+                {{ searchQuery ? 'Ничего не найдено' : 'Нет данных' }}
+              </td>
+            </tr>
+          </template>
+          <template v-else>
+            <tr v-for="(row, rowIndex) in visibleRows" :key="rowIndex">
+              <td v-for="(col, colIndex) in datatableColumns" :key="colIndex">
+                {{ getCellValue(row, col.field) }}
+              </td>
+            </tr>
+            <tr v-if="isLoadingMore">
+              <td :colspan="datatableColumns.length" class="loading-more-cell">
+                <div class="loading-more">
+                  <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                  </div>
+                  <span>Загрузка следующих строк...</span>
+                </div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
-import VirtualizedTable from './VirtualizedTable.vue'
+import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-vue-next'
 import datasetService from '@/core/bi/MainPage/Sidebar/components/js/datasetService.js'
 
 const props = defineProps({
@@ -73,12 +105,28 @@ const isLoadingMore = ref(false)
 const hasMore = ref(true)
 const currentOffset = ref(0)
 const searchDebounceTimer = ref(null)
+const errorState = ref(null)
 const PAGE_SIZE = 1000
 
 // Инициализация
 onMounted(async () => {
   if (props.datasetId && props.isPreviewVisible) {
     await loadInitialData()
+  }
+  
+  // Обработка скролла до конца (для автоматической загрузки следующих страниц)
+  await nextTick()
+  const tableWrapper = document.querySelector('.table-wrapper')
+  if (tableWrapper) {
+    tableWrapper.addEventListener('scroll', () => {
+      const { scrollTop, scrollHeight, clientHeight } = tableWrapper
+      // Загружаем следующую страницу, когда пользователь доскроллил до 80% от конца
+      if (scrollTop + clientHeight >= scrollHeight * 0.8) {
+        if (hasMore.value && !isLoadingMore.value) {
+          loadMore()
+        }
+      }
+    })
   }
 })
 
@@ -98,12 +146,19 @@ watch(() => [props.datasetId, props.isPreviewVisible], async ([datasetId, isVisi
 
 // Если данные переданы через props (старый способ), используем их
 watch(() => [props.rows, props.cols], ([rows, cols]) => {
-  if (rows && rows.length > 0 && !props.datasetId) {
-    // Используем данные из props, если datasetId не указан (обратная совместимость)
-    allRows.value = rows
-    allColumns.value = cols || []
+  // Всегда используем данные из props, если они переданы и есть колонки
+  if (rows && Array.isArray(rows) && rows.length > 0 && cols && Array.isArray(cols) && cols.length > 0) {
+    // Если нет datasetId, используем данные из props напрямую
+    if (!props.datasetId) {
+      allRows.value = rows
+      allColumns.value = cols
+    } else if (props.datasetId && allRows.value.length === 0) {
+      // Если есть datasetId, но данные еще не загружены, используем данные из props как начальные
+      allRows.value = rows
+      allColumns.value = cols
+    }
   }
-}, { immediate: true })
+}, { immediate: true, deep: true })
 
 // Загрузка начальных данных
 async function loadInitialData() {
@@ -122,6 +177,7 @@ async function loadInitialData() {
   hasMore.value = true
   
   try {
+    errorState.value = null
     const response = await datasetService.preview(props.datasetId, {
       limit: PAGE_SIZE,
       offset: 0,
@@ -132,9 +188,12 @@ async function loadInitialData() {
       allColumns.value = response.data.columns || props.cols || []
       allRows.value = response.data.rows || []
       hasMore.value = response.data.has_more || false
+    } else {
+      errorState.value = response.message || 'Ошибка загрузки данных'
     }
   } catch (error) {
     console.error('Ошибка загрузки данных:', error)
+    errorState.value = error.message || 'Ошибка загрузки данных'
   } finally {
     isLoading.value = false
   }
@@ -158,20 +217,17 @@ async function loadMore() {
       allRows.value = [...allRows.value, ...(response.data.rows || [])]
       hasMore.value = response.data.has_more || false
       currentOffset.value = nextOffset
+    } else {
+      errorState.value = response.message || 'Ошибка загрузки дополнительных данных'
     }
   } catch (error) {
     console.error('Ошибка загрузки дополнительных данных:', error)
+    errorState.value = error.message || 'Ошибка загрузки дополнительных данных'
   } finally {
     isLoadingMore.value = false
   }
 }
 
-// Обработка скролла до конца
-function handleScrollEnd() {
-  if (hasMore.value && !isLoadingMore.value) {
-    loadMore()
-  }
-}
 
 // Обработка поиска с debounce
 function handleSearchInput() {
@@ -206,10 +262,20 @@ const datatableColumns = computed(() => {
 })
 
 const tableRows = computed(() => {
+  if (!allRows.value || allRows.value.length === 0) {
+    return []
+  }
+  
   const fields = (allColumns.value.length > 0 ? allColumns.value : (props.cols || [])).map(toField)
-  return allRows.value.map(rowArr =>
-    fields.reduce((obj, field, idx) => ({ ...obj, [field]: rowArr[idx] }), {})
-  )
+  
+  return allRows.value.map(rowArr => {
+    // Преобразуем массив значений строки в объект с полями
+    const rowObj = {}
+    fields.forEach((field, idx) => {
+      rowObj[field] = rowArr && Array.isArray(rowArr) ? rowArr[idx] : (rowArr[field] || rowArr[idx] || '')
+    })
+    return rowObj
+  })
 })
 
 const sortState = ref({ column: null, direction: null })
@@ -244,12 +310,47 @@ const sortedRows = computed(() => {
   })
 })
 
-const visibleRows = computed(() => sortedRows.value)
+const visibleRows = computed(() => {
+  let rows = sortedRows.value
+  
+  // Применяем фильтр поиска, если есть
+  if (debouncedSearchQuery.value) {
+    const query = debouncedSearchQuery.value.toLowerCase()
+    rows = rows.filter(row => {
+      return Object.values(row).some(val => 
+        String(val).toLowerCase().includes(query)
+      )
+    })
+  }
+  
+  // Отладочная информация
+  if (rows.length > 0 && process.env.NODE_ENV === 'development') {
+    console.log('[DatasetTablePreview] visibleRows:', rows.length, 'rows, first row:', rows[0])
+  }
+  
+  return rows
+})
 
 const loadedRowsCount = computed(() => allRows.value.length)
 
-function handleSort({ column, direction }) {
-  sortState.value = { column, direction }
+function handleSort(col) {
+  if (!col.sortable) return
+  
+  const column = col.field
+  if (sortState.value.column === column) {
+    // Переключаем направление сортировки
+    if (sortState.value.direction === 'asc') {
+      sortState.value = { column, direction: 'desc' }
+    } else {
+      sortState.value = { column: null, direction: null }
+    }
+  } else {
+    sortState.value = { column, direction: 'asc' }
+  }
+}
+
+function getCellValue(row, field) {
+  return row[field] ?? ''
 }
 
 function toField(str) {
@@ -271,18 +372,27 @@ function toField(str) {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 5px;
-  gap: 10px;
+  padding: 1rem;
+  color: var(--color-primary-text);
+  font-size: 0.9rem;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.main-title {
-    display: flex;
-    justify-content: start;
-    align-items: center;
-    flex: 0 0 auto;
-    width: auto;
-    gap: 15px;
-    flex-wrap: wrap;
+.toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex: 0 0 auto;
+}
+
+.title-label {
+  font-weight: bold;
+  font-size: 1rem;
+  margin-right: 1rem;
 }
 
 .search-container {
@@ -296,68 +406,153 @@ function toField(str) {
 }
 
 .title-input {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
 }
 
-.input-label-left,
-.input-label-right {
-    min-width: 100px;
-    text-align: right;
+.input-label-left {
+  font-weight: 600;
 }
 
 .input-value {
   font-weight: bold;
-  min-width: 60px;
 }
 
-input {
-    max-width: 70px;
+.error-message {
+  text-align: center;
+  padding: 2rem;
+  border: 1px solid var(--color-accent);
+  background: var(--color-primary-background);
+  color: var(--color-accent);
+  border-radius: 12px;
+  margin-bottom: 1rem;
 }
 
-.main-grid {
+.table-wrapper {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: auto;
+  overflow: auto;
   position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-primary-background);
+  -webkit-overflow-scrolling: touch;
 }
 
-.loading-more {
-  position: absolute;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 8px 16px;
+.table-wrapper::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-  font-size: 0.875rem;
 }
 
-.loading-placeholder,
-.no-data-placeholder {
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-hover-background);
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  position: relative;
+  table-layout: auto;
+}
+
+.preview-table tbody {
+  display: table-row-group;
+}
+
+.preview-table tbody tr {
+  height: auto;
+}
+
+.preview-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--color-primary-background);
+}
+
+.preview-table th {
+  min-width: 120px;
+  max-width: 300px;
+  position: sticky;
+  top: 0;
+  background-color: var(--color-primary-background);
+  z-index: 5;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  text-align: left;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-table td {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-primary-background);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.preview-table tbody tr:hover td {
+  background-color: var(--color-hover-background);
+}
+
+.col-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  height: 100%;
-  min-height: 200px;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.sort-indicator {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+  
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.loading-cell,
+.no-data-cell {
+  text-align: center;
+  padding: 2rem !important;
   color: var(--color-secondary-text, #6c757d);
 }
 
-.no-data-placeholder {
-  font-size: 1.1rem;
+.loading-more-cell {
+  text-align: center;
+  padding: 1rem !important;
+}
+
+.loading-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.875rem;
 }
 
 // Адаптивность для мобильных устройств
 @media (max-width: 768px) {
-  .main-title {
+  .toolbar {
     flex-direction: column;
     align-items: stretch;
   }

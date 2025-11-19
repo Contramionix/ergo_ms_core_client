@@ -178,12 +178,13 @@ function handlePlaceholderAction(action) {
 <style scoped lang="scss">
 .file_area {
   grid-area: field;
-  padding-bottom: 200px;
   padding: 1rem;
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 500px;
   overflow-y: auto;
+  overflow-x: hidden;
   border-bottom-left-radius: 0;
 }
 
@@ -194,6 +195,10 @@ function handlePlaceholderAction(action) {
 .flow-wrapper {
   flex: 1;
   position: relative;
+  min-height: 400px;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .text-muted {

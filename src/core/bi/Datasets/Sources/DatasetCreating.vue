@@ -370,17 +370,28 @@ onBeforeUnmount(() => {
     display: flex;
     width: 100%;
     height: 100%;
-    align-items: center;
-    justify-content: center;
+    align-items: flex-start;
+    justify-content: flex-start;
     flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+    min-height: 400px;
 }
 
 .main-connections {
-    min-height: 100px;
+    min-height: 60px;
     display: flex;
     align-items: center;
     flex-direction: row;
     gap: 10px;
+    width: 100%;
+}
+
+.dataset-connections,
+.connection-tables,
+.table-links {
+    width: 100%;
+    min-height: 80px;
 }
 
 .tooltip-panel {
@@ -559,6 +570,10 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 5px;
 }
 
 .relation-remove-btn {

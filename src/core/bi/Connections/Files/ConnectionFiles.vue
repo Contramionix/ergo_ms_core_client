@@ -94,6 +94,15 @@
                 </div>
             </div>
             
+            <!-- Анимация загрузки при финализации файла -->
+            <div v-else-if="isFinalizing" class="loading-overlay">
+                <div class="loading-content">
+                    <div class="spinner"></div>
+                    <h3>Обрабатываем файл...</h3>
+                    <p>Конвертируем в бинарный формат и сохраняем</p>
+                </div>
+            </div>
+            
             <!-- Анимация загрузки содержимого файла -->
             <div v-else-if="isLoadingContent" class="loading-overlay">
                 <div class="loading-content">
@@ -178,6 +187,7 @@ const tempUploadedFiles = ref([])
 const isReplacing = ref(false)
 const isUploading = ref(false)
 const isLoadingContent = ref(false)
+const isFinalizing = ref(false)
 
 const connectionId = ref(null)
 
@@ -196,7 +206,7 @@ function selectFile(file) {
     isLoadingContent.value = false
   }, 500)
 }
-const { uploadFile, uploadFileRaw, finalizeUploads, handleSheetSelection, handleFileUpload } = useFileUploader(tempUploadedFiles, selectedFile, isSheetPickerVisible, currentUploadFile, availableSheets, loadUserFiles, connectionId)
+const { uploadFile, uploadFileRaw, finalizeUploads, handleSheetSelection, handleFileUpload } = useFileUploader(tempUploadedFiles, selectedFile, isSheetPickerVisible, currentUploadFile, availableSheets, loadUserFiles, connectionId, uploadedFiles, selectFile, isFinalizing)
 const { deleteFile, handleFileReplace, handleFileReplaceWithSheets, renameFile } = useFileActions(uploadedFiles, selectedFile, fileToReplace, loadUserFiles, connectionId, isSheetPickerVisible, currentUploadFile, availableSheets, isReplacing)
 
 function goToNewConnection() {

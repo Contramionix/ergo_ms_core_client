@@ -1,7 +1,7 @@
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 
-export function useFileUploader(tempUploadedFiles, selectedFile, isSheetPickerVisible, currentUploadFile, availableSheets, loadUserFiles, connectionId) {
+export function useFileUploader(tempUploadedFiles, selectedFile, isSheetPickerVisible, currentUploadFile, availableSheets, loadUserFiles, connectionId, uploadedFiles = null, selectFileCallback = null, isFinalizingRef = null) {
 
   const MAX_FILES = 10
   const MAX_SIZE_MB = 200
@@ -80,6 +80,61 @@ async function finalizeUploads(connectionId) {
   return uploaded.filter(Boolean)
 }
 
+async function autoFinalizeAndSelect() {
+  const currentConnectionId = getConnectionId()
+  if (!currentConnectionId || tempUploadedFiles.value.length === 0) {
+    return
+  }
+
+  // Показываем индикатор загрузки при финализации
+  if (isFinalizingRef) {
+    isFinalizingRef.value = true
+  }
+
+  try {
+    // Сохраняем имена загруженных файлов для последующего поиска
+    const uploadedFileNames = tempUploadedFiles.value.map(f => f.name)
+    
+    // Финализируем все загруженные файлы
+    const finalizedFiles = await finalizeUploads(currentConnectionId)
+    
+    // Обновляем список файлов подключения
+    await loadUserFiles(currentConnectionId)
+    
+    // Автоматически выбираем первый загруженный файл для просмотра
+    if (finalizedFiles && finalizedFiles.length > 0 && uploadedFiles && selectFileCallback) {
+      // Ждем немного, чтобы список файлов обновился
+      setTimeout(() => {
+        // Ищем первый загруженный файл в обновленном списке
+        const firstFinalizedFile = finalizedFiles[0]
+        if (firstFinalizedFile && firstFinalizedFile.id) {
+          // Ищем файл по ID в списке uploadedFiles
+          const foundFile = uploadedFiles.value.find(f => f.id === firstFinalizedFile.id)
+          if (foundFile) {
+            selectFileCallback(foundFile)
+          } else {
+            // Если не нашли по ID, ищем по имени
+            const foundByName = uploadedFiles.value.find(f => 
+              f.name === firstFinalizedFile.name || 
+              uploadedFileNames.includes(f.name)
+            )
+            if (foundByName) {
+              selectFileCallback(foundByName)
+            }
+          }
+        }
+      }, 200)
+    }
+  } catch (error) {
+    console.error('[autoFinalizeAndSelect] Ошибка при финализации файлов:', error)
+  } finally {
+    // Скрываем индикатор загрузки
+    if (isFinalizingRef) {
+      isFinalizingRef.value = false
+    }
+  }
+}
+
 async function handleSheetSelection(sheets) {
   isSheetPickerVisible.value = false
   const file = currentUploadFile.value
@@ -90,6 +145,9 @@ async function handleSheetSelection(sheets) {
   
   try {
     await Promise.all(uploadPromises)
+    
+    // Если подключение уже существует, автоматически финализируем загруженные файлы
+    await autoFinalizeAndSelect()
   } catch (error) {
     console.error('[handleSheetSelection] Ошибка при параллельной загрузке листов:', error)
   }
@@ -185,10 +243,8 @@ async function handleSheetSelection(sheets) {
 
     event.target.value = ''
     
-    const currentConnectionId = getConnectionId()
-    if (currentConnectionId) {
-      await loadUserFiles(currentConnectionId)
-    }
+    // Если подключение уже существует, автоматически финализируем загруженные файлы
+    await autoFinalizeAndSelect()
   }
 
   return {

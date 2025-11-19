@@ -1,6 +1,6 @@
 <template>
   <div class="layout" :style="{
-    gridTemplateColumns: activeTab === 'sources' ? '250px 1fr' : '1fr'
+    gridTemplateColumns: activeTab === 'sources' ? '500px 1fr' : '1fr'
   }">
     <!-- Заголовок страницы -->
     <DatasetHeader 
@@ -500,7 +500,7 @@ onMounted(async () => {
 .layout {
   display: grid;
   position: relative;
-  grid-template-rows: 56px 50px 1fr auto;
+  grid-template-rows: 56px 50px minmax(500px, 1fr) auto;
   border: 1px solid var(--color-border);
   border-radius: 12px;
   grid-template-areas:
@@ -508,20 +508,26 @@ onMounted(async () => {
     "toolbar toolbar"
     "main main"
     "footer footer";
-  height: 90vh;
+  height: 95vh;
+  min-height: 800px;
   transition: grid-template-columns 0.4s ease;
   overflow: hidden;
 }
 
 .layout > *:nth-child(3) {
   grid-area: main;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 500px;
+  max-height: 100%;
 }
 
 .layout > *:nth-child(4) {
   grid-area: footer;
-  position: sticky;
-  bottom: 0;
+  position: relative;
   background: var(--color-background, #fff);
+  z-index: 1;
+  min-height: 300px;
+  max-height: 50vh;
 }
 </style>
