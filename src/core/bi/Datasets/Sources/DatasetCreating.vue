@@ -377,6 +377,7 @@ onBeforeUnmount(() => {
 .dataset-creating-main {
     display: flex;
     width: 100%;
+    max-width: 100%;
     height: 100%;
     align-items: flex-start;
     justify-content: flex-start;
@@ -384,6 +385,8 @@ onBeforeUnmount(() => {
     gap: 20px;
     padding: 20px;
     min-height: 400px;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .main-connections {
@@ -394,13 +397,17 @@ onBeforeUnmount(() => {
     flex-direction: row;
     gap: 10px;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .dataset-connections,
 .connection-tables,
 .table-links {
     width: 100%;
+    max-width: 100%;
     min-height: 80px;
+    box-sizing: border-box;
 }
 
 .tooltip-panel {
@@ -521,10 +528,12 @@ onBeforeUnmount(() => {
     border-radius: 10px;
     min-height: 46px;
     width: 280px;
+    max-width: 100%;
     padding: 0 18px;
     cursor: pointer;
     transition: border 0.15s;
     position: relative;
+    box-sizing: border-box;
 
     &:hover {
         background: var(--color-hover-background);

@@ -15,6 +15,19 @@
         <div class="input-label-left">Загружено строк:</div>
         <div class="input-value">{{ loadedRowsCount }}</div>
       </div>
+      <div class="limit-input-container">
+        <label class="limit-label">Лимит строк:</label>
+        <input 
+          type="number" 
+          v-model.number="localLimit" 
+          class="form-control form-control-sm limit-input" 
+          min="1"
+          max="10000"
+          @input="handleLimitInput"
+          @change="handleLimitChange"
+          @blur="handleLimitBlur"
+        />
+      </div>
     </div>
     
     <div v-if="errorState" class="error-message">
@@ -93,7 +106,17 @@ const props = defineProps({
   datasetId: Number
 })
 
-defineEmits(['update:limit', 'switch-to-sources'])
+const emit = defineEmits(['update:limit', 'switch-to-sources'])
+
+// Локальное значение лимита, синхронизируется с props.limit
+const localLimit = ref(props.limit || parseInt(import.meta.env.VITE_BI_PREVIEW_ROWS_LIMIT || '200', 10))
+
+// Синхронизируем localLimit с props.limit
+watch(() => props.limit, (newLimit) => {
+  if (newLimit !== undefined && newLimit !== null) {
+    localLimit.value = newLimit
+  }
+}, { immediate: true })
 
 // Состояние
 const searchQuery = ref('')
@@ -107,6 +130,46 @@ const currentOffset = ref(0)
 const searchDebounceTimer = ref(null)
 const errorState = ref(null)
 const PAGE_SIZE = 1000
+
+// Обработка изменения лимита
+function handleLimitInput() {
+  // Валидация при вводе
+  if (localLimit.value === null || localLimit.value === undefined || isNaN(localLimit.value)) {
+    return // Пропускаем невалидные значения при вводе
+  }
+  
+  // Ограничиваем значение
+  if (localLimit.value < 1) {
+    localLimit.value = 1
+  } else if (localLimit.value > 10000) {
+    localLimit.value = 10000
+  }
+  
+  // Эмитим событие для обновления в родительском компоненте
+  emit('update:limit', localLimit.value)
+}
+
+function handleLimitChange() {
+  // Валидация значения при изменении
+  if (localLimit.value === null || localLimit.value === undefined || isNaN(localLimit.value)) {
+    // Если значение невалидно, возвращаем к значению по умолчанию
+    localLimit.value = props.limit || parseInt(import.meta.env.VITE_BI_PREVIEW_ROWS_LIMIT || '200', 10)
+  }
+  
+  if (localLimit.value < 1) {
+    localLimit.value = 1
+  } else if (localLimit.value > 10000) {
+    localLimit.value = 10000
+  }
+  
+  // Эмитим событие для обновления в родительском компоненте
+  emit('update:limit', localLimit.value)
+}
+
+function handleLimitBlur() {
+  // При потере фокуса также валидируем и обновляем
+  handleLimitChange()
+}
 
 // Инициализация
 onMounted(async () => {
@@ -159,21 +222,36 @@ watch(() => [props.datasetId, props.isPreviewVisible], async ([datasetId, isVisi
   }
 }, { immediate: false })
 
-// Если данные переданы через props (старый способ), используем их
+// Если данные переданы через props (черновик), используем их
 watch(() => [props.rows, props.cols], ([rows, cols]) => {
-  // Всегда используем данные из props, если они переданы и есть колонки
-  if (rows && Array.isArray(rows) && rows.length > 0 && cols && Array.isArray(cols) && cols.length > 0) {
-    // Если нет datasetId, используем данные из props напрямую
-    if (!props.datasetId) {
-      allRows.value = rows
-      allColumns.value = cols
-    } else if (props.datasetId && allRows.value.length === 0) {
-      // Если есть datasetId, но данные еще не загружены, используем данные из props как начальные
-      allRows.value = rows
-      allColumns.value = cols
-    }
+  // Если данные переданы через props (черновик), всегда используем их
+  if (rows && Array.isArray(rows) && cols && Array.isArray(cols) && cols.length > 0) {
+    // Для черновика всегда обновляем данные из props
+    // Создаем новые массивы для гарантии реактивности
+    allRows.value = Array.isArray(rows) ? [...rows] : rows
+    allColumns.value = Array.isArray(cols) ? [...cols] : cols
+    // Сбрасываем состояние пагинации при обновлении данных
+    currentOffset.value = 0
+    hasMore.value = false // Для черновика не загружаем больше через API
+  } else if (rows && Array.isArray(rows) && rows.length === 0) {
+    // Если данные пустые, очищаем
+    allRows.value = []
+    allColumns.value = cols || []
   }
 }, { immediate: true, deep: true })
+
+// Дополнительный watch для отслеживания изменений длины массива (для надежности)
+watch(() => props.rows?.length, (newLength) => {
+  if (props.rows && Array.isArray(props.rows) && props.cols && Array.isArray(props.cols) && props.cols.length > 0) {
+    // Если длина изменилась, обновляем данные
+    if (newLength !== allRows.value.length) {
+      allRows.value = [...props.rows]
+      allColumns.value = [...props.cols]
+      currentOffset.value = 0
+      hasMore.value = false
+    }
+  }
+})
 
 // Загрузка начальных данных
 async function loadInitialData() {
@@ -447,6 +525,36 @@ function toField(str) {
   font-weight: bold;
 }
 
+.limit-input-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.limit-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-primary-text);
+}
+
+.limit-input {
+  width: 80px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-align: center;
+  background-color: var(--color-primary-background);
+  color: var(--color-primary-text);
+}
+
+.limit-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.1);
+}
+
 .error-message {
   text-align: center;
   padding: 2rem;
@@ -590,6 +698,16 @@ function toField(str) {
   
   .title-input {
     justify-content: flex-start;
+  }
+  
+  .limit-input-container {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  
+  .limit-input {
+    flex: 1;
+    max-width: 120px;
   }
 }
 </style>

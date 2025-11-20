@@ -183,9 +183,9 @@ function handlePlaceholderAction(action) {
   flex-direction: column;
   height: 100%;
   min-height: 500px;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   border-bottom-left-radius: 0;
+  box-sizing: border-box;
 }
 
 .file_area.rounded-bottom {
@@ -197,8 +197,10 @@ function handlePlaceholderAction(action) {
   position: relative;
   min-height: 400px;
   height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .text-muted {

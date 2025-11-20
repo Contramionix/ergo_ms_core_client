@@ -1,7 +1,5 @@
 <template>
-  <div class="layout" :style="{
-    gridTemplateColumns: activeTab === 'sources' ? '500px 1fr' : '1fr'
-  }">
+  <div class="layout">
     <!-- Заголовок страницы -->
     <DatasetHeader 
       :header-name="editableDatasetName"
@@ -55,6 +53,7 @@
 
     <!-- Футер с предпросмотром -->
     <DatasetFooter 
+      v-if="isPreviewVisible"
       :is-preview-visible="isPreviewVisible"
       :preview-rows="previewRows"
       :preview-cols="previewCols"
@@ -62,6 +61,7 @@
       :dataset-id="currentDatasetId"
       :is-preview-loading="isPreviewLoading"
       :connection-status="getConnectionStatus()"
+      :preview-limit="previewLimit"
       @update:preview-limit="previewLimit = $event"
       @switch-to-sources="activeTab = 'sources'"
     />
@@ -446,7 +446,7 @@ watch(selectedConnection, async (newConnection, oldConnection) => {
 }, { deep: true })
 
 watch(previewLimit, async (val, old) => {
-  if (val !== old && isPreviewVisible.value && dataset.value?.id) {
+  if (val !== old && isPreviewVisible.value && (dataset.value?.id || (mainTable.value && selectedConnection.value))) {
     await loadPreview()
     
     if (selectedConnection.value && fileUploadsCache.value) {
@@ -504,35 +504,47 @@ onMounted(async () => {
 }
 
 .layout {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   position: relative;
-  grid-template-rows: 56px 50px minmax(500px, 1fr) auto;
   border: 1px solid var(--color-border);
   border-radius: 12px;
-  grid-template-areas:
-    "header header"
-    "toolbar toolbar"
-    "main main"
-    "footer footer";
   height: 95vh;
   min-height: 800px;
-  transition: grid-template-columns 0.4s ease;
   overflow: hidden;
 }
 
-.layout > *:nth-child(3) {
-  grid-area: main;
-  overflow-y: auto;
-  overflow-x: hidden;
-  min-height: 500px;
-  max-height: 100%;
+/* DatasetHeader - фиксированная высота */
+.layout > :nth-child(1) {
+  flex-shrink: 0;
 }
 
-.layout > *:nth-child(4) {
-  grid-area: footer;
-  position: relative;
-  background: var(--color-background, #fff);
-  z-index: 1;
-  min-height: 300px;
+/* DatasetToolbar - фиксированная высота */
+.layout > :nth-child(2) {
+  flex-shrink: 0;
 }
+
+/* DatasetMainContent - растягивается на оставшееся пространство */
+.layout > :nth-child(3) {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* DatasetFooter - динамическая высота */
+.layout > :nth-child(4) {
+  flex-shrink: 0;
+}
+
+/* DatasetModals - не занимает места в layout */
+.layout > :nth-child(5) {
+  position: absolute;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.layout > :nth-child(5) > * {
+  pointer-events: auto;
+}
+
 </style>

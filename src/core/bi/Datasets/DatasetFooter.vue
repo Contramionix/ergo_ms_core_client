@@ -1,11 +1,21 @@
 <template>
-  <transition name="slide-footer">
-    <div class="footer-wrapper" v-if="isPreviewVisible" :style="{ height: footerHeight + 'px' }">
-      <div class="footer-resizer" @mousedown="startResize"></div>
-      <footer class="footer-content">
+  <div 
+    class="footer-wrapper" 
+    v-if="isPreviewVisible" 
+    :class="{ 'is-resizing': isResizing }"
+    :style="{ height: footerHeight + 'px' }"
+  >
+    <div 
+      class="footer-resizer" 
+      @mousedown="startResize"
+      @touchstart="startResize"
+    >
+      <div class="resize-indicator"></div>
+    </div>
+    <footer class="footer-content">
         <template v-if="previewRows && previewRows.length">
           <DatasetTablePreview 
-            v-model:limit="previewLimit" 
+            v-model:limit="localPreviewLimit" 
             :cols="previewCols" 
             :rows="previewRows" 
             :fields="fields"
@@ -37,88 +47,101 @@
           </div>
         </template>
       </footer>
-    </div>
-  </transition>
+  </div>
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount, watch } from 'vue'
+import { ref, onBeforeUnmount, watch, nextTick } from 'vue'
 import DatasetTablePreview from './components/DatasetTablePreview.vue'
 
-defineProps({
+const props = defineProps({
   isPreviewVisible: Boolean,
   previewRows: Array,
   previewCols: Array,
   fields: Array,
   datasetId: [String, Number],
   isPreviewLoading: Boolean,
-  connectionStatus: { type: String, default: 'connected' }
+  connectionStatus: { type: String, default: 'connected' },
+  previewLimit: { type: Number, default: () => parseInt(import.meta.env.VITE_BI_PREVIEW_ROWS_LIMIT || '200', 10) }
 })
 
 const emit = defineEmits(['update:previewLimit', 'switch-to-sources'])
 
-const footerHeight = ref(400)
+// Константы
 const MIN_HEIGHT = 300
-const MAX_HEIGHT = ref(800)
+const MAX_HEIGHT = 1000
 
-// Лимит строк для предпросмотра берется из .env (VITE_BI_PREVIEW_ROWS_LIMIT)
-const previewLimit = ref(parseInt(import.meta.env.VITE_BI_PREVIEW_ROWS_LIMIT || '200', 10))
+// Состояние
+const footerHeight = ref(400)
+const isResizing = ref(false)
+const startY = ref(0)
+const startHeight = ref(0)
 
-// Синхронизируем previewLimit с родительским компонентом
-watch(previewLimit, (newValue) => {
-  emit('update:previewLimit', newValue)
+// Локальная копия previewLimit для v-model
+const localPreviewLimit = ref(props.previewLimit)
+let isUpdatingFromProps = false
+
+// Синхронизируем localPreviewLimit с props.previewLimit
+watch(() => props.previewLimit, (newValue) => {
+  if (newValue !== undefined && newValue !== null && newValue !== localPreviewLimit.value) {
+    isUpdatingFromProps = true
+    localPreviewLimit.value = newValue
+    nextTick(() => {
+      isUpdatingFromProps = false
+    })
+  }
+}, { immediate: true })
+
+// Синхронизируем изменения обратно в родительский компонент (только если изменение не из props)
+watch(localPreviewLimit, (newValue) => {
+  if (!isUpdatingFromProps && newValue !== props.previewLimit) {
+    emit('update:previewLimit', newValue)
+  }
 })
 
-const isResizing = ref(false)
-let startY = 0
-let startHeight = 0
-
 function startResize(e) {
+  const event = e.touches ? e.touches[0] : e
+  
   e.preventDefault()
   e.stopPropagation()
   
   if (isResizing.value) return
   
   isResizing.value = true
-  startY = e.clientY
-  startHeight = footerHeight.value
-
-  // Вычисляем максимальную высоту на основе доступного пространства
-  const layout = document.querySelector('.layout')
-  if (layout) {
-    const rect = layout.getBoundingClientRect()
-    const availableHeight = window.innerHeight - rect.top - 100
-    MAX_HEIGHT.value = Math.min(availableHeight, 800)
-  } else {
-    MAX_HEIGHT.value = Math.floor(window.innerHeight * 0.7)
-  }
-
-  // Используем capture phase для надежного отслеживания
-  document.addEventListener('mousemove', handleResize, { passive: false })
-  document.addEventListener('mouseup', stopResize, { once: true })
+  startY.value = event.clientY
+  startHeight.value = footerHeight.value
   
-  // Предотвращаем выделение текста и устанавливаем курсор
-  document.body.style.cursor = 'row-resize'
+  // Добавляем слушатели
+  if (e.touches) {
+    document.addEventListener('touchmove', handleResize, { passive: false })
+    document.addEventListener('touchend', stopResize, { once: true })
+  } else {
+    document.addEventListener('mousemove', handleResize, { passive: false })
+    document.addEventListener('mouseup', stopResize, { once: true })
+  }
+  
+  // Блокируем выделение текста
   document.body.style.userSelect = 'none'
+  document.body.style.cursor = 'row-resize'
 }
 
 function handleResize(e) {
-  if (!isResizing.value) {
-    stopResize()
-    return
-  }
+  if (!isResizing.value) return
   
+  const event = e.touches ? e.touches[0] : e
   e.preventDefault()
   e.stopPropagation()
   
-  // Вычисляем изменение позиции мыши
-  // При движении мыши вверх (e.clientY < startY) высота увеличивается
-  // При движении мыши вниз (e.clientY > startY) высота уменьшается
-  const deltaY = startY - e.clientY  // Инвертируем для правильного направления
-  const newHeight = startHeight + deltaY
+  // Вычисляем новую высоту
+  // При движении вверх (clientY уменьшается) - высота увеличивается
+  // При движении вниз (clientY увеличивается) - высота уменьшается
+  const deltaY = startY.value - event.clientY
+  let newHeight = startHeight.value + deltaY
   
-  // Ограничиваем высоту минимальным и максимальным значениями
-  footerHeight.value = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT.value, newHeight))
+  // Ограничиваем высоту
+  newHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, newHeight))
+  
+  footerHeight.value = newHeight
 }
 
 function stopResize() {
@@ -126,8 +149,11 @@ function stopResize() {
   
   isResizing.value = false
   
+  // Удаляем слушатели
   document.removeEventListener('mousemove', handleResize)
   document.removeEventListener('mouseup', stopResize)
+  document.removeEventListener('touchmove', handleResize)
+  document.removeEventListener('touchend', stopResize)
   
   // Восстанавливаем стили
   document.body.style.cursor = ''
@@ -142,19 +168,35 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .footer-wrapper {
   position: relative;
-  grid-area: footer;
+  flex-shrink: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
   min-height: 300px;
+  background-color: var(--color-header-background);
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
   overflow: hidden;
+  transition: none;
+  will-change: height;
+}
+
+.footer-wrapper.is-resizing {
+  user-select: none;
+  pointer-events: auto;
 }
 
 .footer-resizer {
   position: absolute;
-  top: -3px;
+  top: 0;
   left: 0;
   right: 0;
-  height: 10px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: row-resize;
-  z-index: 10001;
+  z-index: 1000;
   background: transparent;
   user-select: none;
   -webkit-user-select: none;
@@ -163,30 +205,34 @@ onBeforeUnmount(() => {
   touch-action: none;
 }
 
-.footer-resizer:hover {
+.resize-indicator {
+  width: 80px;
+  height: 5px;
   background: var(--color-border, #dee2e6);
-  height: 12px;
-  top: -4px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+  pointer-events: none;
 }
 
-.footer-resizer:active {
+.footer-resizer:hover .resize-indicator {
+  background: var(--color-secondary-text, #999);
+  width: 100px;
+  height: 6px;
+}
+
+.footer-resizer:active .resize-indicator {
   background: var(--color-accent, #e53935);
 }
 
 .footer-content {
   position: relative;
-  padding: 0.75rem 0 0.75rem 0.75rem;
-  padding-top: 8px;
-  padding-bottom: 6px;
-  background-color: var(--color-header-background);
-  border-top: 1px solid var(--color-border);
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
-  overflow: hidden;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 300px;
-  height: 100%;
+  padding: 32px 0.75rem 0.75rem 0.75rem;
+  border-top: 1px solid var(--color-border);
+  overflow: hidden;
+  min-height: 0;
 }
 
 .preview-placeholder {
@@ -266,17 +312,6 @@ onBeforeUnmount(() => {
   to {
     transform: rotate(360deg);
   }
-}
-
-.slide-footer-enter-active,
-.slide-footer-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-footer-enter-from,
-.slide-footer-leave-to {
-  transform: translateY(100%);
-  opacity: 0;
 }
 
 .fade-enter-active,

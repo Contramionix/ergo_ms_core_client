@@ -57,7 +57,6 @@ defineEmits(['update:activeTab', 'refreshFields', 'togglePreview', 'addField'])
   background-color: var(--color-header-background);
   align-items: center;
   padding: 0 1rem;
-  margin-top: 5px;
   gap: 1rem;
   border-bottom: 1px solid var(--color-border);
 }
