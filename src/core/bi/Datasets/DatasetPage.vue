@@ -193,7 +193,13 @@ const {
 // Функции для обработки событий
 
 function handleEditDataset(datasetName) {
-  editDataset(datasetName || editableDatasetName.value)
+  const name = datasetName || editableDatasetName.value
+  // Если датасет еще не создан, используем saveDataset, иначе editDataset
+  if (!dataset.value?.id) {
+    saveDataset(name)
+  } else {
+    editDataset(name)
+  }
 }
 
 function onEditField(field) {
@@ -528,6 +534,5 @@ onMounted(async () => {
   background: var(--color-background, #fff);
   z-index: 1;
   min-height: 300px;
-  max-height: 50vh;
 }
 </style>

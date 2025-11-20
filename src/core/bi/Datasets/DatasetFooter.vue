@@ -1,8 +1,8 @@
 <template>
   <transition name="slide-footer">
-    <div class="footer-wrapper" v-if="isPreviewVisible">
-      <div class="footer-resizer" @mousedown.prevent="startFooterResize"></div>
-      <footer class="footer-content" :style="{ height: footerHeight + 'px', position: 'relative' }">
+    <div class="footer-wrapper" v-if="isPreviewVisible" :style="{ height: footerHeight + 'px' }">
+      <div class="footer-resizer" @mousedown="startResize"></div>
+      <footer class="footer-content">
         <template v-if="previewRows && previewRows.length">
           <DatasetTablePreview 
             v-model:limit="previewLimit" 
@@ -42,10 +42,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onBeforeUnmount, watch } from 'vue'
 import DatasetTablePreview from './components/DatasetTablePreview.vue'
 
-const props = defineProps({
+defineProps({
   isPreviewVisible: Boolean,
   previewRows: Array,
   previewCols: Array,
@@ -58,65 +58,84 @@ const props = defineProps({
 const emit = defineEmits(['update:previewLimit', 'switch-to-sources'])
 
 const footerHeight = ref(400)
-const footerMin = 300
-let footerMax = 600
-let isFooterResizing = false
-let footerStartY = 0
-let footerStartHeight = 0
+const MIN_HEIGHT = 300
+const MAX_HEIGHT = ref(800)
 
-const previewLimit = ref(1000)  // Увеличен лимит по умолчанию для предпросмотра
+// Лимит строк для предпросмотра берется из .env (VITE_BI_PREVIEW_ROWS_LIMIT)
+const previewLimit = ref(parseInt(import.meta.env.VITE_BI_PREVIEW_ROWS_LIMIT || '200', 10))
 
 // Синхронизируем previewLimit с родительским компонентом
 watch(previewLimit, (newValue) => {
   emit('update:previewLimit', newValue)
 })
 
-function startFooterResize(e) {
-  isFooterResizing = true
-  footerStartY = e.clientY
-  footerStartHeight = footerHeight.value
+const isResizing = ref(false)
+let startY = 0
+let startHeight = 0
 
+function startResize(e) {
+  e.preventDefault()
+  e.stopPropagation()
+  
+  if (isResizing.value) return
+  
+  isResizing.value = true
+  startY = e.clientY
+  startHeight = footerHeight.value
+
+  // Вычисляем максимальную высоту на основе доступного пространства
   const layout = document.querySelector('.layout')
-  const toolbar = document.querySelector('.toolbar')
-
-  if (layout && toolbar) {
-    const layoutRect = layout.getBoundingClientRect()
-    const toolbarRect = toolbar.getBoundingClientRect()
-    footerMax = layoutRect.bottom - toolbarRect.bottom
+  if (layout) {
+    const rect = layout.getBoundingClientRect()
+    const availableHeight = window.innerHeight - rect.top - 100
+    MAX_HEIGHT.value = Math.min(availableHeight, 800)
   } else {
-    footerMax = 600
+    MAX_HEIGHT.value = Math.floor(window.innerHeight * 0.7)
   }
 
-  window.addEventListener('mousemove', resizeFooter)
-  window.addEventListener('mouseup', stopFooterResize)
+  // Используем capture phase для надежного отслеживания
+  document.addEventListener('mousemove', handleResize, { passive: false })
+  document.addEventListener('mouseup', stopResize, { once: true })
+  
+  // Предотвращаем выделение текста и устанавливаем курсор
+  document.body.style.cursor = 'row-resize'
+  document.body.style.userSelect = 'none'
 }
 
-function resizeFooter(e) {
-  if (!isFooterResizing) return
-  
-  const delta = e.clientY - footerStartY
-  const newHeight = Math.min(
-    footerMax,
-    Math.max(footerMin, footerStartHeight - delta)
-  )
-  
-  if (newHeight !== footerHeight.value) {
-    footerHeight.value = newHeight
+function handleResize(e) {
+  if (!isResizing.value) {
+    stopResize()
+    return
   }
+  
+  e.preventDefault()
+  e.stopPropagation()
+  
+  // Вычисляем изменение позиции мыши
+  // При движении мыши вверх (e.clientY < startY) высота увеличивается
+  // При движении мыши вниз (e.clientY > startY) высота уменьшается
+  const deltaY = startY - e.clientY  // Инвертируем для правильного направления
+  const newHeight = startHeight + deltaY
+  
+  // Ограничиваем высоту минимальным и максимальным значениями
+  footerHeight.value = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT.value, newHeight))
 }
 
-function stopFooterResize() {
-  isFooterResizing = false
-  window.removeEventListener('mousemove', resizeFooter)
-  window.removeEventListener('mouseup', stopFooterResize)
+function stopResize() {
+  if (!isResizing.value) return
+  
+  isResizing.value = false
+  
+  document.removeEventListener('mousemove', handleResize)
+  document.removeEventListener('mouseup', stopResize)
+  
+  // Восстанавливаем стили
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
 }
-
-onMounted(() => {
-  // Инициализация
-})
 
 onBeforeUnmount(() => {
-  stopFooterResize()
+  stopResize()
 })
 </script>
 
@@ -124,32 +143,50 @@ onBeforeUnmount(() => {
 .footer-wrapper {
   position: relative;
   grid-area: footer;
+  min-height: 300px;
   overflow: hidden;
 }
 
 .footer-resizer {
   position: absolute;
-  top: 0;
+  top: -3px;
   left: 0;
-  width: 100%;
-  height: 6px;
+  right: 0;
+  height: 10px;
   cursor: row-resize;
-  z-index: 10;
+  z-index: 10001;
+  background: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  touch-action: none;
+}
+
+.footer-resizer:hover {
+  background: var(--color-border, #dee2e6);
+  height: 12px;
+  top: -4px;
+}
+
+.footer-resizer:active {
+  background: var(--color-accent, #e53935);
 }
 
 .footer-content {
   position: relative;
   padding: 0.75rem 0 0.75rem 0.75rem;
-  padding-bottom: 6px !important;
+  padding-top: 8px;
+  padding-bottom: 6px;
   background-color: var(--color-header-background);
   border-top: 1px solid var(--color-border);
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
   overflow: hidden;
-  height: 100%;
   display: flex;
   flex-direction: column;
   min-height: 300px;
+  height: 100%;
 }
 
 .preview-placeholder {
@@ -194,6 +231,8 @@ onBeforeUnmount(() => {
   font-size: 13px;
   cursor: pointer;
   transition: background-color 0.2s;
+  margin: 0 auto;
+  display: block;
 }
 
 .preview-placeholder.error .error-action-btn:hover {

@@ -196,14 +196,22 @@ function handleSelect(connection) {
 }
 
 async function handleTableSelect(table) {
+  // Инициализируем переменную для emit
+  let tableToEmit = table
+  
   // Проверяем, что выбранная таблица принадлежит текущему подключению
   if (props.selectedConnection && table) {
+    const isFileConnection = props.selectedConnection.connector_type_display?.toLowerCase().includes('file') || 
+                            props.selectedConnection.connector_type?.toLowerCase().includes('файл')
+    
     let belongsToCurrentConnection = false
     
-    // Для файловых подключений проверяем file_id
-    if (props.selectedConnection.connector_type_display?.toLowerCase().includes('file') || 
-        props.selectedConnection.connector_type?.toLowerCase().includes('файл')) {
-      belongsToCurrentConnection = table.file_id === props.selectedConnection.id
+    // Для файловых подключений проверяем connection_id FileUpload
+    if (isFileConnection) {
+      // Файл может прийти из API с connection_id, или как объект из allTables с file_id
+      belongsToCurrentConnection = table.connection_id === props.selectedConnection.id || 
+                                   table.file_id === props.selectedConnection.id ||
+                                   table.id === props.selectedConnection.id
     } else {
       // Для других типов подключений проверяем connection_id
       belongsToCurrentConnection = !table.connection_id || table.connection_id === props.selectedConnection.id
@@ -214,35 +222,35 @@ async function handleTableSelect(table) {
       return
     }
     
-    // Дополнительная проверка: убеждаемся, что таблица действительно существует в текущем подключении
-    // Используем более гибкую проверку, так как allTables может еще не обновиться
-    const tableExists = props.allTables.some(t => {
-      if (props.selectedConnection.connector_type_display?.toLowerCase().includes('file') || 
-          props.selectedConnection.connector_type?.toLowerCase().includes('файл')) {
-        return t.file_id === props.selectedConnection.id && t.id === table.id
+    // Ищем таблицу в allTables для использования обработанной версии
+    const tableInAllTables = props.allTables.find(t => {
+      // Ищем по ID (для обычных таблиц) или по file_id (для файлов)
+      if (isFileConnection) {
+        // Для файлов: t.id может быть отрицательным, а t.file_id содержит оригинальный ID
+        return Math.abs(t.id) === table.id || t.file_id === table.id
       } else {
-        return (!t.connection_id || t.connection_id === props.selectedConnection.id) && t.id === table.id
+        return t.id === table.id
       }
     })
     
-    // Если таблица не найдена в allTables, но она принадлежит текущему подключению,
-    // все равно позволяем её выбрать (возможно, allTables еще не обновился)
-    if (!tableExists) {
-      // Дополнительная проверка: убеждаемся, что таблица действительно загружена
-      // и принадлежит текущему подключению
-      if (table.connection_id && table.connection_id !== props.selectedConnection.id) {
-        console.warn('[DatasetCreating] Таблица имеет connection_id, который не совпадает с текущим подключением')
-        return
-      }
-      
-      if (table.file_id && table.file_id !== props.selectedConnection.id) {
-        console.warn('[DatasetCreating] Таблица имеет file_id, который не совпадает с текущим подключением')
-        return
+    // Если таблица найдена в allTables, используем её (она уже обработана)
+    if (tableInAllTables) {
+      tableToEmit = tableInAllTables
+    } else if (isFileConnection) {
+      // Если таблица не найдена в allTables, но это файл, обрабатываем её вручную
+      // Добавляем file_id для совместимости с кодом сохранения
+      tableToEmit = {
+        ...table,
+        file_id: table.file_id || table.id,
+        connection_id: table.connection_id || props.selectedConnection.id,
+        name: table.name || table.original_filename || table.display_name,
+        display_name: table.display_name || table.original_filename || table.name,
+        table_ref: null
       }
     }
   }
   
-  emit('update:mainTable', table)
+  emit('update:mainTable', tableToEmit)
   showTableTooltip.value = false
 }
 
@@ -382,6 +390,7 @@ onBeforeUnmount(() => {
     min-height: 60px;
     display: flex;
     align-items: center;
+    justify-content: center;
     flex-direction: row;
     gap: 10px;
     width: 100%;

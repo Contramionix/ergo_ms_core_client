@@ -72,12 +72,18 @@ export function useDatasetActions(state) {
         }
         
         for (const rel of state.relations.value) {
-          await datasetService.addRelation({
+          const tableObj = state.allTablesOfConnection.value.find(
+            t => Number(t.id) === Number(rel.rightTableId)
+          )
+          const relationPayload = {
             datasetId: dsId,
             rightTableId: rel.rightTableId,
             joinType: rel.joinType,
             lines: rel.lines,
-          })
+          }
+          if (tableObj?.file_id) relationPayload.file_id = tableObj.file_id
+          
+          await datasetService.addRelation(relationPayload)
         }
         
         const { data: updated } = await datasetService.getDataset(dsId)
@@ -243,8 +249,19 @@ export function useDatasetActions(state) {
       }
 
       const { data: fresh } = await datasetService.getDataset(dsId)
-      const { data: files } = await connectionService.getFiles(fresh.connection)
-      state.fileUploadsCache.value = files
+      
+      // Загружаем файлы подключения только если connection существует
+      if (fresh.connection) {
+        try {
+          const { data: files } = await connectionService.getFiles(fresh.connection)
+          state.fileUploadsCache.value = files
+        } catch (error) {
+          console.warn('[useDatasetActions] Не удалось загрузить файлы подключения:', error)
+          state.fileUploadsCache.value = []
+        }
+      } else {
+        state.fileUploadsCache.value = []
+      }
       
       await hydrateFromDataset(fresh)
       state.relations.value = state.getRelationsFromDataset(fresh, state.mainTable.value?.id)
@@ -886,6 +903,13 @@ export function useDatasetActions(state) {
         state.relations.value = state.relations.value.filter(rel => 
           joined.some(joinedTbl => joinedTbl.id === rel.rightTableId)
         )
+      }
+      
+      // Проверяем наличие главной таблицы перед отправкой запроса
+      if (!main) {
+        state.previewCols.value = []
+        state.previewRows.value = []
+        return
       }
       
       const resp = await datasetService.draftPreview({

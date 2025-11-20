@@ -24,7 +24,8 @@ export function useDatasetState() {
   const selectedTables = ref([])
   const previewCols = ref([])
   const previewRows = ref([])
-  const previewLimit = ref(1000)  // Увеличен лимит по умолчанию для предпросмотра
+  // Лимит строк для предпросмотра берется из .env (VITE_BI_PREVIEW_ROWS_LIMIT)
+  const previewLimit = ref(parseInt(import.meta.env.VITE_BI_PREVIEW_ROWS_LIMIT || '200', 10))
   
   // Модальные окна
   const showModal = ref(false)

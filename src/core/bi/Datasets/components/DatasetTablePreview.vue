@@ -110,6 +110,14 @@ const PAGE_SIZE = 1000
 
 // Инициализация
 onMounted(async () => {
+  // Если есть данные в props (черновик), используем их и не загружаем через API
+  if (props.rows && props.rows.length > 0 && props.cols && props.cols.length > 0) {
+    allRows.value = props.rows
+    allColumns.value = props.cols
+    return
+  }
+  
+  // Загружаем через API только если есть datasetId и нет данных в props
   if (props.datasetId && props.isPreviewVisible) {
     await loadInitialData()
   }
@@ -132,6 +140,13 @@ onMounted(async () => {
 
 // Отслеживаем изменения datasetId и isPreviewVisible
 watch(() => [props.datasetId, props.isPreviewVisible], async ([datasetId, isVisible]) => {
+  // Если есть данные в props (черновик), используем их
+  if (props.rows && props.rows.length > 0 && props.cols && props.cols.length > 0) {
+    allRows.value = props.rows
+    allColumns.value = props.cols
+    return
+  }
+  
   if (datasetId && isVisible) {
     // Сбрасываем состояние при смене датасета
     allRows.value = []
@@ -162,6 +177,13 @@ watch(() => [props.rows, props.cols], ([rows, cols]) => {
 
 // Загрузка начальных данных
 async function loadInitialData() {
+  // Если есть данные в props (черновик), используем их вместо загрузки через API
+  if (props.rows && props.rows.length > 0 && props.cols && props.cols.length > 0) {
+    allRows.value = props.rows
+    allColumns.value = props.cols
+    return
+  }
+  
   if (!props.datasetId) {
     // Если datasetId не указан, используем данные из props (обратная совместимость)
     if (props.rows && props.rows.length > 0) {
@@ -201,6 +223,11 @@ async function loadInitialData() {
 
 // Загрузка следующих страниц
 async function loadMore() {
+  // Для черновика (когда есть данные в props) не загружаем через API
+  if (props.rows && props.rows.length > 0 && props.cols && props.cols.length > 0) {
+    return
+  }
+  
   if (isLoadingMore.value || !hasMore.value || !props.datasetId) return
   
   isLoadingMore.value = true
