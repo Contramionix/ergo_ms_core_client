@@ -130,6 +130,8 @@ const currentOffset = ref(0)
 const searchDebounceTimer = ref(null)
 const errorState = ref(null)
 const PAGE_SIZE = 1000
+const isInitialized = ref(false)
+const loadRequestInProgress = ref(false)
 
 // Обработка изменения лимита
 function handleLimitInput() {
@@ -177,12 +179,14 @@ onMounted(async () => {
   if (props.rows && props.rows.length > 0 && props.cols && props.cols.length > 0) {
     allRows.value = props.rows
     allColumns.value = props.cols
+    isInitialized.value = true
     return
   }
   
   // Загружаем через API только если есть datasetId и нет данных в props
-  if (props.datasetId && props.isPreviewVisible) {
+  if (props.datasetId && props.isPreviewVisible && !isInitialized.value) {
     await loadInitialData()
+    isInitialized.value = true
   }
   
   // Обработка скролла до конца (для автоматической загрузки следующих страниц)
@@ -202,15 +206,21 @@ onMounted(async () => {
 })
 
 // Отслеживаем изменения datasetId и isPreviewVisible
-watch(() => [props.datasetId, props.isPreviewVisible], async ([datasetId, isVisible]) => {
+watch(() => [props.datasetId, props.isPreviewVisible], async ([datasetId, isVisible], [oldDatasetId, oldIsVisible]) => {
+  // Пропускаем если значения не изменились (первый запуск при монтировании)
+  if (datasetId === oldDatasetId && isVisible === oldIsVisible && isInitialized.value) {
+    return
+  }
+  
   // Если есть данные в props (черновик), используем их
   if (props.rows && props.rows.length > 0 && props.cols && props.cols.length > 0) {
     allRows.value = props.rows
     allColumns.value = props.cols
+    isInitialized.value = true
     return
   }
   
-  if (datasetId && isVisible) {
+  if (datasetId && isVisible && !loadRequestInProgress.value) {
     // Сбрасываем состояние при смене датасета
     allRows.value = []
     allColumns.value = []
@@ -219,11 +229,17 @@ watch(() => [props.datasetId, props.isPreviewVisible], async ([datasetId, isVisi
     searchQuery.value = ''
     debouncedSearchQuery.value = ''
     await loadInitialData()
+    isInitialized.value = true
   }
-}, { immediate: false })
+}, { immediate: false, flush: 'post' })
 
 // Если данные переданы через props (черновик), используем их
-watch(() => [props.rows, props.cols], ([rows, cols]) => {
+watch(() => [props.rows, props.cols], ([rows, cols], [oldRows, oldCols]) => {
+  // Пропускаем если данные не изменились (первый запуск при монтировании)
+  if (rows === oldRows && cols === oldCols && isInitialized.value) {
+    return
+  }
+  
   // Если данные переданы через props (черновик), всегда используем их
   if (rows && Array.isArray(rows) && cols && Array.isArray(cols) && cols.length > 0) {
     // Для черновика всегда обновляем данные из props
@@ -233,15 +249,21 @@ watch(() => [props.rows, props.cols], ([rows, cols]) => {
     // Сбрасываем состояние пагинации при обновлении данных
     currentOffset.value = 0
     hasMore.value = false // Для черновика не загружаем больше через API
+    isInitialized.value = true
   } else if (rows && Array.isArray(rows) && rows.length === 0) {
     // Если данные пустые, очищаем
     allRows.value = []
     allColumns.value = cols || []
   }
-}, { immediate: true, deep: true })
+}, { immediate: false, deep: true, flush: 'post' })
 
 // Дополнительный watch для отслеживания изменений длины массива (для надежности)
-watch(() => props.rows?.length, (newLength) => {
+watch(() => props.rows?.length, (newLength, oldLength) => {
+  // Пропускаем если длина не изменилась или это первый запуск
+  if (newLength === oldLength && isInitialized.value) {
+    return
+  }
+  
   if (props.rows && Array.isArray(props.rows) && props.cols && Array.isArray(props.cols) && props.cols.length > 0) {
     // Если длина изменилась, обновляем данные
     if (newLength !== allRows.value.length) {
@@ -251,10 +273,15 @@ watch(() => props.rows?.length, (newLength) => {
       hasMore.value = false
     }
   }
-})
+}, { immediate: false })
 
 // Загрузка начальных данных
 async function loadInitialData() {
+  // Защита от параллельных запросов
+  if (loadRequestInProgress.value || isLoading.value) {
+    return
+  }
+  
   // Если есть данные в props (черновик), используем их вместо загрузки через API
   if (props.rows && props.rows.length > 0 && props.cols && props.cols.length > 0) {
     allRows.value = props.rows
@@ -271,6 +298,7 @@ async function loadInitialData() {
     return
   }
   
+  loadRequestInProgress.value = true
   isLoading.value = true
   currentOffset.value = 0
   allRows.value = []
@@ -296,6 +324,7 @@ async function loadInitialData() {
     errorState.value = error.message || 'Ошибка загрузки данных'
   } finally {
     isLoading.value = false
+    loadRequestInProgress.value = false
   }
 }
 
@@ -426,11 +455,6 @@ const visibleRows = computed(() => {
         String(val).toLowerCase().includes(query)
       )
     })
-  }
-  
-  // Отладочная информация
-  if (rows.length > 0 && import.meta.env.DEV) {
-    console.log('[DatasetTablePreview] visibleRows:', rows.length, 'rows, first row:', rows[0])
   }
   
   return rows
