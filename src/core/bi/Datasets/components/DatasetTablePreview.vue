@@ -35,6 +35,11 @@
       <p>{{ errorState }}</p>
     </div>
     
+    <!-- Предупреждение о большом количестве строк -->
+    <div v-if="sortedRows.length > MAX_VISIBLE_ROWS" class="warning-message">
+      <p>Отображается только первые {{ MAX_VISIBLE_ROWS.toLocaleString() }} строк из {{ sortedRows.length.toLocaleString() }} для обеспечения производительности.</p>
+    </div>
+    
     <!-- Таблица предпросмотра -->
     <div class="table-wrapper" v-if="datatableColumns.length && !errorState">
       <table class="preview-table">
@@ -132,6 +137,7 @@ const errorState = ref(null)
 const PAGE_SIZE = 1000
 const isInitialized = ref(false)
 const loadRequestInProgress = ref(false)
+const MAX_VISIBLE_ROWS = 10000
 
 // Обработка изменения лимита
 function handleLimitInput() {
@@ -317,11 +323,23 @@ async function loadInitialData() {
       allRows.value = response.data.rows || []
       hasMore.value = response.data.has_more || false
     } else {
-      errorState.value = response.message || 'Ошибка загрузки данных'
+      // Не очищаем данные при ошибке, чтобы таблица не исчезла
+      // Устанавливаем ошибку только если данных не было
+      if (allRows.value.length === 0) {
+        errorState.value = response.message || 'Ошибка загрузки данных'
+      } else {
+        console.warn('Ошибка загрузки данных, но данные уже есть:', response.message)
+      }
     }
   } catch (error) {
     console.error('Ошибка загрузки данных:', error)
-    errorState.value = error.message || 'Ошибка загрузки данных'
+    // Не очищаем данные при ошибке, чтобы таблица не исчезла
+    // Устанавливаем ошибку только если данных не было
+    if (allRows.value.length === 0) {
+      errorState.value = error.message || 'Ошибка загрузки данных'
+    } else {
+      console.warn('Ошибка загрузки данных, но данные уже есть:', error.message)
+    }
   } finally {
     isLoading.value = false
     loadRequestInProgress.value = false
@@ -352,11 +370,14 @@ async function loadMore() {
       hasMore.value = response.data.has_more || false
       currentOffset.value = nextOffset
     } else {
-      errorState.value = response.message || 'Ошибка загрузки дополнительных данных'
+      // Не устанавливаем ошибку при загрузке дополнительных данных, чтобы не скрыть таблицу
+      console.warn('Ошибка загрузки дополнительных данных:', response.message)
+      hasMore.value = false // Прекращаем попытки загрузки
     }
   } catch (error) {
     console.error('Ошибка загрузки дополнительных данных:', error)
-    errorState.value = error.message || 'Ошибка загрузки дополнительных данных'
+    // Не устанавливаем ошибку при загрузке дополнительных данных, чтобы не скрыть таблицу
+    hasMore.value = false // Прекращаем попытки загрузки
   } finally {
     isLoadingMore.value = false
   }
@@ -444,6 +465,7 @@ const sortedRows = computed(() => {
   })
 })
 
+// Виртуализация: ограничиваем количество отображаемых строк для производительности
 const visibleRows = computed(() => {
   let rows = sortedRows.value
   
@@ -455,6 +477,12 @@ const visibleRows = computed(() => {
         String(val).toLowerCase().includes(query)
       )
     })
+  }
+  
+  // Ограничиваем количество отображаемых строк для производительности
+  // Это предотвращает проблемы с рендерингом при большом количестве строк
+  if (rows.length > MAX_VISIBLE_ROWS) {
+    return rows.slice(0, MAX_VISIBLE_ROWS)
   }
   
   return rows
@@ -587,6 +615,17 @@ function toField(str) {
   color: var(--color-accent);
   border-radius: 12px;
   margin-bottom: 1rem;
+}
+
+.warning-message {
+  text-align: center;
+  padding: 0.75rem 1rem;
+  border: 1px solid #ffc107;
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
 }
 
 .table-wrapper {

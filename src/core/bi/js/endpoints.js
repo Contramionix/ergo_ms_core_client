@@ -18,6 +18,7 @@ export const biEndpoints = {
         // Datasets
         datasetDetail: id => `bi_analysis/bi_datasets/${id}/`,
         datasetPreview: id => `bi_analysis/bi_datasets/${id}/preview/`,
+        datasetPreviewTaskStatus: 'bi_analysis/bi_datasets/preview/task-status/',
         datasetRenameColumns: id => `bi_analysis/bi_datasets/${id}/rename_columns/`,
         datasetAutoJoin: id => `bi_analysis/bi_datasets/${id}/auto-join/`,
         datasetAddTable: id => `bi_analysis/bi_datasets/${id}/add-table/`,

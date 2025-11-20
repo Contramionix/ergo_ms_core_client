@@ -54,6 +54,12 @@ export default {
       params
     )
   },
+  previewTaskStatus(taskId) {
+    return apiClient.get(
+      endpoints.bi.datasetPreviewTaskStatus,
+      { task_id: taskId }
+    )
+  },
 
   patchDataset (id, payload) {
     return apiClient.patch(endpoints.bi.datasetDetail(id), payload)

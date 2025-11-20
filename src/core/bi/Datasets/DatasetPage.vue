@@ -112,6 +112,9 @@ const actions = useDatasetActions(state)
 // Локальное состояние для редактируемого имени датасета (не сохраняется моментально)
 const editableDatasetName = ref('')
 
+// Флаг для предотвращения повторных вызовов loadDataset
+const isLoadingDataset = ref(false)
+
 // Вычисляемое свойство, учитывающее изменения имени датасета
 const computedIsDirty = computed(() => {
   // Проверяем базовые изменения через isDirty из state
@@ -456,14 +459,19 @@ watch(previewLimit, async (val, old) => {
 })
 
 watch(datasetId, async (newId, oldId) => {
-  if (newId && newId !== oldId) {
-    await loadDataset(newId)
-    
-    if (selectedConnection.value && fileUploadsCache.value) {
-      updateConnectionStatus(fileUploadsCache.value)
+  if (newId && newId !== oldId && !isLoadingDataset.value) {
+    isLoadingDataset.value = true
+    try {
+      await loadDataset(newId)
+      
+      if (selectedConnection.value && fileUploadsCache.value) {
+        updateConnectionStatus(fileUploadsCache.value)
+      }
+    } finally {
+      isLoadingDataset.value = false
     }
   }
-})
+}, { immediate: true })
 
 // Синхронизируем редактируемое имя с headerName при его изменении
 watch(() => headerName.value, (newName) => {
@@ -481,15 +489,7 @@ watch(() => dataset.value?.name, (newName) => {
 
 // Lifecycle
 onMounted(async () => {
-  if (datasetId.value) {
-    await loadDataset(datasetId.value)
-    
-    if (selectedConnection.value && fileUploadsCache.value) {
-      updateConnectionStatus(fileUploadsCache.value)
-    }
-  }
-  
-  // Загружаем предпросмотр после загрузки датасета
+  // Загружаем предпросмотр после загрузки датасета (loadDataset вызывается через watcher)
   if (mainTable.value && dataset.value?.id) {
     await loadPreview()
   }

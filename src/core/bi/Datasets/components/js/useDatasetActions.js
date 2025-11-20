@@ -845,6 +845,57 @@ export function useDatasetActions(state) {
     }
   }
   
+  // Функция ожидания результата асинхронной задачи
+  async function waitForTaskResult(taskId, maxAttempts = 120, initialInterval = 1000) {
+    // Используем экспоненциальный backoff: начинаем с 1 секунды, увеличиваем до 3 секунд
+    let currentInterval = initialInterval
+    const maxInterval = 3000
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const response = await datasetService.previewTaskStatus(taskId)
+        const statusData = response?.data || response
+        
+        if (statusData?.status === 'success' && statusData?.result) {
+          return statusData.result
+        } else if (statusData?.status === 'failure') {
+          console.error('Задача завершилась с ошибкой:', statusData.error)
+          return null
+        } else if (statusData?.status === 'processing' || statusData?.status === 'pending') {
+          // Задача еще выполняется, ждем
+          // Увеличиваем интервал постепенно (экспоненциальный backoff)
+          if (attempt < 10) {
+            currentInterval = initialInterval // Первые 10 попыток - быстро
+          } else if (attempt < 30) {
+            currentInterval = 2000 // Следующие 20 попыток - средний интервал
+          } else {
+            currentInterval = maxInterval // Дальше - максимальный интервал
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, currentInterval))
+          continue
+        } else {
+          // Неизвестный статус
+          console.warn('Неизвестный статус задачи:', statusData?.status)
+          await new Promise(resolve => setTimeout(resolve, currentInterval))
+          continue
+        }
+      } catch (error) {
+        console.error('Ошибка проверки статуса задачи:', error)
+        // При ошибке ждем и пробуем еще раз
+        if (attempt < maxAttempts - 1) {
+          await new Promise(resolve => setTimeout(resolve, currentInterval))
+          continue
+        } else {
+          return null
+        }
+      }
+    }
+    
+    console.warn('Превышено максимальное время ожидания задачи (', maxAttempts * currentInterval / 1000, 'секунд)')
+    return null
+  }
+  
   // Функции для работы с preview
   async function loadPreview() {
     state.isPreviewLoading.value = true
@@ -912,20 +963,109 @@ export function useDatasetActions(state) {
         return
       }
       
-      const resp = await datasetService.draftPreview({
-        connection_id: state.selectedConnection.value?.id,
-        mainTable: main,
-        joinedTables: joined,
-        limit: state.previewLimit.value,
-      })
+      let resp = null
       
-      if (resp && resp.data) {
-        state.previewCols.value = resp.data.columns || []
-        state.previewRows.value = resp.data.rows || []
-        await loadFields()
+      // Для сохраненного датасета используем preview API, для черновика - draftPreview
+      if (state.dataset.value?.id) {
+        // Сохраненный датасет - используем preview API
+        try {
+          resp = await datasetService.preview(state.dataset.value.id, {
+            limit: state.previewLimit.value,
+            offset: 0
+          })
+          
+          // API может вернуть данные напрямую или обернутые в data
+          const data = resp?.data || resp
+          
+          // Проверяем, не является ли это асинхронной задачей
+          if (data?.status === 'processing' && data?.task_id) {
+            console.log('Предпросмотр обрабатывается асинхронно, ожидаем результат...', data.task_id)
+            // Ожидаем результат асинхронной задачи
+            const result = await waitForTaskResult(data.task_id)
+            if (result && (result.columns || result.rows)) {
+              state.previewCols.value = result.columns || []
+              state.previewRows.value = result.rows || []
+              await loadFields()
+            } else {
+              // Не очищаем данные при ошибке, чтобы таблица не исчезла
+              if (!state.previewCols.value.length && !state.previewRows.value.length) {
+                state.previewCols.value = []
+                state.previewRows.value = []
+              }
+            }
+            return
+          }
+          
+          if (data && (data.columns || data.rows)) {
+            state.previewCols.value = data.columns || []
+            state.previewRows.value = data.rows || []
+            await loadFields()
+          } else {
+            // Не очищаем данные при ошибке, чтобы таблица не исчезла
+            if (!state.previewCols.value.length && !state.previewRows.value.length) {
+              state.previewCols.value = []
+              state.previewRows.value = []
+            }
+          }
+        } catch (error) {
+          console.error('Ошибка загрузки предпросмотра сохраненного датасета:', error)
+          // Не очищаем данные при ошибке, чтобы таблица не исчезла
+          if (!state.previewCols.value.length && !state.previewRows.value.length) {
+            state.previewCols.value = []
+            state.previewRows.value = []
+          }
+        }
       } else {
-        state.previewCols.value = []
-        state.previewRows.value = []
+        // Черновик - используем draftPreview
+        try {
+          resp = await datasetService.draftPreview({
+            connection_id: state.selectedConnection.value?.id,
+            mainTable: main,
+            joinedTables: joined,
+            limit: state.previewLimit.value,
+          })
+          
+          // API может вернуть данные напрямую или обернутые в data
+          const data = resp?.data || resp
+          
+          // Проверяем, не является ли это асинхронной задачей
+          if (data?.status === 'processing' && data?.task_id) {
+            console.log('Предпросмотр обрабатывается асинхронно, ожидаем результат...', data.task_id)
+            // Ожидаем результат асинхронной задачи
+            const result = await waitForTaskResult(data.task_id)
+            if (result && (result.columns || result.rows)) {
+              state.previewCols.value = result.columns || []
+              state.previewRows.value = result.rows || []
+              await loadFields()
+            } else {
+              // Не очищаем данные при ошибке, чтобы таблица не исчезла
+              if (!state.previewCols.value.length && !state.previewRows.value.length) {
+                state.previewCols.value = []
+                state.previewRows.value = []
+              }
+            }
+            return
+          }
+          
+          if (data && (data.columns || data.rows)) {
+            state.previewCols.value = data.columns || []
+            state.previewRows.value = data.rows || []
+            await loadFields()
+          } else {
+            // Не очищаем данные при ошибке, чтобы таблица не исчезла
+            if (!state.previewCols.value.length && !state.previewRows.value.length) {
+              state.previewCols.value = []
+              state.previewRows.value = []
+            }
+          }
+        } catch (error) {
+          console.error('Ошибка загрузки предпросмотра черновика:', error)
+          // Не очищаем данные при ошибке, чтобы таблица не исчезла
+          if (!state.previewCols.value.length && !state.previewRows.value.length) {
+            state.previewCols.value = []
+            state.previewRows.value = []
+          }
+        }
       }
     } finally {
       state.isPreviewLoading.value = false
