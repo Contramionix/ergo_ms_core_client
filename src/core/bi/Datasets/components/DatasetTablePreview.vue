@@ -429,7 +429,7 @@ const visibleRows = computed(() => {
   }
   
   // Отладочная информация
-  if (rows.length > 0 && process.env.NODE_ENV === 'development') {
+  if (rows.length > 0 && import.meta.env.DEV) {
     console.log('[DatasetTablePreview] visibleRows:', rows.length, 'rows, first row:', rows[0])
   }
   
