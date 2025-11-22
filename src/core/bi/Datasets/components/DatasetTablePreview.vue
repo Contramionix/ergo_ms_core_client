@@ -22,7 +22,7 @@
           v-model.number="localLimit" 
           class="form-control form-control-sm limit-input" 
           min="1"
-          max="10000"
+          :max="MAX_PREVIEW_LIMIT"
           @input="handleLimitInput"
           @change="handleLimitChange"
           @blur="handleLimitBlur"
@@ -137,7 +137,10 @@ const errorState = ref(null)
 const PAGE_SIZE = 1000
 const isInitialized = ref(false)
 const loadRequestInProgress = ref(false)
-const MAX_VISIBLE_ROWS = 10000
+// Максимальное количество строк для отображения (для производительности рендеринга)
+const MAX_VISIBLE_ROWS = parseInt(import.meta.env.VITE_BI_PREVIEW_MAX_VISIBLE_ROWS || '10000', 10)
+// Максимальный лимит строк для запроса (из .env)
+const MAX_PREVIEW_LIMIT = parseInt(import.meta.env.VITE_BI_PREVIEW_MAX_VALUES_ROWS || '10000', 10)
 
 // Обработка изменения лимита
 function handleLimitInput() {
@@ -149,8 +152,8 @@ function handleLimitInput() {
   // Ограничиваем значение
   if (localLimit.value < 1) {
     localLimit.value = 1
-  } else if (localLimit.value > 10000) {
-    localLimit.value = 10000
+  } else if (localLimit.value > MAX_PREVIEW_LIMIT) {
+    localLimit.value = MAX_PREVIEW_LIMIT
   }
   
   // Эмитим событие для обновления в родительском компоненте
@@ -166,8 +169,8 @@ function handleLimitChange() {
   
   if (localLimit.value < 1) {
     localLimit.value = 1
-  } else if (localLimit.value > 10000) {
-    localLimit.value = 10000
+  } else if (localLimit.value > MAX_PREVIEW_LIMIT) {
+    localLimit.value = MAX_PREVIEW_LIMIT
   }
   
   // Эмитим событие для обновления в родительском компоненте
