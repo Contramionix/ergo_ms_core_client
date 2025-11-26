@@ -6,6 +6,7 @@
   "description": "Ядро системы ErgoMS - клиентская часть",
   "scripts": {
     "dev": "vite --host",
+    "stop-dev": "node scripts/stop-dev.js",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --fix",
