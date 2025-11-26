@@ -254,6 +254,7 @@ const handleBIQuery = async ({ fileId, question }) => {
           assistantChat.value?.updateStreamingMessage(messageId, {
             stage: stageMessage,
             sql: sqlQuery,
+            sqlGenerating: null,  // Очищаем - кружок "Генерация SQL" останавливается
             content: currentMessage,
             data: tableData,
           })
@@ -264,6 +265,7 @@ const handleBIQuery = async ({ fileId, question }) => {
           assistantChat.value?.updateStreamingMessage(messageId, {
             stage: stageMessage,
             sql: sqlQuery,
+            sqlGenerating: null,  // Очищаем генерацию SQL
             content: currentMessage,
             data: tableData,
           })
@@ -277,16 +279,22 @@ const handleBIQuery = async ({ fileId, question }) => {
           }
           assistantChat.value?.updateStreamingMessage(messageId, {
             sql: event.sql || sqlQuery,
+            sqlGenerating: null,  // Очищаем генерацию SQL
             content: currentMessage,
             data: tableData,
             completed: true,
+            streaming: false,
+            stage: '',  // Очищаем стадию
           })
           break
 
         case 'error':
           assistantChat.value?.updateStreamingMessage(messageId, {
             error: event.message || event.text,
+            sqlGenerating: null,  // Очищаем генерацию SQL
             completed: true,
+            streaming: false,
+            stage: '',  // Очищаем стадию
           })
           break
 
@@ -295,8 +303,13 @@ const handleBIQuery = async ({ fileId, question }) => {
           break
       }
     })
+    
+    // Финализируем на всякий случай после завершения streaming
+    assistantChat.value?.finalizeStreamingMessage(messageId)
   } catch (error) {
     console.error('Error processing BI query:', error)
+    // Останавливаем кружок при ошибке
+    assistantChat.value?.finalizeStreamingMessage(messageId)
     if (assistantChat.value) {
       assistantChat.value.addAssistantMessage(
         `❌ **Ошибка подключения к BI Assistant:**\n\n${error.message}\n\nУбедитесь, что Ollama запущен и доступен.`
@@ -357,6 +370,7 @@ const handleChartAnalysis = async (chartId) => {
           assistantChat.value?.updateStreamingMessage(messageId, {
             stage: stageMessage,
             sql: sqlQuery,
+            sqlGenerating: null,  // Очищаем - кружок останавливается
             content: currentMessage,
             data: tableData,
           })
@@ -367,6 +381,7 @@ const handleChartAnalysis = async (chartId) => {
           assistantChat.value?.updateStreamingMessage(messageId, {
             stage: stageMessage,
             sql: sqlQuery,
+            sqlGenerating: null,  // Очищаем генерацию SQL
             content: currentMessage,
             data: tableData,
           })
@@ -380,16 +395,22 @@ const handleChartAnalysis = async (chartId) => {
           }
           assistantChat.value?.updateStreamingMessage(messageId, {
             sql: event.sql || sqlQuery,
+            sqlGenerating: null,  // Очищаем генерацию SQL
             content: currentMessage,
             data: tableData,
             completed: true,
+            streaming: false,
+            stage: '',  // Очищаем стадию
           })
           break
 
         case 'error':
           assistantChat.value?.updateStreamingMessage(messageId, {
             error: event.message || event.text,
+            sqlGenerating: null,  // Очищаем генерацию SQL
             completed: true,
+            streaming: false,
+            stage: '',  // Очищаем стадию
           })
           break
 
@@ -398,8 +419,13 @@ const handleChartAnalysis = async (chartId) => {
           break
       }
     })
+    
+    // Финализируем на всякий случай после завершения streaming
+    assistantChat.value?.finalizeStreamingMessage(messageId)
   } catch (error) {
     console.error('Error analyzing chart:', error)
+    // Останавливаем кружок при ошибке
+    assistantChat.value?.finalizeStreamingMessage(messageId)
     if (assistantChat.value) {
       assistantChat.value.addAssistantMessage(
         `❌ **Ошибка анализа графика:**\n\n${error.message}\n\nУбедитесь, что Ollama запущен и доступен.`
