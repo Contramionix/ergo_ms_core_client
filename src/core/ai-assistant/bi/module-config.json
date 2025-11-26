@@ -9,7 +9,6 @@
   ],
   "isDefault": false,
   "ollama": {
-    "baseUrl": "http://localhost:11434",
     "model": "mistral:7b",
     "temperature": 0.1,
     "contextWindow": 4096,
