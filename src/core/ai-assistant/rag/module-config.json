@@ -3,8 +3,6 @@
   "routePatterns": [],
   "isDefault": true,
   "ollama": {
-    "baseUrl": "http://localhost:11434",
-    "model": "mistral7b-tuned",
     "temperature": 0.3,
     "contextWindow": 4096,
     "maxTokens": 512
