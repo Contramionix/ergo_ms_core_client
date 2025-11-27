@@ -32,9 +32,9 @@ const closemodal=()=>{
           @input="$emit('searchRowData', $event.target.value)"
       /></label>
       <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#roleAdd">
-        Добавить
+        Добавить роль
       </button>
-      <ModalCenter title="Добавить новую категорию" modalId="roleAdd" @closemodal = "closemodal()">
+      <ModalCenter title="Добавить новую роль" modalId="roleAdd" @closemodal = "closemodal()">
         <SubmitForm @addCategory="updateCategories" ref="AddCategoryRef" />
       </ModalCenter>
     </div>

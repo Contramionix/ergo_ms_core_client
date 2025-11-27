@@ -24,7 +24,7 @@ export const useUserStore = defineStore('userStore', () => {
     
     // Обрабатываем имя, отчество и фамилию
     const firstName = user.value.first_name?.trim() || ''
-    const middleName = profile.value?.middleName?.trim() || ''
+    const middleName = user.value.middle_name?.trim() || ''
     const lastName = user.value.last_name?.trim() || ''
     
     const nameParts = [firstName, middleName, lastName].filter(part => part && part.trim())

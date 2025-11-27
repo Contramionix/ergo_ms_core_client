@@ -1,91 +1,84 @@
 <script setup>
 import PermissionTableHeader from '@/core/cms/adp/admin/PermissionsComponents/PermissionTableHeader.vue'
 import PermissionTable from '@/core/cms/adp/admin/PermissionsComponents/PermissionTable.vue'
-import { GetPermissions } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import ModulePermissionManager from '@/core/cms/adp/admin/PermissionsComponents/ModulePermissionManager.vue'
+import { GetPolicies, GetRoles, GetRoleGroups } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import { ref, onMounted } from 'vue' 
 
-const rows = ref([]) // Initialize with empty array
+const rows = ref([])
+const roles = ref([])
+const roleGroups = ref([])
+
+const loadPolicies = async () => {
+  const policies = await GetPolicies()
+  rows.value = policies.map(policy => ({
+    id: policy.id,
+    name: policy.name,
+    policy_type: policy.policy_type_display,
+    action: policy.action_display,
+    resource_path: policy.resource_path,
+    is_pattern: policy.is_pattern,
+    priority: policy.priority,
+    role_name: policy.role_name,
+    role_group_name: policy.role_group_name,
+    raw_role: policy.role,
+    raw_role_group: policy.role_group
+  }))
+}
+
+const updatePermissions = async () => {
+  try {
+    await loadPolicies()
+  } catch (error) {
+    console.error('Error fetching policies:', error)
+  }
+}
+
+const loadRefs = async () => {
+  roles.value = await GetRoles()
+  roleGroups.value = await GetRoleGroups()
+}
 
 onMounted(async () => {
   try {
-    const permissions = await GetPermissions()
-    for(let i of permissions) {
-      let acsst = i.accession_type
-      if(acsst == 'PageAccession') {
-        acsst = 'Доступ к Странице'
-      }
-      else if(acsst == 'ComponentAccessionToReadAndWrite'| acsst == 'ComponentAccessionToRead') {
-        acsst = 'Доступ к Компоненту на чтение и запись'
-      }
-      else if(acsst == 'ComponentAccessionToRead') {
-        acsst = 'Доступ к Компоненту на чтение'
-      }
-      else {
-        acsst = 'Доступ к панели администратора'
-      }
-      rows.value.push({
-        id: i.id,
-        name: i.name,
-        category: i.category_name,
-        accession_type: acsst,
-        path: i.path,
-        component_id: i.component_id
-      })
-    }
+    await Promise.all([loadRefs(), loadPolicies()])
   } catch (error) {
-    console.error('Error fetching group categories:', error)
+    console.error('Error initializing permissions data:', error)
   }
 })
 
 const rowsPerPage = ref(30)
-const handleChangeRows = (newRowsPerPage) => (rowsPerPage.value = newRowsPerPage)
+const handleChangeRows = newRowsPerPage => (rowsPerPage.value = newRowsPerPage)
 
-// Поиск по названию
 const searchQuery = ref('')
-const handleSearchQuery = (query) => (searchQuery.value = query)
-const updatePermissions = async () => {
-  let value = []
-  const permissions = await GetPermissions()
-    for(let i of permissions) {
-      let acsst = i.accession_type
-      if(acsst == 'PageAccession') {
-        acsst = 'Доступ к Странице'
-      }
-      else if( acsst == 'ComponentAccessionToRead') {
-        acsst = 'Доступ к Компоненту на чтение'
-      }
-      else if(acsst == 'ComponentAccessionToReadAndWrite') {
-        acsst = 'Доступ к компоненту на чтение и запись'
-      }
-      else {
-        acsst = 'Доступ к панели администратора'
-      }
-      value.push({
-        id: i.id,
-        name: i.name,
-        category: i.category_name,
-        accession_type: acsst,
-        path: i.path,
-        component_id: i.component_id
-      })
-    }
-    rows.value = value
-}
+const handleSearchQuery = query => (searchQuery.value = query)
 </script>
 
 <template>
-  <div class="card">
-    <div class="mb-3">
-      <PermissionTableHeader @changeRowsPerPage="handleChangeRows" @searchRowData="handleSearchQuery" @updatePermissions="updatePermissions" />
+  <div class="d-flex flex-column gap-4">
+    <div class="card">
+      <div class="mb-3">
+        <PermissionTableHeader
+          :roles="roles"
+          :roleGroups="roleGroups"
+          @changeRowsPerPage="handleChangeRows"
+          @searchRowData="handleSearchQuery"
+          @updatePermissions="updatePermissions"
+        />
+      </div>
+
+      <PermissionTable 
+        :rows="rows"
+        :roles="roles"
+        :roleGroups="roleGroups"
+        :headers="['Название','Тип политики', 'Действие', 'Ресурс', 'Цель', 'Шаблон', 'Приоритет', 'Действия']"
+        :rowsPerPage="rowsPerPage"
+        :searchQuery="searchQuery"  
+        @updatePermissions="updatePermissions"
+      />
     </div>
 
-    <PermissionTable 
-      :rows="rows"
-      :headers="['Название','Категория', 'Тип доступа', 'Путь', 'Идентификатор компонента', 'Действия']"
-      :rowsPerPage="rowsPerPage"
-      :searchQuery="searchQuery"  
-      @updatePermissions="updatePermissions"
-    />
+    <ModulePermissionManager :role-groups="roleGroups" />
   </div>
 </template>
 

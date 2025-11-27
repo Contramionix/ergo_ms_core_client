@@ -1,33 +1,50 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
-import { ChangeGroupCategory } from '@/core/cms/adp/admin/js/GroupsPolitics'
-const emit = defineEmits(['changeCategory'])
+import { ref, watch, computed } from 'vue'
+import { UpdateRole } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
-const oldname = ref('')
-const name = ref('')
-const showError = ref(false)
+const emit = defineEmits(['changeCategory'])
 
 const props = defineProps({
   row: { type: Object, required: true },
 })
-watch(props, (newProps) => {
-  oldname.value = newProps.row.name
-  name.value = newProps.row.name
-})
-onMounted(() => {
-  oldname.value = props.name
-  name.value = props.name
-})
+
+const roleId = ref(null)
+const name = ref('')
+const roleType = ref('user')
+const description = ref('')
+const isSystem = ref(false)
+
+const showErrorName = ref(false)
+
+watch(
+  () => props.row,
+  newRow => {
+    roleId.value = newRow.id
+    name.value = newRow.name || ''
+    roleType.value = newRow.role_type || 'user'
+    description.value = newRow.description || ''
+    isSystem.value = Boolean(newRow.is_system)
+  },
+  { immediate: true }
+)
+
 const submitForm = async () => {
-  if (!name.value.trim()) {
-    showError.value = true
-  } 
-  else {
-    showError.value = false
-    await ChangeGroupCategory(oldname.value, name.value)
-    emit('changeCategory')
+  showErrorName.value = !name.value.trim()
+
+  if (showErrorName.value || !roleId.value) {
+    return
   }
+
+  await UpdateRole(roleId.value, {
+    name: name.value.trim(),
+    role_type: roleType.value,
+    description: description.value || ''
+  })
+
+  emit('changeCategory')
 }
+
+const canDismiss = computed(() => name.value.trim() !== '')
 </script>
 
 <template>
@@ -38,15 +55,36 @@ const submitForm = async () => {
         id="nameInput"
         class="form-control"
         v-model="name"
-        :class="{ 'is-invalid': showError }"
-        placeholder="Введите название категории"
+        :class="{ 'is-invalid': showErrorName }"
+        placeholder="Введите название роли"
       />
-      <label for="nameInput">Введите название категории</label>
-      <div v-if="showError" class="invalid-feedback">Название обязательно для заполнения.</div>
+      <label for="nameInput">Введите название роли</label>
+      <div v-if="showErrorName" class="invalid-feedback">Название обязательно для заполнения.</div>
     </div>
+
+    <div class="mb-3">
+      <label for="roleTypeSelect" class="form-label">Тип роли</label>
+      <select id="roleTypeSelect" class="form-select" v-model="roleType" :disabled="isSystem">
+        <option value="user">Пользователь</option>
+        <option value="admin">Администратор</option>
+      </select>
+      <small v-if="isSystem" class="text-muted">Тип системной роли изменить нельзя.</small>
+    </div>
+
+    <div class="form-floating mb-3" v-auto-animate>
+      <textarea
+        id="descriptionInputChange"
+        class="form-control"
+        style="height: 100px"
+        v-model="description"
+        placeholder="Описание роли"
+      ></textarea>
+      <label for="descriptionInputChange">Описание роли</label>
+    </div>
+
     <div class="mt-3 text-end">
-      <button type="submit" class="btn btn-primary" :data-bs-dismiss="name !== '' ? 'modal' : ''">
-        изменить
+      <button type="submit" class="btn btn-primary" :data-bs-dismiss="canDismiss ? 'modal' : ''">
+        Изменить
       </button>
     </div>
   </form>

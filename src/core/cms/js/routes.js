@@ -50,7 +50,7 @@ export default {
     "path": "/admin-panel/categories",
     "component": "@/core/cms/adp/admin/Categories.vue",
     "meta": {
-      "title": "Панель категорий",
+      "title": "Панель ролей",
       "requiresAuth": true
     }
   },
@@ -58,7 +58,7 @@ export default {
     "path": "/admin-panel/groups",
     "component": "@/core/cms/adp/admin/Groups.vue",
     "meta": {
-      "title": "Панель групп",
+      "title": "Панель ролевых групп",
       "requiresAuth": true
     }
   },
@@ -66,7 +66,7 @@ export default {
     "path": "/admin-panel/permissions",
     "component": "@/core/cms/adp/admin/Permissions.vue",
     "meta": {
-      "title": "Панель прав",
+      "title": "Политики и модульные права",
       "requiresAuth": true
     }
   },

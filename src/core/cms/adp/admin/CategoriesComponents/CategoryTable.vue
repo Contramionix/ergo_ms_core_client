@@ -1,9 +1,8 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import ModalCenter from '@/components/ModalCenter.vue'
 import ChangeCategoryForm from '@/core/cms/adp/admin/CategoriesComponents/SubmitCategoryChange.vue'
-import { DeleteGroupCategory, ChangeGroupCategory } from '@/core/cms/adp/admin/js/GroupsPolitics'
-import { watch } from 'vue'
+import { DeleteRole } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
 const props = defineProps({
   headers: { type: Array, required: true },
@@ -11,46 +10,50 @@ const props = defineProps({
   rowsPerPage: { type: Number, default: 5 },
   searchQuery: { type: String, default: '' },
 })
+
 const emit = defineEmits(['updateCategories'])
 const data = ref(props.rows)
-watch(() => props.rows, (newRows) => {
-  data.value = [...newRows]
-})
-// Параметры пагинации
-const filterStatus = ref('')
-const currentPage = ref(1)
-const rowselected = ref({
-  name: '',
-})
-const changingrow = (row)=>{
-  rowselected.value ={
-    name: row.name
+
+watch(
+  () => props.rows,
+  newRows => {
+    data.value = [...newRows]
   }
-}
+)
 
-// Фильтрация и поиск
-const filteredRows =  computed(() => {
-  return data.value.filter((row) => {
-    const matchesSearch = row.name.toLowerCase().includes(props.searchQuery.toLowerCase())
-    const matchesFilter = filterStatus.value ? row.status === filterStatus.value : true
-    return matchesSearch && matchesFilter
-  })
+const currentPage = ref(1)
+
+const rowSelected = ref({
+  id: null,
+  name: '',
+  role_type: 'user',
+  description: '',
+  is_system: false
 })
-const changeCategory = () => {
-  emit('updateCategories')
+
+const changingRow = row => {
+  rowSelected.value = { ...row }
 }
 
-// Пагинация
+const filteredRows = computed(() => {
+  return data.value.filter(row =>
+    row.name.toLowerCase().includes(props.searchQuery.toLowerCase())
+  )
+})
+
 const paginatedRows = computed(() => {
   const start = (currentPage.value - 1) * props.rowsPerPage
   const end = start + props.rowsPerPage
   return filteredRows.value.slice(start, end)
 })
-// Удаление ролей
-const deletePermission = async (permissionname) => {
-  const response =  await DeleteGroupCategory(permissionname)
-  emit('updateCategories')
 
+const changeCategory = () => {
+  emit('updateCategories')
+}
+
+const deleteRole = async (roleId) => {
+  await DeleteRole(roleId)
+  emit('updateCategories')
 }
 </script>
 
@@ -67,26 +70,34 @@ const deletePermission = async (permissionname) => {
       <tbody class="table-group-divider">
         <tr v-for="row in paginatedRows" :key="row.id">
           <td>{{ row.name }}</td>
+          <td>{{ row.role_type_display }}</td>
+          <td>{{ row.description || '—' }}</td>
+          <td>
+            <span
+              :class="row.is_system ? 'badge bg-secondary' : 'badge bg-success-subtle text-success'"
+            >
+              {{ row.is_system ? 'Да' : 'Нет' }}
+            </span>
+          </td>
           <td>
             <div class="d-flex align-items-center flex-wrap gap-2">
               <button
                 class="btn btn-sm btn-outline-primary"
                 data-bs-toggle="modal"
                 data-bs-target="#roleEdit"
-                @click="changingrow(row)"
+                @click="changingRow(row)"
               >
                 Изменить
               </button>
-              <button @click="deletePermission(row.name)" class="btn btn-sm btn-outline-primary">
+              <button
+                class="btn btn-sm btn-outline-danger"
+                :disabled="row.is_system"
+                @click="deleteRole(row.id)"
+              >
                 Удалить
               </button>
-              <ModalCenter title="Изменить название категории" modalId="roleEdit" >
-                <div class="bg-warning-subtle text-warning lh-sm rounded p-3 mb-3">
-                  <b>Внимание!</b><br />
-                  Изменив название категории, вы можете нарушить функциональность системных разрешений.
-                  Пожалуйста, убедитесь, что вы абсолютно уверены, прежде чем продолжить.
-                </div>
-                <ChangeCategoryForm @changeCategory="changeCategory()" :row="rowselected"/>
+              <ModalCenter title="Редактировать роль" modalId="roleEdit">
+                <ChangeCategoryForm @changeCategory="changeCategory()" :row="rowSelected" />
               </ModalCenter>
             </div>
           </td>
