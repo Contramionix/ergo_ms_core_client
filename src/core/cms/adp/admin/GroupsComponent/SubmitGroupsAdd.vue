@@ -1,73 +1,63 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { AddGroup, GetGroupCategories } from '@/core/cms/adp/admin/js/GroupsPolitics'
-import ChangingPermissionsList from './ChangingPermissionsListAdd.vue'
+import { CreateRoleGroup, GetRoles } from '@/core/cms/adp/admin/js/GroupsPolitics'
+
 const emit = defineEmits(['addGroup'])
+
 const name = ref('')
+const roles = ref([])
+const parentRoleId = ref('')
+const description = ref('')
+const isActive = ref(true)
+
 const showErrorName = ref(false)
-const showErrorLevel = ref(false)
-const showErrorCategory =ref(false)
-const categories = ref([])
-const category = ref('')
-const level = ref('')
-const PermissionsChangingListsRef = ref(null)
+const showErrorRole = ref(false)
+
+const loadRoles = async () => {
+  const response = await GetRoles()
+  roles.value = response
+}
+
+onMounted(() => {
+  loadRoles()
+})
 
 const submitForm = async () => {
   showErrorName.value = !name.value.trim()
-  showErrorCategory.value = !category.value.trim()
-  showErrorLevel.value = !level.value.trim() || !Number.isInteger(Number(level.value))
+  showErrorRole.value = !parentRoleId.value
 
-  if (showErrorName.value || showErrorCategory.value || showErrorLevel.value) {
-    return // Остановить выполнение, если есть ошибки
+  if (showErrorName.value || showErrorRole.value) {
+    return
   }
 
-  try {
-    const response = await AddGroup(name.value, category.value, level.value)
-    await PermissionsChangingListsRef.value.changePermissions(name.value)
+  await CreateRoleGroup({
+    name: name.value.trim(),
+    parent_role: parentRoleId.value,
+    description: description.value || '',
+    is_active: isActive.value
+  })
 
-    emit('addGroup',{})
-    name.value = ''
-    level.value = ''
-    category.value = ''
-  } catch (error) {
-    console.error('Ошибка при добавлении группы:', error)
-  }
+  emit('addGroup')
+  name.value = ''
+  parentRoleId.value = ''
+  description.value = ''
+  isActive.value = true
 }
 
-const loadCategories = async () => {
-  try {
-    const response = await GetGroupCategories()
-    categories.value = response
-  } catch (error) {
-    console.error('Error loading categories:', error)
-  }
+const canDismiss = computed(() => name.value.trim() !== '' && !!parentRoleId.value)
+
+const close = () => {
+  name.value = ''
+  parentRoleId.value = ''
+  description.value = ''
+  isActive.value = true
 }
-const close = ()=>{
-  name.value =''
-  level.value = ''
-  category.value = ''
-}
-defineExpose({close})
-onMounted(() => {
-  loadCategories()
-})
 
-
-const canDismiss = computed(() => {
-  const nameValid = String(name.value).trim() !== ''
-  const categoryValid = String(category.value).trim() !== ''
-  const levelStr = String(level.value).trim()
-  const levelValid = levelStr !== '' && Number.isInteger(Number(levelStr))
-
-
-  return nameValid && categoryValid && levelValid
-})
-
+defineExpose({ close })
 </script>
 
 <template>
   <form @submit.prevent="submitForm" novalidate>
-
     <div class="form-floating mb-3" v-auto-animate>
       <input
         type="text"
@@ -81,39 +71,42 @@ const canDismiss = computed(() => {
       <div v-if="showErrorName" class="invalid-feedback">Название обязательно для заполнения.</div>
     </div>
 
-  <select 
-    class="form-select"
-    :class="{ 'is-invalid': showErrorCategory }"
-    id="categorySelect" 
-    v-model="category"
-  >
-    <option v-for="category in categories" :key="category.id" :value="category.name">
-      {{ category.name }}
-    </option>
-  </select>
-  <label for="categorySelect">Выбор категории</label>
-  <div v-if="showErrorCategory" class="invalid-feedback">
-    Необходимо выбрать категорию.
-  </div>
-    <br/>
-    
-<div class="form-floating mb-3" v-auto-animate>
-      <input
-        type="text"
-        id="levelInput"
-        class="form-control"
-        v-model="level"
-        :class="{ 'is-invalid': showErrorLevel }"
-        placeholder="Введите уровень группы"
-      />
-      <label for="levelInput">Введите уровень группы</label>
-      <div v-if="showErrorLevel" class="invalid-feedback">В поле уровня должно быть записано целое число.</div>
+    <div class="mb-3">
+      <label for="roleSelect" class="form-label">Родительская роль</label>
+      <select
+        id="roleSelect"
+        class="form-select"
+        v-model="parentRoleId"
+        :class="{ 'is-invalid': showErrorRole }"
+      >
+        <option value="" disabled>Выберите роль</option>
+        <option v-for="role in roles" :key="role.id" :value="role.id">
+          {{ role.name }} ({{ role.role_type_display }})
+        </option>
+      </select>
+      <div v-if="showErrorRole" class="invalid-feedback">Необходимо выбрать родительскую роль.</div>
     </div>
-    <ChangingPermissionsList  :category="category" ref="PermissionsChangingListsRef" />
-    
+
+    <div class="form-floating mb-3">
+      <textarea
+        id="groupDescription"
+        class="form-control"
+        style="height: 100px"
+        v-model="description"
+        placeholder="Описание группы"
+      ></textarea>
+      <label for="groupDescription">Описание группы</label>
+    </div>
+
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="activeCheckbox" v-model="isActive" />
+      <label class="form-check-label" for="activeCheckbox">
+        Группа активна
+      </label>
+    </div>
 
     <div class="mt-3 text-end">
-      <button type="submit" class="btn btn-primary" :data-bs-dismiss="canDismiss? 'modal':''">
+      <button type="submit" class="btn btn-primary" :data-bs-dismiss="canDismiss ? 'modal' : ''">
         Добавить
       </button>
     </div>

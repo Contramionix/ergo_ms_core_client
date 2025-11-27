@@ -18,9 +18,11 @@ export const authService = {
         return response;
     },
     
-    async validateRegistration(firstName, username, email, password) {
+    async validateRegistration(firstName, lastName, middleName, username, email, password) {
         return await apiClient.post(endpoints.auth.validateRegistration, {
             first_name: firstName,
+            last_name: lastName || '',
+            middle_name: middleName || '',
             username,
             email,
             password,
@@ -45,9 +47,11 @@ export const authService = {
         }, false);
     },
     
-    async registration(firstName, username, email, password) {
+    async registration(firstName, lastName, middleName, username, email, password) {
         return await apiClient.post(endpoints.auth.registration, {
             first_name: firstName,
+            last_name: lastName || '',
+            middle_name: middleName || '',
             username,
             email,
             password,

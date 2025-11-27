@@ -31,15 +31,15 @@
             },
             { 
               "routeName": "CategoriesPanel", 
-              "name": "Категории"
+              "name": "Роли"
             },
             { 
               "routeName": "GroupsPanel", 
-              "name": "Группы"
+              "name": "Ролевые группы"
             },
             { 
               "routeName": "PermissionsPanel", 
-              "name": "Права"
+              "name": "Политики и права"
             },
             { 
               "routeName": "LiminationPanel", 

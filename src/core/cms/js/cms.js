@@ -34,19 +34,18 @@ export const CheckAccess = {
         return response;
     },
     async DeleteGroupCategory(name) {
-        const response = await apiClient.delete(`${endpoints.cms.deleteGroupCategory}${name}/`, 
-        {
-          data:{ category_name: name}
-        }, 
-        true);
+        const response = await apiClient.delete(`${endpoints.cms.deleteGroupCategory}${name}/`,
+            {
+                data: { category_name: name }
+            },
+            true);
         return response;
     },
     async GetGroupCategories() {
         const response = await apiClient.get(endpoints.cms.getGroupCategories, {}, true);
         return response;
     },
-    async GetGroups() 
-    {
+    async GetGroups() {
         const response = await apiClient.get(endpoints.cms.getGroups, {}, true);
         return response;
     },
@@ -116,7 +115,7 @@ export const CheckAccess = {
     async RemoveUserPermissions(user_id, permissionName) {
         const response = await apiClient.post(endpoints.cms.removeUserPermission, {
             user_id: user_id,
-            permissions_name: permissionName ,
+            permissions_name: permissionName,
         }, true);
         return response;
     },
@@ -129,8 +128,8 @@ export const CheckAccess = {
     },
     async RemoveUserGroups(user_id, groupName) {
         const response = await apiClient.post(endpoints.cms.removeUserGroup, {
-             user_id: user_id, 
-             groups_name: groupName ,
+            user_id: user_id,
+            groups_name: groupName,
         }, true);
         return response;
     },
@@ -162,9 +161,9 @@ export const CheckAccess = {
     },
     async RemoveGroupsPermissions(groupName, permissionsName, changeothergroups) {
         const response = await apiClient.post(endpoints.cms.removeGroupsPermissions, {
-             group_name: groupName,
-             permissions_name: permissionsName,
-             change_other_groups: changeothergroups
+            group_name: groupName,
+            permissions_name: permissionsName,
+            change_other_groups: changeothergroups
         }, true);
         return response;
     },
@@ -178,7 +177,7 @@ export const CheckAccess = {
     },
     async PutPages(path, type) {
         const response = await apiClient.put(endpoints.cms.putpages, {
-            path:path,
+            path: path,
             limination_type: type
         }, true);
         return response;
@@ -201,7 +200,7 @@ export const CheckAccess = {
     },
 
     async UpdatePageComponent(path, oldComponentId, newComponentId) {
-        
+
         const response = await apiClient.put(endpoints.cms.updatePageComponent, {
             path: path,
             old_component_id: oldComponentId,
@@ -217,6 +216,120 @@ export const CheckAccess = {
 
     async GetClosedPagesForUser() {
         const response = await apiClient.get(endpoints.cms.getClosedPagesForUser, {}, true);
+        return response;
+    },
+
+    // ========== Новая система ролей и политик ==========
+
+    // Управление ролями
+    async GetRoles() {
+        const response = await apiClient.get(endpoints.cms.roles.list, {}, true);
+        return response;
+    },
+
+    async GetRole(roleId) {
+        const response = await apiClient.get(`${endpoints.cms.roles.detail}${roleId}/`, {}, true);
+        return response;
+    },
+
+    async CreateRole(data) {
+        const response = await apiClient.post(endpoints.cms.roles.list, data, true);
+        return response;
+    },
+
+    async UpdateRole(roleId, data) {
+        const response = await apiClient.put(`${endpoints.cms.roles.detail}${roleId}/`, data, true);
+        return response;
+    },
+
+    async DeleteRole(roleId) {
+        const response = await apiClient.delete(`${endpoints.cms.roles.detail}${roleId}/`, {}, true);
+        return response;
+    },
+
+    // Управление ролевыми группами
+    async GetRoleGroups() {
+        const response = await apiClient.get(endpoints.cms.roleGroups.list, {}, true);
+        return response;
+    },
+
+    async CreateRoleGroup(data) {
+        const response = await apiClient.post(endpoints.cms.roleGroups.list, data, true);
+        return response;
+    },
+
+    async UpdateRoleGroup(groupId, data) {
+        const response = await apiClient.put(`${endpoints.cms.roleGroups.detail}${groupId}/`, data, true);
+        return response;
+    },
+
+    async DeleteRoleGroup(groupId) {
+        const response = await apiClient.delete(`${endpoints.cms.roleGroups.detail}${groupId}/`, {}, true);
+        return response;
+    },
+
+    // Управление политиками
+    async GetPolicies() {
+        const response = await apiClient.get(endpoints.cms.policies.list, {}, true);
+        return response;
+    },
+
+    async CreatePolicy(data) {
+        const response = await apiClient.post(endpoints.cms.policies.list, data, true);
+        return response;
+    },
+
+    async UpdatePolicy(policyId, data) {
+        const response = await apiClient.put(`${endpoints.cms.policies.detail}${policyId}/`, data, true);
+        return response;
+    },
+
+    async DeletePolicy(policyId) {
+        const response = await apiClient.delete(`${endpoints.cms.policies.detail}${policyId}/`, {}, true);
+        return response;
+    },
+
+    async GetAdminUsers() {
+        const response = await apiClient.get(endpoints.cms.adminUsers, {}, true);
+        return response;
+    },
+
+    // Назначение ролей пользователям
+    async AssignRoleToUser(data) {
+        const response = await apiClient.post(endpoints.cms.assignRole, data, true);
+        return response;
+    },
+
+    // Получение прав пользователя
+    async GetMyPermissions() {
+        const response = await apiClient.get(endpoints.cms.myPermissions, {}, true);
+        return response;
+    },
+
+    async CheckURLAccess(url) {
+        const response = await apiClient.get(endpoints.cms.checkURLAccess, { url }, true);
+        return response;
+    },
+
+    // Управление правами модулей
+    async GetModulePermissions(roleGroupId = null) {
+        const params = roleGroupId ? { role_group_id: roleGroupId } : {};
+        const response = await apiClient.get(endpoints.cms.modulePermissions, params, true);
+        return response;
+    },
+
+    async CreateModulePermission(data) {
+        const response = await apiClient.post(endpoints.cms.modulePermissions, data, true);
+        return response;
+    },
+
+    async UpdateModulePermission(permissionId, data) {
+        const response = await apiClient.put(`${endpoints.cms.modulePermissions}${permissionId}/`, data, true);
+        return response;
+    },
+
+    async DeleteModulePermission(permissionId) {
+        const response = await apiClient.delete(`${endpoints.cms.modulePermissions}${permissionId}/`, {}, true);
         return response;
     }
 

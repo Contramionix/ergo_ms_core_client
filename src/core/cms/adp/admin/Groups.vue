@@ -1,51 +1,55 @@
 <script setup>
 import GroupTableHeader from '@/core/cms/adp/admin/GroupsComponent/GroupsTableHeader.vue'
 import GroupTable from '@/core/cms/adp/admin/GroupsComponent/GroupsTable.vue'
-import { GetGroups } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { GetRoleGroups } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import { ref, onMounted } from 'vue'
 
-const rows = ref([]) // Initialize with empty array
+const rows = ref([])
 
-onMounted(async () => {
- updateGroups()
-})
+const loadGroups = async () => {
+  const groups = await GetRoleGroups()
+  rows.value = groups.map(group => ({
+    id: group.id,
+    name: group.name,
+    parent_role: group.parent_role,
+    parent_role_name: group.parent_role_name,
+    description: group.description,
+    is_active: group.is_active
+  }))
+}
 
-
-
-const rowsPerPage = ref(30)
-const handleChangeRows = (newRowsPerPage) => (rowsPerPage.value = newRowsPerPage)
-
-// Поиск по названию
-const searchQuery = ref('')
-const handleSearchQuery = (query) => (searchQuery.value = query)
 const updateGroups = async () => {
   try {
-    const groups = await GetGroups()
-    if (!groups || !Array.isArray(groups)) {
-      throw new Error('Invalid data format received from GetGroups')
-    }
-    rows.value = groups.map(i => ({
-      id:i.id,
-      name: i.name,
-      category: i.category, 
-      level: i.level,
-      permissions: i.permissions
-    }))
+    await loadGroups()
   } catch (error) {
     console.error('Error updating groups:', error)
   }
 }
+
+onMounted(async () => {
+  await updateGroups()
+})
+
+const rowsPerPage = ref(30)
+const handleChangeRows = newRowsPerPage => (rowsPerPage.value = newRowsPerPage)
+
+const searchQuery = ref('')
+const handleSearchQuery = query => (searchQuery.value = query)
 </script>
 
 <template>
   <div class="card">
     <div class="mb-3">
-      <GroupTableHeader @changeRowsPerPage="handleChangeRows" @searchRowData="handleSearchQuery" @updateGroups="updateGroups" />
+      <GroupTableHeader
+        @changeRowsPerPage="handleChangeRows"
+        @searchRowData="handleSearchQuery"
+        @updateGroups="updateGroups"
+      />
     </div>
 
     <GroupTable
       :rows="rows"
-      :headers="['Название группы', 'Категория', 'Уровень','привилегии', 'Действия']"
+      :headers="['Название группы', 'Родительская роль', 'Описание', 'Активна', 'Действия']"
       :rowsPerPage="rowsPerPage"
       :searchQuery="searchQuery"
       @updateGroups="updateGroups"

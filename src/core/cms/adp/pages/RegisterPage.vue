@@ -10,6 +10,8 @@ const isSuccess = ref(false)
 
 const form = reactive({
   firstName: '',
+  lastName: '',
+  middleName: '',
   login: '',
   email: '',
   password: '',
@@ -19,6 +21,8 @@ const form = reactive({
 
 const errors = reactive({
   firstName: null,
+  lastName: null,
+  middleName: null,
   login: null,
   email: null,
   password: null,
@@ -30,6 +34,12 @@ const errors = reactive({
 
 
 const validateForm = () => {
+  // Валидация обязательных полей
+  errors.firstName = !form.firstName || !form.firstName.trim() ? 'Имя обязательно для заполнения' : null
+  errors.lastName = !form.lastName || !form.lastName.trim() ? 'Фамилия обязательна для заполнения' : null
+  errors.middleName = null // Отчество опционально
+  
+  // Используем существующую валидацию для остальных полей
   const validationErrors = validateRegistrationForm(
     form.firstName,
     form.login,
@@ -39,17 +49,22 @@ const validateForm = () => {
     form.terms
   )
 
+  // Маппим ошибки
   Object.keys(validationErrors).forEach(key => {
     if (key === 'name') {
-      errors.firstName = validationErrors[key]
-    } else {
+      errors.firstName = validationErrors[key] || errors.firstName
+    } else if (key !== 'name') {
       errors[key] = validationErrors[key]
     }
   })
 
   errors.general = null
 
-  return Object.values(validationErrors).every(error => error === null)
+  // Проверяем все ошибки
+  const hasErrors = errors.firstName || errors.lastName || errors.login || errors.email || 
+                    errors.password || errors.passwordConfirm || errors.terms
+
+  return !hasErrors
 }
 
 const submitForm = async () => {
@@ -64,6 +79,8 @@ const submitForm = async () => {
     // Регистрируем пользователя напрямую (быстрая регистрация)
     const registrationResult = await registration(
       form.firstName,
+      form.lastName,
+      form.middleName,
       form.login,
       form.email,
       form.password
@@ -125,6 +142,18 @@ const handleServerErrors = (serverErrors) => {
       : serverErrors.first_name
   }
   
+  if (serverErrors.last_name) {
+    errors.lastName = Array.isArray(serverErrors.last_name) 
+      ? serverErrors.last_name[0] 
+      : serverErrors.last_name
+  }
+  
+  if (serverErrors.middle_name) {
+    errors.middleName = Array.isArray(serverErrors.middle_name) 
+      ? serverErrors.middle_name[0] 
+      : serverErrors.middle_name
+  }
+  
   if (serverErrors.username) {
     errors.login = Array.isArray(serverErrors.username)
       ? serverErrors.username[0]
@@ -148,7 +177,7 @@ const handleServerErrors = (serverErrors) => {
   }
 
   // Если нет конкретных ошибок полей, показываем общую ошибку
-  const hasFieldErrors = errors.firstName || errors.login || errors.email || errors.password
+  const hasFieldErrors = errors.firstName || errors.lastName || errors.middleName || errors.login || errors.email || errors.password
   if (!hasFieldErrors && !errors.general) {
     errors.general = 'Проверьте введенные данные'
   }
@@ -216,6 +245,46 @@ const showSuccessMessage = () => {
             </label>
             <div v-if="errors.firstName" class="invalid-feedback">
               {{ errors.firstName }}
+            </div>
+          </div>
+
+          <!-- Фамилия -->
+          <div class="form-floating mb-3" v-auto-animate>
+            <input
+              type="text"
+              id="lastName"
+              class="form-control"
+              :class="{ 'is-invalid': errors.lastName }"
+              v-model="form.lastName"
+              placeholder="Фамилия"
+              :disabled="isLoading"
+              autocomplete="family-name"
+            />
+            <label for="lastName">
+              <i class="bi bi-person me-2"></i>Фамилия
+            </label>
+            <div v-if="errors.lastName" class="invalid-feedback">
+              {{ errors.lastName }}
+            </div>
+          </div>
+
+          <!-- Отчество -->
+          <div class="form-floating mb-3" v-auto-animate>
+            <input
+              type="text"
+              id="middleName"
+              class="form-control"
+              :class="{ 'is-invalid': errors.middleName }"
+              v-model="form.middleName"
+              placeholder="Отчество"
+              :disabled="isLoading"
+              autocomplete="additional-name"
+            />
+            <label for="middleName">
+              <i class="bi bi-person me-2"></i>Отчество
+            </label>
+            <div v-if="errors.middleName" class="invalid-feedback">
+              {{ errors.middleName }}
             </div>
           </div>
 

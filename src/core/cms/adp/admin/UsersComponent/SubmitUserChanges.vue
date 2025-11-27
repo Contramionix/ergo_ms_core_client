@@ -1,52 +1,79 @@
 <script setup>
-import { ref, onMounted, watch, } from 'vue'
-import GroupsChangingLists from './GroupChangingLists.vue'
-import PermissionsChangingList from './PermissionsChangingList.vue'
+import { ref, watch } from 'vue'
+import { AssignRoleToUser } from '@/core/cms/adp/admin/js/GroupsPolitics'
+
 const emit = defineEmits(['changeUserGroupsAndPermissions'])
 
-const groupsChangingListsRef = ref(null);
-const permissionsChangingListsRef = ref(null);
-
-const user = ref('')
-const groups = ref([])
-const permissions = ref([])
-const user_id = ref(0)
 const props = defineProps({
   row: { type: Object, required: true },
+  roles: { type: Array, required: true },
+  roleGroups: { type: Array, required: true }
 })
-watch(props, (newProps) => {
-  user_id.value = props.row.user_id
-  user.value = newProps.row.user
-  groups.value = [...newProps.row.groups]
-  permissions.value = [...newProps.row.permissions]
-})
+
+const userId = ref(null)
+const userName = ref('')
+const selectedRoleId = ref('')
+const selectedGroupIds = ref([])
+
+watch(
+  () => props.row,
+  newRow => {
+    userId.value = newRow.user_id
+    userName.value = newRow.user
+    selectedRoleId.value = newRow.role?.id || ''
+    selectedGroupIds.value = newRow.role_groups?.map(group => group.id) || []
+  },
+  { immediate: true }
+)
 
 const submitForm = async () => {
-    groupsChangingListsRef.value.changeGroups()
-    permissionsChangingListsRef.value.changePermissions()
+  if (!userId.value || !selectedRoleId.value) {
+    return
   }
-const changes = async () => {
+
+  await AssignRoleToUser({
+    user_id: userId.value,
+    role_id: selectedRoleId.value,
+    role_group_ids: selectedGroupIds.value
+  })
+
   emit('changeUserGroupsAndPermissions')
 }
-
-onMounted(() => {
-  user_id.value = props.row.user_id
-  groups.value = [...props.row.groups]
-  permissions.value = [...props.row.permissions]
-  user.value = props.row.user
-
-})
 </script>
 
 <template>
   <form @submit.prevent="submitForm" novalidate>
-    <h3>Пользователь: {{ user }}</h3>
-   <GroupsChangingLists :list="groups" @changeGroups="changes" :username="user" :user_id="user_id" ref="groupsChangingListsRef" />
-   <br />
-   <PermissionsChangingList :list="permissions" :username="user" @changePermissions="changes" :user_id="user_id" ref="permissionsChangingListsRef" />
+    <h3 class="fw-semibold mb-3">Пользователь: {{ userName }}</h3>
+
+    <div class="mb-3">
+      <label for="roleSelect" class="form-label">Роль</label>
+      <select id="roleSelect" class="form-select" v-model="selectedRoleId" required>
+        <option value="" disabled>Выберите роль</option>
+        <option v-for="role in roles" :key="role.id" :value="role.id">
+          {{ role.name }} ({{ role.role_type_display }})
+        </option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label for="groupSelect" class="form-label">Ролевые группы</label>
+      <select
+        id="groupSelect"
+        class="form-select"
+        multiple
+        v-model="selectedGroupIds"
+        size="5"
+      >
+        <option v-for="group in roleGroups" :key="group.id" :value="group.id">
+          {{ group.name }} · {{ group.parent_role_name }}
+        </option>
+      </select>
+      <small class="text-muted">Удерживайте Ctrl/Cmd для выбора нескольких групп.</small>
+    </div>
+
     <div class="mt-3 text-end">
-      <button type="submit" class="btn btn-primary"  data-bs-dismiss="modal">
-        Изменить
+      <button type="submit" class="btn btn-primary" data-bs-dismiss="modal">
+        Сохранить
       </button>
     </div>
   </form>

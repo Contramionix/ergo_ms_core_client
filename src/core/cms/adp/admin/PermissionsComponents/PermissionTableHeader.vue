@@ -2,6 +2,11 @@
 import ModalCenter from '@/components/ModalCenter.vue'
 import SubmitForm from '@/core/cms/adp/admin/PermissionsComponents/SubmitPermissionAdd.vue'
 import { ref } from 'vue'
+const props = defineProps({
+  roles: { type: Array, required: true },
+  roleGroups: { type: Array, required: true }
+})
+
 const emit = defineEmits(['updatePermissions'])
 const AddPermissionRef = ref(null)
 const updatePermissions =  () => {
@@ -32,10 +37,15 @@ const closemodal = ()=>{
           @input="$emit('searchRowData', $event.target.value)"
       /></label>
       <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#roleAdd">
-        Добавить
+        Добавить политику
       </button>
-      <ModalCenter title="Добавить новое разрешение" modalId="roleAdd" @closemodal = "closemodal()">
-        <SubmitForm  @addPermission="updatePermissions"  ref="AddPermissionRef"/>
+      <ModalCenter title="Добавить новую политику" modalId="roleAdd" @closemodal = "closemodal()">
+        <SubmitForm
+          :roles="props.roles"
+          :roleGroups="props.roleGroups"
+          @addPermission="updatePermissions"
+          ref="AddPermissionRef"
+        />
       </ModalCenter>
     </div>
   </div>

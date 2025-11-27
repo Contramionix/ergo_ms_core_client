@@ -1,91 +1,64 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { GetGroupCategories, ChangeGroup} from '@/core/cms/adp/admin/js/GroupsPolitics'
-import ChangingPermissionsList from './ChangingPermissionsList.vue'
+import { GetRoles, UpdateRoleGroup } from '@/core/cms/adp/admin/js/GroupsPolitics'
+
 const emit = defineEmits(['changeGroup'])
-const oldname = ref('')
-const stopSubmit = ref(false)
-const showErrorName = ref(false)
-const showErrorLevel = ref(false)
-const showErrorCategory =ref(false)
-const categories = ref([])
-const category = ref('')
-const level = ref('')
-const name = ref('')
-const permissions = ref([])
-const PermissionsChangingListsRef = ref(null)
-const rowid = ref(0)
+
 const props = defineProps({
   row: { type: Object, required: true },
 })
 
+const roles = ref([])
+const groupId = ref(null)
+const name = ref('')
+const parentRoleId = ref('')
+const description = ref('')
+const isActive = ref(true)
 
-watch(() => props.row, async (newRow) => {
-  await loadCategories()
- await ChangingGroup(newRow)
-})
+const showErrorName = ref(false)
+const showErrorRole = ref(false)
+
+const loadRoles = async () => {
+  const response = await GetRoles()
+  roles.value = response
+}
+
+watch(
+  () => props.row,
+  async newRow => {
+    await loadRoles()
+    groupId.value = newRow.id
+    name.value = newRow.name || ''
+    parentRoleId.value = newRow.parent_role || ''
+    description.value = newRow.description || ''
+    isActive.value = newRow.is_active
+  },
+  { immediate: true }
+)
 
 const submitForm = async () => {
   showErrorName.value = !name.value.trim()
-  showErrorCategory.value = !category.value.trim()
+  showErrorRole.value = !parentRoleId.value
 
-  const levelStr = level.value?.toString().trim()
-  showErrorLevel.value = 
-    !levelStr ||
-    isNaN(levelStr) ||
-    !Number.isInteger(+levelStr)
-
-  if (showErrorName.value || showErrorCategory.value || showErrorLevel.value) {
+  if (showErrorName.value || showErrorRole.value || !groupId.value) {
     return
   }
 
-  try {
-    await ChangeGroup(oldname.value, name.value, category.value, level.value)
-    await PermissionsChangingListsRef.value.changePermissions()
+  await UpdateRoleGroup(groupId.value, {
+    name: name.value.trim(),
+    parent_role: parentRoleId.value,
+    description: description.value || '',
+    is_active: isActive.value
+  })
 
-    showErrorCategory.value = false
-    showErrorLevel.value = false
-    showErrorName.value = false
-    stopSubmit.value = true
-    emit('changeGroup')
-
-  } catch (error) {
-    console.error('Ошибка при изменении группы:', error)
-  }
+  emit('changeGroup')
 }
 
-const loadCategories = async () => {
-  try {
-    const response = await GetGroupCategories()
-    categories.value = response
-  } catch (error) {
-    console.error('Error loading categories:', error)
-  }
-}
-
-const ChangingGroup = async (prop) => {
-  permissions.value = prop.permissions
-  oldname.value = prop.name
-  name.value = prop.name
-  category.value = prop.category
-  level.value = prop.level
-  rowid.value = prop.id
-  
-}
-
-const canDismiss = computed(() => {
-  const nameValid = String(name.value).trim() !== ''
-  const categoryValid = String(category.value).trim() !== ''
-  const levelStr = String(level.value).trim()
-  const levelValid = levelStr !== '' && Number.isInteger(Number(levelStr))
-  return nameValid && categoryValid && levelValid
-})
-
+const canDismiss = computed(() => name.value.trim() !== '' && !!parentRoleId.value)
 </script>
 
 <template>
   <form @submit.prevent="submitForm" novalidate>
-
     <div class="form-floating mb-3" v-auto-animate>
       <input
         type="text"
@@ -99,42 +72,45 @@ const canDismiss = computed(() => {
       <div v-if="showErrorName" class="invalid-feedback">Название обязательно для заполнения.</div>
     </div>
 
-  <select 
-    class="form-select"
-    :class="{ 'is-invalid': showErrorCategory }"
-    id="categorySelect" 
-    v-model="category"
-  >
-    <option v-for="category in categories" :key="category.id" :value="category.name">
-      {{ category.name }}
-    </option>
-  </select>
-  <label for="categorySelect">Выбор категории</label>
-  <div v-if="showErrorCategory" class="invalid-feedback">
-    Необходимо выбрать категорию.
-  </div>
-    <br/>
-    
-<div class="form-floating mb-3" v-auto-animate>
-      <input
-        type="text"
-        id="levelInput"
-        class="form-control"
-        v-model="level"
-        :class="{ 'is-invalid': showErrorLevel }"
-        placeholder="Введите уровень группы"
-      />
-      <label for="levelInput">Введите уровень группы</label>  
-      <div v-if="showErrorLevel" class="invalid-feedback">В поле уровня должно быть записано целое число.</div>
+    <div class="mb-3">
+      <label for="roleSelectChange" class="form-label">Родительская роль</label>
+      <select
+        id="roleSelectChange"
+        class="form-select"
+        v-model="parentRoleId"
+        :class="{ 'is-invalid': showErrorRole }"
+      >
+        <option value="" disabled>Выберите роль</option>
+        <option v-for="role in roles" :key="role.id" :value="role.id">
+          {{ role.name }} ({{ role.role_type_display }})
+        </option>
+      </select>
+      <div v-if="showErrorRole" class="invalid-feedback">Необходимо выбрать родительскую роль.</div>
     </div>
-    <ChangingPermissionsList  :category="category" :list="permissions" :group_name="name"
-    :group_id="rowid" ref="PermissionsChangingListsRef" />
-    
+
+    <div class="form-floating mb-3">
+      <textarea
+        id="groupDescriptionChange"
+        class="form-control"
+        style="height: 100px"
+        v-model="description"
+        placeholder="Описание группы"
+      ></textarea>
+      <label for="groupDescriptionChange">Описание группы</label>
+    </div>
+
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="activeCheckboxChange" v-model="isActive" />
+      <label class="form-check-label" for="activeCheckboxChange">
+        Группа активна
+      </label>
+    </div>
 
     <div class="mt-3 text-end">
-      <button type="submit" class="btn btn-primary" :data-bs-dismiss="canDismiss? 'modal':''">
+      <button type="submit" class="btn btn-primary" :data-bs-dismiss="canDismiss ? 'modal' : ''">
         Изменить
       </button>
     </div>
   </form>
 </template>
+

@@ -53,7 +53,25 @@ export const cmsEndpoints = {
         addPageComponent: 'cms/add-page-component/',
         removePageComponent: 'cms/remove-page-component/',
         updatePageComponent: 'cms/update-page-component/',
-        getPageComponents: 'cms/get-page-components/'
+        getPageComponents: 'cms/get-page-components/',
+
+        roles: {
+            list: 'cms/adp/roles/',
+            detail: 'cms/adp/roles/'
+        },
+        roleGroups: {
+            list: 'cms/adp/role-groups/',
+            detail: 'cms/adp/role-groups/'
+        },
+        policies: {
+            list: 'cms/adp/policies/',
+            detail: 'cms/adp/policies/'
+        },
+        modulePermissions: 'cms/adp/module-permissions/',
+        assignRole: 'cms/adp/assign-role/',
+        adminUsers: 'cms/adp/admin-users/',
+        myPermissions: 'cms/adp/my-permissions/',
+        checkURLAccess: 'cms/adp/check-url-access/'
     }
 };
 

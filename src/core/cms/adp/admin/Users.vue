@@ -1,52 +1,51 @@
 <script setup>
 import UserTableHeader from '@/core/cms/adp/admin/UsersComponent/UserTableHeader.vue'
 import UserTable from '@/core/cms/adp/admin/UsersComponent/UserTable.vue'
-import { GetUserGroupsAndPermissions } from '@/core/cms/adp/admin/js/GroupsPolitics'
-import { ref, onMounted, watch } from 'vue' 
+import { GetAdminUsers, GetRoles, GetRoleGroups } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { ref, onMounted } from 'vue' 
 
-const rows = ref([]) // Initialize with empty array
+const rows = ref([])
+const roles = ref([])
+const roleGroups = ref([])
+
+const loadUsers = async () => {
+  const users = await GetAdminUsers()
+  rows.value = users.map(user => ({
+    user_id: user.user_id,
+    user: user.full_name || user.username,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    role_groups: user.role_groups
+  }))
+}
+
+const loadRefs = async () => {
+  roles.value = await GetRoles()
+  roleGroups.value = await GetRoleGroups()
+}
+
+const updateUserAssignments = async () => {
+  try {
+    await loadUsers()
+  } catch (error) {
+    console.error('Error fetching users:', error)
+  }
+}
 
 onMounted(async () => {
   try {
-    const users = await GetUserGroupsAndPermissions()
-    for(let i of users) {
-      rows.value.push({
-        user_id: i.user_id,
-        user: i.user,
-        groups: i.groups,
-        permissions: i.permissions
-      })
-    }
+    await Promise.all([loadRefs(), loadUsers()])
   } catch (error) {
-    console.error('Error fetching group categories:', error)
+    console.error('Error fetching user data:', error)
   }
 })
 
 const rowsPerPage = ref(30)
-const handleChangeRows = (newRowsPerPage) => (rowsPerPage.value = newRowsPerPage)
+const handleChangeRows = newRowsPerPage => (rowsPerPage.value = newRowsPerPage)
 
-// Поиск по названию
 const searchQuery = ref('')
-const handleSearchQuery = (query) => (searchQuery.value = query)
-
-const UpdateUsersGroupsAndPermissions = async () => {
-    try {
-    const value = []
-    const users = await GetUserGroupsAndPermissions()
-    for(let i of users) {
-      value.push({
-        user_id:i.user_id,
-        user: i.user,
-        groups: i.groups,
-        permissions: i.permissions
-      })
-    }
-    rows.value = value
-    
-  } catch (error) {
-    console.error('Error fetching group categories:', error)
-  }
-}
+const handleSearchQuery = query => (searchQuery.value = query)
 </script>
 
 <template>
@@ -57,10 +56,12 @@ const UpdateUsersGroupsAndPermissions = async () => {
 
     <UserTable 
       :rows="rows"
-      :headers="['Пользователь', 'Группы', 'Разрешения', 'Действия']"
+      :roles="roles"
+      :roleGroups="roleGroups"
+      :headers="['Пользователь', 'Роль', 'Группы', 'Действия']"
       :rowsPerPage="rowsPerPage"
       :searchQuery="searchQuery"  
-      @updateUserGroupsAndPermissions="UpdateUsersGroupsAndPermissions"
+      @updateUserGroupsAndPermissions="updateUserAssignments"
     />
   </div>
 </template>
