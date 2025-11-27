@@ -5,6 +5,7 @@ import { apiClient } from '@/js/api/manager'
  */
 const endpoints = {
   chat: 'ai_assistant/chat/',
+  chatStream: 'ai_assistant/chat/stream/',
   ollamaStatus: 'ai_assistant/ollama_status/',
 }
 
@@ -74,7 +75,7 @@ class RAGClient {
   }
 
   /**
-   * Отправить сообщение в чат
+   * Отправить сообщение в чат (без streaming)
    * @param {string} message - Сообщение пользователя
    * @param {Object} ollamaConfig - настройки Ollama (опционально)
    * @returns {Promise<Object>}
@@ -126,6 +127,100 @@ class RAGClient {
       return {
         success: false,
         error: errorMessage,
+      }
+    }
+  }
+
+  /**
+   * Отправить сообщение в чат с поддержкой streaming (SSE)
+   * @param {string} message - Сообщение пользователя
+   * @param {Function} onChunk - Callback для каждого чанка текста
+   * @param {Function} onDone - Callback при завершении (получает полный ответ)
+   * @param {Function} onError - Callback при ошибке
+   * @param {Object} ollamaConfig - настройки Ollama (опционально)
+   * @returns {Promise<void>}
+   */
+  async sendMessageStream(message, onChunk, onDone, onError, ollamaConfig = null) {
+    // Используем настройки из параметра или из сохраненного конфига
+    const config = ollamaConfig || this.ollamaConfig
+    
+    const requestBody = {
+      message: message,
+    }
+    
+    // Добавляем настройки Ollama, если они есть
+    if (config) {
+      requestBody.ollama_config = {
+        base_url: config.baseUrl,
+        model: config.model,
+        temperature: config.temperature,
+        context_window: config.contextWindow,
+        max_tokens: config.maxTokens,
+      }
+    }
+
+    try {
+      // Получаем базовый URL API (используем axios instance из apiClient)
+      const baseUrl = apiClient.client?.defaults?.baseURL || `${apiClient.getBaseUrl()}api/`
+      const url = `${baseUrl}${endpoints.chatStream}`
+      
+      // Получаем токен авторизации
+      const token = apiClient.getAuthToken()
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP error ${response.status}`)
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        
+        // Парсим SSE события из буфера
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // Оставляем неполную строку в буфере
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6).trim()
+            if (!jsonStr) continue
+
+            try {
+              const event = JSON.parse(jsonStr)
+              
+              if (event.type === 'chunk' && onChunk) {
+                onChunk(event.text)
+              } else if (event.type === 'done' && onDone) {
+                onDone(event.full_response)
+              } else if (event.type === 'error' && onError) {
+                onError(event.message)
+              }
+            } catch (parseError) {
+              console.warn('Ошибка парсинга SSE события:', parseError, jsonStr)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка streaming сообщения:', error)
+      if (onError) {
+        onError(error.message || 'Не удалось отправить сообщение')
       }
     }
   }

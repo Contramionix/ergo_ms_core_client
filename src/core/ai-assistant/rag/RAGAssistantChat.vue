@@ -20,8 +20,13 @@
     </div>
 
     <div ref="messagesContainer" class="assistant-chat__messages">
-      <AssistantMessage v-for="message in messages" :key="message.id" :message="message" />
-      <AssistantTyping v-if="isTyping" />
+      <AssistantMessage 
+        v-for="message in messages" 
+        :key="message.id" 
+        :message="message"
+        :class="{ 'streaming': message.isStreaming }"
+      />
+      <AssistantTyping v-if="isTyping && !hasStreamingContent" />
     </div>
 
     <div class="assistant-chat__input">
@@ -49,13 +54,11 @@
 </template>
 
 <script setup>
-import { ref, nextTick, watch } from 'vue'
+import { ref, nextTick, watch, computed } from 'vue'
 import { Send, MessageSquare, ExternalLink } from 'lucide-vue-next'
 import AssistantMessage from '../base/AssistantMessage.vue'
 import AssistantTyping from '../base/AssistantTyping.vue'
 import { ragClient } from './js/rag-client.js'
-
-const emit = defineEmits(['close'])
 
 const props = defineProps({
   isVisible: {
@@ -81,6 +84,15 @@ const messages = ref([
   },
 ])
 
+// Проверяем, есть ли контент в streaming сообщении
+const hasStreamingContent = computed(() => {
+  const streamingMsg = messages.value.find(m => m.isStreaming)
+  return streamingMsg && streamingMsg.content && streamingMsg.content.length > 0
+})
+
+// ID текущего streaming сообщения
+let streamingMessageId = null
+
 const sendMessage = async () => {
   if (!inputMessage.value.trim() || isTyping.value) {
     return
@@ -101,25 +113,60 @@ const sendMessage = async () => {
 
   scrollToBottom()
 
+  // Создаём пустое сообщение ассистента для streaming
+  streamingMessageId = messageIdCounter++
+  const streamingMessage = {
+    id: streamingMessageId,
+    type: 'assistant',
+    content: '',
+    timestamp: new Date(),
+    isStreaming: true,
+  }
+  messages.value.push(streamingMessage)
+
   try {
-    const result = await ragClient.sendMessage(messageText)
-    
-    if (result.success) {
-      addAssistantMessage(result.response)
-    } else {
-      let errorMessage = result.error || 'Неизвестная ошибка'
-      
-      if (errorMessage.includes('Ollama') || errorMessage.includes('ollama')) {
-        errorMessage = `**Ошибка подключения к Ollama**\n\n` +
-          `${errorMessage}\n\n` +
-          `**Что нужно сделать:**\n` +
-          `1. Убедитесь, что Ollama установлен и запущен\n` +
-          `2. Проверьте доступность Ollama по адресу: http://localhost:11434\n` +
-          `3. Установите Ollama: https://ollama.com/download`
+    await ragClient.sendMessageStream(
+      messageText,
+      // onChunk - добавляем текст по мере поступления
+      (chunk) => {
+        const msg = messages.value.find(m => m.id === streamingMessageId)
+        if (msg) {
+          msg.content += chunk
+          scrollToBottom()
+        }
+      },
+      // onDone - завершаем streaming
+      (fullResponse) => {
+        const msg = messages.value.find(m => m.id === streamingMessageId)
+        if (msg) {
+          msg.content = fullResponse
+          msg.isStreaming = false
+        }
+        isTyping.value = false
+        streamingMessageId = null
+      },
+      // onError - обрабатываем ошибку
+      (errorMsg) => {
+        let errorMessage = errorMsg || 'Неизвестная ошибка'
+        
+        if (errorMessage.includes('Ollama') || errorMessage.includes('ollama')) {
+          errorMessage = `**Ошибка подключения к Ollama**\n\n` +
+            `${errorMessage}\n\n` +
+            `**Что нужно сделать:**\n` +
+            `1. Убедитесь, что Ollama установлен и запущен\n` +
+            `2. Проверьте доступность Ollama по адресу: http://localhost:11434\n` +
+            `3. Установите Ollama: https://ollama.com/download`
+        }
+        
+        const msg = messages.value.find(m => m.id === streamingMessageId)
+        if (msg) {
+          msg.content = `**Ошибка:** ${errorMessage}`
+          msg.isStreaming = false
+        }
+        isTyping.value = false
+        streamingMessageId = null
       }
-      
-      addAssistantMessage(`**Ошибка:** ${errorMessage}`)
-    }
+    )
   } catch (error) {
     console.error('Ошибка отправки сообщения:', error)
     
@@ -129,9 +176,13 @@ const sendMessage = async () => {
       error.message ||
       'Не удалось отправить сообщение'
     
-    addAssistantMessage(`**Ошибка подключения:** ${errorMessage}`)
-  } finally {
+    const msg = messages.value.find(m => m.id === streamingMessageId)
+    if (msg) {
+      msg.content = `**Ошибка подключения:** ${errorMessage}`
+      msg.isStreaming = false
+    }
     isTyping.value = false
+    streamingMessageId = null
   }
 }
 

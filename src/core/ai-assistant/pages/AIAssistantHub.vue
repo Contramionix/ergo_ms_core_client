@@ -96,7 +96,7 @@
             :message="msg" 
             :module-config="currentModuleConfig"
           />
-          <div v-if="chatLoading" class="typing-indicator">
+          <div v-if="chatLoading && !hasChatStreamingContent" class="typing-indicator">
             <div class="typing-indicator__avatar" :style="{ background: currentModuleConfig?.color }">
               <component :is="currentModuleConfig?.icon" :size="18" />
             </div>
@@ -278,6 +278,12 @@ const chatLoading = ref(false)
 let chatMsgId = 1
 const chatHistory = ref([])
 
+// Проверяем, есть ли контент в streaming сообщении чата
+const hasChatStreamingContent = computed(() => {
+  const streamingMsg = chatHistory.value.find(m => m.isStreaming)
+  return streamingMsg && streamingMsg.content && streamingMsg.content.length > 0
+})
+
 // BI state
 const biMessagesRef = ref(null)
 const biInput = ref('')
@@ -308,6 +314,8 @@ const scrollToBottom = (container) => {
 }
 
 // Chat methods
+let chatStreamingMsgId = null
+
 const sendChatMessage = async (text) => {
   const messageText = text || chatInput.value.trim()
   if (!messageText || chatLoading.value) return
@@ -322,23 +330,59 @@ const sendChatMessage = async (text) => {
   chatLoading.value = true
   scrollToBottom(chatMessagesRef)
 
+  // Создаём пустое сообщение для streaming
+  chatStreamingMsgId = chatMsgId++
+  chatHistory.value.push({
+    id: chatStreamingMsgId,
+    type: 'assistant',
+    content: '',
+    timestamp: new Date(),
+    isStreaming: true,
+  })
+  scrollToBottom(chatMessagesRef)
+
   try {
-    const result = await ragClient.sendMessage(messageText)
-    chatHistory.value.push({
-      id: chatMsgId++,
-      type: 'assistant',
-      content: result.success ? result.response : `Ошибка: ${result.error}`,
-      timestamp: new Date(),
-    })
+    await ragClient.sendMessageStream(
+      messageText,
+      // onChunk
+      (chunk) => {
+        const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
+        if (msg) {
+          msg.content += chunk
+          scrollToBottom(chatMessagesRef)
+        }
+      },
+      // onDone
+      (fullResponse) => {
+        const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
+        if (msg) {
+          msg.content = fullResponse
+          msg.isStreaming = false
+        }
+        chatLoading.value = false
+        chatStreamingMsgId = null
+        scrollToBottom(chatMessagesRef)
+      },
+      // onError
+      (errorMsg) => {
+        const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
+        if (msg) {
+          msg.content = `Ошибка: ${errorMsg}`
+          msg.isStreaming = false
+        }
+        chatLoading.value = false
+        chatStreamingMsgId = null
+        scrollToBottom(chatMessagesRef)
+      }
+    )
   } catch (e) {
-    chatHistory.value.push({ 
-      id: chatMsgId++, 
-      type: 'assistant', 
-      content: `Ошибка: ${e.message}`,
-      timestamp: new Date(),
-    })
-  } finally {
+    const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
+    if (msg) {
+      msg.content = `Ошибка: ${e.message}`
+      msg.isStreaming = false
+    }
     chatLoading.value = false
+    chatStreamingMsgId = null
     scrollToBottom(chatMessagesRef)
   }
 }

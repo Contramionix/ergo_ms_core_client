@@ -77,8 +77,8 @@
           </div>
         </div>
         
-        <!-- Индикатор печати -->
-        <div v-if="isTyping" class="ai-message ai-message--assistant">
+        <!-- Индикатор печати (показывается пока нет контента в streaming сообщении) -->
+        <div v-if="isTyping && !hasStreamingContent" class="ai-message ai-message--assistant">
           <div class="ai-message__avatar">
             <Bot :size="20" />
           </div>
@@ -122,7 +122,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, computed } from 'vue'
 import { Bot, User, Send, Plus, MessageSquare, Database, Copy } from 'lucide-vue-next'
 import { ragClient } from '../rag/js/rag-client.js'
 
@@ -142,6 +142,12 @@ const messages = ref([
     timestamp: new Date(),
   },
 ])
+
+// Проверяем, есть ли контент в streaming сообщении
+const hasStreamingContent = computed(() => {
+  const streamingMsg = messages.value.find(m => m.isStreaming)
+  return streamingMsg && streamingMsg.content && streamingMsg.content.length > 0
+})
 
 const todayChats = ref([
   { id: 1, title: 'Новый чат' },
@@ -180,6 +186,9 @@ const scrollToBottom = () => {
   })
 }
 
+// ID текущего streaming сообщения
+let streamingMessageId = null
+
 const sendMessage = async () => {
   if (!inputMessage.value.trim() || isTyping.value) return
 
@@ -197,33 +206,59 @@ const sendMessage = async () => {
   autoResize()
   scrollToBottom()
 
+  // Создаём пустое сообщение ассистента для streaming
+  streamingMessageId = messageIdCounter++
+  messages.value.push({
+    id: streamingMessageId,
+    type: 'assistant',
+    content: '',
+    timestamp: new Date(),
+    isStreaming: true,
+  })
+  scrollToBottom()
+
   try {
-    const result = await ragClient.sendMessage(messageText)
-    
-    if (result.success) {
-      messages.value.push({
-        id: messageIdCounter++,
-        type: 'assistant',
-        content: result.response,
-        timestamp: new Date(),
-      })
-    } else {
-      messages.value.push({
-        id: messageIdCounter++,
-        type: 'assistant',
-        content: `❌ **Ошибка:** ${result.error || 'Неизвестная ошибка'}`,
-        timestamp: new Date(),
-      })
-    }
+    await ragClient.sendMessageStream(
+      messageText,
+      // onChunk - добавляем текст по мере поступления
+      (chunk) => {
+        const msg = messages.value.find(m => m.id === streamingMessageId)
+        if (msg) {
+          msg.content += chunk
+          scrollToBottom()
+        }
+      },
+      // onDone - завершаем streaming
+      (fullResponse) => {
+        const msg = messages.value.find(m => m.id === streamingMessageId)
+        if (msg) {
+          msg.content = fullResponse
+          msg.isStreaming = false
+        }
+        isTyping.value = false
+        streamingMessageId = null
+        scrollToBottom()
+      },
+      // onError - обрабатываем ошибку
+      (errorMsg) => {
+        const msg = messages.value.find(m => m.id === streamingMessageId)
+        if (msg) {
+          msg.content = `❌ **Ошибка:** ${errorMsg || 'Неизвестная ошибка'}`
+          msg.isStreaming = false
+        }
+        isTyping.value = false
+        streamingMessageId = null
+        scrollToBottom()
+      }
+    )
   } catch (error) {
-    messages.value.push({
-      id: messageIdCounter++,
-      type: 'assistant',
-      content: `❌ **Ошибка подключения:** ${error.message}`,
-      timestamp: new Date(),
-    })
-  } finally {
+    const msg = messages.value.find(m => m.id === streamingMessageId)
+    if (msg) {
+      msg.content = `❌ **Ошибка подключения:** ${error.message}`
+      msg.isStreaming = false
+    }
     isTyping.value = false
+    streamingMessageId = null
     scrollToBottom()
   }
 }
