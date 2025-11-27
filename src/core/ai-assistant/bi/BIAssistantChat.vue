@@ -1,9 +1,21 @@
 <template>
-  <div v-if="isVisible" class="assistant-chat" :class="{ 'assistant-chat--visible': isVisible }">
+  <div 
+    v-if="isVisible" 
+    class="assistant-chat assistant-chat--visible"
+  >
     <div class="assistant-chat__header">
       <div class="assistant-chat__title">
         <Database :size="20" class="me-2" />
         <span>AI Ассистент - BI Анализ</span>
+      </div>
+      <div class="assistant-chat__controls">
+        <router-link 
+          to="/ai-assistant" 
+          class="control-btn" 
+          title="Открыть AI Hub"
+        >
+          <ExternalLink :size="18" />
+        </router-link>
       </div>
     </div>
 
@@ -25,27 +37,28 @@
 
     <div ref="messagesContainer" class="assistant-chat__messages">
       <AssistantMessage v-for="message in messages" :key="message.id" :message="message" />
-
       <AssistantTyping v-if="isTyping" />
     </div>
 
     <div class="assistant-chat__input">
-      <div class="input-group">
-        <input
-          v-model="inputMessage"
-          type="text"
-          class="form-control"
-          :placeholder="!selectedFile ? 'Сначала выберите файл для анализа' : 'Задайте вопрос к данным...'"
-          @keypress.enter="sendMessage"
-          :disabled="isTyping || !selectedFile"
-        />
-        <button
-          class="btn btn-danger"
-          @click="sendMessage"
-          :disabled="!inputMessage.trim() || isTyping || !selectedFile"
-        >
-          <Send :size="18" />
-        </button>
+      <div class="input-wrapper">
+        <div class="input-group">
+          <input
+            v-model="inputMessage"
+            type="text"
+            class="form-control"
+            :placeholder="!selectedFile ? 'Сначала выберите файл для анализа' : 'Задайте вопрос к данным...'"
+            @keypress.enter="sendMessage"
+            :disabled="isTyping || !selectedFile"
+          />
+          <button
+            class="btn btn-danger"
+            @click="sendMessage"
+            :disabled="!inputMessage.trim() || isTyping || !selectedFile"
+          >
+            <Send :size="18" />
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -53,13 +66,13 @@
 
 <script setup>
 import { ref, nextTick, watch } from 'vue'
-import { Send, Database, FileSpreadsheet } from 'lucide-vue-next'
+import { Send, Database, FileSpreadsheet, ExternalLink } from 'lucide-vue-next'
 import AssistantMessage from '../base/AssistantMessage.vue'
 import AssistantTyping from '../base/AssistantTyping.vue'
 import FileSelector from './FileSelector.vue'
 import { biClient } from './js/bi-client.js'
 
-const emit = defineEmits(['bi-query'])
+const emit = defineEmits(['bi-query', 'close'])
 
 const props = defineProps({
   isVisible: {
@@ -75,7 +88,6 @@ const isTyping = ref(false)
 const selectedFile = ref(null)
 const ollamaChecked = ref(false)
 
-// Счетчик для уникальных ID сообщений
 let messageIdCounter = 1
 
 const messages = ref([
@@ -91,7 +103,7 @@ const messages = ref([
 const onFileSelected = (file) => {
   selectedFile.value = file
   addAssistantMessage(
-    `✅ Выбран файл: **${file.name}**\n\nТеперь вы можете задавать вопросы к данным. Например:\n• "Покажи первые 10 строк"\n• "Какие колонки в файле?"\n• "Посчитай среднее значение"\n• "Найди максимум по категориям"`,
+    `Выбран файл: **${file.name}**\n\nТеперь вы можете задавать вопросы к данным. Например:\n• "Покажи первые 10 строк"\n• "Какие колонки в файле?"\n• "Посчитай среднее значение"\n• "Найди максимум по категориям"`,
   )
 }
 
@@ -107,7 +119,6 @@ const sendMessage = () => {
 
   const messageText = inputMessage.value.trim()
   
-  // Добавляем сообщение пользователя в чат
   const userMessage = {
     id: messageIdCounter++,
     type: 'user',
@@ -116,11 +127,9 @@ const sendMessage = () => {
   }
   messages.value.push(userMessage)
 
-  // Очищаем поле ввода
   inputMessage.value = ''
   isTyping.value = true
 
-  // Отправляем запрос
   emit('bi-query', {
     fileId: selectedFile.value.id,
     question: messageText,
@@ -200,7 +209,6 @@ watch(
   },
 )
 
-// Проверка Ollama при первом открытии чата
 watch(
   () => props.isVisible,
   async (newValue) => {
@@ -219,7 +227,7 @@ const checkOllamaConnection = async () => {
     
     if (!status.available) {
       addAssistantMessage(
-        `⚠️ **Внимание:** Не удалось подключиться к Ollama.\n\n` +
+        `**Внимание:** Не удалось подключиться к Ollama.\n\n` +
         `**Что нужно сделать:**\n` +
         `1. Убедитесь, что Ollama установлен и запущен\n` +
         `2. Проверьте доступность Ollama по адресу: http://localhost:11434\n` +
@@ -231,7 +239,7 @@ const checkOllamaConnection = async () => {
   } catch (error) {
     console.error('Ошибка проверки Ollama:', error)
     addAssistantMessage(
-      `⚠️ **Ошибка проверки подключения к Ollama:**\n\n${error.message}\n\n` +
+      `**Ошибка проверки подключения к Ollama:**\n\n${error.message}\n\n` +
       `Пожалуйста, убедитесь, что Ollama запущен и доступен.`
     )
   } finally {
@@ -291,6 +299,33 @@ defineExpose({
   align-items: center;
   font-weight: 600;
   font-size: 14px;
+}
+
+.assistant-chat__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+  color: white;
 }
 
 .assistant-chat__file-selector {
@@ -387,4 +422,3 @@ defineExpose({
   }
 }
 </style>
-

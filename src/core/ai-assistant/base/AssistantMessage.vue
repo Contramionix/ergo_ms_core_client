@@ -124,6 +124,11 @@ const formatTime = (timestamp) => {
   align-items: flex-start;
 }
 
+/* В fullscreen режиме сообщения могут быть шире */
+:global(.assistant-chat--fullscreen) .assistant-message__content {
+  max-width: 100%;
+}
+
 .assistant-message--user .assistant-message__content {
   flex-direction: row-reverse;
 }

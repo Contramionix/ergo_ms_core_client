@@ -1,35 +1,48 @@
 <template>
-  <div v-if="isVisible" class="assistant-chat" :class="{ 'assistant-chat--visible': isVisible }">
+  <div 
+    v-if="isVisible" 
+    class="assistant-chat assistant-chat--visible"
+  >
     <div class="assistant-chat__header">
       <div class="assistant-chat__title">
         <MessageSquare :size="20" class="me-2" />
         <span>AI Ассистент</span>
       </div>
+      <div class="assistant-chat__controls">
+        <router-link 
+          to="/ai-assistant" 
+          class="control-btn" 
+          title="Открыть AI Hub"
+        >
+          <ExternalLink :size="18" />
+        </router-link>
+      </div>
     </div>
 
     <div ref="messagesContainer" class="assistant-chat__messages">
       <AssistantMessage v-for="message in messages" :key="message.id" :message="message" />
-
       <AssistantTyping v-if="isTyping" />
     </div>
 
     <div class="assistant-chat__input">
-      <div class="input-group">
-        <input
-          v-model="inputMessage"
-          type="text"
-          class="form-control"
-          placeholder="Задайте вопрос..."
-          @keypress.enter="sendMessage"
-          :disabled="isTyping"
-        />
-        <button
-          class="btn btn-primary"
-          @click="sendMessage"
-          :disabled="!inputMessage.trim() || isTyping"
-        >
-          <Send :size="18" />
-        </button>
+      <div class="input-wrapper">
+        <div class="input-group">
+          <input
+            v-model="inputMessage"
+            type="text"
+            class="form-control"
+            placeholder="Задайте вопрос..."
+            @keypress.enter="sendMessage"
+            :disabled="isTyping"
+          />
+          <button
+            class="btn btn-primary"
+            @click="sendMessage"
+            :disabled="!inputMessage.trim() || isTyping"
+          >
+            <Send :size="18" />
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -37,10 +50,12 @@
 
 <script setup>
 import { ref, nextTick, watch } from 'vue'
-import { Send, MessageSquare } from 'lucide-vue-next'
+import { Send, MessageSquare, ExternalLink } from 'lucide-vue-next'
 import AssistantMessage from '../base/AssistantMessage.vue'
 import AssistantTyping from '../base/AssistantTyping.vue'
 import { ragClient } from './js/rag-client.js'
+
+const emit = defineEmits(['close'])
 
 const props = defineProps({
   isVisible: {
@@ -54,7 +69,6 @@ const inputMessage = ref('')
 const isTyping = ref(false)
 const ollamaChecked = ref(false)
 
-// Счетчик для уникальных ID сообщений
 let messageIdCounter = 1
 
 const messages = ref([
@@ -74,7 +88,6 @@ const sendMessage = async () => {
 
   const messageText = inputMessage.value.trim()
   
-  // Добавляем сообщение пользователя в чат
   const userMessage = {
     id: messageIdCounter++,
     type: 'user',
@@ -83,25 +96,21 @@ const sendMessage = async () => {
   }
   messages.value.push(userMessage)
 
-  // Очищаем поле ввода
   inputMessage.value = ''
   isTyping.value = true
 
   scrollToBottom()
 
   try {
-    // Отправляем запрос через RAG клиент
     const result = await ragClient.sendMessage(messageText)
     
     if (result.success) {
       addAssistantMessage(result.response)
     } else {
-      // Форматируем сообщение об ошибке более понятно
       let errorMessage = result.error || 'Неизвестная ошибка'
       
-      // Если ошибка связана с Ollama, добавляем инструкции
       if (errorMessage.includes('Ollama') || errorMessage.includes('ollama')) {
-        errorMessage = `⚠️ **Ошибка подключения к Ollama**\n\n` +
+        errorMessage = `**Ошибка подключения к Ollama**\n\n` +
           `${errorMessage}\n\n` +
           `**Что нужно сделать:**\n` +
           `1. Убедитесь, что Ollama установлен и запущен\n` +
@@ -109,19 +118,18 @@ const sendMessage = async () => {
           `3. Установите Ollama: https://ollama.com/download`
       }
       
-      addAssistantMessage(`❌ **Ошибка:** ${errorMessage}`)
+      addAssistantMessage(`**Ошибка:** ${errorMessage}`)
     }
   } catch (error) {
     console.error('Ошибка отправки сообщения:', error)
     
-    // Извлекаем сообщение об ошибке
     const errorMessage = 
       error.response?.data?.error ||
       error.response?.data?.message ||
       error.message ||
       'Не удалось отправить сообщение'
     
-    addAssistantMessage(`❌ **Ошибка подключения:** ${errorMessage}`)
+    addAssistantMessage(`**Ошибка подключения:** ${errorMessage}`)
   } finally {
     isTyping.value = false
   }
@@ -154,7 +162,6 @@ watch(
   },
 )
 
-// Проверка Ollama при первом открытии чата
 watch(
   () => props.isVisible,
   async (newValue) => {
@@ -173,7 +180,7 @@ const checkOllamaConnection = async () => {
     
     if (!status.available) {
       addAssistantMessage(
-        `⚠️ **Внимание:** Не удалось подключиться к Ollama.\n\n` +
+        `**Внимание:** Не удалось подключиться к Ollama.\n\n` +
         `**Что нужно сделать:**\n` +
         `1. Убедитесь, что Ollama установлен и запущен\n` +
         `2. Проверьте доступность Ollama по адресу: http://localhost:11434\n` +
@@ -185,7 +192,7 @@ const checkOllamaConnection = async () => {
   } catch (error) {
     console.error('Ошибка проверки Ollama:', error)
     addAssistantMessage(
-      `⚠️ **Ошибка проверки подключения к Ollama:**\n\n${error.message}\n\n` +
+      `**Ошибка проверки подключения к Ollama:**\n\n${error.message}\n\n` +
       `Пожалуйста, убедитесь, что Ollama запущен и доступен.`
     )
   } finally {
@@ -215,16 +222,8 @@ defineExpose({
   z-index: 9998;
   display: flex;
   flex-direction: column;
-  transform: translateY(20px) scale(0.95);
-  opacity: 0;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(10px);
   margin-bottom: 10px;
-}
-
-.assistant-chat--visible {
-  transform: translateY(0) scale(1);
-  opacity: 1;
 }
 
 .assistant-chat__header {
@@ -242,6 +241,33 @@ defineExpose({
   align-items: center;
   font-weight: 600;
   font-size: 14px;
+}
+
+.assistant-chat__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+  color: white;
 }
 
 .assistant-chat__messages {
@@ -313,4 +339,3 @@ defineExpose({
   }
 }
 </style>
-

@@ -1,18 +1,33 @@
 <template>
-  <div
-    class="assistant-button"
-    :class="{ 'assistant-button--active': isActive, 'assistant-button--pulse': isPulsing }"
-    @click="toggleChat"
-  >
-    <Bot :size="24" class="assistant-button__icon" />
-    <div v-if="hasNewMessage" class="assistant-button__notification"></div>
+  <div class="assistant-button-container">
+    <!-- Кнопка перехода в AI Hub -->
+    <div
+      v-if="!isActive"
+      class="assistant-expand-button"
+      @click="goToHub"
+      title="Открыть AI Hub"
+    >
+      <ExternalLink :size="16" />
+    </div>
+    
+    <!-- Основная кнопка -->
+    <div
+      class="assistant-button"
+      :class="{ 'assistant-button--active': isActive, 'assistant-button--pulse': isPulsing }"
+      @click="toggleChat"
+    >
+      <Bot :size="24" class="assistant-button__icon" />
+      <div v-if="hasNewMessage" class="assistant-button__notification"></div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { Bot } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { Bot, ExternalLink } from 'lucide-vue-next'
 
+const router = useRouter()
 const emit = defineEmits(['toggle-chat'])
 
 const isActive = ref(false)
@@ -22,6 +37,10 @@ const hasNewMessage = ref(false)
 const toggleChat = () => {
   isActive.value = !isActive.value
   emit('toggle-chat', isActive.value)
+}
+
+const goToHub = () => {
+  router.push('/ai-assistant')
 }
 
 const startPulsing = () => {
@@ -40,19 +59,59 @@ const hideNotification = () => {
   hasNewMessage.value = false
 }
 
+const setActive = (value) => {
+  isActive.value = value
+}
+
 defineExpose({
   startPulsing,
   stopPulsing,
   showNotification,
   hideNotification,
+  setActive,
 })
 </script>
 
 <style scoped>
-.assistant-button {
+.assistant-button-container {
   position: fixed;
   bottom: 20px;
   left: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.assistant-expand-button {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #6c757d, #495057);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid #fff;
+  color: white;
+  opacity: 0;
+  transform: scale(0.8) translateY(10px);
+}
+
+.assistant-button-container:hover .assistant-expand-button {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.assistant-expand-button:hover {
+  background: linear-gradient(135deg, #495057, #343a40);
+  transform: scale(1.1) translateY(0);
+}
+
+.assistant-button {
   width: 60px;
   height: 60px;
   background: linear-gradient(135deg, #dc3545, #c82333);
@@ -61,7 +120,6 @@ defineExpose({
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 9999;
   box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 3px solid #fff;
@@ -138,20 +196,24 @@ defineExpose({
 }
 
 @media (max-width: 768px) {
+  .assistant-button-container {
+    bottom: 15px;
+    left: 15px;
+  }
+  
   .assistant-button {
     width: 55px;
     height: 55px;
-    bottom: 15px;
-    left: 15px;
   }
 
   .assistant-button__icon {
     width: 22px;
     height: 22px;
   }
+  
+  .assistant-expand-button {
+    width: 32px;
+    height: 32px;
+  }
 }
 </style>
-
-
-
-
