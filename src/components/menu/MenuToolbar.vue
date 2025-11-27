@@ -31,7 +31,7 @@
     </div>
 
     <component
-      v-if="currentModuleComponent"
+      v-if="currentModuleComponent && shouldShowFullInfo"
       :is="currentModuleComponent"
       ref="assistantChat"
       :is-visible="isAssistantVisible"
@@ -68,6 +68,7 @@ const emit = defineEmits(['dropdown-state-change'])
 const userStore = useUserStore()
 const route = useRoute()
 const isAssistantVisible = ref(false)
+const wasAssistantVisibleBeforeCollapse = ref(false) // Сохраняем состояние перед сворачиванием
 const assistantChat = ref(null)
 const currentModuleComponent = shallowRef(null)
 const currentModuleClient = ref(null)
@@ -110,6 +111,22 @@ watch(
     await loadModuleForRoute(newPath)
   },
   { immediate: true }
+)
+
+// Управление чатом при сворачивании/развёртывании меню
+watch(
+  () => props.isCollapsed && !props.isHovering,
+  (shouldHide) => {
+    if (shouldHide) {
+      // Сохраняем состояние и закрываем чат при сворачивании
+      wasAssistantVisibleBeforeCollapse.value = isAssistantVisible.value
+      isAssistantVisible.value = false
+    } else if (wasAssistantVisibleBeforeCollapse.value) {
+      // Восстанавливаем состояние при развёртывании
+      isAssistantVisible.value = true
+      wasAssistantVisibleBeforeCollapse.value = false
+    }
+  }
 )
 
 const shouldShowFullInfo = computed(() => {
