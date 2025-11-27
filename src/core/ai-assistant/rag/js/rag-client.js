@@ -184,6 +184,8 @@ class RAGClient {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let accumulatedContent = ''
+      let doneEventReceived = false
 
       while (true) {
         const { done, value } = await reader.read()
@@ -205,10 +207,15 @@ class RAGClient {
               const event = JSON.parse(jsonStr)
               
               if (event.type === 'chunk' && onChunk) {
+                accumulatedContent += event.text
                 onChunk(event.text)
-              } else if (event.type === 'done' && onDone) {
-                onDone(event.full_response)
+              } else if (event.type === 'done') {
+                doneEventReceived = true
+                if (onDone) {
+                  onDone(event.full_response || accumulatedContent)
+                }
               } else if (event.type === 'error' && onError) {
+                doneEventReceived = true
                 onError(event.message)
               }
             } catch (parseError) {
@@ -216,6 +223,11 @@ class RAGClient {
             }
           }
         }
+      }
+
+      // Если stream завершился без события done, вызываем onDone с накопленным контентом
+      if (!doneEventReceived && accumulatedContent && onDone) {
+        onDone(accumulatedContent)
       }
     } catch (error) {
       console.error('Ошибка streaming сообщения:', error)

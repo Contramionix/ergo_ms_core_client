@@ -96,7 +96,7 @@
             :message="msg" 
             :module-config="currentModuleConfig"
           />
-          <div v-if="chatLoading && !hasChatStreamingContent" class="typing-indicator">
+          <div v-if="chatLoading" class="typing-indicator">
             <div class="typing-indicator__avatar" :style="{ background: currentModuleConfig?.color }">
               <component :is="currentModuleConfig?.icon" :size="18" />
             </div>
@@ -278,11 +278,6 @@ const chatLoading = ref(false)
 let chatMsgId = 1
 const chatHistory = ref([])
 
-// Проверяем, есть ли контент в streaming сообщении чата
-const hasChatStreamingContent = computed(() => {
-  const streamingMsg = chatHistory.value.find(m => m.isStreaming)
-  return streamingMsg && streamingMsg.content && streamingMsg.content.length > 0
-})
 
 // BI state
 const biMessagesRef = ref(null)
@@ -328,36 +323,45 @@ const sendChatMessage = async (text) => {
   })
   chatInput.value = ''
   chatLoading.value = true
-  scrollToBottom(chatMessagesRef)
-
-  // Создаём пустое сообщение для streaming
-  chatStreamingMsgId = chatMsgId++
-  chatHistory.value.push({
-    id: chatStreamingMsgId,
-    type: 'assistant',
-    content: '',
-    timestamp: new Date(),
-    isStreaming: true,
-  })
+  chatStreamingMsgId = null
   scrollToBottom(chatMessagesRef)
 
   try {
     await ragClient.sendMessageStream(
       messageText,
-      // onChunk
+      // onChunk - создаём сообщение при первом чанке
       (chunk) => {
-        const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
-        if (msg) {
-          msg.content += chunk
-          scrollToBottom(chatMessagesRef)
+        if (!chatStreamingMsgId) {
+          chatStreamingMsgId = chatMsgId++
+          chatHistory.value.push({
+            id: chatStreamingMsgId,
+            type: 'assistant',
+            content: chunk,
+            timestamp: new Date(),
+          })
+          chatLoading.value = false
+        } else {
+          const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
+          if (msg) {
+            msg.content += chunk
+          }
         }
+        scrollToBottom(chatMessagesRef)
       },
       // onDone
       (fullResponse) => {
-        const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
-        if (msg) {
-          msg.content = fullResponse
-          msg.isStreaming = false
+        if (chatStreamingMsgId) {
+          const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
+          if (msg && fullResponse) {
+            msg.content = fullResponse
+          }
+        } else if (fullResponse) {
+          chatHistory.value.push({
+            id: chatMsgId++,
+            type: 'assistant',
+            content: fullResponse,
+            timestamp: new Date(),
+          })
         }
         chatLoading.value = false
         chatStreamingMsgId = null
@@ -365,10 +369,18 @@ const sendChatMessage = async (text) => {
       },
       // onError
       (errorMsg) => {
-        const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
-        if (msg) {
-          msg.content = `Ошибка: ${errorMsg}`
-          msg.isStreaming = false
+        if (chatStreamingMsgId) {
+          const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
+          if (msg) {
+            msg.content += `\n\nОшибка: ${errorMsg}`
+          }
+        } else {
+          chatHistory.value.push({
+            id: chatMsgId++,
+            type: 'assistant',
+            content: `Ошибка: ${errorMsg}`,
+            timestamp: new Date(),
+          })
         }
         chatLoading.value = false
         chatStreamingMsgId = null
@@ -376,10 +388,18 @@ const sendChatMessage = async (text) => {
       }
     )
   } catch (e) {
-    const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
-    if (msg) {
-      msg.content = `Ошибка: ${e.message}`
-      msg.isStreaming = false
+    if (chatStreamingMsgId) {
+      const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
+      if (msg) {
+        msg.content += `\n\nОшибка: ${e.message}`
+      }
+    } else {
+      chatHistory.value.push({
+        id: chatMsgId++,
+        type: 'assistant',
+        content: `Ошибка: ${e.message}`,
+        timestamp: new Date(),
+      })
     }
     chatLoading.value = false
     chatStreamingMsgId = null
