@@ -4,7 +4,7 @@
  * Управляет загрузкой и переключением между модулями ассистента
  */
 
-import { moduleConfig, getActiveModule } from './module-config.js'
+import { getActiveModule } from './module-config.js'
 
 export class AssistantModuleManager {
   constructor() {
