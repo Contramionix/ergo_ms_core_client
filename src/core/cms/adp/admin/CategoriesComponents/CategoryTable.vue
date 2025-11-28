@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { Settings, Trash2 } from 'lucide-vue-next'
 import ModalCenter from '@/components/ModalCenter.vue'
 import ChangeCategoryForm from '@/core/cms/adp/admin/CategoriesComponents/SubmitCategoryChange.vue'
 import { DeleteRole } from '@/core/cms/adp/admin/js/GroupsPolitics'
@@ -70,7 +71,6 @@ const deleteRole = async (roleId) => {
       <tbody class="table-group-divider">
         <tr v-for="row in paginatedRows" :key="row.id">
           <td>{{ row.name }}</td>
-          <td>{{ row.role_type_display }}</td>
           <td>{{ row.description || '—' }}</td>
           <td>
             <span
@@ -82,19 +82,23 @@ const deleteRole = async (roleId) => {
           <td>
             <div class="d-flex align-items-center flex-wrap gap-2">
               <button
-                class="btn btn-sm btn-outline-primary"
+                class="btn btn-sm d-flex align-items-center justify-content-center"
                 data-bs-toggle="modal"
                 data-bs-target="#roleEdit"
                 @click="changingRow(row)"
+                type="button"
+                aria-label="Изменить роль"
               >
-                Изменить
+                <Settings size="16" />
               </button>
               <button
-                class="btn btn-sm btn-outline-danger"
+                class="btn btn-sm d-flex align-items-center justify-content-center"
                 :disabled="row.is_system"
                 @click="deleteRole(row.id)"
+                type="button"
+                aria-label="Удалить роль"
               >
-                Удалить
+                <Trash2 size="16" />
               </button>
               <ModalCenter title="Редактировать роль" modalId="roleEdit">
                 <ChangeCategoryForm @changeCategory="changeCategory()" :row="rowSelected" />
