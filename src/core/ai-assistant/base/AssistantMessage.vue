@@ -1,38 +1,40 @@
 <template>
-  <div class="assistant-message" :class="`assistant-message--${message.type}`">
-    <div class="assistant-message__content">
-      <div v-if="message.type === 'user'" class="assistant-message__avatar user-avatar">
-        <User :size="20" />
-      </div>
-      <div v-else class="assistant-message__avatar assistant-avatar">
-        <Bot :size="20" />
+  <div class="neural-chat-message" :class="`neural-chat-message--${message.type}`">
+    <div class="message-row">
+      <!-- Avatar -->
+      <div class="message-avatar" :class="`message-avatar--${message.type}`">
+        <User v-if="message.type === 'user'" :size="18" />
+        <Sparkles v-else :size="18" />
+        <div class="avatar-glow"></div>
       </div>
 
-      <div class="assistant-message__text">
-        <div v-if="message.content" class="message-content" v-html="formatMarkdown(message.content)"></div>
+      <!-- Content bubble -->
+      <div class="message-bubble">
+        <!-- Text content -->
+        <div v-if="message.content" class="message-text" v-html="formatMarkdown(message.content)"></div>
         
-        <!-- SQL запрос -->
-        <div v-if="message.sql" class="message-sql">
-          <div class="sql-header">
-            <Database :size="14" class="me-1" />
-            <span>SQL запрос:</span>
+        <!-- SQL query -->
+        <div v-if="message.sql" class="message-code">
+          <div class="code-label">
+            <Terminal :size="12" />
+            <span>SQL</span>
           </div>
           <pre><code>{{ message.sql }}</code></pre>
         </div>
 
-        <!-- Генерация SQL (streaming) -->
-        <div v-if="message.sqlGenerating" class="message-sql-generating">
-          <div class="sql-header">
-            <Loader2 :size="14" class="me-1 spinning" />
-            <span>Генерация SQL...</span>
+        <!-- SQL generating -->
+        <div v-if="message.sqlGenerating" class="message-code message-code--generating">
+          <div class="code-label">
+            <Loader2 :size="12" class="spinning" />
+            <span>Генерация...</span>
           </div>
           <pre><code>{{ message.sqlGenerating }}</code></pre>
         </div>
 
-        <!-- Таблица данных -->
+        <!-- Data table -->
         <div v-if="message.data && message.data.data && message.data.data.length > 0" class="message-table">
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered">
+          <div class="table-scroll">
+            <table>
               <thead>
                 <tr>
                   <th v-for="col in message.data.columns" :key="col">{{ col }}</th>
@@ -45,33 +47,29 @@
               </tbody>
             </table>
           </div>
-          <div class="table-info">
-            Показано {{ message.data.data.length }} строк
-          </div>
+          <div class="table-meta">{{ message.data.data.length }} строк</div>
         </div>
 
-        <!-- Ошибка -->
+        <!-- Error -->
         <div v-if="message.error" class="message-error">
-          <AlertCircle :size="16" class="me-1" />
+          <AlertCircle :size="14" />
           <span>{{ message.error }}</span>
         </div>
 
-        <!-- Стадия обработки -->
+        <!-- Stage -->
         <div v-if="message.stage && message.streaming" class="message-stage">
-          <Loader2 :size="14" class="me-1 spinning" />
+          <Loader2 :size="12" class="spinning" />
           <span>{{ message.stage }}</span>
         </div>
       </div>
     </div>
 
-    <div class="assistant-message__timestamp">
-      {{ formatTime(message.timestamp) }}
-    </div>
+    <div class="message-time">{{ formatTime(message.timestamp) }}</div>
   </div>
 </template>
 
 <script setup>
-import { Bot, User, Database, Loader2, AlertCircle } from 'lucide-vue-next'
+import { Sparkles, User, Terminal, Loader2, AlertCircle } from 'lucide-vue-next'
 
 defineProps({
   message: {
@@ -82,8 +80,6 @@ defineProps({
 
 const formatMarkdown = (text) => {
   if (!text) return ''
-  
-  // Простое форматирование markdown
   return text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -101,140 +97,232 @@ const formatTime = (timestamp) => {
 }
 </script>
 
-<style scoped>
-.assistant-message {
+<style lang="scss" scoped>
+$neon-cyan: #3ae8ff;
+$neon-purple: #a855f7;
+$neon-blue: #4f8fff;
+$neon-red: #ff3366;
+$dark-bg: #0a0c12;
+$dark-elevated: #13161f;
+
+.neural-chat-message {
   display: flex;
   flex-direction: column;
   margin-bottom: 1rem;
-  animation: slideInMessage 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: messageSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &--user {
+    align-items: flex-end;
+    
+    .message-row {
+      flex-direction: row-reverse;
+    }
+  }
+
+  &--assistant {
+    align-items: flex-start;
+  }
 }
 
-.assistant-message--user {
-  align-items: flex-end;
-}
-
-.assistant-message--assistant {
-  align-items: flex-start;
-}
-
-.assistant-message__content {
+.message-row {
   display: flex;
   gap: 0.75rem;
   max-width: 85%;
   align-items: flex-start;
 }
 
-/* В fullscreen режиме сообщения могут быть шире */
-:global(.assistant-chat--fullscreen) .assistant-message__content {
-  max-width: 100%;
-}
-
-.assistant-message--user .assistant-message__content {
-  flex-direction: row-reverse;
-}
-
-.assistant-message__avatar {
+.message-avatar {
   flex-shrink: 0;
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.user-avatar {
-  background: linear-gradient(135deg, #0d6efd, #0a58ca);
+  position: relative;
   color: white;
+
+  &--user {
+    background: linear-gradient(135deg, $neon-blue, darken($neon-blue, 15%));
+    
+    .avatar-glow {
+      background: rgba($neon-blue, 0.3);
+    }
+  }
+
+  &--assistant {
+    background: linear-gradient(135deg, $neon-cyan, $neon-purple);
+    
+    .avatar-glow {
+      background: rgba($neon-cyan, 0.3);
+    }
+  }
 }
 
-.assistant-avatar {
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  color: white;
+.avatar-glow {
+  position: absolute;
+  inset: -4px;
+  border-radius: 14px;
+  filter: blur(8px);
+  opacity: 0.5;
+  z-index: -1;
 }
 
-.assistant-message__text {
+.message-bubble {
   flex: 1;
   padding: 0.75rem 1rem;
   border-radius: 12px;
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  background: $dark-elevated;
+  border: 1px solid rgba($neon-cyan, 0.15);
+  position: relative;
+
+  .neural-chat-message--user & {
+    background: linear-gradient(135deg, rgba($neon-blue, 0.15), rgba($neon-blue, 0.05));
+    border-color: rgba($neon-blue, 0.3);
+  }
 }
 
-.assistant-message--user .assistant-message__text {
-  background: linear-gradient(135deg, #0d6efd, #0a58ca);
-  color: white;
-  border: none;
-}
-
-.message-content {
-  line-height: 1.5;
+.message-text {
+  line-height: 1.6;
+  color: #e8ecf4;
   word-wrap: break-word;
+
+  :deep(code) {
+    background: rgba($neon-cyan, 0.15);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+    color: $neon-cyan;
+  }
+
+  :deep(strong) {
+    color: white;
+    font-weight: 600;
+  }
+
+  :deep(em) {
+    color: $neon-purple;
+  }
 }
 
-.message-content :deep(code) {
-  background: rgba(0, 0, 0, 0.1);
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
-  font-size: 0.9em;
-}
-
-.message-sql,
-.message-sql-generating {
+.message-code {
   margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  background: $dark-bg;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba($neon-cyan, 0.2);
+
+  &--generating {
+    border-color: rgba($neon-purple, 0.3);
+    
+    .code-label {
+      color: $neon-purple;
+    }
+  }
 }
 
-.sql-header {
+.code-label {
   display: flex;
   align-items: center;
-  font-size: 0.85rem;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba($neon-cyan, 0.05);
+  border-bottom: 1px solid rgba($neon-cyan, 0.1);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
   font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: #6c757d;
+  color: $neon-cyan;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.message-sql pre,
-.message-sql-generating pre {
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 0.75rem;
-  border-radius: 6px;
-  overflow-x: auto;
-  font-size: 0.85rem;
+.message-code pre {
   margin: 0;
+  padding: 0.75rem;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #a3e635;
 }
 
 .message-table {
   margin-top: 0.75rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
-.table-responsive {
-  max-height: 300px;
-  overflow-y: auto;
+.table-scroll {
+  max-height: 250px;
+  overflow: auto;
 }
 
-.table-info {
+.message-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.message-table th,
+.message-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+  white-space: nowrap;
+}
+
+.message-table th {
+  background: rgba(16, 185, 129, 0.1);
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.75rem;
-  color: #6c757d;
-  margin-top: 0.5rem;
+  font-weight: 600;
+  color: #22ff8d;
+  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+}
+
+.message-table td {
+  color: #e8ecf4;
+}
+
+.table-meta {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  color: #5a6882;
+  background: rgba(16, 185, 129, 0.05);
+  border-top: 1px solid rgba(16, 185, 129, 0.1);
 }
 
 .message-error {
   display: flex;
   align-items: center;
-  color: #dc3545;
-  font-size: 0.9rem;
+  gap: 0.5rem;
   margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba($neon-red, 0.1);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: $neon-red;
 }
 
 .message-stage {
   display: flex;
   align-items: center;
-  font-size: 0.85rem;
-  color: #6c757d;
+  gap: 0.5rem;
   margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #5a6882;
+}
+
+.message-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: #5a6882;
+  margin-top: 0.25rem;
+  padding: 0 0.5rem;
 }
 
 .spinning {
@@ -242,22 +330,11 @@ const formatTime = (timestamp) => {
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-.assistant-message__timestamp {
-  font-size: 0.7rem;
-  color: #6c757d;
-  margin-top: 0.25rem;
-  padding: 0 0.5rem;
-}
-
-@keyframes slideInMessage {
+@keyframes messageSlide {
   from {
     opacity: 0;
     transform: translateY(10px);
@@ -268,7 +345,3 @@ const formatTime = (timestamp) => {
   }
 }
 </style>
-
-
-
-
