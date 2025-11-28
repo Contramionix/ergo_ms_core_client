@@ -44,7 +44,7 @@ const submitForm = async () => {
   errors.general = null
   
   try {
-    const authResult = await authorization(form.login, form.password)
+    const authResult = await authorization(form.login, form.password, form.rememberUser)
 
     if (authResult.success === true) {
       // Запускаем проверку токена после успешной авторизации

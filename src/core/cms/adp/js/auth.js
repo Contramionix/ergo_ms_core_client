@@ -4,10 +4,11 @@ import Cookies from 'js-cookie';
 import tokenService from '@/core/cms/js/tokenService'
 
 export const authService = {
-    async login(username, password) {
+    async login(username, password, rememberMe = false) {
         const response = await apiClient.post(endpoints.auth.login, {
             username,
             password,
+            remember_me: rememberMe,
         }, false);
         
         if (response.success) {
