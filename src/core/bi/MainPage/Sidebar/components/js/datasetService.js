@@ -48,7 +48,8 @@ export default {
   deleteDataset(id) {
     return apiClient.delete(`${BASE}${id}/`)
   },
-  preview(datasetId, params = { limit: 10 }) {
+  preview(datasetId, params = {}) {
+    // Лимиты убраны - если limit не указан, загружаются все данные
     return apiClient.get(
       `${BASE}${datasetId}/preview/`,
       params

@@ -13,9 +13,8 @@
       <div class="resize-indicator"></div>
     </div>
     <footer class="footer-content">
-        <template v-if="previewRows && previewRows.length">
+        <template v-if="datasetId || (previewRows && previewRows.length)">
           <DatasetTablePreview 
-            v-model:limit="localPreviewLimit" 
             :cols="previewCols" 
             :rows="previewRows" 
             :fields="fields"
@@ -61,11 +60,10 @@ const props = defineProps({
   fields: Array,
   datasetId: [String, Number],
   isPreviewLoading: Boolean,
-  connectionStatus: { type: String, default: 'connected' },
-  previewLimit: { type: Number, default: () => parseInt(import.meta.env.VITE_BI_PREVIEW_ROWS_LIMIT || '200', 10) }
+  connectionStatus: { type: String, default: 'connected' }
 })
 
-const emit = defineEmits(['update:previewLimit', 'switch-to-sources'])
+const emit = defineEmits(['switch-to-sources'])
 
 // Константы
 const MIN_HEIGHT = 300
@@ -77,27 +75,7 @@ const isResizing = ref(false)
 const startY = ref(0)
 const startHeight = ref(0)
 
-// Локальная копия previewLimit для v-model
-const localPreviewLimit = ref(props.previewLimit)
-let isUpdatingFromProps = false
-
-// Синхронизируем localPreviewLimit с props.previewLimit
-watch(() => props.previewLimit, (newValue) => {
-  if (newValue !== undefined && newValue !== null && newValue !== localPreviewLimit.value) {
-    isUpdatingFromProps = true
-    localPreviewLimit.value = newValue
-    nextTick(() => {
-      isUpdatingFromProps = false
-    })
-  }
-}, { immediate: true })
-
-// Синхронизируем изменения обратно в родительский компонент (только если изменение не из props)
-watch(localPreviewLimit, (newValue) => {
-  if (!isUpdatingFromProps && newValue !== props.previewLimit) {
-    emit('update:previewLimit', newValue)
-  }
-})
+// Лимиты убраны - поле ввода лимита удалено
 
 function startResize(e) {
   const event = e.touches ? e.touches[0] : e

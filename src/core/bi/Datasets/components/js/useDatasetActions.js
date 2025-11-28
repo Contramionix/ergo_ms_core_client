@@ -967,10 +967,12 @@ export function useDatasetActions(state) {
       
       // Для сохраненного датасета используем preview API, для черновика - draftPreview
       if (state.dataset.value?.id) {
-        // Сохраненный датасет - используем preview API
+        // Сохраненный датасет - загружаем только колонки (первая страница для определения структуры)
+        // Сами данные будут загружаться через DatasetTablePreview с серверной пагинацией
+        const ITEMS_PER_PAGE = parseInt(import.meta.env.VITE_BI_PREVIEW_ITEMS_PER_PAGE || '20', 10)
         try {
           resp = await datasetService.preview(state.dataset.value.id, {
-            limit: state.previewLimit.value,
+            limit: ITEMS_PER_PAGE, // Загружаем только первую страницу для определения колонок
             offset: 0
           })
           
@@ -984,46 +986,49 @@ export function useDatasetActions(state) {
             const result = await waitForTaskResult(data.task_id)
             if (result && (result.columns || result.rows)) {
               state.previewCols.value = result.columns || []
-              state.previewRows.value = result.rows || []
+              // Не сохраняем rows - они будут загружаться через DatasetTablePreview с пагинацией
+              state.previewRows.value = []
               await loadFields()
             } else {
               // Не очищаем данные при ошибке, чтобы таблица не исчезла
-              if (!state.previewCols.value.length && !state.previewRows.value.length) {
+              if (!state.previewCols.value.length) {
                 state.previewCols.value = []
-                state.previewRows.value = []
               }
             }
             return
           }
           
-          if (data && (data.columns || data.rows)) {
+          if (data && data.columns) {
             state.previewCols.value = data.columns || []
-            state.previewRows.value = data.rows || []
+            // Не сохраняем rows - они будут загружаться через DatasetTablePreview с пагинацией
+            state.previewRows.value = []
             await loadFields()
           } else {
             // Не очищаем данные при ошибке, чтобы таблица не исчезла
-            if (!state.previewCols.value.length && !state.previewRows.value.length) {
+            if (!state.previewCols.value.length) {
               state.previewCols.value = []
-              state.previewRows.value = []
             }
           }
         } catch (error) {
           console.error('Ошибка загрузки предпросмотра сохраненного датасета:', error)
           // Не очищаем данные при ошибке, чтобы таблица не исчезла
-          if (!state.previewCols.value.length && !state.previewRows.value.length) {
+          if (!state.previewCols.value.length) {
             state.previewCols.value = []
-            state.previewRows.value = []
           }
         }
       } else {
         // Черновик - используем draftPreview
         try {
-          resp = await datasetService.draftPreview({
+          const draftParams = {
             connection_id: state.selectedConnection.value?.id,
             mainTable: main,
             joinedTables: joined,
-            limit: state.previewLimit.value,
-          })
+          }
+          // Передаем limit только если он указан (не null)
+          if (state.previewLimit.value !== null && state.previewLimit.value !== undefined) {
+            draftParams.limit = state.previewLimit.value
+          }
+          resp = await datasetService.draftPreview(draftParams)
           
           // API может вернуть данные напрямую или обернутые в data
           const data = resp?.data || resp

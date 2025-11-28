@@ -61,8 +61,6 @@
       :dataset-id="currentDatasetId"
       :is-preview-loading="isPreviewLoading"
       :connection-status="getConnectionStatus()"
-      :preview-limit="previewLimit"
-      @update:preview-limit="previewLimit = $event"
       @switch-to-sources="activeTab = 'sources'"
     />
 
@@ -147,7 +145,6 @@ const {
   selectedTables,
   previewCols,
   previewRows,
-  previewLimit,
   showModal,
   showTableLinkModal,
   showDatasetDialog,
@@ -448,15 +445,8 @@ watch(selectedConnection, async (newConnection, oldConnection) => {
   }
 }, { deep: true })
 
-watch(previewLimit, async (val, old) => {
-  if (val !== old && isPreviewVisible.value && (dataset.value?.id || (mainTable.value && selectedConnection.value))) {
-    await loadPreview()
-    
-    if (selectedConnection.value && fileUploadsCache.value) {
-      updateConnectionStatus(fileUploadsCache.value)
-    }
-  }
-})
+// Лимиты убраны - previewLimit больше не используется
+// watch(previewLimit, ...) удален
 
 watch(datasetId, async (newId, oldId) => {
   if (newId && newId !== oldId && !isLoadingDataset.value) {
