@@ -22,22 +22,20 @@ import { Sparkles } from 'lucide-vue-next'
 </script>
 
 <style lang="scss" scoped>
-$neon-cyan: #3ae8ff;
-$neon-purple: #a855f7;
-$dark-elevated: #13161f;
+@import '../styles/variables';
 
 .neural-typing {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  margin-bottom: 1rem;
+  gap: $spacing-md;
+  padding: $spacing-md $spacing-lg;
+  margin-bottom: $spacing-md;
 }
 
 .typing-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: $radius-lg;
   background: linear-gradient(135deg, $neon-cyan, $neon-purple);
   color: white;
   display: flex;
@@ -45,16 +43,14 @@ $dark-elevated: #13161f;
   justify-content: center;
   flex-shrink: 0;
   position: relative;
-  box-shadow: 
-    0 0 20px rgba($neon-cyan, 0.4),
-    0 0 40px rgba($neon-cyan, 0.2);
+  box-shadow: $glow-cyan;
 }
 
 .avatar-pulse {
   position: absolute;
   inset: -6px;
   border: 1px solid $neon-cyan;
-  border-radius: 16px;
+  border-radius: $radius-xl;
   animation: pulse-expand 2s ease-out infinite;
 }
 
@@ -72,15 +68,15 @@ $dark-elevated: #13161f;
 .typing-content {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: $spacing-sm;
 }
 
 .typing-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
-  color: #5a6882;
+  font-family: $font-family-mono;
+  font-size: $font-size-xs;
+  color: var(--nc-text-muted, #{$dark-text-muted});
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: $letter-spacing-widest;
 }
 
 .typing-wave {
@@ -95,7 +91,7 @@ $dark-elevated: #13161f;
     background: $neon-cyan;
     border-radius: 2px;
     animation: wave 1.2s ease-in-out infinite;
-    box-shadow: 0 0 8px rgba($neon-cyan, 0.5);
+    box-shadow: 0 0 8px $neon-cyan-light;
 
     &:nth-child(1) { animation-delay: 0s; }
     &:nth-child(2) { animation-delay: 0.1s; }

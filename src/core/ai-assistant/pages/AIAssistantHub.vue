@@ -24,13 +24,6 @@
         </div>
       </div>
 
-      <div class="sidebar-controls">
-        <button class="ctrl-btn" @click="toggleTheme" :title="isLightTheme ? 'Тёмная тема' : 'Светлая тема'">
-          <Sun v-if="isLightTheme" :size="18" />
-          <Moon v-else :size="18" />
-        </button>
-      </div>
-
       <nav class="sidebar-modules">
         <span class="modules-label">// МОДУЛИ</span>
         
@@ -317,9 +310,9 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { 
-  Sparkles, Sun, Moon, Cpu, Trash2, Send, Zap, ChevronRight, ArrowRight,
+  Sparkles, Cpu, Trash2, Send, Zap, ChevronRight, ArrowRight,
   Database, FileSpreadsheet, FileQuestion, Upload, X
 } from 'lucide-vue-next'
 import { modules, getModuleById } from '../modules/index.js'
@@ -328,12 +321,50 @@ import HubMessage from '../components/HubMessage.vue'
 import { ragClient } from '../rag/js/rag-client.js'
 import { biClient } from '../bi/js/bi-client.js'
 
-// Theme
-const isLightTheme = ref(localStorage.getItem('ai-hub-theme') === 'light')
-const toggleTheme = () => {
-  isLightTheme.value = !isLightTheme.value
-  localStorage.setItem('ai-hub-theme', isLightTheme.value ? 'light' : 'dark')
+// Theme - используем общую систему тем приложения
+const getSystemTheme = () => {
+  const theme = localStorage.getItem('theme') || 'auto'
+  if (theme === 'auto') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+  return theme
 }
+
+const isLightTheme = ref(getSystemTheme() === 'light')
+
+// Слушаем изменения темы
+const updateTheme = () => {
+  isLightTheme.value = getSystemTheme() === 'light'
+}
+
+// Наблюдатель за изменениями data-bs-theme
+let themeObserver = null
+
+onMounted(() => {
+  // Наблюдаем за изменениями атрибута data-bs-theme на html элементе
+  themeObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.attributeName === 'data-bs-theme') {
+        updateTheme()
+      }
+    })
+  })
+  
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-bs-theme']
+  })
+  
+  // Слушаем изменения системной темы
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme)
+})
+
+onUnmounted(() => {
+  if (themeObserver) {
+    themeObserver.disconnect()
+  }
+  window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', updateTheme)
+})
 
 // Module state
 const activeModule = ref('chat')
@@ -1188,7 +1219,8 @@ onMounted(() => {
 
 .input-container {
   display: flex;
-  gap: $spacing-md;
+  align-items: center;
+  gap: $spacing-sm;
   max-width: $message-max-width;
   position: relative;
 }
@@ -1241,6 +1273,7 @@ onMounted(() => {
 
 .input-field {
   flex: 1;
+  min-width: 0; // Позволяет flex элементу правильно сжиматься
   padding: $spacing-md $spacing-lg;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
@@ -1251,6 +1284,8 @@ onMounted(() => {
   resize: none;
   outline: none;
   transition: all $transition-fast;
+  position: relative;
+  z-index: 2; // Поле ввода поверх декораций
 
   &:focus {
     border-color: var(--accent);
@@ -1263,8 +1298,10 @@ onMounted(() => {
 }
 
 .send-btn {
+  flex-shrink: 0; // Кнопка не сжимается
   width: 52px;
   height: 52px;
+  min-width: 52px; // Минимальная ширина
   background: transparent;
   border: none;
   border-radius: $radius-lg;
@@ -1276,6 +1313,7 @@ onMounted(() => {
   position: relative;
   overflow: hidden;
   transition: transform $transition-fast;
+  z-index: 2; // Кнопка поверх декораций
 
   &__bg {
     position: absolute;

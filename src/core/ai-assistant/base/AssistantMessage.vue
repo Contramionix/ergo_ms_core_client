@@ -98,12 +98,7 @@ const formatTime = (timestamp) => {
 </script>
 
 <style lang="scss" scoped>
-$neon-cyan: #3ae8ff;
-$neon-purple: #a855f7;
-$neon-blue: #4f8fff;
-$neon-red: #ff3366;
-$dark-bg: #0a0c12;
-$dark-elevated: #13161f;
+@import '../styles/variables';
 
 .neural-chat-message {
   display: flex;
@@ -135,7 +130,7 @@ $dark-elevated: #13161f;
   flex-shrink: 0;
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: $radius-md;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -146,7 +141,7 @@ $dark-elevated: #13161f;
     background: linear-gradient(135deg, $neon-blue, darken($neon-blue, 15%));
     
     .avatar-glow {
-      background: rgba($neon-blue, 0.3);
+      background: $neon-blue-light;
     }
   }
 
@@ -154,7 +149,7 @@ $dark-elevated: #13161f;
     background: linear-gradient(135deg, $neon-cyan, $neon-purple);
     
     .avatar-glow {
-      background: rgba($neon-cyan, 0.3);
+      background: $neon-cyan-light;
     }
   }
 }
@@ -162,7 +157,7 @@ $dark-elevated: #13161f;
 .avatar-glow {
   position: absolute;
   inset: -4px;
-  border-radius: 14px;
+  border-radius: $radius-lg;
   filter: blur(8px);
   opacity: 0.5;
   z-index: -1;
@@ -170,35 +165,35 @@ $dark-elevated: #13161f;
 
 .message-bubble {
   flex: 1;
-  padding: 0.75rem 1rem;
-  border-radius: 12px;
-  background: $dark-elevated;
-  border: 1px solid rgba($neon-cyan, 0.15);
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-lg;
+  background: var(--nc-bg-elevated, #{$dark-bg-elevated});
+  border: 1px solid var(--nc-border, #{$dark-border});
   position: relative;
 
   .neural-chat-message--user & {
-    background: linear-gradient(135deg, rgba($neon-blue, 0.15), rgba($neon-blue, 0.05));
+    background: linear-gradient(135deg, $neon-blue-light, rgba($neon-blue, 0.05));
     border-color: rgba($neon-blue, 0.3);
   }
 }
 
 .message-text {
-  line-height: 1.6;
-  color: #e8ecf4;
+  line-height: $line-height-base;
+  color: var(--nc-text-primary, #{$dark-text-primary});
   word-wrap: break-word;
 
   :deep(code) {
-    background: rgba($neon-cyan, 0.15);
+    background: $neon-cyan-light;
     padding: 0.15em 0.4em;
-    border-radius: 4px;
-    font-family: 'JetBrains Mono', monospace;
+    border-radius: $radius-sm;
+    font-family: $font-family-mono;
     font-size: 0.9em;
     color: $neon-cyan;
   }
 
   :deep(strong) {
-    color: white;
-    font-weight: 600;
+    color: var(--nc-text-primary, white);
+    font-weight: $font-weight-semibold;
   }
 
   :deep(em) {
@@ -207,14 +202,14 @@ $dark-elevated: #13161f;
 }
 
 .message-code {
-  margin-top: 0.75rem;
-  background: $dark-bg;
-  border-radius: 8px;
+  margin-top: $spacing-sm;
+  background: var(--nc-bg-base, #{$dark-bg-secondary});
+  border-radius: $radius-md;
   overflow: hidden;
-  border: 1px solid rgba($neon-cyan, 0.2);
+  border: 1px solid $neon-cyan-medium;
 
   &--generating {
-    border-color: rgba($neon-purple, 0.3);
+    border-color: $neon-purple-light;
     
     .code-label {
       color: $neon-purple;
@@ -225,33 +220,33 @@ $dark-elevated: #13161f;
 .code-label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: rgba($neon-cyan, 0.05);
-  border-bottom: 1px solid rgba($neon-cyan, 0.1);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
-  font-weight: 600;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-sm;
+  background: $neon-cyan-light;
+  border-bottom: 1px solid $dark-border;
+  font-family: $font-family-mono;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
   color: $neon-cyan;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: $letter-spacing-wide;
 }
 
 .message-code pre {
   margin: 0;
-  padding: 0.75rem;
+  padding: $spacing-sm;
   overflow-x: auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  color: #a3e635;
+  font-family: $font-family-mono;
+  font-size: $font-size-sm;
+  line-height: $line-height-base;
+  color: $neon-green;
 }
 
 .message-table {
-  margin-top: 0.75rem;
-  border-radius: 8px;
+  margin-top: $spacing-sm;
+  border-radius: $radius-md;
   overflow: hidden;
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  border: 1px solid $neon-green-light;
 }
 
 .table-scroll {
@@ -262,67 +257,67 @@ $dark-elevated: #13161f;
 .message-table table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: $font-size-sm;
 }
 
 .message-table th,
 .message-table td {
-  padding: 0.5rem 0.75rem;
+  padding: $spacing-sm $spacing-sm;
   text-align: left;
-  border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+  border-bottom: 1px solid $neon-green-light;
   white-space: nowrap;
 }
 
 .message-table th {
-  background: rgba(16, 185, 129, 0.1);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #22ff8d;
+  background: $neon-green-light;
+  font-family: $font-family-mono;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $neon-green;
   text-transform: uppercase;
   position: sticky;
   top: 0;
 }
 
 .message-table td {
-  color: #e8ecf4;
+  color: var(--nc-text-primary, #{$dark-text-primary});
 }
 
 .table-meta {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.75rem;
-  color: #5a6882;
-  background: rgba(16, 185, 129, 0.05);
-  border-top: 1px solid rgba(16, 185, 129, 0.1);
+  padding: $spacing-sm $spacing-sm;
+  font-size: $font-size-xs;
+  color: var(--nc-text-muted, #{$dark-text-muted});
+  background: $neon-green-light;
+  border-top: 1px solid $neon-green-light;
 }
 
 .message-error {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: rgba($neon-red, 0.1);
-  border-radius: 6px;
-  font-size: 0.875rem;
+  gap: $spacing-sm;
+  margin-top: $spacing-sm;
+  padding: $spacing-sm $spacing-sm;
+  background: $neon-red-light;
+  border-radius: $radius-sm;
+  font-size: $font-size-sm;
   color: $neon-red;
 }
 
 .message-stage {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  color: #5a6882;
+  gap: $spacing-sm;
+  margin-top: $spacing-sm;
+  font-size: $font-size-sm;
+  color: var(--nc-text-muted, #{$dark-text-muted});
 }
 
 .message-time {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: $font-family-mono;
   font-size: 0.7rem;
-  color: #5a6882;
-  margin-top: 0.25rem;
-  padding: 0 0.5rem;
+  color: var(--nc-text-muted, #{$dark-text-muted});
+  margin-top: $spacing-xs;
+  padding: 0 $spacing-sm;
 }
 
 .spinning {

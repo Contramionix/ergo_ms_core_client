@@ -1,25 +1,34 @@
 <template>
   <div 
     v-if="isVisible" 
-    class="assistant-chat assistant-chat--visible"
+    class="neural-chat neural-chat--visible"
+    :class="{ 'neural-chat--light': isLightTheme }"
   >
-    <div class="assistant-chat__header">
-      <div class="assistant-chat__title">
-        <MessageSquare :size="20" class="me-2" />
-        <span>AI Ассистент</span>
+    <!-- Заголовок -->
+    <div class="neural-chat__header">
+      <div class="neural-chat__brand">
+        <div class="brand-icon">
+          <Sparkles :size="18" />
+          <div class="brand-icon__ring"></div>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">NEURAL</span>
+          <span class="brand-subtitle">AI Ассистент</span>
+        </div>
       </div>
-      <div class="assistant-chat__controls">
+      <div class="neural-chat__controls">
         <router-link 
           to="/ai-assistant" 
           class="control-btn" 
           title="Открыть AI Hub"
         >
-          <ExternalLink :size="18" />
+          <ExternalLink :size="16" />
         </router-link>
       </div>
     </div>
 
-    <div ref="messagesContainer" class="assistant-chat__messages">
+    <!-- Сообщения -->
+    <div ref="messagesContainer" class="neural-chat__messages">
       <AssistantMessage 
         v-for="message in messages" 
         :key="message.id" 
@@ -29,33 +38,33 @@
       <AssistantTyping v-if="isTyping && !hasStreamingContent" />
     </div>
 
-    <div class="assistant-chat__input">
-      <div class="input-wrapper">
-        <div class="input-group">
-          <input
-            v-model="inputMessage"
-            type="text"
-            class="form-control"
-            placeholder="Задайте вопрос..."
-            @keypress.enter="sendMessage"
-            :disabled="isTyping"
-          />
-          <button
-            class="btn btn-primary"
-            @click="sendMessage"
-            :disabled="!inputMessage.trim() || isTyping"
-          >
-            <Send :size="18" />
-          </button>
-        </div>
+    <!-- Ввод -->
+    <div class="neural-chat__input">
+      <div class="input-container">
+        <div class="input-glow"></div>
+        <input
+          v-model="inputMessage"
+          type="text"
+          class="input-field"
+          placeholder="Задайте вопрос..."
+          @keypress.enter="sendMessage"
+          :disabled="isTyping"
+        />
+        <button
+          class="send-btn"
+          @click="sendMessage"
+          :disabled="!inputMessage.trim() || isTyping"
+        >
+          <Send :size="18" />
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick, watch, computed } from 'vue'
-import { Send, MessageSquare, ExternalLink } from 'lucide-vue-next'
+import { ref, nextTick, watch, computed, onMounted, onUnmounted } from 'vue'
+import { Send, Sparkles, ExternalLink } from 'lucide-vue-next'
 import AssistantMessage from '../base/AssistantMessage.vue'
 import AssistantTyping from '../base/AssistantTyping.vue'
 import { ragClient } from './js/rag-client.js'
@@ -65,6 +74,48 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+})
+
+// Синхронизация с общей темой приложения
+const getSystemTheme = () => {
+  const theme = localStorage.getItem('theme') || 'auto'
+  if (theme === 'auto') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+  return theme
+}
+
+const isLightTheme = ref(getSystemTheme() === 'light')
+
+const updateTheme = () => {
+  isLightTheme.value = getSystemTheme() === 'light'
+}
+
+let themeObserver = null
+
+onMounted(() => {
+  // Наблюдаем за изменениями data-bs-theme
+  themeObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.attributeName === 'data-bs-theme') {
+        updateTheme()
+      }
+    })
+  })
+  
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-bs-theme']
+  })
+  
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme)
+})
+
+onUnmounted(() => {
+  if (themeObserver) {
+    themeObserver.disconnect()
+  }
+  window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', updateTheme)
 })
 
 const messagesContainer = ref(null)
@@ -256,48 +307,140 @@ defineExpose({
 })
 </script>
 
-<style scoped>
-.assistant-chat {
+<style scoped lang="scss">
+@import '../styles/variables';
+
+.neural-chat {
+  // CSS переменные для тем
+  --nc-bg-base: #{$dark-bg-secondary};
+  --nc-bg-panel: #{$dark-bg-tertiary};
+  --nc-bg-elevated: #{$dark-bg-elevated};
+  --nc-border: #{$dark-border};
+  --nc-text-primary: #{$dark-text-primary};
+  --nc-text-muted: #{$dark-text-muted};
+  --nc-accent: #{$neon-cyan};
+  --nc-accent-secondary: #{$neon-purple};
+  --nc-glow: #{rgba($neon-cyan, 0.4)};
+  
   position: absolute;
   bottom: 100%;
   left: 0;
   right: 0;
   width: auto;
   height: 550px;
-  background: linear-gradient(145deg, #ffffff, #f8f9fa);
-  border-radius: 12px;
+  background: var(--nc-bg-panel);
+  border-radius: $radius-xl;
   box-shadow:
-    0 12px 40px rgba(13, 110, 253, 0.15),
-    0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 2px solid rgba(13, 110, 253, 0.1);
+    0 0 40px var(--nc-glow),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--nc-border);
   z-index: 9998;
   display: flex;
   flex-direction: column;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
   margin-bottom: 10px;
+  overflow: hidden;
+  transition: $transition-base;
+  
+  // Светлая тема
+  &--light {
+    --nc-bg-base: #{$light-bg-primary};
+    --nc-bg-panel: #{$light-bg-secondary};
+    --nc-bg-elevated: #{$light-bg-tertiary};
+    --nc-border: #{$light-border};
+    --nc-text-primary: #{$light-text-primary};
+    --nc-text-muted: #{$light-text-muted};
+    --nc-accent: #0f768a;
+    --nc-accent-secondary: #7c3aed;
+    --nc-glow: #{rgba(#0f768a, 0.2)};
+    
+    box-shadow:
+      0 0 30px var(--nc-glow),
+      0 10px 40px rgba(0, 0, 0, 0.1);
+  }
 }
 
-.assistant-chat__header {
+// Заголовок
+.neural-chat__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #0d6efd, #0a58ca);
-  border-radius: 12px 12px 0 0;
+  padding: $spacing-md $spacing-lg;
+  background: linear-gradient(
+    135deg,
+    rgba($neon-cyan, 0.1) 0%,
+    rgba($neon-purple, 0.05) 100%
+  );
+  border-bottom: 1px solid var(--nc-border);
+  
+  .neural-chat--light & {
+    background: linear-gradient(
+      135deg,
+      rgba(#0f768a, 0.08) 0%,
+      rgba(#7c3aed, 0.04) 100%
+    );
+  }
+}
+
+.neural-chat__brand {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.brand-icon {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--nc-accent), var(--nc-accent-secondary));
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: white;
+  box-shadow: 0 0 20px var(--nc-glow);
 }
 
-.assistant-chat__title {
-  display: flex;
-  align-items: center;
-  font-weight: 600;
-  font-size: 14px;
+.brand-icon__ring {
+  position: absolute;
+  inset: -4px;
+  border: 1.5px solid var(--nc-accent);
+  border-radius: $radius-lg;
+  opacity: 0.5;
+  animation: ring-rotate 10s linear infinite;
 }
 
-.assistant-chat__controls {
+@keyframes ring-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-title {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+  letter-spacing: $letter-spacing-widest;
+  background: linear-gradient(90deg, var(--nc-accent), var(--nc-accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.brand-subtitle {
+  font-size: $font-size-xs;
+  color: var(--nc-text-muted);
+  letter-spacing: $letter-spacing-wide;
+}
+
+.neural-chat__controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: $spacing-sm;
 }
 
 .control-btn {
@@ -306,80 +449,143 @@ defineExpose({
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: none;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  color: white;
+  border: 1px solid var(--nc-border);
+  background: rgba($neon-cyan, 0.1);
+  border-radius: $radius-md;
+  color: var(--nc-accent);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: $transition-fast;
   text-decoration: none;
+  
+  .neural-chat--light & {
+    background: rgba(#0f768a, 0.1);
+  }
 }
 
 .control-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
-  color: white;
+  background: rgba($neon-cyan, 0.2);
+  border-color: var(--nc-accent);
+  box-shadow: 0 0 15px var(--nc-glow);
+  color: var(--nc-accent);
 }
 
-.assistant-chat__messages {
+// Сообщения
+.neural-chat__messages {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: $spacing-md;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+  gap: $spacing-md;
+  background: var(--nc-bg-base);
 }
 
-.assistant-chat__messages::-webkit-scrollbar {
+.neural-chat__messages::-webkit-scrollbar {
   width: 4px;
 }
 
-.assistant-chat__messages::-webkit-scrollbar-track {
-  background: rgba(13, 110, 253, 0.1);
+.neural-chat__messages::-webkit-scrollbar-track {
+  background: rgba($neon-cyan, 0.05);
   border-radius: 2px;
 }
 
-.assistant-chat__messages::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #0d6efd, #0a58ca);
+.neural-chat__messages::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--nc-accent), var(--nc-accent-secondary));
   border-radius: 2px;
 }
 
-.assistant-chat__input {
-  padding: 16px;
-  border-top: 1px solid rgba(13, 110, 253, 0.1);
-  background: linear-gradient(145deg, #f8f9fa, #ffffff);
-  border-radius: 0 0 12px 12px;
+// Ввод
+.neural-chat__input {
+  padding: $spacing-md;
+  border-top: 1px solid var(--nc-border);
+  background: var(--nc-bg-elevated);
 }
 
-.assistant-chat__input .form-control {
-  border: 2px solid rgba(13, 110, 253, 0.2);
-  border-right: none;
-  border-radius: 8px 0 0 8px;
-  padding: 10px 14px;
-  transition: all 0.3s ease;
-  font-size: 14px;
+.input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  background: var(--nc-bg-base);
+  border: 1px solid var(--nc-border);
+  border-radius: $radius-lg;
+  padding: $spacing-xs;
+  transition: $transition-base;
+  
+  &:focus-within {
+    border-color: var(--nc-accent);
+    box-shadow: 
+      0 0 20px var(--nc-glow),
+      inset 0 0 20px rgba($neon-cyan, 0.05);
+  }
 }
 
-.assistant-chat__input .form-control:focus {
-  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-  border-color: #0d6efd;
+.input-glow {
+  position: absolute;
+  inset: -1px;
+  border-radius: calc(#{$radius-lg} + 1px);
+  background: linear-gradient(90deg, var(--nc-accent), var(--nc-accent-secondary));
+  opacity: 0;
+  z-index: -1;
+  transition: $transition-base;
+  
+  .input-container:focus-within & {
+    opacity: 0.3;
+    filter: blur(8px);
+  }
 }
 
-.assistant-chat__input .btn {
-  border-radius: 0 8px 8px 0;
-  border: 2px solid #0d6efd;
-  padding: 10px 16px;
-  transition: all 0.3s ease;
+.input-field {
+  flex: 1;
+  min-width: 0; // Позволяет flex элементу сжиматься
+  background: transparent;
+  border: none;
+  padding: $spacing-sm $spacing-md;
+  color: var(--nc-text-primary);
+  font-size: $font-size-sm;
+  outline: none;
+  
+  &::placeholder {
+    color: var(--nc-text-muted);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+  }
 }
 
-.assistant-chat__input .btn:hover {
-  background: linear-gradient(135deg, #0b5ed7, #0d6efd);
-  transform: scale(1.02);
+.send-btn {
+  flex-shrink: 0; // Кнопка не сжимается
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px; // Минимальная ширина
+  background: linear-gradient(135deg, var(--nc-accent), darken($neon-cyan, 15%));
+  border: none;
+  border-radius: $radius-md;
+  color: $dark-bg-primary;
+  cursor: pointer;
+  transition: $transition-fast;
+  
+  .neural-chat--light & {
+    color: white;
+  }
+  
+  &:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px var(--nc-glow);
+  }
+  
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }
 
-@media (max-width: 1200px) {
-  .assistant-chat {
+@media (max-width: $breakpoint-lg) {
+  .neural-chat {
     position: fixed;
     bottom: 20px;
     left: 20px;
