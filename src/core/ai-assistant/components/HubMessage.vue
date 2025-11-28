@@ -84,7 +84,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(row, idx) in message.data.data.slice(0, 15)" :key="idx">
+              <tr v-for="(row, idx) in paginatedData" :key="idx">
                 <td v-for="col in message.data.columns" :key="col">
                   <span class="cell-value">{{ formatCell(row[col]) }}</span>
                 </td>
@@ -93,8 +93,59 @@
           </table>
         </div>
         
-        <div v-if="message.data.data.length > 15" class="data-more">
-          <span>+ ещё {{ message.data.data.length - 15 }} строк</span>
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="data-pagination">
+          <button 
+            class="pagination-btn" 
+            :disabled="currentPage === 1"
+            @click="goToPage(currentPage - 1)"
+          >
+            <ChevronLeft :size="16" />
+          </button>
+          
+          <div class="pagination-pages">
+            <button 
+              v-for="page in visiblePages" 
+              :key="page"
+              class="pagination-page"
+              :class="{ 'pagination-page--active': page === currentPage }"
+              @click="goToPage(page)"
+            >
+              {{ page }}
+            </button>
+          </div>
+          
+          <button 
+            class="pagination-btn" 
+            :disabled="currentPage === totalPages"
+            @click="goToPage(currentPage + 1)"
+          >
+            <ChevronRight :size="16" />
+          </button>
+          
+          <div class="pagination-goto">
+            <input 
+              type="number" 
+              class="pagination-input"
+              v-model.number="pageInput"
+              :min="1"
+              :max="totalPages"
+              :placeholder="currentPage"
+              @keydown.enter="goToInputPage"
+            />
+            <span class="pagination-goto-label">/ {{ totalPages }}</span>
+            <button 
+              class="pagination-goto-btn"
+              @click="goToInputPage"
+              :disabled="!pageInput || pageInput < 1 || pageInput > totalPages"
+            >
+              Перейти
+            </button>
+          </div>
+          
+          <span class="pagination-info">
+            {{ paginationStart }}-{{ paginationEnd }} из {{ message.data.data.length }}
+          </span>
         </div>
       </div>
 
@@ -111,7 +162,7 @@
 import { computed, ref } from 'vue'
 import { 
   User, Bot, Terminal, Copy, Check, 
-  Grid3x3, AlertTriangle, Database
+  Grid3x3, AlertTriangle, Database, ChevronLeft, ChevronRight
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -126,6 +177,67 @@ const props = defineProps({
 })
 
 const sqlCopied = ref(false)
+
+// Pagination state
+const ROWS_PER_PAGE = 20
+const currentPage = ref(1)
+
+const totalPages = computed(() => {
+  if (!props.message.data?.data?.length) return 1
+  return Math.ceil(props.message.data.data.length / ROWS_PER_PAGE)
+})
+
+const paginatedData = computed(() => {
+  if (!props.message.data?.data?.length) return []
+  const start = (currentPage.value - 1) * ROWS_PER_PAGE
+  const end = start + ROWS_PER_PAGE
+  return props.message.data.data.slice(start, end)
+})
+
+const paginationStart = computed(() => {
+  return (currentPage.value - 1) * ROWS_PER_PAGE + 1
+})
+
+const paginationEnd = computed(() => {
+  const end = currentPage.value * ROWS_PER_PAGE
+  return Math.min(end, props.message.data?.data?.length || 0)
+})
+
+const visiblePages = computed(() => {
+  const pages = []
+  const total = totalPages.value
+  const current = currentPage.value
+  
+  if (total <= 5) {
+    for (let i = 1; i <= total; i++) pages.push(i)
+  } else {
+    if (current <= 3) {
+      pages.push(1, 2, 3, 4, 5)
+    } else if (current >= total - 2) {
+      pages.push(total - 4, total - 3, total - 2, total - 1, total)
+    } else {
+      pages.push(current - 2, current - 1, current, current + 1, current + 2)
+    }
+  }
+  
+  return pages.filter(p => p >= 1 && p <= total)
+})
+
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+// Page input for direct navigation
+const pageInput = ref(null)
+
+const goToInputPage = () => {
+  if (pageInput.value && pageInput.value >= 1 && pageInput.value <= totalPages.value) {
+    currentPage.value = pageInput.value
+    pageInput.value = null
+  }
+}
 
 const moduleIcon = computed(() => {
   if (props.moduleConfig?.icon) return props.moduleConfig.icon
@@ -605,14 +717,151 @@ const copySql = async () => {
   text-overflow: ellipsis;
 }
 
-.data-more {
+// Pagination
+.data-pagination {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
   padding: $spacing-sm $spacing-md;
+  background: rgba(16, 185, 129, 0.02);
+  border-top: 1px solid rgba(16, 185, 129, 0.1);
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: $radius-sm;
+  color: $neon-green;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover:not(:disabled) {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: $neon-green;
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+}
+
+.pagination-pages {
+  display: flex;
+  gap: 4px;
+}
+
+.pagination-page {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 $spacing-sm;
+  background: transparent;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: $radius-sm;
+  color: var(--text-secondary);
+  font-family: $font-family-mono;
+  font-size: $font-size-sm;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: $neon-green;
+  }
+
+  &--active {
+    background: $neon-green;
+    border-color: $neon-green;
+    color: $dark-bg-primary;
+    font-weight: 600;
+
+    &:hover {
+      background: $neon-green;
+      color: $dark-bg-primary;
+    }
+  }
+}
+
+.pagination-goto {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: $spacing-sm;
+  padding-left: $spacing-sm;
+  border-left: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.pagination-input {
+  width: 60px;
+  height: 28px;
+  padding: 0 $spacing-sm;
+  background: var(--bg-elevated);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: $radius-sm;
+  color: var(--text-primary);
+  font-family: $font-family-mono;
+  font-size: $font-size-sm;
   text-align: center;
+  outline: none;
+  transition: all $transition-fast;
+
+  &:focus {
+    border-color: $neon-green;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
+  }
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+
+  // Hide spinners
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  -moz-appearance: textfield;
+}
+
+.pagination-goto-label {
+  font-family: $font-family-mono;
+  font-size: $font-size-sm;
+  color: var(--text-muted);
+}
+
+.pagination-goto-btn {
+  padding: 4px $spacing-sm;
+  background: transparent;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: $radius-sm;
+  color: $neon-green;
+  font-size: $font-size-xs;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover:not(:disabled) {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: $neon-green;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.pagination-info {
+  margin-left: auto;
   font-family: $font-family-mono;
   font-size: $font-size-xs;
   color: var(--text-muted);
-  background: rgba(16, 185, 129, 0.02);
-  border-top: 1px solid rgba(16, 185, 129, 0.1);
 }
 
 // Error
