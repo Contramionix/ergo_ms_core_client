@@ -52,9 +52,9 @@ const updateCategories = async () => {
       />
     </div>
 
-    <CategoryTable 
+    <CategoryTable
       :rows="rows"
-      :headers="['Название роли', 'Тип', 'Описание', 'Системная', 'Действия' ]"
+      :headers="['Название роли', 'Описание', 'Системная', 'Действия']"
       :rowsPerPage="rowsPerPage"
       :searchQuery="searchQuery"
       @updateCategories="updateCategories"

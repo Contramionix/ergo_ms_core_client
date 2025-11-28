@@ -26,8 +26,7 @@ export const authService = {
             middle_name: middleName || '',
             username,
             email,
-            password,
-            is_superuser: false
+            password
         }, false);
     },
     
@@ -55,8 +54,7 @@ export const authService = {
             middle_name: middleName || '',
             username,
             email,
-            password,
-            is_superuser: false
+            password
         }, false);
     },
     

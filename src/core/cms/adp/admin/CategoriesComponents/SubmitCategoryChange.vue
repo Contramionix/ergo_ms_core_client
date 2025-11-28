@@ -62,15 +62,6 @@ const canDismiss = computed(() => name.value.trim() !== '')
       <div v-if="showErrorName" class="invalid-feedback">Название обязательно для заполнения.</div>
     </div>
 
-    <div class="mb-3">
-      <label for="roleTypeSelect" class="form-label">Тип роли</label>
-      <select id="roleTypeSelect" class="form-select" v-model="roleType" :disabled="isSystem">
-        <option value="user">Пользователь</option>
-        <option value="admin">Администратор</option>
-      </select>
-      <small v-if="isSystem" class="text-muted">Тип системной роли изменить нельзя.</small>
-    </div>
-
     <div class="form-floating mb-3" v-auto-animate>
       <textarea
         id="descriptionInputChange"
