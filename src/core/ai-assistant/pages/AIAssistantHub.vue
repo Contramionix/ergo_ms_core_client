@@ -6,6 +6,7 @@
       :connection-distance="180"
       :node-color="isLightTheme ? '#0f768a' : '#3ae8ff'"
       :line-color="isLightTheme ? '#0f768a' : '#3ae8ff'"
+      :accelerated="isAIGenerating"
     />
 
     <!-- Боковая панель навигации -->
@@ -338,6 +339,18 @@ const toggleTheme = () => {
 // Module state
 const activeModule = ref('chat')
 const currentModuleConfig = computed(() => getModuleById(activeModule.value))
+
+// Вычисляем, генерирует ли AI ответ сейчас (для ускорения нейронного фона)
+const isAIGenerating = computed(() => {
+  // Проверяем загрузку в чате или BI
+  if (chatLoading.value || biLoading.value) return true
+  
+  // Проверяем есть ли сообщения в режиме streaming
+  const hasChatStreaming = chatHistory.value.some(msg => msg.streaming)
+  const hasBiStreaming = biHistory.value.some(msg => msg.streaming)
+  
+  return hasChatStreaming || hasBiStreaming
+})
 
 const switchModule = (id) => {
   activeModule.value = id
