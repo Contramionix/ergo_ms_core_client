@@ -86,6 +86,16 @@
           </div>
         </div>
         
+        <SaveDashboardModal
+          :visible="isSaveModalVisible"
+          :name="dashboardName"
+          :description="dashboardDescription"
+          :is-edit-mode="isEditMode"
+          :saving="saving"
+          @close="isSaveModalVisible = false"
+          @save="handleSaveDashboard"
+        />
+        
         <div class="body-content">
             <DashboardGrid
                 ref="dashboardGridRef"
@@ -124,6 +134,9 @@ import SelectorSettings from './Selector/SelectorSettings.vue'
 
 import { isDatasetSidebarOpen } from '@/core/bi/MainPage/Sidebar/components/js/useSidebarStore.js'
 import { isSidebarCollapsed, initializeSidebarTracking } from '@/core/bi/MainPage/Sidebar/components/js/useMainSidebarStore.js'
+import dashboardService from '@/core/bi/MainPage/Sidebar/components/js/dashboardService.js'
+import SaveDashboardModal from './components/SaveDashboardModal.vue'
+import { useToast } from 'vue-toastification'
 
 const HEADER_WIDGET_HEIGHTS = {
   'XS': 50,
@@ -134,9 +147,13 @@ const HEADER_WIDGET_HEIGHTS = {
 };
 
 const dashboardName = ref('Новый дашборд')
+const dashboardDescription = ref('')
+const dashboardId = ref(null)
 const isSaveModalVisible = ref(false)
 const isEditMode = ref(false)
+const saving = ref(false)
 const dashboardItems = ref({})
+const toast = useToast()
 const isPageWindowVisible = ref(false)
 const pages = ref([{ name: 'Страница 1' }])
 const currentPageIndex = ref(0)
@@ -172,6 +189,12 @@ const dashboardRequiredFieldsFilled = computed(() => {
 })
 
 const isDashboardDirty = computed(() => {
+    // Если дашборд еще не создан, всегда считаем его "грязным"
+    if (!isEditMode.value || !dashboardId.value) {
+        return true
+    }
+    // TODO: Добавить проверку изменений элементов и страниц
+    // Пока всегда возвращаем true для возможности сохранения
     return true
 })
 
@@ -455,13 +478,168 @@ const handleClickOutside = (event) => {
 
 let cleanupSidebarTracking = null
 
-onMounted(() => {
+// Преобразование данных из API в формат компонента
+function loadDashboardFromAPI(dashboardData) {
+    dashboardName.value = dashboardData.name || 'Новый дашборд'
+    dashboardDescription.value = dashboardData.description || ''
+    dashboardId.value = dashboardData.id
+    isEditMode.value = true
+    
+    // Загружаем страницы
+    if (dashboardData.pages && dashboardData.pages.length > 0) {
+        pages.value = dashboardData.pages.map(page => ({
+            name: page.name,
+            id: page.id
+        }))
+        
+        // Загружаем элементы для каждой страницы
+        dashboardItems.value = {}
+        dashboardData.pages.forEach((page, index) => {
+            if (page.items && page.items.length > 0) {
+                dashboardItems.value[index] = page.items.map(item => ({
+                    id: item.id,
+                    type: item.type,
+                    x: item.x,
+                    y: item.y,
+                    width: item.width,
+                    height: item.height,
+                    ...item.config
+                }))
+            } else {
+                dashboardItems.value[index] = []
+            }
+        })
+    } else {
+        pages.value = [{ name: 'Страница 1' }]
+        dashboardItems.value = { 0: [] }
+    }
+}
+
+// Преобразование данных из формата компонента в формат API
+function prepareDashboardForAPI(name, description) {
+    const pagesData = pages.value.map((page, pageIndex) => {
+        const items = dashboardItems.value[pageIndex] || []
+        return {
+            name: page.name,
+            order: pageIndex,
+            items: items.map(item => ({
+                type: item.type,
+                x: Math.round(item.x || 0),
+                y: Math.round(item.y || 0),
+                width: Math.round(item.width || 200),
+                height: Math.round(item.height || 150),
+                order: items.indexOf(item),
+                config: {
+                    // Для заголовка
+                    ...(item.type === 'Заголовок' && {
+                        title: item.title,
+                        size: item.size,
+                        hint: item.hint,
+                        hintText: item.hintText,
+                        autoHeight: item.autoHeight
+                    }),
+                    // Для текста
+                    ...(item.type === 'Текст' && {
+                        content: item.content,
+                        autoHeight: item.autoHeight
+                    }),
+                    // Для чарта
+                    ...(item.type === 'Чарт' && {
+                        chartsList: item.chartsList || [],
+                        activeChartIndex: item.activeChartIndex || 0,
+                        title: item.title,
+                        description: item.description,
+                        showDescription: item.showDescription,
+                        hint: item.hint,
+                        hintText: item.hintText,
+                        autoHeight: item.autoHeight,
+                        filtering: item.filtering
+                    }),
+                    // Для селектора
+                    ...(item.type === 'Селектор' && {
+                        selectorsList: item.selectorsList || [],
+                        activeSelectorIndex: item.activeSelectorIndex || 0,
+                        selectorGroupSettings: item.selectorGroupSettings || {},
+                        autoHeight: item.autoHeight
+                    })
+                }
+            }))
+        }
+    })
+    
+    return {
+        name: name || dashboardName.value,
+        description: description || dashboardDescription.value,
+        pages: pagesData
+    }
+}
+
+// Сохранение дашборда
+async function handleSaveDashboard({ name, description }) {
+    saving.value = true
+    try {
+        const payload = prepareDashboardForAPI(name, description)
+        
+        let savedDashboard
+        if (isEditMode.value && dashboardId.value) {
+            // Обновление существующего дашборда
+            const response = await dashboardService.updateDashboard(dashboardId.value, payload)
+            savedDashboard = response.data
+            toast.success('Дашборд успешно обновлен')
+        } else {
+            // Создание нового дашборда
+            const response = await dashboardService.createDashboard(payload)
+            savedDashboard = response.data
+            dashboardId.value = savedDashboard.id
+            isEditMode.value = true
+            toast.success('Дашборд успешно создан')
+            
+            // Обновляем URL с ID дашборда
+            router.replace({ 
+                name: 'DashboardPage', 
+                params: { id: savedDashboard.id } 
+            })
+        }
+        
+        // Обновляем локальные данные
+        dashboardName.value = savedDashboard.name
+        dashboardDescription.value = savedDashboard.description || ''
+        isSaveModalVisible.value = false
+    } catch (error) {
+        console.error('Ошибка при сохранении дашборда:', error)
+        toast.error(error.response?.data?.detail || 'Ошибка при сохранении дашборда')
+    } finally {
+        saving.value = false
+    }
+}
+
+// Загрузка дашборда
+async function loadDashboard(id) {
+    try {
+        const response = await dashboardService.getDashboard(id)
+        loadDashboardFromAPI(response.data)
+    } catch (error) {
+        console.error('Ошибка при загрузке дашборда:', error)
+        toast.error('Не удалось загрузить дашборд')
+    }
+}
+
+onMounted(async () => {
     cleanupSidebarTracking = initializeSidebarTracking()
     document.addEventListener('click', handleClickOutside)
     initializePageFromUrl()
     
-    if (!dashboardItems.value[0]) {
-        dashboardItems.value[0] = []
+    // Загружаем дашборд, если есть ID в route
+    const dashboardIdFromRoute = route.params.id
+    if (dashboardIdFromRoute && dashboardIdFromRoute !== 'new') {
+        await loadDashboard(parseInt(dashboardIdFromRoute))
+    } else {
+        // Новый дашборд
+        dashboardId.value = null
+        isEditMode.value = false
+        if (!dashboardItems.value[0]) {
+            dashboardItems.value[0] = []
+        }
     }
 })
 

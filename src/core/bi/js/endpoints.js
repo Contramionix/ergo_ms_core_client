@@ -45,6 +45,9 @@ export const biEndpoints = {
             checkAccess: (chartId) => `bi_analysis/bi_charts/${chartId}/`,
             get: (chartId) => `bi_analysis/bi_charts/${chartId}/`,
         },
+        
+        // Dashboard operations
+        dashboardDetail: id => `bi_analysis/bi_dashboards/${id}/`,
     }
 };
 

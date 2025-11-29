@@ -7,7 +7,14 @@ export default {
     }
   },
   "DashboardPage": {
-    "path": "/bi/dashboard/new/",
+    "path": "/bi/dashboard/:id(\\d+)?",
+    "component": "@/core/bi/Dashboards/DashboardPage.vue",
+    "meta": {
+      "requiresAuth": true
+    }
+  },
+  "NewDashboard": {
+    "path": "/bi/dashboard/new",
     "component": "@/core/bi/Dashboards/DashboardPage.vue",
     "meta": {
       "requiresAuth": true
