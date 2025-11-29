@@ -339,6 +339,16 @@ function handleSubmit() {
 <style scoped>
 .modal.show {
   background-color: rgba(0, 0, 0, 0.5);
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.modal-dialog {
+  margin: 0;
+  max-width: 800px;
+  width: 90%;
 }
 </style>
 

@@ -25,21 +25,6 @@
                 Текст разделителя, который будет отображаться в меню
               </div>
             </div>
-            
-            <!-- Активен -->
-            <div class="mb-3">
-              <div class="form-check">
-                <input 
-                  v-model="form.is_active" 
-                  type="checkbox" 
-                  class="form-check-input"
-                  id="isActive"
-                />
-                <label class="form-check-label" for="isActive">
-                  Активен
-                </label>
-              </div>
-            </div>
           </form>
         </div>
         
@@ -117,6 +102,16 @@ function handleSubmit() {
 <style scoped>
 .modal.show {
   background-color: rgba(0, 0, 0, 0.5);
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.modal-dialog {
+  margin: 0;
+  max-width: 500px;
+  width: 90%;
 }
 </style>
 

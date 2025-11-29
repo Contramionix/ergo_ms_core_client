@@ -39,33 +39,22 @@
       @save="saveAllChanges"
       @cancel="cancelChanges"
     />
-
-    <!-- Табы для элементов и разделителей -->
-    <ul class="nav nav-tabs mb-4">
-      <li class="nav-item">
-        <button 
-          class="nav-link" 
-          :class="{ active: activeTab === 'items' }" 
-          @click="activeTab = 'items'"
-        >
-          Элементы меню
-          <span class="badge bg-secondary ms-2">{{ menuItemsCount }}</span>
-        </button>
-      </li>
-      <li class="nav-item">
-        <button 
-          class="nav-link" 
-          :class="{ active: activeTab === 'separators' }" 
-          @click="activeTab = 'separators'"
-        >
-          Разделители
-          <span class="badge bg-secondary ms-2">{{ separators.length }}</span>
-        </button>
-      </li>
-    </ul>
+    
+    <!-- Тост подтверждения удаления разделителя -->
+    <UnsavedChangesToast
+      :visible="showDeleteSeparatorToast"
+      :saving="isDeletingSeparator"
+      title="Удаление разделителя"
+      description="Вы уверены, что хотите удалить этот разделитель?"
+      cancel-label="Отмена"
+      save-label="Удалить"
+      saving-label="Удаление..."
+      @save="executeDeleteSeparator"
+      @cancel="cancelDeleteSeparator"
+    />
 
     <!-- Список элементов меню с drag & drop -->
-    <div v-if="activeTab === 'items'" class="menu-panel__items">
+    <div class="menu-panel__items">
       <div v-if="isLoading" class="text-center py-5">
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Загрузка...</span>
@@ -80,7 +69,7 @@
         <!-- Draggable список -->
         <DraggableMenuList
           :items="menuItems"
-          :separators="separators"
+          :separators="visibleSeparators"
           :expand-all-groups="expandAllGroups"
           @edit="editItem"
           @delete="confirmDeleteItem"
@@ -88,40 +77,8 @@
           @reorder-separators="handleSeparatorReorderFromList"
           @toggle-visibility="handleToggleVisibility"
           @edit-separator="editSeparator"
-        />
-      </div>
-    </div>
-
-    <!-- Список разделителей с drag & drop -->
-    <div v-if="activeTab === 'separators'" class="menu-panel__separators">
-      <div v-if="isLoadingSeparators" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Загрузка...</span>
-        </div>
-      </div>
-      
-      <div v-else-if="separators.length === 0" class="alert alert-info">
-        Разделители не найдены. Нажмите "Синхронизировать с модулями" для импорта из конфигурации.
-      </div>
-      
-      <div v-else>
-        <!-- Заголовок списка -->
-        <div class="separator-list-header mb-2">
-          <div class="row g-2 text-muted small fw-bold">
-            <div class="col-auto" style="width: 40px;"></div>
-            <div class="col-auto" style="width: 80px;">Перед order</div>
-            <div class="col-auto" style="width: 24px;"></div>
-            <div class="col">Название</div>
-            <div class="col-auto" style="width: 100px;">Статус</div>
-          </div>
-                </div>
-        
-        <!-- Draggable список разделителей -->
-        <DraggableSeparatorList
-          :separators="separators"
-          @edit="editSeparator"
-          @delete="confirmDeleteSeparator"
-          @reorder="handleSeparatorReorder"
+          @delete-separator="confirmDeleteSeparator"
+          @toggle-visibility-separator="handleToggleSeparatorVisibility"
         />
       </div>
     </div>
@@ -164,7 +121,6 @@ import { useToast } from 'vue-toastification'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import UnsavedChangesToast from '@/components/UnsavedChangesToast.vue'
 import DraggableMenuList from './MenuPanelComponents/DraggableMenuList.vue'
-import DraggableSeparatorList from './MenuPanelComponents/DraggableSeparatorList.vue'
 import MenuItemModal from './MenuPanelComponents/MenuItemModal.vue'
 import MenuSeparatorModal from './MenuPanelComponents/MenuSeparatorModal.vue'
 import MenuSettingsModal from './MenuPanelComponents/MenuSettingsModal.vue'
@@ -193,15 +149,18 @@ const COOKIE_NAME = 'menu_panel_expand_all_groups'
 const expandAllGroups = ref(false)
 
 // Состояние
-const activeTab = ref('items')
 const isLoading = ref(false)
-const isLoadingSeparators = ref(false)
 const isSaving = ref(false)
+const isDeletingSeparator = ref(false)
 const menuItems = ref([])
 const separators = ref([])
 const roles = ref([])
 const roleGroups = ref([])
 const availableIcons = ref([])
+
+// Состояние для подтверждения удаления разделителя
+const showDeleteSeparatorToast = ref(false)
+const separatorToDelete = ref(null)
 
 // Отслеживание изменений порядка
 const pendingMenuReorder = ref([])
@@ -225,6 +184,14 @@ const menuItemsCount = computed(() => {
     return count
   }
   return countItems(menuItems.value)
+})
+
+// Видимые разделители (исключая тот, который помечен для удаления)
+const visibleSeparators = computed(() => {
+  if (!separatorToDelete.value) {
+    return separators.value
+  }
+  return separators.value.filter(sep => sep.id !== separatorToDelete.value.id)
 })
 
 // Модальные окна
@@ -305,13 +272,10 @@ function buildTree(items) {
 }
 
 async function loadSeparators() {
-  isLoadingSeparators.value = true
   try {
     separators.value = await getMenuSeparators()
   } catch (error) {
     toast.error('Ошибка загрузки разделителей: ' + error.message)
-  } finally {
-    isLoadingSeparators.value = false
   }
 }
 
@@ -636,6 +600,24 @@ async function handleToggleVisibility(data) {
   }
 }
 
+// Переключение видимости разделителя
+async function handleToggleSeparatorVisibility(separator) {
+  try {
+    await updateMenuSeparator(separator.id, { is_active: !separator.is_active })
+    // Обновляем локальное состояние
+    const sep = separators.value.find(s => s.id === separator.id)
+    if (sep) {
+      sep.is_active = !separator.is_active
+    }
+    clearMenuCache()
+    window.dispatchEvent(new CustomEvent('menu-updated'))
+  } catch (error) {
+    toast.error('Ошибка обновления видимости разделителя: ' + error.message)
+    // Перезагружаем данные при ошибке
+    await loadSeparators()
+  }
+}
+
 function closeItemModal() {
   showItemModal.value = false
   currentItem.value = null
@@ -670,26 +652,32 @@ async function saveSeparator(separatorData) {
   }
 }
 
-async function confirmDeleteSeparator(separator) {
-  const confirmed = await confirmDialog.value.open({
-    title: 'Удаление разделителя',
-    message: `Вы уверены, что хотите удалить разделитель "${separator.name}"?`,
-    confirmText: 'Удалить',
-    cancelText: 'Отмена',
-    confirmClass: 'btn-danger'
-  })
+function confirmDeleteSeparator(separator) {
+  separatorToDelete.value = separator
+  showDeleteSeparatorToast.value = true
+}
+
+async function executeDeleteSeparator() {
+  if (!separatorToDelete.value) return
   
-  if (confirmed) {
-    try {
-      await deleteMenuSeparator(separator.id)
-      toast.success('Разделитель удалён')
-      await loadSeparators()
-      clearMenuCache()
-      window.dispatchEvent(new CustomEvent('menu-updated'))
-    } catch (error) {
-      toast.error('Ошибка удаления: ' + error.message)
-    }
+  isDeletingSeparator.value = true
+  try {
+    await deleteMenuSeparator(separatorToDelete.value.id)
+    toast.success('Разделитель удалён')
+    await loadSeparators()
+    clearMenuCache()
+    window.dispatchEvent(new CustomEvent('menu-updated'))
+    cancelDeleteSeparator()
+  } catch (error) {
+    toast.error('Ошибка удаления: ' + error.message)
+  } finally {
+    isDeletingSeparator.value = false
   }
+}
+
+function cancelDeleteSeparator() {
+  showDeleteSeparatorToast.value = false
+  separatorToDelete.value = null
 }
 
 function closeSeparatorModal() {
