@@ -1,5 +1,5 @@
 <template>
-  <div class="menu-row-wrapper">
+  <div class="menu-row-wrapper" :class="{ 'menu-row-wrapper--nested': level > 0 }">
     <!-- Основной элемент -->
     <div 
       class="menu-row" 
@@ -25,14 +25,12 @@
       </div>
       
       <!-- Иконка элемента -->
-      <div class="menu-row__icon">
+      <div v-if="item.icon && iconComponent" class="menu-row__icon">
         <component 
-          v-if="item.icon && iconComponent" 
           :is="iconComponent" 
           :size="18" 
           class="text-muted"
         />
-        <FileText v-else :size="18" class="text-muted" />
       </div>
       
       <!-- Название -->
@@ -119,7 +117,6 @@ import { SlickList, SlickItem, HandleDirective as vHandle } from 'vue-slicksort'
 import { 
   GripVertical, 
   ChevronRight, 
-  FileText, 
   Edit, 
   Trash 
 } from 'lucide-vue-next'
@@ -231,6 +228,10 @@ function onChildrenReorder() {
 <style lang="scss" scoped>
 .menu-row-wrapper {
   width: 100%;
+  
+  &--nested {
+    padding-left: 2rem;
+  }
 }
 
 .menu-row {
@@ -248,7 +249,6 @@ function onChildrenReorder() {
   }
   
   &--nested {
-    margin-left: 2rem;
     background: #fafafa;
   }
   
