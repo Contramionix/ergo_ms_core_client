@@ -1,5 +1,5 @@
 <template>
-  <div class="menu-row-wrapper" :class="{ 'menu-row-wrapper--nested': level > 0, 'menu-row-wrapper--no-children': level > 0 && !hasChildren }">
+  <div class="menu-row-wrapper" :class="{ 'menu-row-wrapper--nested': level > 0 }">
     <!-- Основной элемент -->
     <div 
       class="menu-row" 
@@ -256,10 +256,6 @@ function toggleVisibility() {
   
   &--nested {
     padding-left: 2rem;
-    
-    &.menu-row-wrapper--no-children {
-      padding-left: 0;
-    }
   }
 }
 
