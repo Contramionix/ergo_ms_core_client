@@ -186,14 +186,59 @@
 
       <!-- BI Module -->
       <template v-else-if="activeModule === 'bi'">
-        <!-- File Selection -->
-        <div v-if="!selectedFile" class="file-selector">
+        <!-- Connection Selection -->
+        <div v-if="!selectedConnection" class="file-selector">
           <div class="file-header">
             <Database :size="24" />
             <div>
-              <h3>Выберите источник данных</h3>
-              <p>Выберите файл для анализа с помощью AI</p>
+              <h3>Выберите подключение</h3>
+              <p>Выберите подключение для анализа данных с помощью AI</p>
             </div>
+          </div>
+          
+          <div class="file-grid">
+            <div 
+              v-for="connection in connections" 
+              :key="connection.id"
+              class="file-card"
+              @click="selectConnection(connection)"
+            >
+              <div class="file-card__icon">
+                <Database :size="28" />
+              </div>
+              <div class="file-card__info">
+                <span class="file-card__name">{{ connection.name }}</span>
+                <span class="file-card__meta">{{ connection.connector_type_display || connection.connector_type }}</span>
+              </div>
+              <div class="file-card__action">
+                <ArrowRight :size="18" />
+              </div>
+            </div>
+
+            <div v-if="connections.length === 0" class="file-empty">
+              <FileQuestion :size="56" />
+              <h4>Нет подключений</h4>
+              <p>Создайте подключение для начала анализа</p>
+              <router-link to="/bi/connections/new" class="upload-link">
+                <Upload :size="18" />
+                <span>Создать подключение</span>
+              </router-link>
+            </div>
+          </div>
+        </div>
+
+        <!-- File Selection -->
+        <div v-else-if="!selectedFile" class="file-selector">
+          <div class="file-header">
+            <Database :size="24" />
+            <div>
+              <h3>Выберите файл</h3>
+              <p>Подключение: {{ selectedConnection.name }}</p>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary ms-auto" @click="selectedConnection = null">
+              <X :size="14" class="me-1" />
+              Сменить подключение
+            </button>
           </div>
           
           <div class="file-grid">
@@ -208,7 +253,7 @@
               </div>
               <div class="file-card__info">
                 <span class="file-card__name">{{ file.name }}</span>
-                <span class="file-card__meta">{{ file.original_filename }}</span>
+                <span class="file-card__meta">{{ file.file_type || 'file' }}</span>
               </div>
               <div class="file-card__action">
                 <ArrowRight :size="18" />
@@ -218,11 +263,7 @@
             <div v-if="files.length === 0" class="file-empty">
               <FileQuestion :size="56" />
               <h4>Нет файлов</h4>
-              <p>Загрузите файл для начала анализа</p>
-              <router-link to="/bi/connections/new/file" class="upload-link">
-                <Upload :size="18" />
-                <span>Загрузить файл</span>
-              </router-link>
+              <p>В этом подключении нет файлов</p>
             </div>
           </div>
         </div>
@@ -231,7 +272,10 @@
         <template v-else>
           <div class="selected-source">
             <div class="source-info">
-              <FileSpreadsheet :size="18" />
+              <Database :size="16" />
+              <span>{{ selectedConnection.name }}</span>
+              <span class="source-separator">/</span>
+              <FileSpreadsheet :size="16" />
               <span>{{ selectedFile.name }}</span>
             </div>
             <button class="source-change" @click="selectedFile = null">
@@ -403,7 +447,9 @@ const chatHistory = ref([])
 const biMessagesRef = ref(null)
 const biInput = ref('')
 const biLoading = ref(false)
+const selectedConnection = ref(null)
 const selectedFile = ref(null)
+const connections = ref([])
 const files = ref([])
 let biMsgId = 1
 const biHistory = ref([])
@@ -529,13 +575,34 @@ const sendChatMessage = async (text) => {
 }
 
 // BI methods
-const loadFiles = async () => {
+const loadConnections = async () => {
   try {
-    const result = await biClient.getUserFiles()
+    const result = await biClient.getConnections()
+    if (result.success) connections.value = result.connections
+  } catch (e) {
+    console.error('Ошибка загрузки подключений:', e)
+  }
+}
+
+const loadFiles = async () => {
+  if (!selectedConnection.value) {
+    files.value = []
+    return
+  }
+  try {
+    const result = await biClient.getConnectionFiles(selectedConnection.value.id)
     if (result.success) files.value = result.files
   } catch (e) {
     console.error('Ошибка загрузки файлов:', e)
+    files.value = []
   }
+}
+
+const selectConnection = (connection) => {
+  selectedConnection.value = connection
+  selectedFile.value = null
+  files.value = []
+  loadFiles()
 }
 
 const selectFile = (file) => {
@@ -543,7 +610,7 @@ const selectFile = (file) => {
   biHistory.value = [{
     id: biMsgId++,
     type: 'assistant',
-    content: `Файл **${file.name}** выбран для анализа. Задайте вопрос к данным.`,
+    content: `Файл **${file.name}** из подключения **${selectedConnection.value.name}** выбран для анализа. Задайте вопрос к данным.`,
     timestamp: new Date(),
   }]
 }
@@ -628,10 +695,10 @@ const clearHistory = () => {
   if (activeModule.value === 'chat') {
     initChat()
   } else if (activeModule.value === 'bi') {
-    biHistory.value = selectedFile.value ? [{
+    biHistory.value = selectedFile.value && selectedConnection.value ? [{
       id: biMsgId++,
       type: 'assistant',
-      content: `Файл **${selectedFile.value.name}** выбран для анализа. Задайте вопрос к данным.`,
+      content: `Файл **${selectedFile.value.name}** из подключения **${selectedConnection.value.name}** выбран для анализа. Задайте вопрос к данным.`,
       timestamp: new Date(),
     }] : []
   }
@@ -650,7 +717,7 @@ const checkOllamaStatus = async () => {
 
 onMounted(() => {
   initChat()
-  loadFiles()
+  loadConnections()
   checkOllamaStatus()
 })
 </script>
@@ -1506,6 +1573,11 @@ onMounted(() => {
   font-size: $font-size-sm;
   font-weight: 600;
   color: $neon-green;
+}
+
+.source-separator {
+  color: rgba($neon-green, 0.5);
+  margin: 0 $spacing-xs;
 }
 
 .source-change {

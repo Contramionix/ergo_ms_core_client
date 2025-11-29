@@ -19,15 +19,24 @@
       </div>
     </div>
 
-    <!-- Выбор файла -->
-    <div v-if="!selectedFile" class="assistant-chat__file-selector">
-      <FileSelector ref="fileSelector" @file-selected="onFileSelected" />
+    <!-- Выбор подключения -->
+    <div v-if="!selectedConnection" class="assistant-chat__connection-selector">
+      <ConnectionSelector ref="connectionSelector" @connection-selected="onConnectionSelected" />
     </div>
 
-    <!-- Информация о выбранном файле -->
-    <div v-if="selectedFile" class="assistant-chat__selected-file">
-      <div class="selected-file-info">
-        <FileSpreadsheet :size="16" />
+    <!-- Выбор файла -->
+    <div v-else-if="!selectedFile" class="assistant-chat__file-gallery">
+      <FileGallery :connection-id="selectedConnection.id" ref="fileGallery" @file-selected="onFileSelected" />
+    </div>
+
+    <!-- Информация о выбранном подключении и файле -->
+    <div v-if="selectedConnection && selectedFile" class="assistant-chat__selected-info">
+      <div class="selected-info-item">
+        <Database :size="14" />
+        <span>{{ selectedConnection.name }}</span>
+      </div>
+      <div class="selected-info-item">
+        <FileSpreadsheet :size="14" />
         <span>{{ selectedFile.name }}</span>
       </div>
       <button class="btn btn-sm btn-outline-secondary" @click="changeFile">
@@ -47,14 +56,14 @@
             v-model="inputMessage"
             type="text"
             class="form-control"
-            :placeholder="!selectedFile ? 'Сначала выберите файл для анализа' : 'Задайте вопрос к данным...'"
+            :placeholder="!selectedConnection ? 'Сначала выберите подключение' : !selectedFile ? 'Выберите файл для анализа' : 'Задайте вопрос к данным...'"
             @keypress.enter="sendMessage"
-            :disabled="isTyping || !selectedFile"
+            :disabled="isTyping || !selectedConnection || !selectedFile"
           />
           <button
             class="btn btn-danger"
             @click="sendMessage"
-            :disabled="!inputMessage.trim() || isTyping || !selectedFile"
+            :disabled="!inputMessage.trim() || isTyping || !selectedConnection || !selectedFile"
           >
             <Send :size="18" />
           </button>
@@ -69,7 +78,8 @@ import { ref, nextTick, watch } from 'vue'
 import { Send, Database, FileSpreadsheet, ExternalLink } from 'lucide-vue-next'
 import AssistantMessage from '../base/AssistantMessage.vue'
 import AssistantTyping from '../base/AssistantTyping.vue'
-import FileSelector from './FileSelector.vue'
+import ConnectionSelector from './ConnectionSelector.vue'
+import FileGallery from './FileGallery.vue'
 import { biClient } from './js/bi-client.js'
 
 const emit = defineEmits(['bi-query', 'close'])
@@ -82,9 +92,11 @@ const props = defineProps({
 })
 
 const messagesContainer = ref(null)
-const fileSelector = ref(null)
+const connectionSelector = ref(null)
+const fileGallery = ref(null)
 const inputMessage = ref('')
 const isTyping = ref(false)
+const selectedConnection = ref(null)
 const selectedFile = ref(null)
 const ollamaChecked = ref(false)
 
@@ -99,6 +111,14 @@ const messages = ref([
     timestamp: new Date(),
   },
 ])
+
+const onConnectionSelected = (connection) => {
+  selectedConnection.value = connection
+  selectedFile.value = null
+  addAssistantMessage(
+    `Выбрано подключение: **${connection.name}**\n\nТеперь выберите файл для анализа.`,
+  )
+}
 
 const onFileSelected = (file) => {
   selectedFile.value = file
@@ -328,23 +348,25 @@ defineExpose({
   color: white;
 }
 
-.assistant-chat__file-selector {
+.assistant-chat__connection-selector,
+.assistant-chat__file-gallery {
   max-height: 350px;
   overflow-y: auto;
   background: white;
   border-bottom: 1px solid rgba(220, 53, 69, 0.1);
 }
 
-.assistant-chat__selected-file {
+.assistant-chat__selected-info {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 1rem;
   padding: 0.75rem 1rem;
   background: #e7f3ff;
   border-bottom: 1px solid rgba(13, 110, 253, 0.2);
+  flex-wrap: wrap;
 }
 
-.selected-file-info {
+.selected-info-item {
   display: flex;
   align-items: center;
   gap: 0.5rem;

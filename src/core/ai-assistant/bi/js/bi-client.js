@@ -91,6 +91,42 @@ class BIClient {
     }
   }
 
+  async getConnections() {
+    try {
+      const response = await apiClient.get('bi_analysis/bi_connections/')
+      
+      if (response.success !== false) {
+        return {
+          success: true,
+          connections: Array.isArray(response.data) ? response.data : (response.data.results || []),
+        }
+      }
+      
+      return { success: false, connections: [], error: 'Не удалось загрузить подключения' }
+    } catch (error) {
+      console.error('Ошибка загрузки подключений:', error)
+      return { success: false, connections: [], error: error.message }
+    }
+  }
+
+  async getConnectionFiles(connectionId) {
+    try {
+      const response = await apiClient.get(`bi_analysis/bi_datasets/connection/${connectionId}/files/`)
+      
+      if (response.success !== false) {
+        return {
+          success: true,
+          files: Array.isArray(response.data) ? response.data : (response.data.results || response.data.files || []),
+        }
+      }
+      
+      return { success: false, files: [], error: 'Не удалось загрузить файлы подключения' }
+    } catch (error) {
+      console.error('Ошибка загрузки файлов подключения:', error)
+      return { success: false, files: [], error: error.message }
+    }
+  }
+
   async askQuestion(fileId, question, wantCommentary = true) {
     try {
       const response = await apiClient.post(endpoints.biQuery, {
