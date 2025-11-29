@@ -175,6 +175,14 @@ function checkChildrenActiveRecursive(children, currentPage, currentRoute) {
 function handleClick(event) {
   event.preventDefault()
   
+  // Проверяем, является ли элемент внешней ссылкой
+  // Проверяем оба варианта имени поля для совместимости
+  const externalUrl = props.item.externalUrl || props.item.external_url
+  if (props.item.item_type === 'external' && externalUrl) {
+    window.open(externalUrl, '_blank', 'noopener,noreferrer')
+    return
+  }
+  
   if (isGroup.value) {
     // Если это группа - переключаем состояние
     if (isOpen.value) {

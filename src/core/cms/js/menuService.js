@@ -58,7 +58,7 @@ export function clearMenuCache() {
  * @returns {Array} - Массив секций меню для отображения
  */
 export function transformMenuData(menuData) {
-  const { menu_items = [], separators = [] } = menuData
+  const { menu_items = [] } = menuData
   
   return menu_items.map(item => transformMenuItem(item))
 }
@@ -75,7 +75,8 @@ function transformMenuItem(item) {
     name: item.name,
     title: item.name,
     icon: item.icon,
-    order: item.order
+    order: item.order,
+    item_type: item.item_type // Сохраняем тип элемента
   }
 
   // Добавляем page для offcanvas элементов
@@ -87,6 +88,7 @@ function transformMenuItem(item) {
   // Добавляем внешнюю ссылку
   if (item.item_type === 'external' && item.external_url) {
     transformed.externalUrl = item.external_url
+    transformed.external_url = item.external_url // Дублируем для совместимости
   }
 
   // Обрабатываем дочерние элементы - сохраняем исходный порядок из API
@@ -103,14 +105,23 @@ function transformMenuItem(item) {
         children.push(transformMenuItem(child))
       } else {
         // Простые элементы - всё остальное (routes, offcanvas, external без детей)
-        list.push({
+        const listItem = {
           routeName: child.route_name,
           name: child.name,
           icon: child.icon,
           page: child.page,
           isOffcanvas: child.item_type === 'offcanvas',
+          item_type: child.item_type, // Сохраняем тип элемента
           order: child.order // Сохраняем order для правильной сортировки
-        })
+        }
+        
+        // Добавляем внешнюю ссылку для external элементов
+        if (child.item_type === 'external' && child.external_url) {
+          listItem.externalUrl = child.external_url
+          listItem.external_url = child.external_url // Дублируем для совместимости
+        }
+        
+        list.push(listItem)
       }
     })
     
@@ -129,18 +140,32 @@ function transformMenuItem(item) {
 /**
  * Получает разделители в формате для компонентов
  * @param {Array} separators - Разделители из API
- * @returns {Object} - Объект {byOrderIndex: {index: name}}
+ * @param {Array} menuItems - Элементы меню из API (для вычисления индексов)
+ * @returns {Object} - Объект {byOrderIndex: {index: name}, separatorsList: [...]}
  */
-export function transformSeparators(separators) {
+export function transformSeparators(separators, menuItems = []) {
   const byOrderIndex = {}
   
-  separators.forEach(sep => {
-    // Преобразуем before_order обратно в индекс
-    const index = Math.floor(sep.before_order / 10)
-    byOrderIndex[index] = sep.name
+  // Сортируем разделители по before_order
+  const sortedSeparators = [...separators]
+    .filter(sep => sep.is_active)
+    .sort((a, b) => a.before_order - b.before_order)
+  
+  // Для каждого разделителя находим индекс первого элемента с order >= before_order
+  sortedSeparators.forEach(sep => {
+    // Ищем индекс первого элемента меню с order >= before_order
+    const index = menuItems.findIndex(item => item.order >= sep.before_order)
+    
+    if (index !== -1) {
+      byOrderIndex[index] = sep.name
+    } else if (menuItems.length > 0) {
+      // Если разделитель должен быть после всех элементов,
+      // показываем его после последнего
+      byOrderIndex[menuItems.length] = sep.name
+    }
   })
   
-  return { byOrderIndex }
+  return { byOrderIndex, separatorsList: sortedSeparators }
 }
 
 /**

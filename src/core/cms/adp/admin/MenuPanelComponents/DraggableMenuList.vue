@@ -1,7 +1,7 @@
 <template>
   <div class="draggable-menu-list">
     <SlickList 
-      v-model:list="localItems" 
+      v-model:list="combinedList" 
       axis="y" 
       lockAxis="y"
       :useDragHandle="true"
@@ -10,15 +10,67 @@
       class="slick-list"
     >
       <SlickItem 
-        v-for="(item, index) in localItems" 
-        :key="item.id" 
+        v-for="(item, index) in combinedList" 
+        :key="item._uniqueKey"
         :index="index"
-        class="slick-item"
+        :class="item._type === 'separator' ? 'slick-item-separator' : 'slick-item'"
       >
+        <!-- Разделитель -->
+        <div 
+          v-if="item._type === 'separator'"
+          class="separator-row-inline"
+          :class="{ 'separator-row-inline--inactive': !item.is_active }"
+        >
+          <div v-handle class="separator-row-inline__handle">
+            <GripVertical :size="14" class="text-muted" />
+          </div>
+          <div class="separator-row-inline__line"></div>
+          <span 
+            class="separator-row-inline__label"
+            @click.stop="$emit('edit-separator', getOriginalSeparator(item))"
+          >
+            <Minus :size="14" />
+            {{ item.name }}
+          </span>
+          <div class="separator-row-inline__line"></div>
+          
+          <!-- Действия -->
+          <div class="separator-row-inline__actions-wrapper">
+            <div class="separator-row-inline__actions">
+            <button
+              class="separator-row-inline__visibility-btn"
+              :class="{ 'separator-row-inline__visibility-btn--hidden': !item.is_active }"
+              @click.stop="$emit('toggle-visibility-separator', getOriginalSeparator(item))"
+              :title="item.is_active ? 'Скрыть разделитель' : 'Показать разделитель'"
+            >
+              <Eye v-if="item.is_active" :size="20" />
+              <EyeOff v-else :size="20" />
+            </button>
+            <button 
+              class="separator-row-inline__action-btn separator-row-inline__action-btn--edit"
+              @click.stop="$emit('edit-separator', getOriginalSeparator(item))"
+              title="Редактировать"
+            >
+              <Settings :size="20" class="separator-row-inline__settings-icon" />
+            </button>
+            <button 
+              class="separator-row-inline__action-btn separator-row-inline__action-btn--delete"
+              @click.stop="$emit('delete-separator', getOriginalSeparator(item))"
+              title="Удалить"
+            >
+              <Trash :size="20" />
+            </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Элемент меню -->
         <DraggableMenuRow
+          v-else
           :item="item"
           :level="0"
           :index="index"
+          :expand-all-groups="expandAllGroups"
           @edit="$emit('edit', $event)"
           @delete="$emit('delete', $event)"
           @reorder-children="handleChildrenReorder"
@@ -31,49 +83,122 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import { SlickList, SlickItem } from 'vue-slicksort'
+import { SlickList, SlickItem, HandleDirective as vHandle } from 'vue-slicksort'
+import { Minus, GripVertical, Settings, Trash, Eye, EyeOff } from 'lucide-vue-next'
 import DraggableMenuRow from './DraggableMenuRow.vue'
 
 const props = defineProps({
   items: {
     type: Array,
     required: true
+  },
+  separators: {
+    type: Array,
+    default: () => []
+  },
+  expandAllGroups: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['edit', 'delete', 'reorder', 'toggle-visibility'])
-
-// Локальная копия для drag & drop (как internalTree в EditorCanvas)
-const localItems = ref([...props.items])
+const emit = defineEmits(['edit', 'delete', 'reorder', 'reorder-separators', 'toggle-visibility', 'edit-separator', 'delete-separator', 'toggle-visibility-separator'])
 
 // Флаг для предотвращения сброса при перетаскивании
 const isDragging = ref(false)
 
-// Синхронизация с props.items (только когда не происходит drag)
+// Объединённый список для drag & drop
+const combinedList = ref([])
+
+// Создание объединённого списка из элементов и разделителей
+function buildCombinedList(items, separators) {
+  const result = []
+  
+  // Преобразуем элементы меню
+  const menuItems = items.map(item => ({
+    ...item,
+    _type: 'menu_item',
+    _uniqueKey: 'menu_' + item.id,
+    _sortOrder: item.order
+  }))
+  
+  // Преобразуем разделители (все, включая неактивные)
+  const sepItems = separators
+    .map(sep => ({
+      ...sep,
+      _type: 'separator',
+      _uniqueKey: 'sep_' + sep.id,
+      _sortOrder: sep.before_order
+    }))
+  
+  // Объединяем и сортируем
+  result.push(...menuItems, ...sepItems)
+  result.sort((a, b) => {
+    // Сначала сортируем по order
+    if (a._sortOrder !== b._sortOrder) {
+      return a._sortOrder - b._sortOrder
+    }
+    // При равных order - разделители идут ПЕРЕД элементами меню
+    if (a._type === 'separator' && b._type !== 'separator') return -1
+    if (a._type !== 'separator' && b._type === 'separator') return 1
+    return 0
+  })
+  
+  return result
+}
+
+// Инициализация и синхронизация
 watch(
-  () => props.items,
-  (newItems) => {
+  [() => props.items, () => props.separators],
+  ([newItems, newSeparators]) => {
     if (!isDragging.value) {
-      localItems.value = [...newItems]
+      combinedList.value = buildCombinedList(newItems, newSeparators)
     }
   },
-  { deep: true }
+  { immediate: true, deep: true }
 )
 
-function onSortEnd() {
-  // Ждём пока vue-slicksort обновит массив через v-model:list
-  nextTick(() => {
-    const reorderedItems = localItems.value.map((item, index) => ({
-      id: item.id,
-      order: index * 10
-    }))
-    emit('reorder', reorderedItems)
-    isDragging.value = false
-  })
+// Получить оригинальный разделитель для редактирования
+function getOriginalSeparator(item) {
+  return props.separators.find(sep => sep.id === item.id)
 }
 
 function onSortStart() {
   isDragging.value = true
+}
+
+function onSortEnd() {
+  nextTick(() => {
+    const reorderedMenuItems = []
+    const reorderedSeparators = []
+    
+    // Пересчитываем order для всех элементов
+    combinedList.value.forEach((item, index) => {
+      const newOrder = index * 10
+      
+      if (item._type === 'menu_item') {
+        reorderedMenuItems.push({
+          id: item.id,
+          order: newOrder
+        })
+      } else if (item._type === 'separator') {
+        reorderedSeparators.push({
+          id: item.id,
+          before_order: newOrder
+        })
+      }
+    })
+    
+    // Эмитим события для сохранения
+    if (reorderedMenuItems.length > 0) {
+      emit('reorder', reorderedMenuItems)
+    }
+    if (reorderedSeparators.length > 0) {
+      emit('reorder-separators', reorderedSeparators)
+    }
+    
+    isDragging.value = false
+  })
 }
 
 function handleChildrenReorder(data) {
@@ -101,6 +226,185 @@ function handleChildrenReorder(data) {
     border-radius: 4px;
     z-index: 1000;
   }
+}
+
+.slick-item-separator {
+  margin-bottom: 2px;
+  
+  &.SortableHelper {
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.25);
+    border-radius: 4px;
+    z-index: 1000;
+    background: #fff;
+  }
+}
+
+.separator-row-inline {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0.5rem;
+  transition: background-color 0.15s ease;
+  border-radius: 4px;
+  background: #fff;
+  border: 1px dashed #17a2b8;
+  min-height: 48px;
+  
+  &:hover {
+    background-color: rgba(23, 162, 184, 0.08);
+  }
+  
+  &__handle {
+    cursor: grab;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    margin-right: 0.25rem;
+    
+    &:active {
+      cursor: grabbing;
+    }
+  }
+  
+  &__line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #17a2b8 20%, #17a2b8 80%, transparent);
+  }
+  
+  &__label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    color: #17a2b8;
+    background: rgba(23, 162, 184, 0.1);
+    border-radius: 4px;
+    white-space: nowrap;
+    cursor: pointer;
+    
+    &:hover {
+      background: rgba(23, 162, 184, 0.15);
+    }
+    
+    svg {
+      flex-shrink: 0;
+    }
+  }
+  
+  &__actions-wrapper {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+  }
+  
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  &__visibility-btn {
+    background: none;
+    border: none;
+    border-radius: 4px;
+    padding: 0.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    transition: opacity 0.3s ease, color 0.3s ease, width 0.3s ease, padding 0.3s ease;
+    flex-shrink: 0;
+    height: 28px;
+    
+    &:hover {
+      color: #495057;
+    }
+    
+    &--hidden {
+      opacity: 1;
+      color: #dc3545;
+      width: 28px;
+      padding: 0.25rem;
+      
+      &:hover {
+        color: #c82333;
+      }
+    }
+  }
+  
+  &__action-btn {
+    background: none;
+    border: none;
+    border-radius: 4px;
+    padding: 0.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    transition: opacity 0.3s ease, color 0.3s ease, width 0.3s ease, padding 0.3s ease;
+    flex-shrink: 0;
+    height: 28px;
+    
+    &--edit {
+      &:hover {
+        color: #0d6efd;
+        
+        .separator-row-inline__settings-icon {
+          transform: rotate(180deg);
+        }
+      }
+    }
+    
+    &--delete {
+      &:hover {
+        color: #dc3545;
+      }
+    }
+  }
+  
+  &--inactive {
+    opacity: 0.5;
+    
+    .separator-row-inline__label {
+      color: #6c757d;
+      background: rgba(108, 117, 125, 0.1);
+    }
+    
+    .separator-row-inline__line {
+      background: linear-gradient(90deg, transparent, #6c757d 20%, #6c757d 80%, transparent);
+    }
+  }
+  
+  &:hover {
+    .separator-row-inline__visibility-btn {
+      opacity: 1;
+      width: 28px;
+      padding: 0.25rem;
+    }
+    
+    .separator-row-inline__action-btn {
+      opacity: 1;
+      width: 28px;
+      padding: 0.25rem;
+    }
+  }
+}
+
+.separator-row-inline__settings-icon {
+  transition: transform 0.5s ease;
+  transform: rotate(0deg);
 }
 </style>
 

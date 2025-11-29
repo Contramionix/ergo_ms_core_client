@@ -25,37 +25,6 @@
                 Текст разделителя, который будет отображаться в меню
               </div>
             </div>
-            
-            <!-- Порядок -->
-            <div class="mb-3">
-              <label class="form-label">Перед порядком <span class="text-danger">*</span></label>
-              <input 
-                v-model.number="form.before_order" 
-                type="number" 
-                class="form-control"
-                required
-                min="0"
-                step="10"
-              />
-              <div class="form-text">
-                Разделитель будет отображаться перед элементами меню с этим порядком и выше
-              </div>
-            </div>
-            
-            <!-- Активен -->
-            <div class="mb-3">
-              <div class="form-check">
-                <input 
-                  v-model="form.is_active" 
-                  type="checkbox" 
-                  class="form-check-input"
-                  id="isActive"
-                />
-                <label class="form-check-label" for="isActive">
-                  Активен
-                </label>
-              </div>
-            </div>
           </form>
         </div>
         
@@ -120,7 +89,7 @@ watch(() => props.separator, (newSeparator) => {
 
 // Валидация формы
 const isFormValid = computed(() => {
-  return !!form.value.name && form.value.before_order >= 0
+  return !!form.value.name
 })
 
 function handleSubmit() {
@@ -133,6 +102,16 @@ function handleSubmit() {
 <style scoped>
 .modal.show {
   background-color: rgba(0, 0, 0, 0.5);
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.modal-dialog {
+  margin: 0;
+  max-width: 500px;
+  width: 90%;
 }
 </style>
 

@@ -1,7 +1,16 @@
 <template>
   <div class="menu-panel">
     <div class="menu-panel__header mb-4">
-      <h1 class="h3 mb-3">Управление меню</h1>
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <h1 class="h3 mb-0">Управление меню</h1>
+        <button 
+          class="menu-panel__settings-btn"
+          @click="showSettingsModal = true"
+          title="Настройки страницы"
+        >
+          <Settings :size="20" class="menu-panel__settings-icon" />
+        </button>
+      </div>
       <p class="text-muted mb-0">
         Настройте элементы бокового меню и управляйте доступом к ним.
         Перетаскивайте элементы для изменения порядка.
@@ -30,33 +39,35 @@
       @save="saveAllChanges"
       @cancel="cancelChanges"
     />
-
-    <!-- Табы для элементов и разделителей -->
-    <ul class="nav nav-tabs mb-4">
-      <li class="nav-item">
-        <button 
-          class="nav-link" 
-          :class="{ active: activeTab === 'items' }" 
-          @click="activeTab = 'items'"
-        >
-          Элементы меню
-          <span class="badge bg-secondary ms-2">{{ menuItemsCount }}</span>
-        </button>
-      </li>
-      <li class="nav-item">
-        <button 
-          class="nav-link" 
-          :class="{ active: activeTab === 'separators' }" 
-          @click="activeTab = 'separators'"
-        >
-          Разделители
-          <span class="badge bg-secondary ms-2">{{ separators.length }}</span>
-        </button>
-      </li>
-    </ul>
+    
+    <!-- Тост подтверждения удаления разделителя -->
+    <UnsavedChangesToast
+      :visible="showDeleteSeparatorToast"
+      :saving="isDeletingSeparator"
+      title="Удаление разделителя"
+      description="Вы уверены, что хотите удалить этот разделитель?"
+      cancel-label="Отмена"
+      save-label="Удалить"
+      saving-label="Удаление..."
+      @save="executeDeleteSeparator"
+      @cancel="cancelDeleteSeparator"
+    />
+    
+    <!-- Тост подтверждения удаления элемента меню -->
+    <UnsavedChangesToast
+      :visible="showDeleteItemToast"
+      :saving="isDeletingItem"
+      title="Удаление элемента меню"
+      description="Вы уверены, что хотите удалить этот элемент? Это также удалит все дочерние элементы."
+      cancel-label="Отмена"
+      save-label="Удалить"
+      saving-label="Удаление..."
+      @save="executeDeleteItem"
+      @cancel="cancelDeleteItem"
+    />
 
     <!-- Список элементов меню с drag & drop -->
-    <div v-if="activeTab === 'items'" class="menu-panel__items">
+    <div class="menu-panel__items">
       <div v-if="isLoading" class="text-center py-5">
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Загрузка...</span>
@@ -70,45 +81,17 @@
       <div v-else>
         <!-- Draggable список -->
         <DraggableMenuList
-          :items="menuItems"
+          :items="visibleMenuItems"
+          :separators="visibleSeparators"
+          :expand-all-groups="expandAllGroups"
           @edit="editItem"
           @delete="confirmDeleteItem"
           @reorder="handleMenuReorder"
+          @reorder-separators="handleSeparatorReorderFromList"
           @toggle-visibility="handleToggleVisibility"
-        />
-      </div>
-    </div>
-
-    <!-- Список разделителей с drag & drop -->
-    <div v-if="activeTab === 'separators'" class="menu-panel__separators">
-      <div v-if="isLoadingSeparators" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Загрузка...</span>
-        </div>
-      </div>
-      
-      <div v-else-if="separators.length === 0" class="alert alert-info">
-        Разделители не найдены. Нажмите "Синхронизировать с модулями" для импорта из конфигурации.
-      </div>
-      
-      <div v-else>
-        <!-- Заголовок списка -->
-        <div class="separator-list-header mb-2">
-          <div class="row g-2 text-muted small fw-bold">
-            <div class="col-auto" style="width: 40px;"></div>
-            <div class="col-auto" style="width: 80px;">Перед order</div>
-            <div class="col-auto" style="width: 24px;"></div>
-            <div class="col">Название</div>
-            <div class="col-auto" style="width: 100px;">Статус</div>
-          </div>
-                </div>
-        
-        <!-- Draggable список разделителей -->
-        <DraggableSeparatorList
-          :separators="separators"
-          @edit="editSeparator"
-          @delete="confirmDeleteSeparator"
-          @reorder="handleSeparatorReorder"
+          @edit-separator="editSeparator"
+          @delete-separator="confirmDeleteSeparator"
+          @toggle-visibility-separator="handleToggleSeparatorVisibility"
         />
       </div>
     </div>
@@ -135,19 +118,25 @@
     <ConfirmDialog
       ref="confirmDialog"
     />
+    
+    <MenuSettingsModal
+      :show="showSettingsModal"
+      @close="showSettingsModal = false"
+      @save="handleSettingsSave"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
-import { Plus, Minus } from 'lucide-vue-next'
+import { Plus, Minus, Settings } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import UnsavedChangesToast from '@/components/UnsavedChangesToast.vue'
 import DraggableMenuList from './MenuPanelComponents/DraggableMenuList.vue'
-import DraggableSeparatorList from './MenuPanelComponents/DraggableSeparatorList.vue'
 import MenuItemModal from './MenuPanelComponents/MenuItemModal.vue'
 import MenuSeparatorModal from './MenuPanelComponents/MenuSeparatorModal.vue'
+import MenuSettingsModal from './MenuPanelComponents/MenuSettingsModal.vue'
 import {
   getMenuItems,
   createMenuItem,
@@ -163,20 +152,33 @@ import {
 } from '@/core/cms/js/menuService.js'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
+import Cookies from 'js-cookie'
 
 const toast = useToast()
 const confirmDialog = ref(null)
 
+// Настройка раскрытия групп
+const COOKIE_NAME = 'menu_panel_expand_all_groups'
+const expandAllGroups = ref(false)
+
 // Состояние
-const activeTab = ref('items')
 const isLoading = ref(false)
-const isLoadingSeparators = ref(false)
 const isSaving = ref(false)
+const isDeletingSeparator = ref(false)
+const isDeletingItem = ref(false)
 const menuItems = ref([])
 const separators = ref([])
 const roles = ref([])
 const roleGroups = ref([])
 const availableIcons = ref([])
+
+// Состояние для подтверждения удаления разделителя
+const showDeleteSeparatorToast = ref(false)
+const separatorToDelete = ref(null)
+
+// Состояние для подтверждения удаления элемента меню
+const showDeleteItemToast = ref(false)
+const itemToDelete = ref(null)
 
 // Отслеживание изменений порядка
 const pendingMenuReorder = ref([])
@@ -202,9 +204,46 @@ const menuItemsCount = computed(() => {
   return countItems(menuItems.value)
 })
 
+// Видимые разделители (исключая тот, который помечен для удаления)
+const visibleSeparators = computed(() => {
+  if (!separatorToDelete.value) {
+    return separators.value
+  }
+  return separators.value.filter(sep => sep.id !== separatorToDelete.value.id)
+})
+
+// Видимые элементы меню (исключая тот, который помечен для удаления)
+const visibleMenuItems = computed(() => {
+  if (!itemToDelete.value) {
+    return menuItems.value
+  }
+  
+  // Функция для удаления элемента из дерева
+  function removeItemFromTree(items, itemId) {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].id === itemId) {
+        items.splice(i, 1)
+        return true
+      }
+      if (items[i].children && items[i].children.length > 0) {
+        if (removeItemFromTree(items[i].children, itemId)) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+  
+  // Создаем глубокую копию дерева
+  const treeCopy = JSON.parse(JSON.stringify(menuItems.value))
+  removeItemFromTree(treeCopy, itemToDelete.value.id)
+  return treeCopy
+})
+
 // Модальные окна
 const showItemModal = ref(false)
 const showSeparatorModal = ref(false)
+const showSettingsModal = ref(false)
 const currentItem = ref(null)
 const currentSeparator = ref(null)
 
@@ -279,13 +318,10 @@ function buildTree(items) {
 }
 
 async function loadSeparators() {
-  isLoadingSeparators.value = true
   try {
     separators.value = await getMenuSeparators()
   } catch (error) {
     toast.error('Ошибка загрузки разделителей: ' + error.message)
-  } finally {
-    isLoadingSeparators.value = false
   }
 }
 
@@ -391,8 +427,23 @@ function handleMenuReorder(reorderedItems) {
           })
 }
 
-// Обработка перетаскивания разделителей
+// Обработка перетаскивания разделителей (из вкладки "Разделители")
 function handleSeparatorReorder(reorderedSeparators) {
+  pendingSeparatorReorder.value = reorderedSeparators
+  
+  // Обновляем локальное состояние
+  const orderMap = new Map(reorderedSeparators.map(sep => [sep.id, sep.before_order]))
+  for (const sep of separators.value) {
+    if (orderMap.has(sep.id)) {
+      sep.before_order = orderMap.get(sep.id)
+    }
+  }
+  separators.value.sort((a, b) => a.before_order - b.before_order)
+}
+
+// Обработка перетаскивания разделителей (из общего списка элементов меню)
+function handleSeparatorReorderFromList(reorderedSeparators) {
+  // Добавляем к отложенным изменениям
   pendingSeparatorReorder.value = reorderedSeparators
   
   // Обновляем локальное состояние
@@ -410,6 +461,9 @@ async function saveAllChanges() {
   isSaving.value = true
   
   try {
+    // Проверяем, были ли изменены разделители (объединённый список)
+    const hasSeparatorChanges = pendingSeparatorReorder.value.length > 0
+    
     // Сохраняем порядок элементов меню
     if (pendingMenuReorder.value.length > 0) {
       // Группируем изменения по id (берём последнее значение)
@@ -426,8 +480,6 @@ async function saveAllChanges() {
       const allItemsToSave = []
       
       function collectItems(items, parentId = null) {
-        // ВАЖНО: пересчитываем order для всех элементов уровня на основе их позиции в массиве
-        // Это гарантирует правильный порядок даже если некоторые элементы были перемещены
         items.forEach((item, index) => {
           // Определяем parent_id для текущего элемента
           let finalParentId = null
@@ -439,9 +491,16 @@ async function saveAllChanges() {
             finalParentId = parentId
           }
           
-          // ВАЖНО: всегда пересчитываем order на основе позиции в массиве
-          // Это гарантирует правильный порядок для всех элементов уровня
-          const order = index * 10
+          // Если есть изменения разделителей (объединённый список) - используем order из pendingMenuReorder
+          // Иначе пересчитываем на основе позиции в массиве
+          let order
+          if (hasSeparatorChanges && menuOrderMap.has(item.id)) {
+            // Используем order из объединённого списка (учитывает разделители)
+            order = menuOrderMap.get(item.id)
+          } else {
+            // Пересчитываем order на основе позиции в массиве
+            order = index * 10
+          }
           
           allItemsToSave.push({
             id: item.id,
@@ -536,26 +595,32 @@ async function saveItem(itemData) {
   }
 }
 
-async function confirmDeleteItem(item) {
-  const confirmed = await confirmDialog.value.open({
-    title: 'Удаление элемента меню',
-    message: `Вы уверены, что хотите удалить "${item.name}"? Это также удалит все дочерние элементы.`,
-    confirmText: 'Удалить',
-    cancelText: 'Отмена',
-    confirmClass: 'btn-danger'
-  })
+function confirmDeleteItem(item) {
+  itemToDelete.value = item
+  showDeleteItemToast.value = true
+}
+
+async function executeDeleteItem() {
+  if (!itemToDelete.value) return
   
-  if (confirmed) {
-    try {
-      await deleteMenuItem(item.id)
-      toast.success('Элемент меню удалён')
-      await loadMenuItems()
-      clearMenuCache()
-      window.dispatchEvent(new CustomEvent('menu-updated'))
-    } catch (error) {
-      toast.error('Ошибка удаления: ' + error.message)
-    }
+  isDeletingItem.value = true
+  try {
+    await deleteMenuItem(itemToDelete.value.id)
+    toast.success('Элемент меню удалён')
+    await loadMenuItems()
+    clearMenuCache()
+    window.dispatchEvent(new CustomEvent('menu-updated'))
+    cancelDeleteItem()
+  } catch (error) {
+    toast.error('Ошибка удаления: ' + error.message)
+  } finally {
+    isDeletingItem.value = false
   }
+}
+
+function cancelDeleteItem() {
+  showDeleteItemToast.value = false
+  itemToDelete.value = null
 }
 
 // Переключение видимости элемента
@@ -584,6 +649,24 @@ async function handleToggleVisibility(data) {
     toast.error('Ошибка обновления видимости: ' + error.message)
     // Перезагружаем данные при ошибке
     await loadMenuItems()
+  }
+}
+
+// Переключение видимости разделителя
+async function handleToggleSeparatorVisibility(separator) {
+  try {
+    await updateMenuSeparator(separator.id, { is_active: !separator.is_active })
+    // Обновляем локальное состояние
+    const sep = separators.value.find(s => s.id === separator.id)
+    if (sep) {
+      sep.is_active = !separator.is_active
+    }
+    clearMenuCache()
+    window.dispatchEvent(new CustomEvent('menu-updated'))
+  } catch (error) {
+    toast.error('Ошибка обновления видимости разделителя: ' + error.message)
+    // Перезагружаем данные при ошибке
+    await loadSeparators()
   }
 }
 
@@ -621,26 +704,32 @@ async function saveSeparator(separatorData) {
   }
 }
 
-async function confirmDeleteSeparator(separator) {
-  const confirmed = await confirmDialog.value.open({
-    title: 'Удаление разделителя',
-    message: `Вы уверены, что хотите удалить разделитель "${separator.name}"?`,
-    confirmText: 'Удалить',
-    cancelText: 'Отмена',
-    confirmClass: 'btn-danger'
-  })
+function confirmDeleteSeparator(separator) {
+  separatorToDelete.value = separator
+  showDeleteSeparatorToast.value = true
+}
+
+async function executeDeleteSeparator() {
+  if (!separatorToDelete.value) return
   
-  if (confirmed) {
-    try {
-      await deleteMenuSeparator(separator.id)
-      toast.success('Разделитель удалён')
-      await loadSeparators()
-      clearMenuCache()
-      window.dispatchEvent(new CustomEvent('menu-updated'))
-    } catch (error) {
-      toast.error('Ошибка удаления: ' + error.message)
-    }
+  isDeletingSeparator.value = true
+  try {
+    await deleteMenuSeparator(separatorToDelete.value.id)
+    toast.success('Разделитель удалён')
+    await loadSeparators()
+    clearMenuCache()
+    window.dispatchEvent(new CustomEvent('menu-updated'))
+    cancelDeleteSeparator()
+  } catch (error) {
+    toast.error('Ошибка удаления: ' + error.message)
+  } finally {
+    isDeletingSeparator.value = false
   }
+}
+
+function cancelDeleteSeparator() {
+  showDeleteSeparatorToast.value = false
+  separatorToDelete.value = null
 }
 
 function closeSeparatorModal() {
@@ -648,8 +737,24 @@ function closeSeparatorModal() {
   currentSeparator.value = null
 }
 
+// Обработка сохранения настроек
+function handleSettingsSave(newValue) {
+  // Обновляем локальное состояние
+  expandAllGroups.value = newValue
+  toast.success('Настройки сохранены')
+}
+
+// Загрузка значения из куки
+function loadExpandAllGroupsFromCookie() {
+  const value = Cookies.get(COOKIE_NAME)
+  expandAllGroups.value = value === 'true'
+}
+
 // Инициализация
 onMounted(async () => {
+  // Загружаем настройку из куки
+  loadExpandAllGroupsFromCookie()
+  
   await Promise.all([
     loadMenuItems(),
     loadSeparators(),
@@ -663,6 +768,34 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .menu-panel {
   padding: 1.5rem;
+  
+  &__header {
+    .menu-panel__settings-btn {
+      background: none;
+      border: none;
+      padding: 0.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6c757d;
+      transition: color 0.3s ease;
+      flex-shrink: 0;
+      
+      &:hover {
+        color: #0d6efd;
+        
+        .menu-panel__settings-icon {
+          transform: rotate(180deg);
+        }
+      }
+    }
+    
+    .menu-panel__settings-icon {
+      transition: transform 0.5s ease;
+      transform: rotate(0deg);
+    }
+  }
   
   &__items,
   &__separators {
