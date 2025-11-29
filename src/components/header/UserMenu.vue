@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, computed, onUnmounted, nextTick, watch } from 'vue'
 import { CircleUserRound, Power, Building2 } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import DefaultAvatar from '@/components/DefaultAvatar.vue'
@@ -74,9 +74,18 @@ const fetchUserOrganizations = async () => {
   }
 }
 
+// Состояние ошибки загрузки аватара
+const avatarLoadError = ref(false)
+
+// Сбрасываем ошибку при изменении URL аватара
+watch(() => userStore.avatarUrl, () => {
+  avatarLoadError.value = false
+})
+
 // Обработка ошибки загрузки изображения
 const onImageError = () => {
-  console.error('Ошибка загрузки аватара в UserMenu')
+  console.error('Ошибка загрузки аватара в UserMenu:', userStore.avatarUrl)
+  avatarLoadError.value = true
 }
 
 // Инициализируем пользователя при загрузке компонента
@@ -126,15 +135,15 @@ onUnmounted(() => {
       aria-expanded="false"
       data-bs-offset="16,20"
     >
-      <!-- Показываем загруженное изображение если есть -->
+      <!-- Показываем загруженное изображение если есть и нет ошибки -->
       <img 
-        v-if="userStore.hasCustomAvatar"
+        v-if="userStore.hasCustomAvatar && !avatarLoadError"
         :src="userStore.avatarUrl"
         :alt="userStore.displayName"
         class="user-avatar-image"
         @error="onImageError"
       />
-      <!-- Показываем стандартный аватар если нет кастомного -->
+      <!-- Показываем стандартный аватар если нет кастомного или ошибка загрузки -->
       <DefaultAvatar 
         v-else
         size="medium"
@@ -147,15 +156,15 @@ onUnmounted(() => {
       <li class="dropdown-header px-3 py-2 border-bottom">
         <div class="d-flex align-items-center">
           <div class="me-2">
-            <!-- Показываем загруженное изображение если есть -->
+            <!-- Показываем загруженное изображение если есть и нет ошибки -->
             <img 
-              v-if="userStore.hasCustomAvatar"
+              v-if="userStore.hasCustomAvatar && !avatarLoadError"
               :src="userStore.avatarUrl"
               :alt="userStore.displayName"
               class="user-avatar-small"
               @error="onImageError"
             />
-            <!-- Показываем стандартный аватар если нет кастомного -->
+            <!-- Показываем стандартный аватар если нет кастомного или ошибка загрузки -->
             <DefaultAvatar 
               v-else
               size="small"

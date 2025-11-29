@@ -39,9 +39,21 @@ const groupId = computed(() => {
   return `${props.item.routeName || props.item.page || props.item.name}_${props.level}`
 })
 
+// Объединяем children и list в один массив для отображения (как в MenuGroup.vue)
+const allChildren = computed(() => {
+  const items = []
+  if (props.item.list && props.item.list.length > 0) {
+    items.push(...props.item.list)
+  }
+  if (props.item.children && props.item.children.length > 0) {
+    items.push(...props.item.children)
+  }
+  return items
+})
+
 // Проверка, является ли элемент группой (имеет дочерние элементы)
 const isGroup = computed(() => {
-  return props.item.children && props.item.children.length > 0
+  return allChildren.value.length > 0
 })
 
 // Состояние открытости группы
@@ -99,7 +111,7 @@ const isActive = computed(() => {
 const isGroupActive = computed(() => {
   if (!isGroup.value) return false
   
-  return checkChildrenActiveRecursive(props.item.children, props.currentPage, route.name)
+  return checkChildrenActiveRecursive(allChildren.value, props.currentPage, route.name)
 })
 
 // Рекурсивная функция для проверки активности всех дочерних элементов
@@ -146,9 +158,13 @@ function checkChildrenActiveRecursive(children, currentPage, currentRoute) {
       return true
     }
     
-    // РЕКУРСИВНО проверяем дочерние элементы
-    if (child.children && child.children.length > 0) {
-      return checkChildrenActiveRecursive(child.children, currentPage, currentRoute)
+    // РЕКУРСИВНО проверяем дочерние элементы (учитываем и children, и list)
+    const nestedChildren = [
+      ...(child.list || []),
+      ...(child.children || [])
+    ]
+    if (nestedChildren.length > 0) {
+      return checkChildrenActiveRecursive(nestedChildren, currentPage, currentRoute)
     }
     
     return false
@@ -230,7 +246,7 @@ const paddingLeft = computed(() => {
       :class="{ 'is-open': isOpen }"
     >
       <MenuItem
-        v-for="(child, index) in item.children"
+        v-for="(child, index) in allChildren"
         :key="index"
         :item="child"
         :level="level + 1"

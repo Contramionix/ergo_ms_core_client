@@ -36,6 +36,7 @@ import { ChevronRight, Dot } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import MenuItem from './MenuItem.vue'
+import { iconMapping } from '@/config/icons-mapping.js'
 
 const props = defineProps({
   data: { type: Object, required: true },
@@ -48,16 +49,47 @@ const props = defineProps({
 
 const showFull = computed(() => props.isCollapsed || props.isHovering)
 
-// Объединяем list и children в один массив для отображения
+// Иконка группы: поддерживаем как прямой компонент, так и строковый ключ из конфигурации
+const groupIcon = computed(() => {
+  const rawIcon = props.data.icon
+  if (!rawIcon) return null
+
+  // Если иконка задана строкой — пробуем взять из iconMapping
+  if (typeof rawIcon === 'string') {
+    return iconMapping[rawIcon] || null
+  }
+
+  // Если это уже компонент, возвращаем как есть
+  return rawIcon
+})
+
+// Объединяем list и children в один массив для отображения, сохраняя порядок по order
 const menuItems = computed(() => {
   const items = []
+  
+  // Собираем все элементы с их order
+  const allItems = []
+  
   if (props.data.list) {
-    items.push(...props.data.list)
+    props.data.list.forEach(item => {
+      allItems.push({ ...item, isList: true })
+    })
   }
+  
   if (props.data.children) {
-    items.push(...props.data.children)
+    props.data.children.forEach(item => {
+      allItems.push({ ...item, isList: false })
+    })
   }
-  return items
+  
+  // Сортируем по order, чтобы сохранить исходный порядок из API
+  allItems.sort((a, b) => {
+    const orderA = a.order !== undefined ? a.order : (a.isList ? 999999 : 0)
+    const orderB = b.order !== undefined ? b.order : (b.isList ? 999999 : 0)
+    return orderA - orderB
+  })
+  
+  return allItems
 })
 
 // Проверяем, есть ли вообще элементы для отображения
@@ -272,7 +304,8 @@ function routeClick(event) {
     >
       <div class="side-title__label">
         <div class="side-icon icon-flex">
-          <component :is="data.icon" :size="20" />
+          <component v-if="groupIcon" :is="groupIcon" :size="20" />
+          <Dot v-else :size="20" />
         </div>
         <div class="side-title__name text-smooth-animation" :class="{ hidden: !isHovering }">
           {{ data.title }}

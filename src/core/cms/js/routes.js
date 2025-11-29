@@ -78,6 +78,14 @@ export default {
       "requiresAuth": true
     }
   },
+  "MenuPanel": {
+    "path": "/admin-panel/menu",
+    "component": "@/core/cms/adp/admin/MenuPanel.vue",
+    "meta": {
+      "title": "Управление меню",
+      "requiresAuth": true
+    }
+  },
   "SiteSettings": {
     "path": "/settings/site-settings",
     "component": "@/core/cms/adp/settings/siteSettings/ParentLayout.vue",
