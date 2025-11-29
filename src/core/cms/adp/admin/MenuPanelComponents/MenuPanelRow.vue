@@ -37,9 +37,6 @@
       >
         {{ item.is_active ? 'Активен' : 'Неактивен' }}
       </span>
-      <span v-if="item.is_admin_only" class="badge bg-warning ms-1">
-        Только админ
-      </span>
     </td>
     <td>
       <div class="btn-group btn-group-sm">

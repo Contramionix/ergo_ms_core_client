@@ -1,5 +1,5 @@
 <template>
-  <div class="menu-row-wrapper" :class="{ 'menu-row-wrapper--nested': level > 0 }">
+  <div class="menu-row-wrapper" :class="{ 'menu-row-wrapper--nested': level > 0, 'menu-row-wrapper--no-children': level > 0 && !hasChildren }">
     <!-- Основной элемент -->
     <div 
       class="menu-row" 
@@ -14,14 +14,19 @@
       </div>
       
       <!-- Иконка разворачивания -->
-      <div class="menu-row__expand" @click="toggleExpand">
+      <div v-if="hasChildren" class="menu-row__expand" @click="toggleExpand">
         <ChevronRight 
-          v-if="hasChildren" 
           :size="16" 
           class="expand-icon"
           :class="{ 'expand-icon--rotated': isExpanded }"
         />
-        <span v-else style="width: 16px; display: inline-block;"></span>
+      </div>
+      
+      <!-- Тип элемента -->
+      <div class="menu-row__type">
+        <span class="badge" :class="itemTypeBadgeClass">
+          {{ itemTypeLabel }}
+        </span>
       </div>
       
       <!-- Иконка элемента -->
@@ -41,41 +46,30 @@
         </small>
       </div>
       
-      <!-- Тип элемента -->
-      <div class="menu-row__type">
-        <span class="badge" :class="itemTypeBadgeClass">
-          {{ itemTypeLabel }}
-        </span>
-      </div>
-      
-      <!-- Статус -->
-      <div class="menu-row__status">
-        <span 
-          class="badge" 
-          :class="item.is_active ? 'bg-success' : 'bg-secondary'"
-        >
-          {{ item.is_active ? 'Активен' : 'Неактивен' }}
-        </span>
-        <span v-if="item.is_admin_only" class="badge bg-warning ms-1">
-          Админ
-        </span>
-      </div>
-      
       <!-- Действия -->
       <div class="menu-row__actions">
+        <button
+          class="menu-row__visibility-btn"
+          :class="{ 'menu-row__visibility-btn--hidden': !item.is_active }"
+          @click.stop="toggleVisibility"
+          :title="item.is_active ? 'Скрыть элемент' : 'Показать элемент'"
+        >
+          <Eye v-if="item.is_active" :size="20" />
+          <EyeOff v-else :size="20" />
+        </button>
         <button 
-          class="btn btn-sm btn-outline-primary me-1" 
+          class="menu-row__action-btn menu-row__action-btn--edit"
           @click.stop="$emit('edit', item)"
           title="Редактировать"
         >
-          <Edit :size="14" />
+          <Settings :size="20" class="menu-row__settings-icon" />
         </button>
         <button 
-          class="btn btn-sm btn-outline-danger" 
+          class="menu-row__action-btn menu-row__action-btn--delete"
           @click.stop="$emit('delete', item)"
           title="Удалить"
         >
-          <Trash :size="14" />
+          <Trash :size="20" />
         </button>
       </div>
     </div>
@@ -104,6 +98,7 @@
             @edit="$emit('edit', $event)"
             @delete="$emit('delete', $event)"
             @reorder-children="$emit('reorder-children', $event)"
+            @toggle-visibility="$emit('toggle-visibility', $event)"
           />
         </SlickItem>
       </SlickList>
@@ -117,8 +112,10 @@ import { SlickList, SlickItem, HandleDirective as vHandle } from 'vue-slicksort'
 import { 
   GripVertical, 
   ChevronRight, 
-  Edit, 
-  Trash 
+  Settings, 
+  Trash,
+  Eye,
+  EyeOff
 } from 'lucide-vue-next'
 import * as LucideIcons from 'lucide-vue-next'
 
@@ -137,7 +134,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['edit', 'delete', 'reorder-children'])
+const emit = defineEmits(['edit', 'delete', 'reorder-children', 'toggle-visibility'])
 
 // Состояние раскрытия
 const isExpanded = ref(true)
@@ -223,6 +220,14 @@ function onChildrenReorder() {
     isDragging.value = false
   })
 }
+
+// Переключение видимости элемента
+function toggleVisibility() {
+  emit('toggle-visibility', {
+    id: props.item.id,
+    is_active: !props.item.is_active
+  })
+}
 </script>
 
 <style lang="scss" scoped>
@@ -231,6 +236,10 @@ function onChildrenReorder() {
   
   &--nested {
     padding-left: 2rem;
+    
+    &.menu-row-wrapper--no-children {
+      padding-left: 0;
+    }
   }
 }
 
@@ -297,19 +306,86 @@ function onChildrenReorder() {
   }
   
   &__type {
-    min-width: 80px;
-    text-align: center;
-  }
-  
-  &__status {
-    min-width: 120px;
     display: flex;
-    gap: 0.25rem;
+    align-items: center;
   }
   
   &__actions {
     display: flex;
+    align-items: center;
     gap: 0.25rem;
+    overflow: hidden;
+  }
+  
+  &__visibility-btn {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    opacity: 0;
+    transition: opacity 0.3s ease, color 0.3s ease;
+    flex-shrink: 0;
+    
+    &:hover {
+      color: #495057;
+    }
+    
+    &--hidden {
+      opacity: 1;
+      color: #dc3545;
+      
+      &:hover {
+        color: #c82333;
+      }
+    }
+  }
+  
+  &__action-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    transition: opacity 0.3s ease, color 0.3s ease, max-width 0.3s ease, padding 0.3s ease;
+    flex-shrink: 0;
+    
+    &--edit {
+      &:hover {
+        color: #0d6efd;
+        
+        .menu-row__settings-icon {
+          transform: rotate(180deg);
+        }
+      }
+    }
+    
+    &--delete {
+      &:hover {
+        color: #dc3545;
+      }
+    }
+  }
+  
+  &:hover {
+    .menu-row__visibility-btn {
+      opacity: 1;
+    }
+    
+    .menu-row__action-btn {
+      opacity: 1;
+      max-width: 28px;
+      padding: 0.25rem;
+    }
   }
   
   &__children {
@@ -327,6 +403,11 @@ function onChildrenReorder() {
   &--rotated {
     transform: rotate(90deg);
   }
+}
+
+.menu-row__settings-icon {
+  transition: transform 0.5s ease;
+  transform: rotate(0deg);
 }
 
 .children-list {

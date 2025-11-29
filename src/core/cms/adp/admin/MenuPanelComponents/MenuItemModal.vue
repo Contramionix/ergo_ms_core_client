@@ -118,48 +118,18 @@
               </select>
             </div>
             
-            <!-- Порядок -->
-            <div class="mb-3">
-              <label class="form-label">Порядок</label>
-              <input 
-                v-model.number="form.order" 
-                type="number" 
-                class="form-control"
-                min="0"
-                step="10"
-              />
-              <div class="form-text">
-                Элементы сортируются по порядку (меньше = выше)
-              </div>
-            </div>
-            
             <!-- Переключатели -->
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <div class="form-check">
-                  <input 
-                    v-model="form.is_active" 
-                    type="checkbox" 
-                    class="form-check-input"
-                    id="isActive"
-                  />
-                  <label class="form-check-label" for="isActive">
-                    Активен
-                  </label>
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="form-check">
-                  <input 
-                    v-model="form.is_admin_only" 
-                    type="checkbox" 
-                    class="form-check-input"
-                    id="isAdminOnly"
-                  />
-                  <label class="form-check-label" for="isAdminOnly">
-                    Только для администраторов
-                  </label>
-                </div>
+            <div class="mb-3">
+              <div class="form-check">
+                <input 
+                  v-model="form.is_active" 
+                  type="checkbox" 
+                  class="form-check-input"
+                  id="isActive"
+                />
+                <label class="form-check-label" for="isActive">
+                  Активен
+                </label>
               </div>
             </div>
             
@@ -282,7 +252,6 @@ const form = ref({
   parent: null,
   order: 0,
   is_active: true,
-  is_admin_only: false,
   allowed_roles: [],
   allowed_role_groups: []
 })
@@ -301,7 +270,6 @@ watch(() => props.item, (newItem) => {
       parent: newItem.parent || null,
       order: newItem.order || 0,
       is_active: newItem.is_active !== false,
-      is_admin_only: newItem.is_admin_only || false,
       allowed_roles: newItem.allowed_roles || [],
       allowed_role_groups: newItem.allowed_role_groups || []
     }
@@ -317,7 +285,6 @@ watch(() => props.item, (newItem) => {
       parent: null,
       order: 0,
       is_active: true,
-      is_admin_only: false,
       allowed_roles: [],
       allowed_role_groups: []
     }
