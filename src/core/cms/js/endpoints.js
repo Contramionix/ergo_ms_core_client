@@ -71,7 +71,21 @@ export const cmsEndpoints = {
         assignRole: 'cms/adp/assign-role/',
         adminUsers: 'cms/adp/admin-users/',
         myPermissions: 'cms/adp/my-permissions/',
-        checkURLAccess: 'cms/adp/check-url-access/'
+        checkURLAccess: 'cms/adp/check-url-access/',
+        
+        // Menu Management
+        menu: {
+            userMenu: 'cms/adp/menu/',
+            items: 'cms/adp/menu/items/',
+            itemDetail: (id) => `cms/adp/menu/items/${id}/`,
+            reorder: 'cms/adp/menu/items/reorder/',
+            separators: 'cms/adp/menu/separators/',
+            separatorDetail: (id) => `cms/adp/menu/separators/${id}/`,
+            sync: 'cms/adp/menu/sync/',
+            accessLog: 'cms/adp/menu/access-log/',
+            availableRoutes: 'cms/adp/menu/available-routes/',
+            availableIcons: 'cms/adp/menu/available-icons/'
+        }
     }
 };
 

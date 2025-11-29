@@ -1,25 +1,25 @@
 <script setup>
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { ChevronLeft, Cog, Minus } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 
 import {
-  allMenuSections,
-  getSeparator,
-  shouldShowSeparator,
-  AdminPanelMenuSection
-} from '@/js/menu-sections.js'
+  getUserMenu,
+  transformMenuData,
+  transformSeparators,
+  shouldShowSeparatorAt,
+  getSeparatorTextAt
+} from '@/core/cms/js/menuService.js'
 
 import MenuGroup from '@/components/menu/MenuGroup.vue'
 import MenuToolbar from '@/components/menu/MenuToolbar.vue'
 
 import { useMenuWidth } from './composables/useMenuWidth'
 import { useMenuNavigation } from './composables/useMenuNavigation'
-import { filterMenuByPermissions } from './utils/menuPermissions'
 
 const props = defineProps({
   isVisible: Boolean,
@@ -35,8 +35,14 @@ const userStore = useUserStore()
 const isCollapsed = ref(false)
 const isHovering = ref(true)
 const isToolbarDropdownActive = ref(false)
-const menuSections = ref([...allMenuSections])
+const menuSections = ref([])
 const siteName = ref('...')
+
+// Конфигурация разделителей из API
+const separatorsConfig = ref({ byOrderIndex: {} })
+
+const getSeparator = (index) => getSeparatorTextAt(index, separatorsConfig.value)
+const shouldShowSeparator = (index) => shouldShowSeparatorAt(index, separatorsConfig.value)
 
 // Composables
 const {
@@ -173,11 +179,9 @@ watch(siteName, () => {
   )
 })
 
-// Следим за изменениями пользователя
-watch(() => userStore.user, (newUser, oldUser) => {
-  const oldName = oldUser ? `${oldUser.first_name || ''} ${oldUser.last_name || ''}`.trim() : ''
-  const newName = newUser ? `${newUser.first_name || ''} ${newUser.last_name || ''}`.trim() : ''
-
+// Следим за изменениями имени пользователя (только имя, не весь объект)
+watch(() => userStore.fullName, (newName, oldName) => {
+  // Обновляем ширину меню только если изменилось имя
   if (oldName !== newName && newName) {
     if (isCollapsed.value) {
       isHovering.value = true
@@ -203,27 +207,43 @@ watch(() => userStore.user, (newUser, oldUser) => {
         isCollapsed.value
       )
     }
-  } else {
-    updateMenuWidth(
-      menuSections.value,
-      siteName.value,
-      userStore,
-      getSeparator,
-      shouldShowSeparator,
-      emit,
-      isCollapsed.value
-    )
   }
-}, { deep: true })
+})
+
+// Загрузка меню из API
+async function loadMenu(forceRefresh = false) {
+  try {
+    const menuData = await getUserMenu(forceRefresh)
+    
+    if (menuData && menuData.menu_items && menuData.menu_items.length > 0) {
+      menuSections.value = transformMenuData(menuData)
+      separatorsConfig.value = transformSeparators(menuData.separators || [])
+      return
+    }
+    
+    menuSections.value = []
+    separatorsConfig.value = { byOrderIndex: {} }
+    toast.warning('Меню пока не настроено. Обратитесь к администратору.')
+  } catch (error) {
+    menuSections.value = []
+    separatorsConfig.value = { byOrderIndex: {} }
+    toast.error('Не удалось загрузить меню. Попробуйте обновить страницу.')
+    console.error('Ошибка загрузки меню:', error)
+  }
+}
+
+// Слушаем событие обновления меню
+function handleMenuUpdate() {
+  loadMenu(true) // forceRefresh = true
+}
 
 // Инициализация при монтировании
 onMounted(async () => {
-  // Фильтруем меню по правам доступа
-  menuSections.value = await filterMenuByPermissions(
-    menuSections.value,
-    router,
-    AdminPanelMenuSection
-  )
+  // Загружаем меню (из API или статический конфиг)
+  await loadMenu()
+
+  // Слушаем событие обновления меню
+  window.addEventListener('menu-updated', handleMenuUpdate)
 
   // Загружаем название сайта
   try {
@@ -265,6 +285,11 @@ onMounted(async () => {
   setTimeout(() => {
     setupWidthTracking(updateCallback)
   }, 500)
+})
+
+// Удаляем слушатель при размонтировании
+onBeforeUnmount(() => {
+  window.removeEventListener('menu-updated', handleMenuUpdate)
 })
 </script>
 

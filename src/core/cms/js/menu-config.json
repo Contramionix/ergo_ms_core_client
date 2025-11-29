@@ -44,6 +44,10 @@
             { 
               "routeName": "LiminationPanel", 
               "name": "Ограничения"
+            },
+            { 
+              "routeName": "MenuPanel", 
+              "name": "Управление меню"
             }
           ]
         }
