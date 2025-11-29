@@ -799,9 +799,8 @@ onMounted(async () => {
   
   &__items,
   &__separators {
-    background: #f8f9fa;
+    background: var(--color-secondary-background);
     border-radius: 8px;
-    padding: 1rem;
   }
 }
 

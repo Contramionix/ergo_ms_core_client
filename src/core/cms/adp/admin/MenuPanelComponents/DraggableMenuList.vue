@@ -218,7 +218,7 @@ function handleChildrenReorder(data) {
 }
 
 .slick-item {
-  background: #fff;
+  background: var(--color-primary-background);
   margin-bottom: 2px;
   
   &.SortableHelper {
@@ -235,7 +235,7 @@ function handleChildrenReorder(data) {
     box-shadow: 0 4px 12px rgba(23, 162, 184, 0.25);
     border-radius: 4px;
     z-index: 1000;
-    background: #fff;
+    background: var(--color-primary-background);
   }
 }
 
@@ -246,12 +246,12 @@ function handleChildrenReorder(data) {
   padding: 0.75rem 0.5rem;
   transition: background-color 0.15s ease;
   border-radius: 4px;
-  background: #fff;
-  border: 1px dashed #17a2b8;
+  background: var(--color-primary-background);
+  border: 1px dashed var(--bs-info);
   min-height: 48px;
   
   &:hover {
-    background-color: rgba(23, 162, 184, 0.08);
+    background-color: var(--color-hover-background);
   }
   
   &__handle {
@@ -269,7 +269,7 @@ function handleChildrenReorder(data) {
   &__line {
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, transparent, #17a2b8 20%, #17a2b8 80%, transparent);
+    background: linear-gradient(90deg, transparent, var(--bs-info) 20%, var(--bs-info) 80%, transparent);
   }
   
   &__label {
@@ -278,14 +278,14 @@ function handleChildrenReorder(data) {
     gap: 0.25rem;
     padding: 0.125rem 0.5rem;
     font-size: 0.75rem;
-    color: #17a2b8;
-    background: rgba(23, 162, 184, 0.1);
+    color: var(--bs-info);
+    background: var(--bs-info-bg-subtle);
     border-radius: 4px;
     white-space: nowrap;
     cursor: pointer;
     
     &:hover {
-      background: rgba(23, 162, 184, 0.15);
+      background: var(--bs-info-border-subtle);
     }
     
     svg {
@@ -311,31 +311,34 @@ function handleChildrenReorder(data) {
     background: none;
     border: none;
     border-radius: 4px;
-    padding: 0.25rem;
+    padding: 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #6c757d;
+    color: var(--color-primary-text);
     opacity: 0;
     width: 0;
+    min-width: 0;
     overflow: hidden;
-    transition: opacity 0.3s ease, color 0.3s ease, width 0.3s ease, padding 0.3s ease;
+    margin: 0;
+    transition: opacity 0.3s ease, color 0.3s ease, width 0.3s ease, padding 0.3s ease, margin 0.3s ease;
     flex-shrink: 0;
     height: 28px;
     
     &:hover {
-      color: #495057;
+      color: var(--color-primary-text);
     }
     
     &--hidden {
       opacity: 1;
-      color: #dc3545;
+      color: var(--bs-danger);
       width: 28px;
       padding: 0.25rem;
       
       &:hover {
-        color: #c82333;
+        color: var(--bs-danger);
+        filter: brightness(0.9);
       }
     }
   }
@@ -344,22 +347,24 @@ function handleChildrenReorder(data) {
     background: none;
     border: none;
     border-radius: 4px;
-    padding: 0.25rem;
+    padding: 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #6c757d;
+    color: var(--color-primary-text);
     opacity: 0;
     width: 0;
+    min-width: 0;
     overflow: hidden;
-    transition: opacity 0.3s ease, color 0.3s ease, width 0.3s ease, padding 0.3s ease;
+    margin: 0;
+    transition: opacity 0.3s ease, color 0.3s ease, width 0.3s ease, padding 0.3s ease, margin 0.3s ease;
     flex-shrink: 0;
     height: 28px;
     
     &--edit {
       &:hover {
-        color: #0d6efd;
+        color: var(--bs-primary);
         
         .separator-row-inline__settings-icon {
           transform: rotate(180deg);
@@ -369,21 +374,58 @@ function handleChildrenReorder(data) {
     
     &--delete {
       &:hover {
-        color: #dc3545;
+        color: var(--bs-danger);
       }
     }
   }
   
   &--inactive {
-    opacity: 0.5;
+    position: relative;
+    
+    // Затемнение только содержимого, не кнопок
+    .separator-row-inline__handle svg,
+    .separator-row-inline__line,
+    .separator-row-inline__label {
+      opacity: 0.5;
+      filter: grayscale(50%);
+    }
     
     .separator-row-inline__label {
-      color: #6c757d;
-      background: rgba(108, 117, 125, 0.1);
+      color: var(--color-secondary-text);
+      background: var(--color-secondary-background);
     }
     
     .separator-row-inline__line {
-      background: linear-gradient(90deg, transparent, #6c757d 20%, #6c757d 80%, transparent);
+      background: linear-gradient(90deg, transparent, var(--color-secondary-text) 20%, var(--color-secondary-text) 80%, transparent);
+    }
+    
+    // Убираем margin у скрытых кнопок
+    .separator-row-inline__action-btn {
+      margin: 0 !important;
+    }
+    
+    // Кнопки полностью яркие и видные
+    .separator-row-inline__visibility-btn,
+    .separator-row-inline__action-btn {
+      opacity: 1 !important;
+      filter: none !important;
+      
+      svg {
+        opacity: 1 !important;
+        filter: none !important;
+      }
+    }
+    
+    .separator-row-inline__actions-wrapper,
+    .separator-row-inline__actions {
+      opacity: 1 !important;
+    }
+    
+    // При hover на неактивном элементе восстанавливаем gap, когда кнопки видны
+    &:hover {
+      .separator-row-inline__actions {
+        gap: 0.25rem;
+      }
     }
   }
   

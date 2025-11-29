@@ -5,7 +5,8 @@
       class="menu-row" 
       :class="{ 
         'menu-row--nested': level > 0,
-        'menu-row--expanded': isExpanded && hasChildren
+        'menu-row--expanded': isExpanded && hasChildren,
+        'menu-row--inactive': !item.is_active
       }"
     >
       <!-- Drag Handle -->
@@ -266,18 +267,18 @@ function toggleVisibility() {
   display: flex;
   align-items: center;
   padding: 0.75rem 0.5rem;
-  background: #fff;
-  border: 1px solid #e9ecef;
+  background: var(--color-primary-background);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   gap: 0.5rem;
   transition: background-color 0.15s ease;
   
   &:hover {
-    background-color: #f8f9fa;
+    background-color: var(--color-hover-background);
   }
   
   &--nested {
-    background: #fafafa;
+    background: var(--color-secondary-background);
   }
   
   &--expanded {
@@ -344,21 +345,22 @@ function toggleVisibility() {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #6c757d;
+    color: var(--color-primary-text);
     opacity: 0;
     transition: opacity 0.3s ease, color 0.3s ease;
     flex-shrink: 0;
     
     &:hover {
-      color: #495057;
+      color: var(--color-primary-text);
     }
     
     &--hidden {
       opacity: 1;
-      color: #dc3545;
+      color: var(--bs-danger);
       
       &:hover {
-        color: #c82333;
+        color: var(--bs-danger);
+        filter: brightness(0.9);
       }
     }
   }
@@ -371,7 +373,7 @@ function toggleVisibility() {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #6c757d;
+    color: var(--color-primary-text);
     opacity: 0;
     max-width: 0;
     overflow: hidden;
@@ -380,7 +382,7 @@ function toggleVisibility() {
     
     &--edit {
       &:hover {
-        color: #0d6efd;
+        color: var(--bs-primary);
         
         .menu-row__settings-icon {
           transform: rotate(180deg);
@@ -390,7 +392,7 @@ function toggleVisibility() {
     
     &--delete {
       &:hover {
-        color: #dc3545;
+        color: var(--bs-danger);
       }
     }
   }
@@ -408,11 +410,51 @@ function toggleVisibility() {
   }
   
   &__children {
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--color-border);
     border-top: none;
     border-radius: 0 0 4px 4px;
     padding: 0.5rem;
-    background: #f8f9fa;
+    background: var(--color-secondary-background);
+  }
+  
+  &--inactive {
+    position: relative;
+    
+    // Затемнение только содержимого, не кнопок
+    .menu-row__handle svg,
+    .menu-row__type .badge,
+    .menu-row__icon svg,
+    .menu-row__name {
+      opacity: 0.5;
+      filter: grayscale(50%);
+    }
+    
+    // Кнопки полностью яркие и видные
+    .menu-row__expand {
+      opacity: 1 !important;
+      filter: none !important;
+      
+      svg {
+        opacity: 1 !important;
+        filter: none !important;
+        color: var(--color-primary-text) !important;
+      }
+    }
+    
+    .menu-row__visibility-btn,
+    .menu-row__action-btn {
+      opacity: 1 !important;
+      filter: none !important;
+      
+      svg {
+        opacity: 1 !important;
+        filter: none !important;
+      }
+    }
+    
+    .menu-row__actions {
+      opacity: 1 !important;
+    }
   }
 }
 
