@@ -68,26 +68,14 @@
       </div>
       
       <div v-else>
-        <!-- Заголовок списка -->
-        <div class="menu-list-header mb-2">
-          <div class="row g-2 text-muted small fw-bold">
-            <div class="col-auto" style="width: 40px;"></div> <!-- drag handle -->
-            <div class="col-auto" style="width: 24px;"></div> <!-- expand icon -->
-            <div class="col-auto" style="width: 24px;"></div> <!-- item icon -->
-            <div class="col">Название</div>
-            <div class="col-auto" style="width: 80px;">Тип</div>
-            <div class="col-auto" style="width: 120px;">Статус</div>
-            <div class="col-auto" style="width: 80px;">Действия</div>
-          </div>
-        </div>
-        
         <!-- Draggable список -->
         <DraggableMenuList
           :items="menuItems"
-                @edit="editItem"
-                @delete="confirmDeleteItem"
+          @edit="editItem"
+          @delete="confirmDeleteItem"
           @reorder="handleMenuReorder"
-              />
+          @toggle-visibility="handleToggleVisibility"
+        />
       </div>
     </div>
 
@@ -112,7 +100,6 @@
             <div class="col-auto" style="width: 24px;"></div>
             <div class="col">Название</div>
             <div class="col-auto" style="width: 100px;">Статус</div>
-            <div class="col-auto" style="width: 80px;">Действия</div>
           </div>
                 </div>
         
@@ -568,6 +555,35 @@ async function confirmDeleteItem(item) {
     } catch (error) {
       toast.error('Ошибка удаления: ' + error.message)
     }
+  }
+}
+
+// Переключение видимости элемента
+async function handleToggleVisibility(data) {
+  try {
+    await updateMenuItem(data.id, { is_active: data.is_active })
+    // Обновляем локальное состояние
+    function updateItemInTree(items, itemId, isActive) {
+      for (const item of items) {
+        if (item.id === itemId) {
+          item.is_active = isActive
+          return true
+        }
+        if (item.children && item.children.length > 0) {
+          if (updateItemInTree(item.children, itemId, isActive)) {
+            return true
+          }
+        }
+      }
+      return false
+    }
+    updateItemInTree(menuItems.value, data.id, data.is_active)
+    clearMenuCache()
+    window.dispatchEvent(new CustomEvent('menu-updated'))
+  } catch (error) {
+    toast.error('Ошибка обновления видимости: ' + error.message)
+    // Перезагружаем данные при ошибке
+    await loadMenuItems()
   }
 }
 

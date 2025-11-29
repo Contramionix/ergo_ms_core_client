@@ -22,6 +22,7 @@
           @edit="$emit('edit', $event)"
           @delete="$emit('delete', $event)"
           @reorder-children="handleChildrenReorder"
+          @toggle-visibility="$emit('toggle-visibility', $event)"
         />
       </SlickItem>
     </SlickList>
@@ -40,7 +41,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['edit', 'delete', 'reorder'])
+const emit = defineEmits(['edit', 'delete', 'reorder', 'toggle-visibility'])
 
 // Локальная копия для drag & drop (как internalTree в EditorCanvas)
 const localItems = ref([...props.items])
