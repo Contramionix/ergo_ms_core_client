@@ -220,10 +220,33 @@ watch([encoding, delimiter], async () => {
     await fetchFileMetaAndLoad(props.file.id)
   }
 })
+
+watch(() => props.file, (newFile, oldFile) => {
+  // Проверяем, что файл существует и изменился
+  if (newFile && newFile !== oldFile) {
+    // Если файл был удален (нет id и нет originalFile), просто очищаем данные
+    if (!newFile.id && !newFile.originalFile && !newFile.temp_path) {
+      errorState.value = null
+      rawData.value = []
+      return
+    }
+    // Перезагружаем данные при изменении файла
+    if (newFile.originalFile instanceof File) {
+      previewCsvLocally(newFile.originalFile)
+    } else if (newFile.id) {
+      fetchFileMetaAndLoad(newFile.id)
+    }
+  }
+}, { deep: true })
   
   onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
   
   async function fetchFileMetaAndLoad(id) {
+  // Проверяем, что файл еще существует (не был удален)
+  if (!id || !props.file || (!props.file.id && !props.file.originalFile && !props.file.temp_path)) {
+    return
+  }
+
   try {
     errorState.value = null
 
@@ -241,6 +264,14 @@ watch([encoding, delimiter], async () => {
       rawData.value = res.data.parsed
     }
   } catch (err) {
+    // Игнорируем ошибку 404, если файл был удален (пользователь уже переключен)
+    if (err.response?.status === 404 || err.status === 404) {
+      console.log('[CsvPreview] Файл был удален, переключение на другой файл')
+      errorState.value = null
+      rawData.value = []
+      return
+    }
+    console.error('[CsvPreview] Ошибка загрузки файла:', err)
     errorState.value = err.message
     rawData.value = []
   }

@@ -510,18 +510,31 @@ async function fetchData() {
     } else if (props.file.id || (props.file.temp_path && !props.file.temp_path.includes(':\\'))) {
       let res
 
-      if (props.file.id) {
-        res = await apiClient.get(`${endpoints.bi.Upload}${props.file.id}/?has_header=${hasHeader.value}`)
-      } else {
-        res = await apiClient.post('/bi_analysis/bi_datasets/xlsx/preview/', {
-          temp_path: props.file.temp_path,
-          has_header: hasHeader.value,
-          row_limit: 1000  // Загружаем первые 1000 строк
-        })
-      }
+      try {
+        if (props.file.id) {
+          res = await apiClient.get(`${endpoints.bi.Upload}${props.file.id}/?has_header=${hasHeader.value}`)
+        } else {
+          res = await apiClient.post('/bi_analysis/bi_datasets/xlsx/preview/', {
+            temp_path: props.file.temp_path,
+            has_header: hasHeader.value,
+            row_limit: 1000  // Загружаем первые 1000 строк
+          })
+        }
 
-      if (!res.success || !res.data?.parsed?.length) {
-        throw new Error('Ошибка загрузки файла')
+        // Проверяем, не был ли файл удален (404 ошибка)
+        if (res.status === 404 || (!res.success && res.status === 404)) {
+          throw new Error('Файл был удален')
+        }
+
+        if (!res.success || !res.data?.parsed?.length) {
+          throw new Error('Ошибка загрузки файла')
+        }
+      } catch (apiError) {
+        // Если это ошибка 404, значит файл был удален
+        if (apiError.response?.status === 404 || apiError.status === 404) {
+          throw new Error('Файл был удален')
+        }
+        throw apiError
       }
 
       parsed = res.data.parsed.map(row =>
@@ -557,8 +570,18 @@ async function fetchData() {
     cachedColumnWidths = null
     cachedColumnsForWidths = null
   } catch (e) {
-    console.error('Ошибка предпросмотра:', e)
-    errorState.value = e.message
+    // Проверяем, не была ли это ошибка 404 (файл удален)
+    if (e.response?.status === 404 || e.status === 404 || e.message?.includes('404') || e.message?.includes('удален')) {
+      // Если файл был удален, просто логируем и не показываем ошибку в UI
+      // (пользователь уже переключен на другой файл)
+      console.log('[XlsxPreviewOptimized] Файл был удален, переключение на другой файл')
+      errorState.value = null
+      rawData.value = []
+      return
+    }
+    // Для других ошибок показываем сообщение
+    console.error('[XlsxPreviewOptimized] Ошибка предпросмотра:', e)
+    errorState.value = e.message || 'Ошибка загрузки файла'
     rawData.value = []
   }
 }
@@ -574,8 +597,15 @@ function getCellValue(row, colIndex) {
 
 watch(hasHeader, fetchData)
 
-watch(() => props.file, () => {
-  if (props.file) {
+watch(() => props.file, (newFile, oldFile) => {
+  // Проверяем, что файл существует и изменился
+  if (newFile && newFile !== oldFile) {
+    // Если файл был удален (нет id и нет temp_path), просто не загружаем данные
+    if (!newFile.id && !newFile.temp_path && !newFile.originalFile) {
+      errorState.value = null
+      rawData.value = []
+      return
+    }
     fetchData()
   }
 }, { deep: true })

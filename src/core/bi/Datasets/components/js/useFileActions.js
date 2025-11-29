@@ -1,7 +1,7 @@
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 
-export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadUserFiles, connectionId, isSheetPickerVisible, currentUploadFile, availableSheets, isReplacing) {
+export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadUserFiles, connectionId, isSheetPickerVisible, currentUploadFile, availableSheets, isReplacing, fileError = null, selectFileCallback = null) {
   
   async function deleteFile(file) {
     const confirmed = confirm(`Вы уверены, что хотите удалить файл "${file.name}"?`)
@@ -11,23 +11,55 @@ export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadU
       const res = await apiClient.delete(endpoints.bi.uploadDelete(file.id))
 
       if (res.status === 204 || res.success) {
-        const index = uploadedFiles.value.findIndex(f => f.id === file.id)
-        if (index !== -1) {
-          uploadedFiles.value.splice(index, 1)
+        const deletedFileIndex = uploadedFiles.value.findIndex(f => f.id === file.id)
+        const wasSelected = selectedFile.value?.id === file.id
+        
+        // Удаляем файл из списка
+        if (deletedFileIndex !== -1) {
+          uploadedFiles.value.splice(deletedFileIndex, 1)
         }
 
-        if (selectedFile.value?.id === file.id) {
-          selectedFile.value = null
+        // Если удаляемый файл был выбран, переключаемся на следующий
+        if (wasSelected) {
+          // Очищаем ошибку, если она была связана с удаленным файлом
+          if (fileError && typeof fileError === 'object' && 'value' in fileError) {
+            fileError.value = null
+          }
+          
+          // Определяем следующий файл для выбора
+          let nextFile = null
+          
+          if (uploadedFiles.value.length > 0) {
+            // Если удаленный файл был не последним, выбираем следующий (с тем же индексом)
+            if (deletedFileIndex < uploadedFiles.value.length) {
+              nextFile = uploadedFiles.value[deletedFileIndex]
+            } else {
+              // Если удаленный был последним, выбираем предыдущий (последний в списке)
+              nextFile = uploadedFiles.value[uploadedFiles.value.length - 1]
+            }
+          }
+          
+          // Переключаемся на следующий файл синхронно, чтобы избежать показа ошибки
+          if (nextFile && selectFileCallback) {
+            // Используем callback для правильного переключения с очисткой ошибок
+            selectFileCallback(nextFile)
+          } else if (nextFile) {
+            // Если callback не передан, просто устанавливаем файл
+            selectedFile.value = nextFile
+          } else {
+            // Если файлов больше нет, очищаем выбор
+            selectedFile.value = null
+          }
         }
 
-        console.log('[deleteFile] удалён успешно')
+        console.log('[deleteFile] файл удалён успешно')
       } else {
         console.warn('[deleteFile] ошибка удаления:', res)
-        alert('Не удалось удалить файл')
+        // Только логируем ошибку, не показываем alert
       }
     } catch (error) {
       console.error('[deleteFile] ошибка при запросе:', error)
-      alert('Ошибка при удалении файла')
+      // Только логируем ошибку, не показываем alert
     }
   }
 
