@@ -272,6 +272,13 @@ function handleNestedNavigate(item) {
 function routeClick(event) {
   event.preventDefault() // Всегда блокируем стандартную навигацию RouterLink
   
+  // Проверяем, является ли элемент внешней ссылкой
+  const externalUrl = props.data.externalUrl || props.data.external_url
+  if (props.data.item_type === 'external' && externalUrl) {
+    window.open(externalUrl, '_blank', 'noopener,noreferrer')
+    return
+  }
+  
   if (hasMenuItems.value) {
     // Если у элемента есть подменю
     if (props.isOpen) {

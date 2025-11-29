@@ -143,6 +143,13 @@ function handleAction(action) {
 }
 
 function handleNavigate(item) {
+  // Проверяем, является ли элемент внешней ссылкой
+  const externalUrl = item.externalUrl || item.external_url
+  if (item.item_type === 'external' && externalUrl) {
+    window.open(externalUrl, '_blank', 'noopener,noreferrer')
+    return
+  }
+  
   if (['datasets', 'connections', 'charts', 'dashboards'].includes(item.page)) {
     emit('open-sidebar', item.page)
   } else if (item.path) {

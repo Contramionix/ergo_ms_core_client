@@ -52,6 +52,19 @@
       @save="executeDeleteSeparator"
       @cancel="cancelDeleteSeparator"
     />
+    
+    <!-- Тост подтверждения удаления элемента меню -->
+    <UnsavedChangesToast
+      :visible="showDeleteItemToast"
+      :saving="isDeletingItem"
+      title="Удаление элемента меню"
+      description="Вы уверены, что хотите удалить этот элемент? Это также удалит все дочерние элементы."
+      cancel-label="Отмена"
+      save-label="Удалить"
+      saving-label="Удаление..."
+      @save="executeDeleteItem"
+      @cancel="cancelDeleteItem"
+    />
 
     <!-- Список элементов меню с drag & drop -->
     <div class="menu-panel__items">
@@ -68,7 +81,7 @@
       <div v-else>
         <!-- Draggable список -->
         <DraggableMenuList
-          :items="menuItems"
+          :items="visibleMenuItems"
           :separators="visibleSeparators"
           :expand-all-groups="expandAllGroups"
           @edit="editItem"
@@ -152,6 +165,7 @@ const expandAllGroups = ref(false)
 const isLoading = ref(false)
 const isSaving = ref(false)
 const isDeletingSeparator = ref(false)
+const isDeletingItem = ref(false)
 const menuItems = ref([])
 const separators = ref([])
 const roles = ref([])
@@ -161,6 +175,10 @@ const availableIcons = ref([])
 // Состояние для подтверждения удаления разделителя
 const showDeleteSeparatorToast = ref(false)
 const separatorToDelete = ref(null)
+
+// Состояние для подтверждения удаления элемента меню
+const showDeleteItemToast = ref(false)
+const itemToDelete = ref(null)
 
 // Отслеживание изменений порядка
 const pendingMenuReorder = ref([])
@@ -192,6 +210,34 @@ const visibleSeparators = computed(() => {
     return separators.value
   }
   return separators.value.filter(sep => sep.id !== separatorToDelete.value.id)
+})
+
+// Видимые элементы меню (исключая тот, который помечен для удаления)
+const visibleMenuItems = computed(() => {
+  if (!itemToDelete.value) {
+    return menuItems.value
+  }
+  
+  // Функция для удаления элемента из дерева
+  function removeItemFromTree(items, itemId) {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].id === itemId) {
+        items.splice(i, 1)
+        return true
+      }
+      if (items[i].children && items[i].children.length > 0) {
+        if (removeItemFromTree(items[i].children, itemId)) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+  
+  // Создаем глубокую копию дерева
+  const treeCopy = JSON.parse(JSON.stringify(menuItems.value))
+  removeItemFromTree(treeCopy, itemToDelete.value.id)
+  return treeCopy
 })
 
 // Модальные окна
@@ -549,26 +595,32 @@ async function saveItem(itemData) {
   }
 }
 
-async function confirmDeleteItem(item) {
-  const confirmed = await confirmDialog.value.open({
-    title: 'Удаление элемента меню',
-    message: `Вы уверены, что хотите удалить "${item.name}"? Это также удалит все дочерние элементы.`,
-    confirmText: 'Удалить',
-    cancelText: 'Отмена',
-    confirmClass: 'btn-danger'
-  })
+function confirmDeleteItem(item) {
+  itemToDelete.value = item
+  showDeleteItemToast.value = true
+}
+
+async function executeDeleteItem() {
+  if (!itemToDelete.value) return
   
-  if (confirmed) {
-    try {
-      await deleteMenuItem(item.id)
-      toast.success('Элемент меню удалён')
-      await loadMenuItems()
-      clearMenuCache()
-      window.dispatchEvent(new CustomEvent('menu-updated'))
-    } catch (error) {
-      toast.error('Ошибка удаления: ' + error.message)
-    }
+  isDeletingItem.value = true
+  try {
+    await deleteMenuItem(itemToDelete.value.id)
+    toast.success('Элемент меню удалён')
+    await loadMenuItems()
+    clearMenuCache()
+    window.dispatchEvent(new CustomEvent('menu-updated'))
+    cancelDeleteItem()
+  } catch (error) {
+    toast.error('Ошибка удаления: ' + error.message)
+  } finally {
+    isDeletingItem.value = false
   }
+}
+
+function cancelDeleteItem() {
+  showDeleteItemToast.value = false
+  itemToDelete.value = null
 }
 
 // Переключение видимости элемента

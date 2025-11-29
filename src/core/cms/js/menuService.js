@@ -75,7 +75,8 @@ function transformMenuItem(item) {
     name: item.name,
     title: item.name,
     icon: item.icon,
-    order: item.order
+    order: item.order,
+    item_type: item.item_type // Сохраняем тип элемента
   }
 
   // Добавляем page для offcanvas элементов
@@ -87,6 +88,7 @@ function transformMenuItem(item) {
   // Добавляем внешнюю ссылку
   if (item.item_type === 'external' && item.external_url) {
     transformed.externalUrl = item.external_url
+    transformed.external_url = item.external_url // Дублируем для совместимости
   }
 
   // Обрабатываем дочерние элементы - сохраняем исходный порядок из API
@@ -103,14 +105,23 @@ function transformMenuItem(item) {
         children.push(transformMenuItem(child))
       } else {
         // Простые элементы - всё остальное (routes, offcanvas, external без детей)
-        list.push({
+        const listItem = {
           routeName: child.route_name,
           name: child.name,
           icon: child.icon,
           page: child.page,
           isOffcanvas: child.item_type === 'offcanvas',
+          item_type: child.item_type, // Сохраняем тип элемента
           order: child.order // Сохраняем order для правильной сортировки
-        })
+        }
+        
+        // Добавляем внешнюю ссылку для external элементов
+        if (child.item_type === 'external' && child.external_url) {
+          listItem.externalUrl = child.external_url
+          listItem.external_url = child.external_url // Дублируем для совместимости
+        }
+        
+        list.push(listItem)
       }
     })
     

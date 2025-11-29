@@ -44,6 +44,9 @@
         <small v-if="item.route_name" class="text-muted ms-2">
           ({{ item.route_name }})
         </small>
+        <small v-if="item.item_type === 'external' && item.external_url" class="text-muted ms-2">
+          ({{ item.external_url }})
+        </small>
       </div>
       
       <!-- Действия -->
