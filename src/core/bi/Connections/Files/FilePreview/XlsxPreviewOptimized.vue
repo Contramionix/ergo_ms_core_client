@@ -45,7 +45,7 @@
       <RecycleScroller
         ref="scrollerRef"
         class="scroller"
-        :items="filteredRows"
+        :items="paginatedRows"
         :item-size="rowHeight"
         key-field="__index"
         :page-mode="false"
@@ -68,12 +68,70 @@
           </div>
         </div>
       </RecycleScroller>
+      
+      <!-- Pagination -->
+      <div v-if="totalRowsCount > 0 || paginatedRows.length > 0" class="pagination-container">
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === 1 || isLoadingPage"
+          @click="goToPage(currentPage - 1)"
+        >
+          <ChevronLeft :size="16" />
+        </button>
+        
+        <div class="pagination-pages">
+          <button 
+            v-for="page in visiblePages" 
+            :key="page"
+            class="pagination-page"
+            :class="{ 'pagination-page--active': page === currentPage }"
+            :disabled="isLoadingPage"
+            @click="goToPage(page)"
+          >
+            {{ page }}
+          </button>
+        </div>
+        
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === totalPages || isLoadingPage"
+          @click="goToPage(currentPage + 1)"
+        >
+          <ChevronRight :size="16" />
+        </button>
+        
+        <div class="pagination-goto">
+          <input 
+            type="number" 
+            class="pagination-input"
+            v-model.number="pageInput"
+            :min="1"
+            :max="totalPages"
+            :placeholder="String(currentPage)"
+            :disabled="isLoadingPage"
+            @keydown.enter="goToInputPage"
+          />
+          <span class="pagination-goto-label">/ {{ totalPages }}</span>
+          <button 
+            class="pagination-goto-btn"
+            :disabled="!pageInput || pageInput < 1 || pageInput > totalPages || isLoadingPage"
+            @click="goToInputPage"
+          >
+            Перейти
+          </button>
+        </div>
+        
+        <span class="pagination-info">
+          {{ paginationStart }}-{{ paginationEnd }} из {{ totalRowsCount }}
+        </span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { RecycleScroller } from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import { apiClient } from '@/js/api/manager'
@@ -94,12 +152,117 @@ const rowHeight = 35
 const scrollerRef = ref(null)
 const headerRef = ref(null)
 const headerWrapperRef = ref(null)
+const isLoadingPage = ref(false)
+
+// Пагинация строк
+const ITEMS_PER_PAGE = parseInt(import.meta.env.VITE_BI_PREVIEW_ITEMS_PER_PAGE || '20', 10)
+const currentPage = ref(1)
+const pageInput = ref(null)
+const totalRowsCount = ref(0)
+const pagesCache = ref(new Map()) // Кэш загруженных страниц { page: [rows] }
+const loadingPages = ref(new Set()) // Страницы, которые сейчас загружаются
 
 // Кэш для загруженных данных
 const dataCache = new Map()
 
-onMounted(() => {
-  fetchData()
+// Загрузка конкретной страницы
+async function loadPage(page) {
+  if (!props.file?.id) return
+  
+  // Если страница уже в кэше, не загружаем
+  if (pagesCache.value.has(page)) {
+    return
+  }
+  
+  // Если страница уже загружается, не загружаем повторно
+  if (loadingPages.value.has(page)) {
+    return
+  }
+  
+  loadingPages.value.add(page)
+  isLoadingPage.value = true
+  
+  try {
+    const offset = (page - 1) * ITEMS_PER_PAGE
+    const params = {
+      has_header: hasHeader.value,
+      limit: ITEMS_PER_PAGE,
+      offset: offset,
+      sheet_name: props.file.sheet
+    }
+    
+    const res = await apiClient.get(`${endpoints.bi.Upload}${props.file.id}/`, params)
+    
+    if (res.success && res.data?.parsed) {
+      const parsed = res.data.parsed.map(row =>
+        row.map(cell => (cell == null ? '' : String(formatDate(cell))))
+      )
+      
+      pagesCache.value.set(page, parsed)
+      
+      // Обновляем общее количество строк
+      if (res.data.total_count !== undefined && res.data.total_count !== null) {
+        totalRowsCount.value = res.data.total_count
+      } else {
+        // Если total_count не пришел, пытаемся оценить по количеству загруженных строк
+        const loadedRows = hasHeader.value && parsed.length > 0 ? parsed.length - 1 : parsed.length
+        if (loadedRows === ITEMS_PER_PAGE) {
+          // Если загружено ровно ITEMS_PER_PAGE строк, значит может быть еще страницы
+          const minTotal = offset + loadedRows + 1
+          if (totalRowsCount.value < minTotal) {
+            totalRowsCount.value = minTotal
+          }
+        } else {
+          // Если загружено меньше ITEMS_PER_PAGE, значит это последняя страница
+          totalRowsCount.value = offset + loadedRows
+        }
+      }
+      
+      // Обновляем rawData для отображения текущей страницы
+      if (page === currentPage.value) {
+        rawData.value = parsed
+        detectTypes()
+      }
+    }
+  } catch {
+    // Ошибка загрузки страницы обрабатывается silently
+  } finally {
+    isLoadingPage.value = false
+    loadingPages.value.delete(page)
+  }
+}
+
+// Переход на страницу
+async function goToPage(page) {
+  const total = totalPages.value
+  if (page >= 1 && page <= total) {
+    currentPage.value = page
+    
+    // Загружаем страницу если её нет в кэше
+    if (!pagesCache.value.has(page)) {
+      await loadPage(page)
+    } else {
+      // Обновляем rawData из кэша
+      rawData.value = pagesCache.value.get(page)
+      detectTypes()
+    }
+  }
+}
+
+async function goToInputPage() {
+  if (pageInput.value && pageInput.value >= 1 && pageInput.value <= totalPages.value) {
+    await goToPage(pageInput.value)
+    pageInput.value = null
+  }
+}
+
+onMounted(async () => {
+  if (props.file?.id) {
+    // Загружаем первую страницу с пагинацией
+    await loadPage(1)
+  } else {
+    await fetchData()
+  }
   
   // Синхронизация горизонтального скролла
   nextTick(() => {
@@ -235,9 +398,13 @@ watch(searchQuery, (newVal) => {
 })
 
 const columns = computed(() => {
-  if (!rawData.value.length) return []
-  if (hasHeader.value) return rawData.value[0]
-  return rawData.value[0].map((_, i) => alphabet[i] || `Col ${i + 1}`)
+  // Получаем заголовки из кэша текущей страницы или из rawData
+  const cachedPage = pagesCache.value.get(currentPage.value)
+  const dataSource = cachedPage || rawData.value
+  
+  if (!dataSource.length) return []
+  if (hasHeader.value) return dataSource[0]
+  return dataSource[0].map((_, i) => alphabet[i] || `Col ${i + 1}`)
 })
 
 const rows = computed(() =>
@@ -294,6 +461,84 @@ const filteredRows = computed(() => {
   cachedRowsData = dataRows
   
   return result
+})
+
+// Получаем строки текущей страницы
+const paginatedRows = computed(() => {
+  // Если есть поиск, используем клиентскую пагинацию из filteredRows
+  if (debouncedSearchQuery.value) {
+    const start = (currentPage.value - 1) * ITEMS_PER_PAGE
+    const end = start + ITEMS_PER_PAGE
+    return filteredRows.value.slice(start, end)
+  }
+  
+  // Без поиска используем серверную пагинацию из кэша
+  const cachedPage = pagesCache.value.get(currentPage.value)
+  if (cachedPage) {
+    // Если есть заголовок, убираем его для отображения (заголовок уже в columns)
+    if (hasHeader.value && cachedPage.length > 0) {
+      const rows = cachedPage.slice(1)
+      return rows.map((row, idx) => {
+        const rowObj = { 
+          __index: idx,
+          _cells: row
+        }
+        return rowObj
+      })
+    }
+    return cachedPage.map((row, idx) => {
+      const rowObj = { 
+        __index: idx,
+        _cells: row
+      }
+      return rowObj
+    })
+  }
+  
+  // Если страница не закэширована, возвращаем пустой массив
+  return []
+})
+
+// Пагинация
+const totalPages = computed(() => {
+  if (totalRowsCount.value === 0) {
+    // Если totalRowsCount еще не загружен, но есть данные на текущей странице
+    const currentRows = paginatedRows.value.length
+    if (currentRows > 0) {
+      return 1
+    }
+    return 1
+  }
+  return Math.ceil(totalRowsCount.value / ITEMS_PER_PAGE) || 1
+})
+
+const visiblePages = computed(() => {
+  const pages = []
+  const total = totalPages.value
+  const current = currentPage.value
+  
+  if (total <= 5) {
+    for (let i = 1; i <= total; i++) pages.push(i)
+  } else {
+    if (current <= 3) {
+      pages.push(1, 2, 3, 4, 5)
+    } else if (current >= total - 2) {
+      for (let i = total - 4; i <= total; i++) pages.push(i)
+    } else {
+      for (let i = current - 2; i <= current + 2; i++) pages.push(i)
+    }
+  }
+  
+  return pages
+})
+
+const paginationStart = computed(() => {
+  if (totalRowsCount.value === 0) return 0
+  return (currentPage.value - 1) * ITEMS_PER_PAGE + 1
+})
+
+const paginationEnd = computed(() => {
+  return Math.min(currentPage.value * ITEMS_PER_PAGE, totalRowsCount.value)
 })
 
 // Кэш для ширины колонок
@@ -512,7 +757,15 @@ async function fetchData() {
 
       try {
         if (props.file.id) {
-          res = await apiClient.get(`${endpoints.bi.Upload}${props.file.id}/?has_header=${hasHeader.value}`)
+          // Загружаем первую страницу с пагинацией
+          const offset = (currentPage.value - 1) * ITEMS_PER_PAGE
+          const params = {
+            has_header: hasHeader.value,
+            limit: ITEMS_PER_PAGE,
+            offset: offset,
+            sheet_name: props.file.sheet
+          }
+          res = await apiClient.get(`${endpoints.bi.Upload}${props.file.id}/`, params)
         } else {
           res = await apiClient.post('/bi_analysis/bi_datasets/xlsx/preview/', {
             temp_path: props.file.temp_path,
@@ -540,17 +793,30 @@ async function fetchData() {
       parsed = res.data.parsed.map(row =>
         row.map(cell => (cell == null ? '' : String(formatDate(cell))))
       )
+      
+      // Если это файл с id, обрабатываем пагинацию
+      if (props.file.id && res.data.total_count !== undefined) {
+        // Сохраняем страницу в кэш
+        pagesCache.value.set(currentPage.value, parsed)
+        
+        // Обновляем общее количество строк
+        totalRowsCount.value = res.data.total_count
+        
+        // Обновляем rawData для отображения текущей страницы
+        rawData.value = parsed
+      } else {
+        // Для локальных файлов или temp_path используем все данные
+        rawData.value = parsed
+      }
     } else {
       throw new Error('Файл не поддерживается или не загружен')
     }
-
-    rawData.value = parsed
     
     // Определяем типы
     detectTypes()
     
-    // Сохраняем в кэш (только для файлов с id или temp_path)
-    if (cacheKey) {
+    // Сохраняем в кэш (только для файлов с id или temp_path, и только если не используется пагинация)
+    if (cacheKey && !props.file.id) {
       // Ограничиваем размер кэша (максимум 10 файлов)
       if (dataCache.size >= 10) {
         const firstKey = dataCache.keys().next().value
@@ -572,15 +838,12 @@ async function fetchData() {
   } catch (e) {
     // Проверяем, не была ли это ошибка 404 (файл удален)
     if (e.response?.status === 404 || e.status === 404 || e.message?.includes('404') || e.message?.includes('удален')) {
-      // Если файл был удален, просто логируем и не показываем ошибку в UI
+      // Если файл был удален, просто не показываем ошибку в UI
       // (пользователь уже переключен на другой файл)
-      console.log('[XlsxPreviewOptimized] Файл был удален, переключение на другой файл')
       errorState.value = null
       rawData.value = []
       return
     }
-    // Для других ошибок показываем сообщение
-    console.error('[XlsxPreviewOptimized] Ошибка предпросмотра:', e)
     errorState.value = e.message || 'Ошибка загрузки файла'
     rawData.value = []
   }
@@ -595,18 +858,40 @@ function getCellValue(row, colIndex) {
   return row._cells[colIndex] ?? ''
 }
 
-watch(hasHeader, fetchData)
+watch(hasHeader, async () => {
+  if (props.file?.id) {
+    // Сбрасываем кэш и загружаем первую страницу
+    pagesCache.value.clear()
+    currentPage.value = 1
+    totalRowsCount.value = 0
+    await loadPage(1)
+  } else {
+    await fetchData()
+  }
+})
 
-watch(() => props.file, (newFile, oldFile) => {
+watch(() => props.file, async (newFile, oldFile) => {
   // Проверяем, что файл существует и изменился
   if (newFile && newFile !== oldFile) {
     // Если файл был удален (нет id и нет temp_path), просто не загружаем данные
     if (!newFile.id && !newFile.temp_path && !newFile.originalFile) {
       errorState.value = null
       rawData.value = []
+      pagesCache.value.clear()
+      currentPage.value = 1
+      totalRowsCount.value = 0
       return
     }
-    fetchData()
+    
+    if (newFile.id) {
+      // Сбрасываем кэш и загружаем первую страницу
+      pagesCache.value.clear()
+      currentPage.value = 1
+      totalRowsCount.value = 0
+      await loadPage(1)
+    } else {
+      await fetchData()
+    }
   }
 }, { deep: true })
 
@@ -614,7 +899,7 @@ watch(() => props.file, (newFile, oldFile) => {
 let lastRowsLength = 0
 let lastColumnsLength = 0
 
-watch([() => filteredRows.value.length, () => columns.value.length], ([rowsLen, colsLen]) => {
+watch([() => paginatedRows.value.length, () => columns.value.length], ([rowsLen, colsLen]) => {
   // Переустанавливаем только если изменилась структура (количество строк или колонок)
   if (rowsLen !== lastRowsLength || colsLen !== lastColumnsLength) {
     lastRowsLength = rowsLen
@@ -806,6 +1091,164 @@ watch([() => filteredRows.value.length, () => columns.value.length], ([rowsLen, 
 .search-wrapper {
   flex: 1;
   max-width: 300px;
+}
+
+/* Pagination styles */
+.pagination-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  margin-top: 12px;
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.pagination-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-primary-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--color-hover-background);
+  border-color: var(--color-accent);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pagination-page {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--color-secondary-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-page:hover:not(.pagination-page--active) {
+  background: var(--color-hover-background);
+  color: var(--color-primary-text);
+}
+
+.pagination-page--active {
+  background: var(--color-accent);
+  color: var(--color-primary-background);
+  font-weight: 600;
+  cursor: default;
+}
+
+.pagination-goto {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid var(--color-border);
+}
+
+.pagination-input {
+  width: 60px;
+  height: 28px;
+  padding: 0 8px;
+  background: var(--color-primary-background);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-primary-text);
+  font-size: 13px;
+  text-align: center;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.pagination-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.15);
+}
+
+.pagination-input::placeholder {
+  color: var(--color-secondary-text);
+}
+
+.pagination-input::-webkit-outer-spin-button,
+.pagination-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+.pagination-input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.pagination-goto-label {
+  font-size: 13px;
+  color: var(--color-secondary-text);
+}
+
+.pagination-goto-btn {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-goto-btn:hover:not(:disabled) {
+  background: var(--color-hover-background);
+  border-color: var(--color-accent);
+}
+
+.pagination-goto-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--color-secondary-text);
+}
+
+@media (max-width: 768px) {
+  .pagination-container {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .pagination-info {
+    width: 100%;
+    text-align: center;
+    margin-top: 8px;
+  }
 }
 </style>
 
