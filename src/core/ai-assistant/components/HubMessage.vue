@@ -27,7 +27,12 @@
       <!-- Header -->
       <div class="message-header">
         <span class="message-author">{{ authorName }}</span>
-        <span class="message-time">{{ formattedTime }}</span>
+        <div class="message-time-info">
+          <span class="message-time">{{ formattedTime }}</span>
+          <span v-if="message.processing_time_ms" class="message-processing-time">
+            {{ formatProcessingTime(message.processing_time_ms) }}
+          </span>
+        </div>
       </div>
 
       <!-- Text Content -->
@@ -266,6 +271,13 @@ const formattedTime = computed(() => {
   return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 })
 
+const formatProcessingTime = (ms) => {
+  if (!ms) return ''
+  if (ms < 1000) return `${ms}мс`
+  const seconds = (ms / 1000).toFixed(1)
+  return `${seconds}с`
+}
+
 const formattedContent = computed(() => {
   if (!props.message.content) return ''
   return props.message.content
@@ -486,10 +498,26 @@ const copySql = async () => {
   letter-spacing: $letter-spacing-wide;
 }
 
+.message-time-info {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
 .message-time {
   font-family: $font-family-mono;
   font-size: $font-size-xs;
   color: var(--text-muted);
+}
+
+.message-processing-time {
+  font-family: $font-family-mono;
+  font-size: $font-size-xs;
+  color: var(--accent);
+  padding: 2px 6px;
+  background: rgba(58, 232, 255, 0.1);
+  border-radius: $radius-sm;
+  border: 1px solid rgba(58, 232, 255, 0.2);
 }
 
 .message-content {

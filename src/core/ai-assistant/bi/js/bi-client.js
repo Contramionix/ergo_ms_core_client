@@ -229,7 +229,7 @@ class BIClient {
     }
   }
 
-  async askQuestionStream(fileId, question, wantCommentary = true, ollamaConfig = null, onEvent) {
+  async askQuestionStream(fileId, question, wantCommentary = true, ollamaConfig = null, onEvent, sessionId = null) {
     try {
       const baseURL = apiClient.getBaseUrl() + apiClient.apiPath
       const token = apiClient.getAuthToken()
@@ -244,6 +244,11 @@ class BIClient {
         question: question,
         want_commentary: wantCommentary,
         stream: true,
+      }
+      
+      // Добавляем session_id, если указан
+      if (sessionId) {
+        requestBody.session_id = sessionId
       }
       
       // Добавляем настройки Ollama, если они есть

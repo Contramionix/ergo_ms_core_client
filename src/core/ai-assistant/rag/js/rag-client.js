@@ -7,6 +7,8 @@ const endpoints = {
   chat: 'ai_assistant/chat/',
   chatStream: 'ai_assistant/chat/stream/',
   ollamaStatus: 'ai_assistant/ollama_status/',
+  chatSessions: 'ai_assistant/chat_sessions/',
+  chatSessionDetail: (id) => `ai_assistant/chat_sessions/${id}/`,
 }
 
 /**
@@ -135,17 +137,25 @@ class RAGClient {
    * Отправить сообщение в чат с поддержкой streaming (SSE)
    * @param {string} message - Сообщение пользователя
    * @param {Function} onChunk - Callback для каждого чанка текста
-   * @param {Function} onDone - Callback при завершении (получает полный ответ)
+   * @param {Function} onDone - Callback при завершении (получает полный ответ, session_id, message_id, processing_time_ms)
    * @param {Function} onError - Callback при ошибке
    * @param {Object} ollamaConfig - настройки Ollama (опционально)
+   * @param {string} sessionId - ID сессии чата (опционально)
+   * @param {string} module - Модуль AI ассистента (опционально, по умолчанию 'chat')
    * @returns {Promise<void>}
    */
-  async sendMessageStream(message, onChunk, onDone, onError, ollamaConfig = null) {
+  async sendMessageStream(message, onChunk, onDone, onError, ollamaConfig = null, sessionId = null, module = 'chat') {
     // Используем настройки из параметра или из сохраненного конфига
     const config = ollamaConfig || this.ollamaConfig
     
     const requestBody = {
       message: message,
+      module: module,
+    }
+    
+    // Добавляем session_id, если указан
+    if (sessionId) {
+      requestBody.session_id = sessionId
     }
     
     // Добавляем настройки Ollama, если они есть
@@ -212,7 +222,12 @@ class RAGClient {
               } else if (event.type === 'done') {
                 doneEventReceived = true
                 if (onDone) {
-                  onDone(event.full_response || accumulatedContent)
+                  onDone(event.full_response || accumulatedContent, {
+                    session_id: event.session_id,
+                    message_id: event.message_id,
+                    processing_time_ms: event.processing_time_ms,
+                    timestamp: event.timestamp,
+                  })
                 }
               } else if (event.type === 'error' && onError) {
                 doneEventReceived = true
@@ -233,6 +248,129 @@ class RAGClient {
       console.error('Ошибка streaming сообщения:', error)
       if (onError) {
         onError(error.message || 'Не удалось отправить сообщение')
+      }
+    }
+  }
+
+  /**
+   * Получить список сессий чатов
+   * @param {string} module - Фильтр по модулю (опционально)
+   * @returns {Promise<Object>}
+   */
+  async getChatSessions(module = null) {
+    try {
+      const params = module ? { module } : {}
+      const response = await apiClient.get(endpoints.chatSessions, params)
+      
+      if (response.success) {
+        return {
+          success: true,
+          sessions: response.data.sessions || [],
+          count: response.data.count || 0,
+        }
+      }
+      
+      return {
+        success: false,
+        error: response.data?.error || 'Ошибка получения списка чатов',
+      }
+    } catch (error) {
+      console.error('Ошибка получения списка чатов:', error)
+      return {
+        success: false,
+        error: error.message || 'Не удалось получить список чатов',
+      }
+    }
+  }
+
+  /**
+   * Получить сессию чата с сообщениями
+   * @param {string} sessionId - ID сессии
+   * @returns {Promise<Object>}
+   */
+  async getChatSession(sessionId) {
+    try {
+      const response = await apiClient.get(endpoints.chatSessionDetail(sessionId))
+      
+      if (response.success) {
+        return {
+          success: true,
+          session: response.data.session,
+          messages: response.data.messages || [],
+        }
+      }
+      
+      return {
+        success: false,
+        error: response.data?.error || 'Ошибка получения чата',
+      }
+    } catch (error) {
+      console.error('Ошибка получения чата:', error)
+      return {
+        success: false,
+        error: error.message || 'Не удалось получить чат',
+      }
+    }
+  }
+
+  /**
+   * Создать новую сессию чата
+   * @param {string} title - Название чата
+   * @param {string} module - Модуль AI ассистента
+   * @returns {Promise<Object>}
+   */
+  async createChatSession(title = 'Новый чат', module = 'chat') {
+    try {
+      const response = await apiClient.post(endpoints.chatSessions, {
+        title,
+        module,
+      })
+      
+      if (response.success) {
+        return {
+          success: true,
+          session: response.data.session,
+        }
+      }
+      
+      return {
+        success: false,
+        error: response.data?.error || 'Ошибка создания чата',
+      }
+    } catch (error) {
+      console.error('Ошибка создания чата:', error)
+      return {
+        success: false,
+        error: error.message || 'Не удалось создать чат',
+      }
+    }
+  }
+
+  /**
+   * Удалить сессию чата
+   * @param {string} sessionId - ID сессии
+   * @returns {Promise<Object>}
+   */
+  async deleteChatSession(sessionId) {
+    try {
+      const response = await apiClient.delete(endpoints.chatSessionDetail(sessionId))
+      
+      if (response.success) {
+        return {
+          success: true,
+          message: response.data?.message || 'Чат удален',
+        }
+      }
+      
+      return {
+        success: false,
+        error: response.data?.error || 'Ошибка удаления чата',
+      }
+    } catch (error) {
+      console.error('Ошибка удаления чата:', error)
+      return {
+        success: false,
+        error: error.message || 'Не удалось удалить чат',
       }
     }
   }

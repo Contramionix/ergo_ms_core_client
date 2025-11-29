@@ -9,7 +9,7 @@
       :accelerated="isAIGenerating"
     />
 
-    <!-- Боковая панель навигации -->
+    <!-- Боковая панель навигации (только статус) -->
     <aside class="neural-sidebar">
       <div class="sidebar-brand">
         <div class="brand-icon">
@@ -25,38 +25,63 @@
         </div>
       </div>
 
-      <nav class="sidebar-modules">
-        <span class="modules-label">// МОДУЛИ</span>
-        
-        <button 
-          v-for="module in modules" 
-          :key="module.id"
-          class="module-card"
-          :class="{ 
-            'module-card--active': activeModule === module.id,
-            'module-card--disabled': module.comingSoon 
-          }"
-          :style="activeModule === module.id ? `--module-accent: ${module.color}` : ''"
-          @click="!module.comingSoon && switchModule(module.id)"
-        >
-          <div class="module-card__indicator"></div>
-          <div class="module-card__icon" :style="{ color: module.color }">
-            <component :is="module.icon" :size="22" />
-          </div>
-          <div class="module-card__content">
-            <span class="module-card__name">{{ module.name }}</span>
-            <span class="module-card__desc">{{ module.description }}</span>
-          </div>
-          <span v-if="module.comingSoon" class="module-card__badge">DEV</span>
-          <ChevronRight v-else :size="16" class="module-card__arrow" />
-        </button>
-      </nav>
-
       <div class="sidebar-status">
         <div class="status-indicator" :class="{ 'status-indicator--online': ollamaOnline }">
           <div class="status-dot"></div>
           <Cpu :size="14" />
           <span class="status-text">{{ currentModel }}</span>
+        </div>
+      </div>
+
+      <!-- Chat History -->
+      <div class="sidebar-history">
+        <div class="history-header">
+          <span class="history-label">// ИСТОРИЯ</span>
+          <button class="history-new-btn" @click="createNewChat" title="Новый чат">
+            <Plus :size="14" />
+          </button>
+        </div>
+        
+        <div class="history-list">
+          <!-- Group by module -->
+          <template v-for="module in availableModules" :key="module.id">
+            <div v-if="getSessionsByModule(module.id).length > 0" class="history-module-group">
+              <div class="history-module-header">
+                <component :is="module.icon" :size="14" :style="{ color: module.color }" />
+                <span class="history-module-name">{{ module.name }}</span>
+                <span class="history-module-count">({{ getSessionsByModule(module.id).length }})</span>
+              </div>
+              <div class="history-module-sessions">
+                <button
+                  v-for="session in getSessionsByModule(module.id)"
+                  :key="session.id"
+                  class="history-item"
+                  :class="{ 'history-item--active': currentChatSession?.id === session.id && activeModule === module.id }"
+                  @click="loadChatSession(session.id, module.id)"
+                >
+                  <div class="history-item__content">
+                    <div class="history-item__title">{{ session.title || 'Без названия' }}</div>
+                    <div class="history-item__meta">
+                      <span>{{ session.message_count }} сообщений</span>
+                      <span class="history-item__time">{{ formatSessionTime(session.updated_at) }}</span>
+                    </div>
+                  </div>
+                  <button 
+                    class="history-item__delete"
+                    @click.stop="deleteChatSession(session.id)"
+                    title="Удалить"
+                  >
+                    <X :size="12" />
+                  </button>
+                </button>
+              </div>
+            </div>
+          </template>
+          
+          <div v-if="chatSessions.length === 0" class="history-empty">
+            <History :size="24" />
+            <p>Нет сохраненных чатов</p>
+          </div>
         </div>
       </div>
     </aside>
@@ -81,6 +106,17 @@
         </div>
 
         <div class="banner-actions">
+          <!-- Module Selector -->
+          <select 
+            v-model="activeModule" 
+            class="module-selector"
+            :style="{ '--select-color': currentModuleConfig?.color }"
+          >
+            <option v-for="module in availableModules" :key="module.id" :value="module.id">
+              {{ module.name }}
+            </option>
+          </select>
+          
           <button class="action-btn action-btn--danger" @click="clearHistory" title="Очистить историю">
             <Trash2 :size="18" />
             <span>Очистить</span>
@@ -125,9 +161,22 @@
             
             <!-- Typing Indicator -->
             <div v-if="chatLoading" class="typing-indicator">
-              <div class="typing-avatar" :style="{ background: currentModuleConfig?.color }">
-                <component :is="currentModuleConfig?.icon" :size="18" />
+              <!-- Connection line decoration -->
+              <div class="message-connector">
+                <div class="connector-line"></div>
+                <div class="connector-node"></div>
               </div>
+              
+              <!-- Avatar -->
+              <div class="typing-avatar" :style="`--avatar-color: ${currentModuleConfig?.color || '#3ae8ff'}`">
+                <div class="avatar-core">
+                  <component :is="currentModuleConfig?.icon" :size="20" />
+                </div>
+                <div class="avatar-ring"></div>
+                <div class="avatar-pulse"></div>
+              </div>
+              
+              <!-- Content -->
               <div class="typing-content">
                 <div class="typing-text">Генерация ответа</div>
                 <div class="typing-dots">
@@ -294,9 +343,22 @@
               />
               
               <div v-if="biLoading" class="typing-indicator">
-                <div class="typing-avatar" :style="{ background: currentModuleConfig?.color }">
-                  <component :is="currentModuleConfig?.icon" :size="18" />
+                <!-- Connection line decoration -->
+                <div class="message-connector">
+                  <div class="connector-line"></div>
+                  <div class="connector-node"></div>
                 </div>
+                
+                <!-- Avatar -->
+                <div class="typing-avatar" :style="`--avatar-color: ${currentModuleConfig?.color || '#3ae8ff'}`">
+                  <div class="avatar-core">
+                    <component :is="currentModuleConfig?.icon" :size="20" />
+                  </div>
+                  <div class="avatar-ring"></div>
+                  <div class="avatar-pulse"></div>
+                </div>
+                
+                <!-- Content -->
                 <div class="typing-content">
                   <div class="typing-text">Анализ данных</div>
                   <div class="typing-dots">
@@ -355,16 +417,17 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { 
-  Sparkles, Cpu, Trash2, Send, Zap, ChevronRight, ArrowRight,
-  Database, FileSpreadsheet, FileQuestion, Upload, X
+  Sparkles, Cpu, Trash2, Send, Zap, ArrowRight,
+  Database, FileSpreadsheet, FileQuestion, Upload, X, History, Plus
 } from 'lucide-vue-next'
 import { modules, getModuleById } from '../modules/index.js'
 import NeuralBackground from '../components/NeuralBackground.vue'
 import HubMessage from '../components/HubMessage.vue'
 import { ragClient } from '../rag/js/rag-client.js'
 import { biClient } from '../bi/js/bi-client.js'
+import { useToast } from 'vue-toastification'
 
 // Theme - используем общую систему тем приложения
 const getSystemTheme = () => {
@@ -427,9 +490,6 @@ const isAIGenerating = computed(() => {
   return hasChatStreaming || hasBiStreaming
 })
 
-const switchModule = (id) => {
-  activeModule.value = id
-}
 
 // Ollama status
 const currentModel = ref('Загрузка...')
@@ -442,6 +502,9 @@ const chatInput = ref('')
 const chatLoading = ref(false)
 let chatMsgId = 1
 const chatHistory = ref([])
+const currentChatSession = ref(null)
+const chatSessions = ref([])
+const toast = useToast()
 
 // BI state
 const biMessagesRef = ref(null)
@@ -454,15 +517,186 @@ const files = ref([])
 let biMsgId = 1
 const biHistory = ref([])
 
+// Available modules for selector
+const availableModules = computed(() => {
+  return modules.filter(m => !m.comingSoon)
+})
+
 // Initialize chat with welcome message
-const initChat = () => {
+const initChat = (session = null) => {
   const config = getModuleById('chat')
-  chatHistory.value = [{
-    id: chatMsgId++,
-    type: 'assistant',
-    content: config?.settings?.welcomeMessage || 'Привет! Чем могу помочь?',
-    timestamp: new Date(),
-  }]
+  if (session && session.messages && session.messages.length > 0) {
+    // Загружаем сообщения из сессии
+    chatHistory.value = session.messages.map(msg => ({
+      id: msg.id,
+      type: msg.type,
+      content: msg.content,
+      timestamp: msg.created_at,
+      processing_time_ms: msg.processing_time_ms,
+      request_started_at: msg.request_started_at,
+      response_received_at: msg.response_received_at,
+    }))
+  } else {
+    chatHistory.value = [{
+      id: chatMsgId++,
+      type: 'assistant',
+      content: config?.settings?.welcomeMessage || 'Привет! Чем могу помочь?',
+      timestamp: new Date(),
+    }]
+  }
+}
+
+// Load chat sessions for all modules
+const loadChatSessions = async () => {
+  // Загружаем сессии для всех модулей
+  const allSessions = []
+  for (const module of availableModules.value) {
+    const result = await ragClient.getChatSessions(module.id)
+    if (result.success && result.sessions) {
+      allSessions.push(...result.sessions)
+    }
+  }
+  chatSessions.value = allSessions
+}
+
+// Get sessions by module
+const getSessionsByModule = (moduleId) => {
+  return chatSessions.value.filter(session => session.module === moduleId)
+}
+
+// Load specific chat session
+const loadChatSession = async (sessionId, moduleId = null) => {
+  const result = await ragClient.getChatSession(sessionId)
+  if (result.success) {
+    currentChatSession.value = { id: sessionId, ...result.session }
+    const sessionModule = moduleId || result.session.module || 'chat'
+    
+    // Переключаемся на модуль чата, если он указан
+    if (sessionModule !== activeModule.value) {
+      activeModule.value = sessionModule
+    }
+    
+    if (sessionModule === 'bi') {
+      // Восстанавливаем файл и подключение из metadata сессии
+      if (result.session.metadata && result.session.metadata.file_id) {
+        const fileId = result.session.metadata.file_id
+        
+        // Загружаем подключения, если еще не загружены
+        if (connections.value.length === 0) {
+          await loadConnections()
+        }
+        
+        // Ищем файл во всех подключениях
+        let foundFile = null
+        let foundConnection = null
+        
+        for (const conn of connections.value) {
+          const connFiles = await biClient.getConnectionFiles(conn.id)
+          if (connFiles.success && connFiles.files) {
+            foundFile = connFiles.files.find(f => f.id === fileId)
+            if (foundFile) {
+              foundConnection = conn
+              break
+            }
+          }
+        }
+        
+        // Если файл найден, устанавливаем его
+        if (foundFile && foundConnection) {
+          selectedConnection.value = foundConnection
+          selectedFile.value = foundFile
+          await loadFiles() // Загружаем файлы для выбранного подключения
+        } else {
+          // Если файл не найден, показываем предупреждение
+          toast.warning('Файл из истории не найден. Возможно, он был удален.')
+        }
+      }
+      
+      // Загружаем историю для BI модуля
+      biHistory.value = result.messages.map(msg => {
+        const biMsg = {
+          id: msg.id,
+          type: msg.type,
+          content: msg.content,
+          timestamp: msg.created_at,
+          processing_time_ms: msg.processing_time_ms,
+          request_started_at: msg.request_started_at,
+          response_received_at: msg.response_received_at,
+        }
+        // Добавляем BI-специфичные поля из metadata
+        if (msg.metadata) {
+          if (msg.metadata.sql) biMsg.sql = msg.metadata.sql
+          if (msg.metadata.data) biMsg.data = { 
+            data: msg.metadata.data,
+            rows: msg.metadata.rows,
+            columns: msg.metadata.columns,
+          }
+        }
+        return biMsg
+      })
+      scrollToBottom(biMessagesRef)
+    } else {
+      // Загружаем историю для обычного чата
+      initChat({ messages: result.messages })
+      scrollToBottom(chatMessagesRef)
+    }
+  } else {
+    toast.error(result.error || 'Не удалось загрузить чат')
+  }
+}
+
+// Create new chat session
+const createNewChat = async () => {
+  currentChatSession.value = null
+  // Инициализируем чат для текущего активного модуля
+  if (activeModule.value === 'chat') {
+    initChat()
+  } else if (activeModule.value === 'bi') {
+    // Для BI модуля инициализация происходит при выборе файла
+    biHistory.value = selectedFile.value && selectedConnection.value ? [{
+      id: biMsgId++,
+      type: 'assistant',
+      content: `Файл **${selectedFile.value.name}** из подключения **${selectedConnection.value.name}** выбран для анализа. Задайте вопрос к данным.`,
+      timestamp: new Date(),
+    }] : []
+  }
+  await loadChatSessions()
+}
+
+// Delete chat session
+const deleteChatSession = async (sessionId) => {
+  if (confirm('Удалить этот чат?')) {
+    const result = await ragClient.deleteChatSession(sessionId)
+    if (result.success) {
+      if (currentChatSession.value?.id === sessionId) {
+        currentChatSession.value = null
+        initChat()
+      }
+      await loadChatSessions()
+      toast.success('Чат удален')
+    } else {
+      toast.error(result.error || 'Не удалось удалить чат')
+    }
+  }
+}
+
+// Format session time
+const formatSessionTime = (timeStr) => {
+  if (!timeStr) return ''
+  const date = new Date(timeStr)
+  const now = new Date()
+  const diff = now - date
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  
+  if (days === 0) {
+    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  } else if (days === 1) {
+    return 'Вчера'
+  } else if (days < 7) {
+    return `${days} дн. назад`
+  } else {
+    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+  }
 }
 
 // Scroll helpers
@@ -514,21 +748,33 @@ const sendChatMessage = async (text) => {
         }
         scrollToBottom(chatMessagesRef)
       },
-      (fullResponse) => {
+      (fullResponse, metadata) => {
         if (chatStreamingMsgId) {
           const msg = chatHistory.value.find(m => m.id === chatStreamingMsgId)
           if (msg) {
             if (fullResponse) msg.content = fullResponse
             msg.streaming = false
+            if (metadata) {
+              msg.processing_time_ms = metadata.processing_time_ms
+              msg.timestamp = metadata.timestamp ? new Date(metadata.timestamp) : new Date()
+            }
           }
         } else if (fullResponse) {
           chatHistory.value.push({
             id: chatMsgId++,
             type: 'assistant',
             content: fullResponse,
-            timestamp: new Date(),
+            timestamp: metadata?.timestamp ? new Date(metadata.timestamp) : new Date(),
+            processing_time_ms: metadata?.processing_time_ms,
           })
         }
+        
+        // Обновляем session_id если он был создан
+        if (metadata?.session_id) {
+          currentChatSession.value = { id: metadata.session_id }
+          loadChatSessions()
+        }
+        
         chatLoading.value = false
         chatStreamingMsgId = null
         scrollToBottom(chatMessagesRef)
@@ -551,7 +797,10 @@ const sendChatMessage = async (text) => {
         chatLoading.value = false
         chatStreamingMsgId = null
         scrollToBottom(chatMessagesRef)
-      }
+      },
+      null, // ollamaConfig
+      currentChatSession.value?.id, // sessionId
+      activeModule.value // module
     )
   } catch (e) {
     if (chatStreamingMsgId) {
@@ -605,14 +854,41 @@ const selectConnection = (connection) => {
   loadFiles()
 }
 
-const selectFile = (file) => {
+const selectFile = async (file) => {
   selectedFile.value = file
-  biHistory.value = [{
-    id: biMsgId++,
-    type: 'assistant',
-    content: `Файл **${file.name}** из подключения **${selectedConnection.value.name}** выбран для анализа. Задайте вопрос к данным.`,
-    timestamp: new Date(),
-  }]
+  
+  // Загружаем историю чатов для этого файла (BI модуль)
+  const result = await ragClient.getChatSessions('bi')
+  if (result.success && result.sessions) {
+    // Ищем сессию для этого файла
+    const fileSession = result.sessions.find(s => 
+      s.metadata?.file_id === file.id || s.title?.includes(file.name)
+    )
+    
+    if (fileSession) {
+      // Загружаем существующую сессию
+      await loadChatSession(fileSession.id, 'bi')
+      currentChatSession.value = { id: fileSession.id, ...fileSession }
+    } else {
+      // Создаем новую сессию
+      currentChatSession.value = null
+      biHistory.value = [{
+        id: biMsgId++,
+        type: 'assistant',
+        content: `Файл **${file.name}** из подключения **${selectedConnection.value.name}** выбран для анализа. Задайте вопрос к данным.`,
+        timestamp: new Date(),
+      }]
+    }
+  } else {
+    // Если не удалось загрузить, показываем приветственное сообщение
+    currentChatSession.value = null
+    biHistory.value = [{
+      id: biMsgId++,
+      type: 'assistant',
+      content: `Файл **${file.name}** из подключения **${selectedConnection.value.name}** выбран для анализа. Задайте вопрос к данным.`,
+      timestamp: new Date(),
+    }]
+  }
 }
 
 const sendBIMessage = async (text) => {
@@ -632,52 +908,72 @@ const sendBIMessage = async (text) => {
   const responseId = biMsgId++
 
   try {
-    await biClient.askQuestionStream(selectedFile.value.id, messageText, true, null, (event) => {
-      let msg = biHistory.value.find(m => m.id === responseId)
-      if (!msg) {
-        msg = { 
-          id: responseId, 
-          type: 'assistant', 
-          content: '', 
-          sql: null, 
-          data: null, 
-          stage: '',
-          timestamp: new Date(),
-          streaming: true,
+    await biClient.askQuestionStream(
+      selectedFile.value.id, 
+      messageText, 
+      true, 
+      null, 
+      (event) => {
+        let msg = biHistory.value.find(m => m.id === responseId)
+        if (!msg) {
+          msg = { 
+            id: responseId, 
+            type: 'assistant', 
+            content: '', 
+            sql: null, 
+            data: null, 
+            stage: '',
+            timestamp: new Date(),
+            streaming: true,
+          }
+          biHistory.value.push(msg)
+          biLoading.value = false
         }
-        biHistory.value.push(msg)
-        biLoading.value = false
-      }
 
-      switch (event.type) {
-        case 'stage':
-          msg.stage = event.message || event.text || ''
-          break
-        case 'sql':
-          msg.sql = event.text || ''
-          msg.stage = ''
-          break
-        case 'commentary':
-          msg.content += event.text || ''
-          break
-        case 'complete':
-          msg.data = { rows: event.rows, columns: event.columns, data: event.data }
-          msg.sql = event.sql || msg.sql
-          msg.stage = ''
-          msg.streaming = false
-          break
-        case 'error':
-          msg.content = `Ошибка: ${event.message || event.text}`
-          msg.stage = ''
-          msg.streaming = false
-          break
-        case 'done':
-          msg.stage = ''
-          msg.streaming = false
-          break
-      }
-      scrollToBottom(biMessagesRef)
-    })
+        switch (event.type) {
+          case 'stage':
+            msg.stage = event.message || event.text || ''
+            break
+          case 'sql':
+            msg.sql = event.text || ''
+            msg.stage = ''
+            break
+          case 'commentary':
+            msg.content += event.text || ''
+            break
+          case 'complete':
+            msg.data = { rows: event.rows, columns: event.columns, data: event.data }
+            msg.sql = event.sql || msg.sql
+            msg.stage = ''
+            msg.streaming = false
+            if (event.processing_time_ms) {
+              msg.processing_time_ms = event.processing_time_ms
+            }
+            break
+          case 'session_info':
+            // Обновляем session_id если он был создан
+            if (event.session_id) {
+              currentChatSession.value = { id: event.session_id }
+              loadChatSessions()
+            }
+            if (event.processing_time_ms && msg) {
+              msg.processing_time_ms = event.processing_time_ms
+            }
+            break
+          case 'error':
+            msg.content = `Ошибка: ${event.message || event.text}`
+            msg.stage = ''
+            msg.streaming = false
+            break
+          case 'done':
+            msg.stage = ''
+            msg.streaming = false
+            break
+        }
+        scrollToBottom(biMessagesRef)
+      },
+      currentChatSession.value?.id // sessionId
+    )
   } catch (e) {
     biHistory.value.push({ 
       id: biMsgId++, 
@@ -693,6 +989,7 @@ const sendBIMessage = async (text) => {
 
 const clearHistory = () => {
   if (activeModule.value === 'chat') {
+    currentChatSession.value = null
     initChat()
   } else if (activeModule.value === 'bi') {
     biHistory.value = selectedFile.value && selectedConnection.value ? [{
@@ -703,6 +1000,18 @@ const clearHistory = () => {
     }] : []
   }
 }
+
+// Watch for module changes
+watch(activeModule, () => {
+  loadChatSessions()
+  // Очищаем текущую сессию при смене модуля
+  if (activeModule.value !== currentChatSession.value?.module) {
+    currentChatSession.value = null
+    if (activeModule.value === 'chat') {
+      initChat()
+    }
+  }
+})
 
 const checkOllamaStatus = async () => {
   try {
@@ -719,6 +1028,7 @@ onMounted(() => {
   initChat()
   loadConnections()
   checkOllamaStatus()
+  loadChatSessions()
 })
 </script>
 
@@ -1022,6 +1332,91 @@ onMounted(() => {
 .sidebar-status {
   padding: $spacing-md $spacing-lg;
   border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+// === SIDEBAR HISTORY ===
+.sidebar-history {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.sidebar-history .history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-md $spacing-lg;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sidebar-history .history-label {
+  font-family: $font-family-mono;
+  font-size: $font-size-xs;
+  color: var(--text-muted);
+  letter-spacing: $letter-spacing-wider;
+}
+
+.sidebar-history .history-new-btn {
+  width: 28px;
+  height: 28px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-md;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    box-shadow: $glow-cyan;
+  }
+}
+
+.sidebar-history .history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-sm $spacing-md;
+  min-height: 0;
+}
+
+.history-module-group {
+  margin-bottom: $spacing-md;
+}
+
+.history-module-header {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-sm;
+  margin-bottom: $spacing-xs;
+  font-family: $font-family-mono;
+  font-size: $font-size-xs;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: $letter-spacing-wide;
+}
+
+.history-module-name {
+  color: var(--text-secondary);
+}
+
+.history-module-count {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.history-module-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .status-indicator {
@@ -1209,17 +1604,86 @@ onMounted(() => {
   align-items: flex-start;
   gap: $spacing-md;
   padding: $spacing-lg $spacing-xl;
+  position: relative;
+}
+
+// Connection line decoration (same as in HubMessage)
+.typing-indicator .message-connector {
+  position: absolute;
+  left: calc(#{$spacing-xl} + 22px);
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  pointer-events: none;
+}
+
+.typing-indicator .connector-line {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--avatar-color, #{$neon-cyan}),
+    transparent
+  );
+  opacity: 0.2;
+  transition: opacity $transition-fast;
+}
+
+.typing-indicator .connector-node {
+  position: absolute;
+  left: 50%;
+  top: calc(#{$spacing-lg} + 22px);
+  width: 8px;
+  height: 8px;
+  background: var(--avatar-color, #{$neon-cyan});
+  border-radius: 50%;
+  transform: translateX(-50%);
+  transition: all $transition-fast;
 }
 
 .typing-avatar {
   width: $message-avatar-size;
   height: $message-avatar-size;
+  position: relative;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.typing-avatar .avatar-core {
+  position: absolute;
+  inset: 4px;
+  background: linear-gradient(135deg, var(--avatar-color, #{$neon-cyan}), rgba(0, 0, 0, 0.5));
   border-radius: $radius-md;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  flex-shrink: 0;
+  z-index: 2;
+}
+
+.typing-avatar .avatar-ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--avatar-color, #{$neon-cyan});
+  border-radius: $radius-md + 2px;
+  opacity: 0.5;
+}
+
+.typing-avatar .avatar-pulse {
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--avatar-color, #{$neon-cyan});
+  border-radius: $radius-lg;
+  animation: avatar-pulse 2s ease-out infinite;
+}
+
+@keyframes avatar-pulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  100% { transform: scale(1.2); opacity: 0; }
 }
 
 .typing-content {
@@ -1720,10 +2184,272 @@ onMounted(() => {
   }
 }
 
+// === MODULE SELECTOR ===
+.module-selector {
+  padding: $spacing-sm $spacing-md;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-md;
+  color: var(--text-primary);
+  font-size: $font-size-sm;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all $transition-fast;
+  outline: none;
+  min-width: 150px;
+
+  &:hover {
+    border-color: var(--select-color, var(--accent));
+  }
+
+  &:focus {
+    border-color: var(--select-color, var(--accent));
+    box-shadow: 0 0 0 3px rgba(58, 232, 255, 0.1);
+  }
+}
+
+// === CHAT HISTORY SIDEBAR ===
+.chat-history-sidebar {
+  width: 320px;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10;
+  backdrop-filter: blur(20px);
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-lg;
+  border-bottom: 1px solid var(--border-subtle);
+
+  h3 {
+    font-family: $font-family-display;
+    font-size: $font-size-lg;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
+  }
+}
+
+.history-new-btn {
+  width: 32px;
+  height: 32px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-md;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    box-shadow: $glow-cyan;
+  }
+}
+
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-sm;
+}
+
+// History items in sidebar
+.sidebar-history .history-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  width: 100%;
+  padding: $spacing-sm $spacing-md;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: $radius-md;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all $transition-fast;
+  text-align: left;
+  position: relative;
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-subtle);
+
+    .history-item__delete {
+      opacity: 1;
+    }
+  }
+
+  &--active {
+    background: rgba(58, 232, 255, 0.08);
+    border-color: var(--accent);
+  }
+}
+
+// Legacy styles for right sidebar (if still used)
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  width: 100%;
+  padding: $spacing-md;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: $radius-lg;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all $transition-fast;
+  text-align: left;
+  margin-bottom: $spacing-xs;
+  position: relative;
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-subtle);
+
+    .history-item__delete {
+      opacity: 1;
+    }
+  }
+
+  &--active {
+    background: rgba(58, 232, 255, 0.08);
+    border-color: var(--accent);
+  }
+}
+
+.history-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-history .history-item__title {
+  display: block;
+  font-size: $font-size-xs;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item__title {
+  display: block;
+  font-size: $font-size-sm;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-history .history-item__meta {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.history-item__meta {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  font-size: $font-size-xs;
+  color: var(--text-muted);
+}
+
+.history-item__time {
+  font-family: $font-family-mono;
+}
+
+.sidebar-history .history-item__delete {
+  opacity: 0;
+  padding: 2px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-sm;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all $transition-fast;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &:hover {
+    background: $neon-red-light;
+    border-color: $neon-red;
+    color: $neon-red;
+  }
+}
+
+.history-item__delete {
+  opacity: 0;
+  padding: $spacing-xs;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-sm;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all $transition-fast;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: $neon-red-light;
+    border-color: $neon-red;
+    color: $neon-red;
+  }
+}
+
+.history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-2xl;
+  color: var(--text-muted);
+  text-align: center;
+
+  p {
+    margin-top: $spacing-md;
+    font-size: $font-size-sm;
+  }
+}
+
+.messages-area--with-history {
+  margin-right: 320px;
+}
+
 // === RESPONSIVE ===
 @media (max-width: $breakpoint-md) {
   .neural-sidebar {
     display: none;
+  }
+
+  .chat-history-sidebar {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 100;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .messages-area--with-history {
+    margin-right: 0;
   }
 
   .input-area {
