@@ -95,6 +95,7 @@
             :item="child"
             :level="level + 1"
             :index="childIndex"
+            :expand-all-groups="expandAllGroups"
             @edit="$emit('edit', $event)"
             @delete="$emit('delete', $event)"
             @reorder-children="$emit('reorder-children', $event)"
@@ -131,13 +132,14 @@ const props = defineProps({
   index: {
     type: Number,
     default: 0
+  },
+  expandAllGroups: {
+    type: Boolean,
+    default: false
   }
 })
 
 const emit = defineEmits(['edit', 'delete', 'reorder-children', 'toggle-visibility'])
-
-// Состояние раскрытия
-const isExpanded = ref(true)
 
 // Флаг для предотвращения сброса при перетаскивании
 const isDragging = ref(false)
@@ -149,6 +151,20 @@ const localChildren = ref([])
 const hasChildren = computed(() => {
   return props.item.children && props.item.children.length > 0
 })
+
+// Состояние раскрытия
+const isExpanded = ref(false)
+
+// Инициализация и обновление состояния раскрытия на основе настройки
+watch(
+  [() => props.expandAllGroups, hasChildren],
+  ([expandAll, hasChildren]) => {
+    if (hasChildren) {
+      isExpanded.value = expandAll
+    }
+  },
+  { immediate: true }
+)
 
 // Синхронизация детей (как в EditorCanvas - синхронизация только когда не происходит drag)
 watch(

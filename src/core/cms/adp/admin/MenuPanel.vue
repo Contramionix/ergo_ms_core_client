@@ -1,7 +1,16 @@
 <template>
   <div class="menu-panel">
     <div class="menu-panel__header mb-4">
-      <h1 class="h3 mb-3">Управление меню</h1>
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <h1 class="h3 mb-0">Управление меню</h1>
+        <button 
+          class="menu-panel__settings-btn"
+          @click="showSettingsModal = true"
+          title="Настройки страницы"
+        >
+          <Settings :size="20" class="menu-panel__settings-icon" />
+        </button>
+      </div>
       <p class="text-muted mb-0">
         Настройте элементы бокового меню и управляйте доступом к ним.
         Перетаскивайте элементы для изменения порядка.
@@ -71,10 +80,14 @@
         <!-- Draggable список -->
         <DraggableMenuList
           :items="menuItems"
+          :separators="separators"
+          :expand-all-groups="expandAllGroups"
           @edit="editItem"
           @delete="confirmDeleteItem"
           @reorder="handleMenuReorder"
+          @reorder-separators="handleSeparatorReorderFromList"
           @toggle-visibility="handleToggleVisibility"
+          @edit-separator="editSeparator"
         />
       </div>
     </div>
@@ -135,12 +148,18 @@
     <ConfirmDialog
       ref="confirmDialog"
     />
+    
+    <MenuSettingsModal
+      :show="showSettingsModal"
+      @close="showSettingsModal = false"
+      @save="handleSettingsSave"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
-import { Plus, Minus } from 'lucide-vue-next'
+import { Plus, Minus, Settings } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import UnsavedChangesToast from '@/components/UnsavedChangesToast.vue'
@@ -148,6 +167,7 @@ import DraggableMenuList from './MenuPanelComponents/DraggableMenuList.vue'
 import DraggableSeparatorList from './MenuPanelComponents/DraggableSeparatorList.vue'
 import MenuItemModal from './MenuPanelComponents/MenuItemModal.vue'
 import MenuSeparatorModal from './MenuPanelComponents/MenuSeparatorModal.vue'
+import MenuSettingsModal from './MenuPanelComponents/MenuSettingsModal.vue'
 import {
   getMenuItems,
   createMenuItem,
@@ -163,9 +183,14 @@ import {
 } from '@/core/cms/js/menuService.js'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
+import Cookies from 'js-cookie'
 
 const toast = useToast()
 const confirmDialog = ref(null)
+
+// Настройка раскрытия групп
+const COOKIE_NAME = 'menu_panel_expand_all_groups'
+const expandAllGroups = ref(false)
 
 // Состояние
 const activeTab = ref('items')
@@ -205,6 +230,7 @@ const menuItemsCount = computed(() => {
 // Модальные окна
 const showItemModal = ref(false)
 const showSeparatorModal = ref(false)
+const showSettingsModal = ref(false)
 const currentItem = ref(null)
 const currentSeparator = ref(null)
 
@@ -391,8 +417,23 @@ function handleMenuReorder(reorderedItems) {
           })
 }
 
-// Обработка перетаскивания разделителей
+// Обработка перетаскивания разделителей (из вкладки "Разделители")
 function handleSeparatorReorder(reorderedSeparators) {
+  pendingSeparatorReorder.value = reorderedSeparators
+  
+  // Обновляем локальное состояние
+  const orderMap = new Map(reorderedSeparators.map(sep => [sep.id, sep.before_order]))
+  for (const sep of separators.value) {
+    if (orderMap.has(sep.id)) {
+      sep.before_order = orderMap.get(sep.id)
+    }
+  }
+  separators.value.sort((a, b) => a.before_order - b.before_order)
+}
+
+// Обработка перетаскивания разделителей (из общего списка элементов меню)
+function handleSeparatorReorderFromList(reorderedSeparators) {
+  // Добавляем к отложенным изменениям
   pendingSeparatorReorder.value = reorderedSeparators
   
   // Обновляем локальное состояние
@@ -410,6 +451,9 @@ async function saveAllChanges() {
   isSaving.value = true
   
   try {
+    // Проверяем, были ли изменены разделители (объединённый список)
+    const hasSeparatorChanges = pendingSeparatorReorder.value.length > 0
+    
     // Сохраняем порядок элементов меню
     if (pendingMenuReorder.value.length > 0) {
       // Группируем изменения по id (берём последнее значение)
@@ -426,8 +470,6 @@ async function saveAllChanges() {
       const allItemsToSave = []
       
       function collectItems(items, parentId = null) {
-        // ВАЖНО: пересчитываем order для всех элементов уровня на основе их позиции в массиве
-        // Это гарантирует правильный порядок даже если некоторые элементы были перемещены
         items.forEach((item, index) => {
           // Определяем parent_id для текущего элемента
           let finalParentId = null
@@ -439,9 +481,16 @@ async function saveAllChanges() {
             finalParentId = parentId
           }
           
-          // ВАЖНО: всегда пересчитываем order на основе позиции в массиве
-          // Это гарантирует правильный порядок для всех элементов уровня
-          const order = index * 10
+          // Если есть изменения разделителей (объединённый список) - используем order из pendingMenuReorder
+          // Иначе пересчитываем на основе позиции в массиве
+          let order
+          if (hasSeparatorChanges && menuOrderMap.has(item.id)) {
+            // Используем order из объединённого списка (учитывает разделители)
+            order = menuOrderMap.get(item.id)
+          } else {
+            // Пересчитываем order на основе позиции в массиве
+            order = index * 10
+          }
           
           allItemsToSave.push({
             id: item.id,
@@ -648,8 +697,24 @@ function closeSeparatorModal() {
   currentSeparator.value = null
 }
 
+// Обработка сохранения настроек
+function handleSettingsSave(newValue) {
+  // Обновляем локальное состояние
+  expandAllGroups.value = newValue
+  toast.success('Настройки сохранены')
+}
+
+// Загрузка значения из куки
+function loadExpandAllGroupsFromCookie() {
+  const value = Cookies.get(COOKIE_NAME)
+  expandAllGroups.value = value === 'true'
+}
+
 // Инициализация
 onMounted(async () => {
+  // Загружаем настройку из куки
+  loadExpandAllGroupsFromCookie()
+  
   await Promise.all([
     loadMenuItems(),
     loadSeparators(),
@@ -663,6 +728,34 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .menu-panel {
   padding: 1.5rem;
+  
+  &__header {
+    .menu-panel__settings-btn {
+      background: none;
+      border: none;
+      padding: 0.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6c757d;
+      transition: color 0.3s ease;
+      flex-shrink: 0;
+      
+      &:hover {
+        color: #0d6efd;
+        
+        .menu-panel__settings-icon {
+          transform: rotate(180deg);
+        }
+      }
+    }
+    
+    .menu-panel__settings-icon {
+      transition: transform 0.5s ease;
+      transform: rotate(0deg);
+    }
+  }
   
   &__items,
   &__separators {

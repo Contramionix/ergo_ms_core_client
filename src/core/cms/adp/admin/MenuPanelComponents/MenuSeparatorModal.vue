@@ -26,22 +26,6 @@
               </div>
             </div>
             
-            <!-- Порядок -->
-            <div class="mb-3">
-              <label class="form-label">Перед порядком <span class="text-danger">*</span></label>
-              <input 
-                v-model.number="form.before_order" 
-                type="number" 
-                class="form-control"
-                required
-                min="0"
-                step="10"
-              />
-              <div class="form-text">
-                Разделитель будет отображаться перед элементами меню с этим порядком и выше
-              </div>
-            </div>
-            
             <!-- Активен -->
             <div class="mb-3">
               <div class="form-check">
@@ -120,7 +104,7 @@ watch(() => props.separator, (newSeparator) => {
 
 // Валидация формы
 const isFormValid = computed(() => {
-  return !!form.value.name && form.value.before_order >= 0
+  return !!form.value.name
 })
 
 function handleSubmit() {

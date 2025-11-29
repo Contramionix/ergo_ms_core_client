@@ -58,7 +58,7 @@ export function clearMenuCache() {
  * @returns {Array} - Массив секций меню для отображения
  */
 export function transformMenuData(menuData) {
-  const { menu_items = [], separators = [] } = menuData
+  const { menu_items = [] } = menuData
   
   return menu_items.map(item => transformMenuItem(item))
 }
@@ -129,18 +129,32 @@ function transformMenuItem(item) {
 /**
  * Получает разделители в формате для компонентов
  * @param {Array} separators - Разделители из API
- * @returns {Object} - Объект {byOrderIndex: {index: name}}
+ * @param {Array} menuItems - Элементы меню из API (для вычисления индексов)
+ * @returns {Object} - Объект {byOrderIndex: {index: name}, separatorsList: [...]}
  */
-export function transformSeparators(separators) {
+export function transformSeparators(separators, menuItems = []) {
   const byOrderIndex = {}
   
-  separators.forEach(sep => {
-    // Преобразуем before_order обратно в индекс
-    const index = Math.floor(sep.before_order / 10)
-    byOrderIndex[index] = sep.name
+  // Сортируем разделители по before_order
+  const sortedSeparators = [...separators]
+    .filter(sep => sep.is_active)
+    .sort((a, b) => a.before_order - b.before_order)
+  
+  // Для каждого разделителя находим индекс первого элемента с order >= before_order
+  sortedSeparators.forEach(sep => {
+    // Ищем индекс первого элемента меню с order >= before_order
+    const index = menuItems.findIndex(item => item.order >= sep.before_order)
+    
+    if (index !== -1) {
+      byOrderIndex[index] = sep.name
+    } else if (menuItems.length > 0) {
+      // Если разделитель должен быть после всех элементов,
+      // показываем его после последнего
+      byOrderIndex[menuItems.length] = sep.name
+    }
   })
   
-  return { byOrderIndex }
+  return { byOrderIndex, separatorsList: sortedSeparators }
 }
 
 /**

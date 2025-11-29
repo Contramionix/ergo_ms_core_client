@@ -217,7 +217,8 @@ async function loadMenu(forceRefresh = false) {
     
     if (menuData && menuData.menu_items && menuData.menu_items.length > 0) {
       menuSections.value = transformMenuData(menuData)
-      separatorsConfig.value = transformSeparators(menuData.separators || [])
+      // Передаём menu_items для правильного вычисления индексов разделителей
+      separatorsConfig.value = transformSeparators(menuData.separators || [], menuData.menu_items)
       return
     }
     
