@@ -351,7 +351,7 @@ function toggleVisibility() {
     flex-shrink: 0;
     
     &:hover {
-      color: var(--color-primary-text);
+      color: var(--bs-danger);
     }
     
     &--hidden {

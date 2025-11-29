@@ -327,7 +327,7 @@ function handleChildrenReorder(data) {
     height: 28px;
     
     &:hover {
-      color: var(--color-primary-text);
+      color: var(--bs-danger);
     }
     
     &--hidden {
