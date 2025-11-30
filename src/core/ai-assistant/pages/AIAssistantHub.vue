@@ -52,7 +52,7 @@
                 <span class="history-module-count">({{ getSessionsByModule(module.id).length }})</span>
               </div>
               <div class="history-module-sessions">
-                <button
+                <div
                   v-for="session in getSessionsByModule(module.id)"
                   :key="session.id"
                   class="history-item"
@@ -73,7 +73,7 @@
                   >
                     <X :size="12" />
                   </button>
-                </button>
+                </div>
               </div>
             </div>
           </template>

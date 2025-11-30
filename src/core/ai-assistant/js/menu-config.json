@@ -10,18 +10,6 @@
           "name": "Центр управления",
           "page": "",
           "isOffcanvas": false
-        },
-        {
-          "icon": "MessageSquare",
-          "name": "Чат",
-          "page": "chat",
-          "isOffcanvas": false
-        },
-        {
-          "icon": "Database",
-          "name": "BI Анализ",
-          "page": "bi",
-          "isOffcanvas": false
         }
       ]
     }
