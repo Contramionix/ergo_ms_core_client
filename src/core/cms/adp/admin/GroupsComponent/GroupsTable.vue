@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import ModalCenter from '@/components/ModalCenter.vue'
-import ChangeGroupForm from '@/core/cms/adp/admin/GroupsComponent/SubmitGroupsChange.vue'
+import GroupForm from '@/core/cms/adp/admin/GroupsComponent/SubmitGroupsAdd.vue'
 import { DeleteRoleGroup } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
 const props = defineProps({
@@ -92,7 +92,7 @@ const deleteGroup = async groupId => {
                 Удалить
               </button>
               <ModalCenter title="Редактировать ролевую группу" modalId="groupEdit">
-                <ChangeGroupForm @changeGroup="changeGroup()" :row="rowSelected" />
+                <GroupForm @changeGroup="changeGroup()" :group="rowSelected" mode="update" />
               </ModalCenter>
             </div>
           </td>
