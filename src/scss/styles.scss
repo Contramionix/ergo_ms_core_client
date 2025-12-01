@@ -1,10 +1,142 @@
+// ============================================================
+// БЫСТРАЯ ЗАГРУЗКА СТИЛЕЙ
+// Bootstrap CSS загружается минифицированным в main.js
+// Здесь только переопределения и кастомные стили
+// ============================================================
+
+// 1. Bootstrap функции и переменные (для наших SCSS файлов)
+@import 'bootstrap/scss/functions';
+
+// Наши цвета ДО Bootstrap variables (для !default)
+$primary: #d0322d;
+$secondary: #cccccc;
+$success: #4caf50;
+$info: #0dcaf0;
+$warning: #ffab00;
+$danger: #dc3545;
+$light: #f8f9fa;
+$dark: #212529;
+
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
+@import 'bootstrap/scss/maps';
+@import 'bootstrap/scss/mixins';
+
+// 2. Наши файлы
+@import './_variables.scss';
 @import './_colors.scss';
 @import './_theme.scss';
 @import './_scrollbar.scss';
-@import './_variables.scss';
 @import './_overrides.scss';
 @import './_globals.scss';
 
-@import 'bootstrap/scss/bootstrap';
-@import 'v-calendar/style.css';
-@import 'vue-toastification/dist/index.css';
+// 3. Переопределение CSS переменных Bootstrap (для минифицированного CSS)
+:root,
+[data-bs-theme='light'] {
+  --bs-primary: #d0322d;
+  --bs-primary-rgb: 208, 50, 45;
+  --bs-primary-bg-subtle: #f8d7d5;
+  --bs-primary-border-subtle: #f1afab;
+  --bs-primary-text-emphasis: #7d1e1a;
+  --bs-link-color: #d0322d;
+  --bs-link-color-rgb: 208, 50, 45;
+  --bs-link-hover-color: #a72823;
+  --bs-link-hover-color-rgb: 167, 40, 35;
+}
+
+[data-bs-theme='dark'] {
+  --bs-primary: #d0322d;
+  --bs-primary-rgb: 208, 50, 45;
+  --bs-primary-bg-subtle: #421412;
+  --bs-primary-border-subtle: #7d1e1a;
+  --bs-primary-text-emphasis: #e8807b;
+  --bs-link-color: #e8807b;
+  --bs-link-color-rgb: 232, 128, 123;
+  --bs-link-hover-color: #ed9995;
+  --bs-link-hover-color-rgb: 237, 153, 149;
+}
+
+// Кнопка primary
+.btn-primary {
+  --bs-btn-bg: #d0322d;
+  --bs-btn-border-color: #d0322d;
+  --bs-btn-hover-bg: #b02a26;
+  --bs-btn-hover-border-color: #a52722;
+  --bs-btn-focus-shadow-rgb: 208, 50, 45;
+  --bs-btn-active-bg: #a52722;
+  --bs-btn-active-border-color: #9b251f;
+  --bs-btn-disabled-bg: #d0322d;
+  --bs-btn-disabled-border-color: #d0322d;
+}
+
+// Outline primary
+.btn-outline-primary {
+  --bs-btn-color: #d0322d;
+  --bs-btn-border-color: #d0322d;
+  --bs-btn-hover-bg: #d0322d;
+  --bs-btn-hover-border-color: #d0322d;
+  --bs-btn-focus-shadow-rgb: 208, 50, 45;
+  --bs-btn-active-bg: #d0322d;
+  --bs-btn-active-border-color: #d0322d;
+}
+
+// Другие компоненты с primary
+.text-primary { color: #d0322d !important; }
+.bg-primary { background-color: #d0322d !important; }
+.border-primary { border-color: #d0322d !important; }
+
+// Focus ring
+.form-control:focus,
+.form-select:focus {
+  border-color: #d0322d;
+  box-shadow: 0 0 0 0.25rem rgba(208, 50, 45, 0.25);
+}
+
+.form-check-input:checked {
+  background-color: #d0322d;
+  border-color: #d0322d;
+}
+
+.form-check-input:focus {
+  border-color: #d0322d;
+  box-shadow: 0 0 0 0.25rem rgba(208, 50, 45, 0.25);
+}
+
+// Pagination
+.page-link {
+  color: #d0322d;
+}
+.page-item.active .page-link {
+  background-color: #d0322d;
+  border-color: #d0322d;
+}
+
+// Progress
+.progress-bar {
+  background-color: #d0322d;
+}
+
+// Nav
+.nav-link {
+  color: #d0322d;
+}
+.nav-pills .nav-link.active {
+  background-color: #d0322d;
+}
+
+// Alert primary
+.alert-primary {
+  --bs-alert-color: #7d1e1a;
+  --bs-alert-bg: #f8d7d5;
+  --bs-alert-border-color: #f4c4c1;
+}
+
+// Badge primary
+.badge.bg-primary {
+  background-color: #d0322d !important;
+}
+
+// Spinner
+.spinner-border.text-primary {
+  color: #d0322d !important;
+}
