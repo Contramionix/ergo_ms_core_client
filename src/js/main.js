@@ -4,7 +4,6 @@ import { authGuard } from '@/core/cms/js/authGuard.js' // Подключаем �
 // Подключаем систему логирования (автоматически переопределяет console)
 import '@/js/utils/logger.js'
 
-// Bootstrap CSS (минифицированный) + наши переопределения в styles.scss
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import '@he-tree/vue/style/default.css'
