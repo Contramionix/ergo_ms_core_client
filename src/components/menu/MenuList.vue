@@ -223,9 +223,29 @@ async function loadMenu(forceRefresh = false) {
     const menuData = await getUserMenu(forceRefresh)
     
     if (menuData && menuData.menu_items && menuData.menu_items.length > 0) {
-      menuSections.value = transformMenuData(menuData)
+      // Фильтруем элементы меню, исключая "User" и "Settings"
+      const filteredMenuItems = menuData.menu_items.filter(item => {
+        // Исключаем элементы с route_name === 'User' или 'Settings'
+        if (item.route_name === 'User' || item.route_name === 'Settings') {
+          return false
+        }
+        // Также проверяем дочерние элементы
+        if (item.children && item.children.length > 0) {
+          item.children = item.children.filter(child => {
+            return child.route_name !== 'User' && child.route_name !== 'Settings'
+          })
+        }
+        return true
+      })
+      
+      const filteredMenuData = {
+        ...menuData,
+        menu_items: filteredMenuItems
+      }
+      
+      menuSections.value = transformMenuData(filteredMenuData)
       // Передаём menu_items для правильного вычисления индексов разделителей
-      separatorsConfig.value = transformSeparators(menuData.separators || [], menuData.menu_items)
+      separatorsConfig.value = transformSeparators(filteredMenuData.separators || [], filteredMenuData.menu_items)
       return
     }
     

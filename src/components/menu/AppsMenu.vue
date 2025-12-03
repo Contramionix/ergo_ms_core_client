@@ -1,10 +1,11 @@
 <script setup>
 import { Grid3x3, BarChart3 } from 'lucide-vue-next'
-import { ref, onMounted, computed, h } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Dropdown } from 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import { moduleManager } from '@/modules/index.js'
 import { biAnalysisService } from '@/core/bi/js/biAnalysisService.js'
+import { biChartsService } from '@/core/bi/js/biChartsService.js'
 
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
@@ -23,60 +24,61 @@ const loadApps = async () => {
     }
     
     // Получаем конфигурацию меню из ModuleManager
-    const menuManager = moduleManager.getMenuManager()
+    const menuManager = moduleManager.menu
     await menuManager.initialize()
     const menuConfig = menuManager.generateMenuConfig()
     
     // Получаем IconManager для получения иконок
-    const iconManager = moduleManager.getIconManager()
+    const iconManager = moduleManager.icons
     
     // Извлекаем секции меню
     const menuSections = menuConfig.menuSections || []
     
-    // Преобразуем в формат для отображения
-    apps.value = menuSections
-      .filter(section => section.routeName) // Только секции с роутами
-      .map(section => {
-        // Получаем иконку из IconManager
-        const IconComponent = section.icon ? iconManager.getIcon(section.icon) : null
-        
-        return {
-          name: section.routeName,
-          title: section.title || section.name || section.routeName,
-          icon: IconComponent,
-          iconName: section.icon,
-          route: { name: section.routeName },
-          isBI: section.routeName === 'BI'
-        }
-      })
+    // Оставляем только BI приложение
+    let biApp = null
     
-    // Всегда добавляем BI, если его нет в списке
-    const hasBI = apps.value.some(app => app.name === 'BI')
-    if (!hasBI) {
-      // Пробуем получить иконку из IconManager, если не получается - используем BarChart3
+    // Ищем BI в секциях меню
+    const biSection = menuSections.find(section => section.routeName === 'BI')
+    
+    if (biSection) {
+      // Получаем иконку из IconManager
+      let IconComponent = biSection.icon ? iconManager.getIcon(biSection.icon) : null
+      
+      // Fallback для иконки BI
+      if (!IconComponent) {
+        IconComponent = iconManager.getIcon('ChartSpline') || iconManager.getIcon('BarChart3')
+      }
+      if (!IconComponent) {
+        IconComponent = BarChart3
+      }
+      
+      biApp = {
+        name: 'BI',
+        title: biSection.title || biSection.name || 'BI',
+        icon: IconComponent,
+        iconName: biSection.icon || 'ChartSpline',
+        route: { name: 'BI' },
+        isBI: true
+      }
+    } else {
+      // Если BI не найден в секциях, создаем его вручную
       let IconComponent = iconManager.getIcon('ChartSpline') || iconManager.getIcon('BarChart3')
       if (!IconComponent) {
         IconComponent = BarChart3
       }
-      apps.value.unshift({
+      
+      biApp = {
         name: 'BI',
         title: 'BI',
         icon: IconComponent,
         iconName: 'ChartSpline',
         route: { name: 'BI' },
         isBI: true
-      })
-    } else {
-      // Обновляем иконку для BI, если она не загрузилась
-      const biApp = apps.value.find(app => app.name === 'BI')
-      if (biApp && !biApp.icon) {
-        let IconComponent = iconManager.getIcon('ChartSpline') || iconManager.getIcon('BarChart3')
-        if (!IconComponent) {
-          IconComponent = BarChart3
-        }
-        biApp.icon = IconComponent
       }
     }
+    
+    // Оставляем только BI
+    apps.value = [biApp]
   } catch (error) {
     console.error('Ошибка загрузки приложений:', error)
     // Добавляем BI как fallback с иконкой
@@ -96,8 +98,41 @@ const loadApps = async () => {
 }
 
 const goToApp = (app) => {
-  // Если это BI, открываем модальное окно
+  // Если это BI, проверяем, был ли построен график
   if (app.isBI) {
+    // Проверяем сохраненное состояние BI анализа
+    const savedState = localStorage.getItem('biAnalysisModalState')
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState)
+        // Если есть выбранный файл, проверяем, был ли построен график
+        if (state.fileId) {
+          const chartsState = localStorage.getItem(`biChartsModalState_${state.fileId}`)
+          if (chartsState) {
+            const chartsStateData = JSON.parse(chartsState)
+            // Если график был построен, открываем окно с графиком
+            if (chartsStateData.hasChart && chartsStateData.selectedXField && chartsStateData.selectedYField) {
+              biChartsService.open(state.fileId)
+              
+              // Закрываем dropdown
+              if (dropdownRef.value) {
+                const dropdownElement = dropdownRef.value.querySelector('[data-bs-toggle="dropdown"]')
+                if (dropdownElement) {
+                  const bsDropdown = Dropdown.getInstance(dropdownElement)
+                  if (bsDropdown) {
+                    bsDropdown.hide()
+                  }
+                }
+              }
+              return
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Ошибка проверки состояния графика:', e)
+      }
+    }
+    // Если график не был построен, открываем обычное окно BI анализа
     biAnalysisService.toggle()
   } else {
     router.push(app.route)
@@ -161,7 +196,7 @@ onMounted(async () => {
             :style="{ transitionDelay: `${index * 30}ms` }"
           >
             <div class="apps-menu__icon">
-              <component v-if="app.icon" :is="app.icon" :size="32" />
+              <component v-if="app.icon" :is="app.icon" :size="24" />
               <div v-else class="apps-menu__icon-placeholder">{{ app.title.charAt(0) }}</div>
             </div>
             <div class="apps-menu__title">{{ app.title }}</div>
@@ -227,26 +262,26 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   margin-bottom: 0.5rem;
   color: var(--color-primary-text);
   border: 2px solid var(--color-border, #dee2e6);
   border-radius: 8px;
   background-color: var(--color-secondary-background, #f8f9fa);
-  padding: 8px;
+  padding: 6px;
 }
 
 .apps-menu__icon-placeholder {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
   background-color: var(--color-secondary-background);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 1.25rem;
+  font-size: 1rem;
   color: var(--color-primary-text);
 }
 

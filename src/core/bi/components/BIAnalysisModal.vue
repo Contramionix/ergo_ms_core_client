@@ -3,11 +3,20 @@
     v-if="show" 
     class="bi-analysis-modal fade show d-block" 
     tabindex="-1"
-    @click.self="handleClose"
+    @drop.prevent="handleGlobalDrop"
+    @dragover.prevent="handleGlobalDragOver"
   >
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
+    <div 
+      ref="modalDialogRef"
+      class="modal-dialog modal-dialog-centered modal-lg"
+      :style="modalStyle"
+    >
+      <div class="modal-content" :style="contentStyle">
+        <div 
+          class="modal-header"
+          @mousedown="startDrag"
+          style="cursor: move;"
+        >
           <div class="d-flex align-items-center gap-2">
             <BarChart3 :size="24" class="text-primary" />
             <h5 class="modal-title mb-0">Быстрый BI Анализ</h5>
@@ -63,7 +72,7 @@
           <div v-else-if="!selectedFile" class="step-content">
             <div class="d-flex align-items-center justify-content-between mb-3">
               <h6 class="mb-0">Шаг 2: Выберите файл</h6>
-              <button class="btn btn-sm btn-outline-secondary" @click="changeConnection">
+              <button class="btn btn-sm btn-danger text-white" @click="changeConnection">
                 <ArrowLeft :size="14" class="me-1" />
                 Назад
               </button>
@@ -81,9 +90,9 @@
                 'drop-zone--uploading': isUploadingFile
               }"
               @drop.prevent="handleDrop"
-              @dragover.prevent="isDragOver = true"
-              @dragenter.prevent="isDragOver = true"
-              @dragleave.prevent="isDragOver = false"
+              @dragover.prevent="handleDragOver"
+              @dragenter.prevent="handleDragEnter"
+              @dragleave.prevent="handleDragLeave"
             >
               <div v-if="isUploadingFile" class="drop-zone__content">
                 <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
@@ -153,7 +162,7 @@
           <div v-else class="step-content">
             <div class="d-flex align-items-center justify-content-between mb-3">
               <h6 class="mb-0">Выберите действие</h6>
-              <button class="btn btn-sm btn-outline-secondary" @click="changeFile">
+              <button class="btn btn-sm btn-danger text-white" @click="changeFile">
                 <ArrowLeft :size="14" class="me-1" />
                 Назад
               </button>
@@ -197,13 +206,57 @@
             Закрыть
           </button>
         </div>
+        
+        <!-- Handles для изменения размера -->
+        <!-- Углы -->
+        <div 
+          class="resize-handle resize-handle-nw"
+          @mousedown="(e) => startResize(e, 'nw')"
+          title="Изменить размер"
+        ></div>
+        <div 
+          class="resize-handle resize-handle-ne"
+          @mousedown="(e) => startResize(e, 'ne')"
+          title="Изменить размер"
+        ></div>
+        <div 
+          class="resize-handle resize-handle-sw"
+          @mousedown="(e) => startResize(e, 'sw')"
+          title="Изменить размер"
+        ></div>
+        <div 
+          class="resize-handle resize-handle-se"
+          @mousedown="(e) => startResize(e, 'se')"
+          title="Изменить размер"
+        ></div>
+        <!-- Края -->
+        <div 
+          class="resize-handle resize-handle-n"
+          @mousedown="(e) => startResize(e, 'n')"
+          title="Изменить высоту"
+        ></div>
+        <div 
+          class="resize-handle resize-handle-s"
+          @mousedown="(e) => startResize(e, 's')"
+          title="Изменить высоту"
+        ></div>
+        <div 
+          class="resize-handle resize-handle-w"
+          @mousedown="(e) => startResize(e, 'w')"
+          title="Изменить ширину"
+        ></div>
+        <div 
+          class="resize-handle resize-handle-e"
+          @mousedown="(e) => startResize(e, 'e')"
+          title="Изменить ширину"
+        ></div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { BarChart3, Database, FileSpreadsheet, Check, ArrowLeft, Upload } from 'lucide-vue-next'
 import { biClient } from '@/core/ai-assistant/bi/js/bi-client.js'
@@ -241,8 +294,60 @@ const isUploadingFile = ref(false)
 const uploadError = ref(null)
 const fileInput = ref(null)
 
+// Состояние для перетаскивания модального окна
+const isDragging = ref(false)
+const dragStart = ref({ x: 0, y: 0 })
+const modalPosition = ref({ x: null, y: null })
+const modalDialogRef = ref(null)
+
+// Состояние для изменения размера
+const isResizing = ref(false)
+const resizeStart = ref({ x: 0, y: 0, width: 0, height: 0, left: 0, top: 0 })
+const resizeDirection = ref('') // 'n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'
+const modalSize = ref({ width: null, height: null })
+
+// Вычисляем стили для модального окна
+const modalStyle = computed(() => {
+  const style = {}
+  
+  if (modalPosition.value.x !== null && modalPosition.value.y !== null) {
+    style.position = 'fixed'
+    style.top = `${modalPosition.value.y}px`
+    style.left = `${modalPosition.value.x}px`
+    style.margin = '0'
+    style.transform = 'none'
+  }
+  
+  if (modalSize.value.width !== null) {
+    style.width = `${modalSize.value.width}px`
+    style.maxWidth = 'none'
+  }
+  
+  if (modalSize.value.height !== null) {
+    style.height = `${modalSize.value.height}px`
+    style.maxHeight = 'none'
+  }
+  
+  return style
+})
+
+// Стили для содержимого модального окна
+const contentStyle = computed(() => {
+  if (modalSize.value.height !== null) {
+    return {
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column'
+    }
+  }
+  return {}
+})
+
 const goToCreateChart = () => {
   if (!selectedFile.value) return
+  
+  // Сохраняем состояние перед переходом к графику
+  saveState()
   
   // Закрываем модальное окно BI анализа
   biAnalysisService.close()
@@ -253,6 +358,9 @@ const goToCreateChart = () => {
 
 const goToCreateDataset = () => {
   if (!selectedFile.value) return
+  
+  // Очищаем состояние при переходе к датасету
+  clearState()
   
   // Закрываем модальное окно
   biAnalysisService.close()
@@ -314,11 +422,13 @@ const selectConnection = (connection) => {
   selectedFile.value = null
   selectedFileId.value = null
   loadFiles()
+  saveState()
 }
 
 const selectFile = (file) => {
   selectedFile.value = file
   selectedFileId.value = file.id
+  saveState()
 }
 
 const changeConnection = () => {
@@ -327,11 +437,13 @@ const changeConnection = () => {
   selectedFile.value = null
   selectedFileId.value = null
   files.value = []
+  saveState()
 }
 
 const changeFile = () => {
   selectedFile.value = null
   selectedFileId.value = null
+  saveState()
 }
 
 // Функции для загрузки файлов
@@ -415,8 +527,36 @@ const uploadFileToConnection = async (file) => {
   }
 }
 
+// Обработчики drag & drop для drop-zone
+const handleDragOver = (e) => {
+  if (e.dataTransfer.types.includes('Files')) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    isDragOver.value = true
+  }
+}
+
+const handleDragEnter = (e) => {
+  if (e.dataTransfer.types.includes('Files')) {
+    e.preventDefault()
+    isDragOver.value = true
+  }
+}
+
+const handleDragLeave = (e) => {
+  // Проверяем, что мы действительно покинули drop-zone
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    isDragOver.value = false
+  }
+}
+
 const handleDrop = async (event) => {
   isDragOver.value = false
+  
+  if (!event.dataTransfer.files || event.dataTransfer.files.length === 0) {
+    return
+  }
+  
   const droppedFiles = Array.from(event.dataTransfer.files)
   
   if (droppedFiles.length === 0) {
@@ -446,47 +586,294 @@ const handleFileSelect = async (event) => {
 }
 
 
+// Сохранение состояния в localStorage
+const saveState = () => {
+  const state = {
+    connectionId: selectedConnectionId.value,
+    fileId: selectedFileId.value
+  }
+  localStorage.setItem('biAnalysisModalState', JSON.stringify(state))
+}
+
+// Восстановление состояния из localStorage
+const restoreState = async () => {
+  try {
+    const savedState = localStorage.getItem('biAnalysisModalState')
+    if (!savedState) return
+    
+    const state = JSON.parse(savedState)
+    
+    if (state.connectionId) {
+      // Восстанавливаем подключение
+      await loadConnections()
+      const connection = connections.value.find(c => c.id === state.connectionId)
+      if (connection) {
+        selectedConnection.value = connection
+        selectedConnectionId.value = connection.id
+        await loadFiles()
+        
+        // Восстанавливаем файл, если был выбран
+        if (state.fileId) {
+          const file = files.value.find(f => f.id === state.fileId)
+          if (file) {
+            selectedFile.value = file
+            selectedFileId.value = file.id
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Ошибка восстановления состояния:', error)
+  }
+}
+
+// Очистка сохраненного состояния
+const clearState = () => {
+  localStorage.removeItem('biAnalysisModalState')
+}
+
 const handleClose = () => {
+  // Сохраняем состояние перед закрытием
+  saveState()
   emit('close')
-  // Сброс состояния при закрытии
-  setTimeout(() => {
-    selectedConnection.value = null
-    selectedFile.value = null
-    selectedConnectionId.value = null
-    selectedFileId.value = null
-    connections.value = []
-    files.value = []
-  }, 300)
 }
 
-// Управление прокруткой страницы
-const disableBodyScroll = () => {
-  document.body.style.overflow = 'hidden'
+// Функции для перетаскивания модального окна
+const startDrag = (e) => {
+  // Не начинаем перетаскивание, если клик по кнопке закрытия
+  if (e.target.closest('.btn-close')) {
+    return
+  }
+  
+  if (!modalDialogRef.value) return
+  
+  // Получаем текущую позицию модального окна
+  const rect = modalDialogRef.value.getBoundingClientRect()
+  
+  // Если позиция еще не установлена, устанавливаем начальную
+  if (modalPosition.value.x === null || modalPosition.value.y === null) {
+    modalPosition.value = {
+      x: rect.left,
+      y: rect.top
+    }
+  }
+  
+  isDragging.value = true
+  dragStart.value = {
+    x: e.clientX - modalPosition.value.x,
+    y: e.clientY - modalPosition.value.y
+  }
+  
+  document.addEventListener('mousemove', onDrag)
+  document.addEventListener('mouseup', stopDrag)
+  e.preventDefault()
 }
 
-const enableBodyScroll = () => {
-  document.body.style.overflow = ''
+const onDrag = (e) => {
+  if (!isDragging.value) return
+  
+  modalPosition.value = {
+    x: e.clientX - dragStart.value.x,
+    y: e.clientY - dragStart.value.y
+  }
 }
 
-// Загружаем подключения при открытии модального окна и управляем прокруткой
-watch(() => props.show, (isOpen) => {
+const stopDrag = () => {
+  isDragging.value = false
+  document.removeEventListener('mousemove', onDrag)
+  document.removeEventListener('mouseup', stopDrag)
+}
+
+// Функции для изменения размера модального окна
+const startResize = (e, direction) => {
+  if (!modalDialogRef.value) return
+  
+  isResizing.value = true
+  resizeDirection.value = direction
+  const rect = modalDialogRef.value.getBoundingClientRect()
+  resizeStart.value = {
+    x: e.clientX,
+    y: e.clientY,
+    width: rect.width,
+    height: rect.height,
+    left: rect.left,
+    top: rect.top
+  }
+  
+  // Если размер еще не установлен, устанавливаем текущий
+  if (modalSize.value.width === null) {
+    modalSize.value.width = rect.width
+  }
+  if (modalSize.value.height === null) {
+    modalSize.value.height = rect.height
+  }
+  
+  // Если позиция еще не установлена, устанавливаем начальную
+  if (modalPosition.value.x === null || modalPosition.value.y === null) {
+    modalPosition.value = {
+      x: rect.left,
+      y: rect.top
+    }
+  }
+  
+  document.addEventListener('mousemove', onResize)
+  document.addEventListener('mouseup', stopResize)
+  e.preventDefault()
+  e.stopPropagation()
+}
+
+const onResize = (e) => {
+  if (!isResizing.value) return
+  
+  const deltaX = e.clientX - resizeStart.value.x
+  const deltaY = e.clientY - resizeStart.value.y
+  const direction = resizeDirection.value
+  
+  let newWidth = resizeStart.value.width
+  let newHeight = resizeStart.value.height
+  let newLeft = modalPosition.value.x
+  let newTop = modalPosition.value.y
+  
+  // Изменение ширины
+  if (direction.includes('e')) {
+    // Правый край
+    newWidth = resizeStart.value.width + deltaX
+  } else if (direction.includes('w')) {
+    // Левый край
+    newWidth = resizeStart.value.width - deltaX
+    newLeft = resizeStart.value.left + deltaX
+  }
+  
+  // Изменение высоты
+  if (direction.includes('s')) {
+    // Нижний край
+    newHeight = resizeStart.value.height + deltaY
+  } else if (direction.includes('n')) {
+    // Верхний край
+    newHeight = resizeStart.value.height - deltaY
+    newTop = resizeStart.value.top + deltaY
+  }
+  
+  // Минимальные размеры
+  const minWidth = 400
+  const minHeight = 300
+  
+  // Корректируем позицию и размер при изменении левого/верхнего края
+  if (direction.includes('w')) {
+    if (newWidth < minWidth) {
+      newWidth = minWidth
+      newLeft = resizeStart.value.left + (resizeStart.value.width - minWidth)
+    }
+  }
+  
+  if (direction.includes('n')) {
+    if (newHeight < minHeight) {
+      newHeight = minHeight
+      newTop = resizeStart.value.top + (resizeStart.value.height - minHeight)
+    }
+  }
+  
+  modalSize.value = {
+    width: Math.max(minWidth, newWidth),
+    height: Math.max(minHeight, newHeight)
+  }
+  
+  if (direction.includes('w') || direction.includes('n')) {
+    modalPosition.value = {
+      x: newLeft,
+      y: newTop
+    }
+  }
+  
+  // Сохраняем размер
+  saveSize()
+}
+
+const stopResize = () => {
+  isResizing.value = false
+  document.removeEventListener('mousemove', onResize)
+  document.removeEventListener('mouseup', stopResize)
+}
+
+// Сохранение и загрузка размера
+const saveSize = () => {
+  localStorage.setItem('biAnalysisModalSize', JSON.stringify(modalSize.value))
+}
+
+const loadSize = () => {
+  try {
+    const savedSize = localStorage.getItem('biAnalysisModalSize')
+    if (savedSize) {
+      const size = JSON.parse(savedSize)
+      if (size.width && size.height) {
+        modalSize.value = {
+          width: size.width,
+          height: size.height
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки размера:', error)
+  }
+}
+
+// Обработка глобального dragover (разрешаем перетаскивание файлов)
+const handleGlobalDragOver = (e) => {
+  // Разрешаем drop только если это файлы
+  if (e.dataTransfer.types.includes('Files')) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+  }
+}
+
+// Обработка глобального drop (если файл перетащили на фон модального окна или в drop-zone)
+const handleGlobalDrop = (e) => {
+  // Проверяем, что это файлы
+  if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) {
+    return
+  }
+  
+  // Если drop произошел на drop-zone, обработка будет выполнена в handleDrop
+  if (e.target.closest('.drop-zone')) {
+    return
+  }
+  
+  // Если drop произошел на фон, но у нас выбрано подключение, загружаем файл
+  if (selectedConnection.value) {
+    const droppedFiles = Array.from(e.dataTransfer.files)
+    if (droppedFiles.length > 0) {
+      const file = droppedFiles[0]
+      uploadFileToConnection(file)
+    }
+  }
+}
+
+// Загружаем подключения при открытии модального окна
+watch(() => props.show, async (isOpen) => {
   if (isOpen) {
-    disableBodyScroll()
-    loadConnections()
+    // Сбрасываем позицию при открытии (будет центрировано)
+    modalPosition.value = { x: null, y: null }
+    // Загружаем размер при открытии
+    loadSize()
+    // Загружаем подключения и восстанавливаем состояние
+    await loadConnections()
+    await restoreState()
   } else {
-    enableBodyScroll()
+    // Сбрасываем позицию при закрытии
+    modalPosition.value = { x: null, y: null }
+    stopDrag()
+    stopResize()
   }
 })
 
 onMounted(() => {
   if (props.show) {
-    disableBodyScroll()
     loadConnections()
   }
 })
 
 onUnmounted(() => {
-  enableBodyScroll()
+  stopDrag()
 })
 </script>
 
@@ -497,14 +884,22 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: transparent;
   z-index: 9999;
-  backdrop-filter: blur(4px);
+  pointer-events: none; // Фон не блокирует взаимодействие
+  overflow: visible;
 }
 
 .modal-dialog {
   z-index: 10000;
   position: relative;
+  pointer-events: auto;
+  max-width: 800px;
+  width: 100%;
+  
+  &[style*="position: fixed"] {
+    margin: 0;
+  }
 }
 
 .modal-content {
@@ -513,19 +908,121 @@ onUnmounted(() => {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   background-color: var(--bs-body-bg, #ffffff);
   opacity: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.resize-handle {
+  position: absolute;
+  z-index: 10;
+  background-color: transparent;
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.2);
+  }
+  
+  // Углы
+  &-nw {
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+  }
+  
+  &-ne {
+    top: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nesw-resize;
+  }
+  
+  &-sw {
+    bottom: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nesw-resize;
+  }
+  
+  &-se {
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+  }
+  
+  // Края
+  &-n {
+    top: 0;
+    left: 20px;
+    right: 20px;
+    height: 10px;
+    cursor: ns-resize;
+  }
+  
+  &-s {
+    bottom: 0;
+    left: 20px;
+    right: 20px;
+    height: 10px;
+    cursor: ns-resize;
+  }
+  
+  &-w {
+    left: 0;
+    top: 20px;
+    bottom: 20px;
+    width: 10px;
+    cursor: ew-resize;
+  }
+  
+  &-e {
+    right: 0;
+    top: 20px;
+    bottom: 20px;
+    width: 10px;
+    cursor: ew-resize;
+  }
+  
+  &:hover {
+    background: linear-gradient(
+      -45deg,
+      transparent 0%,
+      transparent 30%,
+      var(--bs-primary, #0d6efd) 30%,
+      var(--bs-primary, #0d6efd) 35%,
+      transparent 35%,
+      transparent 65%,
+      var(--bs-primary, #0d6efd) 65%,
+      var(--bs-primary, #0d6efd) 70%,
+      transparent 70%
+    );
+  }
 }
 
 .modal-header {
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid #dee2e6;
   background-color: var(--bs-body-bg, #ffffff);
+  user-select: none;
+  
+  &:active {
+    cursor: grabbing;
+  }
 }
 
 .modal-body {
   padding: 1.5rem;
   max-height: 70vh;
   overflow-y: auto;
+  overflow-x: hidden;
   background-color: var(--bs-body-bg, #ffffff);
+  flex: 1;
+  min-height: 0;
 }
 
 .modal-footer {
