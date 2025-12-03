@@ -23,12 +23,12 @@ const loadApps = async () => {
     }
     
     // Получаем конфигурацию меню из ModuleManager
-    const menuManager = moduleManager.getMenuManager()
+    const menuManager = moduleManager.menu
     await menuManager.initialize()
     const menuConfig = menuManager.generateMenuConfig()
     
     // Получаем IconManager для получения иконок
-    const iconManager = moduleManager.getIconManager()
+    const iconManager = moduleManager.icons
     
     // Извлекаем секции меню
     const menuSections = menuConfig.menuSections || []
