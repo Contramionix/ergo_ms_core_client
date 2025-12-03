@@ -229,11 +229,6 @@ export class EndpointManager extends ModuleLoader {
         errors.push(`Эндпоинт "${name}" имеет неверный тип: ${typeof data.value}`)
         return // Прерываем дальнейшую проверку для этого эндпоинта
       }
-
-      // Для строковых эндпоинтов проверяем начало с /
-      if (typeof data.value === 'string' && data.value && !data.value.startsWith('/')) {
-        warnings.push(`Эндпоинт "${name}" не начинается с /`)
-      }
     })
 
     return {

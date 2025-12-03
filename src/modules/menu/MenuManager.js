@@ -235,14 +235,7 @@ export class MenuManager extends ModuleLoader {
     const errors = []
     const warnings = []
 
-    const menuOrder = this.orderConfig?.menuOrder || []
-
-    menuOrder.forEach(routeName => {
-      if (!this.menuConfigs.has(routeName)) {
-        warnings.push(`Модуль "${routeName}" из menuOrder не найден`)
-      }
-    })
-
+    // Проверяем только загруженные конфигурации (если они есть)
     this.menuConfigs.forEach((section, routeName) => {
       if (!section.title && !section.name) {
         warnings.push(`Секция "${routeName}" не содержит title или name`)
