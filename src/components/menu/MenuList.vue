@@ -6,6 +6,7 @@ import { ChevronLeft, Cog, Minus } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { useToast } from 'vue-toastification'
 
 import {
   getUserMenu,
@@ -30,6 +31,7 @@ const emit = defineEmits(['left-padding', 'open-datasets', 'open-sidebar', 'rese
 
 const router = useRouter()
 const userStore = useUserStore()
+const toast = useToast()
 
 // Состояние меню
 const isCollapsed = ref(false)
@@ -223,29 +225,9 @@ async function loadMenu(forceRefresh = false) {
     const menuData = await getUserMenu(forceRefresh)
     
     if (menuData && menuData.menu_items && menuData.menu_items.length > 0) {
-      // Фильтруем элементы меню, исключая "User" и "Settings"
-      const filteredMenuItems = menuData.menu_items.filter(item => {
-        // Исключаем элементы с route_name === 'User' или 'Settings'
-        if (item.route_name === 'User' || item.route_name === 'Settings') {
-          return false
-        }
-        // Также проверяем дочерние элементы
-        if (item.children && item.children.length > 0) {
-          item.children = item.children.filter(child => {
-            return child.route_name !== 'User' && child.route_name !== 'Settings'
-          })
-        }
-        return true
-      })
-      
-      const filteredMenuData = {
-        ...menuData,
-        menu_items: filteredMenuItems
-      }
-      
-      menuSections.value = transformMenuData(filteredMenuData)
+      menuSections.value = transformMenuData(menuData)
       // Передаём menu_items для правильного вычисления индексов разделителей
-      separatorsConfig.value = transformSeparators(filteredMenuData.separators || [], filteredMenuData.menu_items)
+      separatorsConfig.value = transformSeparators(menuData.separators || [], menuData.menu_items)
       return
     }
     
