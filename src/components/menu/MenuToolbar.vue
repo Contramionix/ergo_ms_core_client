@@ -7,10 +7,12 @@
         </div>
         <div class="tools__user__name" v-if="shouldShowFullInfo">
           <div class="user__fullname" :title="getFullUserName()">{{ userFullName }}</div>
-          <div class="user__description">В сети</div>
         </div>
       </div>
       <div class="tools-buttons" v-if="shouldShowFullInfo">
+        <div class="tools__apps">
+          <AppsMenu @dropdown-toggle="(active) => setDropdownActive('apps', active)" />
+        </div>
         <div class="tools__assistant" @click="toggleAssistant">
           <div
             class="header-btn assistant-btn"
@@ -18,14 +20,11 @@
             v-tooltip
             title="AI Ассистент"
           >
-            <Bot :size="24" />
+            <Bot :size="20" />
           </div>
         </div>
-        <div class="tools__theme">
-          <ToggleTheme @dropdown-toggle="(active) => setDropdownActive('theme', active)" />
-        </div>
-        <div class="tools__notifications">
-          <UserNotifications @dropdown-toggle="(active) => setDropdownActive('notifications', active)" />
+        <div class="tools__settings">
+          <SettingsMenu @dropdown-toggle="(active) => setDropdownActive('settings', active)" />
         </div>
       </div>
     </div>
@@ -44,8 +43,8 @@
 <script setup>
 import { Bot } from 'lucide-vue-next'
 import UserMenu from '@/components/header/UserMenu.vue'
-import ToggleTheme from '@/components/header/ToggleTheme.vue'
-import UserNotifications from '@/components/header/UserNotifications.vue'
+import AppsMenu from '@/components/menu/AppsMenu.vue'
+import SettingsMenu from '@/components/menu/SettingsMenu.vue'
 import { assistantModuleManager } from '@/core/ai-assistant/core/AssistantModuleManager.js'
 import { assistantService } from '@/core/ai-assistant/js/assistantService.js'
 import { computed, ref, onMounted, watch, shallowRef } from 'vue'
@@ -209,6 +208,7 @@ const userFullName = computed(() => {
 const toggleAssistant = () => {
   isAssistantVisible.value = !isAssistantVisible.value
 }
+
 
 // Регистрируем функции в глобальном сервисе
 onMounted(async () => {
@@ -464,15 +464,16 @@ const handleChartAnalysis = async (chartId) => {
   flex-direction: column;
   position: relative;
   background-color: var(--color-secondary-background);
-  margin: 3%;
+  margin: 2%;
   width: auto;
   height: auto;
-  padding: 10px;
-  border-radius: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
 
   .tools {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     width: 100%;
 
     &.collapsed {
@@ -484,12 +485,14 @@ const handleChartAnalysis = async (chartId) => {
 .toolbar__user {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
 
   &.collapsed {
     justify-content: center;
     gap: 0;
+    flex: 0;
   }
 }
 
@@ -509,10 +512,12 @@ const handleChartAnalysis = async (chartId) => {
 
 .tools-buttons {
   display: flex;
-  gap: 2px;
-  justify-content: center;
+  gap: 4px;
+  justify-content: flex-end;
   align-items: center;
+  flex-shrink: 0;
 }
+
 
 .tools__assistant {
   .assistant-btn {
@@ -535,27 +540,7 @@ const handleChartAnalysis = async (chartId) => {
   }
 }
 
-.user__description {
-  font-size: 12px;
-  color: var(--color-secondary-text);
-}
 
-.search {
-  @include flex-row-gap($padding-internal, center);
-  width: 50%;
-
-  input {
-    border: none;
-    outline: none;
-    width: 100%;
-  }
-}
-
-.tools {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-}
 
 .tools__user__avatar {
   cursor: pointer;
@@ -580,13 +565,16 @@ const handleChartAnalysis = async (chartId) => {
 
 <style lang="scss">
 .header-btn {
-  padding: 7px 8px;
-  border-radius: 100%;
+  padding: 6px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background-color $transition;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &:hover {
-    background-color: var(--color-secondary-background);
+    background-color: var(--color-hover-background);
   }
 }
 

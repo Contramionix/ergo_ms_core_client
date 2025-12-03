@@ -26,6 +26,10 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 import MenuList from '@/components/menu/MenuList.vue'
 
 import StorageSidebar from '@/core/bi/MainPage/Sidebar/StorageSidebar.vue'
+import BIAnalysisModal from '@/core/bi/components/BIAnalysisModal.vue'
+import BIChartsModal from '@/core/bi/components/BIChartsModal.vue'
+import { biAnalysisService } from '@/core/bi/js/biAnalysisService.js'
+import { biChartsService } from '@/core/bi/js/biChartsService.js'
 import { Menu as IconMenu } from 'lucide-vue-next'
 
 const userStore = useUserStore()
@@ -35,6 +39,9 @@ const isMenuToggledManually = ref(false)
 const isOverlayVisible = ref(false)
 const isMenuCollapsed = ref(false)
 const menuWidth = ref(260)
+const isBIAnalysisModalVisible = ref(false)
+const isBIChartsModalVisible = ref(false)
+const chartsModalFileId = ref(null)
 
 function updateMenuVisibility() {
   if (window.innerWidth >= 1200) {
@@ -92,6 +99,17 @@ onMounted(async () => {
   
   // Инициализируем пользователя при загрузке авторизованной области
   await userStore.initializeUser()
+  
+  // Подписываемся на изменения состояния BI анализа
+  biAnalysisService.subscribe((isOpen) => {
+    isBIAnalysisModalVisible.value = isOpen
+  })
+  
+  // Подписываемся на изменения состояния BI графиков
+  biChartsService.subscribe((isOpen, fileId) => {
+    isBIChartsModalVisible.value = isOpen
+    chartsModalFileId.value = fileId
+  })
 })
 
 onBeforeUnmount(() => {
@@ -139,6 +157,15 @@ onBeforeUnmount(() => {
     :isMenuCollapsed="isMenuCollapsed"
     :menuWidth="menuWidth"
     @close="closeSidebar"
+  />
+  <BIAnalysisModal 
+    :show="isBIAnalysisModalVisible"
+    @close="() => biAnalysisService.close()"
+  />
+  <BIChartsModal 
+    :show="isBIChartsModalVisible"
+    :file-id="chartsModalFileId"
+    @close="() => biChartsService.close()"
   />
 </template>
 
