@@ -70,6 +70,14 @@ export default {
       "requiresAuth": true
     }
   },
+  "ModulePagePermissionsPanel": {
+    "path": "/admin-panel/module-page-permissions",
+    "component": "@/core/cms/adp/admin/ModulePagePermissions.vue",
+    "meta": {
+      "title": "Права по страницам модулей",
+      "requiresAuth": true
+    }
+  },
   "LiminationPanel": {
     "path": "/admin-panel/limitations",
     "component": "@/core/cms/adp/admin/limitationSettings.vue",
@@ -98,6 +106,14 @@ export default {
     "component": "@/core/cms/filemanager/FileManager.vue",
     "meta": {
       "title": "Файлы",
+      "requiresAuth": true
+    }
+  },
+  "AccessDenied": {
+    "path": "/access-denied",
+    "component": "@/core/cms/adp/components/AccessDeniedMessage.vue",
+    "meta": {
+      "title": "Ошибка доступа",
       "requiresAuth": true
     }
   }

@@ -24,6 +24,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll } from '@/modules/index.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { checkRouteAdpAccess } from '@/core/cms/adp/js/accessControl'
 
 // Генерация маршрутов из JSON конфигурации (async)
 const routes = await generateAllRoutes()
@@ -52,7 +53,6 @@ const router = createRouter({
   },
 })
 
-import { checkAccessToPage, CheckAccessToComponents } from '../core/cms/adp/admin/js/GroupsPolitics'
 async function runCheckToken() {
   const isChecked = await checkToken()
   return isChecked
@@ -97,7 +97,7 @@ router.beforeEach(async (to, from, next) => {
         if (uid === undefined || uid === null) {
           return next({ name: 'StartPage' })
         }
-        return next({ name: 'NotFound' })
+        return next({ name: 'AccessDenied' })
       }
     }
 
@@ -127,11 +127,17 @@ router.beforeEach(async (to, from, next) => {
       }
     }
 
-    // 4) page / component ACL (выполняем параллельно)
-    await Promise.all([
-      checkAccessToPage(to.path),
-      CheckAccessToComponents(to.path),
-    ])
+    // 4) Дополнительная проверка прав новой системой ADP для всех защищённых страниц
+    if (to.meta && to.meta.requiresAuth && to.name !== 'AccessDenied') {
+      try {
+        const allowed = await checkRouteAdpAccess(to.path)
+        if (!allowed) {
+          return next({ name: 'AccessDenied' })
+        }
+      } catch (error) {
+        return next({ name: 'AccessDenied' })
+      }
+    }
 
     next()
   } catch (err) {
