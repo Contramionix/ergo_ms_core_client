@@ -51,6 +51,10 @@ app.use(setupCalendar, {
 
 app.mount('#app')
 
+// Инициализация системы тем
+import { initTheme } from '@/js/theme-manager.js'
+initTheme()
+
 // Запускаем проверку токена после полной инициализации приложения
 if (authGuard.isAuthenticated()) {
   authGuard.startTokenValidation()

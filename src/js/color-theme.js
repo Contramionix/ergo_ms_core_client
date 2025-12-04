@@ -4,25 +4,10 @@
  * Данный модуль реализует переключение между светлой, темной и автоматической
  * цветовыми темами приложения на основе Bootstrap темизации.
  * 
- * Функциональность:
- * - Сохранение выбранной темы в localStorage
- * - Автоматическое определение предпочтений системы (prefers-color-scheme)
- * - Применение темы через атрибут data-bs-theme на documentElement
- * - Обновление UI переключателя тем с подсветкой активного варианта
- * - Реакция на изменения системных предпочтений пользователя
- * 
- * Поддерживаемые темы:
- * - 'light': светлая тема
- * - 'dark': темная тема  
- * - 'auto': автоматическая тема (следует системным настройкам)
- * 
- * Интеграция:
- * - Работает с Bootstrap темизацией через CSS переменные
- * - Обновляет переключатель в UI (#bd-theme)
- * - Обеспечивает accessibility через ARIA атрибуты
- * 
- * Адаптирован из официальной документации Bootstrap для docs сайта.
+ * Интегрирован с theme-manager.js для поддержки кастомных тем.
  */
+
+import { loadThemeFromLocalStorage, applyTheme, resetToInitialTheme } from './theme-manager.js'
 
 ;(() => {
   'use strict'
@@ -43,15 +28,33 @@
     return allowed.includes(envDefault) ? envDefault : fallback
   }
 
-  const setTheme = (theme) => {
-    if (theme === 'auto') {
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.setAttribute('data-bs-theme', 'dark')
-      } else {
-        document.documentElement.setAttribute('data-bs-theme', 'light')
-      }
-    } else {
-      document.documentElement.setAttribute('data-bs-theme', theme)
+  /**
+   * Устанавливает тему с учетом кастомных настроек
+   */
+  const setTheme = (themeMode) => {
+    // Сначала проверяем, есть ли активная кастомная тема
+    const savedTheme = loadThemeFromLocalStorage()
+    
+    // Если есть сохранённая тема - используем её
+    if (savedTheme && savedTheme.colors && Object.keys(savedTheme.colors).length > 0) {
+      applyTheme(savedTheme, false) // Не перезаписываем localStorage
+      return
+    }
+    
+    // Иначе используем стандартную логику
+    let actualMode = themeMode
+    
+    if (themeMode === 'auto') {
+      actualMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    }
+    
+    // Устанавливаем атрибут Bootstrap
+    document.documentElement.setAttribute('data-bs-theme', actualMode)
+    
+    // Удаляем кастомные стили - SCSS применится автоматически
+    const styleElement = document.getElementById('custom-theme-styles')
+    if (styleElement) {
+      styleElement.textContent = ''
     }
   }
 
@@ -67,7 +70,12 @@
     const themeSwitcherText = document.querySelector('#bd-theme-text')
     const activeThemeIcon = document.querySelector('.theme-icon-active use')
     const btnToActive = document.querySelector(`[data-bs-theme-value="${theme}"]`)
-    const svgOfActiveBtn = btnToActive.querySelector('svg use').getAttribute('href')
+    
+    if (!btnToActive) {
+      return
+    }
+    
+    const svgOfActiveBtn = btnToActive.querySelector('svg use')?.getAttribute('href')
 
     document.querySelectorAll('[data-bs-theme-value]').forEach((element) => {
       element.classList.remove('active')
@@ -76,9 +84,15 @@
 
     btnToActive.classList.add('active')
     btnToActive.setAttribute('aria-pressed', 'true')
-    activeThemeIcon.setAttribute('href', svgOfActiveBtn)
-    const themeSwitcherLabel = `${themeSwitcherText.textContent} (${btnToActive.dataset.bsThemeValue})`
-    themeSwitcher.setAttribute('aria-label', themeSwitcherLabel)
+    
+    if (activeThemeIcon && svgOfActiveBtn) {
+      activeThemeIcon.setAttribute('href', svgOfActiveBtn)
+    }
+    
+    if (themeSwitcherText) {
+      const themeSwitcherLabel = `${themeSwitcherText.textContent} (${btnToActive.dataset.bsThemeValue})`
+      themeSwitcher.setAttribute('aria-label', themeSwitcherLabel)
+    }
 
     if (focus) {
       themeSwitcher.focus()
