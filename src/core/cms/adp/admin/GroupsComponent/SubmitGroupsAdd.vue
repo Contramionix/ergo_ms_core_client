@@ -31,7 +31,7 @@ const groupId = ref(null)
 const showErrorName = ref(false)
 const showErrorRole = ref(false)
 
-const availableRoles = computed(() => roles.value.filter(role => !role.is_system))
+const availableRoles = computed(() => roles.value)
 const submitButtonText = computed(() => {
   if (isSubmitting.value) {
     return 'Сохранение...'
