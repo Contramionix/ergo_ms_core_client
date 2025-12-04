@@ -205,6 +205,14 @@ export const useUserStore = defineStore('userStore', () => {
     Cookies.remove('userId')
     Cookies.remove('csrftoken')
     
+    // Очищаем активную организацию при выходе
+    try {
+      const STORAGE_KEY = 'crm_active_organization'
+      localStorage.removeItem(STORAGE_KEY)
+    } catch (error) {
+      console.error('Ошибка очистки активной организации при выходе:', error)
+    }
+    
     // Перенаправляем на страницу входа
     window.location.href = '/login'
   }

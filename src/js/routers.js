@@ -25,18 +25,13 @@ import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll } from '@/modules/index.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { checkRouteAdpAccess } from '@/core/cms/adp/js/accessControl'
+import Cookies from 'js-cookie'
 
 // Генерация маршрутов из JSON конфигурации (async)
 const routes = await generateAllRoutes()
 
 // Валидация конфигурации при запуске (async)
 const validation = await validateAll()
-if (!validation.isValid) {
-  console.error('❌ Обнаружены ошибки в конфигурации:', validation)
-}
-if (validation.routes?.warnings?.length > 0 || validation.menu?.warnings?.length > 0) {
-  console.warn('⚠️ Предупреждения конфигурации:', validation)
-}
 
 routes.forEach((route) => {
   if (!route.meta || !Object.prototype.hasOwnProperty.call(route.meta, 'startRoute')) {
@@ -67,6 +62,59 @@ router.beforeEach(async (to, from, next) => {
         apiClient.logout()
       })
       return next({ name: 'StartPage' })
+    }
+
+    // requiresActiveOrganization для страниц CRM - проверяем сразу после авторизации
+    const isWelcomePage = to.path === '/crm-remastered/welcome' || to.name === 'CRMRemasteredWelcome'
+    const isCRMRoute = to.path && to.path.startsWith('/crm-remastered') && !isWelcomePage
+    const hasRequiresActiveOrgFlag = to.meta && to.meta.requiresActiveOrganization === true
+    const isCRMName = to.name && to.name.startsWith('CRMRemastered') && to.name !== 'CRMRemasteredWelcome'
+    
+    if ((isCRMRoute || isCRMName || hasRequiresActiveOrgFlag) && !isWelcomePage) {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const STORAGE_KEY = 'crm_active_organization'
+        let hasActiveOrganization = false
+        
+        try {
+          const currentUserId = Cookies.get('userId')
+          const currentUserIdNum = currentUserId ? parseInt(currentUserId, 10) : null
+          
+          const stored = localStorage.getItem(STORAGE_KEY)
+          if (stored) {
+            try {
+              const data = JSON.parse(stored)
+              
+              let org = null
+              let orgUserId = null
+              
+              if (data.organization) {
+                org = data.organization
+                orgUserId = data.user_id || null
+              } else {
+                org = data
+                orgUserId = null
+              }
+              
+              if (org && (org.id || org.name)) {
+                if (currentUserIdNum && orgUserId && orgUserId !== currentUserIdNum) {
+                  localStorage.removeItem(STORAGE_KEY)
+                  hasActiveOrganization = false
+                } else {
+                  hasActiveOrganization = true
+                }
+              }
+            } catch (parseError) {
+            }
+          }
+        } catch (storageError) {
+        }
+        
+        if (!hasActiveOrganization) {
+          return next({ name: 'CRMRemasteredWelcome' })
+        }
+      } else {
+        return next({ name: 'CRMRemasteredWelcome' })
+      }
     }
 
     // 2) requiresAdmin для страниц
@@ -113,21 +161,20 @@ router.beforeEach(async (to, from, next) => {
             : (resp.data.results || resp.data.items || [])
           
           if (organizations.length === 0) {
-            // Если у пользователя нет организаций - показываем NotFound
-            return next({ name: 'NotFound' })
+            // Если у пользователя нет организаций - перенаправляем на страницу создания в CRM
+            return next({ name: 'CRMRemasteredWelcome' })
           }
         } else {
-          // Если запрос не успешен или нет данных - показываем NotFound
-          return next({ name: 'NotFound' })
+          // Если запрос не успешен или нет данных - перенаправляем на страницу создания
+          return next({ name: 'CRMRemasteredWelcome' })
         }
       } catch (error) {
-        // При ошибке проверки также показываем NotFound
-        console.error('Ошибка проверки организации:', error)
-        return next({ name: 'NotFound' })
+        // При ошибке также перенаправляем на страницу создания
+        return next({ name: 'CRMRemasteredWelcome' })
       }
     }
 
-    // 4) Дополнительная проверка прав новой системой ADP для всех защищённых страниц
+    // 5) Дополнительная проверка прав новой системой ADP для всех защищённых страниц
     if (to.meta && to.meta.requiresAuth && to.name !== 'AccessDenied') {
       try {
         const allowed = await checkRouteAdpAccess(to.path)
@@ -141,7 +188,6 @@ router.beforeEach(async (to, from, next) => {
 
     next()
   } catch (err) {
-    console.error('Router guard error:', err)
     // При ошибке также очищаем токены
     import('./api/manager').then(({ apiClient }) => {
       apiClient.logout()
