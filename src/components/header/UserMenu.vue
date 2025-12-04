@@ -6,6 +6,7 @@ import DefaultAvatar from '@/components/DefaultAvatar.vue'
 import { Dropdown } from 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
+import { logout as authLogout } from '@/core/cms/adp/js/auth-index'
 
 const userStore = useUserStore()
 const dropdownElement = ref(null)
@@ -86,6 +87,35 @@ watch(() => userStore.avatarUrl, () => {
 const onImageError = () => {
   console.error('Ошибка загрузки аватара в UserMenu:', userStore.avatarUrl)
   avatarLoadError.value = true
+}
+
+// Централизованный выход из аккаунта
+const handleLogout = async () => {
+  try {
+    // Очищаем токены и связанные с ними данные через auth-сервис
+    await authLogout()
+  } catch (error) {
+    console.error('Ошибка при logout через auth сервис:', error)
+  }
+
+  try {
+    // Дополнительно очищаем токены API-клиента (на случай разных сценариев выхода)
+    apiClient.logout()
+  } catch (error) {
+    console.error('Ошибка при logout через apiClient:', error)
+  }
+
+  // Сбрасываем состояние пользователя и выполняем редирект на /login
+  userStore.logout()
+
+  // Закрываем dropdown, если он ещё видим (на случай, если редирект не сработает мгновенно)
+  if (dropdownInstance) {
+    try {
+      dropdownInstance.hide()
+    } catch (_) {
+      // игнорируем ошибки закрытия dropdown
+    }
+  }
 }
 
 // Инициализируем пользователя при загрузке компонента
@@ -185,7 +215,21 @@ onUnmounted(() => {
       
       <!-- Меню -->
       <li v-for="(item, index) in menuItems" :key="item.id">
+        <!-- Для пункта "Выход" выполняем централизованный logout без роутинга -->
+        <button
+          v-if="item.link?.name === 'logout'"
+          type="button"
+          class="dropdown-item header-dropdown-item w-100 text-start"
+          :style="{ transitionDelay: `${(index + 1) * 50}ms` }"
+          @click="handleLogout"
+        >
+          <span class="icon-flex">
+            <component :is="item.icon" :size="22" />
+          </span>
+          <span>{{ item.title }}</span>
+        </button>
         <RouterLink
+          v-else
           :to="item.link"
           class="dropdown-item header-dropdown-item"
           active-class="active"
