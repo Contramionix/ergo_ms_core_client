@@ -151,6 +151,54 @@ router.beforeEach(async (to, from, next) => {
 
     // 3) requiresOrganization для страниц настроек организации
     if (to.meta && to.meta.requiresOrganization) {
+      // Сначала проверяем наличие активной организации в localStorage
+      let hasActiveOrganization = false
+      
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          const STORAGE_KEY = 'crm_active_organization'
+          const currentUserId = Cookies.get('userId')
+          const currentUserIdNum = currentUserId ? parseInt(currentUserId, 10) : null
+          
+          const stored = localStorage.getItem(STORAGE_KEY)
+          if (stored) {
+            try {
+              const data = JSON.parse(stored)
+              
+              let org = null
+              let orgUserId = null
+              
+              if (data.organization) {
+                org = data.organization
+                orgUserId = data.user_id || null
+              } else {
+                org = data
+                orgUserId = null
+              }
+              
+              if (org && (org.id || org.name)) {
+                if (currentUserIdNum && orgUserId && orgUserId !== currentUserIdNum) {
+                  localStorage.removeItem(STORAGE_KEY)
+                  hasActiveOrganization = false
+                } else {
+                  hasActiveOrganization = true
+                }
+              }
+            } catch (parseError) {
+              // Игнорируем ошибки парсинга
+            }
+          }
+        } catch (storageError) {
+          // Игнорируем ошибки доступа к localStorage
+        }
+      }
+      
+      // Если нет активной организации - перенаправляем на Welcome
+      if (!hasActiveOrganization) {
+        return next({ name: 'CRMRemasteredWelcome' })
+      }
+      
+      // Дополнительно проверяем наличие организаций у пользователя
       try {
         const { apiClient } = await import('./api/manager')
         const resp = await apiClient.get('/organizations/organizations/')
