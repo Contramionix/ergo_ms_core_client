@@ -12,6 +12,7 @@ import { endpoints } from '@/js/api/endpoints'
 import { displayPhone } from '@/js/utils/phoneUtils.js'
 import DefaultAvatar from '@/components/DefaultAvatar.vue'
 import YadhtribYppah from '@/components/44°03′23″N 123°07′03″W/YadhtribYppah.vue'
+import AvatarCropModal from '@/components/AvatarCropModal.vue'
 
 const toast = useToast()
 const userStore = useUserStore()
@@ -30,6 +31,9 @@ const avatarInput = ref(null)
 const avatarUrl = ref(null) // null означает использование стандартного аватара
 const avatarLoading = ref(false)
 const avatarError = ref('')
+const showCropModal = ref(false)
+const cropImageSrc = ref(null)
+const selectedFile = ref(null)
 
 // Получение аватара
 async function fetchAvatar() {
@@ -50,22 +54,41 @@ async function fetchAvatar() {
   }
 }
 
-// Изменение аватара
-const changeAvatar = async (event) => {
+// Изменение аватара - открываем модальное окно кадрирования
+const changeAvatar = (event) => {
   const file = event.target.files[0]
   if (!file || !file.type.startsWith('image/')) {
     toast.error('Пожалуйста, выберите изображение!')
     return
   }
 
-  // Показываем предварительный просмотр
-  avatarUrl.value = URL.createObjectURL(file)
+  // Сохраняем файл для последующей загрузки
+  selectedFile.value = file
+  
+  // Создаем URL для предварительного просмотра в модальном окне
+  cropImageSrc.value = URL.createObjectURL(file)
+  showCropModal.value = true
+  
+  // Сбрасываем input, чтобы можно было выбрать тот же файл снова
+  if (avatarInput.value) {
+    avatarInput.value.value = ''
+  }
+}
+
+// Обработка подтверждения кадрирования
+const handleCropConfirm = async (croppedFile) => {
+  if (!croppedFile) {
+    toast.error('Ошибка при кадрировании изображения')
+    return
+  }
+
+  showCropModal.value = false
   avatarLoading.value = true
   avatarError.value = ''
 
   try {
     // Используем функцию обновления из userStore для синхронизации всех компонентов
-    const success = await userStore.updateAvatar(file)
+    const success = await userStore.updateAvatar(croppedFile)
 
     if (success) {
       // Обновляем локальный аватар
@@ -81,7 +104,24 @@ const changeAvatar = async (event) => {
     await fetchAvatar()
   } finally {
     avatarLoading.value = false
+    // Очищаем временный URL
+    if (cropImageSrc.value) {
+      URL.revokeObjectURL(cropImageSrc.value)
+      cropImageSrc.value = null
+    }
+    selectedFile.value = null
   }
+}
+
+// Обработка отмены кадрирования
+const handleCropCancel = () => {
+  showCropModal.value = false
+  // Очищаем временный URL
+  if (cropImageSrc.value) {
+    URL.revokeObjectURL(cropImageSrc.value)
+    cropImageSrc.value = null
+  }
+  selectedFile.value = null
 }
 
 // Сброс аватара
@@ -574,6 +614,15 @@ onMounted(() => {
       </div>
     </div>
   </div>
+  
+  <!-- Модальное окно кадрирования аватара -->
+  <AvatarCropModal
+    :show="showCropModal"
+    :image-src="cropImageSrc"
+    @confirm="handleCropConfirm"
+    @cancel="handleCropCancel"
+    @close="handleCropCancel"
+  />
   </div>
 </template>
 
