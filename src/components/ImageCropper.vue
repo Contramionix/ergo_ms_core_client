@@ -17,14 +17,8 @@ const props = defineProps({
   minHeight: {
     type: Number,
     default: 200
-  },
-  viewMode: {
-    type: Number,
-    default: 1
   }
 })
-
-const emit = defineEmits(['crop', 'cancel'])
 
 const containerRef = ref(null)
 const canvasRef = ref(null)
@@ -32,8 +26,6 @@ const imageRef = ref(null)
 
 // Состояние изображения
 const imageLoaded = ref(false)
-const imageWidth = ref(0)
-const imageHeight = ref(0)
 const imageRotation = ref(0)
 const imageScaleX = ref(1)
 const imageScaleY = ref(1)
@@ -49,14 +41,27 @@ const dragStartX = ref(0)
 const dragStartY = ref(0)
 const dragStartCropX = ref(0)
 const dragStartCropY = ref(0)
+const dragStartCropWidth = ref(0)
+const dragStartCropHeight = ref(0)
 const resizeHandle = ref(null)
 
 // Размеры контейнера
 const containerWidth = ref(400)
 const containerHeight = ref(400)
 
+// Курсор
+const currentCursor = ref('default')
+
 let ctx = null
 let animationFrameId = null
+let resizeObserver = null
+const requestSmoothDraw = () => {
+  if (animationFrameId) return
+  animationFrameId = requestAnimationFrame(() => {
+    animationFrameId = null
+    draw()
+  })
+}
 
 // Загрузка изображения
 function loadImage(src) {
@@ -65,8 +70,6 @@ function loadImage(src) {
     img.crossOrigin = 'anonymous'
     img.onload = () => {
       imageRef.value = img
-      imageWidth.value = img.width
-      imageHeight.value = img.height
       imageLoaded.value = true
       initializeCropArea()
       resolve(img)
@@ -76,33 +79,52 @@ function loadImage(src) {
   })
 }
 
+function getDisplayRect() {
+  if (!imageRef.value) {
+    return { x: 0, y: 0, width: 0, height: 0 }
+  }
+
+  const img = imageRef.value
+  const scaleX = containerWidth.value / img.width
+  const scaleY = containerHeight.value / img.height
+  // Масштабируем чтобы изображение полностью помещалось с небольшим отступом
+  const scale = Math.min(scaleX, scaleY) * 0.95
+
+  const width = img.width * scale
+  const height = img.height * scale
+  const x = (containerWidth.value - width) / 2
+  const y = (containerHeight.value - height) / 2
+
+  return { x, y, width, height }
+}
+
 // Инициализация области кадрирования
 function initializeCropArea() {
   if (!imageRef.value || !containerRef.value) return
 
-  const img = imageRef.value
   const container = containerRef.value
   const containerRect = container.getBoundingClientRect()
   
   containerWidth.value = containerRect.width
   containerHeight.value = containerRect.height
 
-  // Вычисляем масштаб для отображения изображения
-  const scaleX = containerWidth.value / img.width
-  const scaleY = containerHeight.value / img.height
-  const scale = Math.min(scaleX, scaleY) * 0.8 // 80% от контейнера
+  const displayRect = getDisplayRect()
 
-  // Вычисляем размер области кадрирования с учетом aspect ratio
-  const cropSize = Math.min(containerWidth.value * 0.6, containerHeight.value * 0.6)
+  // Вычисляем размер области кадрирования с учетом aspect ratio (80% от изображения)
+  // и гарантируем что он не меньше минимального значения
+  const maxCropSize = Math.min(displayRect.width, displayRect.height / props.aspectRatio)
+  const desiredSize = maxCropSize * 0.8
+  const cropSize = Math.max(desiredSize, props.minWidth, props.minHeight * props.aspectRatio)
   
-  cropWidth.value = cropSize
-  cropHeight.value = cropSize / props.aspectRatio
+  // Ограничиваем сверху, чтобы не выходить за границы изображения
+  cropWidth.value = Math.min(cropSize, displayRect.width, displayRect.height * props.aspectRatio)
+  cropHeight.value = cropWidth.value / props.aspectRatio
   
   // Центрируем область кадрирования
-  cropX.value = (containerWidth.value - cropWidth.value) / 2
-  cropY.value = (containerHeight.value - cropHeight.value) / 2
+  cropX.value = displayRect.x + (displayRect.width - cropWidth.value) / 2
+  cropY.value = displayRect.y + (displayRect.height - cropHeight.value) / 2
 
-  draw()
+  requestSmoothDraw()
 }
 
 // Отрисовка
@@ -121,14 +143,7 @@ function draw() {
   canvas.height = containerHeight.value
 
   // Вычисляем масштаб для отображения изображения
-  const scaleX = containerWidth.value / img.width
-  const scaleY = containerHeight.value / img.height
-  const scale = Math.min(scaleX, scaleY) * 0.8
-
-  const displayWidth = img.width * scale
-  const displayHeight = img.height * scale
-  const displayX = (containerWidth.value - displayWidth) / 2
-  const displayY = (containerHeight.value - displayHeight) / 2
+  const { x: displayX, y: displayY, width: displayWidth, height: displayHeight } = getDisplayRect()
 
   // Сохраняем контекст
   ctx.save()
@@ -159,6 +174,20 @@ function draw() {
   ctx.lineWidth = 2
   ctx.setLineDash([])
   ctx.strokeRect(cropX.value, cropY.value, cropWidth.value, cropHeight.value)
+
+  // Рисуем круг, вписанный в квадрат рамки
+  ctx.beginPath()
+  ctx.strokeStyle = 'rgba(51, 153, 255, 0.7)'
+  ctx.lineWidth = 2
+  const radius = Math.min(cropWidth.value, cropHeight.value) / 2
+  ctx.arc(
+    cropX.value + cropWidth.value / 2,
+    cropY.value + cropHeight.value / 2,
+    radius,
+    0,
+    Math.PI * 2
+  )
+  ctx.stroke()
 
   // Рисуем углы для изменения размера
   const cornerSize = 10
@@ -232,6 +261,25 @@ function getResizeHandle(x, y) {
   return null
 }
 
+// Обновление курсора в зависимости от позиции
+function updateCursor(x, y) {
+  const handle = getResizeHandle(x, y)
+  if (handle) {
+    // Курсоры для углов
+    const cursors = {
+      'nw': 'nwse-resize',
+      'ne': 'nesw-resize',
+      'sw': 'nesw-resize',
+      'se': 'nwse-resize'
+    }
+    currentCursor.value = cursors[handle]
+  } else if (isPointInCropArea(x, y)) {
+    currentCursor.value = 'move'
+  } else {
+    currentCursor.value = 'default'
+  }
+}
+
 // Обработка начала перетаскивания
 function handleMouseDown(event) {
   if (!imageLoaded.value) return
@@ -248,6 +296,8 @@ function handleMouseDown(event) {
     dragStartY.value = y
     dragStartCropX.value = cropX.value
     dragStartCropY.value = cropY.value
+    dragStartCropWidth.value = cropWidth.value
+    dragStartCropHeight.value = cropHeight.value
   } else if (isPointInCropArea(x, y)) {
     isDragging.value = true
     dragStartX.value = x
@@ -269,66 +319,153 @@ function handleMouseMove(event) {
     const deltaX = x - dragStartX.value
     const deltaY = y - dragStartY.value
 
-    let newX = dragStartCropX.value
-    let newY = dragStartCropY.value
-    let newWidth = cropWidth.value
-    let newHeight = cropHeight.value
+    // Используем начальные значения для вычислений
+    const startX = dragStartCropX.value
+    const startY = dragStartCropY.value
+    const startW = dragStartCropWidth.value
+    const startH = dragStartCropHeight.value
+
+    let newX = startX
+    let newY = startY
+    let newWidth = startW
+    let newHeight = startH
+
+    // Вычисляем изменение размера на основе перемещения мыши
+    // Используем среднее значение delta для плавного масштабирования с сохранением пропорций
+    let sizeDelta = 0
 
     switch (resizeHandle.value) {
-      case 'nw': // Верхний левый
-        newX = Math.max(0, dragStartCropX.value + deltaX)
-        newY = Math.max(0, dragStartCropY.value + deltaY)
-        newWidth = cropWidth.value - deltaX
-        newHeight = cropHeight.value - deltaY
+      case 'nw': // Верхний левый - уменьшение при движении вправо/вниз
+        sizeDelta = (-deltaX - deltaY) / 2
+        newWidth = startW + sizeDelta
+        newHeight = newWidth / props.aspectRatio
+        newX = startX + startW - newWidth
+        newY = startY + startH - newHeight
         break
-      case 'ne': // Верхний правый
-        newY = Math.max(0, dragStartCropY.value + deltaY)
-        newWidth = cropWidth.value + deltaX
-        newHeight = cropHeight.value - deltaY
+      case 'ne': // Верхний правый - увеличение при движении вправо, уменьшение при движении вниз
+        sizeDelta = (deltaX - deltaY) / 2
+        newWidth = startW + sizeDelta
+        newHeight = newWidth / props.aspectRatio
+        // X остаётся на месте (правый край двигается)
+        newY = startY + startH - newHeight
         break
-      case 'sw': // Нижний левый
-        newX = Math.max(0, dragStartCropX.value + deltaX)
-        newWidth = cropWidth.value - deltaX
-        newHeight = cropHeight.value + deltaY
+      case 'sw': // Нижний левый - уменьшение при движении вправо, увеличение при движении вниз
+        sizeDelta = (-deltaX + deltaY) / 2
+        newWidth = startW + sizeDelta
+        newHeight = newWidth / props.aspectRatio
+        newX = startX + startW - newWidth
+        // Y остаётся на месте (нижний край двигается)
         break
-      case 'se': // Нижний правый
-        newWidth = cropWidth.value + deltaX
-        newHeight = cropHeight.value + deltaY
+      case 'se': // Нижний правый - увеличение при движении вправо/вниз
+        sizeDelta = (deltaX + deltaY) / 2
+        newWidth = startW + sizeDelta
+        newHeight = newWidth / props.aspectRatio
+        // X и Y остаются на месте
         break
     }
 
-    // Применяем aspect ratio
-    if (newWidth / newHeight !== props.aspectRatio) {
+    // Минимальные размеры
+    const minW = props.minWidth
+    const minH = props.minHeight
+
+    // Получаем границы изображения
+    const { x: imgMinX, y: imgMinY, width: dispW, height: dispH } = getDisplayRect()
+    const imgMaxX = imgMinX + dispW
+    const imgMaxY = imgMinY + dispH
+
+    // Ограничиваем минимальный размер
+    if (newWidth < minW) {
+      const oldWidth = newWidth
+      newWidth = minW
       newHeight = newWidth / props.aspectRatio
-    }
-
-    // Проверяем минимальные размеры
-    if (newWidth >= props.minWidth && newHeight >= props.minHeight) {
-      // Проверяем границы
-      if (newX + newWidth <= containerWidth.value && newY + newHeight <= containerHeight.value) {
-        cropX.value = newX
-        cropY.value = newY
-        cropWidth.value = newWidth
-        cropHeight.value = newHeight
+      // Корректируем позицию в зависимости от угла
+      if (resizeHandle.value === 'nw' || resizeHandle.value === 'sw') {
+        newX = newX - (newWidth - oldWidth)
+      }
+      if (resizeHandle.value === 'nw' || resizeHandle.value === 'ne') {
+        newY = newY - (newHeight - (oldWidth / props.aspectRatio))
       }
     }
 
-    draw()
+    // Ограничиваем по границам изображения
+    // Левая граница
+    if (newX < imgMinX) {
+      if (resizeHandle.value === 'nw' || resizeHandle.value === 'sw') {
+        const overflow = imgMinX - newX
+        newX = imgMinX
+        newWidth = newWidth - overflow
+        newHeight = newWidth / props.aspectRatio
+        if (resizeHandle.value === 'nw') {
+          newY = startY + startH - newHeight
+        }
+      }
+    }
+
+    // Верхняя граница
+    if (newY < imgMinY) {
+      if (resizeHandle.value === 'nw' || resizeHandle.value === 'ne') {
+        const overflow = imgMinY - newY
+        newY = imgMinY
+        newHeight = newHeight - overflow
+        newWidth = newHeight * props.aspectRatio
+        if (resizeHandle.value === 'nw') {
+          newX = startX + startW - newWidth
+        }
+      }
+    }
+
+    // Правая граница
+    if (newX + newWidth > imgMaxX) {
+      if (resizeHandle.value === 'ne' || resizeHandle.value === 'se') {
+        newWidth = imgMaxX - newX
+        newHeight = newWidth / props.aspectRatio
+        if (resizeHandle.value === 'ne') {
+          newY = startY + startH - newHeight
+        }
+      }
+    }
+
+    // Нижняя граница
+    if (newY + newHeight > imgMaxY) {
+      if (resizeHandle.value === 'sw' || resizeHandle.value === 'se') {
+        newHeight = imgMaxY - newY
+        newWidth = newHeight * props.aspectRatio
+        if (resizeHandle.value === 'sw') {
+          newX = startX + startW - newWidth
+        }
+      }
+    }
+
+    // Финальная проверка минимальных размеров
+    if (newWidth >= minW && newHeight >= minH) {
+      cropX.value = newX
+      cropY.value = newY
+      cropWidth.value = newWidth
+      cropHeight.value = newHeight
+    }
+
+    requestSmoothDraw()
   } else if (isDragging.value) {
     const deltaX = x - dragStartX.value
     const deltaY = y - dragStartY.value
 
     let newX = dragStartCropX.value + deltaX
     let newY = dragStartCropY.value + deltaY
+    const { x: minX, y: minY, width: dispW, height: dispH } = getDisplayRect()
+    const maxX = minX + dispW - cropWidth.value
+    const maxY = minY + dispH - cropHeight.value
 
-    // Ограничиваем перемещение границами контейнера
-    newX = Math.max(0, Math.min(newX, containerWidth.value - cropWidth.value))
-    newY = Math.max(0, Math.min(newY, containerHeight.value - cropHeight.value))
+    // Ограничиваем перемещение границами изображения
+    newX = Math.max(minX, Math.min(newX, maxX))
+    newY = Math.max(minY, Math.min(newY, maxY))
 
     cropX.value = newX
     cropY.value = newY
 
-    draw()
+    requestSmoothDraw()
+  } else {
+    // Обновляем курсор когда не перетаскиваем
+    updateCursor(x, y)
   }
 }
 
@@ -352,11 +489,24 @@ function handleResize() {
 // Инициализация
 onMounted(async () => {
   await nextTick()
-  if (props.imageSrc) {
-    await loadImage(props.imageSrc)
-  }
 
   window.addEventListener('resize', handleResize)
+  
+  // Наблюдаем за изменением размеров контейнера
+  if (containerRef.value) {
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect
+        if (width > 0 && height > 0 && (width !== containerWidth.value || height !== containerHeight.value)) {
+          containerWidth.value = width
+          containerHeight.value = height
+          initializeCropArea()
+        }
+      }
+    })
+    resizeObserver.observe(containerRef.value)
+  }
+  
   if (canvasRef.value) {
     canvasRef.value.addEventListener('mousedown', handleMouseDown)
     window.addEventListener('mousemove', handleMouseMove)
@@ -405,6 +555,10 @@ onUnmounted(() => {
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId)
   }
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
 })
 
 // Получение обрезанного canvas
@@ -418,7 +572,6 @@ function getCroppedCanvas(options = {}) {
     height: 400,
     imageSmoothingEnabled: true,
     imageSmoothingQuality: 'high',
-    fillColor: '#fff',
     ...options
   }
 
@@ -432,20 +585,16 @@ function getCroppedCanvas(options = {}) {
   outputCtx.imageSmoothingEnabled = defaultOptions.imageSmoothingEnabled
   outputCtx.imageSmoothingQuality = defaultOptions.imageSmoothingQuality
 
-  // Вычисляем реальные координаты области кадрирования на исходном изображении
+  // Используем те же координаты что и при отображении
+  const displayRect = getDisplayRect()
   const img = imageRef.value
-  const scaleX = containerWidth.value / img.width
-  const scaleY = containerHeight.value / img.height
-  const scale = Math.min(scaleX, scaleY) * 0.8
-
-  const displayWidth = img.width * scale
-  const displayHeight = img.height * scale
-  const displayX = (containerWidth.value - displayWidth) / 2
-  const displayY = (containerHeight.value - displayHeight) / 2
+  
+  // Вычисляем масштаб отображения
+  const scale = displayRect.width / img.width
 
   // Вычисляем координаты области кадрирования относительно изображения
-  const sourceX = (cropX.value - displayX) / scale
-  const sourceY = (cropY.value - displayY) / scale
+  const sourceX = (cropX.value - displayRect.x) / scale
+  const sourceY = (cropY.value - displayRect.y) / scale
   const sourceWidth = cropWidth.value / scale
   const sourceHeight = cropHeight.value / scale
 
@@ -465,8 +614,6 @@ function getCroppedCanvas(options = {}) {
   tempCtx.restore()
 
   // Вырезаем область кадрирования
-  outputCtx.fillStyle = defaultOptions.fillColor
-  outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height)
   outputCtx.drawImage(
     tempCanvas,
     sourceX,
@@ -506,14 +653,14 @@ async function getCroppedFile(mimeType = 'image/jpeg', quality = 0.9) {
 // Поворот изображения
 function rotate(degrees = 90) {
   imageRotation.value = (imageRotation.value + degrees) % 360
-  draw()
+  requestSmoothDraw()
 }
 
 // Масштабирование
 function scale(x, y) {
   imageScaleX.value *= x
   imageScaleY.value *= y
-  draw()
+  requestSmoothDraw()
 }
 
 // Сброс
@@ -531,7 +678,7 @@ function flip(horizontal = true) {
   } else {
     imageScaleY.value *= -1
   }
-  draw()
+  requestSmoothDraw()
 }
 
 // Экспорт методов
@@ -550,7 +697,7 @@ defineExpose({
     <canvas 
       ref="canvasRef" 
       class="cropper-canvas"
-      style="display: block; width: 100%; height: 100%; cursor: move;"
+      :style="{ display: 'block', width: '100%', height: '100%', cursor: currentCursor }"
     ></canvas>
   </div>
 </template>
@@ -559,7 +706,8 @@ defineExpose({
 .image-cropper-container {
   width: 100%;
   max-width: 100%;
-  height: 400px;
+  height: 100%;
+  min-height: 250px;
   background-color: #f0f0f0;
   display: flex;
   align-items: center;
@@ -567,10 +715,6 @@ defineExpose({
   overflow: hidden;
   position: relative;
   border-radius: 8px;
-  
-  @media (max-width: 768px) {
-    height: 300px;
-  }
   
   .cropper-canvas {
     width: 100%;
