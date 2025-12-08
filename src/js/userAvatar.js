@@ -10,10 +10,14 @@ export async function getUserAvatar(userId) {
     return userAvatarCache.get(userId)
   }
   try {
-    const resp = await apiClient.get('/crm/users/', { id: userId })
-    const data = Array.isArray(resp?.data) ? resp.data : (resp?.data?.results || [])
-    const user = Array.isArray(data) ? (data.find(u => u.id === userId) || data[0]) : null
-    const avatarUrl = user?.avatar_url || null
+    // Используем общий эндпоинт CMS, чтобы избежать 404 на /crm/users/
+    const resp = await apiClient.get('/cms/get_user_name/', { id: userId })
+    const raw = resp?.data ?? resp?.results ?? resp
+    const data = Array.isArray(raw) ? raw : raw?.results || []
+    const user = Array.isArray(data)
+      ? (data.find((u) => Number(u.id) === Number(userId)) || data[0])
+      : (raw && typeof raw === 'object' ? raw : null)
+    const avatarUrl = user?.avatar_url || user?.avatar?.url || null
     const result = avatarUrl ?? defaultAvatar
     userAvatarCache.set(userId, result)
     return result
