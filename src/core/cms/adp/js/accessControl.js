@@ -24,6 +24,10 @@ async function ensurePermissionsSnapshot() {
   return cachedPermissionsSnapshot
 }
 
+export async function getPermissionsSnapshot() {
+  return ensurePermissionsSnapshot()
+}
+
 export async function checkRouteAdpAccess(path) {
   const permissionsSnapshot = await ensurePermissionsSnapshot()
 
@@ -36,10 +40,39 @@ export async function checkRouteAdpAccess(path) {
 
   const response = await CheckAccess.CheckURLAccess(path)
   const allowed = Boolean(
-    response?.data?.access ?? response?.data?.allowed ?? response?.data,
+    response?.data?.has_access ?? response?.data?.access ?? response?.data?.allowed,
   )
 
   return allowed
+}
+
+export async function hasModulePermission(moduleName, permissionKey) {
+  const permissionsSnapshot = await ensurePermissionsSnapshot()
+  const modulePermissions = permissionsSnapshot?.module_permissions || []
+
+  return modulePermissions.some((perm) => {
+    const permModuleName = perm.module_name || perm.moduleName
+    const permKey = perm.permission_key || perm.permissionKey
+    const isGranted = perm.is_granted ?? perm.isGranted ?? false
+    return permModuleName === moduleName && permKey === permissionKey && isGranted
+  })
+}
+
+export async function hasAnyModulePermission(moduleName, permissionKeys = []) {
+  if (!Array.isArray(permissionKeys) || permissionKeys.length === 0) {
+    return false
+  }
+  const permissionsSnapshot = await ensurePermissionsSnapshot()
+  const modulePermissions = permissionsSnapshot?.module_permissions || []
+
+  return permissionKeys.some((key) =>
+    modulePermissions.some((perm) => {
+      const permModuleName = perm.module_name || perm.moduleName
+      const permKey = perm.permission_key || perm.permissionKey
+      const isGranted = perm.is_granted ?? perm.isGranted ?? false
+      return permModuleName === moduleName && permKey === key && isGranted
+    }),
+  )
 }
 
 

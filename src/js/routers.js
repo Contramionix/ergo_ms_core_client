@@ -24,8 +24,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll } from '@/modules/index.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { checkRouteAdpAccess } from '@/core/cms/adp/js/accessControl'
+import { checkRouteAdpAccess, hasAnyModulePermission } from '@/core/cms/adp/js/accessControl'
 import Cookies from 'js-cookie'
+import { accessDeniedState } from './accessDeniedState'
 
 // Генерация маршрутов из JSON конфигурации (async)
 const routes = await generateAllRoutes()
@@ -55,13 +56,18 @@ async function runCheckToken() {
 
 router.beforeEach(async (to, from, next) => {
   try {
+    const safeNext = (params) => {
+      accessDeniedState.active = false
+      return next(params)
+    }
+
     // 1) нужна авторизация?
     if (to.meta.requiresAuth && !(await runCheckToken())) {
       // Очищаем токены при неудачной проверке
       import('./api/manager').then(({ apiClient }) => {
         apiClient.logout()
       })
-      return next({ name: 'StartPage' })
+      return safeNext({ name: 'StartPage' })
     }
 
     // requiresActiveOrganization для страниц CRM - проверяем сразу после авторизации
@@ -110,14 +116,60 @@ router.beforeEach(async (to, from, next) => {
         }
         
         if (!hasActiveOrganization) {
-          return next({ name: 'CRMRemasteredWelcome' })
+          return safeNext({ name: 'CRMRemasteredWelcome' })
         }
       } else {
-        return next({ name: 'CRMRemasteredWelcome' })
+        return safeNext({ name: 'CRMRemasteredWelcome' })
       }
     }
 
-    // 2) requiresAdmin для страниц
+    // 2) проверка прав модулей (проекты, организации, задачи) без загрузки компонентов
+    const isProjectsSection =
+      (to.name && to.name.toString().startsWith('CRMRemasteredProjects')) ||
+      (to.path && to.path.startsWith('/crm-remastered/projects'))
+
+    if (isProjectsSection) {
+      const canViewProjects = await hasAnyModulePermission('projects', ['project_view'])
+      if (!canViewProjects) {
+        accessDeniedState.active = true
+        accessDeniedState.title = 'Доступ к проектам ограничен'
+        accessDeniedState.message = 'У вас нет прав для просмотра проектов. Обратитесь к администратору.'
+        return next()
+      }
+      accessDeniedState.active = false
+    }
+
+    const isOrganizationSettingsRoute =
+      (to.name && to.name.toString().startsWith('OrganizationSettings')) ||
+      (to.path && to.path.startsWith('/settings/organization'))
+
+    if (isOrganizationSettingsRoute) {
+      const canViewOrgSettings = await hasAnyModulePermission('organizations', ['org_settings', 'org_manage'])
+      if (!canViewOrgSettings) {
+        accessDeniedState.active = true
+        accessDeniedState.title = 'Доступ к настройкам организаций ограничен'
+        accessDeniedState.message = 'У вас нет прав для просмотра настроек организаций. Обратитесь к администратору.'
+        return next()
+      }
+      accessDeniedState.active = false
+    }
+
+    const isTasksSection =
+      (to.name && to.name.toString().startsWith('CRMRemasteredTasks')) ||
+      (to.path && to.path.startsWith('/crm-remastered/tasks'))
+
+    if (isTasksSection) {
+      const canViewTasks = await hasAnyModulePermission('tasks', ['task_view'])
+      if (!canViewTasks) {
+        accessDeniedState.active = true
+        accessDeniedState.title = 'Доступ к задачам ограничен'
+        accessDeniedState.message = 'У вас нет прав для просмотра задач. Обратитесь к администратору.'
+        return next()
+      }
+      accessDeniedState.active = false
+    }
+
+    // 3) requiresAdmin для страниц
     if (to.meta && to.meta.requiresAdmin) {
       let isAdmin = false
       try {
@@ -143,9 +195,9 @@ router.beforeEach(async (to, from, next) => {
         const userStore = useUserStore()
         const uid = userStore.user?.id
         if (uid === undefined || uid === null) {
-          return next({ name: 'StartPage' })
+          return safeNext({ name: 'StartPage' })
         }
-        return next({ name: 'AccessDenied' })
+        return safeNext({ name: 'AccessDenied' })
       }
     }
 
@@ -195,7 +247,7 @@ router.beforeEach(async (to, from, next) => {
       
       // Если нет активной организации - перенаправляем на Welcome
       if (!hasActiveOrganization) {
-        return next({ name: 'CRMRemasteredWelcome' })
+        return safeNext({ name: 'CRMRemasteredWelcome' })
       }
       
       // Дополнительно проверяем наличие организаций у пользователя
@@ -210,15 +262,15 @@ router.beforeEach(async (to, from, next) => {
           
           if (organizations.length === 0) {
             // Если у пользователя нет организаций - перенаправляем на страницу создания в CRM
-            return next({ name: 'CRMRemasteredWelcome' })
+            return safeNext({ name: 'CRMRemasteredWelcome' })
           }
         } else {
           // Если запрос не успешен или нет данных - перенаправляем на страницу создания
-          return next({ name: 'CRMRemasteredWelcome' })
+          return safeNext({ name: 'CRMRemasteredWelcome' })
         }
       } catch (error) {
         // При ошибке также перенаправляем на страницу создания
-        return next({ name: 'CRMRemasteredWelcome' })
+        return safeNext({ name: 'CRMRemasteredWelcome' })
       }
     }
 
@@ -227,19 +279,20 @@ router.beforeEach(async (to, from, next) => {
       try {
         const allowed = await checkRouteAdpAccess(to.path)
         if (!allowed) {
-          return next({ name: 'AccessDenied' })
+          return safeNext({ name: 'AccessDenied' })
         }
       } catch (error) {
-        return next({ name: 'AccessDenied' })
+        return safeNext({ name: 'AccessDenied' })
       }
     }
 
-    next()
+    return safeNext()
   } catch (err) {
     // При ошибке также очищаем токены
     import('./api/manager').then(({ apiClient }) => {
       apiClient.logout()
     })
+    accessDeniedState.active = false
     next({ name: 'StartPage' })
   }
 })

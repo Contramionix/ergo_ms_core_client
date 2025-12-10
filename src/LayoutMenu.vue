@@ -24,6 +24,8 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { isDatasetSidebarOpen, currentSidebarPage } from '@/core/bi/MainPage/Sidebar/components/js/useSidebarStore'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import MenuList from '@/components/menu/MenuList.vue'
+import AccessDenied from '@/components/AccessDenied.vue'
+import { accessDeniedState } from './js/accessDeniedState'
 
 import StorageSidebar from '@/core/bi/MainPage/Sidebar/StorageSidebar.vue'
 import BIAnalysisModal from '@/core/bi/components/BIAnalysisModal.vue'
@@ -145,7 +147,13 @@ onBeforeUnmount(() => {
     />
     <div class="layout-page" :style="{ paddingLeft: leftPadding }">
       <div class="py-4 container-xxl">
-        <RouterView :key="$route.path" />
+        <AccessDenied
+          v-if="accessDeniedState.active"
+          bordered
+          :title="accessDeniedState.title"
+          :message="accessDeniedState.message"
+        />
+        <RouterView v-else :key="$route.path" />
       </div>
     </div>
   </div>
