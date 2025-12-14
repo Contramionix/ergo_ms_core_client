@@ -229,6 +229,7 @@ class RAGClient {
                     timestamp: event.timestamp,
                     skill_name: event.skill_name,
                     skill_call: event.skill_call,
+                    chart_config: event.chart_config,
                   })
                 }
               } else if (event.type === 'error' && onError) {

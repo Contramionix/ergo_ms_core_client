@@ -75,6 +75,28 @@
         </div>
       </div>
 
+      <!-- Chart -->
+      <div v-if="chartConfig" class="message-chart">
+        <div class="chart-header">
+          <div class="chart-header__left">
+            <Database :size="14" />
+            <span>{{ chartConfig.title }}</span>
+          </div>
+          <button class="chart-download" @click="downloadChart" title="Скачать график">
+            <Download :size="14" />
+          </button>
+        </div>
+        <div class="chart-wrapper" :id="`chart-${message.id || Date.now()}`">
+          <ApexCharts
+            :key="`chart-${message.id || Date.now()}-${chartConfig.chart_type}`"
+            :type="chartConfig.chart_type"
+            :options="apexOptions"
+            :series="apexSeries"
+            :height="chartConfig.height || 400"
+          />
+        </div>
+      </div>
+
       <!-- Data Table -->
       <div v-if="message.data?.data?.length" class="message-data">
         <div class="data-header">
@@ -175,9 +197,10 @@
 import { computed, ref } from 'vue'
 import { 
   User, Bot, Terminal, Copy, Check, 
-  Grid3x3, AlertTriangle, Database, ChevronLeft, ChevronRight, Sparkles
+  Grid3x3, AlertTriangle, Database, ChevronLeft, ChevronRight, Sparkles, Download
 } from 'lucide-vue-next'
 import { apiClient } from '@/js/api/manager'
+import ApexCharts from 'vue3-apexcharts'
 
 const props = defineProps({
   message: {
@@ -374,6 +397,125 @@ const handleDownloadClick = async (event) => {
     }
   } catch (error) {
     console.error('Ошибка при скачивании документа:', error)
+  }
+}
+
+// Chart configuration
+const chartConfig = computed(() => {
+  return props.message.metadata?.chart_config || props.message.chart_config
+})
+
+const apexSeries = computed(() => {
+  if (!chartConfig.value) return []
+  
+  const config = chartConfig.value
+  const data = config.data || []
+  
+  if (config.chart_type === 'pie') {
+    // Для pie графика возвращаем массив значений (labels будут в options)
+    return data.map(item => item.value || 0)
+  } else {
+    // Для остальных типов возвращаем серию с данными
+    return [{
+      name: config.series_name || 'Данные',
+      data: data.map(item => item.y || 0)
+    }]
+  }
+})
+
+const apexOptions = computed(() => {
+  if (!chartConfig.value) return {}
+  
+  const config = chartConfig.value
+  const data = config.data || []
+  const colors = config.colors && config.colors.length > 0 
+    ? config.colors 
+    : ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4']
+  
+  const baseOptions = {
+    chart: {
+      id: `chart-${props.message.id || Date.now()}`,
+      type: config.chart_type,
+      toolbar: {
+        show: true,
+        tools: {
+          download: true
+        }
+      }
+    },
+    title: {
+      text: config.title || 'График',
+      style: {
+        fontSize: '16px',
+        fontWeight: 600,
+        color: '#E5E7EB'
+      }
+    },
+    colors: colors,
+    legend: {
+      show: config.show_legend !== false,
+      position: 'bottom'
+    },
+    theme: {
+      mode: 'dark'
+    },
+    tooltip: {
+      theme: 'dark'
+    }
+  }
+  
+  if (config.chart_type === 'pie') {
+    // Для pie графика
+    baseOptions.labels = data.map(item => item.label || '')
+    baseOptions.dataLabels = {
+      enabled: true,
+      formatter: (val) => `${val.toFixed(1)}%`
+    }
+  } else {
+    // Для остальных типов
+    baseOptions.xaxis = {
+      categories: data.map(item => String(item.x || '')),
+      title: {
+        text: config.x_axis_label || ''
+      }
+    }
+    baseOptions.yaxis = {
+      title: {
+        text: config.y_axis_label || ''
+      }
+    }
+  }
+  
+  return baseOptions
+})
+
+const downloadChart = async () => {
+  if (!chartConfig.value) return
+  
+  try {
+    const chartId = `chart-${props.message.id || Date.now()}`
+    
+    // Используем ApexCharts API для экспорта
+    if (window.ApexCharts) {
+      const dataURI = await window.ApexCharts.exec(chartId, 'dataURI', {
+        scale: 2
+      })
+      
+      if (dataURI && dataURI.imgURI) {
+        const link = document.createElement('a')
+        link.href = dataURI.imgURI
+        link.download = `${(chartConfig.value.title || 'chart').replace(/[^a-z0-9]/gi, '_')}.png`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      } else {
+        console.warn('Не удалось получить изображение графика через ApexCharts API')
+      }
+    } else {
+      console.warn('ApexCharts API недоступен')
+    }
+  } catch (error) {
+    console.error('Ошибка при скачивании графика:', error)
   }
 }
 </script>
@@ -673,6 +815,62 @@ const handleDownloadClick = async (event) => {
 
     &:active {
       transform: translateY(0);
+    }
+  }
+
+  // Chart styles
+  .message-chart {
+    margin-top: $spacing-md;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(58, 232, 255, 0.2);
+    border-radius: $radius-md;
+    overflow: hidden;
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: $spacing-sm $spacing-md;
+      background: rgba(58, 232, 255, 0.05);
+      border-bottom: 1px solid rgba(58, 232, 255, 0.1);
+
+      &__left {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+        color: $neon-cyan;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+
+      .chart-download {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        border-radius: $radius-sm;
+        color: $neon-green;
+        cursor: pointer;
+        transition: all $transition-fast;
+
+        &:hover {
+          background: rgba(16, 185, 129, 0.2);
+          border-color: $neon-green;
+          transform: translateY(-1px);
+        }
+
+        &:active {
+          transform: translateY(0);
+        }
+      }
+    }
+
+    .chart-wrapper {
+      padding: $spacing-md;
+      background: rgba(0, 0, 0, 0.2);
     }
   }
 }

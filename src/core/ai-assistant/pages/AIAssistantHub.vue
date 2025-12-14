@@ -569,6 +569,8 @@ const initChat = (session = null) => {
       response_received_at: msg.response_received_at,
       skill_name: msg.metadata?.skill_name || null,
       skill_call: msg.metadata?.skill_call || null,
+      chart_config: msg.metadata?.chart_config || null,
+      metadata: msg.metadata || {},
     }))
   } else {
     chatHistory.value = [{
@@ -658,6 +660,8 @@ const loadChatSession = async (sessionId, moduleId = null) => {
           response_received_at: msg.response_received_at,
           skill_name: msg.metadata?.skill_name || null,
           skill_call: msg.metadata?.skill_call || null,
+          chart_config: msg.metadata?.chart_config || null,
+          metadata: msg.metadata || {},
         }
         // Добавляем BI-специфичные поля из metadata
         if (msg.metadata) {
@@ -808,6 +812,8 @@ const sendChatMessage = async (text) => {
               msg.timestamp = metadata.timestamp ? new Date(metadata.timestamp) : new Date()
               msg.skill_name = metadata.skill_name || null
               msg.skill_call = metadata.skill_call || null
+              msg.chart_config = metadata.chart_config || null
+              msg.metadata = metadata
             }
           }
         } else if (fullResponse) {
@@ -819,6 +825,8 @@ const sendChatMessage = async (text) => {
             processing_time_ms: metadata?.processing_time_ms,
             skill_name: metadata?.skill_name || null,
             skill_call: metadata?.skill_call || null,
+            chart_config: metadata?.chart_config || null,
+            metadata: metadata || {},
           })
         }
         
@@ -1027,6 +1035,10 @@ const sendBIMessage = async (text) => {
               msg.skill_name = event.skill_name
               msg.skill_call = event.skill_call
             }
+            // Добавляем конфигурацию графика
+            if (event.chart_config && msg) {
+              msg.chart_config = event.chart_config
+            }
             break
           case 'error':
             msg.content = `Ошибка: ${event.message || event.text}`
@@ -1036,6 +1048,10 @@ const sendBIMessage = async (text) => {
           case 'done':
             msg.stage = ''
             msg.streaming = false
+            // Добавляем конфигурацию графика из события
+            if (event.chart_config && msg) {
+              msg.chart_config = event.chart_config
+            }
             break
         }
         scrollToBottom(biMessagesRef)
