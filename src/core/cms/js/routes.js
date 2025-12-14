@@ -111,7 +111,7 @@ export default {
   },
   "AccessDenied": {
     "path": "/access-denied",
-    "component": "@/core/cms/adp/components/AccessDeniedMessage.vue",
+    "component": "@/components/AccessDenied.vue",
     "meta": {
       "title": "Ошибка доступа",
       "requiresAuth": true

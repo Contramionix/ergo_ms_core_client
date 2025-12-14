@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted, onMounted, computed } from 'vue'
 import { useToast } from 'vue-toastification'
 import { RotateCw, RotateCcw, Check } from 'lucide-vue-next'
 import ImageCropper from './ImageCropper.vue'
@@ -22,6 +22,56 @@ const emit = defineEmits(['close', 'confirm', 'cancel'])
 const cropperRef = ref(null)
 const loading = ref(false)
 
+// Размеры окна для реактивности
+const windowWidth = ref(window.innerWidth)
+const windowHeight = ref(window.innerHeight)
+
+// Обновляем размеры окна при resize
+function updateWindowSize() {
+  windowWidth.value = window.innerWidth
+  windowHeight.value = window.innerHeight
+}
+
+onMounted(() => {
+  window.addEventListener('resize', updateWindowSize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateWindowSize)
+  enableBodyScroll()
+})
+
+// Вычисляем размер контейнера кроппера — 85% от viewport с ограничениями
+const cropperContainerStyle = computed(() => {
+  // Доступное пространство (85% viewport минус отступы для UI элементов)
+  const availableWidth = windowWidth.value * 0.85 - 48 // padding модалки
+  const availableHeight = windowHeight.value * 0.85 - 200 // header, footer, toolbar
+  
+  // Ограничения
+  const maxWidth = 1200
+  const maxHeight = 800
+  const minHeight = 300
+  
+  const width = Math.min(availableWidth, maxWidth)
+  const height = Math.max(Math.min(availableHeight, maxHeight), minHeight)
+  
+  return {
+    width: `${Math.round(width)}px`,
+    height: `${Math.round(height)}px`
+  }
+})
+
+// Вычисляем ширину модалки
+const modalStyle = computed(() => {
+  const containerWidth = parseInt(cropperContainerStyle.value.width) || 600
+  const modalWidth = containerWidth + 48 // padding
+  
+  return {
+    maxWidth: `${Math.round(modalWidth)}px`,
+    width: '100%'
+  }
+})
+
 // Управление прокруткой страницы
 const disableBodyScroll = () => {
   document.body.style.overflow = 'hidden'
@@ -37,10 +87,6 @@ watch(() => props.show, (isOpen) => {
   } else {
     enableBodyScroll()
   }
-})
-
-onUnmounted(() => {
-  enableBodyScroll()
 })
 
 // Обработка закрытия
@@ -97,7 +143,6 @@ function flipHorizontal() {
   }
 }
 
-
 // Сброс
 function reset() {
   if (cropperRef.value) {
@@ -114,7 +159,7 @@ function reset() {
     style="background-color: rgba(0, 0, 0, 0.5); z-index: 9999;"
     @click.self="handleClose"
   >
-    <div class="modal-dialog modal-dialog-centered modal-lg" style="z-index: 10000;">
+    <div class="modal-dialog modal-dialog-centered avatar-crop-modal" style="z-index: 10000;" :style="modalStyle">
       <div class="modal-content">
         <div class="modal-header border-0 pb-2">
           <h5 class="modal-title mb-0">Кадрирование фотографии</h5>
@@ -127,14 +172,13 @@ function reset() {
         </div>
         
         <div class="modal-body">
-          <div class="cropper-wrapper">
+          <div class="cropper-wrapper" :style="cropperContainerStyle">
             <ImageCropper
               ref="cropperRef"
               :image-src="imageSrc"
               :aspect-ratio="1"
               :min-width="200"
               :min-height="200"
-              :view-mode="1"
             />
           </div>
           
@@ -228,10 +272,12 @@ function reset() {
 .modal-dialog {
   z-index: 10000 !important;
   position: relative !important;
-  max-width: 90vw;
+  width: calc(100% - 2rem);
+  transition: max-width 0.2s ease;
   
   @media (max-width: 768px) {
-    max-width: 95vw;
+    max-width: 95vw !important;
+    width: 95vw;
   }
 }
 
