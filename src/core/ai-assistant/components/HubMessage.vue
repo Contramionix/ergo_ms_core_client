@@ -32,6 +32,14 @@
           <span v-if="message.processing_time_ms" class="message-processing-time">
             {{ formatProcessingTime(message.processing_time_ms) }}
           </span>
+          <span 
+            v-if="message.skill_name" 
+            class="message-skill-badge"
+            :title="skillCallTooltip"
+          >
+            <Sparkles :size="12" />
+            {{ message.skill_name }}
+          </span>
         </div>
       </div>
 
@@ -167,7 +175,7 @@
 import { computed, ref } from 'vue'
 import { 
   User, Bot, Terminal, Copy, Check, 
-  Grid3x3, AlertTriangle, Database, ChevronLeft, ChevronRight
+  Grid3x3, AlertTriangle, Database, ChevronLeft, ChevronRight, Sparkles
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -285,6 +293,11 @@ const formattedContent = computed(() => {
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\n/g, '<br>')
+})
+
+const skillCallTooltip = computed(() => {
+  if (!props.message.skill_call) return ''
+  return JSON.stringify(props.message.skill_call, null, 2)
 })
 
 const formatCell = (value) => {
@@ -518,6 +531,35 @@ const copySql = async () => {
   background: rgba(58, 232, 255, 0.1);
   border-radius: $radius-sm;
   border: 1px solid rgba(58, 232, 255, 0.2);
+}
+
+.message-skill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: $font-family-mono;
+  font-size: $font-size-xs;
+  font-weight: 600;
+  color: #a855f7;
+  padding: 2px 8px;
+  background: rgba(168, 85, 247, 0.15);
+  border-radius: $radius-sm;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: help;
+  transition: all $transition-fast;
+  white-space: pre-wrap;
+  
+  svg {
+    color: #a855f7;
+  }
+  
+  &:hover {
+    background: rgba(168, 85, 247, 0.25);
+    border-color: rgba(168, 85, 247, 0.5);
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+  }
 }
 
 .message-content {

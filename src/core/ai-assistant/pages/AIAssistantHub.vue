@@ -567,6 +567,8 @@ const initChat = (session = null) => {
       processing_time_ms: msg.processing_time_ms,
       request_started_at: msg.request_started_at,
       response_received_at: msg.response_received_at,
+      skill_name: msg.metadata?.skill_name || null,
+      skill_call: msg.metadata?.skill_call || null,
     }))
   } else {
     chatHistory.value = [{
@@ -654,6 +656,8 @@ const loadChatSession = async (sessionId, moduleId = null) => {
           processing_time_ms: msg.processing_time_ms,
           request_started_at: msg.request_started_at,
           response_received_at: msg.response_received_at,
+          skill_name: msg.metadata?.skill_name || null,
+          skill_call: msg.metadata?.skill_call || null,
         }
         // Добавляем BI-специфичные поля из metadata
         if (msg.metadata) {
@@ -801,6 +805,8 @@ const sendChatMessage = async (text) => {
             if (metadata) {
               msg.processing_time_ms = metadata.processing_time_ms
               msg.timestamp = metadata.timestamp ? new Date(metadata.timestamp) : new Date()
+              msg.skill_name = metadata.skill_name || null
+              msg.skill_call = metadata.skill_call || null
             }
           }
         } else if (fullResponse) {
@@ -810,6 +816,8 @@ const sendChatMessage = async (text) => {
             content: fullResponse,
             timestamp: metadata?.timestamp ? new Date(metadata.timestamp) : new Date(),
             processing_time_ms: metadata?.processing_time_ms,
+            skill_name: metadata?.skill_name || null,
+            skill_call: metadata?.skill_call || null,
           })
         }
         

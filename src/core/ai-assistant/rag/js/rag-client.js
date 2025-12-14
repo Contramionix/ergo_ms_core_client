@@ -227,6 +227,8 @@ class RAGClient {
                     message_id: event.message_id,
                     processing_time_ms: event.processing_time_ms,
                     timestamp: event.timestamp,
+                    skill_name: event.skill_name,
+                    skill_call: event.skill_call,
                   })
                 }
               } else if (event.type === 'error' && onError) {
