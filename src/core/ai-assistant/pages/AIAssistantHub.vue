@@ -672,6 +672,7 @@ const loadChatSession = async (sessionId, moduleId = null) => {
             columns: msg.metadata.columns,
           }
           if (msg.metadata.document) biMsg.document = msg.metadata.document
+          if (msg.metadata.chart_config) biMsg.chart_config = msg.metadata.chart_config
         }
         return biMsg
       })
@@ -1019,6 +1020,12 @@ const sendBIMessage = async (text) => {
                 download_url: event.download_url
               }
               msg.content += `\n\n📄 [Скачать ${event.filename}](${event.download_url})`
+            }
+            break
+          case 'chart_created':
+            // График создан - добавляем конфигурацию
+            if (event.chart_config && msg) {
+              msg.chart_config = event.chart_config
             }
             break
           case 'session_info':
