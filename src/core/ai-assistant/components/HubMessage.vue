@@ -44,7 +44,7 @@
       </div>
 
       <!-- Text Content -->
-      <div class="message-content" v-html="formattedContent"></div>
+      <div class="message-content" v-html="formattedContent" @click="handleDownloadClick"></div>
 
       <!-- Streaming Cursor -->
       <span v-if="message.streaming" class="streaming-cursor"></span>
@@ -177,6 +177,7 @@ import {
   User, Bot, Terminal, Copy, Check, 
   Grid3x3, AlertTriangle, Database, ChevronLeft, ChevronRight, Sparkles
 } from 'lucide-vue-next'
+import { apiClient } from '@/js/api/manager'
 
 const props = defineProps({
   message: {
@@ -292,6 +293,15 @@ const formattedContent = computed(() => {
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Markdown ссылки [text](url) -> кликабельные ссылки с data-атрибутом для скачивания
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+      // Проверяем, это ссылка на документ для скачивания?
+      if (url.includes('/api/ai_assistant/documents/download/')) {
+        return `<a href="#" class="download-link" data-download-url="${url}" data-filename="${text}">${text}</a>`
+      }
+      // Обычная ссылка
+      return `<a href="${url}" target="_blank">${text}</a>`
+    })
     .replace(/\n/g, '<br>')
 })
 
@@ -317,6 +327,53 @@ const copySql = async () => {
     setTimeout(() => { sqlCopied.value = false }, 2000)
   } catch (err) {
     console.error('Не удалось скопировать:', err)
+  }
+}
+
+const handleDownloadClick = async (event) => {
+  const link = event.target.closest('.download-link')
+  if (!link) return
+  
+  event.preventDefault()
+  event.stopPropagation()
+  
+  const downloadUrl = link.getAttribute('data-download-url')
+  const filename = link.getAttribute('data-filename') || 'document.docx'
+  
+  if (!downloadUrl) return
+  
+  try {
+    // Обрабатываем как абсолютный, так и относительный URL
+    let endpoint
+    if (downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) {
+      // Абсолютный URL - извлекаем путь
+      const url = new URL(downloadUrl)
+      endpoint = url.pathname.replace('/api/', '')
+    } else {
+      // Относительный URL - убираем /api/ если есть
+      endpoint = downloadUrl.startsWith('/api/') 
+        ? downloadUrl.replace('/api/', '')
+        : downloadUrl
+    }
+    
+    // Скачиваем файл через apiClient с авторизацией
+    const response = await apiClient.downloadFile(endpoint, {}, 'GET', true)
+    
+    if (response.success && response.data instanceof Blob) {
+      // Создаём Blob URL и скачиваем файл
+      const blobUrl = URL.createObjectURL(response.data)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(blobUrl)
+    } else {
+      console.error('Ошибка скачивания файла:', response.message)
+    }
+  } catch (error) {
+    console.error('Ошибка при скачивании документа:', error)
   }
 }
 </script>
@@ -586,6 +643,37 @@ const copySql = async () => {
     border-radius: $radius-sm;
     color: $neon-cyan;
     border: 1px solid rgba(58, 232, 255, 0.2);
+  }
+
+  :deep(.download-link) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.08));
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    border-radius: $radius-md;
+    color: $neon-green;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all $transition-fast;
+    cursor: pointer;
+
+    &::before {
+      content: '📄';
+      font-size: 1.1em;
+    }
+
+    &:hover {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.15));
+      border-color: $neon-green;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
   }
 }
 

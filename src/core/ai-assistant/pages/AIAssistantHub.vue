@@ -667,6 +667,7 @@ const loadChatSession = async (sessionId, moduleId = null) => {
             rows: msg.metadata.rows,
             columns: msg.metadata.columns,
           }
+          if (msg.metadata.document) biMsg.document = msg.metadata.document
         }
         return biMsg
       })
@@ -1002,6 +1003,16 @@ const sendBIMessage = async (text) => {
               msg.processing_time_ms = event.processing_time_ms
             }
             break
+          case 'document_created':
+            // Документ создан - добавляем ссылку на скачивание
+            if (event.filename && event.download_url) {
+              msg.document = {
+                filename: event.filename,
+                download_url: event.download_url
+              }
+              msg.content += `\n\n📄 [Скачать ${event.filename}](${event.download_url})`
+            }
+            break
           case 'session_info':
             // Обновляем session_id если он был создан
             if (event.session_id) {
@@ -1010,6 +1021,11 @@ const sendBIMessage = async (text) => {
             }
             if (event.processing_time_ms && msg) {
               msg.processing_time_ms = event.processing_time_ms
+            }
+            // Добавляем информацию о навыке
+            if (event.skill_name && msg) {
+              msg.skill_name = event.skill_name
+              msg.skill_call = event.skill_call
             }
             break
           case 'error':
