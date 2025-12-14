@@ -4,8 +4,8 @@
     <NeuralBackground 
       :node-count="60" 
       :connection-distance="180"
-      :node-color="isLightTheme ? '#0f768a' : '#3ae8ff'"
-      :line-color="isLightTheme ? '#0f768a' : '#3ae8ff'"
+      :node-color="isLightTheme ? (activeModule === 'docs' ? '#6d28d9' : '#0f768a') : (activeModule === 'docs' ? '#8b5cf6' : '#3ae8ff')"
+      :line-color="isLightTheme ? (activeModule === 'docs' ? '#6d28d9' : '#0f768a') : (activeModule === 'docs' ? '#8b5cf6' : '#3ae8ff')"
       :accelerated="isAIGenerating"
     />
 
@@ -117,6 +117,17 @@
             </option>
           </select>
           
+          <!-- Кнопка загрузки документов для модуля docs -->
+          <button 
+            v-if="activeModule === 'docs'" 
+            class="action-btn action-btn--primary" 
+            @click="showDocsUploader = !showDocsUploader"
+            title="Загрузить документ"
+          >
+            <Upload :size="18" />
+            <span>Загрузить</span>
+          </button>
+          
           <button class="action-btn action-btn--danger" @click="clearHistory" title="Очистить историю">
             <Trash2 :size="18" />
             <span>Очистить</span>
@@ -124,8 +135,22 @@
         </div>
       </header>
 
+      <!-- Docs Module -->
+      <template v-if="activeModule === 'docs' && !currentModuleConfig?.comingSoon">
+        <div class="docs-module-wrapper">
+          <DocsAssistantChat 
+            ref="docsAssistantChatRef"
+            :key="`docs-chat-${docsChatKey}`"
+            :is-visible="true" 
+            :hide-header="true"
+            :force-show-uploader="showDocsUploader"
+            @session-updated="handleDocsSessionUpdated"
+          />
+        </div>
+      </template>
+
       <!-- Coming Soon State -->
-      <div v-if="currentModuleConfig?.comingSoon" class="coming-soon">
+      <div v-else-if="currentModuleConfig?.comingSoon" class="coming-soon">
         <div class="coming-soon__visual">
           <div class="coming-soon__icon" :style="{ color: currentModuleConfig?.color }">
             <component :is="currentModuleConfig?.icon" :size="64" />
@@ -412,6 +437,7 @@
           </div>
         </template>
       </template>
+
     </main>
   </div>
 </template>
@@ -420,11 +446,12 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { 
   Sparkles, Cpu, Trash2, Send, Zap, ArrowRight,
-  Database, FileSpreadsheet, FileQuestion, Upload, X, History, Plus
+  Database, FileSpreadsheet, FileQuestion, Upload, X, History, Plus, FileText
 } from 'lucide-vue-next'
 import { modules, getModuleById } from '../modules/index.js'
 import NeuralBackground from '../components/NeuralBackground.vue'
 import HubMessage from '../components/HubMessage.vue'
+import DocsAssistantChat from '../docs/DocsAssistantChat.vue'
 import { ragClient } from '../rag/js/rag-client.js'
 import { biClient } from '../bi/js/bi-client.js'
 import { useToast } from 'vue-toastification'
@@ -516,6 +543,11 @@ const connections = ref([])
 const files = ref([])
 let biMsgId = 1
 const biHistory = ref([])
+
+// Docs state
+const showDocsUploader = ref(false)
+const docsAssistantChatRef = ref(null)
+const docsChatKey = ref(0) // Ключ для принудительного пересоздания компонента
 
 // Available modules for selector
 const availableModules = computed(() => {
@@ -647,7 +679,9 @@ const loadChatSession = async (sessionId, moduleId = null) => {
 
 // Create new chat session
 const createNewChat = async () => {
+  console.log('Creating new chat, active module:', activeModule.value)
   currentChatSession.value = null
+  
   // Инициализируем чат для текущего активного модуля
   if (activeModule.value === 'chat') {
     initChat()
@@ -659,6 +693,16 @@ const createNewChat = async () => {
       content: `Файл **${selectedFile.value.name}** из подключения **${selectedConnection.value.name}** выбран для анализа. Задайте вопрос к данным.`,
       timestamp: new Date(),
     }] : []
+  } else if (activeModule.value === 'docs') {
+    // Для модуля docs сбрасываем состояние чата
+    // Используем принудительное пересоздание компонента через key
+    docsChatKey.value++
+    // Также пытаемся вызвать resetChat если компонент уже смонтирован
+    nextTick(() => {
+      if (docsAssistantChatRef.value && typeof docsAssistantChatRef.value.resetChat === 'function') {
+        docsAssistantChatRef.value.resetChat()
+      }
+    })
   }
   await loadChatSessions()
 }
@@ -1001,6 +1045,12 @@ const clearHistory = () => {
   }
 }
 
+// Обработчик обновления сессии для модуля docs
+const handleDocsSessionUpdated = async (sessionId) => {
+  // Обновляем список сессий после сохранения новой сессии
+  await loadChatSessions()
+}
+
 // Watch for module changes
 watch(activeModule, () => {
   loadChatSessions()
@@ -1009,6 +1059,10 @@ watch(activeModule, () => {
     currentChatSession.value = null
     if (activeModule.value === 'chat') {
       initChat()
+    }
+    // Сбрасываем состояние для модуля docs
+    if (activeModule.value === 'docs') {
+      showDocsUploader.value = false
     }
   }
 })
@@ -1458,6 +1512,17 @@ onMounted(() => {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  z-index: 1;
+}
+
+.docs-module-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+  background: transparent;
   z-index: 1;
 }
 

@@ -10,10 +10,10 @@ export default {
   name: 'Документы',
   description: 'Работа с документами',
   icon: markRaw(FileText),
-  color: '#f59e0b', // Orange
-  colorLight: 'rgba(245, 158, 11, 0.15)',
+  color: '#8b5cf6', // Purple/Violet (в стиле других модулей)
+  colorLight: 'rgba(139, 92, 246, 0.15)',
   enabled: true,
-  comingSoon: true, // Модуль в разработке
+  comingSoon: false, // Модуль готов к использованию
   
   // Настройки модуля
   settings: {
