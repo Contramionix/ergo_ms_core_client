@@ -6,7 +6,7 @@
           <th v-for="col in props.cols" :key="col.key">
             {{ col.label }}
             <span v-if="col.key === 'name'" class="items-count">
-              ({{ props.users.length }})
+              ({{ totalItemsCount }})
               <span v-if="favoritesInCurrentList > 0" class="favorites-count">
                 • {{ favoritesInCurrentList }} в избранном
               </span>
@@ -15,6 +15,72 @@
         </tr>
       </thead>
       <tbody>
+        <!-- Предустановленные дашборды -->
+        <tr
+          v-if="props.currentPage === 'dashboards'"
+          class="table-row"
+          @click="router.push('/bi/dashboard/review/first')"
+        >
+          <td
+            v-for="col in props.cols"
+            :key="'predefined-1-' + col.key"
+            :style="{ position: 'relative', overflow: 'hidden' }"
+            :class="{ 'td-actions': col.key === 'actions' }"
+          >
+            <template v-if="col.key === 'name'">
+              <Table class="icon" />
+              <span class="dataset-name">Дашборд 1</span>
+            </template>
+            <template v-else-if="col.key === 'created_at'">
+              <span
+                class="tooltip-wrapper"
+                @mouseenter="onIconHover($event, formatTooltipDate(predefinedCreatedAt))"
+                @mouseleave="hideTooltip"
+              >
+                {{ new Date(predefinedCreatedAt).toLocaleDateString() }}
+              </span>
+            </template>
+            <template v-else-if="col.key === 'actions'">
+              <!-- Для предустановленных элементов действий нет -->
+            </template>
+            <template v-else>
+              —
+            </template>
+          </td>
+        </tr>
+        <tr
+          v-if="props.currentPage === 'dashboards'"
+          class="table-row"
+          @click="router.push('/bi/dashboard/review/second')"
+        >
+          <td
+            v-for="col in props.cols"
+            :key="'predefined-2-' + col.key"
+            :style="{ position: 'relative', overflow: 'hidden' }"
+            :class="{ 'td-actions': col.key === 'actions' }"
+          >
+            <template v-if="col.key === 'name'">
+              <Table class="icon" />
+              <span class="dataset-name">Дашборд 2</span>
+            </template>
+            <template v-else-if="col.key === 'created_at'">
+              <span
+                class="tooltip-wrapper"
+                @mouseenter="onIconHover($event, formatTooltipDate(predefinedCreatedAt))"
+                @mouseleave="hideTooltip"
+              >
+                {{ new Date(predefinedCreatedAt).toLocaleDateString() }}
+              </span>
+            </template>
+            <template v-else-if="col.key === 'actions'">
+              <!-- Для предустановленных элементов действий нет -->
+            </template>
+            <template v-else>
+              —
+            </template>
+          </td>
+        </tr>
+
         <tr v-for="row in sortedUsers" :key="row.id" class="table-row" :class="{ favorite: isFavorite(row.id), 'force-hover': hoveredRow === row.id || (showMenu && menuRowId === row.id) }" @mouseenter="onRowMouseEnter(row.id)"
           @mouseleave="onRowMouseLeave(row.id)" @click="handleRowClick(row)">
           <td v-for="col in props.cols" :key="col.key" :style="{ position: 'relative', overflow: 'hidden' }"
@@ -73,7 +139,7 @@
           </td>
         </tr>
 
-        <tr v-if="props.users.length === 0">
+        <tr v-if="totalItemsCount === 0">
           <td :colspan="props.cols.length" class="no-data">Нет данных</td>
         </tr>
       </tbody>
@@ -147,7 +213,7 @@
 
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue'
-import { Star, MoreHorizontal, Trash2, CaseSensitive, Link, ChartPie, Database, TriangleAlert, Table } from 'lucide-vue-next'
+import { Star, MoreHorizontal, Trash2, CaseSensitive, Link, ChartPie, Database, TriangleAlert, Table, LayoutDashboard } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { apiClient } from '@/js/api/manager.js'
 import ClickHouseIcon from '@/core/bi/assets/icons/clickhouse.svg'
@@ -167,6 +233,15 @@ const hasBeenOpened = ref(false)
 
 const hoveredRow = ref(null)
 const favorites = ref(new Set())
+
+const totalItemsCount = computed(() => {
+  const base = Array.isArray(props.users) ? props.users.length : 0
+  if (props.currentPage === 'dashboards') {
+    // Добавляем два тестовых дашборда
+    return base + 2
+  }
+  return base
+})
 
 const sortedUsers = computed(() => {
   if (!props.users) return []
@@ -220,6 +295,9 @@ const connectionFilesCache = ref(new Map())
 const lastCacheUpdate = ref(0)
 const CACHE_DURATION = 30000 // 30 секунд
 
+// Дата создания для предустановленных дашбордов (текущая)
+const predefinedCreatedAt = new Date().toISOString()
+
 function handleRowClick(row) {
   if (props.currentPage === 'datasets') {
     goToDataset(row)
@@ -227,6 +305,8 @@ function handleRowClick(row) {
     goToConnection(row)
   } else if (props.currentPage === 'charts') {
     goToChart(row)
+  } else if (props.currentPage === 'dashboards') {
+    goToDashboard(row)
   }
 }
 
@@ -257,6 +337,11 @@ function goToDataset(row) {
 function goToChart(row) {
   if (!row || !row.id) return
   router.push(`/bi/chart/${row.id}/`)
+}
+
+function goToDashboard(row) {
+  if (!row || !row.id) return
+  router.push(`/bi/dashboard/${row.id}/`)
 }
 
 function loadFavorites() {
@@ -348,6 +433,9 @@ function getIconComponent(row) {
   if (props.currentPage === 'datasets') {
     return { src: Database, tooltip: 'Датасет' }
   }
+  if (props.currentPage === 'dashboards') {
+    return { src: LayoutDashboard, tooltip: 'Дашборд' }
+  }
 
   if (type.includes('clickhouse')) return { src: ClickHouseIcon, tooltip: 'ClickHouse' }
   if (type.includes('postgres')) return { src: PostgresIcon, tooltip: 'PostgreSQL' }
@@ -392,11 +480,19 @@ function getTypeName(row) {
   if (props.currentPage === 'datasets') return 'датасет'
   if (props.currentPage === 'connections') return 'подключение'
   if (props.currentPage === 'charts') return 'чарт'
+  if (props.currentPage === 'dashboards') return 'дашборд'
 }
 
 function getDeleteEndpoint(row) {
-  if (row.type === 'connection') return `/bi_analysis/bi_connections/${row.id}/`
-  if (row.type === 'chart') return `/bi_analysis/bi_chart/${row.id}/`
+  if (props.currentPage === 'connections' || row.type === 'connection') {
+    return `/bi_analysis/bi_connections/${row.id}/`
+  }
+  if (props.currentPage === 'charts' || row.type === 'chart') {
+    return `/bi_analysis/bi_charts/${row.id}/`
+  }
+  if (props.currentPage === 'dashboards' || row.type === 'dashboard') {
+    return `/bi_analysis/bi_dashboards/${row.id}/`
+  }
   return `/bi_analysis/bi_datasets/${row.id}/`
 }
 
@@ -464,11 +560,14 @@ async function doRename() {
   let endpoint = ''
   let payload = {}
 
-  if (row.type === 'connection') {
+  if (props.currentPage === 'connections' || row.type === 'connection') {
     endpoint = `/bi_analysis/bi_connections/${row.id}/`
     payload = { name: renameValue.value }
-  } else if (row.type === 'chart') {
+  } else if (props.currentPage === 'charts' || row.type === 'chart') {
     endpoint = `/bi_analysis/bi_charts/${row.id}/`
+    payload = { name: renameValue.value }
+  } else if (props.currentPage === 'dashboards' || row.type === 'dashboard') {
+    endpoint = `/bi_analysis/bi_dashboards/${row.id}/`
     payload = { name: renameValue.value }
   } else {
     endpoint = `/bi_analysis/bi_datasets/${row.id}/`
@@ -506,6 +605,7 @@ function getCopyLink(row) {
   if (props.currentPage === 'connections') return `${window.location.origin}/bi/connections/${row.id}/`
   if (props.currentPage === 'datasets') return `${window.location.origin}/bi/datasets/${row.id}/`
   if (props.currentPage === 'charts') return `${window.location.origin}/bi/chart/${row.id}/`
+  if (props.currentPage === 'dashboards') return `${window.location.origin}/bi/dashboard/${row.id}/`
   return window.location.href
 }
 

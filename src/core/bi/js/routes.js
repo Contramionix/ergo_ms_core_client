@@ -13,6 +13,20 @@ export default {
       "requiresAuth": true
     }
   },
+  "DashboardForReviewFirst": {
+    "path": "/bi/dashboard/review/first",
+    "component": "@/core/bi/Dashboards/temp/DashboardForReviewFirst.vue",
+    "meta": {
+      "requiresAuth": true
+    }
+  },
+  "DashboardForReviewSecond": {
+    "path": "/bi/dashboard/review/second",
+    "component": "@/core/bi/Dashboards/temp/DashboardForReviewSecond.vue",
+    "meta": {
+      "requiresAuth": true
+    }
+  },
   "NewDashboard": {
     "path": "/bi/dashboard/new",
     "component": "@/core/bi/Dashboards/DashboardPage.vue",
