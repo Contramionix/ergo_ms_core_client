@@ -29,6 +29,59 @@ export function useDatasetActions(state) {
     }
   }
   
+  // Вспомогательная функция для синхронизации полей из сохраненного датасета
+  function syncFieldsFromDataset(datasetFields) {
+    if (Array.isArray(datasetFields) && datasetFields.length > 0) {
+      state.fields.value = datasetFields.map(f => ({
+        id: f.id,
+        name: f.name || f.source_column || '',
+        aggregation: f.aggregation || 'none',
+        type: f.type || 'string',
+        description: f.description || '',
+        source: f.source || (f.source_column ? { column: f.source_column } : {}),
+        source_table: f.source_table || null,
+        expression: f.expression || null
+      }))
+      
+      // Формируем previewCols из полей датасета в правильном порядке
+      state.previewCols.value = datasetFields
+        .map(f => f.name)
+        .filter(Boolean)
+    } else {
+      // Если полей нет, очищаем массив и preview
+      state.fields.value = []
+      state.previewCols.value = []
+      state.previewRows.value = []
+    }
+  }
+  
+  // Вспомогательная функция для подготовки полей для отправки на сервер (для обновления)
+  function prepareFieldsForUpdate(fields) {
+    return fields
+      .filter(f => f.name)
+      .map(f => {
+        // Извлекаем ID source_table, если это объект
+        let source_table_id = null
+        if (f.source_table) {
+          if (typeof f.source_table === 'number' || typeof f.source_table === 'string') {
+            source_table_id = f.source_table
+          } else if (f.source_table?.id) {
+            source_table_id = f.source_table.id
+          }
+        }
+        
+        return {
+          id: (typeof f.id === 'number' || (typeof f.id === 'string' && !f.id.toString().startsWith('new_'))) ? f.id : undefined,
+          name: f.name,
+          aggregation: f.aggregation,
+          type: f.type || 'string',
+          description: f.description || '',
+          source_column: f.source?.column,
+          source_table: source_table_id,
+        }
+      })
+  }
+  
   // Функции для работы с датасетом
   async function saveDataset(finalName) {
     state.saving.value = true
@@ -95,35 +148,12 @@ export function useDatasetActions(state) {
         await hydrateFromDataset(updated)
         state.relations.value = state.getRelationsFromDataset(updated, state.mainTable.value?.id)
         
-        // Загружаем предпросмотр и синхронизируем поля с данными из API
+        // Загружаем предпросмотр
         if (state.mainTable.value) {
           await loadPreview()
           
-          // Синхронизируем поля напрямую из origDatasetRef, чтобы они точно совпадали
-          // Это гарантирует, что isDirty не будет считать поля измененными
-          if (Array.isArray(state.origDatasetRef.value?.fields) && state.origDatasetRef.value.fields.length > 0) {
-            if (state.previewCols.value.length && state.previewRows.value.length) {
-              // Вызываем loadFields() для правильной синхронизации
-              await loadFields()
-              
-              // Дополнительная синхронизация: обновляем поля из origDatasetRef, чтобы гарантировать совпадение
-              const origFieldsMap = new Map(state.origDatasetRef.value.fields.map(f => [f.name || f.source_column, f]))
-              state.fields.value = state.fields.value.map(f => {
-                const orig = origFieldsMap.get(f.name) || origFieldsMap.get(f.source?.column)
-                if (orig) {
-                  // Синхронизируем только те поля, которые проверяет isDirty
-                  return {
-                    ...f,
-                    name: orig.name || f.name,
-                    aggregation: orig.aggregation || f.aggregation || 'none',
-                    type: orig.type || f.type || 'string',
-                    description: orig.description || f.description || ''
-                  }
-                }
-                return f
-              })
-            }
-          }
+          // Синхронизируем поля напрямую из сохраненного датасета
+          syncFieldsFromDataset(state.origDatasetRef.value?.fields)
         }
         
         // Синхронизируем кэш параметров с БД, чтобы черновик соответствовал сохранённому состоянию
@@ -133,19 +163,10 @@ export function useDatasetActions(state) {
           sessionStorage.setItem(key, JSON.stringify(paramsFromDb))
         } catch (e) { console.warn('[useDatasetActions] failed to sync params cache after create', e) }
       } else {
-        const payload = { name: finalName, params: readCachedParams(dsId) }
-        const putOk = await safeUpdateDataset(
-          datasetService.updateDataset(dsId, payload)
-        )
-        if (!putOk) throw new Error('Ошибка при обновлении датасета')
-        const { data: updated } = await datasetService.getDataset(dsId)
-        state.dataset.value = updated
-        // Синхронизируем кэш параметров с БД
-        try {
-          const key = getCachedParamsKey(dsId)
-          const paramsFromDb = Array.isArray(updated.params) ? updated.params : []
-          sessionStorage.setItem(key, JSON.stringify(paramsFromDb))
-        } catch (e) { console.warn('[useDatasetActions] failed to sync params cache after update', e) }
+        // Для существующего датасета должен вызываться editDataset
+        // Если это не так, вызываем editDataset для безопасности
+        await editDataset(finalName)
+        return
       }
 
       router.replace({ name: 'DatasetPage', params: { id: dsId } })
@@ -176,17 +197,7 @@ export function useDatasetActions(state) {
         }
       }
 
-      const fieldsAgg = state.fields.value
-        .filter(f => f.name)
-        .map(f => ({
-          id: (typeof f.id === 'number' || (typeof f.id === 'string' && !f.id.toString().startsWith('new_'))) ? f.id : undefined,
-          name: f.name,
-          aggregation: f.aggregation,
-          type: f.type,
-          description: f.description,
-          source_column: f.source?.column,
-          source_table: f.source_table,
-        }))
+      const fieldsAgg = prepareFieldsForUpdate(state.fields.value)
 
       const patch = {}
       if (state.selectedConnection.value?.id !== state.origDatasetRef.value.connection)
@@ -198,7 +209,52 @@ export function useDatasetActions(state) {
       if (datasetName && datasetName !== state.origDatasetRef.value.name)
         patch.name = datasetName
 
-      if (fieldsAgg.length) {
+      // Проверяем, изменились ли поля по сравнению с оригинальными
+      const origFields = (state.origDatasetRef.value?.fields || []).map(f => ({
+        id: f.id,
+        name: f.name,
+        aggregation: f.aggregation || 'none',
+        type: f.type || 'string',
+        description: f.description || '',
+        source_column: f.source_column || f.source?.column,
+      }))
+      
+      const currentFields = fieldsAgg.map(f => ({
+        id: f.id,
+        name: f.name,
+        aggregation: f.aggregation || 'none',
+        type: f.type || 'string',
+        description: f.description || '',
+        source_column: f.source_column,
+      }))
+      
+      // Сравниваем поля (без учета порядка, только по id и name)
+      const origFieldsMap = new Map(origFields.map(f => [f.id || f.name, f]))
+      const currentFieldsMap = new Map(currentFields.map(f => [f.id || f.name, f]))
+      
+      const fieldsChanged = 
+        origFields.length !== currentFields.length ||
+        origFields.some(f => {
+          const current = currentFieldsMap.get(f.id || f.name)
+          return !current || 
+            current.name !== f.name ||
+            current.aggregation !== f.aggregation ||
+            current.type !== f.type ||
+            current.description !== f.description ||
+            current.source_column !== f.source_column
+        }) ||
+        currentFields.some(f => {
+          const orig = origFieldsMap.get(f.id || f.name)
+          return !orig ||
+            orig.name !== f.name ||
+            orig.aggregation !== f.aggregation ||
+            orig.type !== f.type ||
+            orig.description !== f.description ||
+            orig.source_column !== f.source_column
+        })
+
+      // Всегда отправляем fields, если они изменились (включая удаление всех полей)
+      if (fieldsChanged) {
         patch.fields = fieldsAgg
       }
 
@@ -272,27 +328,8 @@ export function useDatasetActions(state) {
       if (state.mainTable.value) {
         await loadPreview()
         
-        // Синхронизируем поля напрямую из origDatasetRef, чтобы они точно совпадали
-        if (Array.isArray(state.origDatasetRef.value?.fields) && state.origDatasetRef.value.fields.length > 0) {
-          if (state.previewCols.value.length && state.previewRows.value.length) {
-            // Дополнительная синхронизация: обновляем поля из origDatasetRef, чтобы гарантировать совпадение
-            const origFieldsMap = new Map(state.origDatasetRef.value.fields.map(f => [f.name || f.source_column, f]))
-            state.fields.value = state.fields.value.map(f => {
-              const orig = origFieldsMap.get(f.name) || origFieldsMap.get(f.source?.column)
-              if (orig) {
-                // Синхронизируем только те поля, которые проверяет isDirty
-                return {
-                  ...f,
-                  name: orig.name || f.name,
-                  aggregation: orig.aggregation || f.aggregation || 'none',
-                  type: orig.type || f.type || 'string',
-                  description: orig.description || f.description || ''
-                }
-              }
-              return f
-            })
-          }
-        }
+        // Синхронизируем поля напрямую из origDatasetRef (после сохранения на сервере)
+        syncFieldsFromDataset(state.origDatasetRef.value?.fields)
       }
       
       state.saveSuccess.value = true

@@ -221,15 +221,31 @@ watch(() => [props.datasetId, props.isPreviewVisible], async ([datasetId, isVisi
     return
   }
   
-  // Если нет datasetId и есть данные в props (черновик), используем их
-  if (!datasetId && props.rows && props.rows.length > 0 && props.cols && props.cols.length > 0) {
-    allRows.value = props.rows
-    allColumns.value = props.cols
-    totalRowsCount.value = props.rows.length
-    pagesCache.value.clear()
-    isInitialized.value = true
-  }
 }, { immediate: false, flush: 'post' })
+
+// Отслеживаем изменения колонок для сохраненного датасета, чтобы перезагрузить данные
+watch(() => props.cols, async (newCols, oldCols) => {
+  // Если есть datasetId и колонки изменились, нужно перезагрузить данные
+  if (props.datasetId && isInitialized.value && newCols && Array.isArray(newCols) && oldCols && Array.isArray(oldCols)) {
+    // Сравниваем колонки по содержимому
+    const colsChanged = JSON.stringify(newCols) !== JSON.stringify(oldCols)
+    
+    if (colsChanged && !loadRequestInProgress.value) {
+      // Сбрасываем состояние и перезагружаем данные
+      allRows.value = []
+      allColumns.value = []
+      totalRowsCount.value = 0
+      pagesCache.value.clear()
+      currentPage.value = 1
+      searchQuery.value = ''
+      debouncedSearchQuery.value = ''
+      
+      if (props.isPreviewVisible) {
+        await loadInitialData()
+      }
+    }
+  }
+}, { deep: true, flush: 'post' })
 
 // Если данные переданы через props (черновик), используем их
 // НО только если нет datasetId (для сохранённого датасета игнорируем props.rows)
