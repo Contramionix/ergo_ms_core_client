@@ -150,9 +150,6 @@ function getFieldSourceLabel(field) {
   border-bottom: none !important;
 }
 
-:deep(.table thead th) {
-  border-bottom: 0.5px solid var(--color-border);
-}
 
 :deep(.table-hover tbody tr:hover) {
   background-color: var(--color-hover-background);
@@ -231,10 +228,51 @@ function getFieldSourceLabel(field) {
   opacity: 0;
 }
 
+/* ========== Страница полей ========== */
+.fields-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 /* ========== Контейнер таблицы ========== */
 .table-container {
-  height: 100%;
+  flex: 1 1 auto;
   min-height: 300px;
+  overflow-y: auto;
+  overflow-x: auto;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background-color: var(--color-border, #dee2e6);
+  border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-hover-background, #e9ecef);
+}
+
+:deep(.table thead) {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--color-primary-background, #fff);
+}
+
+:deep(.table thead th) {
+  background-color: var(--color-primary-background, #fff);
+  border-bottom: 0.5px solid var(--color-border);
 }
 
 /* Стили для уведомления о проблемах с подключением */
@@ -247,6 +285,7 @@ function getFieldSourceLabel(field) {
   border: 1px solid #feb2b2;
   border-radius: 8px;
   margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .error-icon {

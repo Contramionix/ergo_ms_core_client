@@ -370,29 +370,49 @@ export function useDatasetActions(state) {
     
     buildAllTables()
     await hydrateFromDataset(data)
+    
+    // Загружаем поля напрямую из данных датасета, если они есть
+    // Это должно происходить до loadPreview, чтобы поля были доступны сразу
+    if (Array.isArray(data.fields) && data.fields.length > 0) {
+      state.fields.value = data.fields.map(f => ({
+        id: f.id,
+        name: f.name || f.source_column || '',
+        aggregation: f.aggregation || 'none',
+        type: f.type || 'string',
+        description: f.description || '',
+        source: f.source || (f.source_column ? { column: f.source_column } : {}),
+        source_table: f.source_table || null,
+        expression: f.expression || null
+      }))
+    }
+    
     await loadPreview()
     
-    // Синхронизируем поля напрямую из данных датасета, чтобы они точно совпадали
-    // Это гарантирует, что isDirty не будет считать поля измененными
-    if (Array.isArray(data.fields) && data.fields.length > 0) {
-      if (state.previewCols.value.length && state.previewRows.value.length) {
-        // Дополнительная синхронизация: обновляем поля из данных датасета, чтобы гарантировать совпадение
-        const origFieldsMap = new Map(data.fields.map(f => [f.name || f.source_column, f]))
-        state.fields.value = state.fields.value.map(f => {
-          const orig = origFieldsMap.get(f.name) || origFieldsMap.get(f.source?.column)
-          if (orig) {
-            // Синхронизируем только те поля, которые проверяет isDirty
-            return {
-              ...f,
-              name: orig.name || f.name,
-              aggregation: orig.aggregation || f.aggregation || 'none',
-              type: orig.type || f.type || 'string',
-              description: orig.description || f.description || ''
-            }
+    // Дополнительная синхронизация полей после загрузки preview, если preview содержит данные
+    // Это позволяет обновить source_table из preview, если они отличаются
+    if (Array.isArray(data.fields) && data.fields.length > 0 && state.previewCols.value.length && state.previewRows.value.length) {
+      const origFieldsMap = new Map(data.fields.map(f => [f.name || f.source_column, f]))
+      state.fields.value = state.fields.value.map(f => {
+        const orig = origFieldsMap.get(f.name) || origFieldsMap.get(f.source?.column)
+        if (orig) {
+          // Сохраняем source_table из preview, если он есть
+          const tableObj = state.selectedTables.value.find(t => 
+            t.id === f.source_table?.id || 
+            t.display_name === f.source_table?.display_name ||
+            t.name === f.source_table?.name
+          ) || f.source_table
+          
+          return {
+            ...f,
+            name: orig.name || f.name,
+            aggregation: orig.aggregation || f.aggregation || 'none',
+            type: orig.type || f.type || 'string',
+            description: orig.description || f.description || '',
+            source_table: tableObj
           }
-          return f
-        })
-      }
+        }
+        return f
+      })
     }
     
     // Устанавливаем origDatasetRef ПОСЛЕ полной синхронизации всех данных (relations и fields),

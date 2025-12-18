@@ -11,20 +11,11 @@
           @input="handleSearchInput"
         />
       </div>
-      <div class="title-input">
-        <div class="input-label-left">Загружено строк:</div>
-        <div class="input-value">{{ loadedRowsCount }}</div>
-      </div>
     </div>
     
     <div v-if="errorState" class="error-message">
       <h2>Ошибка</h2>
       <p>{{ errorState }}</p>
-    </div>
-    
-    <!-- Предупреждение о большом количестве строк -->
-    <div v-if="sortedRows.length > MAX_VISIBLE_ROWS" class="warning-message">
-      <p>Отображается только первые {{ MAX_VISIBLE_ROWS.toLocaleString() }} строк из {{ sortedRows.length.toLocaleString() }} для обеспечения производительности.</p>
     </div>
     
     <!-- Таблица предпросмотра -->
@@ -729,15 +720,6 @@ const visibleRows = computed(() => {
   return paginatedRows.value
 })
 
-const loadedRowsCount = computed(() => {
-  if (isDraftMode.value) {
-    return allRows.value.length
-  } else {
-    // Для серверной пагинации показываем общее количество строк
-    return totalRowsCount.value
-  }
-})
-
 const isCurrentPageLoading = computed(() => {
   return loadingPages.value.has(currentPage.value)
 })
@@ -814,21 +796,6 @@ function toField(str) {
   width: 100%;
 }
 
-.title-input {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  white-space: nowrap;
-}
-
-.input-label-left {
-  font-weight: 600;
-}
-
-.input-value {
-  font-weight: bold;
-}
-
 .error-message {
   text-align: center;
   padding: 2rem;
@@ -837,17 +804,6 @@ function toField(str) {
   color: var(--color-accent);
   border-radius: 12px;
   margin-bottom: 1rem;
-}
-
-.warning-message {
-  text-align: center;
-  padding: 0.75rem 1rem;
-  border: 1px solid #ffc107;
-  background: #fff3cd;
-  color: #856404;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
 }
 
 .table-wrapper {
@@ -1122,11 +1078,6 @@ function toField(str) {
   .search-container {
     max-width: 100%;
   }
-  
-  .title-input {
-    justify-content: flex-start;
-  }
-  
   
   .pagination-container {
     flex-wrap: wrap;
