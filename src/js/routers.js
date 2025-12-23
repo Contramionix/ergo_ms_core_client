@@ -23,10 +23,46 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll } from '@/modules/index.js'
-import { useUserStore } from '@/core/cms/js/userStore.js'
 import { checkRouteAdpAccess, hasAnyModulePermission } from '@/core/cms/adp/js/accessControl'
 import Cookies from 'js-cookie'
 import { accessDeniedState } from './accessDeniedState'
+import { MODULE_PERMISSION_RULES } from './modulePermissionRules'
+
+/**
+ * Проверка прав доступа к маршруту.
+ * Объединяет проверку разрешений модулей и ADP URL-политик.
+ * @param {Object} to - объект маршрута
+ * @returns {Promise<{allowed: boolean, redirect?: string}>}
+ */
+async function checkRouteAccess(to) {
+  // 1) Проверка разрешений модулей по правилам
+  for (const rule of MODULE_PERMISSION_RULES) {
+    if (rule.match(to)) {
+      const hasAccess = await hasAnyModulePermission(rule.module, rule.permissions)
+      if (!hasAccess) {
+        accessDeniedState.active = true
+        accessDeniedState.title = rule.title
+        accessDeniedState.message = rule.message
+        return { allowed: false }
+      }
+    }
+  }
+
+  // 2) Проверка ADP URL-политик для защищённых страниц
+  if (to.meta?.requiresAuth && to.name !== 'AccessDenied') {
+    try {
+      const adpAllowed = await checkRouteAdpAccess(to.path)
+      if (!adpAllowed) {
+        return { allowed: false, redirect: 'AccessDenied' }
+      }
+    } catch {
+      return { allowed: false, redirect: 'AccessDenied' }
+    }
+  }
+
+  accessDeniedState.active = false
+  return { allowed: true }
+}
 
 // Генерация маршрутов из JSON конфигурации (async)
 const routes = await generateAllRoutes()
@@ -123,82 +159,10 @@ router.beforeEach(async (to, from, next) => {
       }
     }
 
-    // 2) проверка прав модулей (проекты, организации, задачи) без загрузки компонентов
-    const isProjectsSection =
-      (to.name && to.name.toString().startsWith('CRMRemasteredProjects')) ||
-      (to.path && to.path.startsWith('/crm-remastered/projects'))
-
-    if (isProjectsSection) {
-      const canViewProjects = await hasAnyModulePermission('projects', ['project_view'])
-      if (!canViewProjects) {
-        accessDeniedState.active = true
-        accessDeniedState.title = 'Доступ к проектам ограничен'
-        accessDeniedState.message = 'У вас нет прав для просмотра проектов. Обратитесь к администратору.'
-        return next()
-      }
-      accessDeniedState.active = false
-    }
-
-    const isOrganizationSettingsRoute =
-      (to.name && to.name.toString().startsWith('OrganizationSettings')) ||
-      (to.path && to.path.startsWith('/settings/organization'))
-
-    if (isOrganizationSettingsRoute) {
-      const canViewOrgSettings = await hasAnyModulePermission('organizations', ['org_settings', 'org_manage'])
-      if (!canViewOrgSettings) {
-        accessDeniedState.active = true
-        accessDeniedState.title = 'Доступ к настройкам организаций ограничен'
-        accessDeniedState.message = 'У вас нет прав для просмотра настроек организаций. Обратитесь к администратору.'
-        return next()
-      }
-      accessDeniedState.active = false
-    }
-
-    const isTasksSection =
-      (to.name && to.name.toString().startsWith('CRMRemasteredTasks')) ||
-      (to.path && to.path.startsWith('/crm-remastered/tasks'))
-
-    if (isTasksSection) {
-      const canViewTasks = await hasAnyModulePermission('tasks', ['task_view'])
-      if (!canViewTasks) {
-        accessDeniedState.active = true
-        accessDeniedState.title = 'Доступ к задачам ограничен'
-        accessDeniedState.message = 'У вас нет прав для просмотра задач. Обратитесь к администратору.'
-        return next()
-      }
-      accessDeniedState.active = false
-    }
-
-    // 3) requiresAdmin для страниц
-    if (to.meta && to.meta.requiresAdmin) {
-      let isAdmin = false
-      try {
-        const userStore = useUserStore()
-        if (!userStore.isInitialized) {
-          try { await userStore.initializeUser() } catch {
-            // Игнорируем ошибки инициализации
-          }
-        }
-        const uid = userStore.user?.id
-        if (uid) {
-          const { apiClient } = await import('./api/manager')
-          const resp = await apiClient.get(`/project_ed/profiles/profiles/${uid}/`)
-          const data = resp.data || {}
-          const roleName = data.role_name || data.profile?.role_name
-          if (roleName === 'Администратор') isAdmin = true
-        }
-      } catch {
-        // Игнорируем ошибки проверки роли
-      }
-
-      if (!isAdmin) {
-        const userStore = useUserStore()
-        const uid = userStore.user?.id
-        if (uid === undefined || uid === null) {
-          return safeNext({ name: 'StartPage' })
-        }
-        return safeNext({ name: 'AccessDenied' })
-      }
+    // 2) проверка прав доступа (модули + ADP URL-политики)
+    const accessResult = await checkRouteAccess(to)
+    if (!accessResult.allowed) {
+      return accessResult.redirect ? safeNext({ name: accessResult.redirect }) : next()
     }
 
     // 3) requiresOrganization для страниц настроек организации
@@ -271,18 +235,6 @@ router.beforeEach(async (to, from, next) => {
       } catch (error) {
         // При ошибке также перенаправляем на страницу создания
         return safeNext({ name: 'CRMRemasteredWelcome' })
-      }
-    }
-
-    // 5) Дополнительная проверка прав новой системой ADP для всех защищённых страниц
-    if (to.meta && to.meta.requiresAuth && to.name !== 'AccessDenied') {
-      try {
-        const allowed = await checkRouteAdpAccess(to.path)
-        if (!allowed) {
-          return safeNext({ name: 'AccessDenied' })
-        }
-      } catch (error) {
-        return safeNext({ name: 'AccessDenied' })
       }
     }
 
