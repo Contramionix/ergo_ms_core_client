@@ -30,6 +30,7 @@ const emit = defineEmits(['minimize', 'maximize', 'close', 'detach', 'dock', 'ac
 const isDragging = ref(false)
 const dragStart = ref({ x: 0, y: 0 })
 const initialPosition = ref({ x: 0, y: 0 })
+const windowElRef = ref(null)
 
 function handleMinimize(e) {
   e.stopPropagation()
@@ -70,6 +71,7 @@ function handleMouseDown(e) {
   const windowEl = e.currentTarget.closest('.window')
   if (!windowEl) return
   
+  windowElRef.value = windowEl
   const rect = windowEl.getBoundingClientRect()
   initialPosition.value = {
     x: rect.left,
@@ -86,10 +88,11 @@ function handleMouseDown(e) {
   document.addEventListener('mousemove', handleMouseMove)
   document.addEventListener('mouseup', handleMouseUp)
   e.preventDefault()
+  e.stopPropagation()
 }
 
 function handleMouseMove(e) {
-  if (!isDragging.value) return
+  if (!isDragging.value || !windowElRef.value) return
   
   const deltaX = e.clientX - dragStart.value.x
   const deltaY = e.clientY - dragStart.value.y
@@ -103,12 +106,9 @@ function handleMouseMove(e) {
   const container = document.querySelector('.window-manager-container')
   if (container) {
     const containerRect = container.getBoundingClientRect()
-    const windowRect = e.currentTarget?.closest('.window')?.getBoundingClientRect()
-    const windowWidth = windowRect?.width || 400
-    const windowHeight = windowRect?.height || 300
-    
-    const maxX = containerRect.width - windowWidth
-    const maxY = containerRect.height - windowHeight
+    const windowRect = windowElRef.value.getBoundingClientRect()
+    const windowWidth = windowRect.width || 400
+    const windowHeight = windowRect.height || 300
     
     newPosition.x = Math.max(containerRect.left, Math.min(newPosition.x, containerRect.right - windowWidth))
     newPosition.y = Math.max(containerRect.top, Math.min(newPosition.y, containerRect.bottom - windowHeight))
@@ -122,6 +122,7 @@ function handleMouseUp() {
     isDragging.value = false
     dragStart.value = { x: 0, y: 0 }
     initialPosition.value = { x: 0, y: 0 }
+    windowElRef.value = null
     
     document.removeEventListener('mousemove', handleMouseMove)
     document.removeEventListener('mouseup', handleMouseUp)

@@ -38,7 +38,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: linear-gradient(135deg, var(--bs-primary, #0d6efd) 0%, var(--bs-primary-dark, #0a58ca) 100%);
+  background: var(--bs-primary, #0d6efd);
   color: white;
   cursor: move;
   user-select: none;
@@ -46,12 +46,13 @@
   transition: background 0.2s ease;
   
   &--active {
-    background: linear-gradient(135deg, var(--bs-primary, #0d6efd) 0%, var(--bs-primary-dark, #0a58ca) 100%);
+    background: var(--bs-primary, #0d6efd);
   }
   
   &--dragging {
     cursor: grabbing;
     opacity: 0.9;
+    background: var(--bs-primary-dark, #0a58ca);
   }
   
   &__title {
