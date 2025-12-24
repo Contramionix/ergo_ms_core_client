@@ -1,0 +1,74 @@
+// Анимации для окон
+
+@keyframes windowFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes windowFadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes windowSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dockIconBounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+.window {
+  animation: windowFadeIn 0.2s ease-out;
+  
+  &--closing {
+    animation: windowFadeOut 0.2s ease-in;
+  }
+}
+
+.module-icon {
+  animation: windowSlideIn 0.3s ease-out;
+  
+  &:hover {
+    animation: dockIconBounce 0.4s ease;
+  }
+}
+
+// Плавные переходы для всех интерактивных элементов
+.window,
+.window-header,
+.window-header__btn,
+.module-icon {
+  transition: all 0.2s ease;
+}
+
+// Анимация при переключении активного окна
+.window--active {
+  animation: none; // Отключаем базовую анимацию для активного окна
+  transition: box-shadow 0.2s ease, transform 0.2s ease, z-index 0s;
+}
+
