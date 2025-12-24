@@ -1,17 +1,50 @@
 @import './animations.scss';
 
 .window {
-  background: var(--bs-body-bg, #ffffff);
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  // Liquid Glass эффект
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(30px) saturate(200%);
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 20px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  // Отключаем transition для позиции, чтобы не было рывков
+  transition: box-shadow 0.2s ease, transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  will-change: transform;
   
   &--active {
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.15), 0 4px 6px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.8);
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 
+      0 12px 48px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px) scale(1.005);
+  }
+  
+  // Темная тема
+  @media (prefers-color-scheme: dark) {
+    background: rgba(20, 20, 20, 0.6);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+    
+    &--active {
+      background: rgba(30, 30, 30, 0.8);
+      border-color: rgba(255, 255, 255, 0.25);
+      box-shadow: 
+        0 12px 48px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+    }
   }
   
   &--minimized {
@@ -37,22 +70,39 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--bs-primary, #0d6efd);
+  padding: 10px 16px;
+  // Liquid Glass эффект для заголовка
+  background: linear-gradient(
+    135deg,
+    rgba(var(--bs-primary-rgb, 13, 110, 253), 0.75) 0%,
+    rgba(var(--bs-primary-rgb, 13, 110, 253), 0.55) 100%
+  );
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
   color: white;
   cursor: move;
   user-select: none;
-  min-height: 40px;
-  transition: background 0.2s ease;
+  min-height: 44px;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
   
   &--active {
-    background: var(--bs-primary, #0d6efd);
+    background: linear-gradient(
+      135deg,
+      rgba(var(--bs-primary-rgb, 13, 110, 253), 0.85) 0%,
+      rgba(var(--bs-primary-rgb, 13, 110, 253), 0.65) 100%
+    );
+    border-bottom-color: rgba(255, 255, 255, 0.35);
   }
   
   &--dragging {
     cursor: grabbing;
-    opacity: 0.9;
-    background: var(--bs-primary-dark, #0a58ca);
+    background: linear-gradient(
+      135deg,
+      rgba(var(--bs-primary-rgb, 13, 110, 253), 0.9) 0%,
+      rgba(var(--bs-primary-rgb, 13, 110, 253), 0.75) 100%
+    );
+    border-bottom-color: rgba(255, 255, 255, 0.4);
   }
   
   &__title {
@@ -111,7 +161,59 @@
 .window-content {
   flex: 1;
   overflow: auto;
-  background: var(--bs-body-bg, #ffffff);
+  background: transparent;
+  
+  // Минималистичные стильные скроллбары
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.25);
+      background-clip: padding-box;
+    }
+    
+    &:active {
+      background: rgba(0, 0, 0, 0.35);
+      background-clip: padding-box;
+    }
+  }
+  
+  // Для темной темы
+  @media (prefers-color-scheme: dark) {
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      background-clip: padding-box;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.25);
+        background-clip: padding-box;
+      }
+      
+      &:active {
+        background: rgba(255, 255, 255, 0.35);
+        background-clip: padding-box;
+      }
+    }
+  }
 }
 
 .window__resize-handles {

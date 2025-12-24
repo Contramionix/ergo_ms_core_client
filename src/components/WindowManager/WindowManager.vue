@@ -37,8 +37,22 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--bs-body-bg, #f8f9fa);
+  // Фон с градиентом для лучшего эффекта liquid glass
+  background: linear-gradient(
+    135deg,
+    rgba(248, 249, 250, 0.9) 0%,
+    rgba(233, 236, 239, 0.9) 100%
+  );
   box-sizing: border-box;
+  
+  // Для темной темы
+  @media (prefers-color-scheme: dark) {
+    background: linear-gradient(
+      135deg,
+      rgba(20, 20, 20, 0.9) 0%,
+      rgba(30, 30, 30, 0.9) 100%
+    );
+  }
 }
 
 .window-manager-grid {

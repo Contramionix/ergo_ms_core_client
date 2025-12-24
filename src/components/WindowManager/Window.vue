@@ -27,7 +27,8 @@ const windowStyle = computed(() => {
       height: '100%',
       zIndex: props.window.zIndex,
       maxWidth: '100%',
-      maxHeight: '100%'
+      maxHeight: '100%',
+      transition: 'none' // Отключаем transition при максимизации
     }
   }
   
@@ -40,7 +41,8 @@ const windowStyle = computed(() => {
       height: '40px',
       zIndex: props.window.zIndex,
       maxWidth: '300px',
-      maxHeight: '40px'
+      maxHeight: '40px',
+      transition: 'all 0.3s ease'
     }
   }
   
@@ -57,7 +59,8 @@ const windowStyle = computed(() => {
     zIndex: props.window.zIndex,
     maxWidth: '100%',
     maxHeight: '100%',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    transition: 'none' // Отключаем transition при перетаскивании для плавности
   }
 })
 
@@ -107,8 +110,23 @@ function handleDock() {
   windowManagerStore.dockWindow(props.window.id)
 }
 
-function handleActivate() {
-  windowManagerStore.setActiveWindow(props.window.id)
+function handleActivate(e) {
+  // Предотвращаем активацию при клике на интерактивные элементы
+  if (e && e.target && (
+    e.target.closest('button') ||
+    e.target.closest('input') ||
+    e.target.closest('select') ||
+    e.target.closest('textarea') ||
+    e.target.closest('a') ||
+    e.target.closest('.window-header__btn')
+  )) {
+    return
+  }
+  
+  // Используем requestAnimationFrame для плавного переключения без перерисовки
+  requestAnimationFrame(() => {
+    windowManagerStore.setActiveWindow(props.window.id)
+  })
 }
 
 const showSnapLayouts = ref(false)
@@ -116,6 +134,7 @@ const snapLayoutsMousePos = ref({ x: 0, y: 0 })
 
 function handleDrag(newPosition, snapZone) {
   // newPosition уже в абсолютных координатах, нужно преобразовать в относительные
+  // Обновляем позицию напрямую для максимальной плавности
   const container = document.querySelector('.window-manager-container')
   if (container) {
     const containerRect = container.getBoundingClientRect()
@@ -191,14 +210,15 @@ function handleSnap(layout) {
 }
 
 onMounted(() => {
+  // Используем capture phase для более раннего перехвата
   if (windowEl.value) {
-    windowEl.value.addEventListener('mousedown', handleActivate)
+    windowEl.value.addEventListener('mousedown', handleActivate, { capture: true, passive: true })
   }
 })
 
 onBeforeUnmount(() => {
   if (windowEl.value) {
-    windowEl.value.removeEventListener('mousedown', handleActivate)
+    windowEl.value.removeEventListener('mousedown', handleActivate, { capture: true })
   }
 })
 </script>

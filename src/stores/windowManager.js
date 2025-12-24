@@ -64,17 +64,32 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
   }
   
   function setActiveWindow(windowId) {
-    const window = windows.value.find(w => w.id === windowId)
-    if (window) {
-      windows.value.forEach(w => {
-        w.isActive = w.id === windowId
-        if (w.isActive) {
-          w.zIndex = getNextZIndex()
-        }
-      })
+    // Если идет перетаскивание, не меняем активное окно
+    if (isDragging.value) return
+    
+    const targetWindow = windows.value.find(w => w.id === windowId)
+    if (!targetWindow) return
+    
+    // Если окно уже активно, ничего не делаем
+    if (targetWindow.isActive) return
+    
+    // Используем requestAnimationFrame для плавного переключения без перерисовки
+    requestAnimationFrame(() => {
+      // Деактивируем только текущее активное окно (не все)
+      const currentActive = windows.value.find(w => w.isActive && w.id !== windowId)
+      if (currentActive) {
+        currentActive.isActive = false
+      }
+      
+      // Активируем выбранное окно
+      targetWindow.isActive = true
+      targetWindow.zIndex = getNextZIndex()
       activeWindowId.value = windowId
-      saveWindowsToStorage()
-    }
+    })
+  }
+  
+  function setDragging(value) {
+    isDragging.value = value
   }
   
   function updateWindowPosition(windowId, position, snapToSlot = false) {

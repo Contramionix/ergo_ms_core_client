@@ -13,10 +13,20 @@ const component = ref(null)
 const isLoading = ref(false)
 const loadError = ref(null)
 
+// Кэш загруженных компонентов для предотвращения перерисовки
+const componentCache = new Map()
+
 // Загружаем компонент модуля напрямую без изменения URL
 async function loadModuleComponent() {
   if (!props.window.routeName) {
     component.value = null
+    return
+  }
+
+  // Проверяем кэш
+  const cacheKey = `${props.window.id}-${props.window.routeName}`
+  if (componentCache.has(cacheKey)) {
+    component.value = componentCache.get(cacheKey)
     return
   }
 
@@ -82,10 +92,15 @@ async function loadModuleComponent() {
         // Если это функция (lazy component)
         if (typeof routeObject.component === 'function') {
           const loadedComponent = await routeObject.component()
-          component.value = loadedComponent.default || loadedComponent
+          const finalComponent = loadedComponent.default || loadedComponent
+          component.value = finalComponent
+          // Кэшируем компонент
+          componentCache.set(cacheKey, finalComponent)
         } else {
           // Если компонент уже загружен
           component.value = routeObject.component
+          // Кэшируем компонент
+          componentCache.set(cacheKey, routeObject.component)
         }
       } else {
         // Нет компонента - показываем плейсхолдер
@@ -109,9 +124,12 @@ onMounted(() => {
   loadModuleComponent()
 })
 
-watch(() => props.window.routeName, () => {
-  loadModuleComponent()
-})
+// Загружаем только если routeName изменился (не при каждом обновлении окна)
+watch(() => props.window.routeName, (newRouteName, oldRouteName) => {
+  if (newRouteName !== oldRouteName) {
+    loadModuleComponent()
+  }
+}, { immediate: false })
 </script>
 
 <template>
@@ -119,7 +137,7 @@ watch(() => props.window.routeName, () => {
     <component
       v-if="component"
       :is="component"
-      :key="`window-${window.id}-${window.routeName}`"
+      :key="`window-${window.id}`"
     />
     <WindowPlaceholder
       v-else

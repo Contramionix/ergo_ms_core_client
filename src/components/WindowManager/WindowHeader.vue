@@ -111,72 +111,95 @@ function handleMouseDown(e) {
   e.stopPropagation()
 }
 
+// Сохраняем последнюю позицию мыши для requestAnimationFrame
+let lastMouseEvent = null
+let rafId = null
+
 function handleMouseMove(e) {
   if (!isDragging.value || !windowElRef.value) return
   
-  const deltaX = e.clientX - dragStart.value.x
-  const deltaY = e.clientY - dragStart.value.y
+  // Сохраняем последнее событие мыши
+  lastMouseEvent = e
   
-  const container = document.querySelector('.window-manager-container')
-  if (!container) {
-    emit('drag', { x: initialPosition.value.x + deltaX, y: initialPosition.value.y + deltaY })
-    return
+  // Используем requestAnimationFrame для плавности, но не блокируем события
+  if (!rafId) {
+    rafId = requestAnimationFrame(() => {
+      rafId = null
+      
+      if (!lastMouseEvent || !isDragging.value) return
+      
+      const deltaX = lastMouseEvent.clientX - dragStart.value.x
+      const deltaY = lastMouseEvent.clientY - dragStart.value.y
+      
+      const container = document.querySelector('.window-manager-container')
+      if (!container) {
+        emit('drag', { x: initialPosition.value.x + deltaX, y: initialPosition.value.y + deltaY })
+        return
+      }
+      
+      const containerRect = container.getBoundingClientRect()
+      const windowRect = windowElRef.value.getBoundingClientRect()
+      const windowWidth = windowRect.width || 400
+      const windowHeight = windowRect.height || 300
+      
+      // Новая позиция в абсолютных координатах
+      let newPosition = {
+        x: initialPosition.value.x + deltaX + containerRect.left,
+        y: initialPosition.value.y + deltaY + containerRect.top
+      }
+      
+      // Ограничиваем перемещение границами контейнера
+      newPosition.x = Math.max(containerRect.left, Math.min(newPosition.x, containerRect.right - windowWidth))
+      newPosition.y = Math.max(containerRect.top, Math.min(newPosition.y, containerRect.bottom - windowHeight))
+      
+      // Позиция относительно контейнера для определения snap зоны
+      const relativePosition = {
+        x: newPosition.x - containerRect.left,
+        y: newPosition.y - containerRect.top
+      }
+      
+      const containerSize = {
+        width: containerRect.width,
+        height: containerRect.height
+      }
+      
+      // Определяем snap зону (привязка к краям и углам)
+      const detectedSnapZone = detectSnapZone(relativePosition, containerSize)
+      snapZone.value = detectedSnapZone
+      
+      // Если обнаружена snap зона, показываем snap layouts
+      if (detectedSnapZone && !showSnapLayouts.value) {
+        showSnapLayouts.value = true
+        emit('show-snap-layouts', true, { x: lastMouseEvent.clientX, y: lastMouseEvent.clientY })
+      } else if (!detectedSnapZone && showSnapLayouts.value) {
+        showSnapLayouts.value = false
+        emit('show-snap-layouts', false)
+      }
+      
+      // Если есть snap зона, применяем привязку
+      if (detectedSnapZone) {
+        const snappedPosition = applySnap(relativePosition, containerSize, detectedSnapZone)
+        newPosition = {
+          x: snappedPosition.x + containerRect.left,
+          y: snappedPosition.y + containerRect.top
+        }
+      }
+      
+      emit('drag', newPosition, detectedSnapZone)
+    })
   }
-  
-  const containerRect = container.getBoundingClientRect()
-  const windowRect = windowElRef.value.getBoundingClientRect()
-  const windowWidth = windowRect.width || 400
-  const windowHeight = windowRect.height || 300
-  
-  // Новая позиция в абсолютных координатах
-  let newPosition = {
-    x: initialPosition.value.x + deltaX + containerRect.left,
-    y: initialPosition.value.y + deltaY + containerRect.top
-  }
-  
-  // Ограничиваем перемещение границами контейнера
-  newPosition.x = Math.max(containerRect.left, Math.min(newPosition.x, containerRect.right - windowWidth))
-  newPosition.y = Math.max(containerRect.top, Math.min(newPosition.y, containerRect.bottom - windowHeight))
-  
-  // Позиция относительно контейнера для определения snap зоны
-  const relativePosition = {
-    x: newPosition.x - containerRect.left,
-    y: newPosition.y - containerRect.top
-  }
-  
-  const containerSize = {
-    width: containerRect.width,
-    height: containerRect.height
-  }
-  
-  // Определяем snap зону (привязка к краям и углам)
-  const detectedSnapZone = detectSnapZone(relativePosition, containerSize)
-  snapZone.value = detectedSnapZone
-  
-  // Если обнаружена snap зона, показываем snap layouts
-  if (detectedSnapZone && !showSnapLayouts.value) {
-    showSnapLayouts.value = true
-    emit('show-snap-layouts', true, { x: e.clientX, y: e.clientY })
-  } else if (!detectedSnapZone && showSnapLayouts.value) {
-    showSnapLayouts.value = false
-    emit('show-snap-layouts', false)
-  }
-  
-  // Если есть snap зона, применяем привязку
-  if (detectedSnapZone) {
-    const snappedPosition = applySnap(relativePosition, containerSize, detectedSnapZone)
-    newPosition = {
-      x: snappedPosition.x + containerRect.left,
-      y: snappedPosition.y + containerRect.top
-    }
-  }
-  
-  emit('drag', newPosition, detectedSnapZone)
 }
 
 function handleMouseUp() {
   if (isDragging.value) {
     isDragging.value = false
+    
+    // Отменяем pending animation frame
+    if (rafId) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
+    lastMouseEvent = null
     
     // Передаем информацию о snap зоне
     emit('drag-end', null, snapZone.value)
