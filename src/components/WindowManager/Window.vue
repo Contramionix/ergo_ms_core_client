@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useWindowManagerStore } from '@/stores/windowManager'
 import WindowHeader from './WindowHeader.vue'
 import WindowContent from './WindowContent.vue'
+import SnapLayouts from './SnapLayouts.vue'
 import { useWindowResize } from './composables/useWindowResize.js'
 
 const props = defineProps({
@@ -61,7 +62,8 @@ const windowStyle = computed(() => {
 })
 
 const handlePositionUpdate = (newPosition) => {
-  windowManagerStore.updateWindowPosition(props.window.id, newPosition)
+  // Не используем snap при программном обновлении позиции
+  windowManagerStore.updateWindowPosition(props.window.id, newPosition, false)
 }
 
 const handleSizeUpdate = (newSize) => {
@@ -109,7 +111,10 @@ function handleActivate() {
   windowManagerStore.setActiveWindow(props.window.id)
 }
 
-function handleDrag(newPosition) {
+const showSnapLayouts = ref(false)
+const snapLayoutsMousePos = ref({ x: 0, y: 0 })
+
+function handleDrag(newPosition, snapZone) {
   // newPosition уже в абсолютных координатах, нужно преобразовать в относительные
   const container = document.querySelector('.window-manager-container')
   if (container) {
@@ -118,14 +123,71 @@ function handleDrag(newPosition) {
       x: newPosition.x - containerRect.left,
       y: newPosition.y - containerRect.top
     }
-    windowManagerStore.updateWindowPosition(props.window.id, relativePosition)
+    // При перетаскивании не привязываем к слотам (snapToSlot = false)
+    windowManagerStore.updateWindowPosition(props.window.id, relativePosition, false)
   } else {
-    windowManagerStore.updateWindowPosition(props.window.id, newPosition)
+    windowManagerStore.updateWindowPosition(props.window.id, newPosition, false)
   }
 }
 
-function handleDragEnd() {
+async function handleDragEnd(targetSlotIndex, snapZone) {
+  const container = document.querySelector('.window-manager-container')
+  
+  if (snapZone) {
+    // Если есть snap зона, применяем snap
+    if (container) {
+      const containerRect = container.getBoundingClientRect()
+      const relativePosition = {
+        x: props.window.position.x,
+        y: props.window.position.y
+      }
+      
+      const snapAssistModule = await import('./composables/useSnapAssist.js')
+      const { applySnap, getSnapSize } = snapAssistModule
+      const snappedPosition = applySnap(relativePosition, {
+        width: containerRect.width,
+        height: containerRect.height
+      }, snapZone)
+      
+      windowManagerStore.updateWindowPosition(props.window.id, snappedPosition, false)
+      
+      const snapSize = getSnapSize(snapZone, {
+        width: containerRect.width,
+        height: containerRect.height
+      })
+      if (snapSize) {
+        windowManagerStore.updateWindowSize(props.window.id, snapSize)
+      }
+    }
+  }
   windowManagerStore.saveWindowsToStorage()
+}
+
+function handleShowSnapLayouts(show, mousePos) {
+  showSnapLayouts.value = show
+  if (mousePos) {
+    snapLayoutsMousePos.value = mousePos
+  }
+}
+
+function handleSnap(layout) {
+  const container = document.querySelector('.window-manager-container')
+  if (container) {
+    const containerRect = container.getBoundingClientRect()
+    const snapPosition = windowManagerStore.calculateSnapPosition(layout, {
+      width: containerRect.width,
+      height: containerRect.height
+    })
+    const snapSize = windowManagerStore.calculateSnapSize(layout, {
+      width: containerRect.width,
+      height: containerRect.height
+    })
+    
+    windowManagerStore.updateWindowPosition(props.window.id, snapPosition, false)
+    windowManagerStore.updateWindowSize(props.window.id, snapSize)
+    windowManagerStore.saveWindowsToStorage()
+  }
+  showSnapLayouts.value = false
 }
 
 onMounted(() => {
@@ -211,6 +273,14 @@ onBeforeUnmount(() => {
         @mousedown="(e) => handleResizeStart(e, 'sw')"
       />
     </div>
+    
+    <!-- Snap Layouts Overlay -->
+    <SnapLayouts
+      :show="showSnapLayouts"
+      :mouse-position="snapLayoutsMousePos"
+      @snap="handleSnap"
+      @close="showSnapLayouts = false"
+    />
   </div>
 </template>
 

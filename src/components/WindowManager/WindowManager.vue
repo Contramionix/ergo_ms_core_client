@@ -2,12 +2,10 @@
 import { computed, onMounted } from 'vue'
 import { useWindowManagerStore } from '@/stores/windowManager'
 import Window from './Window.vue'
-import { useWindowGrid } from './composables/useWindowGrid.js'
 
 const windowManagerStore = useWindowManagerStore()
 
 const windows = computed(() => windowManagerStore.windows)
-const { isMobile, isTablet } = useWindowGrid(windows)
 
 onMounted(() => {
   // Загружаем сохраненные окна из localStorage

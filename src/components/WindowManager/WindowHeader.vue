@@ -1,6 +1,8 @@
 <script setup>
 import { ref } from 'vue'
 import { Minus, Maximize2, X, ExternalLink, Move } from 'lucide-vue-next'
+import { useWindowManagerStore } from '@/stores/windowManager'
+import { useSnapAssist } from './composables/useSnapAssist'
 
 const props = defineProps({
   title: {
@@ -25,12 +27,17 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['minimize', 'maximize', 'close', 'detach', 'dock', 'activate', 'drag', 'drag-end'])
+const emit = defineEmits(['minimize', 'maximize', 'close', 'detach', 'dock', 'activate', 'drag', 'drag-end', 'show-snap-layouts', 'snap'])
+
+const windowManagerStore = useWindowManagerStore()
+const { detectSnapZone, applySnap, getSnapSize } = useSnapAssist()
 
 const isDragging = ref(false)
 const dragStart = ref({ x: 0, y: 0 })
 const initialPosition = ref({ x: 0, y: 0 })
 const windowElRef = ref(null)
+const snapZone = ref(null)
+const showSnapLayouts = ref(false)
 
 function handleMinimize(e) {
   e.stopPropagation()
@@ -73,9 +80,20 @@ function handleMouseDown(e) {
   
   windowElRef.value = windowEl
   const rect = windowEl.getBoundingClientRect()
-  initialPosition.value = {
-    x: rect.left,
-    y: rect.top
+  const container = document.querySelector('.window-manager-container')
+  
+  if (container) {
+    const containerRect = container.getBoundingClientRect()
+    // Сохраняем позицию относительно контейнера
+    initialPosition.value = {
+      x: rect.left - containerRect.left,
+      y: rect.top - containerRect.top
+    }
+  } else {
+    initialPosition.value = {
+      x: rect.left,
+      y: rect.top
+    }
   }
   
   dragStart.value = {
@@ -84,6 +102,8 @@ function handleMouseDown(e) {
   }
   
   isDragging.value = true
+  snapZone.value = null
+  showSnapLayouts.value = false
   
   document.addEventListener('mousemove', handleMouseMove)
   document.addEventListener('mouseup', handleMouseUp)
@@ -97,37 +117,79 @@ function handleMouseMove(e) {
   const deltaX = e.clientX - dragStart.value.x
   const deltaY = e.clientY - dragStart.value.y
   
+  const container = document.querySelector('.window-manager-container')
+  if (!container) {
+    emit('drag', { x: initialPosition.value.x + deltaX, y: initialPosition.value.y + deltaY })
+    return
+  }
+  
+  const containerRect = container.getBoundingClientRect()
+  const windowRect = windowElRef.value.getBoundingClientRect()
+  const windowWidth = windowRect.width || 400
+  const windowHeight = windowRect.height || 300
+  
+  // Новая позиция в абсолютных координатах
   let newPosition = {
-    x: initialPosition.value.x + deltaX,
-    y: initialPosition.value.y + deltaY
+    x: initialPosition.value.x + deltaX + containerRect.left,
+    y: initialPosition.value.y + deltaY + containerRect.top
   }
   
   // Ограничиваем перемещение границами контейнера
-  const container = document.querySelector('.window-manager-container')
-  if (container) {
-    const containerRect = container.getBoundingClientRect()
-    const windowRect = windowElRef.value.getBoundingClientRect()
-    const windowWidth = windowRect.width || 400
-    const windowHeight = windowRect.height || 300
-    
-    newPosition.x = Math.max(containerRect.left, Math.min(newPosition.x, containerRect.right - windowWidth))
-    newPosition.y = Math.max(containerRect.top, Math.min(newPosition.y, containerRect.bottom - windowHeight))
+  newPosition.x = Math.max(containerRect.left, Math.min(newPosition.x, containerRect.right - windowWidth))
+  newPosition.y = Math.max(containerRect.top, Math.min(newPosition.y, containerRect.bottom - windowHeight))
+  
+  // Позиция относительно контейнера для определения snap зоны
+  const relativePosition = {
+    x: newPosition.x - containerRect.left,
+    y: newPosition.y - containerRect.top
   }
   
-  emit('drag', newPosition)
+  const containerSize = {
+    width: containerRect.width,
+    height: containerRect.height
+  }
+  
+  // Определяем snap зону (привязка к краям и углам)
+  const detectedSnapZone = detectSnapZone(relativePosition, containerSize)
+  snapZone.value = detectedSnapZone
+  
+  // Если обнаружена snap зона, показываем snap layouts
+  if (detectedSnapZone && !showSnapLayouts.value) {
+    showSnapLayouts.value = true
+    emit('show-snap-layouts', true, { x: e.clientX, y: e.clientY })
+  } else if (!detectedSnapZone && showSnapLayouts.value) {
+    showSnapLayouts.value = false
+    emit('show-snap-layouts', false)
+  }
+  
+  // Если есть snap зона, применяем привязку
+  if (detectedSnapZone) {
+    const snappedPosition = applySnap(relativePosition, containerSize, detectedSnapZone)
+    newPosition = {
+      x: snappedPosition.x + containerRect.left,
+      y: snappedPosition.y + containerRect.top
+    }
+  }
+  
+  emit('drag', newPosition, detectedSnapZone)
 }
 
 function handleMouseUp() {
   if (isDragging.value) {
     isDragging.value = false
+    
+    // Передаем информацию о snap зоне
+    emit('drag-end', null, snapZone.value)
+    
     dragStart.value = { x: 0, y: 0 }
     initialPosition.value = { x: 0, y: 0 }
     windowElRef.value = null
+    snapZone.value = null
+    showSnapLayouts.value = false
+    emit('show-snap-layouts', false)
     
     document.removeEventListener('mousemove', handleMouseMove)
     document.removeEventListener('mouseup', handleMouseUp)
-    
-    emit('drag-end')
   }
 }
 </script>

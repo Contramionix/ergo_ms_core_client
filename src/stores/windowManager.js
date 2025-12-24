@@ -26,13 +26,14 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
       throw new Error('Достигнут максимум окон')
     }
     
+    const initialPos = calculateInitialPosition(windows.value.length)
     const window = {
       id: uuidv4(),
       moduleId,
       title: moduleConfig.title || moduleConfig.name,
       route: moduleConfig.route || (moduleConfig.routeName ? { name: moduleConfig.routeName } : null),
       routeName: moduleConfig.routeName,
-      position: calculateInitialPosition(windows.value.length),
+      position: { x: initialPos.x, y: initialPos.y },
       size: calculateInitialSize(),
       isMinimized: false,
       isMaximized: false,
@@ -76,7 +77,7 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
     }
   }
   
-  function updateWindowPosition(windowId, position) {
+  function updateWindowPosition(windowId, position, snapToSlot = false) {
     const window = windows.value.find(w => w.id === windowId)
     if (window) {
       window.position = position
@@ -161,17 +162,42 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
   
   // Вспомогательные функции
   function calculateInitialPosition(index) {
-    const gap = 20
+    // Вычисляем позицию с небольшим смещением для каждого окна
+    const gap = 30
     const baseX = gap
     const baseY = gap
-    const offsetX = (index % 2) * 50
-    const offsetY = Math.floor(index / 2) * 50
+    const offsetX = (index % 3) * 50
+    const offsetY = Math.floor(index / 3) * 50
     
     return {
       x: baseX + offsetX,
       y: baseY + offsetY
     }
   }
+  
+  function calculateSnapPosition(snapLayout, containerSize) {
+    // Вычисляем позицию на основе snap layout
+    const { width, height } = containerSize
+    const zone = snapLayout.zones[0] // Берем первую зону
+    
+    return {
+      x: (zone.x / 100) * width,
+      y: (zone.y / 100) * height,
+      snapLayout: snapLayout.id
+    }
+  }
+  
+  function calculateSnapSize(snapLayout, containerSize) {
+    // Вычисляем размер на основе snap layout
+    const { width, height } = containerSize
+    const zone = snapLayout.zones[0] // Берем первую зону
+    
+    return {
+      width: `${(zone.width / 100) * width}px`,
+      height: `${(zone.height / 100) * height}px`
+    }
+  }
+  
   
   function calculateInitialSize() {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
@@ -186,7 +212,7 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
         height: '400px' 
       }
     } else {
-      // Для десктопа: фиксированный размер, чтобы окна помещались в сетку 2x2
+      // Для десктопа: фиксированный размер
       return { 
         width: '600px', 
         height: '500px' 
@@ -260,6 +286,8 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
     setActiveWindow,
     updateWindowPosition,
     updateWindowSize,
+    calculateSnapPosition,
+    calculateSnapSize,
     toggleMinimize,
     toggleMaximize,
     detachWindow,
