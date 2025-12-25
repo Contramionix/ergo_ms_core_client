@@ -40,6 +40,66 @@
     min-width: fit-content;
     height: 100%;
   }
+  
+  &__separator {
+    width: 1px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.1);
+    margin: 0 8px;
+    
+    @media (prefers-color-scheme: dark) {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+  
+  &__grid-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    padding: 0;
+    transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 12px;
+    
+    &:hover {
+      transform: scale(1.1);
+      opacity: 0.9;
+      
+      .module-dock__grid-btn-icon {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+    }
+    
+    &:active {
+      transform: scale(1.05);
+      transition: transform 0.1s ease;
+    }
+    
+    &-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      background: var(--bs-body-bg, #f8f9fa);
+      border: 2px solid var(--bs-border-color, #dee2e6);
+      border-radius: 12px;
+      transition: all 0.2s ease;
+      color: var(--bs-body-color, #212529);
+      
+      @media (prefers-color-scheme: dark) {
+        background: var(--bs-dark, #212529);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: var(--bs-light, #f8f9fa);
+      }
+    }
+  }
 }
 
 @import '../../WindowManager/styles/animations.scss';
@@ -123,6 +183,11 @@
   }
   
   .module-icon {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .module-dock__grid-btn {
     width: 48px;
     height: 48px;
   }

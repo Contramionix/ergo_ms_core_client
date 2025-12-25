@@ -75,24 +75,32 @@ function handleMouseDown(e) {
   emit('activate')
   
   // Получаем текущую позицию окна
-  const windowEl = e.currentTarget.closest('.window')
+  const windowEl = e.currentTarget.closest('.window, .detached-window')
   if (!windowEl) return
   
   windowElRef.value = windowEl
   const rect = windowEl.getBoundingClientRect()
-  const container = document.querySelector('.window-manager-container')
   
-  if (container) {
-    const containerRect = container.getBoundingClientRect()
-    // Сохраняем позицию относительно контейнера
-    initialPosition.value = {
-      x: rect.left - containerRect.left,
-      y: rect.top - containerRect.top
-    }
-  } else {
+  // Для открепленных окон используем абсолютные координаты экрана
+  if (props.isDetached) {
     initialPosition.value = {
       x: rect.left,
       y: rect.top
+    }
+  } else {
+    // Для обычных окон используем координаты относительно контейнера
+    const container = document.querySelector('.window-manager-container')
+    if (container) {
+      const containerRect = container.getBoundingClientRect()
+      initialPosition.value = {
+        x: rect.left - containerRect.left,
+        y: rect.top - containerRect.top
+      }
+    } else {
+      initialPosition.value = {
+        x: rect.left,
+        y: rect.top
+      }
     }
   }
   
@@ -131,6 +139,29 @@ function handleMouseMove(e) {
       const deltaX = lastMouseEvent.clientX - dragStart.value.x
       const deltaY = lastMouseEvent.clientY - dragStart.value.y
       
+      // Проверяем, является ли окно открепленным
+      const isDetached = props.isDetached
+      
+      if (isDetached) {
+        // Для открепленных окон используем абсолютные координаты экрана
+        const windowRect = windowElRef.value.getBoundingClientRect()
+        const windowWidth = windowRect.width || 400
+        const windowHeight = windowRect.height || 300
+        
+        let newPosition = {
+          x: initialPosition.value.x + deltaX,
+          y: initialPosition.value.y + deltaY
+        }
+        
+        // Ограничиваем перемещение границами экрана
+        newPosition.x = Math.max(0, Math.min(newPosition.x, window.innerWidth - windowWidth))
+        newPosition.y = Math.max(0, Math.min(newPosition.y, window.innerHeight - windowHeight))
+        
+        emit('drag', newPosition)
+        return
+      }
+      
+      // Для обычных окон используем логику с контейнером
       const container = document.querySelector('.window-manager-container')
       if (!container) {
         emit('drag', { x: initialPosition.value.x + deltaX, y: initialPosition.value.y + deltaY })

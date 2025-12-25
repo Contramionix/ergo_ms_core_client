@@ -1,14 +1,24 @@
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useWindowManagerStore } from '@/stores/windowManager'
 import WindowManager from '@/components/WindowManager/WindowManager.vue'
 import ModuleDock from '@/components/ModuleDock/ModuleDock.vue'
+import DetachedWindow from '@/components/WindowManager/DetachedWindow.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { accessDeniedState } from './js/accessDeniedState'
 import AccessDenied from '@/components/AccessDenied.vue'
+import { useKeyboardShortcuts } from '@/components/WindowManager/composables/useKeyboardShortcuts.js'
 
 const windowManagerStore = useWindowManagerStore()
 const userStore = useUserStore()
+
+// Получаем открепленные окна
+const detachedWindows = computed(() => 
+  windowManagerStore.windows.filter(w => w.isDetached)
+)
+
+// Инициализируем горячие клавиши
+useKeyboardShortcuts(windowManagerStore)
 
 onMounted(async () => {
   // Инициализируем пользователя при загрузке
@@ -31,6 +41,15 @@ onMounted(async () => {
       <WindowManager v-else />
     </div>
     <ModuleDock />
+    
+    <!-- Открепленные окна (overlay поверх всего) -->
+    <Teleport to="body">
+      <DetachedWindow
+        v-for="window in detachedWindows"
+        :key="window.id"
+        :window="window"
+      />
+    </Teleport>
   </div>
 </template>
 

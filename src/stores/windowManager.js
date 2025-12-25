@@ -7,6 +7,8 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
   const windows = ref([])
   const maxWindows = ref(4)
   const activeWindowId = ref(null)
+  const isDragging = ref(false) // Флаг для отслеживания перетаскивания
+  const isArranging = ref(false) // Флаг для распределения окон по сетке
   
   // Доступные модули (загружаются из ModuleManager)
   const availableModules = ref([])
@@ -153,6 +155,95 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
     }
   }
   
+  /**
+   * Распределяет все открытые окна по сетке 2x2 (по углам)
+   * Устанавливает одинаковый размер для всех окон
+   */
+  function arrangeWindowsInGrid() {
+    if (windows.value.length === 0) return
+    
+    // Получаем размеры контейнера
+    const container = document.querySelector('.window-manager-container')
+    if (!container) {
+      // Если контейнер еще не создан, используем размеры окна
+      const containerWidth = typeof window !== 'undefined' ? window.innerWidth : 1920
+      const containerHeight = typeof window !== 'undefined' ? window.innerHeight : 1080
+      arrangeWindowsInGridWithSize(containerWidth, containerHeight)
+      return
+    }
+    
+    const containerRect = container.getBoundingClientRect()
+    
+    // На мобильных устройствах окна занимают весь экран
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+    if (isMobile) {
+      // На мобильных: каждое окно на весь экран, располагаем их вертикально
+      windows.value.forEach((window, index) => {
+        if (window.isMaximized) window.isMaximized = false
+        if (window.isMinimized) window.isMinimized = false
+        
+        window.position = { x: 0, y: index * containerRect.height }
+        window.size = { width: '100%', height: '100%' }
+      })
+      saveWindowsToStorage()
+      return
+    }
+    
+    arrangeWindowsInGridWithSize(containerRect.width, containerRect.height)
+  }
+  
+  /**
+   * Внутренняя функция для распределения окон с заданными размерами контейнера
+   */
+  function arrangeWindowsInGridWithSize(containerWidth, containerHeight) {
+    const gap = 10 // Отступ между окнами
+    const windowCount = Math.min(windows.value.length, 4) // Максимум 4 окна
+    
+    // Вычисляем размер каждого окна (50% ширины и высоты минус отступы)
+    const windowWidth = (containerWidth - gap * 3) / 2 // 2 окна в ряд, 3 отступа
+    const windowHeight = (containerHeight - gap * 3) / 2 // 2 окна в столбец, 3 отступа
+    
+    const uniformSize = {
+      width: `${windowWidth}px`,
+      height: `${windowHeight}px`
+    }
+    
+    // Позиции для сетки 2x2
+    const gridPositions = [
+      { x: gap, y: gap }, // Верхний левый
+      { x: gap + windowWidth + gap, y: gap }, // Верхний правый
+      { x: gap, y: gap + windowHeight + gap }, // Нижний левый
+      { x: gap + windowWidth + gap, y: gap + windowHeight + gap } // Нижний правый
+    ]
+    
+    // Включаем флаг распределения для плавной анимации
+    isArranging.value = true
+    
+    // Распределяем окна по позициям
+    windows.value.forEach((window, index) => {
+      if (index < 4) {
+        // Сбрасываем максимизацию и минимизацию перед распределением
+        if (window.isMaximized) {
+          window.isMaximized = false
+        }
+        if (window.isMinimized) {
+          window.isMinimized = false
+        }
+        
+        // Устанавливаем позицию и размер
+        window.position = gridPositions[index]
+        window.size = uniformSize
+      }
+    })
+    
+    saveWindowsToStorage()
+    
+    // Отключаем флаг после завершения анимации
+    setTimeout(() => {
+      isArranging.value = false
+    }, 300) // Время анимации
+  }
+  
   async function loadAvailableModules() {
     try {
       const { moduleManager } = await import('@/modules/index.js')
@@ -292,6 +383,8 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
     maxWindows,
     activeWindowId,
     availableModules,
+    isDragging,
+    isArranging,
     // Computed
     activeWindow,
     canOpenNewWindow,
@@ -299,6 +392,7 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
     createWindow,
     closeWindow,
     setActiveWindow,
+    setDragging,
     updateWindowPosition,
     updateWindowSize,
     calculateSnapPosition,
@@ -307,6 +401,7 @@ export const useWindowManagerStore = defineStore('windowManager', () => {
     toggleMaximize,
     detachWindow,
     dockWindow,
+    arrangeWindowsInGrid,
     loadAvailableModules,
     loadWindowsFromStorage,
     saveWindowsToStorage

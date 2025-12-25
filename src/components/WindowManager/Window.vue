@@ -17,6 +17,8 @@ const windowManagerStore = useWindowManagerStore()
 const windowRef = ref(null)
 const windowEl = ref(null)
 
+const isArranging = computed(() => windowManagerStore.isArranging)
+
 const windowStyle = computed(() => {
   if (props.window.isMaximized) {
     return {
@@ -60,7 +62,8 @@ const windowStyle = computed(() => {
     maxWidth: '100%',
     maxHeight: '100%',
     boxSizing: 'border-box',
-    transition: 'none' // Отключаем transition при перетаскивании для плавности
+    // Включаем transition при распределении по сетке, отключаем при перетаскивании
+    transition: isArranging.value ? 'all 0.3s ease' : 'none'
   }
 })
 
@@ -230,8 +233,7 @@ onBeforeUnmount(() => {
     :class="{
       'window--active': window.isActive,
       'window--minimized': window.isMinimized,
-      'window--maximized': window.isMaximized,
-      'window--detached': window.isDetached
+      'window--maximized': window.isMaximized
     }"
     :style="windowStyle"
   >

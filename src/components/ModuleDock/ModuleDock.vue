@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useWindowManagerStore } from '@/stores/windowManager'
 import ModuleIcon from './ModuleIcon.vue'
 import { useDockScroll } from './composables/useDockScroll.js'
+import { Grid3x3 } from 'lucide-vue-next'
 
 const windowManagerStore = useWindowManagerStore()
 
@@ -10,6 +11,7 @@ const dockRef = ref(null)
 const scrollLeft = ref(0)
 
 const availableModules = computed(() => windowManagerStore.availableModules)
+const windows = computed(() => windowManagerStore.windows)
 const activeModuleId = computed(() => {
   const activeWindow = windowManagerStore.activeWindow
   return activeWindow?.moduleId || null
@@ -41,6 +43,10 @@ function handleModuleClick(module) {
   }
 }
 
+function handleArrangeGrid() {
+  windowManagerStore.arrangeWindowsInGrid()
+}
+
 onMounted(async () => {
   // Загружаем доступные модули
   await windowManagerStore.loadAvailableModules()
@@ -58,6 +64,27 @@ onBeforeUnmount(() => {
     @scroll="handleScroll"
   >
     <div class="module-dock__container">
+      <!-- Кнопка распределения по сетке -->
+      <button
+        v-if="windows.length > 0"
+        class="module-dock__grid-btn"
+        type="button"
+        @click="handleArrangeGrid"
+        title="Распределить окна по сетке"
+        aria-label="Распределить окна по сетке"
+      >
+        <div class="module-dock__grid-btn-icon">
+          <Grid3x3 :size="24" />
+        </div>
+      </button>
+      
+      <!-- Разделитель -->
+      <div
+        v-if="windows.length > 0 && availableModules.length > 0"
+        class="module-dock__separator"
+      />
+      
+      <!-- Иконки модулей -->
       <ModuleIcon
         v-for="module in availableModules"
         :key="module.id"
