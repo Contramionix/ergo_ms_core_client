@@ -1,10 +1,8 @@
 <template>
   <div 
     class="default-avatar"
-    :class="[
-      `default-avatar--${size}`,
-      { 'default-avatar--clickable': clickable }
-    ]"
+    :class="{ 'default-avatar--clickable': clickable }"
+    :style="avatarStyle"
     :title="title"
   >
     <User :size="iconSize" />
@@ -12,14 +10,13 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed } from 'vue'
 import { User } from 'lucide-vue-next'
 
 const props = defineProps({
   size: {
-    type: String,
-    default: 'medium', // small, medium, large
-    validator: (value) => ['small', 'medium', 'large'].includes(value)
+    type: Number,
+    default: 40
   },
   clickable: {
     type: Boolean,
@@ -31,14 +28,13 @@ const props = defineProps({
   }
 })
 
-const iconSize = computed(() => {
-  const sizes = {
-    small: 16,
-    medium: 20,
-    large: 48
-  }
-  return sizes[props.size]
-})
+const avatarStyle = computed(() => ({
+  width: `${props.size}px`,
+  height: `${props.size}px`,
+  borderWidth: props.size >= 80 ? '3px' : props.size <= 32 ? '1px' : '2px'
+}))
+
+const iconSize = computed(() => Math.round(props.size * 0.5))
 </script>
 
 <style scoped lang="scss">
@@ -49,28 +45,17 @@ const iconSize = computed(() => {
   border-radius: 50%;
   background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
   color: #1976d2;
-  border: 2px solid rgba($color: #1976d2, $alpha: 0.2);
+  border-style: solid;
+  border-color: rgba($color: #1976d2, $alpha: 0.2);
   transition: all 0.2s ease;
   user-select: none;
-  width: 100%;
-  height: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
   
- 
-  &--small {
-    width: 32px;
-    height: 32px;
-    border-width: 1px;
-  }
-  
-  &--medium {
-    width: 40px;
-    height: 40px;
-  }
-  
-  &--large {
-    width: 120px;
-    height: 120px;
-    border-width: 3px;
+  // Когда используется внутри UserAvatar, наследуем размеры от родителя
+  .user-avatar & {
+    width: 100%;
+    height: 100%;
   }
   
   &--clickable {
@@ -84,4 +69,4 @@ const iconSize = computed(() => {
     }
   }
 }
-</style> 
+</style>

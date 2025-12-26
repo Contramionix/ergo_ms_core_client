@@ -176,7 +176,7 @@ onUnmounted(() => {
       <!-- Показываем стандартный аватар если нет кастомного или ошибка загрузки -->
       <DefaultAvatar 
         v-else
-        size="medium"
+        :size="40"
         :clickable="true"
         :title="userStore.displayName"
       />
@@ -197,7 +197,7 @@ onUnmounted(() => {
             <!-- Показываем стандартный аватар если нет кастомного или ошибка загрузки -->
             <DefaultAvatar 
               v-else
-              size="small"
+              :size="32"
               :title="userStore.displayName"
             />
           </div>
