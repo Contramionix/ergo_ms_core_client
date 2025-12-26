@@ -11,8 +11,8 @@ const moduleConfigs = import.meta.glob('../*/module-config.json', { eager: true 
 // Автоматически находим все компоненты чатов модулей
 const chatComponents = import.meta.glob('../*/*AssistantChat.vue')
 
-// Автоматически находим все клиенты модулей
-const moduleClients = import.meta.glob('../*/js/*-client.js')
+// Автоматически находим все клиенты модулей (eager: true для избежания конфликтов со статическими импортами)
+const moduleClients = import.meta.glob('../*/js/*-client.js', { eager: true })
 
 /**
  * Извлекает имя модуля из пути
@@ -84,20 +84,21 @@ function buildDynamicModuleConfig() {
       // Преобразуем строковые паттерны в RegExp
       const routePatterns = parseRoutePatterns(configData.routePatterns)
       
+      // Получаем уже загруженный клиент (eager: true)
+      const clientModule = moduleClients[clientPath]
+      // Ищем экспорт клиента (может быть именованный или default)
+      // Форматы: biClient, ragClient, crmClient и т.д. (lowercase)
+      const clientName = `${moduleName}Client`
+      // Также пробуем варианты: biClient, BiClient, BIClient
+      const camelCaseName = moduleName.charAt(0).toUpperCase() + moduleName.slice(1) + 'Client'
+      const upperCaseName = moduleName.toUpperCase() + 'Client'
+      const client = clientModule?.[clientName] || clientModule?.[camelCaseName] || clientModule?.[upperCaseName] || clientModule?.default || (clientModule && Object.values(clientModule)[0])
+      
       config[moduleName] = {
         name: moduleName,
         routePatterns: routePatterns,
         component: () => import(/* @vite-ignore */ componentPath),
-        client: () => import(/* @vite-ignore */ clientPath).then(m => {
-          // Ищем экспорт клиента (может быть именованный или default)
-          // Форматы: biClient, ragClient, crmClient и т.д. (lowercase)
-          const clientName = `${moduleName}Client`
-          // Также пробуем варианты: biClient, BiClient, BIClient
-          const camelCaseName = moduleName.charAt(0).toUpperCase() + moduleName.slice(1) + 'Client'
-          const upperCaseName = moduleName.toUpperCase() + 'Client'
-          
-          return m[clientName] || m[camelCaseName] || m[upperCaseName] || m.default || Object.values(m)[0]
-        }),
+        client: client ? () => Promise.resolve(client) : null,
         isDefault: configData.isDefault || false,
         ollama: configData.ollama || null, // Настройки Ollama для модуля
       }
