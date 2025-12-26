@@ -354,7 +354,7 @@ onMounted(() => {
             <img v-if="avatarUrl" :src="avatarUrl" alt="Avatar" class="mb-3 hq-avatar hq-avatar-primary"
               style="width: 120px; height: 120px; object-fit: cover;" />
             <div v-else class="mb-3 d-flex justify-content-center">
-              <DefaultAvatar size="large" :title="userStore.displayName" />
+              <DefaultAvatar :size="120" :title="userStore.displayName" />
             </div>
             <div class="button-wrapper d-flex gap-2 justify-content-center">
               <label for="avatarFileInput" class="btn btn-sm btn-primary" tabindex="0">

@@ -68,7 +68,7 @@ const refreshAssignments = async () => {
         <tr v-for="row in paginatedRows" :key="row.user_id">
           <td>
             <div class="d-flex align-items-center gap-3">
-              <UserAvatar :user-id="row.user_id" size="small" />
+              <UserAvatar :user-id="row.user_id" :size="32" />
               <div class="d-flex flex-column">
                 <span class="fw-semibold">{{ row.user }}</span>
                 <small class="text-muted">{{ row.username }} · {{ row.email }}</small>

@@ -1,10 +1,8 @@
 <template>
   <div 
     class="user-avatar"
-    :class="[
-      `user-avatar--${size}`,
-      { 'user-avatar--clickable': clickable }
-    ]"
+    :class="{ 'user-avatar--clickable': clickable }"
+    :style="avatarStyle"
     :title="title"
   >
     <!-- Показываем загруженное изображение если есть -->
@@ -35,9 +33,8 @@ const userStore = useUserStore()
 
 const props = defineProps({
   size: {
-    type: String,
-    default: 'medium', // small, medium, large
-    validator: (value) => ['small', 'medium', 'large'].includes(value)
+    type: Number,
+    default: 40
   },
   clickable: {
     type: Boolean,
@@ -61,6 +58,11 @@ const props = defineProps({
 const currentAvatarUrl = ref(null)
 const imageError = ref(false)
 let loadToken = 0
+
+const avatarStyle = computed(() => ({
+  width: `${props.size}px`,
+  height: `${props.size}px`
+}))
 
 const normalizedUserId = computed(() => {
   if (props.userId === undefined || props.userId === null) {
@@ -177,21 +179,7 @@ const onImageError = () => {
   overflow: hidden;
   transition: all 0.2s ease;
   user-select: none;
-  
-  &--small {
-    width: 32px;
-    height: 32px;
-  }
-  
-  &--medium {
-    width: 40px;
-    height: 40px;
-  }
-  
-  &--large {
-    width: 120px;
-    height: 120px;
-  }
+  flex-shrink: 0;
   
   &--clickable {
     cursor: pointer;
@@ -207,7 +195,6 @@ const onImageError = () => {
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
   
