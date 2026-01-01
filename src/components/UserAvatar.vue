@@ -1,25 +1,7 @@
 <template>
-  <div 
-    class="user-avatar"
-    :class="{ 'user-avatar--clickable': clickable }"
-    :style="avatarStyle"
-    :title="title"
-  >
-    <!-- Показываем загруженное изображение если есть -->
-    <img 
-      v-if="hasCustomAvatar"
-      :src="displayAvatarUrl"
-      :alt="title"
-      class="user-avatar-image"
-      @error="onImageError"
-    />
-    <!-- Показываем стандартный аватар если нет кастомного -->
-    <DefaultAvatar 
-      v-else
-      :size="size"
-      :clickable="clickable"
-      :title="title"
-    />
+  <div class="user-avatar" :class="{ 'user-avatar--clickable': clickable }" :style="avatarStyle" :title="title">
+    <img v-if="hasCustomAvatar" :src="displayAvatarUrl" :alt="title" class="user-avatar-image" @error="onImageError" />
+    <DefaultAvatar v-else :size="size" :clickable="clickable" :title="title" />
   </div>
 </template>
 
@@ -44,7 +26,10 @@ const props = defineProps({
     type: String,
     default: 'Пользователь'
   },
-  // Опциональный URL аватара для переопределения
+  avatarUrl: {
+    type: [String, null],
+    default: undefined
+  },
   customAvatarUrl: {
     type: [String, null],
     default: undefined
@@ -55,118 +40,102 @@ const props = defineProps({
   }
 })
 
-const currentAvatarUrl = ref(null)
+const loadedAvatarUrl = ref(null)
 const imageError = ref(false)
-let loadToken = 0
 
 const avatarStyle = computed(() => ({
   width: `${props.size}px`,
   height: `${props.size}px`
 }))
 
+// Нормализуем userId к числу или null
 const normalizedUserId = computed(() => {
-  if (props.userId === undefined || props.userId === null) {
-    return null
-  }
+  if (props.userId == null) return null
   const parsed = Number(props.userId)
-  if (!Number.isFinite(parsed)) {
-    return null
-  }
-  return Math.trunc(parsed)
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : null
 })
 
-const storeAvatarForUser = computed(() => {
-  const storeUserId = Number(userStore.user?.id ?? null)
-  if (Number.isFinite(storeUserId) && normalizedUserId.value !== null) {
-    if (storeUserId === normalizedUserId.value) {
-      return userStore.avatarUrl || null
-    }
-    return null
-  }
-  return userStore.avatarUrl || null
+// Определяем, является ли userId текущим пользователем
+const isCurrentUser = computed(() => {
+  if (normalizedUserId.value === null) return true
+  const storeUserId = Number(userStore.user?.id)
+  return Number.isFinite(storeUserId) && storeUserId === normalizedUserId.value
 })
 
+// Единая логика определения URL аватара
 const displayAvatarUrl = computed(() => {
-  if (props.customAvatarUrl !== undefined) {
-    return props.customAvatarUrl
-  }
-  if (currentAvatarUrl.value) {
-    return currentAvatarUrl.value
-  }
-  return storeAvatarForUser.value
+  // Приоритет 1: явно переданный avatarUrl
+  if (props.avatarUrl !== undefined) return props.avatarUrl
+  
+  // Приоритет 2: customAvatarUrl (обратная совместимость)
+  if (props.customAvatarUrl !== undefined) return props.customAvatarUrl
+  
+  // Приоритет 3: загруженный через API
+  if (loadedAvatarUrl.value) return loadedAvatarUrl.value
+  
+  // Приоритет 4: из store (только для текущего пользователя)
+  if (isCurrentUser.value) return userStore.avatarUrl || null
+  
+  return null
 })
 
 const hasCustomAvatar = computed(() => Boolean(displayAvatarUrl.value) && !imageError.value)
 
-function resetImageError() {
+async function loadAvatar() {
   imageError.value = false
-}
-
-async function resolveAvatar() {
-  loadToken += 1
-  const currentToken = loadToken
-  resetImageError()
-
-  if (props.customAvatarUrl !== undefined) {
-    currentAvatarUrl.value = props.customAvatarUrl || null
+  
+  // Если URL передан явно, не делаем запросы
+  if (props.avatarUrl !== undefined || props.customAvatarUrl !== undefined) {
+    loadedAvatarUrl.value = null
     return
   }
-
-  const targetUserId = normalizedUserId.value
-
-  if (targetUserId !== null) {
-    if (storeAvatarForUser.value) {
-      currentAvatarUrl.value = storeAvatarForUser.value
-      return
-    }
-
+  
+  // Если это текущий пользователь и есть аватар в store, используем его
+  if (isCurrentUser.value && userStore.avatarUrl) {
+    loadedAvatarUrl.value = null
+    return
+  }
+  
+  // Загружаем аватар через API только если передан userId
+  if (normalizedUserId.value !== null) {
     try {
-      const avatarUrl = await getUserAvatar(targetUserId)
-      if (currentToken !== loadToken) {
-        return
-      }
-      currentAvatarUrl.value = avatarUrl || null
+      const avatarUrl = await getUserAvatar(normalizedUserId.value)
+      loadedAvatarUrl.value = avatarUrl || null
     } catch (error) {
-      if (currentToken !== loadToken) {
-        return
-      }
-      console.error(`Ошибка загрузки аватара пользователя ${targetUserId}:`, error)
-      currentAvatarUrl.value = null
+      console.error(`Ошибка загрузки аватара пользователя ${normalizedUserId.value}:`, error)
+      loadedAvatarUrl.value = null
     }
-    return
+  } else {
+    loadedAvatarUrl.value = null
   }
-
-  currentAvatarUrl.value = userStore.avatarUrl || null
 }
 
-// Инициализируем пользователя при монтировании компонента
 onMounted(async () => {
   if (!userStore.isInitialized) {
     await userStore.initializeUser()
   }
-  await resolveAvatar()
+  await loadAvatar()
 })
 
+// Перезагружаем при изменении пропсов
 watch(
-  () => [props.customAvatarUrl, props.userId],
-  () => {
-    resolveAvatar()
-  }
+  () => [props.avatarUrl, props.customAvatarUrl, props.userId],
+  loadAvatar
 )
 
+// Обновляем при изменении аватара в store (только если не передан явный URL)
 watch(
   () => userStore.avatarUrl,
   () => {
-    if (props.customAvatarUrl === undefined) {
-      resolveAvatar()
+    if (props.avatarUrl === undefined && props.customAvatarUrl === undefined) {
+      loadAvatar()
     }
   }
 )
 
-// Обработка ошибки загрузки изображения
 const onImageError = () => {
   imageError.value = true
-  currentAvatarUrl.value = null
+  loadedAvatarUrl.value = null
 }
 </script>
 
