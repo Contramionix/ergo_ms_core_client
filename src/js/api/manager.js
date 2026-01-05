@@ -156,8 +156,6 @@ class ApiClient {
    */
   async downloadFile(endpoint, params = {}, method = 'GET', needToken = true) {
     try {
-      console.log('Скачивание файла:', endpoint, params, 'Method:', method)
-      
       const config = { 
         responseType: 'blob'
       }
@@ -174,10 +172,6 @@ class ApiClient {
         response = await this.client.get(endpoint, config)
       }
 
-      console.log('Ответ сервера:', response)
-      console.log('Тип данных:', typeof response.data, 'Is Blob:', response.data instanceof Blob)
-      console.log('Размер данных:', response.data?.size)
-
       if (response.data instanceof Blob) {
         return {
           success: true,
@@ -187,7 +181,6 @@ class ApiClient {
           headers: response.headers
         }
       } else {
-        console.error('Получен не blob объект:', response.data)
         return {
           success: false,
           message: 'Получен некорректный формат файла',
@@ -195,14 +188,6 @@ class ApiClient {
         }
       }
     } catch (error) {
-      console.error('Ошибка при скачивании файла:', error)
-      console.error('Детали ошибки:', {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data
-      })
-
       return {
         success: false,
         message: error.response?.data?.message || error.message || 'Ошибка при скачивании файла',
