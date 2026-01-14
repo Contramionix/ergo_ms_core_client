@@ -1,16 +1,14 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import {
-  Check, Crown, Flag, Languages, Link, Mail, Phone, UserRound,
+  Check, Flag, Languages, Link, Mail, Phone, UserRound,
   Edit3, Save, X, MapPin, Globe, Calendar, Shield, User, Upload, RotateCcw
 } from 'lucide-vue-next'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { apiClient } from '@/js/api/manager'
-import { endpoints } from '@/js/api/endpoints'
 import { displayPhone } from '@/js/utils/phoneUtils.js'
-import DefaultAvatar from '@/components/DefaultAvatar.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import AvatarCropModal from '@/components/AvatarCropModal.vue'
 
 const toast = useToast()
@@ -27,30 +25,19 @@ const errors = ref({})
 
 // Состояние аватара
 const avatarInput = ref(null)
-const avatarUrl = ref(null) // null означает использование стандартного аватара
 const avatarLoading = ref(false)
 const avatarError = ref('')
 const showCropModal = ref(false)
 const cropImageSrc = ref(null)
 const selectedFile = ref(null)
 
-// Получение аватара
-async function fetchAvatar() {
-  avatarLoading.value = true
-  avatarError.value = ''
-  try {
-    const resp = await apiClient.get(endpoints.userAvatars.list)
-    if (resp.data.length && resp.data[0].image) {
-      avatarUrl.value = resp.data[0].image
-    } else {
-      avatarUrl.value = null // Используем стандартный аватар
-    }
-  } catch (e) {
-    avatarError.value = 'Ошибка загрузки аватара'
-    avatarUrl.value = null // Используем стандартный аватар
-  } finally {
-    avatarLoading.value = false
+// Вспомогательная функция для очистки временного URL аватара
+const cleanupAvatarUrl = () => {
+  if (cropImageSrc.value) {
+    URL.revokeObjectURL(cropImageSrc.value)
+    cropImageSrc.value = null
   }
+  selectedFile.value = null
 }
 
 // Изменение аватара - открываем модальное окно кадрирования
@@ -86,64 +73,37 @@ const handleCropConfirm = async (croppedFile) => {
   avatarError.value = ''
 
   try {
-    // Используем функцию обновления из userStore для синхронизации всех компонентов
     const success = await userStore.updateAvatar(croppedFile)
 
-    if (success) {
-      // Обновляем локальный аватар
-      await fetchAvatar()
-    } else {
-      // В случае ошибки возвращаем старый аватар
-      await fetchAvatar()
+    if (!success) {
+      avatarError.value = 'Ошибка загрузки аватара'
     }
-  } catch (e) {
+  } catch {
     avatarError.value = 'Ошибка загрузки'
     toast.error('Ошибка загрузки аватара')
-    // В случае ошибки возвращаем старый аватар
-    await fetchAvatar()
   } finally {
     avatarLoading.value = false
-    // Очищаем временный URL
-    if (cropImageSrc.value) {
-      URL.revokeObjectURL(cropImageSrc.value)
-      cropImageSrc.value = null
-    }
-    selectedFile.value = null
+    cleanupAvatarUrl()
   }
 }
 
 // Обработка отмены кадрирования
 const handleCropCancel = () => {
   showCropModal.value = false
-  // Очищаем временный URL
-  if (cropImageSrc.value) {
-    URL.revokeObjectURL(cropImageSrc.value)
-    cropImageSrc.value = null
-  }
-  selectedFile.value = null
+  cleanupAvatarUrl()
 }
 
 // Сброс аватара
 async function cancelAvatarUpload() {
   try {
-    // Сначала меняем изображение локально для мгновенного отображения
-    avatarUrl.value = null // Используем стандартный аватар
-
-    // Используем функцию сброса из userStore для синхронизации всех компонентов
     const success = await userStore.resetAvatar()
 
-    if (success) {
-      // Обновляем локальный аватар
-      await fetchAvatar()
-    } else {
-      // В случае ошибки возвращаем аватар обратно
-      await fetchAvatar()
+    if (!success) {
+      avatarError.value = 'Ошибка сброса аватара'
     }
-  } catch (e) {
+  } catch {
     avatarError.value = 'Ошибка сброса аватара'
     toast.error('Ошибка сброса аватара')
-    // В случае ошибки возвращаем аватар обратно
-    await fetchAvatar()
   }
 }
 
@@ -168,18 +128,7 @@ const fetchProfile = async () => {
 
     // Инициализируем форму данными профиля
     if (profileData.value) {
-      formData.value = {
-        first_name: profileData.value.firstName === ' ' ? '' : (profileData.value.firstName || ''),
-        last_name: profileData.value.lastName === ' ' ? '' : (profileData.value.lastName || ''),
-        middle_name: profileData.value.middleName === ' ' ? '' : (profileData.value.middleName || ''),
-        email: profileData.value.email,
-        phone: profileData.value.phone,
-        website: profileData.value.website,
-        bio: profileData.value.bio,
-        country: profileData.value.country,
-        city: profileData.value.city,
-        language: profileData.value.language,
-      }
+      formData.value = initializeFormData(profileData.value)
     }
   } catch (error) {
     console.error('Ошибка загрузки профиля:', error)
@@ -207,6 +156,35 @@ const displayData = computed(() => {
     memberSince: formatDate(profileData.value.dateJoined)
   }
 })
+
+// Вспомогательная функция для нормализации пустых строк
+const normalizeEmptyString = (value) => {
+  return value === ' ' ? '' : (value || '')
+}
+
+// Вспомогательная функция для отображения значения поля
+const displayFieldValue = (value, defaultValue = 'Не указано') => {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : defaultValue
+}
+
+// Вспомогательная функция для инициализации formData из profileData
+const initializeFormData = (profile) => {
+  if (!profile) return {}
+  
+  return {
+    first_name: normalizeEmptyString(profile.firstName),
+    last_name: normalizeEmptyString(profile.lastName),
+    middle_name: normalizeEmptyString(profile.middleName),
+    email: profile.email,
+    phone: profile.phone,
+    website: profile.website,
+    bio: profile.bio,
+    country: profile.country,
+    city: profile.city,
+    language: profile.language,
+  }
+}
 
 // Функции-помощники
 const getLanguageName = (langCode) => {
@@ -243,18 +221,7 @@ const cancelEditing = () => {
   errors.value = {}
   // Восстанавливаем исходные данные только если профиль загружен
   if (profileData.value) {
-    formData.value = {
-      first_name: profileData.value.firstName === ' ' ? '' : (profileData.value.firstName || ''),
-      last_name: profileData.value.lastName === ' ' ? '' : (profileData.value.lastName || ''),
-      middle_name: profileData.value.middleName === ' ' ? '' : (profileData.value.middleName || ''),
-      email: profileData.value.email,
-      phone: profileData.value.phone,
-      website: profileData.value.website,
-      bio: profileData.value.bio,
-      country: profileData.value.country,
-      city: profileData.value.city,
-      language: profileData.value.language,
-    }
+    formData.value = initializeFormData(profileData.value)
   }
 }
 
@@ -271,16 +238,12 @@ const saveProfile = async () => {
     }
 
     // Подготавливаем данные для отправки - пустые строки для пустых полей
+    const fieldsToTrim = ['first_name', 'last_name', 'middle_name', 'phone', 'website', 'bio', 'country', 'city']
     const dataToSend = {
       ...formData.value,
-      first_name: formData.value.first_name?.trim() || '',
-      last_name: formData.value.last_name?.trim() || '',
-      middle_name: formData.value.middle_name?.trim() || '',
-      phone: formData.value.phone?.trim() || '',
-      website: formData.value.website?.trim() || '',
-      bio: formData.value.bio?.trim() || '',
-      country: formData.value.country?.trim() || '',
-      city: formData.value.city?.trim() || ''
+      ...Object.fromEntries(
+        fieldsToTrim.map(field => [field, formData.value[field]?.trim() || ''])
+      )
     }
 
     console.log('🚀 Отправляем данные профиля:', dataToSend)
@@ -306,10 +269,14 @@ const saveProfile = async () => {
   }
 }
 
-// Инициализация
+watch(() => userStore.avatarUrl, (newAvatarUrl) => {
+  if (newAvatarUrl !== null) {
+    avatarError.value = ''
+  }
+})
+
 onMounted(() => {
   fetchProfile()
-  fetchAvatar()
 })
 </script>
 
@@ -322,8 +289,7 @@ onMounted(() => {
         <span>Профиль</span>
       </h5>
       <div class="btn-group btn-group-sm">
-        <button v-if="!editing" @click="startEditing" class="btn btn-outline-primary"
-          :disabled="loading || !profileData">
+        <button v-if="!editing" @click="startEditing" class="btn btn-outline-primary" :disabled="loading || !profileData">
           <Edit3 :size="16" class="me-1" />
           Редактировать
         </button>
@@ -342,26 +308,21 @@ onMounted(() => {
     </div>
 
     <div class="card-body">
-      <!-- Загрузка -->
       <div v-if="loading" class="text-center py-4">
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Загрузка...</span>
         </div>
       </div>
 
-      <!-- Данные профиля -->
       <div v-else-if="displayData">
-        <!-- Аватар пользователя -->
         <div class="mb-4 text-center">
           <h6 class="text-muted mb-3 d-flex align-items-center justify-content-center">
             <User :size="18" class="me-1" />
             <span>Фотография профиля</span>
           </h6>
           <div class="avatar-section">
-            <img v-if="avatarUrl" :src="avatarUrl" alt="Avatar" class="mb-3 hq-avatar hq-avatar-primary"
-              style="width: 120px; height: 120px; object-fit: cover;" />
-            <div v-else class="mb-3 d-flex justify-content-center">
-              <DefaultAvatar :size="120" :title="userStore.displayName" />
+            <div class="mb-3 d-flex justify-content-center">
+              <UserAvatar :size="120" :title="userStore.displayName" />
             </div>
             <div class="button-wrapper d-flex gap-2 justify-content-center">
               <label for="avatarFileInput" class="btn btn-sm btn-primary" tabindex="0">
@@ -400,7 +361,7 @@ onMounted(() => {
             <div class="col-md-4">
               <label class="form-label text-muted small">Имя</label>
               <div v-if="!editing" class="fw-medium">
-                {{ (formData.first_name && formData.first_name.trim()) ? formData.first_name.trim() : 'Не указано' }}
+                {{ displayFieldValue(formData.first_name) }}
               </div>
               <div v-else>
                 <input v-model="formData.first_name" type="text" class="form-control form-control-sm"
@@ -415,7 +376,7 @@ onMounted(() => {
             <div class="col-md-4">
               <label class="form-label text-muted small">Фамилия</label>
               <div v-if="!editing" class="fw-medium">
-                {{ (formData.last_name && formData.last_name.trim()) ? formData.last_name.trim() : 'Не указано' }}
+                {{ displayFieldValue(formData.last_name) }}
               </div>
               <div v-else>
                 <input v-model="formData.last_name" type="text" class="form-control form-control-sm"
@@ -430,7 +391,7 @@ onMounted(() => {
             <div class="col-md-4">
               <label class="form-label text-muted small">Отчество</label>
               <div v-if="!editing" class="fw-medium">
-                {{ (formData.middle_name && formData.middle_name.trim()) ? formData.middle_name.trim() : 'Не указано' }}
+                {{ displayFieldValue(formData.middle_name) }}
               </div>
               <div v-else>
                 <input v-model="formData.middle_name" type="text" class="form-control form-control-sm"
@@ -621,16 +582,8 @@ onMounted(() => {
       </div>
     </div>
   </div>
-  
-  <!-- Модальное окно кадрирования аватара -->
-  <AvatarCropModal
-    :show="showCropModal"
-    :image-src="cropImageSrc"
-    @confirm="handleCropConfirm"
-    @cancel="handleCropCancel"
-    @close="handleCropCancel"
-  />
-  </div>
+  <AvatarCropModal :show="showCropModal" :image-src="cropImageSrc" @confirm="handleCropConfirm" @cancel="handleCropCancel" @close="handleCropCancel"/>
+</div>
 </template>
 
 <style scoped lang="scss">
@@ -675,25 +628,16 @@ h6 {
   font-weight: 600;
   color: #495057;
 
-  // Выравнивание иконок с текстом в заголовках
+    // Выравнивание иконок с текстом в заголовках
   svg {
     vertical-align: middle;
   }
 }
 
-// Выравнивание иконок с текстом в контенте
-.d-flex.align-items-center {
+// Выравнивание иконок с текстом в контенте и кнопках
+.d-flex.align-items-center,
+.btn {
   svg {
-    vertical-align: middle;
-  }
-}
-
-// Общий класс для выравнивания всех иконок
-svg {
-  vertical-align: text-top;
-
-  &.me-1,
-  &.me-2 {
     vertical-align: middle;
   }
 }
@@ -703,10 +647,5 @@ svg {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-
-  svg {
-    vertical-align: baseline;
-    margin-top: -1px;
-  }
 }
 </style>
