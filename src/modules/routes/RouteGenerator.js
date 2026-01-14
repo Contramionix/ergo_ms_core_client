@@ -1,13 +1,12 @@
 /**
- * ГЕНЕРАТОР РОУТОВ ИЗ КОНФИГУРАЦИИ МЕНЮ
+ * ГЕНЕРАТОР РОУТОВ
  * 
- * Класс для преобразования конфигурации меню в роуты Vue Router
+ * Класс для генерации роутов Vue Router из routes.js файлов модулей
  */
 
 export class RouteGenerator {
-  constructor(routeManager, menuManager) {
+  constructor(routeManager) {
     this.routeManager = routeManager
-    this.menuManager = menuManager
   }
 
   /**
@@ -203,18 +202,16 @@ export class RouteGenerator {
   }
 
   /**
-   * Генерирует все роуты (из меню + недостающие)
+   * Генерирует все роуты из routes.js файлов модулей
    * @param {Array} coreRoutes - базовые роуты системы
    * @returns {Array}
    */
   generateAllRoutes(coreRoutes = []) {
-    const menuRoutes = this.generateRoutesFromMenu()
-    const createdRouteNames = this.getCreatedRouteNames([...coreRoutes, ...menuRoutes])
+    const createdRouteNames = this.getCreatedRouteNames(coreRoutes)
     const missingRoutes = this.generateMissingRoutes(createdRouteNames)
 
     return [
       ...coreRoutes,
-      ...menuRoutes,
       ...missingRoutes
     ]
   }

@@ -177,6 +177,36 @@ export class RouteManager extends ModuleLoader {
       }
     }
 
+    // Обрабатываем дочерние роуты
+    if (routeConfig.children && Array.isArray(routeConfig.children)) {
+      route.children = routeConfig.children.map(childConfig => {
+        const childRoute = {
+          path: childConfig.path,
+          name: childConfig.name,
+          meta: {
+            title: childConfig.meta?.title,
+            ...childConfig.meta
+          }
+        }
+
+        if (childConfig.component) {
+          childRoute.component = this.createLazyImport(childConfig.component)
+        }
+
+        if (childConfig.redirect) {
+          if (typeof childConfig.redirect === 'string' && childConfig.redirect.startsWith('/')) {
+            childRoute.redirect = childConfig.redirect
+          } else if (typeof childConfig.redirect === 'string') {
+            childRoute.redirect = { name: childConfig.redirect }
+          } else {
+            childRoute.redirect = childConfig.redirect
+          }
+        }
+
+        return childRoute
+      })
+    }
+
     return route
   }
 

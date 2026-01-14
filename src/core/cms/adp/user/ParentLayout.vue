@@ -3,7 +3,7 @@
 </script>
 
 <template>
-  <div class="rounded overflow-hidden mb-4">
+  <div class="mb-4">
     <MainInfo />
   </div>
 

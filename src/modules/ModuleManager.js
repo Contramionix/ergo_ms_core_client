@@ -46,15 +46,13 @@ export class ModuleManager {
     // Инициализируем менеджеры параллельно
     await Promise.all([
       this.routeManager.initialize(),
-      this.menuManager.initialize(),
       this.endpointManager.initialize(),
       this.permissionRulesManager.initialize()
     ])
 
     // Создаем генератор роутов
     this.routeGenerator = new RouteGenerator(
-      this.routeManager,
-      this.menuManager
+      this.routeManager
     )
 
     // Инициализируем сепараторы
@@ -67,12 +65,8 @@ export class ModuleManager {
    * Инициализирует менеджер сепараторов
    */
   initializeSeparators() {
-    const menuConfig = this.menuManager.generateMenuConfig()
-    
     const extendedConfig = {
-      ...menuConfig,
       separators: {
-        ...(menuConfig.separators || {}),
         byOrderIndex: this.config.menuOrder?.separators || {}
       },
       separatorSettings: {

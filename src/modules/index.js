@@ -8,12 +8,9 @@
 import { ModuleManager } from './ModuleManager.js'
 import { CoreRoutesManager } from './routes/CoreRoutesManager.js'
 import coreRoutesConfig from '@/config/routes.js'
-import menuOrderConfig from '@menu-order-config'
 
-// Создаем главный менеджер модулей с конфигурацией меню
-export const moduleManager = new ModuleManager({
-  menuOrder: menuOrderConfig
-})
+// Создаем главный менеджер модулей
+export const moduleManager = new ModuleManager()
 
 // Создаем менеджер базовых роутов
 export const coreRoutesManager = new CoreRoutesManager(coreRoutesConfig)

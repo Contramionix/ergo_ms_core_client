@@ -12,8 +12,8 @@ const props = defineProps({
     default: false
   },
   imageSrc: {
-    type: String,
-    required: true
+    type: [String, null],
+    default: null
   }
 })
 
@@ -172,7 +172,7 @@ function reset() {
         </div>
         
         <div class="modal-body">
-          <div class="cropper-wrapper" :style="cropperContainerStyle">
+          <div v-if="imageSrc" class="cropper-wrapper" :style="cropperContainerStyle">
             <ImageCropper
               ref="cropperRef"
               :image-src="imageSrc"
@@ -180,6 +180,9 @@ function reset() {
               :min-width="200"
               :min-height="200"
             />
+          </div>
+          <div v-else class="text-center py-4 text-muted">
+            <p>Изображение не загружено</p>
           </div>
           
           <!-- Панель инструментов -->

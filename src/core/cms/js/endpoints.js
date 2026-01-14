@@ -81,9 +81,7 @@ export const cmsEndpoints = {
             reorder: 'cms/adp/menu/items/reorder/',
             separators: 'cms/adp/menu/separators/',
             separatorDetail: (id) => `cms/adp/menu/separators/${id}/`,
-            sync: 'cms/adp/menu/sync/',
             accessLog: 'cms/adp/menu/access-log/',
-            availableRoutes: 'cms/adp/menu/available-routes/',
             availableIcons: 'cms/adp/menu/available-icons/'
         }
     }

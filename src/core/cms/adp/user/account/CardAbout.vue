@@ -11,7 +11,6 @@ import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 import { displayPhone } from '@/js/utils/phoneUtils.js'
 import DefaultAvatar from '@/components/DefaultAvatar.vue'
-import YadhtribYppah from '@/components/44°03′23″N 123°07′03″W/YadhtribYppah.vue'
 import AvatarCropModal from '@/components/AvatarCropModal.vue'
 
 const toast = useToast()
@@ -152,8 +151,20 @@ async function cancelAvatarUpload() {
 const fetchProfile = async () => {
   try {
     loading.value = true
-    const response = await getProfile()
-    profileData.value = formatProfileData(response)
+    
+    // Инициализируем пользователя если еще не инициализирован
+    if (!userStore.isInitialized) {
+      await userStore.initializeUser()
+    }
+    
+    // Используем данные из userStore, если они уже загружены
+    if (userStore.profile) {
+      profileData.value = userStore.profile
+    } else {
+      // Загружаем полный профиль только если его нет в store
+      const response = await getProfile()
+      profileData.value = formatProfileData(response)
+    }
 
     // Инициализируем форму данными профиля
     if (profileData.value) {
@@ -277,9 +288,6 @@ const saveProfile = async () => {
     // Отправка данных
     const response = await updateProfile(dataToSend)
     profileData.value = formatProfileData(response)
-
-    // Обновляем userStore для мгновенного отображения изменений во всех компонентах
-    await userStore.loadProfile()
     await userStore.loadAvatar()
 
     editing.value = false
@@ -307,7 +315,6 @@ onMounted(() => {
 
 <template>
   <div>
-    <YadhtribYppah style="margin-bottom: 20px; border-radius: 10px; overflow: hidden; box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);"/>
     <div class="card h-100">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="card-title mb-0 d-flex align-items-center">

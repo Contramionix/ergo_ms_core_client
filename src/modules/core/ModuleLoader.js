@@ -6,32 +6,43 @@
  * 
  * Vite требует статические паттерны для import.meta.glob,
  * поэтому загружаем все файлы заранее и фильтруем по необходимости
+ * 
+ * ВАЖНО: Все глобы загружаются ОДИН РАЗ при импорте этого модуля (top-level),
+ * что объединяет все запросы в один пакет при инициализации приложения.
  */
+
+// Глобальный кеш для результатов loadAllModulesAsync
+const asyncModulesCache = new Map()
+
+// ============================================================================
+// ЗАГРУЗКА ВСЕХ ГЛОБОВ ОДИН РАЗ ПРИ ИМПОРТЕ МОДУЛЯ (TOP-LEVEL)
+// Это гарантирует, что все файлы загружаются одним пакетом
+// ============================================================================
+const sharedGlobs = {
+  // Core модули - routes, endpoints, permission-rules, menu-configs
+  coreRoutes: import.meta.glob('../../core/**/js/routes.js', { eager: true }),
+  coreEndpoints: import.meta.glob('../../core/**/js/endpoints.js', { eager: true }),
+  corePermissionRules: import.meta.glob('../../core/**/js/permission-rules.js', { eager: true }),
+  coreMenuConfigs: import.meta.glob('../../core/**/js/menu-config.json', { eager: true, import: 'default' }),
+  
+  // Core компоненты (lazy loading)
+  coreComponents: import.meta.glob('../../**/*.vue'),
+  
+  // External модули - routes, endpoints, permission-rules, menu-configs
+  modulesRoutes: import.meta.glob('../../../../../modules/*/client/js/routes.js', { eager: true }),
+  modulesEndpoints: import.meta.glob('../../../../../modules/*/client/js/endpoints.js', { eager: true }),
+  modulesPermissionRules: import.meta.glob('../../../../../modules/*/client/js/permission-rules.js', { eager: true }),
+  modulesMenuConfigs: import.meta.glob('../../../../../modules/*/client/js/menu-config.json', { eager: true, import: 'default' }),
+  
+  // External компоненты (lazy loading)
+  modulesComponents: import.meta.glob('../../../../../modules/**/client/**/*.vue')
+}
 
 export class ModuleLoader {
   constructor() {
     this.cache = new Map()
-    this.initializeGlobs()
-  }
-
-  /**
-   * Инициализирует все необходимые глобы со статическими паттернами
-   */
-  initializeGlobs() {
-    // Загружаем все необходимые типы файлов статическими паттернами
-    this.globs = {
-      coreRoutes: import.meta.glob('../../core/**/js/routes.js', { eager: true }),
-      coreMenuConfigs: import.meta.glob('../../core/**/js/menu-config.json'),
-      coreEndpoints: import.meta.glob('../../core/**/js/endpoints.js', { eager: true }),
-      coreComponents: import.meta.glob('../../**/*.vue'),
-      corePermissionRules: import.meta.glob('../../core/**/js/permission-rules.js', { eager: true }),
-      
-      modulesRoutes: import.meta.glob('../../../../../modules/*/client/js/routes.js', { eager: true }),
-      modulesMenuConfigs: import.meta.glob('../../../../../modules/*/client/js/menu-config.json'),
-      modulesEndpoints: import.meta.glob('../../../../../modules/*/client/js/endpoints.js', { eager: true }),
-      modulesComponents: import.meta.glob('../../../../../modules/**/client/**/*.vue'),
-      modulesPermissionRules: import.meta.glob('../../../../../modules/*/client/js/permission-rules.js', { eager: true })
-    }
+    // Используем глобы, загруженные при импорте модуля (top-level)
+    this.globs = sharedGlobs
   }
 
   /**
@@ -43,9 +54,9 @@ export class ModuleLoader {
   getGlobsByType(type, source = 'all') {
     const typeMap = {
       'js/routes.js': ['coreRoutes', 'modulesRoutes'],
-      'js/menu-config.json': ['coreMenuConfigs', 'modulesMenuConfigs'],
       'js/endpoints.js': ['coreEndpoints', 'modulesEndpoints'],
       'js/permission-rules.js': ['corePermissionRules', 'modulesPermissionRules'],
+      'js/menu-config.json': ['coreMenuConfigs', 'modulesMenuConfigs'],
       'components': ['coreComponents', 'modulesComponents']
     }
 
@@ -100,21 +111,43 @@ export class ModuleLoader {
    * @returns {Promise<Object>} - промис с загруженными модулями
    */
   async loadAllModulesAsync(pattern) {
+    // Проверяем кеш для этого паттерна
+    if (asyncModulesCache.has(pattern)) {
+      return asyncModulesCache.get(pattern)
+    }
+    
     const modules = this.loadAllModules(pattern)
     const loaded = {}
+    
+    // Для eager модулей (routes.js, endpoints.js, menu-config.json) они уже загружены
+    // Проверяем паттерн, чтобы определить, нужны ли промисы
+    const isEagerPattern = ['js/routes.js', 'js/endpoints.js', 'js/menu-config.json', 'js/permission-rules.js'].includes(pattern)
+    
+    if (isEagerPattern) {
+      // Для eager-модулей они уже загружены, просто извлекаем данные синхронно
+      Object.entries(modules).forEach(([path, module]) => {
+        loaded[path] = module?.default ?? module
+      })
+      // Кешируем результат
+      asyncModulesCache.set(pattern, loaded)
+      return loaded
+    }
 
+    // Для lazy модулей (компоненты) используем асинхронную загрузку
     await Promise.all(
       Object.entries(modules).map(async ([path, loader]) => {
         // Проверяем, является ли loader функцией (lazy) или уже загруженным модулем (eager)
         if (typeof loader === 'function') {
           const module = await loader()
-          loaded[path] = module.default || module
+          loaded[path] = module?.default ?? module
         } else {
-          loaded[path] = loader.default || loader
+          loaded[path] = loader?.default ?? loader
         }
       })
     )
-
+    
+    // Кешируем результат
+    asyncModulesCache.set(pattern, loaded)
     return loaded
   }
 

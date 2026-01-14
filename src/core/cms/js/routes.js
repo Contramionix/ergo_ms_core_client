@@ -2,17 +2,20 @@ export default {
   "User": {
     "path": "/user",
     "component": "@/core/cms/adp/user/ParentLayout.vue",
-    "redirect": "Account",
+    "redirect": "/user/account",
     "meta": {
       "requiresAuth": true
-    }
-  },
-  "Account": {
-    "path": "/user/account",
-    "component": "@/core/cms/adp/user/account/ParentLayout.vue",
-    "meta": {
-      "requiresAuth": true
-    }
+    },
+    "children": [
+      {
+        "path": "account",
+        "name": "Account",
+        "component": "@/core/cms/adp/user/account/ParentLayout.vue",
+        "meta": {
+          "requiresAuth": true
+        }
+      }
+    ]
   },
   "SecuritySettings": {
     "path": "/user/security",

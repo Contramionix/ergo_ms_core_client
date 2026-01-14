@@ -23,58 +23,22 @@ const loadApps = async () => {
       await moduleManager.initialize()
     }
     
-    // Получаем конфигурацию меню из ModuleManager
-    const menuManager = moduleManager.menu
-    await menuManager.initialize()
-    const menuConfig = menuManager.generateMenuConfig()
-    
     // Получаем IconManager для получения иконок
     const iconManager = moduleManager.icons
     
-    // Извлекаем секции меню
-    const menuSections = menuConfig.menuSections || []
+    // Создаем BI приложение вручную
+    let IconComponent = iconManager.getIcon('ChartSpline') || iconManager.getIcon('BarChart3')
+    if (!IconComponent) {
+      IconComponent = BarChart3
+    }
     
-    // Оставляем только BI приложение
-    let biApp = null
-    
-    // Ищем BI в секциях меню
-    const biSection = menuSections.find(section => section.routeName === 'BI')
-    
-    if (biSection) {
-      // Получаем иконку из IconManager
-      let IconComponent = biSection.icon ? iconManager.getIcon(biSection.icon) : null
-      
-      // Fallback для иконки BI
-      if (!IconComponent) {
-        IconComponent = iconManager.getIcon('ChartSpline') || iconManager.getIcon('BarChart3')
-      }
-      if (!IconComponent) {
-        IconComponent = BarChart3
-      }
-      
-      biApp = {
-        name: 'BI',
-        title: biSection.title || biSection.name || 'BI',
-        icon: IconComponent,
-        iconName: biSection.icon || 'ChartSpline',
-        route: { name: 'BI' },
-        isBI: true
-      }
-    } else {
-      // Если BI не найден в секциях, создаем его вручную
-      let IconComponent = iconManager.getIcon('ChartSpline') || iconManager.getIcon('BarChart3')
-      if (!IconComponent) {
-        IconComponent = BarChart3
-      }
-      
-      biApp = {
-        name: 'BI',
-        title: 'BI',
-        icon: IconComponent,
-        iconName: 'ChartSpline',
-        route: { name: 'BI' },
-        isBI: true
-      }
+    const biApp = {
+      name: 'BI',
+      title: 'BI',
+      icon: IconComponent,
+      iconName: 'ChartSpline',
+      route: { name: 'BI' },
+      isBI: true
     }
     
     // Оставляем только BI
@@ -300,4 +264,3 @@ onMounted(async () => {
   }
 }
 </style>
-

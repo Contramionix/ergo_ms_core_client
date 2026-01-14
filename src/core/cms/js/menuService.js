@@ -348,35 +348,6 @@ export async function deleteMenuSeparator(id) {
 }
 
 /**
- * Синхронизирует меню с конфигурацией модулей
- * @returns {Promise<Object>}
- */
-export async function syncMenuFromConfigs() {
-  const response = await apiClient.post(endpoints.cms.menu.sync)
-  
-  if (response.success) {
-    clearMenuCache()
-    return response.data
-  }
-  
-  throw new Error(response.error || 'Ошибка синхронизации меню')
-}
-
-/**
- * Получает список доступных маршрутов
- * @returns {Promise<Array>}
- */
-export async function getAvailableRoutes() {
-  const response = await apiClient.get(endpoints.cms.menu.availableRoutes)
-  
-  if (response.success) {
-    return response.data
-  }
-  
-  throw new Error(response.error || 'Ошибка загрузки маршрутов')
-}
-
-/**
  * Получает список доступных иконок
  * @returns {Promise<Array>}
  */
@@ -420,9 +391,6 @@ export default {
   createMenuSeparator,
   updateMenuSeparator,
   deleteMenuSeparator,
-  syncMenuFromConfigs,
-  getAvailableRoutes,
   getAvailableIcons,
   logMenuAccess
 }
-

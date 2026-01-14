@@ -54,6 +54,19 @@ const {
   setupWidthTracking
 } = useMenuWidth()
 
+// Helper функция для вызова updateMenuWidth с текущими параметрами
+const updateWidth = () => {
+  updateMenuWidth(
+    menuSections.value,
+    siteName.value,
+    userStore,
+    getSeparator,
+    shouldShowSeparator,
+    emit,
+    isCollapsed.value
+  )
+}
+
 const {
   openGroupRouteName,
   nestedOpenStates,
@@ -68,7 +81,7 @@ watch(
     if (!newValue) {
       isHovering.value = true
     } else {
-      const initFn = () => initializeMenuWidth(
+      initializeMenuWidth(
         menuSections.value,
         siteName.value,
         userStore,
@@ -77,37 +90,14 @@ watch(
         emit,
         isCollapsed.value
       )
-      initFn()
-      setTimeout(() => {
-        const updateFn = () => updateMenuWidth(
-          menuSections.value,
-          siteName.value,
-          userStore,
-          getSeparator,
-          shouldShowSeparator,
-          emit,
-          isCollapsed.value
-        )
-        updateFn()
-      }, 50)
+      setTimeout(updateWidth, 50)
     }
   }
 )
 
 // Немедленно рассчитываем начальную ширину
 if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    const updateFn = () => updateMenuWidth(
-      menuSections.value,
-      siteName.value,
-      userStore,
-      getSeparator,
-      shouldShowSeparator,
-      emit,
-      isCollapsed.value
-    )
-    updateFn()
-  }, 0)
+  setTimeout(updateWidth, 0)
 }
 
 // Переключение меню
@@ -138,13 +128,13 @@ const setToolbarDropdownActive = (active) => {
 }
 
 // Обработчики действий
-function handleAction(action) {
+const handleAction = (action) => {
   if (action === 'openDatasetSidebar') {
     emit('open-datasets')
   }
 }
 
-function handleNavigate(item) {
+const handleNavigate = (item) => {
   // Проверяем, является ли элемент внешней ссылкой
   const externalUrl = item.externalUrl || item.external_url
   if (item.item_type === 'external' && externalUrl) {
@@ -159,34 +149,11 @@ function handleNavigate(item) {
   }
 }
 
-function resetCurrentPage() {
-  emit('reset-page')
-}
+const resetCurrentPage = () => emit('reset-page')
 
 // Следим за изменениями в меню
-watch(menuSections, () => {
-  updateMenuWidth(
-    menuSections.value,
-    siteName.value,
-    userStore,
-    getSeparator,
-    shouldShowSeparator,
-    emit,
-    isCollapsed.value
-  )
-}, { deep: true })
-
-watch(siteName, () => {
-  updateMenuWidth(
-    menuSections.value,
-    siteName.value,
-    userStore,
-    getSeparator,
-    shouldShowSeparator,
-    emit,
-    isCollapsed.value
-  )
-})
+watch(menuSections, updateWidth, { deep: true })
+watch(siteName, updateWidth)
 
 // Следим за изменениями имени пользователя (только имя, не весь объект)
 watch(() => userStore.fullName, (newName, oldName) => {
@@ -194,58 +161,40 @@ watch(() => userStore.fullName, (newName, oldName) => {
   if (oldName !== newName && newName) {
     if (isCollapsed.value) {
       isHovering.value = true
-      setTimeout(() => {
-        updateMenuWidth(
-          menuSections.value,
-          siteName.value,
-          userStore,
-          getSeparator,
-          shouldShowSeparator,
-          emit,
-          isCollapsed.value
-        )
-      }, 100)
+      setTimeout(updateWidth, 100)
     } else {
-      updateMenuWidth(
-        menuSections.value,
-        siteName.value,
-        userStore,
-        getSeparator,
-        shouldShowSeparator,
-        emit,
-        isCollapsed.value
-      )
+      updateWidth()
     }
   }
 })
 
 // Загрузка меню из API
-async function loadMenu(forceRefresh = false) {
+const loadMenu = async (forceRefresh = false) => {
+  const resetMenu = () => {
+    menuSections.value = []
+    separatorsConfig.value = { byOrderIndex: {} }
+  }
+
   try {
     const menuData = await getUserMenu(forceRefresh)
     
-    if (menuData && menuData.menu_items && menuData.menu_items.length > 0) {
+    if (menuData?.menu_items?.length > 0) {
       menuSections.value = transformMenuData(menuData)
-      // Передаём menu_items для правильного вычисления индексов разделителей
       separatorsConfig.value = transformSeparators(menuData.separators || [], menuData.menu_items)
       return
     }
     
-    menuSections.value = []
-    separatorsConfig.value = { byOrderIndex: {} }
+    resetMenu()
     toast.warning('Меню пока не настроено. Обратитесь к администратору.')
   } catch (error) {
-    menuSections.value = []
-    separatorsConfig.value = { byOrderIndex: {} }
+    resetMenu()
     toast.error('Не удалось загрузить меню. Попробуйте обновить страницу.')
     console.error('Ошибка загрузки меню:', error)
   }
 }
 
 // Слушаем событие обновления меню
-function handleMenuUpdate() {
-  loadMenu(true) // forceRefresh = true
-}
+const handleMenuUpdate = () => loadMenu(true)
 
 // Инициализация при монтировании
 onMounted(async () => {
@@ -261,8 +210,6 @@ onMounted(async () => {
     if (res.success) {
       const settings = Array.isArray(res.data) ? res.data[0] : res.data
       siteName.value = settings?.site_name || 'ERGO MS'
-    } else {
-      siteName.value = 'ERGO MS'
     }
   } catch {
     siteName.value = 'ERGO MS'
@@ -280,21 +227,8 @@ onMounted(async () => {
   )
 
   // Настраиваем отслеживание изменений ширины
-  const updateCallback = () => updateMenuWidth(
-    menuSections.value,
-    siteName.value,
-    userStore,
-    getSeparator,
-    shouldShowSeparator,
-    emit,
-    isCollapsed.value
-  )
-
-  setupWidthTracking(updateCallback)
-
-  setTimeout(() => {
-    setupWidthTracking(updateCallback)
-  }, 500)
+  setupWidthTracking(updateWidth)
+  setTimeout(() => setupWidthTracking(updateWidth), 500)
 })
 
 // Удаляем слушатель при размонтировании

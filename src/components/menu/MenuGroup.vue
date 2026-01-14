@@ -47,7 +47,6 @@ const props = defineProps({
   nestedOpenStates: { type: Object, default: () => ({}) },
 })
 
-const showFull = computed(() => props.isCollapsed || props.isHovering)
 
 // Иконка группы: поддерживаем как прямой компонент, так и строковый ключ из конфигурации
 const groupIcon = computed(() => {
@@ -65,9 +64,6 @@ const groupIcon = computed(() => {
 
 // Объединяем list и children в один массив для отображения, сохраняя порядок по order
 const menuItems = computed(() => {
-  const items = []
-  
-  // Собираем все элементы с их order
   const allItems = []
   
   if (props.data.list) {
@@ -102,18 +98,14 @@ const router = useRouter()
 const route = useRoute()
 const emit = defineEmits(['toggle', 'action', 'navigate', 'reset-page', 'toggle-nested'])
 
-const isCurrentRoute = computed(() => {
-  return route.name === props.data.routeName
-})
-
+// Проверяем, находится ли пользователь на странице группы или её подстраницах
 const isCurrentGroupPage = computed(() => {
-  // Проверяем, находится ли пользователь на основной странице группы
+  // Проверяем основную страницу группы
   if (route.name === props.data.routeName) {
     return true
   }
   
   // Проверяем, является ли текущий роут дочерним роутом для группы
-  // Например, OrganizationSettingsMain является дочерним для OrganizationSettings
   if (props.data.routeName && route.name && route.name.startsWith(props.data.routeName) && route.name !== props.data.routeName) {
     try {
       const parentRoute = router.resolve({ name: props.data.routeName })
@@ -121,135 +113,11 @@ const isCurrentGroupPage = computed(() => {
         return true
       }
     } catch (e) {
-      // Если не удалось разрешить роут, просто проверяем по имени
       return true
     }
   }
   
-  // Проверяем, находится ли пользователь на одной из подстраниц группы
-  if (menuItems.value.length > 0) {
-    return menuItems.value.some(item => {
-      // Для обычных Vue страниц
-      if (item.routeName && route.name === item.routeName) {
-        return true
-      }
-      
-      // Проверяем, является ли текущий роут дочерним роутом для элемента меню
-      if (item.routeName && route.name && route.name.startsWith(item.routeName) && route.name !== item.routeName) {
-        try {
-          const parentRoute = router.resolve({ name: item.routeName })
-          if (parentRoute && parentRoute.path && route.path.startsWith(parentRoute.path)) {
-            return true
-          }
-        } catch (e) {
-          return true
-        }
-      }
-      
-      // Для BI offcanvas страниц - проверяем что мы находимся на BI странице
-      if (item.isOffcanvas && item.page === props.currentPage) {
-        // Дополнительно проверяем, что мы действительно на BI странице
-        if (route.name === 'BI' || route.path.startsWith('/bi')) {
-          return true
-        }
-      }
-      
-      // Для BI элементов с подвкладками (только с разделителями)
-      if (item.isOffcanvas && item.page && props.currentPage && item.page.length > 2) {
-        if (props.currentPage.startsWith(item.page + '-') || 
-            props.currentPage.startsWith(item.page + '_') || 
-            props.currentPage.startsWith(item.page + '.')) {
-          return true
-        }
-      }
-      
-      // Для BI элементов с page без isOffcanvas флага
-      if (item.page && !item.isOffcanvas && item.page === props.currentPage) {
-        return true
-      }
-      
-      // Дополнительная проверка для BI элементов с иерархией подвкладок
-      // Только если currentPage начинается с itemPage и есть разделитель (более строгая проверка)
-      if (item.page && props.currentPage && item.page.length > 2) {
-        const itemPage = item.page.toLowerCase()
-        const currentPage = props.currentPage.toLowerCase()
-        
-        // Проверяем только если currentPage начинается с itemPage + разделитель
-        if (currentPage.startsWith(itemPage + '-') || currentPage.startsWith(itemPage + '_') || 
-            currentPage.startsWith(itemPage + '.')) {
-          return true
-        }
-      }
-      
-      return false
-    })
-  }
-  
-  return false
-})
-
-// Рекурсивная функция для проверки активности всех дочерних элементов
-const checkChildrenActiveRecursive = (children, currentPage, currentRoute) => {
-  if (!children || children.length === 0) return false
-  
-  return children.some(item => {
-    // Проверяем прямую активность элемента
-    if (item.routeName && currentRoute === item.routeName) {
-      return true
-    }
-    
-    // Проверяем, является ли текущий роут дочерним роутом для элемента меню
-    // Например, OrganizationSettingsMain является дочерним для OrganizationSettings
-    if (item.routeName && currentRoute && currentRoute.startsWith(item.routeName) && currentRoute !== item.routeName) {
-      try {
-        const parentRoute = router.resolve({ name: item.routeName })
-        if (parentRoute && parentRoute.path && route.path.startsWith(parentRoute.path)) {
-          return true
-        }
-      } catch (e) {
-        // Если не удалось разрешить роут, просто проверяем по имени
-        return true
-      }
-    }
-    
-    // Для BI offcanvas страниц
-    if (item.isOffcanvas && item.page === currentPage) {
-      if (route.name === 'BI' || route.path.startsWith('/bi')) {
-        return true
-      }
-    }
-    
-    // Для BI элементов с подвкладками
-    if (item.page && currentPage && item.page.length > 2) {
-      if (currentPage.startsWith(item.page + '-') ||
-          currentPage.startsWith(item.page + '_') ||
-          currentPage.startsWith(item.page + '.')) {
-        return true
-      }
-    }
-    
-    // Для BI элементов с page без isOffcanvas флага
-    if (item.page && !item.isOffcanvas && item.page === currentPage) {
-      return true
-    }
-    
-    // РЕКУРСИВНО проверяем дочерние элементы
-    if (item.children && item.children.length > 0) {
-      return checkChildrenActiveRecursive(item.children, currentPage, currentRoute)
-    }
-    
-    return false
-  })
-}
-
-// Новый computed для выделения основного элемента меню с поддержкой полной иерархии
-const shouldHighlightMainItem = computed(() => {
-  // Выделяем если пользователь находится на основной странице группы
-  if (route.name === props.data.routeName) {
-    return true
-  }
-  
-  // Выделяем если пользователь находится на любой подстранице этой группы (с рекурсивной проверкой)
+  // Проверяем подстраницы через рекурсивную функцию
   if (menuItems.value.length > 0) {
     return checkChildrenActiveRecursive(menuItems.value, props.currentPage, route.name)
   }
@@ -257,7 +125,75 @@ const shouldHighlightMainItem = computed(() => {
   return false
 })
 
+// Общая функция для проверки активности элемента (такая же как в MenuItem.vue)
+const checkItemActive = (item, currentPage, currentRoute) => {
+  // Для элементов с routeName
+  if (item.routeName) {
+    if (currentRoute === item.routeName) {
+      return true
+    }
+    
+    if (currentRoute && currentRoute.startsWith(item.routeName) && currentRoute !== item.routeName) {
+      try {
+        const parentRoute = router.resolve({ name: item.routeName })
+        if (parentRoute?.path && route.path.startsWith(parentRoute.path)) {
+          return true
+        }
+      } catch (e) {
+        return true
+      }
+    }
+  }
+  
+  // Для BI offcanvas страниц
+  if (item.isOffcanvas && item.page === currentPage) {
+    if (route.name === 'BI' || route.path.startsWith('/bi')) {
+      return true
+    }
+  }
+  
+  // Для BI элементов с подвкладками (проверяем по префиксу с разделителем)
+  if (item.page && currentPage && item.page.length > 2) {
+    const itemPage = item.page.toLowerCase()
+    const currentPageLower = currentPage.toLowerCase()
+    
+    if (currentPageLower.startsWith(itemPage + '-') ||
+        currentPageLower.startsWith(itemPage + '_') ||
+        currentPageLower.startsWith(itemPage + '.')) {
+      return true
+    }
+  }
+  
+  // Для BI элементов с page без isOffcanvas флага
+  if (item.page && !item.isOffcanvas && item.page === currentPage) {
+    return true
+  }
+  
+  return false
+}
 
+// Рекурсивная функция для проверки активности всех дочерних элементов
+const checkChildrenActiveRecursive = (children, currentPage, currentRoute) => {
+  if (!children || children.length === 0) return false
+  
+  return children.some(item => {
+    // Используем общую функцию проверки активности
+    if (checkItemActive(item, currentPage, currentRoute)) {
+      return true
+    }
+    
+    // Рекурсивно проверяем дочерние элементы (учитываем и children, и list)
+    const nestedChildren = [
+      ...(item.list || []),
+      ...(item.children || [])
+    ]
+    if (nestedChildren.length > 0) {
+      return checkChildrenActiveRecursive(nestedChildren, currentPage, currentRoute)
+    }
+    
+    return false
+  })
+}
 
 // Обработчик переключения вложенных групп
 function handleToggleNested(groupId) {
@@ -299,16 +235,11 @@ function routeClick(event) {
     router.push({ name: props.data.routeName })
   }
 }
-
 </script>
 
 <template>
   <li class="side-menu__group side-group">
-    <div
-      class="side-title nav-btn"
-      :class="{ 'side-title--active': shouldHighlightMainItem }"
-      @click="routeClick($event)"
-    >
+    <div class="side-title nav-btn" :class="{ 'side-title--active': isCurrentGroupPage }" @click="routeClick($event)">
       <div class="side-title__label">
         <div class="side-icon icon-flex">
           <component v-if="groupIcon" :is="groupIcon" :size="20" />
@@ -323,11 +254,7 @@ function routeClick(event) {
       </div>
     </div>
 
-    <ul
-      v-if="hasMenuItems"
-      class="side-group__list"
-      :class="showFull ? (isOpen ? 'is-open' : '') : ''"
-    >
+    <ul v-if="hasMenuItems" class="side-group__list" :class="(isCollapsed || isHovering) && isOpen ? 'is-open' : ''">
       <MenuItem
         v-for="(item, index) in menuItems"
         :key="index"

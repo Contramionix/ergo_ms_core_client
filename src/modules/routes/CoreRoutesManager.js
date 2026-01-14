@@ -2,32 +2,20 @@
  * МЕНЕДЖЕР БАЗОВЫХ РОУТОВ СИСТЕМЫ
  * 
  * Управляет core и auth роутами из конфигурации
+ * 
+ * ВАЖНО: Использует глобы из ModuleLoader для единой точки загрузки
  */
+
+import { ModuleLoader } from '../core/ModuleLoader.js'
+
+// Создаем один экземпляр ModuleLoader для доступа к общим глобам
+const sharedLoader = new ModuleLoader()
 
 export class CoreRoutesManager {
   constructor(coreRoutesConfig) {
     this.coreRoutesConfig = coreRoutesConfig
-    this.componentsMap = null
-  }
-
-  /**
-   * Загружает маппинг компонентов
-   */
-  loadComponentsMap() {
-    if (this.componentsMap) {
-      return this.componentsMap
-    }
-
-    // Используем статические глобы
-    const coreComponents = import.meta.glob('../../**/*.vue')
-    const modulesComponents = import.meta.glob('../../../../../modules/**/client/**/*.vue')
-
-    this.componentsMap = {
-      ...coreComponents,
-      ...modulesComponents
-    }
-
-    return this.componentsMap
+    // Используем глобы из общего ModuleLoader
+    this.componentsMap = sharedLoader.getGlobsByType('components', 'all')
   }
 
   /**
@@ -38,10 +26,6 @@ export class CoreRoutesManager {
   getComponentLoader(componentPath) {
     if (!componentPath || typeof componentPath !== 'string') {
       return null
-    }
-
-    if (!this.componentsMap) {
-      this.loadComponentsMap()
     }
 
     let searchPath

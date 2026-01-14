@@ -41,6 +41,11 @@ export class MenuManager extends ModuleLoader {
    * Загружает все menu-config.json из модулей
    */
   async loadMenuConfigs() {
+    // Если уже загружены, пропускаем
+    if (this.menuConfigs.size > 0) {
+      return
+    }
+    
     const configs = await this.loadAllModulesAsync('js/menu-config.json')
 
     Object.entries(configs).forEach(([path, config]) => {
