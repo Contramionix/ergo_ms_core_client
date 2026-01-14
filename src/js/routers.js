@@ -239,7 +239,7 @@ router.beforeEach(async (to, from, next) => {
       // Используем легковесный endpoint check для проверки наличия без загрузки полных данных
       try {
         const { apiClient } = await import('./api/manager')
-        const resp = await apiClient.get('/organizations/organizations/check/')
+        const resp = await apiClient.get('/organizations/check/')
         
         if (resp.success && resp.data && resp.data.exists) {
           // У пользователя есть организации - продолжаем навигацию
