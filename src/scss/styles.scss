@@ -4,6 +4,8 @@
 @import './_variables.scss';
 @import './_overrides.scss';
 @import './_globals.scss';
+@import './_dropdown-base.scss';
+@import './_dropdown-animations.scss';
 
 @import 'bootstrap/scss/bootstrap';
 @import 'v-calendar/style.css';

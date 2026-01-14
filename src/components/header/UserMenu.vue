@@ -1,15 +1,16 @@
 <script setup>
-import { ref, onMounted, computed, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { CircleUserRound, Power, Building2 } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 import { logout as authLogout } from '@/core/cms/adp/js/auth-index'
+import { useDropdown } from '@/composables/useDropdown.js'
 
 const userStore = useUserStore()
-const dropdownElement = ref(null)
-let dropdownInstance = null
+const emit = defineEmits(['dropdown-toggle'])
+const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 
 const organizations = ref([])
 const hasOrganizations = computed(() => organizations.value.length > 0)
@@ -36,8 +37,6 @@ const userName = computed(() => {
 const userEmail = computed(() => {
   return userStore.user?.email || 'email не указан'
 })
-
-const emit = defineEmits(['dropdown-toggle'])
 
 const baseMenuItems = [
   {
@@ -81,6 +80,11 @@ const fetchUserOrganizations = async () => {
   }
 }
 
+// Экспортируем метод для внешнего вызова
+defineExpose({
+  closeDropdown
+})
+
 // Централизованный выход из аккаунта
 const handleLogout = async () => {
   try {
@@ -100,8 +104,7 @@ const handleLogout = async () => {
   // Сбрасываем состояние пользователя и выполняем редирект на /login
   userStore.logout()
 
-  // Закрываем dropdown, если он ещё видим
-  dropdownInstance?.hide()
+  closeDropdown()
 }
 
 // Инициализируем пользователя при загрузке компонента
@@ -111,28 +114,16 @@ onMounted(async () => {
   }
 
   organizations.value = await fetchUserOrganizations()
-  
-  // Инициализируем Bootstrap dropdown
-  await nextTick()
-  if (dropdownElement.value && window.bootstrap?.Dropdown) {
-    dropdownInstance = new window.bootstrap.Dropdown(dropdownElement.value)
-    dropdownElement.value.addEventListener('show.bs.dropdown', () => emit('dropdown-toggle', true))
-    dropdownElement.value.addEventListener('hide.bs.dropdown', () => emit('dropdown-toggle', false))
-  }
-})
-
-onUnmounted(() => {
-  dropdownInstance?.dispose()
-  dropdownInstance = null
 })
 </script>
 
 <template>
-  <div class="dropdown">
-    <div ref="dropdownElement" class="tools__avatar avatar" data-bs-toggle="dropdown" aria-expanded="false" data-bs-offset="16,20">
+  <div ref="dropdownRef" class="user-menu-wrapper">
+    <div @click.stop="toggleDropdown" class="tools__avatar avatar">
       <UserAvatar :size="40" :clickable="true" :title="userName"/>
     </div>
-    <ul class="dropdown-menu dropdown-menu-end">
+    <Transition name="dropdown-left">
+      <ul v-if="isOpen" class="user-dropdown-menu">
       <li class="dropdown-header px-3 py-2 border-bottom">
         <div class="d-flex align-items-center">
           <div class="me-2">
@@ -168,6 +159,7 @@ onUnmounted(() => {
           class="dropdown-item header-dropdown-item"
           active-class="active"
           :style="{ transitionDelay: `${(index + 1) * 50}ms` }"
+          @click="closeDropdown"
         >
           <span class="icon-flex">
             <component :is="item.icon" :size="22" />
@@ -175,26 +167,37 @@ onUnmounted(() => {
           <span>{{ item.title }}</span>
         </RouterLink>
       </li>
-    </ul>
+      </ul>
+    </Transition>
   </div>
 </template>
 
 <style scoped lang="scss">
-.dropdown .dropdown-menu-end {
-  inset: 0 0 auto auto;
-  transform: translate(16px, 60px);
-  min-width: 280px;
+.user-menu-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  height: 100%;
 }
 
-.dropdown-item {
-  @include flex-row-gap(12px, center);
-  transition: all $transition;
-  padding: $padding-internal $padding-external;
+.tools__avatar {
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-dropdown-menu {
+  @include dropdown-menu-base;
+  left: 0;
+  transform: translate(0, -8px);
+  min-width: 280px;
 }
 
 .dropdown-header {
   background-color: var(--bs-gray-50);
-  border-bottom: 1px solid var(--bs-border-color);
   
   .text-truncate {
     max-width: 200px;
@@ -217,5 +220,33 @@ onUnmounted(() => {
 
 .dropdown-header :deep(.user-avatar-image) {
   border-width: 1px;
+}
+</style>
+
+<style lang="scss">
+// Анимация для left-выравнивания UserMenu (глобальные стили для Transition)
+.user-dropdown-menu.dropdown-left-enter-active,
+.user-dropdown-menu.dropdown-left-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.user-dropdown-menu.dropdown-left-enter-from {
+  opacity: 0;
+  transform: translate(0, -16px) !important;
+}
+
+.user-dropdown-menu.dropdown-left-enter-to {
+  opacity: 1;
+  transform: translate(0, -8px) !important;
+}
+
+.user-dropdown-menu.dropdown-left-leave-from {
+  opacity: 1;
+  transform: translate(0, -8px) !important;
+}
+
+.user-dropdown-menu.dropdown-left-leave-to {
+  opacity: 0;
+  transform: translate(0, -16px) !important;
 }
 </style>

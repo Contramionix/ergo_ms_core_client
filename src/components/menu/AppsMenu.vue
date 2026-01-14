@@ -5,10 +5,11 @@ import { useRouter } from 'vue-router'
 import { moduleManager } from '@/modules/index.js'
 import { biAnalysisService } from '@/core/bi/js/biAnalysisService.js'
 import { biChartsService } from '@/core/bi/js/biChartsService.js'
+import { useDropdown } from '@/composables/useDropdown.js'
 
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
-const dropdownRef = ref(null)
+const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 const apps = ref([])
 const isLoading = ref(true)
 
@@ -60,6 +61,11 @@ const loadApps = async () => {
   }
 }
 
+// Экспортируем метод для внешнего вызова
+defineExpose({
+  closeDropdown
+})
+
 const goToApp = (app) => {
   // Если это BI, проверяем, был ли построен график
   if (app.isBI) {
@@ -76,17 +82,7 @@ const goToApp = (app) => {
             // Если график был построен, открываем окно с графиком
             if (chartsStateData.hasChart && chartsStateData.selectedXField && chartsStateData.selectedYField) {
               biChartsService.open(state.fileId)
-              
-              // Закрываем dropdown
-              if (dropdownRef.value && window.bootstrap && window.bootstrap.Dropdown) {
-                const dropdownElement = dropdownRef.value.querySelector('[data-bs-toggle="dropdown"]')
-                if (dropdownElement) {
-                  const bsDropdown = window.bootstrap.Dropdown.getInstance(dropdownElement)
-                  if (bsDropdown) {
-                    bsDropdown.hide()
-                  }
-                }
-              }
+              closeDropdown()
               return
             }
           }
@@ -101,45 +97,21 @@ const goToApp = (app) => {
     router.push(app.route)
   }
   
-  // Закрываем dropdown
-  if (dropdownRef.value && window.bootstrap && window.bootstrap.Dropdown) {
-    const dropdownElement = dropdownRef.value.querySelector('[data-bs-toggle="dropdown"]')
-    if (dropdownElement) {
-      const bsDropdown = window.bootstrap.Dropdown.getInstance(dropdownElement)
-      if (bsDropdown) {
-        bsDropdown.hide()
-      }
-    }
-  }
+  closeDropdown()
 }
 
 onMounted(async () => {
   await loadApps()
-  
-  // Инициализируем Bootstrap dropdown
-  if (dropdownRef.value) {
-    const dropdownElement = dropdownRef.value.querySelector('[data-bs-toggle="dropdown"]')
-    if (dropdownElement) {
-      dropdownElement.addEventListener('show.bs.dropdown', () => {
-        emit('dropdown-toggle', true)
-      })
-      
-      dropdownElement.addEventListener('hide.bs.dropdown', () => {
-        emit('dropdown-toggle', false)
-      })
-    }
-  }
 })
 </script>
 
 <template>
-  <div ref="dropdownRef" class="dropdown-center header-dropdown-center">
-    <div data-bs-toggle="dropdown" aria-expanded="false" data-bs-offset="0,20">
-      <div class="header-btn" v-tooltip title="Приложения">
-        <Grid3x3 :size="20" />
-      </div>
+  <div ref="dropdownRef" class="apps-menu-wrapper">
+    <div @click.stop="toggleDropdown" class="header-btn" v-tooltip title="Приложения">
+      <Grid3x3 :size="20" />
     </div>
-    <ul class="dropdown-menu header-dropdown-menu apps-menu">
+    <Transition name="dropdown">
+      <ul v-if="isOpen" class="apps-dropdown-menu">
       <li v-if="isLoading" class="apps-menu__loading">
         <div class="spinner-border spinner-border-sm text-primary" role="status">
           <span class="visually-hidden">Загрузка...</span>
@@ -166,16 +138,24 @@ onMounted(async () => {
           </div>
         </div>
       </li>
-    </ul>
+      </ul>
+    </Transition>
   </div>
 </template>
 
 <style scoped lang="scss">
-.apps-menu {
-  padding: 1rem;
+.apps-menu-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.apps-dropdown-menu {
+  @include dropdown-menu-base;
+  left: 50%;
+  transform: translate(-50%, -8px);
   min-width: 280px;
   max-width: 400px;
-  list-style: none;
+  padding: 1rem;
 }
 
 .apps-menu__loading,
@@ -261,5 +241,33 @@ onMounted(async () => {
     font-weight: 700;
     color: var(--bs-primary, #0d6efd);
   }
+}
+</style>
+
+<style lang="scss">
+// Анимация появления/исчезновения меню AppsMenu (глобальные стили для Transition)
+.apps-dropdown-menu.dropdown-enter-active,
+.apps-dropdown-menu.dropdown-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.apps-dropdown-menu.dropdown-enter-from {
+  opacity: 0;
+  transform: translate(-50%, -16px) !important;
+}
+
+.apps-dropdown-menu.dropdown-enter-to {
+  opacity: 1;
+  transform: translate(-50%, -8px) !important;
+}
+
+.apps-dropdown-menu.dropdown-leave-from {
+  opacity: 1;
+  transform: translate(-50%, -8px) !important;
+}
+
+.apps-dropdown-menu.dropdown-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -16px) !important;
 }
 </style>

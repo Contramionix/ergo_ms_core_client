@@ -1,14 +1,18 @@
 <script setup>
 import { Settings, Sun, Moon, LaptopMinimal } from 'lucide-vue-next'
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref } from 'vue'
+import { useDropdown } from '@/composables/useDropdown.js'
 
 const emit = defineEmits(['dropdown-toggle'])
-const router = useRouter()
-const dropdownRef = ref(null)
+const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
+
+// Экспортируем метод для внешнего вызова
+defineExpose({
+  closeDropdown
+})
+
 const theme = ref(localStorage.getItem('theme') || 'auto')
 
-// Изменение темы
 const changeTheme = (newTheme) => {
   theme.value = newTheme
   localStorage.setItem('theme', newTheme)
@@ -20,97 +24,75 @@ const changeTheme = (newTheme) => {
     document.documentElement.setAttribute('data-bs-theme', newTheme)
   }
   
-  // Закрываем dropdown после выбора
-  if (dropdownRef.value && window.bootstrap && window.bootstrap.Dropdown) {
-    const dropdownElement = dropdownRef.value.querySelector('[data-bs-toggle="dropdown"]')
-    if (dropdownElement) {
-      const bsDropdown = window.bootstrap.Dropdown.getInstance(dropdownElement)
-      if (bsDropdown) {
-        bsDropdown.hide()
-      }
-    }
-  }
+  closeDropdown()
 }
 
-// Список тем
 const themes = ref([
   { icon: Sun, title: 'Светлая', theme: 'light' },
   { icon: Moon, title: 'Тёмная', theme: 'dark' },
   { icon: LaptopMinimal, title: 'Системная', theme: 'auto' },
 ])
-
-const goToSettings = () => {
-  router.push({ name: 'Settings' })
-  // Закрываем dropdown
-  if (dropdownRef.value && window.bootstrap && window.bootstrap.Dropdown) {
-    const dropdownElement = dropdownRef.value.querySelector('[data-bs-toggle="dropdown"]')
-    if (dropdownElement) {
-      const bsDropdown = window.bootstrap.Dropdown.getInstance(dropdownElement)
-      if (bsDropdown) {
-        bsDropdown.hide()
-      }
-    }
-  }
-}
-
-onMounted(() => {
-  if (dropdownRef.value) {
-    const dropdownElement = dropdownRef.value.querySelector('[data-bs-toggle="dropdown"]')
-    if (dropdownElement) {
-      dropdownElement.addEventListener('show.bs.dropdown', () => {
-        emit('dropdown-toggle', true)
-      })
-      
-      dropdownElement.addEventListener('hide.bs.dropdown', () => {
-        emit('dropdown-toggle', false)
-      })
-    }
-  }
-})
 </script>
 
 <template>
-  <div ref="dropdownRef" class="dropdown-center header-dropdown-center">
-    <div data-bs-toggle="dropdown" aria-expanded="false" data-bs-offset="0,20">
-      <div class="header-btn" v-tooltip title="Настройки">
-        <Settings :size="20" />
-      </div>
+  <div ref="dropdownRef" class="settings-menu-wrapper">
+    <div @click.stop="toggleDropdown" class="header-btn" v-tooltip title="Настройки">
+      <Settings :size="20" />
     </div>
-    <ul class="dropdown-menu header-dropdown-menu">
-      <li class="dropdown-header px-3 py-2 border-bottom">
-        <span class="fw-semibold">Настройки</span>
-      </li>
-      
-      <!-- Настройка темы -->
-      <li class="dropdown-header px-3 py-1 text-muted small">
-        Тема оформления
-      </li>
-      <li
-        v-for="(item, index) in themes"
-        :key="index"
-        @click="changeTheme(item.theme)"
-        class="dropdown-item header-dropdown-item"
-        :class="{ active: theme === item.theme }"
-        :style="{ transitionDelay: `${index * 50}ms` }"
-      >
+    <Transition name="dropdown">
+      <ul v-if="isOpen" class="settings-dropdown-menu">
+      <li class="dropdown-header px-3 py-2 border-bottom"><span class="fw-semibold">Настройки</span></li>
+      <li class="dropdown-header px-3 py-1 text-muted small">Тема оформления</li>
+      <li v-for="item in themes" :key="item.theme" @click="changeTheme(item.theme)" class="dropdown-item header-dropdown-item" :class="{ active: theme === item.theme }">
         <span class="icon-flex">
           <component :is="item.icon" :size="18" />
         </span>
         <span>{{ item.title }}</span>
       </li>
-      
-      <li><hr class="dropdown-divider" /></li>
-      
-      <!-- Обычные настройки -->
-      <li @click="goToSettings" class="dropdown-item header-dropdown-item">
-        <span class="icon-flex">
-          <Settings :size="18" />
-        </span>
-        <span>Настройки</span>
-      </li>
-    </ul>
+      </ul>
+    </Transition>
   </div>
 </template>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+.settings-menu-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.settings-dropdown-menu {
+  @include dropdown-menu-base;
+  left: 50%;
+  transform: translate(-50%, -8px);
+  min-width: 200px;
+}
+</style>
+
+<style lang="scss">
+// Анимация появления/исчезновения меню SettingsMenu (глобальные стили для Transition)
+.settings-dropdown-menu.dropdown-enter-active,
+.settings-dropdown-menu.dropdown-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.settings-dropdown-menu.dropdown-enter-from {
+  opacity: 0;
+  transform: translate(-50%, -16px) !important;
+}
+
+.settings-dropdown-menu.dropdown-enter-to {
+  opacity: 1;
+  transform: translate(-50%, -8px) !important;
+}
+
+.settings-dropdown-menu.dropdown-leave-from {
+  opacity: 1;
+  transform: translate(-50%, -8px) !important;
+}
+
+.settings-dropdown-menu.dropdown-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -16px) !important;
+}
+</style>
 

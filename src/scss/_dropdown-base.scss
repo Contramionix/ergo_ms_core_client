@@ -1,0 +1,65 @@
+// Базовые стили для dropdown меню (для глобального использования)
+// Миксин находится в _mixins.scss
+.dropdown-menu-base {
+  @include dropdown-menu-base;
+}
+
+// Стили для кнопки header
+.header-btn {
+  &::after,
+  &::before {
+    display: none !important;
+    content: none !important;
+  }
+}
+
+// Базовые стили для элементов dropdown
+.dropdown-item.header-dropdown-item {
+  @include flex-row-gap(12px, center);
+  display: flex;
+  width: 100%;
+  padding: $padding-internal $padding-external;
+  cursor: pointer;
+  transition: all $transition;
+  color: var(--bs-body-color);
+  background-color: transparent;
+  border: 0;
+  white-space: nowrap;
+  
+  .icon-flex {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  > span:not(.icon-flex) {
+    line-height: 1.5;
+  }
+  
+  &.active {
+    color: var(--bs-primary);
+    background-color: var(--bs-primary-bg-subtle);
+    
+    &:hover {
+      background-color: var(--bs-primary-border-subtle);
+    }
+  }
+  
+  &:hover:not(.active) {
+    background-color: var(--bs-secondary-bg);
+  }
+}
+
+// Стили для заголовка dropdown
+.dropdown-header {
+  padding: 0.5rem 1rem;
+  margin-bottom: 0;
+  font-size: 0.875rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+  
+  &.border-bottom {
+    border-bottom: 1px solid var(--bs-border-color) !important;
+  }
+}

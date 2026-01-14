@@ -1,0 +1,46 @@
+// Общие анимации для dropdown меню
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.dropdown-enter-from {
+  opacity: 0;
+  transform: translate(-50%, -16px);
+}
+
+.dropdown-enter-to {
+  opacity: 1;
+  transform: translate(-50%, -8px);
+}
+
+.dropdown-leave-from {
+  opacity: 1;
+  transform: translate(-50%, -8px);
+}
+
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -16px);
+}
+
+// Вариант анимации для меню, выровненного по left (UserMenu)
+.dropdown-left-enter-from {
+  opacity: 0;
+  transform: translate(0, -16px);
+}
+
+.dropdown-left-enter-to {
+  opacity: 1;
+  transform: translate(0, -8px);
+}
+
+.dropdown-left-leave-from {
+  opacity: 1;
+  transform: translate(0, -8px);
+}
+
+.dropdown-left-leave-to {
+  opacity: 0;
+  transform: translate(0, -16px);
+}

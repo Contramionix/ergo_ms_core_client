@@ -1,6 +1,9 @@
 // Иконка
 .icon-flex {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 // Секция при наведении
@@ -261,6 +264,9 @@ svg.apexcharts-svg {
   transition: all $transition;
   padding: $padding-internal $padding-external;
   cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 }
 
 // Центрированное выпадающее меню заголовка

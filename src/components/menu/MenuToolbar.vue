@@ -3,7 +3,7 @@
     <div id="menu-toolbar-content" class="tools" :class="{ collapsed: isCollapsed && !isHovering }">
       <div class="toolbar__user" :class="{ collapsed: isCollapsed && !isHovering }">
         <div class="tools__user__avatar">
-          <UserMenu @dropdown-toggle="(active) => setDropdownActive('userMenu', active)" />
+          <UserMenu ref="userMenuRef" @dropdown-toggle="(active) => setDropdownActive('userMenu', active)" />
         </div>
         <div class="tools__user__name" v-if="shouldShowFullInfo">
           <div class="user__fullname" :title="getFullUserName()">{{ userFullName }}</div>
@@ -11,7 +11,7 @@
       </div>
       <div class="tools-buttons" v-if="shouldShowFullInfo">
         <div class="tools__apps">
-          <AppsMenu @dropdown-toggle="(active) => setDropdownActive('apps', active)" />
+          <AppsMenu ref="appsMenuRef" @dropdown-toggle="(active) => setDropdownActive('apps', active)" />
         </div>
         <div class="tools__assistant" @click="toggleAssistant">
           <div
@@ -24,7 +24,7 @@
           </div>
         </div>
         <div class="tools__settings">
-          <SettingsMenu @dropdown-toggle="(active) => setDropdownActive('settings', active)" />
+          <SettingsMenu ref="settingsMenuRef" @dropdown-toggle="(active) => setDropdownActive('settings', active)" />
         </div>
       </div>
     </div>
@@ -47,7 +47,7 @@ import AppsMenu from '@/components/menu/AppsMenu.vue'
 import SettingsMenu from '@/components/menu/SettingsMenu.vue'
 import { assistantModuleManager } from '@/core/ai-assistant/core/AssistantModuleManager.js'
 import { assistantService } from '@/core/ai-assistant/js/assistantService.js'
-import { computed, ref, onMounted, watch, shallowRef } from 'vue'
+import { computed, ref, onMounted, watch, shallowRef, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 
@@ -72,6 +72,9 @@ const assistantChat = ref(null)
 const currentModuleComponent = shallowRef(null)
 const currentModuleClient = ref(null)
 const currentModuleConfig = ref(null)
+const userMenuRef = ref(null)
+const appsMenuRef = ref(null)
+const settingsMenuRef = ref(null)
 
 // Состояние для отслеживания активных выпадающих элементов
 const activeDropdowns = ref(new Set())
@@ -138,6 +141,19 @@ const shouldShowFullInfo = computed(() => {
 // Функции для управления состоянием выпадающих элементов
 const setDropdownActive = (dropdownId, active) => {
   if (active) {
+    // Закрываем другие выпадающие меню ПЕРЕД открытием нового (синхронно)
+    const allMenus = [
+      { id: 'userMenu', ref: userMenuRef },
+      { id: 'apps', ref: appsMenuRef },
+      { id: 'settings', ref: settingsMenuRef }
+    ]
+    
+    allMenus.forEach(({ id, ref }) => {
+      if (id !== dropdownId && ref.value?.closeDropdown) {
+        ref.value.closeDropdown()
+      }
+    })
+    
     activeDropdowns.value.add(dropdownId)
   } else {
     activeDropdowns.value.delete(dropdownId)
@@ -438,8 +454,13 @@ const handleChartAnalysis = async (chartId) => {
   cursor: pointer;
   background-color: grey;
   border-radius: 50%;
-
   position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &:after {
     content: '';
@@ -451,6 +472,40 @@ const handleChartAnalysis = async (chartId) => {
     border-radius: 100%;
     box-shadow: 0 0 0 2px var(--color-primary-background);
     background-color: #4caf50;
+    z-index: 1;
+  }
+  
+  // Обрезаем содержимое по кругу (но не сам контейнер, чтобы зеленая точка не обрезалась)
+  :deep(.user-menu-wrapper) {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  :deep(.tools__avatar) {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+  
+  :deep(.user-avatar) {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+  
+  :deep(.user-avatar-image) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
   }
 }
 </style>
