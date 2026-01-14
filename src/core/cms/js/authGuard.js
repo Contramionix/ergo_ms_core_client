@@ -1,5 +1,6 @@
 import Cookies from 'js-cookie'
 import tokenService from '@/core/cms/js/tokenService'
+import { useUserStore } from '@/core/cms/js/userStore.js'
 
 /**
  * Утилита для управления аутентификацией и автоматического logout
@@ -66,7 +67,6 @@ export class AuthGuard {
       // Проверяем через userStore, если пользователь уже инициализирован
       // Это позволяет избежать лишних запросов к API
       try {
-        const { useUserStore } = await import('@/core/cms/js/userStore.js')
         const userStore = useUserStore()
         
         // Если пользователь инициализирован, считаем токен валидным
@@ -76,7 +76,7 @@ export class AuthGuard {
           return
         }
       } catch (_) {
-        // Если не удалось импортировать userStore, продолжаем проверку через API
+        // Если не удалось получить userStore, продолжаем проверку через API
       }
 
       // Валидация на сервере (динамический импорт для избежания циркулярной зависимости)
