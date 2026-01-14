@@ -15,6 +15,7 @@ export const useUserStore = defineStore('userStore', () => {
   const avatarUrl = ref(null) // null означает использование стандартного аватара
   const isLoading = ref(false)
   const isInitialized = ref(false)
+  let initializationPromise = null // Промис текущей инициализации для предотвращения гонки условий
 
   // ==== GETTERS ====
   const isAuthenticated = computed(() => !!user.value)
@@ -56,37 +57,49 @@ export const useUserStore = defineStore('userStore', () => {
   
   // Инициализация пользователя
   const initializeUser = async () => {
+    // Если уже инициализирован, возвращаем успех
     if (isInitialized.value) return true
-
-    try {
-      isLoading.value = true
-      
-      // Сначала проверяем авторизацию
-      const authResponse = await apiClient.get(endpoints.auth.protected)
-      if (!authResponse?.data?.id) {
-        throw new Error('Пользователь не авторизован')
-      }
-
-      user.value = authResponse.data
-      
-      // Загружаем полный профиль
-      await loadProfile()
-      
-      // Загружаем аватар
-      await loadAvatar()
-      
-      isInitialized.value = true
-      return true
-
-    } catch (error) {
-      console.error('Ошибка инициализации пользователя:', error)
-      user.value = null
-      profile.value = null
-      avatarUrl.value = null // Используем стандартный аватар
-      return false
-    } finally {
-      isLoading.value = false
+    
+    // Если инициализация уже идет, ждем её завершения
+    if (initializationPromise) {
+      return await initializationPromise
     }
+
+    // Создаем новый промис инициализации
+    initializationPromise = (async () => {
+      try {
+        isLoading.value = true
+        
+        // Сначала проверяем авторизацию
+        const authResponse = await apiClient.get(endpoints.auth.protected)
+        if (!authResponse?.data?.id) {
+          throw new Error('Пользователь не авторизован')
+        }
+
+        user.value = authResponse.data
+        
+        // Загружаем полный профиль
+        await loadProfile()
+        
+        // Загружаем аватар
+        await loadAvatar()
+        
+        isInitialized.value = true
+        return true
+
+      } catch (error) {
+        console.error('Ошибка инициализации пользователя:', error)
+        user.value = null
+        profile.value = null
+        avatarUrl.value = null // Используем стандартный аватар
+        return false
+      } finally {
+        isLoading.value = false
+        initializationPromise = null // Очищаем промис после завершения
+      }
+    })()
+
+    return await initializationPromise
   }
 
   // Загрузка полного профиля пользователя

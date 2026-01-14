@@ -14,7 +14,7 @@ export class AuthGuard {
    * Запускает периодическую проверку токена
    * @param {number} intervalMs Интервал проверки в миллисекундах (по умолчанию 5 минут)
    */
-  startTokenValidation(intervalMs = 60 * 1000) {
+  startTokenValidation(intervalMs = 5 * 60 * 1000) {
     // Останавливаем предыдущий интервал если он был
     this.stopTokenValidation()
 
@@ -54,10 +54,32 @@ export class AuthGuard {
     try {
       // Сначала локально: если срок на исходе — пробуем тихий refresh
       if (tokenService.shouldRefresh(90)) {
-        try { await tokenService.tryRefresh(); return } catch (_) { /* пойдём к серверной проверке */ }
+        try { 
+          await tokenService.tryRefresh()
+          this.isCheckingToken = false
+          return 
+        } catch (_) { 
+          /* пойдём к серверной проверке */ 
+        }
       }
 
-      // Опционально валидация на сервере (динамический импорт для избежания циркулярной зависимости)
+      // Проверяем через userStore, если пользователь уже инициализирован
+      // Это позволяет избежать лишних запросов к API
+      try {
+        const { useUserStore } = await import('@/core/cms/js/userStore.js')
+        const userStore = useUserStore()
+        
+        // Если пользователь инициализирован, считаем токен валидным
+        // (так как initializeUser уже проверил его через /protected/)
+        if (userStore.isInitialized && userStore.isAuthenticated) {
+          this.isCheckingToken = false
+          return
+        }
+      } catch (_) {
+        // Если не удалось импортировать userStore, продолжаем проверку через API
+      }
+
+      // Валидация на сервере (динамический импорт для избежания циркулярной зависимости)
       const { authService } = await import('@/core/cms/adp/js/auth')
       const isValid = await authService.checkToken()
       if (!isValid) this.forceLogout()
