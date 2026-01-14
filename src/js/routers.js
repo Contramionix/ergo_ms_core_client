@@ -22,11 +22,24 @@
 
 import { createRouter, createWebHistory } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
-import { generateAllRoutes, validateAll } from '@/modules/index.js'
+import { generateAllRoutes, validateAll, getPermissionRules } from '@/modules/index.js'
 import { checkRouteAdpAccess, hasAnyModulePermission } from '@/core/cms/adp/js/accessControl'
 import Cookies from 'js-cookie'
 import { accessDeniedState } from './accessDeniedState'
-import { MODULE_PERMISSION_RULES } from './modulePermissionRules'
+
+// Кеш для правил проверки прав
+let cachedPermissionRules = null
+
+/**
+ * Получает правила проверки прав (с кешированием)
+ * @returns {Promise<Array>}
+ */
+async function getCachedPermissionRules() {
+  if (cachedPermissionRules === null) {
+    cachedPermissionRules = await getPermissionRules()
+  }
+  return cachedPermissionRules
+}
 
 /**
  * Проверка прав доступа к маршруту.
@@ -35,16 +48,24 @@ import { MODULE_PERMISSION_RULES } from './modulePermissionRules'
  * @returns {Promise<{allowed: boolean, redirect?: string}>}
  */
 async function checkRouteAccess(to) {
+  // Загружаем правила динамически (с кешированием)
+  const MODULE_PERMISSION_RULES = await getCachedPermissionRules()
+
   // 1) Проверка разрешений модулей по правилам
-  for (const rule of MODULE_PERMISSION_RULES) {
-    if (rule.match(to)) {
+  for (let i = 0; i < MODULE_PERMISSION_RULES.length; i++) {
+    const rule = MODULE_PERMISSION_RULES[i]
+    const ruleMatches = rule.match(to)
+
+    if (ruleMatches) {
       const hasAccess = await hasAnyModulePermission(rule.module, rule.permissions)
+
       if (!hasAccess) {
         accessDeniedState.active = true
         accessDeniedState.title = rule.title
         accessDeniedState.message = rule.message
-        return { allowed: false }
+        return { allowed: false, redirect: 'AccessDenied' }
       }
+      // Если правило сработало и права есть, продолжаем проверку других правил
     }
   }
 

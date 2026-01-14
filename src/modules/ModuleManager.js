@@ -7,6 +7,7 @@
  * - EndpointManager - управление API эндпоинтами
  * - IconManager - управление иконками
  * - SeparatorManager - управление сепараторами меню
+ * - PermissionRulesManager - управление правилами проверки прав
  */
 
 import { RouteManager } from './routes/RouteManager.js'
@@ -15,6 +16,7 @@ import { EndpointManager } from './api/EndpointManager.js'
 import { IconManager } from './icons/IconManager.js'
 import { SeparatorManager } from './menu/SeparatorManager.js'
 import { RouteGenerator } from './routes/RouteGenerator.js'
+import { PermissionRulesManager } from './permissions/PermissionRulesManager.js'
 
 export class ModuleManager {
   constructor(config = {}) {
@@ -26,6 +28,7 @@ export class ModuleManager {
     this.separatorManager = new SeparatorManager({
       separators: { byOrderIndex: config.menuOrder?.separators || {} }
     })
+    this.permissionRulesManager = new PermissionRulesManager()
     this.routeGenerator = null
 
     this.config = config
@@ -44,7 +47,8 @@ export class ModuleManager {
     await Promise.all([
       this.routeManager.initialize(),
       this.menuManager.initialize(),
-      this.endpointManager.initialize()
+      this.endpointManager.initialize(),
+      this.permissionRulesManager.initialize()
     ])
 
     // Создаем генератор роутов
@@ -109,6 +113,15 @@ export class ModuleManager {
   }
 
   /**
+   * Получает все правила проверки прав
+   * @returns {Array}
+   */
+  async getPermissionRules() {
+    await this.ensureInitialized()
+    return this.permissionRulesManager.getAllRules()
+  }
+
+  /**
    * Получает иконку по имени
    * @param {string} iconName - имя иконки
    * @returns {Object|null}
@@ -165,12 +178,14 @@ export class ModuleManager {
     const routeValidation = this.routeManager.validateAllRoutes()
     const menuValidation = this.menuManager.validateMenuConfig()
     const endpointValidation = this.endpointManager.validateEndpoints()
+    const permissionRulesValidation = this.permissionRulesManager.validateAllRules()
 
     return {
-      isValid: routeValidation.isValid && menuValidation.isValid && endpointValidation.isValid,
+      isValid: routeValidation.isValid && menuValidation.isValid && endpointValidation.isValid && permissionRulesValidation.isValid,
       routes: routeValidation,
       menu: menuValidation,
-      endpoints: endpointValidation
+      endpoints: endpointValidation,
+      permissionRules: permissionRulesValidation
     }
   }
 
@@ -186,7 +201,8 @@ export class ModuleManager {
       menu: this.menuManager.getStatistics(),
       endpoints: this.endpointManager.getStatistics(),
       icons: this.iconManager.getStatistics(),
-      separators: this.separatorManager.getStatistics()
+      separators: this.separatorManager.getStatistics(),
+      permissionRules: this.permissionRulesManager.getStatistics()
     }
   }
 
@@ -225,6 +241,7 @@ export class ModuleManager {
     this.routeManager.clearCache()
     this.menuManager.clearCache()
     this.endpointManager.clearCache()
+    this.permissionRulesManager.clearCache()
   }
 
   /**
@@ -257,6 +274,10 @@ export class ModuleManager {
 
   get separators() {
     return this.separatorManager
+  }
+
+  get permissionRules() {
+    return this.permissionRulesManager
   }
 }
 

@@ -24,11 +24,13 @@ export class ModuleLoader {
       coreMenuConfigs: import.meta.glob('../../core/**/js/menu-config.json'),
       coreEndpoints: import.meta.glob('../../core/**/js/endpoints.js', { eager: true }),
       coreComponents: import.meta.glob('../../**/*.vue'),
+      corePermissionRules: import.meta.glob('../../core/**/js/permission-rules.js', { eager: true }),
       
       modulesRoutes: import.meta.glob('../../../../../modules/*/client/js/routes.js', { eager: true }),
       modulesMenuConfigs: import.meta.glob('../../../../../modules/*/client/js/menu-config.json'),
       modulesEndpoints: import.meta.glob('../../../../../modules/*/client/js/endpoints.js', { eager: true }),
-      modulesComponents: import.meta.glob('../../../../../modules/**/client/**/*.vue')
+      modulesComponents: import.meta.glob('../../../../../modules/**/client/**/*.vue'),
+      modulesPermissionRules: import.meta.glob('../../../../../modules/*/client/js/permission-rules.js', { eager: true })
     }
   }
 
@@ -43,6 +45,7 @@ export class ModuleLoader {
       'js/routes.js': ['coreRoutes', 'modulesRoutes'],
       'js/menu-config.json': ['coreMenuConfigs', 'modulesMenuConfigs'],
       'js/endpoints.js': ['coreEndpoints', 'modulesEndpoints'],
+      'js/permission-rules.js': ['corePermissionRules', 'modulesPermissionRules'],
       'components': ['coreComponents', 'modulesComponents']
     }
 
@@ -53,7 +56,8 @@ export class ModuleLoader {
       if (source === 'all' || 
           (source === 'core' && key.startsWith('core')) ||
           (source === 'modules' && key.startsWith('modules'))) {
-        result = { ...result, ...this.globs[key] }
+        const globData = this.globs[key] || {}
+        result = { ...result, ...globData }
       }
     })
 

@@ -44,6 +44,14 @@ export async function getEndpoints() {
 }
 
 /**
+ * Получает все правила проверки прав для маршрутов
+ * @returns {Promise<Array>}
+ */
+export async function getPermissionRules() {
+  return await moduleManager.getPermissionRules()
+}
+
+/**
  * Получает иконку по имени
  * @param {string} iconName - имя иконки
  * @returns {Object|null}
@@ -146,6 +154,7 @@ export { SeparatorManager } from './menu/SeparatorManager.js'
 export { RouteGenerator } from './routes/RouteGenerator.js'
 export { CoreRoutesManager } from './routes/CoreRoutesManager.js'
 export { ModuleLoader } from './core/ModuleLoader.js'
+export { PermissionRulesManager } from './permissions/PermissionRulesManager.js'
 
 // Экспортируем moduleManager как default
 export default moduleManager

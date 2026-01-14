@@ -17,7 +17,8 @@ async function ensurePermissionsSnapshot() {
     const response = await CheckAccess.GetMyPermissions()
     cachedPermissionsSnapshot = response?.data || response
     permissionsSnapshotFetchedAt = now
-  } catch {
+  } catch (error) {
+    console.error('[ensurePermissionsSnapshot] Ошибка загрузки snapshot:', error)
     cachedPermissionsSnapshot = null
   }
 
@@ -62,17 +63,24 @@ export async function hasAnyModulePermission(moduleName, permissionKeys = []) {
   if (!Array.isArray(permissionKeys) || permissionKeys.length === 0) {
     return false
   }
+
   const permissionsSnapshot = await ensurePermissionsSnapshot()
   const modulePermissions = permissionsSnapshot?.module_permissions || []
 
-  return permissionKeys.some((key) =>
-    modulePermissions.some((perm) => {
-      const permModuleName = perm.module_name || perm.moduleName
+  // Фильтруем права только для указанного модуля
+  const modulePerms = modulePermissions.filter((perm) => {
+    const permModuleName = perm.module_name || perm.moduleName
+    return permModuleName === moduleName
+  })
+
+  // Проверяем, есть ли хотя бы одно из запрошенных прав с is_granted=true
+  return permissionKeys.some((key) => {
+    return modulePerms.some((perm) => {
       const permKey = perm.permission_key || perm.permissionKey
       const isGranted = perm.is_granted ?? perm.isGranted ?? false
-      return permModuleName === moduleName && permKey === key && isGranted
-    }),
-  )
+      return permKey === key && isGranted === true
+    })
+  })
 }
 
 
