@@ -65,6 +65,7 @@ export const authService = {
         }
         
         try {
+            // Используем /protected/ для проверки токена (возвращает пустой ответ при успехе)
             const response = await apiClient.get(endpoints.auth.protected);
             return response.success;
         } catch (error) {

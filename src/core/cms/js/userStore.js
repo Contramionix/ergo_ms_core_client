@@ -70,15 +70,13 @@ export const useUserStore = defineStore('userStore', () => {
       try {
         isLoading.value = true
         
-        // Сначала проверяем авторизацию
+        // Проверяем авторизацию (успешный ответ означает валидный токен)
         const authResponse = await apiClient.get(endpoints.auth.protected)
-        if (!authResponse?.data?.id) {
+        if (!authResponse?.success) {
           throw new Error('Пользователь не авторизован')
         }
 
-        user.value = authResponse.data
-        
-        // Загружаем полный профиль
+        // Загружаем полный профиль (включая все данные пользователя)
         await loadProfile()
         
         // Загружаем аватар
