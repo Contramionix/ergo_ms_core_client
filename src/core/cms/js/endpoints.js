@@ -11,6 +11,7 @@ export const cmsEndpoints = {
         devices: 'cms/adp/devices/',
         deleteDevice: id => `cms/adp/devices/${id}/`,
         profile: 'cms/adp/profile/',
+        menu: 'cms/adp/user-menu-data/',
         securitySettings: 'cms/adp/security-settings/',
     },
     cms: {

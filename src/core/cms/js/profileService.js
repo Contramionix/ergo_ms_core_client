@@ -143,18 +143,24 @@ export const profileService = {
 
     return {
       // Основная информация
-      id: user.id,
+      // id не включаем, так как он доступен через userStore.user.id (загружается через меню)
       username: user.username,
       email: user.email,
       firstName: user.first_name || '',
       lastName: user.last_name || '',
       middleName: user.middle_name || '',
-      fullName: profile.full_name || user.username,
+      fullName: (() => {
+        // Собираем полное имя из отдельных полей
+        const firstName = user.first_name?.trim() || ''
+        const middleName = user.middle_name?.trim() || ''
+        const lastName = user.last_name?.trim() || ''
+        const nameParts = [firstName, middleName, lastName].filter(part => part && part.trim())
+        return nameParts.length > 0 ? nameParts.join(' ') : user.username
+      })(),
       isActive: user.is_active,
       dateJoined: user.date_joined,
 
       // Профиль пользователя
-      avatar: profile.avatar,
       phone: profile.phone || '',
       website: profile.website || '',
       bio: profile.bio || '',
@@ -163,18 +169,8 @@ export const profileService = {
       language: profile.language || 'ru',
       timezone: profile.timezone || 'Europe/Moscow',
 
-      // Настройки уведомлений
-      emailNotifications: profile.email_notifications !== undefined ? profile.email_notifications : true,
-      pushNotifications: profile.push_notifications !== undefined ? profile.push_notifications : true,
-      smsNotifications: profile.sms_notifications !== undefined ? profile.sms_notifications : false,
-
-      // Настройки приватности
-      profileVisibility: profile.profile_visibility || 'public',
-      twoFactorEnabled: profile.two_factor_enabled || false,
-
       // Метаданные
-      createdAt: profile.created_at,
-      updatedAt: profile.updated_at
+      createdAt: profile.created_at
     }
   },
 

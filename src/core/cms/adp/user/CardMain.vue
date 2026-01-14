@@ -2,11 +2,9 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { Briefcase, Calendar, MapPin } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore'
-import { useProfile } from '@/core/cms/js/profileService.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 const userStore = useUserStore()
-const { getProfile, formatProfileData } = useProfile()
 
 const profileData = ref(null)
 const loading = ref(true)
@@ -59,14 +57,17 @@ async function fetchProfile() {
     // Используем данные из userStore, если они уже загружены
     if (userStore.profile) {
       profileData.value = userStore.profile
-    } else {
-      // Загружаем полный профиль только если его нет в store
-      const response = await getProfile()
-      profileData.value = formatProfileData(response)
+      return
+    }
+    
+    await userStore.loadProfile()
+    
+    // Используем данные из store после загрузки
+    if (userStore.profile) {
+      profileData.value = userStore.profile
     }
   } catch (error) {
     console.error('Ошибка загрузки профиля:', error)
-    // Если профиль не загрузился, используем данные из userStore
     if (userStore.profile) {
       profileData.value = userStore.profile
     }

@@ -1,8 +1,8 @@
 <script setup>
-import { ref, onMounted, computed, onUnmounted, nextTick, watch } from 'vue'
+import { ref, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import { CircleUserRound, Power, Building2 } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import DefaultAvatar from '@/components/DefaultAvatar.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 import { logout as authLogout } from '@/core/cms/adp/js/auth-index'
@@ -13,6 +13,29 @@ let dropdownInstance = null
 
 const organizations = ref([])
 const hasOrganizations = computed(() => organizations.value.length > 0)
+
+// Вычисляем имя пользователя напрямую из userStore.user
+const userName = computed(() => {
+  if (!userStore.user) return 'Гость'
+  
+  // Используем initials_name если есть (например, "Ефремов Д.А.")
+  if (userStore.user.initials_name && userStore.user.initials_name.trim()) {
+    return userStore.user.initials_name
+  }
+  
+  // Используем full_name как fallback
+  if (userStore.user.full_name && userStore.user.full_name.trim()) {
+    return userStore.user.full_name
+  }
+  
+  // Используем username как последний fallback
+  return userStore.user.username || 'Гость'
+})
+
+// Вычисляем email пользователя
+const userEmail = computed(() => {
+  return userStore.user?.email || 'email не указан'
+})
 
 const emit = defineEmits(['dropdown-toggle'])
 
@@ -46,43 +69,16 @@ const menuItems = computed(() => {
   return items
 })
 
-// Загрузка организаций пользователя (только проверка наличия)
 const fetchUserOrganizations = async () => {
-  // Проверяем наличие эндпоинта (модуль organizations может быть не установлен)
-  if (!endpoints?.organizations?.list) {
-    return []
-  }
+  if (!endpoints?.organizations?.list) return []
 
   try {
-    // Используем легковесный endpoint для проверки наличия организаций
-    // Вместо загрузки полных данных используем /check/ endpoint
     const checkUrl = endpoints.organizations.list.replace(/\/$/, '') + '/check/'
     const response = await apiClient.get(checkUrl)
-    
-    // Если организации есть, возвращаем массив с одним элементом-заглушкой
-    // Это нужно для hasOrganizations computed, который проверяет length > 0
-    if (response.success && response.data && response.data.exists) {
-      return [{}] // Возвращаем массив с одним элементом для проверки наличия
-    }
-    
-    return []
+    return response.success && response.data?.exists ? [{}] : []
   } catch {
     return []
   }
-}
-
-// Состояние ошибки загрузки аватара
-const avatarLoadError = ref(false)
-
-// Сбрасываем ошибку при изменении URL аватара
-watch(() => userStore.avatarUrl, () => {
-  avatarLoadError.value = false
-})
-
-// Обработка ошибки загрузки изображения
-const onImageError = () => {
-  console.error('Ошибка загрузки аватара в UserMenu:', userStore.avatarUrl)
-  avatarLoadError.value = true
 }
 
 // Централизованный выход из аккаунта
@@ -104,102 +100,47 @@ const handleLogout = async () => {
   // Сбрасываем состояние пользователя и выполняем редирект на /login
   userStore.logout()
 
-  // Закрываем dropdown, если он ещё видим (на случай, если редирект не сработает мгновенно)
-  if (dropdownInstance) {
-    try {
-      dropdownInstance.hide()
-    } catch (_) {
-      // игнорируем ошибки закрытия dropdown
-    }
-  }
+  // Закрываем dropdown, если он ещё видим
+  dropdownInstance?.hide()
 }
 
 // Инициализируем пользователя при загрузке компонента
 onMounted(async () => {
-  let isUserReady = userStore.isInitialized
-  if (!isUserReady) {
-    isUserReady = await userStore.initializeUser()
+  if (!userStore.isInitialized) {
+    await userStore.initializeUser()
   }
 
-  if (isUserReady) {
-    organizations.value = await fetchUserOrganizations()
-  } else {
-    organizations.value = []
-  }
+  organizations.value = await fetchUserOrganizations()
   
   // Инициализируем Bootstrap dropdown
   await nextTick()
-  if (dropdownElement.value && window.bootstrap && window.bootstrap.Dropdown) {
+  if (dropdownElement.value && window.bootstrap?.Dropdown) {
     dropdownInstance = new window.bootstrap.Dropdown(dropdownElement.value)
-    
-    // Добавляем обработчики событий для отслеживания состояния dropdown
-    dropdownElement.value.addEventListener('show.bs.dropdown', () => {
-      emit('dropdown-toggle', true)
-    })
-    
-    dropdownElement.value.addEventListener('hide.bs.dropdown', () => {
-      emit('dropdown-toggle', false)
-    })
+    dropdownElement.value.addEventListener('show.bs.dropdown', () => emit('dropdown-toggle', true))
+    dropdownElement.value.addEventListener('hide.bs.dropdown', () => emit('dropdown-toggle', false))
   }
 })
 
-// Очищаем instance при размонтировании
 onUnmounted(() => {
-  if (dropdownInstance) {
-    dropdownInstance.dispose()
-    dropdownInstance = null
-  }
+  dropdownInstance?.dispose()
+  dropdownInstance = null
 })
 </script>
 
 <template>
   <div class="dropdown">
-    <div
-      ref="dropdownElement"
-      class="tools__avatar avatar"
-      data-bs-toggle="dropdown"
-      aria-expanded="false"
-      data-bs-offset="16,20"
-    >
-      <!-- Показываем загруженное изображение если есть и нет ошибки -->
-      <img 
-        v-if="userStore.hasCustomAvatar && !avatarLoadError"
-        :src="userStore.avatarUrl"
-        :alt="userStore.displayName"
-        class="user-avatar-image"
-        @error="onImageError"
-      />
-      <!-- Показываем стандартный аватар если нет кастомного или ошибка загрузки -->
-      <DefaultAvatar 
-        v-else
-        :size="40"
-        :clickable="true"
-        :title="userStore.displayName"
-      />
+    <div ref="dropdownElement" class="tools__avatar avatar" data-bs-toggle="dropdown" aria-expanded="false" data-bs-offset="16,20">
+      <UserAvatar :size="40" :clickable="true" :title="userName"/>
     </div>
     <ul class="dropdown-menu dropdown-menu-end">
-      <!-- Информация о пользователе -->
       <li class="dropdown-header px-3 py-2 border-bottom">
         <div class="d-flex align-items-center">
           <div class="me-2">
-            <!-- Показываем загруженное изображение если есть и нет ошибки -->
-            <img 
-              v-if="userStore.hasCustomAvatar && !avatarLoadError"
-              :src="userStore.avatarUrl"
-              :alt="userStore.displayName"
-              class="user-avatar-small"
-              @error="onImageError"
-            />
-            <!-- Показываем стандартный аватар если нет кастомного или ошибка загрузки -->
-            <DefaultAvatar 
-              v-else
-              :size="32"
-              :title="userStore.displayName"
-            />
+            <UserAvatar :size="32" :title="userName"/>
           </div>
           <div class="flex-grow-1 min-width-0">
-            <div class="fw-semibold text-truncate">{{ userStore.displayName }}</div>
-            <small class="text-muted text-truncate d-block">{{ userStore.userEmail }}</small>
+            <div class="fw-semibold text-truncate">{{ userName }}</div>
+            <small class="text-muted text-truncate d-block">{{ userEmail }}</small>
           </div>
         </div>
         <div v-if="userStore.isLoading" class="mt-1">
@@ -208,10 +149,7 @@ onUnmounted(() => {
           </div>
         </div>
       </li>
-      
-      <!-- Меню -->
       <li v-for="(item, index) in menuItems" :key="item.id">
-        <!-- Для пункта "Выход" выполняем централизованный logout без роутинга -->
         <button
           v-if="item.link?.name === 'logout'"
           type="button"
@@ -242,11 +180,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped lang="scss">
-.avatar img {
-  width: 40px;
-  height: 40px;
-}
-
 .dropdown .dropdown-menu-end {
   inset: 0 0 auto auto;
   transform: translate(16px, 60px);
@@ -272,33 +205,17 @@ onUnmounted(() => {
   min-width: 0;
 }
 
-// Стили для загруженных изображений аватара
-.user-avatar-image {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
+.avatar :deep(.user-avatar-image) {
   border: 2px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-  cursor: pointer;
-  
-  &:hover {
-    transform: scale(1.05);
-    border-color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  }
 }
 
-.user-avatar-small {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.avatar :deep(.user-avatar--clickable:hover .user-avatar-image) {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
-
- 
+.dropdown-header :deep(.user-avatar-image) {
+  border-width: 1px;
+}
 </style>

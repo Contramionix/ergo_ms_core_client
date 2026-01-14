@@ -76,6 +76,13 @@ const currentModuleConfig = ref(null)
 // Состояние для отслеживания активных выпадающих элементов
 const activeDropdowns = ref(new Set())
 
+// Сброс состояния модуля
+const resetModuleState = () => {
+  currentModuleComponent.value = null
+  currentModuleClient.value = null
+  currentModuleConfig.value = null
+}
+
 // Загрузка модуля для текущего роута
 const loadModuleForRoute = async (routePath) => {
   try {
@@ -91,15 +98,11 @@ const loadModuleForRoute = async (routePath) => {
       }
     } else {
       console.warn('AI Assistant: Module not found for route:', routePath)
-      currentModuleComponent.value = null
-      currentModuleClient.value = null
-      currentModuleConfig.value = null
+      resetModuleState()
     }
   } catch (error) {
     console.error('Ошибка загрузки модуля ассистента:', error)
-    currentModuleComponent.value = null
-    currentModuleClient.value = null
-    currentModuleConfig.value = null
+    resetModuleState()
   }
 }
 
@@ -145,65 +148,29 @@ const setDropdownActive = (dropdownId, active) => {
 }
 
 
-// Функция для обрезки текста до определенного количества символов
-const truncateText = (text, maxLength = 30) => {
-  if (!text || text.length <= maxLength) return text
-  return text.substring(0, maxLength) + '...'
+// Функция для получения имени пользователя
+const getUserName = (truncate = false) => {
+  if (!userStore.user) return 'Гость'
+  
+  let name = ''
+  if (userStore.user.initials_name?.trim()) {
+    name = userStore.user.initials_name
+  } else if (userStore.user.full_name?.trim()) {
+    name = userStore.user.full_name
+  } else {
+    name = userStore.user.username || 'Гость'
+  }
+  
+  if (truncate && name.length > 30) {
+    return name.substring(0, 30) + '...'
+  }
+  return name
 }
 
 // Функция для получения полного имени пользователя без обрезки
-const getFullUserName = () => {
-  if (!userStore.user) return 'Гость'
+const getFullUserName = () => getUserName(false)
 
-  if (userStore.displayName === 'Гость') return 'Гость'
-
-  const firstName = userStore.user.first_name?.trim()
-  const lastName = userStore.user.last_name?.trim()
-
-  const cleanFirstName = firstName === ' ' ? '' : firstName
-  const cleanLastName = lastName === ' ' ? '' : lastName
-
-  if (cleanFirstName && cleanLastName) {
-    return `${cleanFirstName} ${cleanLastName}`
-  }
-
-  if (cleanFirstName) {
-    return cleanFirstName
-  }
-
-  if (cleanLastName) {
-    return cleanLastName
-  }
-
-  return 'Гость'
-}
-
-const userFullName = computed(() => {
-  if (!userStore.user) return 'Гость'
-
-  if (userStore.displayName === 'Гость') return 'Гость'
-
-  const firstName = userStore.user.first_name?.trim()
-  const lastName = userStore.user.last_name?.trim()
-
-  const cleanFirstName = firstName === ' ' ? '' : firstName
-  const cleanLastName = lastName === ' ' ? '' : lastName
-
-  let fullName = ''
-
-  if (cleanFirstName && cleanLastName) {
-    fullName = `${cleanFirstName} ${cleanLastName}`
-  } else if (cleanFirstName) {
-    fullName = cleanFirstName
-  } else if (cleanLastName) {
-    fullName = cleanLastName
-  } else {
-    return 'Гость'
-  }
-
-  // Ограничиваем длину имени до 30 символов
-  return truncateText(fullName, 30)
-})
+const userFullName = computed(() => getUserName(true))
 
 const toggleAssistant = () => {
   isAssistantVisible.value = !isAssistantVisible.value
@@ -223,6 +190,98 @@ onMounted(async () => {
 // Счетчик для уникальных ID streaming сообщений
 let streamingMessageIdCounter = 20000
 
+// Общая функция обработки streaming событий
+const handleStreamingEvent = (event, messageId, state) => {
+  const { currentMessage, sqlQuery, stageMessage, tableData } = state
+
+  switch (event.type) {
+    case 'start':
+    case 'stage':
+      state.stageMessage = event.message || event.text || ''
+      assistantChat.value?.updateStreamingMessage(messageId, {
+        stage: state.stageMessage,
+        sql: sqlQuery,
+        content: currentMessage,
+        data: tableData,
+      })
+      break
+
+    case 'sql_generation':
+      state.currentMessage += event.text || ''
+      assistantChat.value?.updateStreamingMessage(messageId, {
+        stage: stageMessage,
+        sqlGenerating: state.currentMessage,
+        data: tableData,
+      })
+      break
+
+    case 'sql':
+      state.sqlQuery = event.text || ''
+      state.currentMessage = ''
+      assistantChat.value?.updateStreamingMessage(messageId, {
+        stage: stageMessage,
+        sql: state.sqlQuery,
+        sqlGenerating: null,
+        content: state.currentMessage,
+        data: tableData,
+      })
+      break
+
+    case 'commentary':
+      state.currentMessage += event.text || ''
+      assistantChat.value?.updateStreamingMessage(messageId, {
+        stage: stageMessage,
+        sql: sqlQuery,
+        sqlGenerating: null,
+        content: state.currentMessage,
+        data: tableData,
+      })
+      break
+
+    case 'complete':
+      state.tableData = {
+        rows: event.rows,
+        columns: event.columns,
+        data: event.data,
+      }
+      assistantChat.value?.updateStreamingMessage(messageId, {
+        sql: event.sql || sqlQuery,
+        sqlGenerating: null,
+        content: currentMessage,
+        data: state.tableData,
+        completed: true,
+        streaming: false,
+        stage: '',
+      })
+      break
+
+    case 'error':
+      assistantChat.value?.updateStreamingMessage(messageId, {
+        error: event.message || event.text,
+        sqlGenerating: null,
+        completed: true,
+        streaming: false,
+        stage: '',
+      })
+      break
+
+    case 'done':
+      assistantChat.value?.finalizeStreamingMessage(messageId)
+      break
+  }
+}
+
+// Общая функция обработки ошибок streaming
+const handleStreamingError = (error, messageId, errorMessage) => {
+  console.error(errorMessage, error)
+  assistantChat.value?.finalizeStreamingMessage(messageId)
+  if (assistantChat.value) {
+    assistantChat.value.addAssistantMessage(
+      `❌ **${errorMessage}:**\n\n${error.message}\n\nУбедитесь, что Ollama запущен и доступен.`
+    )
+  }
+}
+
 const handleBIQuery = async ({ fileId, question }) => {
   if (!currentModuleClient.value) {
     console.error('BI клиент не загружен')
@@ -230,108 +289,25 @@ const handleBIQuery = async ({ fileId, question }) => {
   }
   console.log('BI Query from toolbar:', { fileId, question })
 
-  let currentMessage = ''
-  let sqlQuery = ''
-  let stageMessage = ''
-  let tableData = null
+  const state = {
+    currentMessage: '',
+    sqlQuery: '',
+    stageMessage: '',
+    tableData: null,
+  }
 
   const messageId = streamingMessageIdCounter++
 
   try {
-    // Используем streaming запрос через текущий клиент модуля
-    // Передаем настройки Ollama из конфига модуля
     const ollamaConfig = currentModuleConfig.value?.ollama || null
     await currentModuleClient.value.askQuestionStream(fileId, question, true, ollamaConfig, (event) => {
       console.log('Streaming event:', event)
-
-      switch (event.type) {
-        case 'start':
-        case 'stage':
-          stageMessage = event.message || event.text || ''
-          assistantChat.value?.updateStreamingMessage(messageId, {
-            stage: stageMessage,
-            sql: sqlQuery,
-            content: currentMessage,
-            data: tableData,
-          })
-          break
-
-        case 'sql_generation':
-          currentMessage += event.text || ''
-          assistantChat.value?.updateStreamingMessage(messageId, {
-            stage: stageMessage,
-            sqlGenerating: currentMessage,
-            data: tableData,
-          })
-          break
-
-        case 'sql':
-          sqlQuery = event.text || ''
-          currentMessage = ''
-          assistantChat.value?.updateStreamingMessage(messageId, {
-            stage: stageMessage,
-            sql: sqlQuery,
-            sqlGenerating: null,  // Очищаем - кружок "Генерация SQL" останавливается
-            content: currentMessage,
-            data: tableData,
-          })
-          break
-
-        case 'commentary':
-          currentMessage += event.text || ''
-          assistantChat.value?.updateStreamingMessage(messageId, {
-            stage: stageMessage,
-            sql: sqlQuery,
-            sqlGenerating: null,  // Очищаем генерацию SQL
-            content: currentMessage,
-            data: tableData,
-          })
-          break
-
-        case 'complete':
-          tableData = {
-            rows: event.rows,
-            columns: event.columns,
-            data: event.data,
-          }
-          assistantChat.value?.updateStreamingMessage(messageId, {
-            sql: event.sql || sqlQuery,
-            sqlGenerating: null,  // Очищаем генерацию SQL
-            content: currentMessage,
-            data: tableData,
-            completed: true,
-            streaming: false,
-            stage: '',  // Очищаем стадию
-          })
-          break
-
-        case 'error':
-          assistantChat.value?.updateStreamingMessage(messageId, {
-            error: event.message || event.text,
-            sqlGenerating: null,  // Очищаем генерацию SQL
-            completed: true,
-            streaming: false,
-            stage: '',  // Очищаем стадию
-          })
-          break
-
-        case 'done':
-          assistantChat.value?.finalizeStreamingMessage(messageId)
-          break
-      }
+      handleStreamingEvent(event, messageId, state)
     })
     
-    // Финализируем на всякий случай после завершения streaming
     assistantChat.value?.finalizeStreamingMessage(messageId)
   } catch (error) {
-    console.error('Error processing BI query:', error)
-    // Останавливаем кружок при ошибке
-    assistantChat.value?.finalizeStreamingMessage(messageId)
-    if (assistantChat.value) {
-      assistantChat.value.addAssistantMessage(
-        `❌ **Ошибка подключения к BI Assistant:**\n\n${error.message}\n\nУбедитесь, что Ollama запущен и доступен.`
-      )
-    }
+    handleStreamingError(error, messageId, 'Ошибка подключения к BI Assistant')
   }
 }
 
@@ -348,106 +324,24 @@ const handleChartAnalysis = async (chartId) => {
 
   console.log('Chart Analysis from toolbar:', { chartId })
 
-  let currentMessage = ''
-  let sqlQuery = ''
-  let stageMessage = ''
-  let tableData = null
+  const state = {
+    currentMessage: '',
+    sqlQuery: '',
+    stageMessage: '',
+    tableData: null,
+  }
 
   const messageId = streamingMessageIdCounter++
 
   try {
-    // Используем streaming запрос для анализа графика
     await currentModuleClient.value.analyzeChart(chartId, (event) => {
       console.log('Chart analysis event:', event)
-
-      switch (event.type) {
-        case 'start':
-        case 'stage':
-          stageMessage = event.message || event.text || ''
-          assistantChat.value?.updateStreamingMessage(messageId, {
-            stage: stageMessage,
-            sql: sqlQuery,
-            content: currentMessage,
-            data: tableData,
-          })
-          break
-
-        case 'sql_generation':
-          currentMessage += event.text || ''
-          assistantChat.value?.updateStreamingMessage(messageId, {
-            stage: stageMessage,
-            sqlGenerating: currentMessage,
-            data: tableData,
-          })
-          break
-
-        case 'sql':
-          sqlQuery = event.text || ''
-          currentMessage = ''
-          assistantChat.value?.updateStreamingMessage(messageId, {
-            stage: stageMessage,
-            sql: sqlQuery,
-            sqlGenerating: null,  // Очищаем - кружок останавливается
-            content: currentMessage,
-            data: tableData,
-          })
-          break
-
-        case 'commentary':
-          currentMessage += event.text || ''
-          assistantChat.value?.updateStreamingMessage(messageId, {
-            stage: stageMessage,
-            sql: sqlQuery,
-            sqlGenerating: null,  // Очищаем генерацию SQL
-            content: currentMessage,
-            data: tableData,
-          })
-          break
-
-        case 'complete':
-          tableData = {
-            rows: event.rows,
-            columns: event.columns,
-            data: event.data,
-          }
-          assistantChat.value?.updateStreamingMessage(messageId, {
-            sql: event.sql || sqlQuery,
-            sqlGenerating: null,  // Очищаем генерацию SQL
-            content: currentMessage,
-            data: tableData,
-            completed: true,
-            streaming: false,
-            stage: '',  // Очищаем стадию
-          })
-          break
-
-        case 'error':
-          assistantChat.value?.updateStreamingMessage(messageId, {
-            error: event.message || event.text,
-            sqlGenerating: null,  // Очищаем генерацию SQL
-            completed: true,
-            streaming: false,
-            stage: '',  // Очищаем стадию
-          })
-          break
-
-        case 'done':
-          assistantChat.value?.finalizeStreamingMessage(messageId)
-          break
-      }
+      handleStreamingEvent(event, messageId, state)
     })
     
-    // Финализируем на всякий случай после завершения streaming
     assistantChat.value?.finalizeStreamingMessage(messageId)
   } catch (error) {
-    console.error('Error analyzing chart:', error)
-    // Останавливаем кружок при ошибке
-    assistantChat.value?.finalizeStreamingMessage(messageId)
-    if (assistantChat.value) {
-      assistantChat.value.addAssistantMessage(
-        `❌ **Ошибка анализа графика:**\n\n${error.message}\n\nУбедитесь, что Ollama запущен и доступен.`
-      )
-    }
+    handleStreamingError(error, messageId, 'Ошибка анализа графика')
   }
 }
 </script>
@@ -499,7 +393,7 @@ const handleChartAnalysis = async (chartId) => {
 .tools__user__name {
   display: flex;
   flex-direction: column;
-  min-width: 0; // Позволяет flex элементам сжиматься
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -540,8 +434,6 @@ const handleChartAnalysis = async (chartId) => {
   }
 }
 
-
-
 .tools__user__avatar {
   cursor: pointer;
   background-color: grey;
@@ -560,33 +452,5 @@ const handleChartAnalysis = async (chartId) => {
     box-shadow: 0 0 0 2px var(--color-primary-background);
     background-color: #4caf50;
   }
-}
-</style>
-
-<style lang="scss">
-.header-btn {
-  padding: 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background-color: var(--color-hover-background);
-  }
-}
-
-.header-dropdown-item {
-  @include flex-row-gap(12px, center);
-  transition: all $transition;
-  padding: $padding-internal $padding-external;
-  cursor: pointer;
-}
-
-.header-dropdown-center .header-dropdown-menu {
-  inset: 0 auto auto 0;
-  transform: translate3d(-60px, 60.6px, 0px);
 }
 </style>

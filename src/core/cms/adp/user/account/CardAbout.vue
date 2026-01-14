@@ -121,9 +121,14 @@ const fetchProfile = async () => {
     if (userStore.profile) {
       profileData.value = userStore.profile
     } else {
-      // Загружаем полный профиль только если его нет в store
-      const response = await getProfile()
-      profileData.value = formatProfileData(response)
+      // Если профиля нет в store, загружаем его через store
+      // Это гарантирует, что профиль будет сохранен в store для других компонентов
+      await userStore.loadProfile()
+      
+      // Используем данные из store после загрузки
+      if (userStore.profile) {
+        profileData.value = userStore.profile
+      }
     }
 
     // Инициализируем форму данными профиля

@@ -16,14 +16,19 @@ export const useUserStore = defineStore('userStore', () => {
   const isLoading = ref(false)
   const isInitialized = ref(false)
   let initializationPromise = null // Промис текущей инициализации для предотвращения гонки условий
+  let loadProfilePromise = null // Промис текущей загрузки профиля для предотвращения гонки условий
 
-  // ==== GETTERS ====
+
   const isAuthenticated = computed(() => !!user.value)
   const fullName = computed(() => {
     if (!user.value) return 'Гость'
-    if (profile.value?.fullName) return profile.value.fullName
     
-    // Обрабатываем имя, отчество и фамилию
+    // Сначала проверяем полное имя из профиля (собирается из отдельных полей)
+    if (profile.value?.fullName && profile.value.fullName !== user.value.username) {
+      return profile.value.fullName
+    }
+    
+    // Собираем полное имя из отдельных полей пользователя
     const firstName = user.value.first_name?.trim() || ''
     const middleName = user.value.middle_name?.trim() || ''
     const lastName = user.value.last_name?.trim() || ''
@@ -31,8 +36,10 @@ export const useUserStore = defineStore('userStore', () => {
     const nameParts = [firstName, middleName, lastName].filter(part => part && part.trim())
     const fullName = nameParts.join(' ')
 
-    // Если нет ни имени, ни фамилии, возвращаем "Гость"
-    if (!fullName) return 'Гость'
+    // Если нет ни имени, ни фамилии, возвращаем username или "Гость"
+    if (!fullName) {
+      return user.value.username || 'Гость'
+    }
     
     return fullName
   })
@@ -55,6 +62,23 @@ export const useUserStore = defineStore('userStore', () => {
 
   // ==== ACTIONS ====
   
+  // Сброс состояния пользователя
+  const resetUserState = () => {
+    user.value = null
+    profile.value = null
+    avatarUrl.value = null
+  }
+
+  // Обновление базовой информации пользователя
+  const updateUserData = (data) => {
+    if (data) {
+      user.value = {
+        ...user.value,
+        ...data
+      }
+    }
+  }
+  
   // Инициализация пользователя
   const initializeUser = async () => {
     // Если уже инициализирован, возвращаем успех
@@ -76,8 +100,9 @@ export const useUserStore = defineStore('userStore', () => {
           throw new Error('Пользователь не авторизован')
         }
 
-        // Загружаем полный профиль (включая все данные пользователя)
-        await loadProfile()
+        // Загружаем минимальные данные для меню (id, username, email, full_name, initials_name)
+        // full_name и initials_name доступны только через эндпоинт меню, не в профиле
+        await loadMenuData()
         
         // Загружаем аватар
         await loadAvatar()
@@ -87,9 +112,7 @@ export const useUserStore = defineStore('userStore', () => {
 
       } catch (error) {
         console.error('Ошибка инициализации пользователя:', error)
-        user.value = null
-        profile.value = null
-        avatarUrl.value = null // Используем стандартный аватар
+        resetUserState()
         return false
       } finally {
         isLoading.value = false
@@ -100,24 +123,67 @@ export const useUserStore = defineStore('userStore', () => {
     return await initializationPromise
   }
 
-  // Загрузка полного профиля пользователя
-  const loadProfile = async () => {
+  // Загрузка минимальных данных для меню
+  const loadMenuData = async () => {
     try {
-      const profileData = await profileService.getProfile()
-      profile.value = profileService.formatProfileData(profileData)
-      
-      // Обновляем базовую информацию пользователя
-      if (profileData) {
-        user.value = {
-          ...user.value,
-          ...profileData
-        }
+      // Проверяем, что endpoint существует
+      if (!endpoints?.auth?.menu) {
+        console.warn('Endpoint menu не найден, загружаем полный профиль')
+        // Fallback: загружаем полный профиль, если menu endpoint недоступен
+        await loadProfile()
+        return
       }
 
+      const response = await apiClient.get(endpoints.auth.menu)
+      
+      const userData = response?.data || response
+      
+      if (userData && userData.username && !userData.adp_profile && !userData.first_name) {
+        user.value = userData
+        return
+      }
+      
+      console.warn('Menu endpoint вернул полные данные вместо легковесных, используем fallback')
+      await loadProfile()
     } catch (error) {
-      console.error('Ошибка загрузки профиля:', error)
-      // Не показываем ошибку пользователю, профиль может быть пустым
+      console.error('Ошибка загрузки данных меню:', error)
+      try {
+        await loadProfile()
+      } catch (profileError) {
+        console.error('Ошибка загрузки профиля:', profileError)
+      }
     }
+  }
+
+  // Загрузка полного профиля пользователя
+  const loadProfile = async () => {
+    // Если профиль уже загружается, ждем завершения
+    if (loadProfilePromise) {
+      return await loadProfilePromise
+    }
+    
+    // Если профиль уже загружен, не делаем повторный запрос
+    if (profile.value) {
+      return profile.value
+    }
+
+    // Создаем новый промис загрузки профиля
+    loadProfilePromise = (async () => {
+      try {
+        const profileData = await profileService.getProfile()
+        profile.value = profileService.formatProfileData(profileData)
+        updateUserData(profileData)
+        return profile.value
+      } catch (error) {
+        console.error('Ошибка загрузки профиля:', error)
+        // Не показываем ошибку пользователю, профиль может быть пустым
+        return null
+      } finally {
+        loadProfilePromise = null // Очищаем промис после завершения
+      }
+    })()
+
+    return await loadProfilePromise
   }
 
   // Загрузка аватара пользователя
@@ -139,15 +205,7 @@ export const useUserStore = defineStore('userStore', () => {
       isLoading.value = true
       const updatedProfile = await profileService.updateProfile(profileData)
       profile.value = profileService.formatProfileData(updatedProfile)
-      
-      // Обновляем базовую информацию пользователя
-      if (updatedProfile) {
-        user.value = {
-          ...user.value,
-          ...updatedProfile
-        }
-      }
-
+      updateUserData(updatedProfile)
       toast.success('Профиль успешно обновлен')
       return updatedProfile
 
@@ -190,10 +248,7 @@ export const useUserStore = defineStore('userStore', () => {
   // Сброс аватара
   const resetAvatar = async () => {
     try {
-      const response = await apiClient.get(endpoints.userAvatars.list)
-      if (response.data?.length) {
-        await apiClient.delete(endpoints.userAvatars.delete(response.data[0].id))
-      }
+      await apiClient.delete(endpoints.userAvatars.deleteCurrent)
       avatarUrl.value = null // Используем стандартный аватар
       toast.success('Аватар сброшен')
       return true
@@ -207,9 +262,7 @@ export const useUserStore = defineStore('userStore', () => {
 
   // Выход из системы
   const logout = () => {
-    user.value = null
-    profile.value = null
-    avatarUrl.value = null // Используем стандартный аватар
+    resetUserState()
     isInitialized.value = false
     
     // Очищаем куки

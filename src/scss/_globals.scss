@@ -239,3 +239,32 @@ svg.apexcharts-svg {
     }
   }
 }
+
+// Кнопки заголовка (используются в MenuToolbar, SettingsMenu, AppsMenu и др.)
+.header-btn {
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background-color: var(--color-hover-background);
+  }
+}
+
+// Элементы выпадающего меню заголовка
+.header-dropdown-item {
+  @include flex-row-gap(12px, center);
+  transition: all $transition;
+  padding: $padding-internal $padding-external;
+  cursor: pointer;
+}
+
+// Центрированное выпадающее меню заголовка
+.header-dropdown-center .header-dropdown-menu {
+  inset: 0 auto auto 0;
+  transform: translate3d(-60px, 60.6px, 0px);
+}

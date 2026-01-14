@@ -16,7 +16,7 @@ export const categoriesEndpoints = {
     userAvatars: {
         list: 'settings/user-avatars/',
         create: 'settings/user-avatars/',
-        delete: id => `settings/user-avatars/${id}/`
+        deleteCurrent: 'settings/user-avatars/current/'
     },
     settings: {
         generalSettings: 'settings/general-settings/',
