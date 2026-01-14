@@ -8,7 +8,6 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import '@he-tree/vue/style/default.css'
 import '@he-tree/vue/style/material-design.css'
-import { Tooltip } from 'bootstrap/dist/js/bootstrap.bundle.min.js'
 
 import '@/scss/styles.scss'
 
@@ -28,7 +27,10 @@ const pinia = createPinia()
 
 app.directive('tooltip', {
   mounted(el) {
-    new Tooltip(el, { trigger: 'hover' })
+    // Используем глобальный объект Bootstrap из bundle
+    if (window.bootstrap && window.bootstrap.Tooltip) {
+      new window.bootstrap.Tooltip(el, { trigger: 'hover' })
+    }
   },
 })
 

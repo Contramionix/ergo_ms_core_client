@@ -1,8 +1,7 @@
 <script setup>
 import { Settings, Sun, Moon, LaptopMinimal } from 'lucide-vue-next'
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Dropdown } from 'bootstrap/dist/js/bootstrap.bundle.min.js'
 
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
@@ -22,10 +21,10 @@ const changeTheme = (newTheme) => {
   }
   
   // Закрываем dropdown после выбора
-  if (dropdownRef.value) {
+  if (dropdownRef.value && window.bootstrap && window.bootstrap.Dropdown) {
     const dropdownElement = dropdownRef.value.querySelector('[data-bs-toggle="dropdown"]')
     if (dropdownElement) {
-      const bsDropdown = Dropdown.getInstance(dropdownElement)
+      const bsDropdown = window.bootstrap.Dropdown.getInstance(dropdownElement)
       if (bsDropdown) {
         bsDropdown.hide()
       }
@@ -43,10 +42,10 @@ const themes = ref([
 const goToSettings = () => {
   router.push({ name: 'Settings' })
   // Закрываем dropdown
-  if (dropdownRef.value) {
+  if (dropdownRef.value && window.bootstrap && window.bootstrap.Dropdown) {
     const dropdownElement = dropdownRef.value.querySelector('[data-bs-toggle="dropdown"]')
     if (dropdownElement) {
-      const bsDropdown = Dropdown.getInstance(dropdownElement)
+      const bsDropdown = window.bootstrap.Dropdown.getInstance(dropdownElement)
       if (bsDropdown) {
         bsDropdown.hide()
       }

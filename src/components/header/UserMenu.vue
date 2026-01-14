@@ -3,7 +3,6 @@ import { ref, onMounted, computed, onUnmounted, nextTick, watch } from 'vue'
 import { CircleUserRound, Power, Building2 } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import DefaultAvatar from '@/components/DefaultAvatar.vue'
-import { Dropdown } from 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 import { logout as authLogout } from '@/core/cms/adp/js/auth-index'
@@ -133,8 +132,8 @@ onMounted(async () => {
   
   // Инициализируем Bootstrap dropdown
   await nextTick()
-  if (dropdownElement.value) {
-    dropdownInstance = new Dropdown(dropdownElement.value)
+  if (dropdownElement.value && window.bootstrap && window.bootstrap.Dropdown) {
+    dropdownInstance = new window.bootstrap.Dropdown(dropdownElement.value)
     
     // Добавляем обработчики событий для отслеживания состояния dropdown
     dropdownElement.value.addEventListener('show.bs.dropdown', () => {

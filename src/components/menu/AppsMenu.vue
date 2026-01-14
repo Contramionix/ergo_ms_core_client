@@ -2,7 +2,6 @@
 import { Grid3x3, BarChart3 } from 'lucide-vue-next'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Dropdown } from 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import { moduleManager } from '@/modules/index.js'
 import { biAnalysisService } from '@/core/bi/js/biAnalysisService.js'
 import { biChartsService } from '@/core/bi/js/biChartsService.js'
@@ -79,10 +78,10 @@ const goToApp = (app) => {
               biChartsService.open(state.fileId)
               
               // Закрываем dropdown
-              if (dropdownRef.value) {
+              if (dropdownRef.value && window.bootstrap && window.bootstrap.Dropdown) {
                 const dropdownElement = dropdownRef.value.querySelector('[data-bs-toggle="dropdown"]')
                 if (dropdownElement) {
-                  const bsDropdown = Dropdown.getInstance(dropdownElement)
+                  const bsDropdown = window.bootstrap.Dropdown.getInstance(dropdownElement)
                   if (bsDropdown) {
                     bsDropdown.hide()
                   }
@@ -103,10 +102,10 @@ const goToApp = (app) => {
   }
   
   // Закрываем dropdown
-  if (dropdownRef.value) {
+  if (dropdownRef.value && window.bootstrap && window.bootstrap.Dropdown) {
     const dropdownElement = dropdownRef.value.querySelector('[data-bs-toggle="dropdown"]')
     if (dropdownElement) {
-      const bsDropdown = Dropdown.getInstance(dropdownElement)
+      const bsDropdown = window.bootstrap.Dropdown.getInstance(dropdownElement)
       if (bsDropdown) {
         bsDropdown.hide()
       }

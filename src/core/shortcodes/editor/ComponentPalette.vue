@@ -1,7 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { shortcodesService } from '@/core/cms/js/shortcodes'
-import Popover from 'bootstrap/js/dist/popover'
 import * as Icons from 'lucide-vue-next'
 
 const templates = ref([])
@@ -44,10 +43,12 @@ const initPopovers = () => {
   popovers.forEach(p => p.dispose())
   popovers = []
   nextTick(() => {
-    document.querySelectorAll('[data-bs-toggle="popover"]')
-      .forEach(el => popovers.push(new Popover(el, {
-        sanitize: false, html: true, container: 'body', trigger: 'hover focus'
-      })))
+    if (window.bootstrap && window.bootstrap.Popover) {
+      document.querySelectorAll('[data-bs-toggle="popover"]')
+        .forEach(el => popovers.push(new window.bootstrap.Popover(el, {
+          sanitize: false, html: true, container: 'body', trigger: 'hover focus'
+        })))
+    }
   })
 }
 
