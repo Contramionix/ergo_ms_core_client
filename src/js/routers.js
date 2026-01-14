@@ -236,21 +236,16 @@ router.beforeEach(async (to, from, next) => {
       }
       
       // Дополнительно проверяем наличие организаций у пользователя
+      // Используем легковесный endpoint check для проверки наличия без загрузки полных данных
       try {
         const { apiClient } = await import('./api/manager')
-        const resp = await apiClient.get('/organizations/organizations/')
+        const resp = await apiClient.get('/organizations/organizations/check/')
         
-        if (resp.success && resp.data) {
-          const organizations = Array.isArray(resp.data) 
-            ? resp.data 
-            : (resp.data.results || resp.data.items || [])
-          
-          if (organizations.length === 0) {
-            // Если у пользователя нет организаций - перенаправляем на страницу создания в CRM
-            return safeNext({ name: 'CRMRemasteredWelcome' })
-          }
+        if (resp.success && resp.data && resp.data.exists) {
+          // У пользователя есть организации - продолжаем навигацию
+          return safeNext()
         } else {
-          // Если запрос не успешен или нет данных - перенаправляем на страницу создания
+          // Если у пользователя нет организаций - перенаправляем на страницу создания в CRM
           return safeNext({ name: 'CRMRemasteredWelcome' })
         }
       } catch (error) {

@@ -46,20 +46,7 @@ const menuItems = computed(() => {
   return items
 })
 
-// Нормализация ответа от API организаций
-const normalizeOrganizationsResponse = (data) => {
-  if (Array.isArray(data)) {
-    return data
-  }
-
-  if (Array.isArray(data?.results)) {
-    return data.results
-  }
-
-  return []
-}
-
-// Загрузка организаций пользователя
+// Загрузка организаций пользователя (только проверка наличия)
 const fetchUserOrganizations = async () => {
   // Проверяем наличие эндпоинта (модуль organizations может быть не установлен)
   if (!endpoints?.organizations?.list) {
@@ -67,8 +54,18 @@ const fetchUserOrganizations = async () => {
   }
 
   try {
-    const response = await apiClient.get(endpoints.organizations.list)
-    return normalizeOrganizationsResponse(response.data)
+    // Используем легковесный endpoint для проверки наличия организаций
+    // Вместо загрузки полных данных используем /check/ endpoint
+    const checkUrl = endpoints.organizations.list.replace(/\/$/, '') + '/check/'
+    const response = await apiClient.get(checkUrl)
+    
+    // Если организации есть, возвращаем массив с одним элементом-заглушкой
+    // Это нужно для hasOrganizations computed, который проверяет length > 0
+    if (response.success && response.data && response.data.exists) {
+      return [{}] // Возвращаем массив с одним элементом для проверки наличия
+    }
+    
+    return []
   } catch {
     return []
   }
