@@ -21,6 +21,7 @@ export const categoriesEndpoints = {
     settings: {
         generalSettings: 'settings/general-settings/',
         lastSettings: 'settings/general-settings/last/',
+        siteName: 'settings/general-settings/site-name/',
         mediaSettings: 'settings/media-settings/',
         permalinkSettings: 'settings/permalink-settings/',
         emailSettings: 'settings/email-settings/',

@@ -206,10 +206,9 @@ onMounted(async () => {
 
   // Загружаем название сайта
   try {
-    const res = await apiClient.get(endpoints.settings.lastSettings)
+    const res = await apiClient.get(endpoints.settings.siteName)
     if (res.success) {
-      const settings = Array.isArray(res.data) ? res.data[0] : res.data
-      siteName.value = settings?.site_name || 'ERGO MS'
+      siteName.value = res.data?.site_name || 'ERGO MS'
     }
   } catch {
     siteName.value = 'ERGO MS'
