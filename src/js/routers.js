@@ -24,7 +24,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll, getPermissionRules } from '@/modules/index.js'
 import { checkRouteAdpAccess, hasAnyModulePermission } from '@/core/cms/adp/js/accessControl'
-import Cookies from 'js-cookie'
+import tokenService from '@/core/cms/js/tokenService'
 import { accessDeniedState } from './accessDeniedState'
 
 // Кеш для правил проверки прав
@@ -89,7 +89,7 @@ async function checkRouteAccess(to) {
 const routes = await generateAllRoutes()
 
 // Валидация конфигурации при запуске (async)
-const validation = await validateAll()
+await validateAll()
 
 routes.forEach((route) => {
   if (!route.meta || !Object.prototype.hasOwnProperty.call(route.meta, 'startRoute')) {
@@ -139,7 +139,7 @@ router.beforeEach(async (to, from, next) => {
         let hasActiveOrganization = false
         
         try {
-          const currentUserId = Cookies.get('userId')
+          const currentUserId = tokenService.getUserId()
           const currentUserIdNum = currentUserId ? parseInt(currentUserId, 10) : null
           
           const stored = localStorage.getItem(STORAGE_KEY)
@@ -194,7 +194,7 @@ router.beforeEach(async (to, from, next) => {
       if (typeof window !== 'undefined' && window.localStorage) {
         try {
           const STORAGE_KEY = 'crm_active_organization'
-          const currentUserId = Cookies.get('userId')
+          const currentUserId = tokenService.getUserId()
           const currentUserIdNum = currentUserId ? parseInt(currentUserId, 10) : null
           
           const stored = localStorage.getItem(STORAGE_KEY)

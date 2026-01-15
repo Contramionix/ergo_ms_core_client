@@ -219,7 +219,6 @@ class ApiClient {
   logout() {
     Cookies.remove('token')
     Cookies.remove('refresh')
-    Cookies.remove('userId')
     
     // Очищаем активную организацию при выходе
     try {

@@ -266,7 +266,6 @@ export const useUserStore = defineStore('userStore', () => {
     isInitialized.value = false
     
     // Очищаем куки
-    Cookies.remove('userId')
     Cookies.remove('csrftoken')
     
     // Очищаем активную организацию при выходе

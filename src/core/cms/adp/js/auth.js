@@ -13,7 +13,6 @@ export const authService = {
         
         if (response.success) {
             tokenService.setTokens(response.data.access, response.data.refresh)
-            Cookies.set('userId', response.data.user_id)
         }
         
         return response;
@@ -79,7 +78,6 @@ export const authService = {
     
     logout() {
         tokenService.clear()
-        Cookies.remove('userId')
         
         // Очищаем активную организацию при выходе
         try {

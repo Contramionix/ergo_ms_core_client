@@ -7,7 +7,7 @@ function decodePayload(token) {
     const base64 = token.split('.')[1]
     const json = atob(base64.replace(/-/g, '+').replace(/_/g, '/'))
     return JSON.parse(json)
-  } catch (e) {
+  } catch {
     return null
   }
 }
@@ -56,7 +56,6 @@ export const tokenService = {
   clear() {
     Cookies.remove('token')
     Cookies.remove('refresh')
-    Cookies.remove('userId')
     
     // Очищаем активную организацию при очистке токенов
     try {
@@ -94,6 +93,12 @@ export const tokenService = {
     if (!payload?.exp) return false
     const nowSec = Math.floor(Date.now() / 1000)
     return payload.exp - nowSec <= thresholdSeconds
+  },
+  getUserId() {
+    const access = this.getAccess()
+    if (!access) return null
+    const payload = decodePayload(access)
+    return payload?.user_id ? String(payload.user_id) : null
   }
 }
 
