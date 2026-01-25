@@ -24,8 +24,17 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll, getPermissionRules } from '@/modules/index.js'
 import { checkRouteAdpAccess, hasAnyModulePermission } from '@/core/cms/adp/js/accessControl'
-import tokenService from '@/core/cms/js/tokenService'
 import { accessDeniedState } from './accessDeniedState'
+
+// Опциональный импорт organizationGuard (модуль organizations может быть не установлен)
+let organizationGuard = null
+try {
+  const orgGuardModule = await import('../../../../modules/organizations/client/js/organizationGuard.js')
+  organizationGuard = orgGuardModule.organizationGuard
+} catch {
+  // Модуль organizations не установлен - organizationGuard остаётся null
+  console.debug('[Router] Модуль organizations не установлен, organizationGuard отключен')
+}
 
 // Кеш для правил проверки прав
 let cachedPermissionRules = null
@@ -127,131 +136,26 @@ router.beforeEach(async (to, from, next) => {
       return safeNext({ name: 'StartPage' })
     }
 
-    // requiresActiveOrganization для страниц CRM - проверяем сразу после авторизации
-    const isWelcomePage = to.path === '/crm-remastered/welcome' || to.name === 'CRMRemasteredWelcome'
-    const isCRMRoute = to.path && to.path.startsWith('/crm-remastered') && !isWelcomePage
-    const hasRequiresActiveOrgFlag = to.meta && to.meta.requiresActiveOrganization === true
-    const isCRMName = to.name && to.name.startsWith('CRMRemastered') && to.name !== 'CRMRemasteredWelcome'
-    
-    if ((isCRMRoute || isCRMName || hasRequiresActiveOrgFlag) && !isWelcomePage) {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const STORAGE_KEY = 'crm_active_organization'
-        let hasActiveOrganization = false
-        
-        try {
-          const currentUserId = tokenService.getUserId()
-          const currentUserIdNum = currentUserId ? parseInt(currentUserId, 10) : null
-          
-          const stored = localStorage.getItem(STORAGE_KEY)
-          if (stored) {
-            try {
-              const data = JSON.parse(stored)
-              
-              let org = null
-              let orgUserId = null
-              
-              if (data.organization) {
-                org = data.organization
-                orgUserId = data.user_id || null
-              } else {
-                org = data
-                orgUserId = null
-              }
-              
-              if (org && (org.id || org.name)) {
-                if (currentUserIdNum && orgUserId && orgUserId !== currentUserIdNum) {
-                  localStorage.removeItem(STORAGE_KEY)
-                  hasActiveOrganization = false
-                } else {
-                  hasActiveOrganization = true
-                }
-              }
-            } catch (parseError) {
-            }
-          }
-        } catch (storageError) {
+    // 2) Проверка авторизации в организацию (JWT-based)
+    // organizationGuard проверяет наличие organization_id в JWT токене
+    // Пропускаем если модуль organizations не установлен
+    if (organizationGuard) {
+      let organizationRedirect = null
+      await organizationGuard(to, from, (redirectTo) => {
+        if (redirectTo && typeof redirectTo === 'object') {
+          organizationRedirect = redirectTo
         }
-        
-        if (!hasActiveOrganization) {
-          return safeNext({ name: 'CRMRemasteredWelcome' })
-        }
-      } else {
-        return safeNext({ name: 'CRMRemasteredWelcome' })
+      })
+      
+      if (organizationRedirect) {
+        return safeNext(organizationRedirect)
       }
     }
 
-    // 2) проверка прав доступа (модули + ADP URL-политики)
+    // 3) Проверка прав доступа (модули + ADP URL-политики)
     const accessResult = await checkRouteAccess(to)
     if (!accessResult.allowed) {
       return accessResult.redirect ? safeNext({ name: accessResult.redirect }) : next()
-    }
-
-    // 3) requiresOrganization для страниц настроек организации
-    if (to.meta && to.meta.requiresOrganization) {
-      // Сначала проверяем наличие активной организации в localStorage
-      let hasActiveOrganization = false
-      
-      if (typeof window !== 'undefined' && window.localStorage) {
-        try {
-          const STORAGE_KEY = 'crm_active_organization'
-          const currentUserId = tokenService.getUserId()
-          const currentUserIdNum = currentUserId ? parseInt(currentUserId, 10) : null
-          
-          const stored = localStorage.getItem(STORAGE_KEY)
-          if (stored) {
-            try {
-              const data = JSON.parse(stored)
-              
-              let org = null
-              let orgUserId = null
-              
-              if (data.organization) {
-                org = data.organization
-                orgUserId = data.user_id || null
-              } else {
-                org = data
-                orgUserId = null
-              }
-              
-              if (org && (org.id || org.name)) {
-                if (currentUserIdNum && orgUserId && orgUserId !== currentUserIdNum) {
-                  localStorage.removeItem(STORAGE_KEY)
-                  hasActiveOrganization = false
-                } else {
-                  hasActiveOrganization = true
-                }
-              }
-            } catch (parseError) {
-              // Игнорируем ошибки парсинга
-            }
-          }
-        } catch (storageError) {
-          // Игнорируем ошибки доступа к localStorage
-        }
-      }
-      
-      // Если нет активной организации - перенаправляем на Welcome
-      if (!hasActiveOrganization) {
-        return safeNext({ name: 'CRMRemasteredWelcome' })
-      }
-      
-      // Дополнительно проверяем наличие организаций у пользователя
-      // Используем легковесный endpoint check для проверки наличия без загрузки полных данных
-      try {
-        const { apiClient } = await import('./api/manager')
-        const resp = await apiClient.get('/organizations/check/')
-        
-        if (resp.success && resp.data && resp.data.exists) {
-          // У пользователя есть организации - продолжаем навигацию
-          return safeNext()
-        } else {
-          // Если у пользователя нет организаций - перенаправляем на страницу создания в CRM
-          return safeNext({ name: 'CRMRemasteredWelcome' })
-        }
-      } catch (error) {
-        // При ошибке также перенаправляем на страницу создания
-        return safeNext({ name: 'CRMRemasteredWelcome' })
-      }
     }
 
     return safeNext()

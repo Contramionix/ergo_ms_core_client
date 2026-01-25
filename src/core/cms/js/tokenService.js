@@ -57,12 +57,12 @@ export const tokenService = {
     Cookies.remove('token')
     Cookies.remove('refresh')
     
-    // Очищаем активную организацию при очистке токенов
+    // Очищаем старый localStorage для обратной совместимости при миграции
     try {
       const STORAGE_KEY = 'crm_active_organization'
       localStorage.removeItem(STORAGE_KEY)
     } catch (error) {
-      console.error('Ошибка очистки активной организации при очистке токенов:', error)
+      // Игнорируем ошибки очистки localStorage
     }
   },
   async tryRefresh() {
@@ -99,6 +99,46 @@ export const tokenService = {
     if (!access) return null
     const payload = decodePayload(access)
     return payload?.user_id ? String(payload.user_id) : null
+  },
+  
+  /**
+   * Получает organization_id из текущего JWT токена
+   * @returns {number|null} - ID организации или null
+   */
+  getOrganizationId() {
+    const access = this.getAccess()
+    if (!access) return null
+    const payload = decodePayload(access)
+    return payload?.organization_id ?? null
+  },
+  
+  /**
+   * Получает department_id из текущего JWT токена
+   * @returns {number|null} - ID подразделения или null
+   */
+  getDepartmentId() {
+    const access = this.getAccess()
+    if (!access) return null
+    const payload = decodePayload(access)
+    return payload?.department_id ?? null
+  },
+  
+  /**
+   * Проверяет, есть ли активная сессия организации
+   * @returns {boolean}
+   */
+  hasActiveOrganization() {
+    return this.getOrganizationId() !== null
+  },
+  
+  /**
+   * Получает полный payload токена
+   * @returns {object|null}
+   */
+  getPayload() {
+    const access = this.getAccess()
+    if (!access) return null
+    return decodePayload(access)
   }
 }
 
