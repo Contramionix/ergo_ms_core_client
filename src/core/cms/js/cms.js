@@ -253,6 +253,11 @@ export const CheckAccess = {
         return response;
     },
 
+    async GetRoleGroupOptions() {
+        const response = await apiClient.get(endpoints.cms.roleGroups.list, { minimal: 1 }, true);
+        return response;
+    },
+
     async CreateRoleGroup(data) {
         const response = await apiClient.post(endpoints.cms.roleGroups.list, data, true);
         return response;

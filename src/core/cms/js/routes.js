@@ -49,6 +49,14 @@ export default {
       "requiresAuth": true
     }
   },
+  "ImportUsersPanel": {
+    "path": "/admin-panel/users/import",
+    "component": "@/core/cms/adp/admin/ImportUsers.vue",
+    "meta": {
+      "title": "Импорт пользователей",
+      "requiresAuth": true
+    }
+  },
   "CategoriesPanel": {
     "path": "/admin-panel/categories",
     "component": "@/core/cms/adp/admin/Categories.vue",
