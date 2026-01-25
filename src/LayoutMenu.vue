@@ -66,6 +66,9 @@ const isBIAnalysisModalVisible = ref(false)
 const isBIChartsModalVisible = ref(false)
 const chartsModalFileId = ref(null)
 
+// Полноэкранный режим (без меню и ограничений контейнера)
+const isFullPage = computed(() => route.meta?.fullPage === true)
+
 function updateMenuVisibilityImmediate() {
   if (window.innerWidth >= 1200) {
     isMenuVisible.value = true
@@ -160,8 +163,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <!-- Мобильный хедер (скрывается для полноэкранных страниц) -->
   <Teleport to="body">
-    <div class="mobile-header d-xl-none">
+    <div v-if="!isFullPage" class="mobile-header d-xl-none">
       <button
         class="btn btn-link d-flex align-items-center justify-content-center mobile-header__btn"
         type="button"
@@ -176,8 +180,10 @@ onBeforeUnmount(() => {
       </RouterLink>
     </div>
   </Teleport>
-  <div class="layout-container">
+  <div class="layout-container" :class="{ 'layout-container--full-page': isFullPage }">
+    <!-- Боковое меню (скрывается для полноэкранных страниц) -->
     <MenuList
+      v-if="!isFullPage"
       :current-page="currentSidebarPage"
       @left-padding="leftToggle"
       :is-visible="isMenuVisible"
@@ -185,8 +191,19 @@ onBeforeUnmount(() => {
       @reset-page="() => currentSidebarPage = ''"
       @menu-state-change="handleMenuStateChange"
     />
-    <div class="layout-page" :style="{ paddingLeft: leftPadding }">
-      <div class="py-4 container-xxl">
+    <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage }">
+      <!-- Полноэкранный режим для страниц с meta.fullPage: true -->
+      <template v-if="route.meta?.fullPage">
+        <AccessDenied
+          v-if="accessDeniedState.active"
+          bordered
+          :title="accessDeniedState.title"
+          :message="accessDeniedState.message"
+        />
+        <RouterView v-else :key="routeViewKey" />
+      </template>
+      <!-- Стандартный режим с контейнером и отступами -->
+      <div v-else class="py-4 container-xxl">
         <AccessDenied
           v-if="accessDeniedState.active"
           bordered
@@ -248,10 +265,29 @@ onBeforeUnmount(() => {
 .layout-page {
   padding-inline-start: v-bind(leftPadding);
   transition: padding-inline-start 0.3s ease;
+
+  // Полноэкранный режим - без паддингов
+  &--full-page {
+    padding-inline-start: 0 !important;
+    height: 100dvh;
+  }
 }
+
+// Полноэкранный контейнер
+.layout-container--full-page {
+  height: 100dvh;
+  overflow: hidden;
+
+  .layout-page--full-page {
+    height: 100dvh;
+    overflow: auto;
+  }
+}
+
 .layout-overlay {
   z-index: 1004;
 }
+
 @media (width < 1200px) {
   .layout-container {
     height: 100dvh;
@@ -263,6 +299,11 @@ onBeforeUnmount(() => {
     height: calc(100dvh - 56px);
     overflow: auto;
     overscroll-behavior: contain;
+
+    // Полноэкранный режим на мобильных - без верхнего отступа
+    &--full-page {
+      height: 100dvh;
+    }
   }
   :deep(.side-menu__toggle) {
     display: none !important;
