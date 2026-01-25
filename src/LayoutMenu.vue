@@ -20,21 +20,42 @@
 -->
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { useRoute } from 'vue-router'
 import { isDatasetSidebarOpen, currentSidebarPage } from '@/core/bi/MainPage/Sidebar/components/js/useSidebarStore'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import MenuList from '@/components/menu/MenuList.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 
-import StorageSidebar from '@/core/bi/MainPage/Sidebar/StorageSidebar.vue'
-import BIAnalysisModal from '@/core/bi/components/BIAnalysisModal.vue'
-import BIChartsModal from '@/core/bi/components/BIChartsModal.vue'
 import { biAnalysisService } from '@/core/bi/js/biAnalysisService.js'
 import { biChartsService } from '@/core/bi/js/biChartsService.js'
 import { Menu as IconMenu } from 'lucide-vue-next'
 
+// Ленивая загрузка тяжёлых компонентов (загружаются только при необходимости)
+const StorageSidebar = defineAsyncComponent(() => import('@/core/bi/MainPage/Sidebar/StorageSidebar.vue'))
+const BIAnalysisModal = defineAsyncComponent(() => import('@/core/bi/components/BIAnalysisModal.vue'))
+const BIChartsModal = defineAsyncComponent(() => import('@/core/bi/components/BIChartsModal.vue'))
+
 const userStore = useUserStore()
+const route = useRoute()
+
+// Хранилище для отписок от сервисов
+let unsubscribeAnalysis = null
+let unsubscribeCharts = null
+let resizeTimeout = null
+
+// Ключ для RouterView - позволяет не пересоздавать компонент при переключении между вкладками
+// Модули могут указать meta.cacheGroup для группировки роутов под одним ключом
+const routeViewKey = computed(() => {
+  // Если модуль указал cacheGroup - используем его как ключ
+  if (route.meta?.cacheGroup) {
+    return route.meta.cacheGroup
+  }
+  // Иначе используем полный путь
+  return route.path
+})
+
 const leftPadding = ref('300px') // Увеличиваем начальное значение для адаптивной ширины
 const isMenuVisible = ref(window.innerWidth >= 1200)
 const isMenuToggledManually = ref(false)
@@ -45,7 +66,7 @@ const isBIAnalysisModalVisible = ref(false)
 const isBIChartsModalVisible = ref(false)
 const chartsModalFileId = ref(null)
 
-function updateMenuVisibility() {
+function updateMenuVisibilityImmediate() {
   if (window.innerWidth >= 1200) {
     isMenuVisible.value = true
     isOverlayVisible.value = false
@@ -54,6 +75,14 @@ function updateMenuVisibility() {
     isMenuVisible.value = false
     isOverlayVisible.value = false
   }
+}
+
+// Debounced версия для resize event (избегаем лишних вычислений при ресайзе)
+function updateMenuVisibility() {
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
+  resizeTimeout = setTimeout(updateMenuVisibilityImmediate, 150)
 }
 
 function toggleMenu(isVisible) {
@@ -77,13 +106,9 @@ function handleMenuStateChange(collapsed, width) {
   menuWidth.value = width
 }
 
-function openSidebarWithPage(pageName) {
+function openSidebar(pageName) {
   currentSidebarPage.value = pageName
   isDatasetSidebarOpen.value = true
-}
-
-function openSidebarFromMenu(page) {
-  openSidebarWithPage(page)
 }
 
 function closeSidebar() {
@@ -96,26 +121,41 @@ function onHamburgerClick() {
 }
 
 onMounted(async () => {
-  updateMenuVisibility()
+  // Инициализируем сразу без debounce
+  updateMenuVisibilityImmediate()
   window.addEventListener('resize', updateMenuVisibility)
   
   // Инициализируем пользователя при загрузке авторизованной области
   await userStore.initializeUser()
   
-  // Подписываемся на изменения состояния BI анализа
-  biAnalysisService.subscribe((isOpen) => {
+  // Подписываемся на изменения состояния BI анализа (сохраняем функцию отписки)
+  unsubscribeAnalysis = biAnalysisService.subscribe((isOpen) => {
     isBIAnalysisModalVisible.value = isOpen
   })
   
-  // Подписываемся на изменения состояния BI графиков
-  biChartsService.subscribe((isOpen, fileId) => {
+  // Подписываемся на изменения состояния BI графиков (сохраняем функцию отписки)
+  unsubscribeCharts = biChartsService.subscribe((isOpen, fileId) => {
     isBIChartsModalVisible.value = isOpen
     chartsModalFileId.value = fileId
   })
 })
 
 onBeforeUnmount(() => {
+  // Очищаем resize listener
   window.removeEventListener('resize', updateMenuVisibility)
+  
+  // Очищаем debounce timeout
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
+  
+  // Отписываемся от сервисов (предотвращаем утечку памяти)
+  if (unsubscribeAnalysis) {
+    unsubscribeAnalysis()
+  }
+  if (unsubscribeCharts) {
+    unsubscribeCharts()
+  }
 })
 </script>
 
@@ -141,7 +181,7 @@ onBeforeUnmount(() => {
       :current-page="currentSidebarPage"
       @left-padding="leftToggle"
       :is-visible="isMenuVisible"
-      @open-sidebar="openSidebarFromMenu"
+      @open-sidebar="openSidebar"
       @reset-page="() => currentSidebarPage = ''"
       @menu-state-change="handleMenuStateChange"
     />
@@ -153,7 +193,7 @@ onBeforeUnmount(() => {
           :title="accessDeniedState.title"
           :message="accessDeniedState.message"
         />
-        <RouterView v-else :key="$route.path" />
+        <RouterView v-else :key="routeViewKey" />
       </div>
     </div>
   </div>
