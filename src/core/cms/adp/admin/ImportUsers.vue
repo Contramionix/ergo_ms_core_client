@@ -19,6 +19,15 @@ const importProgress = ref(0)
 const importStatus = ref('')
 const hasAdminAccess = ref(false)
 const isCheckingAccess = ref(true)
+const skipWelcomeEmails = ref(false)
+
+// Статистика для прогресса
+const currentStats = ref({
+  total: 0,
+  processed: 0,
+  created: 0,
+  skipped: 0
+})
 
 const progressPercent = computed(() => {
   return Math.min(100, Math.max(0, importProgress.value))
@@ -106,6 +115,7 @@ const removeFile = () => {
   importLogs.value = []
   importProgress.value = 0
   importStatus.value = ''
+  currentStats.value = { total: 0, processed: 0, created: 0, skipped: 0 }
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -122,53 +132,123 @@ const startImport = async () => {
   importResults.value = null
   importProgress.value = 0
   importStatus.value = 'Загрузка файла...'
-  
-  // Имитация прогресса во время отправки
-  const progressInterval = setInterval(() => {
-    if (importProgress.value < 90) {
-      importProgress.value += Math.random() * 10
-      if (importProgress.value > 30 && importProgress.value < 60) {
-        importStatus.value = 'Обработка данных...'
-      } else if (importProgress.value >= 60) {
-        importStatus.value = 'Создание пользователей...'
-      }
-    }
-  }, 300)
+  currentStats.value = { total: 0, processed: 0, created: 0, skipped: 0 }
   
   try {
     const formData = new FormData()
     formData.append('file', selectedFile.value)
+    formData.append('skip_welcome_emails', skipWelcomeEmails.value.toString())
     
-    const response = await apiClient.post(cmsEndpoints.cms.importUsers, formData, {
+    // Получаем токен для авторизации
+    const token = apiClient.getAuthToken()
+    
+    // Формируем полный URL
+    const baseURL = apiClient.getBaseUrl() + apiClient.apiPath
+    const fullUrl = `${baseURL}${cmsEndpoints.cms.importUsers}`
+    
+    // Используем fetch для SSE streaming
+    const response = await fetch(fullUrl, {
+      method: 'POST',
       headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
     })
     
-    clearInterval(progressInterval)
-    importProgress.value = 100
-    importStatus.value = 'Импорт завершён!'
-    
-    importResults.value = {
-      success: true,
-      created: response.data.created || 0,
-      skipped: response.data.skipped || 0,
-      total: response.data.total || 0,
-      errors: response.data.errors || []
+    // Проверяем на ошибку (не SSE ответ)
+    const contentType = response.headers.get('content-type')
+    if (contentType && contentType.includes('application/json')) {
+      // Обычный JSON ответ с ошибкой
+      const errorData = await response.json()
+      throw { response: { data: errorData } }
     }
-    importLogs.value = response.data.logs || []
     
-    if (response.data.created > 0) {
-      toast.success(`Импортировано ${response.data.created} пользователей`)
-    } else {
-      toast.info('Новых пользователей не создано')
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
+    // Читаем SSE поток
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    
+    importStatus.value = 'Обработка пользователей...'
+    
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      
+      buffer += decoder.decode(value, { stream: true })
+      
+      // Разбираем SSE события
+      const lines = buffer.split('\n\n')
+      buffer = lines.pop() || '' // Оставляем неполное событие в буфере
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const event = JSON.parse(line.slice(6))
+            
+            if (event.type === 'start') {
+              currentStats.value.total = event.total
+              importStatus.value = `Обработка: 0/${event.total}`
+            } else if (event.type === 'progress') {
+              currentStats.value = {
+                total: event.total,
+                processed: event.processed,
+                created: event.created,
+                skipped: event.skipped
+              }
+              importProgress.value = event.progress
+              importStatus.value = `Обработка: ${event.processed}/${event.total}`
+              
+              // Добавляем лог если есть
+              if (event.log) {
+                importLogs.value.push(event.log)
+              }
+            } else if (event.type === 'done') {
+              currentStats.value = {
+                total: event.total,
+                processed: event.processed,
+                created: event.created,
+                skipped: event.skipped
+              }
+              importProgress.value = 100
+              importStatus.value = 'Импорт завершён!'
+              
+              importResults.value = {
+                success: event.success,
+                created: event.created,
+                skipped: event.skipped,
+                total: event.total,
+                errors: event.errors || []
+              }
+              importLogs.value = event.logs || []
+              
+              if (event.created > 0) {
+                toast.success(`Импортировано ${event.created} пользователей`)
+              } else {
+                toast.info('Новых пользователей не создано')
+              }
+            }
+          } catch (parseError) {
+            console.warn('Ошибка парсинга SSE события:', parseError)
+          }
+        }
+      }
     }
   } catch (error) {
-    clearInterval(progressInterval)
     importProgress.value = 100
     importStatus.value = 'Ошибка импорта'
     
     const errorData = error.response?.data || {}
+    currentStats.value = {
+      total: errorData.total || 0,
+      processed: errorData.processed || 0,
+      created: errorData.created || 0,
+      skipped: errorData.skipped || 0
+    }
+    
     importResults.value = {
       success: false,
       created: errorData.created || 0,
@@ -282,8 +362,24 @@ const getLogClass = (level) => {
         </template>
       </div>
       
-      <!-- Кнопка импорта -->
+      <!-- Опции импорта -->
       <div class="mb-4">
+        <div class="form-check mb-3">
+          <input
+            id="skipWelcomeEmails"
+            v-model="skipWelcomeEmails"
+            type="checkbox"
+            class="form-check-input"
+            :disabled="isImporting"
+          />
+          <label class="form-check-label" for="skipWelcomeEmails">
+            Не отправлять приветственные письма на электронную почту
+          </label>
+          <div class="form-text text-muted">
+            При включении этой опции пользователям не будут отправлены письма об успешной регистрации
+          </div>
+        </div>
+        
         <button
           type="button"
           class="btn btn-primary d-inline-flex align-items-center gap-2"
@@ -318,10 +414,33 @@ const getLogClass = (level) => {
             aria-valuemax="100"
           ></div>
         </div>
-        <div v-if="importResults" class="mt-2 small text-muted">
-          Обработано строк: {{ importResults.total || 0 }} | 
-          Создано: {{ importResults.created }} | 
-          Пропущено: {{ importResults.skipped }}
+        
+        <!-- Детальная статистика -->
+        <div class="mt-3 row g-2">
+          <div class="col-6 col-md-3">
+            <div class="stats-card text-center p-2 rounded border">
+              <div class="stats-value text-primary fw-bold">{{ currentStats.total || importResults?.total || 0 }}</div>
+              <div class="stats-label text-muted small">Всего строк</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stats-card text-center p-2 rounded border">
+              <div class="stats-value text-info fw-bold">{{ currentStats.processed || importResults?.total || 0 }}</div>
+              <div class="stats-label text-muted small">Обработано</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stats-card text-center p-2 rounded border">
+              <div class="stats-value text-success fw-bold">{{ currentStats.created || importResults?.created || 0 }}</div>
+              <div class="stats-label text-muted small">Создано</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stats-card text-center p-2 rounded border">
+              <div class="stats-value text-warning fw-bold">{{ currentStats.skipped || importResults?.skipped || 0 }}</div>
+              <div class="stats-label text-muted small">Пропущено</div>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -430,9 +549,27 @@ const getLogClass = (level) => {
   }
 }
 
+.stats-card {
+  background-color: #f8f9fa;
+  transition: all 0.2s ease;
+  
+  .stats-value {
+    font-size: 1.25rem;
+    line-height: 1.2;
+  }
+  
+  .stats-label {
+    font-size: 0.75rem;
+  }
+}
+
 @media (max-width: 576px) {
   .upload-zone {
     padding: 1.5rem;
+  }
+  
+  .stats-card .stats-value {
+    font-size: 1rem;
   }
 }
 </style>
