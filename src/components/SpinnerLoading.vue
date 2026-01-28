@@ -6,7 +6,8 @@ const BOOTSTRAP_VARIANTS = ['primary', 'secondary', 'success', 'danger', 'warnin
 const props = defineProps({
   loadingText: {
     type: String,
-    default: ''
+    default: '',
+    required: false
   },
   color: {
     type: String,
