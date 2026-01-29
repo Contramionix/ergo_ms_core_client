@@ -26,14 +26,29 @@ import { generateAllRoutes, validateAll, getPermissionRules } from '@/modules/in
 import { checkRouteAdpAccess, hasAnyModulePermission } from '@/core/cms/adp/js/accessControl'
 import { accessDeniedState } from './accessDeniedState'
 
-// Опциональный импорт organizationGuard (модуль organizations может быть не установлен)
 let organizationGuard = null
-try {
-  const orgGuardModule = await import('../../../../modules/organizations/client/js/organizationGuard.js')
-  organizationGuard = orgGuardModule.organizationGuard
-} catch {
-  // Модуль organizations не установлен - organizationGuard остаётся null
-  console.debug('[Router] Модуль organizations не установлен, organizationGuard отключен')
+// Опциональная загрузка organizationGuard через Vite glob,
+// чтобы npm run build не падал, если модуль organizations не установлен
+const organizationGuardModules = import.meta.glob(
+  '../../../../modules/organizations/client/js/organizationGuard.js'
+)
+
+if (Object.keys(organizationGuardModules).length > 0) {
+  try {
+    const loadGuardModule =
+      organizationGuardModules[Object.keys(organizationGuardModules)[0]]
+    const orgGuardModule = await loadGuardModule()
+    organizationGuard = orgGuardModule.organizationGuard
+  } catch (e) {
+    console.debug(
+      '[Router] Ошибка загрузки organizationGuard из модуля organizations:',
+      e
+    )
+  }
+} else {
+  console.debug(
+    '[Router] Модуль organizations не установлен, organizationGuard отключен'
+  )
 }
 
 // Кеш для правил проверки прав
