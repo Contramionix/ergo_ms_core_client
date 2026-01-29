@@ -12,13 +12,11 @@
     <!-- Боковая панель навигации (только статус) -->
     <aside class="neural-sidebar">
       <div class="sidebar-brand">
-        <div class="brand-icon">
-          <div class="brand-icon__core">
-            <Sparkles :size="22" />
-          </div>
-          <div class="brand-icon__ring"></div>
-          <div class="brand-icon__pulse"></div>
+      <div class="brand-icon">
+        <div class="brand-icon__core">
+          <Sparkles :size="22" />
         </div>
+      </div>
         <div class="brand-text">
           <span class="brand-title">NEURAL</span>
           <span class="brand-subtitle">ERGO MS</span>
@@ -33,54 +31,61 @@
         </div>
       </div>
 
-      <!-- Chat History -->
-      <div class="sidebar-history">
-        <div class="history-header">
-          <span class="history-label">// ИСТОРИЯ</span>
-          <button class="history-new-btn" @click="createNewChat" title="Новый чат">
-            <Plus :size="14" />
-          </button>
+      <!-- Create Chat Button -->
+      <div class="sidebar-actions">
+        <button class="create-chat-btn" @click="showChatTypeSelector = true" title="Создать новый чат">
+          <Plus :size="16" />
+          <span>Создать чат</span>
+        </button>
+      </div>
+
+      <!-- Chat Sessions List -->
+      <div class="sidebar-chat-list">
+        <div class="chat-list-header">
+          <span class="chat-list-title">Чаты</span>
         </div>
-        
-        <div class="history-list">
-          <!-- Group by module -->
+        <div class="chat-list-content">
           <template v-for="module in availableModules" :key="module.id">
-            <div v-if="getSessionsByModule(module.id).length > 0" class="history-module-group">
-              <div class="history-module-header">
-                <component :is="module.icon" :size="14" :style="{ color: module.color }" />
-                <span class="history-module-name">{{ module.name }}</span>
-                <span class="history-module-count">({{ getSessionsByModule(module.id).length }})</span>
+            <div 
+              v-if="getSessionsByModule(module.id).length > 0" 
+              class="chat-list-group"
+            >
+              <div class="chat-list-group__header">
+                <component :is="module.icon" :size="14" />
+                <span>{{ module.name }}</span>
+                <span class="chat-list-group__count">({{ getSessionsByModule(module.id).length }})</span>
               </div>
-              <div class="history-module-sessions">
-                <div
-                  v-for="session in getSessionsByModule(module.id)"
-                  :key="session.id"
-                  class="history-item"
-                  :class="{ 'history-item--active': currentChatSession?.id === session.id && activeModule === module.id }"
-                  @click="loadChatSession(session.id, module.id)"
-                >
-                  <div class="history-item__content">
-                    <div class="history-item__title">{{ session.title || 'Без названия' }}</div>
-                    <div class="history-item__meta">
-                      <span>{{ session.message_count }} сообщений</span>
-                      <span class="history-item__time">{{ formatSessionTime(session.updated_at) }}</span>
-                    </div>
-                  </div>
-                  <button 
-                    class="history-item__delete"
-                    @click.stop="deleteChatSession(session.id)"
-                    title="Удалить"
-                  >
-                    <X :size="12" />
-                  </button>
+              <div 
+                v-for="session in getSessionsByModule(module.id)" 
+                :key="session.id"
+                class="chat-list-item"
+                :class="{ 'chat-list-item--active': currentChatSession?.id === session.id }"
+                @click="loadChatSession(session.id, session.module)"
+              >
+                <div class="chat-list-item__icon">
+                  <component 
+                    :is="module.icon" 
+                    :size="16" 
+                  />
                 </div>
+                <div class="chat-list-item__content">
+                  <div class="chat-list-item__title">{{ session.title || 'Без названия' }}</div>
+                  <div class="chat-list-item__meta">
+                    <span class="chat-list-item__time">{{ formatSessionTime(session.updated_at || session.created_at) }}</span>
+                  </div>
+                </div>
+                <button 
+                  class="chat-list-item__delete"
+                  @click.stop="deleteChatSession(session.id)"
+                  title="Удалить чат"
+                >
+                  <Trash2 :size="14" />
+                </button>
               </div>
             </div>
           </template>
-          
-          <div v-if="chatSessions.length === 0" class="history-empty">
-            <History :size="24" />
-            <p>Нет сохраненных чатов</p>
+          <div v-if="chatSessions.length === 0" class="chat-list-empty">
+            <span>Нет чатов</span>
           </div>
         </div>
       </div>
@@ -106,17 +111,6 @@
         </div>
 
         <div class="banner-actions">
-          <!-- Module Selector -->
-          <select 
-            v-model="activeModule" 
-            class="module-selector"
-            :style="{ '--select-color': currentModuleConfig?.color }"
-          >
-            <option v-for="module in availableModules" :key="module.id" :value="module.id">
-              {{ module.name }}
-            </option>
-          </select>
-          
           <!-- Кнопка загрузки документов для модуля docs -->
           <button 
             v-if="activeModule === 'docs'" 
@@ -128,12 +122,25 @@
             <span>Загрузить</span>
           </button>
           
-          <button class="action-btn action-btn--danger" @click="clearHistory" title="Очистить историю">
-            <Trash2 :size="18" />
-            <span>Очистить</span>
+          <!-- Кнопка загрузки документов для модуля tp -->
+          <button 
+            v-if="activeModule === 'tp'" 
+            class="action-btn action-btn--primary" 
+            @click="showTPUploader = !showTPUploader"
+            title="Загрузить документ техпроцесса"
+          >
+            <Upload :size="18" />
+            <span>Загрузить</span>
           </button>
         </div>
       </header>
+
+      <!-- Chat Type Selector Modal -->
+      <ChatTypeSelector 
+        :show="showChatTypeSelector" 
+        @close="showChatTypeSelector = false"
+        @select="handleChatTypeSelect"
+      />
 
       <!-- Docs Module -->
       <template v-if="activeModule === 'docs' && !currentModuleConfig?.comingSoon">
@@ -145,6 +152,21 @@
             :hide-header="true"
             :force-show-uploader="showDocsUploader"
             @session-updated="handleDocsSessionUpdated"
+          />
+        </div>
+      </template>
+
+      <!-- TP Module -->
+      <template v-if="activeModule === 'tp' && !currentModuleConfig?.comingSoon">
+        <div class="docs-module-wrapper">
+          <TPAssistantChat 
+            ref="tpAssistantChatRef"
+            :key="`tp-chat-${tpChatKey}`"
+            :is-visible="true" 
+            :hide-header="true"
+            :force-show-uploader="showTPUploader"
+            :session-id="currentChatSession?.id"
+            @session-updated="handleTPSessionUpdated"
           />
         </div>
       </template>
@@ -235,6 +257,26 @@
               <div class="input-corner input-corner--br"></div>
             </div>
             
+            <input
+              ref="chatFileInputRef"
+              type="file"
+              class="file-input-hidden"
+              accept=".pdf,.doc,.docx,.txt"
+              multiple
+              @change="handleChatFileSelect"
+              style="display: none"
+            />
+            
+            <button
+              class="file-btn"
+              :style="{ '--btn-color': currentModuleConfig?.color }"
+              @click="triggerChatFileInput"
+              :disabled="chatLoading"
+              title="Загрузить файл"
+            >
+              <Upload :size="18" />
+            </button>
+            
             <textarea
               v-model="chatInput"
               class="input-field"
@@ -254,6 +296,35 @@
               <div class="send-btn__bg"></div>
               <Send :size="20" />
             </button>
+          </div>
+          
+          <!-- File Info -->
+          <div v-if="chatSelectedFiles.length > 0" class="files-section">
+            <div class="files-list">
+              <div 
+                v-for="(file, index) in chatSelectedFiles" 
+                :key="index"
+                class="file-info"
+              >
+                <span class="file-name">{{ file.name }}</span>
+                <button class="file-remove" @click="removeChatFile(index)" title="Удалить файл">
+                  <X :size="14" />
+                </button>
+              </div>
+            </div>
+            
+            <!-- Vectorization Toggle -->
+            <div class="vectorization-toggle">
+              <label class="toggle-label">
+                <input
+                  type="checkbox"
+                  v-model="enableVectorization"
+                  class="toggle-checkbox"
+                />
+                <span class="toggle-text">Векторизация файлов</span>
+                <span class="toggle-hint">Использовать векторный поиск для более точных ответов</span>
+              </label>
+            </div>
           </div>
         </div>
       </template>
@@ -445,13 +516,15 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { 
-  Sparkles, Cpu, Trash2, Send, Zap, ArrowRight,
-  Database, FileSpreadsheet, FileQuestion, Upload, X, History, Plus, FileText
+  Sparkles, Cpu, Send, Zap, ArrowRight,
+  Database, FileSpreadsheet, FileQuestion, Upload, X, Plus, Trash2
 } from 'lucide-vue-next'
 import { modules, getModuleById } from '../modules/index.js'
 import NeuralBackground from '../components/NeuralBackground.vue'
 import HubMessage from '../components/HubMessage.vue'
+import ChatTypeSelector from '../components/ChatTypeSelector.vue'
 import DocsAssistantChat from '../docs/DocsAssistantChat.vue'
+import TPAssistantChat from '../tp/TPAssistantChat.vue'
 import { ragClient } from '../rag/js/rag-client.js'
 import { biClient } from '../bi/js/bi-client.js'
 import { useToast } from 'vue-toastification'
@@ -525,12 +598,15 @@ const ollamaOnline = ref(false)
 // Chat state
 const chatMessagesRef = ref(null)
 const chatInputRef = ref(null)
+const chatFileInputRef = ref(null)
 const chatInput = ref('')
 const chatLoading = ref(false)
 let chatMsgId = 1
 const chatHistory = ref([])
 const currentChatSession = ref(null)
 const chatSessions = ref([])
+const chatSelectedFiles = ref([])
+const enableVectorization = ref(false)
 const toast = useToast()
 
 // BI state
@@ -548,6 +624,14 @@ const biHistory = ref([])
 const showDocsUploader = ref(false)
 const docsAssistantChatRef = ref(null)
 const docsChatKey = ref(0) // Ключ для принудительного пересоздания компонента
+
+// TP state
+const showTPUploader = ref(false)
+const tpAssistantChatRef = ref(null)
+const tpChatKey = ref(0) // Ключ для принудительного пересоздания компонента
+
+// Chat type selector modal
+const showChatTypeSelector = ref(false)
 
 // Available modules for selector
 const availableModules = computed(() => {
@@ -592,15 +676,72 @@ const loadChatSessions = async () => {
       allSessions.push(...result.sessions)
     }
   }
-  chatSessions.value = allSessions
+  // Сортируем по дате обновления (новые сверху)
+  chatSessions.value = allSessions.sort((a, b) => {
+    const dateA = new Date(a.updated_at || a.created_at || 0)
+    const dateB = new Date(b.updated_at || b.created_at || 0)
+    return dateB.getTime() - dateA.getTime()
+  })
 }
 
-// Get sessions by module
+// Получить сессии для конкретного модуля
 const getSessionsByModule = (moduleId) => {
   return chatSessions.value.filter(session => session.module === moduleId)
 }
 
-// Load specific chat session
+// Форматировать время сессии
+const formatSessionTime = (timestamp) => {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  
+  if (diffMins < 1) return 'только что'
+  if (diffMins < 60) return `${diffMins} мин назад`
+  if (diffHours < 24) return `${diffHours} ч назад`
+  if (diffDays < 7) return `${diffDays} дн назад`
+  
+  return date.toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  })
+}
+
+// Удалить сессию чата
+const deleteChatSession = async (sessionId) => {
+  try {
+    const result = await ragClient.deleteChatSession(sessionId)
+    if (result.success) {
+      // Удаляем из локального списка
+      chatSessions.value = chatSessions.value.filter(s => s.id !== sessionId)
+      
+      // Если удаляемая сессия была активной, очищаем текущую сессию
+      if (currentChatSession.value?.id === sessionId) {
+        currentChatSession.value = null
+        if (activeModule.value === 'chat') {
+          initChat()
+        } else if (activeModule.value === 'tp') {
+          tpChatKey.value++
+        } else if (activeModule.value === 'docs') {
+          docsChatKey.value++
+        }
+      }
+      
+      toast.success('Чат удален')
+    } else {
+      toast.error(result.error || 'Не удалось удалить чат')
+    }
+  } catch (error) {
+    console.error('Ошибка удаления чата:', error)
+    toast.error('Ошибка удаления чата')
+  }
+}
+
+// Load specific chat session (kept for BI module compatibility)
 const loadChatSession = async (sessionId, moduleId = null) => {
   const result = await ragClient.getChatSession(sessionId)
   if (result.success) {
@@ -687,71 +828,63 @@ const loadChatSession = async (sessionId, moduleId = null) => {
   }
 }
 
-// Create new chat session
-const createNewChat = async () => {
-  console.log('Creating new chat, active module:', activeModule.value)
-  currentChatSession.value = null
-  
-  // Инициализируем чат для текущего активного модуля
-  if (activeModule.value === 'chat') {
-    initChat()
-  } else if (activeModule.value === 'bi') {
-    // Для BI модуля инициализация происходит при выборе файла
-    biHistory.value = selectedFile.value && selectedConnection.value ? [{
-      id: biMsgId++,
-      type: 'assistant',
-      content: `Файл **${selectedFile.value.name}** из подключения **${selectedConnection.value.name}** выбран для анализа. Задайте вопрос к данным.`,
-      timestamp: new Date(),
-    }] : []
-  } else if (activeModule.value === 'docs') {
-    // Для модуля docs сбрасываем состояние чата
-    // Используем принудительное пересоздание компонента через key
-    docsChatKey.value++
-    // Также пытаемся вызвать resetChat если компонент уже смонтирован
-    nextTick(() => {
-      if (docsAssistantChatRef.value && typeof docsAssistantChatRef.value.resetChat === 'function') {
-        docsAssistantChatRef.value.resetChat()
-      }
-    })
-  }
-  await loadChatSessions()
-}
-
-// Delete chat session
-const deleteChatSession = async (sessionId) => {
-  if (confirm('Удалить этот чат?')) {
-    const result = await ragClient.deleteChatSession(sessionId)
-    if (result.success) {
-      if (currentChatSession.value?.id === sessionId) {
-        currentChatSession.value = null
-        initChat()
-      }
-      await loadChatSessions()
-      toast.success('Чат удален')
-    } else {
-      toast.error(result.error || 'Не удалось удалить чат')
+// Handle chat type selection from modal
+const handleChatTypeSelect = async (moduleId) => {
+  try {
+    const module = getModuleById(moduleId)
+    if (!module) {
+      toast.error('Модуль не найден')
+      return
     }
+
+    // Создаем новую сессию для выбранного модуля
+    const title = `Новый чат: ${module.name}`
+    const result = await ragClient.createChatSession(title, moduleId)
+    
+    if (result.success) {
+      // Переключаемся на выбранный модуль
+      activeModule.value = moduleId
+      
+      // Устанавливаем текущую сессию
+      currentChatSession.value = {
+        id: result.session.id,
+        module: moduleId,
+      }
+      
+      // Инициализируем чат в зависимости от модуля
+      if (moduleId === 'chat') {
+        initChat()
+      } else if (moduleId === 'bi') {
+        biHistory.value = []
+      } else if (moduleId === 'docs') {
+        docsChatKey.value++
+        nextTick(() => {
+          if (docsAssistantChatRef.value && typeof docsAssistantChatRef.value.resetChat === 'function') {
+            docsAssistantChatRef.value.resetChat()
+          }
+        })
+      } else if (moduleId === 'tp') {
+        tpChatKey.value++
+        nextTick(() => {
+          if (tpAssistantChatRef.value && typeof tpAssistantChatRef.value.resetChat === 'function') {
+            tpAssistantChatRef.value.resetChat()
+          }
+        })
+      }
+      
+      // Обновляем список чатов после создания
+      await loadChatSessions()
+      
+      toast.success(`Создан новый чат: ${module.name}`)
+    } else {
+      toast.error(result.error || 'Не удалось создать чат')
+    }
+  } catch (error) {
+    console.error('Ошибка создания чата:', error)
+    toast.error('Ошибка создания чата')
   }
 }
 
-// Format session time
-const formatSessionTime = (timeStr) => {
-  if (!timeStr) return ''
-  const date = new Date(timeStr)
-  const now = new Date()
-  const diff = now - date
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (days === 0) {
-    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-  } else if (days === 1) {
-    return 'Вчера'
-  } else if (days < 7) {
-    return `${days} дн. назад`
-  } else {
-    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
-  }
-}
 
 // Scroll helpers
 const scrollToBottom = (container) => {
@@ -839,6 +972,11 @@ const sendChatMessage = async (text) => {
         
         chatLoading.value = false
         chatStreamingMsgId = null
+        // Очищаем выбранные файлы после отправки
+        chatSelectedFiles.value = []
+        if (chatFileInputRef.value) {
+          chatFileInputRef.value.value = ''
+        }
         scrollToBottom(chatMessagesRef)
       },
       (errorMsg) => {
@@ -862,7 +1000,9 @@ const sendChatMessage = async (text) => {
       },
       null, // ollamaConfig
       currentChatSession.value?.id, // sessionId
-      activeModule.value // module
+      activeModule.value, // module
+      chatSelectedFiles.value.length > 0 ? chatSelectedFiles.value : null, // files
+      enableVectorization.value // enableVectorization
     )
   } catch (e) {
     if (chatStreamingMsgId) {
@@ -882,6 +1022,72 @@ const sendChatMessage = async (text) => {
     chatLoading.value = false
     chatStreamingMsgId = null
     scrollToBottom(chatMessagesRef)
+  }
+}
+
+// Chat file methods
+const triggerChatFileInput = () => {
+  if (chatFileInputRef.value) {
+    chatFileInputRef.value.click()
+  }
+}
+
+const handleChatFileSelect = (event) => {
+  const files = Array.from(event.target.files || [])
+  if (files.length === 0) return
+  
+  const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
+  const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt']
+  const maxSize = 10 * 1024 * 1024 // 10 МБ
+  
+  const validFiles = []
+  const errors = []
+  
+  files.forEach((file) => {
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase()
+    
+    // Проверяем тип файла
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      errors.push(`"${file.name}" - неподдерживаемый тип файла`)
+      return
+    }
+    
+    // Проверяем размер файла
+    if (file.size > maxSize) {
+      errors.push(`"${file.name}" - файл слишком большой (максимум 10 МБ)`)
+      return
+    }
+    
+    // Проверяем, не добавлен ли уже такой файл
+    if (chatSelectedFiles.value.some(f => f.name === file.name && f.size === file.size)) {
+      errors.push(`"${file.name}" - файл уже добавлен`)
+      return
+    }
+    
+    validFiles.push(file)
+  })
+  
+  // Показываем ошибки, если есть
+  if (errors.length > 0) {
+    toast.error(errors.join('\n'))
+  }
+  
+  // Добавляем валидные файлы
+  if (validFiles.length > 0) {
+    chatSelectedFiles.value.push(...validFiles)
+    const fileNames = validFiles.map(f => f.name).join(', ')
+    toast.success(`Загружено файлов: ${validFiles.length}. ${fileNames}`)
+  }
+  
+  // Очищаем input для возможности повторной загрузки тех же файлов
+  if (chatFileInputRef.value) {
+    chatFileInputRef.value.value = ''
+  }
+}
+
+const removeChatFile = (index) => {
+  if (index >= 0 && index < chatSelectedFiles.value.length) {
+    chatSelectedFiles.value.splice(index, 1)
   }
 }
 
@@ -1078,22 +1284,19 @@ const sendBIMessage = async (text) => {
   }
 }
 
-const clearHistory = () => {
-  if (activeModule.value === 'chat') {
-    currentChatSession.value = null
-    initChat()
-  } else if (activeModule.value === 'bi') {
-    biHistory.value = selectedFile.value && selectedConnection.value ? [{
-      id: biMsgId++,
-      type: 'assistant',
-      content: `Файл **${selectedFile.value.name}** из подключения **${selectedConnection.value.name}** выбран для анализа. Задайте вопрос к данным.`,
-      timestamp: new Date(),
-    }] : []
-  }
-}
 
 // Обработчик обновления сессии для модуля docs
-const handleDocsSessionUpdated = async (sessionId) => {
+const handleDocsSessionUpdated = async () => {
+  // Обновляем список сессий после сохранения новой сессии
+  await loadChatSessions()
+}
+
+// Обработчик обновления сессии для модуля tp
+const handleTPSessionUpdated = async (sessionId) => {
+  // Устанавливаем текущую сессию для модуля tp
+  if (sessionId && activeModule.value === 'tp') {
+    currentChatSession.value = { id: sessionId, module: 'tp' }
+  }
   // Обновляем список сессий после сохранения новой сессии
   await loadChatSessions()
 }
@@ -1110,6 +1313,10 @@ watch(activeModule, () => {
     // Сбрасываем состояние для модуля docs
     if (activeModule.value === 'docs') {
       showDocsUploader.value = false
+    }
+    // Сбрасываем состояние для модуля tp
+    if (activeModule.value === 'tp') {
+      showTPUploader.value = false
     }
   }
 })
@@ -1137,7 +1344,7 @@ onMounted(() => {
 @import '../styles/variables';
 
 // Импорт шрифтов
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geometria:wght@300;400;500;600;700;800;900&display=swap');
 
 .neural-hub {
   --bg-base: #{$dark-bg-primary};
@@ -1157,7 +1364,7 @@ onMounted(() => {
   height: 100vh;
   background: var(--bg-base);
   color: var(--text-primary);
-  font-family: $font-family-base;
+  font-family: 'Geometria', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   position: relative;
   overflow: hidden;
 
@@ -1187,6 +1394,7 @@ onMounted(() => {
   position: relative;
   z-index: 10;
   backdrop-filter: blur(20px);
+  overflow: hidden;
 }
 
 .sidebar-brand {
@@ -1198,61 +1406,26 @@ onMounted(() => {
 }
 
 .brand-icon {
-  position: relative;
+  width: 48px;
+  height: 48px;
+}
+
+.brand-icon {
   width: 48px;
   height: 48px;
 }
 
 .brand-icon__core {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 36px;
-  height: 36px;
-  background: linear-gradient(135deg, $neon-cyan, $neon-purple);
-  border-radius: 10px;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: $neon-cyan;
+  border-radius: $radius-md;
   color: white;
-  z-index: 2;
 }
 
-.brand-icon__ring {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border: 2px solid $neon-cyan;
-  border-radius: 14px;
-  opacity: 0.5;
-  animation: ring-rotate 10s linear infinite;
-}
-
-.brand-icon__pulse {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 48px;
-  height: 48px;
-  border: 1px solid $neon-cyan;
-  border-radius: 14px;
-  opacity: 0;
-  animation: pulse-out 2s ease-out infinite;
-}
-
-@keyframes ring-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes pulse-out {
-  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.6; }
-  100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
-}
 
 .brand-text {
   display: flex;
@@ -1260,22 +1433,15 @@ onMounted(() => {
 }
 
 .brand-title {
-  font-family: $font-family-display;
   font-size: $font-size-xl;
   font-weight: 700;
-  letter-spacing: $letter-spacing-wider;
-  background: linear-gradient(90deg, $neon-cyan, $neon-purple);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: $neon-cyan;
 }
 
 .brand-subtitle {
   font-size: $font-size-xs;
   font-weight: 600;
   color: var(--text-muted);
-  letter-spacing: $letter-spacing-widest;
-  text-transform: uppercase;
 }
 
 .sidebar-controls {
@@ -1313,7 +1479,6 @@ onMounted(() => {
 
 .modules-label {
   display: block;
-  font-family: $font-family-mono;
   font-size: $font-size-xs;
   color: var(--text-muted);
   padding: $spacing-sm $spacing-md;
@@ -1414,14 +1579,12 @@ onMounted(() => {
 }
 
 .module-card__badge {
-  font-family: $font-family-mono;
   font-size: 10px;
   font-weight: 600;
   padding: 2px 8px;
   background: $neon-orange-light;
   color: $neon-orange;
   border-radius: $radius-sm;
-  letter-spacing: $letter-spacing-wide;
 }
 
 .module-card__arrow {
@@ -1436,8 +1599,39 @@ onMounted(() => {
   border-bottom: 1px solid var(--border-subtle);
 }
 
-// === SIDEBAR HISTORY ===
-.sidebar-history {
+.sidebar-actions {
+  padding: $spacing-md;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.create-chat-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  padding: $spacing-md;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--accent-glow);
+    box-shadow: 0 4px 12px rgba(58, 232, 255, 0.3);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+// Chat list in sidebar
+.sidebar-chat-list {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1445,79 +1639,158 @@ onMounted(() => {
   min-height: 0;
 }
 
-.sidebar-history .history-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: $spacing-md $spacing-lg;
+.chat-list-header {
+  padding: $spacing-md;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.sidebar-history .history-label {
-  font-family: $font-family-mono;
-  font-size: $font-size-xs;
-  color: var(--text-muted);
-  letter-spacing: $letter-spacing-wider;
+.chat-list-title {
+  font-size: $font-size-sm;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.sidebar-history .history-new-btn {
-  width: 28px;
-  height: 28px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: $radius-md;
-  color: var(--text-secondary);
-  cursor: pointer;
+.chat-list-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-sm;
+}
+
+.chat-list-item {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  margin-bottom: $spacing-xs;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: $radius-md;
+  cursor: pointer;
   transition: all $transition-fast;
 
   &:hover {
-    background: var(--accent);
-    color: white;
+    background: var(--bg-hover);
+    border-color: var(--border-subtle);
+
+    .chat-list-item__delete {
+      opacity: 1;
+    }
+  }
+
+  &--active {
+    background: rgba(58, 232, 255, 0.1);
     border-color: var(--accent);
-    box-shadow: $glow-cyan;
+
+    .chat-list-item__icon {
+      color: var(--accent);
+    }
   }
 }
 
-.sidebar-history .history-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: $spacing-sm $spacing-md;
-  min-height: 0;
-}
-
-.history-module-group {
-  margin-bottom: $spacing-md;
-}
-
-.history-module-header {
+.chat-list-item__icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
-  gap: $spacing-xs;
-  padding: $spacing-xs $spacing-sm;
-  margin-bottom: $spacing-xs;
-  font-family: $font-family-mono;
-  font-size: $font-size-xs;
-  color: var(--text-muted);
-  font-weight: 600;
-  letter-spacing: $letter-spacing-wide;
-}
-
-.history-module-name {
+  justify-content: center;
   color: var(--text-secondary);
+  transition: color $transition-fast;
 }
 
-.history-module-count {
-  color: var(--text-muted);
-  opacity: 0.7;
-}
-
-.history-module-sessions {
+.chat-list-item__content {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.chat-list-item__title {
+  font-size: $font-size-sm;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-list-item__meta {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  font-size: $font-size-xs;
+  color: var(--text-muted);
+}
+
+.chat-list-item__module {
+  font-weight: 500;
+}
+
+.chat-list-item__time {
+  &::before {
+    content: '•';
+    margin-right: $spacing-sm;
+  }
+}
+
+.chat-list-item__delete {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: $radius-sm;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: rgba(255, 51, 102, 0.1);
+    color: $neon-red;
+  }
+}
+
+.chat-list-empty {
+  padding: $spacing-lg;
+  text-align: center;
+  font-size: $font-size-sm;
+  color: var(--text-muted);
+}
+
+// Chat list groups
+.chat-list-group {
+  margin-bottom: $spacing-lg;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.chat-list-group__header {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  margin-bottom: $spacing-xs;
+  font-size: $font-size-xs;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.chat-list-group__count {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 .status-indicator {
@@ -1526,7 +1799,6 @@ onMounted(() => {
   gap: $spacing-sm;
   font-size: $font-size-xs;
   color: var(--text-muted);
-  font-family: $font-family-mono;
 
   &--online {
     .status-dot {
@@ -1588,41 +1860,8 @@ onMounted(() => {
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  overflow: hidden;
-  
-  .decoration-line {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 200px;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, var(--banner-color, var(--accent)), transparent);
-    animation: scan-line 4s linear infinite;
-  }
-  
-  .decoration-dot {
-    position: absolute;
-    top: -2px;
-    width: 6px;
-    height: 6px;
-    background: var(--banner-color, var(--accent));
-    border-radius: 50%;
-    box-shadow: 0 0 10px var(--banner-color, var(--accent));
-    animation: scan-dot 4s linear infinite;
-  }
-}
-
-@keyframes scan-line {
-  0% { left: -200px; }
-  100% { left: 100%; }
-}
-
-@keyframes scan-dot {
-  0% { left: -6px; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { left: 100%; opacity: 0; }
+  height: 2px;
+  background: var(--banner-color, var(--accent));
 }
 
 .banner-content {
@@ -1635,30 +1874,17 @@ onMounted(() => {
 .banner-icon {
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, var(--banner-color, var(--accent)), rgba(var(--banner-color, var(--accent)), 0.5));
+  background: var(--banner-color, var(--accent));
   border-radius: $radius-lg;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  position: relative;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    background: linear-gradient(135deg, var(--banner-color, var(--accent)), transparent);
-    border-radius: inherit;
-    opacity: 0.3;
-    z-index: -1;
-  }
 }
 
 .banner-title {
-  font-family: $font-family-display;
   font-size: $font-size-xl;
   font-weight: 700;
-  letter-spacing: $letter-spacing-wide;
   margin: 0;
 }
 
@@ -1905,7 +2131,7 @@ onMounted(() => {
   }
   &--tr {
     top: 0;
-    right: 60px;
+    right: 112px; // Учитываем ширину send-btn (52px) + gap (8px) + file-btn (52px)
     border-width: 2px 2px 0 0;
     border-radius: 0 4px 0 0;
   }
@@ -1917,7 +2143,7 @@ onMounted(() => {
   }
   &--br {
     bottom: 0;
-    right: 60px;
+    right: 112px; // Учитываем ширину send-btn (52px) + gap (8px) + file-btn (52px)
     border-width: 0 2px 2px 0;
     border-radius: 0 0 4px 0;
   }
@@ -1996,6 +2222,150 @@ onMounted(() => {
     opacity: 0.4;
     cursor: not-allowed;
   }
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.file-btn {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-lg;
+  color: var(--accent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all $transition-fast;
+  z-index: 2;
+  position: relative;
+  outline: none;
+  
+  &:hover:not(:disabled) {
+    background: rgba(58, 232, 255, 0.1);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(58, 232, 255, 0.1);
+    transform: scale(1.05);
+  }
+  
+  &:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(58, 232, 255, 0.1);
+  }
+  
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  
+  svg {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.files-section {
+  margin-top: $spacing-sm;
+  max-width: $message-max-width;
+}
+
+.files-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  margin-bottom: $spacing-sm;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  background: rgba(58, 232, 255, 0.1);
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  
+  .neural-hub--light & {
+    background: rgba(15, 118, 138, 0.08);
+  }
+}
+
+.file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--accent);
+  font-family: Arial, sans-serif;
+}
+
+.file-remove {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: $radius-sm;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all $transition-fast;
+  
+  &:hover {
+    background: rgba(58, 232, 255, 0.2);
+    color: var(--accent);
+  }
+}
+
+.vectorization-toggle {
+  margin-top: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  background: rgba(58, 232, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: $radius-md;
+  
+  .neural-hub--light & {
+    background: rgba(15, 118, 138, 0.05);
+  }
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.toggle-text {
+  font-size: $font-size-sm;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: Arial, sans-serif;
+}
+
+.toggle-hint {
+  font-size: $font-size-xs;
+  color: var(--text-muted);
+  margin-left: auto;
+  font-family: Arial, sans-serif;
 }
 
 // === FILE SELECTOR ===
@@ -2296,29 +2666,6 @@ onMounted(() => {
   }
 }
 
-// === MODULE SELECTOR ===
-.module-selector {
-  padding: $spacing-sm $spacing-md;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: $radius-md;
-  color: var(--text-primary);
-  font-size: $font-size-sm;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all $transition-fast;
-  outline: none;
-  min-width: 150px;
-
-  &:hover {
-    border-color: var(--select-color, var(--accent));
-  }
-
-  &:focus {
-    border-color: var(--select-color, var(--accent));
-    box-shadow: 0 0 0 3px rgba(58, 232, 255, 0.1);
-  }
-}
 
 // === CHAT HISTORY SIDEBAR ===
 .chat-history-sidebar {
