@@ -25,17 +25,6 @@
       </div>
     </div>
     
-    <!-- Кнопка загрузки в компактном виде, если header скрыт -->
-    <div v-if="hideHeader && !showUploader && !showMessages" class="tp-assistant-chat__compact-upload">
-      <button 
-        class="btn btn-primary btn-lg w-100"
-        @click="handleOpenUploader"
-      >
-        <Upload :size="20" class="me-2" />
-        Загрузить документ техпроцесса
-      </button>
-    </div>
-
     <!-- Модальное окно загрузки документов -->
     <teleport to="body">
       <div v-if="showUploader" class="upload-modal-overlay" @click.self="showUploader = false">
@@ -59,20 +48,47 @@
       </div>
     </teleport>
 
-    <!-- Список загруженных документов -->
-    <div v-if="documents.length > 0 && !showMessages" class="tp-assistant-chat__documents-list">
-      <div class="documents-header">
-        <h6 class="mb-0">Загруженные документы ({{ documents.length }})</h6>
-        <button class="btn btn-sm btn-outline-primary" @click="loadDocuments">
-          <RefreshCw :size="14" class="me-1" />
-          Обновить
-        </button>
+    <!-- Модальное окно просмотра документа -->
+    <teleport to="body">
+      <div v-if="previewDocumentId" class="upload-modal-overlay" @click.self="closeDocumentPreview">
+        <div class="document-preview-modal">
+          <div class="document-preview-modal__header">
+            <h5 class="mb-0 document-preview-modal__title">{{ previewDocument?.title || 'Загрузка...' }}</h5>
+            <button class="upload-modal__close" @click="closeDocumentPreview" title="Закрыть">
+              <X :size="20" />
+            </button>
+          </div>
+          <div class="document-preview-modal__body">
+            <div v-if="previewLoading" class="document-preview-loading">
+              <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+              Загрузка документа...
+            </div>
+            <div
+              v-else-if="previewDocument?.markdown_content"
+              class="document-preview-content"
+              v-html="formatPreviewMarkdown(previewDocument.markdown_content)"
+            ></div>
+            <div v-else class="document-preview-empty">Документ пуст или не удалось загрузить</div>
+          </div>
+        </div>
       </div>
-      <div class="documents-grid">
+    </teleport>
+
+    <!-- Список загруженных документов -->
+    <div v-if="documents.length > 0" class="tp-assistant-chat__documents-list" :class="{ 'tp-assistant-chat__documents-list--collapsed': !documentsExpanded }">
+      <div class="documents-header" @click="documentsExpanded = !documentsExpanded">
+        <h6 class="mb-0 documents-header__title">
+          <component :is="documentsExpanded ? ChevronUp : ChevronDown" :size="16" class="documents-header__chevron" :title="documentsExpanded ? 'Свернуть' : 'Развернуть'" />
+          Загруженные документы ({{ documents.length }})
+        </h6>
+      </div>
+      <div class="documents-grid-wrapper">
+        <div class="documents-grid">
         <div 
           v-for="doc in documents" 
           :key="doc.id"
-          class="document-card"
+          class="document-card document-card--clickable"
+          @click="openDocumentPreview(doc.id)"
         >
           <div class="document-card__icon">
             <FileText :size="20" />
@@ -85,12 +101,13 @@
           </div>
           <button 
             class="document-card__delete"
-            @click="deleteDocument(doc.id)"
+            @click.stop="deleteDocument(doc.id)"
             title="Удалить"
           >
             <X :size="16" />
           </button>
         </div>
+      </div>
       </div>
     </div>
 
@@ -109,14 +126,6 @@
     <div class="tp-assistant-chat__input">
       <div class="input-wrapper">
         <div class="input-group">
-          <button
-            class="btn btn-outline-primary"
-            @click="handleOpenUploader"
-            title="Загрузить документ"
-            :disabled="isTyping"
-          >
-            <Upload :size="18" />
-          </button>
           <input
             v-model="inputMessage"
             type="text"
@@ -145,11 +154,12 @@
 
 <script setup>
 import { ref, nextTick, watch, computed, onMounted } from 'vue'
-import { Send, Wrench, Upload, X, FileText, RefreshCw } from 'lucide-vue-next'
+import { Send, Wrench, Upload, X, FileText, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import AssistantMessage from '../base/AssistantMessage.vue'
 import AssistantTyping from '../base/AssistantTyping.vue'
 import TPFileUploader from './TPFileUploader.vue'
 import { tpClient } from './js/tp-client.js'
+import { formatMarkdown } from './js/markdown-utils.js'
 import { ragClient } from '../rag/js/rag-client.js'
 import { getModuleById } from '../modules/index.js'
 import { useToast } from 'vue-toastification'
@@ -173,7 +183,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['session-updated'])
+const emit = defineEmits(['session-updated', 'uploader-opened', 'uploader-closed'])
 
 const toast = useToast()
 
@@ -212,10 +222,6 @@ const resetChat = async () => {
   })
 }
 
-defineExpose({
-  resetChat
-})
-
 const messagesContainer = ref(null)
 const inputMessage = ref('')
 const isTyping = ref(false)
@@ -240,6 +246,31 @@ const handleOpenUploader = async () => {
 }
 const isDragging = ref(false)
 const documents = ref([])
+const documentsExpanded = ref(true)
+const previewDocumentId = ref(null)
+const previewDocument = ref(null)
+const previewLoading = ref(false)
+
+const formatPreviewMarkdown = (content) => formatMarkdown(content || '')
+
+const openDocumentPreview = async (documentId) => {
+  previewDocumentId.value = documentId
+  previewDocument.value = null
+  previewLoading.value = true
+  try {
+    const result = await tpClient.getDocument(documentId)
+    if (result.success) {
+      previewDocument.value = result.document
+    }
+  } finally {
+    previewLoading.value = false
+  }
+}
+
+const closeDocumentPreview = () => {
+  previewDocumentId.value = null
+  previewDocument.value = null
+}
 
 let messageIdCounter = 1
 let streamingMessageId = null
@@ -568,37 +599,41 @@ const handleDrop = async (event) => {
 
 watch(() => props.forceShowUploader, async (newVal) => {
   if (newVal) {
-    // Если есть sessionId из prop, используем его
     if (props.sessionId && !currentSessionId) {
       currentSessionId = props.sessionId
     }
-    
-    // Убеждаемся, что сессия создана перед открытием окна загрузки
     if (!currentSessionId) {
       const sessionReady = await ensureSession()
       if (!sessionReady) {
+        emit('uploader-closed')
         return
       }
     }
     showUploader.value = true
+    emit('uploader-opened')
+  } else {
+    showUploader.value = false
   }
 })
 
-// Загрузка истории чата
-const loadChatHistory = async () => {
-  if (historyLoaded) return
+watch(showUploader, (isOpen) => {
+  if (!isOpen) {
+    emit('uploader-closed')
+  }
+})
+
+const loadSession = async (sessionId) => {
+  if (!sessionId) return
+  
+  currentSessionId = sessionId
+  historyLoaded = false
   
   try {
-    const sessionsResult = await tpClient.getChatSessions()
-    if (sessionsResult.success && sessionsResult.sessions && sessionsResult.sessions.length > 0) {
-      const latestSession = sessionsResult.sessions.sort((a, b) => 
-        new Date(b.updated_at) - new Date(a.updated_at)
-      )[0]
-      
-      const sessionResult = await tpClient.getChatSession(latestSession.id)
-      if (sessionResult.success && sessionResult.messages && sessionResult.messages.length > 0) {
-        currentSessionId = latestSession.id
-        
+    await loadDocuments()
+    
+    const sessionResult = await tpClient.getChatSession(sessionId)
+    if (sessionResult.success) {
+      if (sessionResult.messages && sessionResult.messages.length > 0) {
         const historyMessages = sessionResult.messages.map(msg => ({
           id: messageIdCounter++,
           type: msg.type,
@@ -606,60 +641,78 @@ const loadChatHistory = async () => {
           timestamp: new Date(msg.created_at),
           processing_time_ms: msg.processing_time_ms,
         }))
-        
         messages.value = historyMessages
         showMessages.value = true
-        
-        // Загружаем документы для восстановленной сессии
-        await loadDocuments()
-        
-        historyLoaded = true
-        scrollToBottom()
-      } else if (sessionResult.success) {
-        // Сессия есть, но сообщений нет - загружаем документы
-        currentSessionId = latestSession.id
-        await loadDocuments()
-        historyLoaded = true
+      } else {
+        messages.value = [{
+          id: messageIdCounter++,
+          type: 'assistant',
+          content: 'Привет! Я ваш AI ассистент для работы с техпроцессами.\n\n**Что я умею:**\n• Отвечать на вопросы на основе загруженных документов техпроцессов\n• Искать информацию в документах\n• Анализировать таблицы и извлекать данные\n\n**Начните работу:**\n1. Нажмите кнопку "Загрузить" для добавления документов DOCX\n2. После загрузки документы автоматически конвертируются в Markdown\n3. Затем задавайте вопросы к документам!',
+          timestamp: new Date(),
+        }]
+        showMessages.value = false
       }
     }
+    historyLoaded = true
+    scrollToBottom()
   } catch (error) {
-    console.error('Ошибка загрузки истории чата:', error)
+    console.error('Ошибка загрузки сессии:', error)
+    historyLoaded = true
   }
 }
 
-// Синхронизация sessionId из prop
-watch(() => props.sessionId, (newSessionId) => {
-  if (newSessionId && newSessionId !== currentSessionId) {
-    currentSessionId = newSessionId
-    // Загружаем документы для новой сессии
-    loadDocuments()
-    // Загружаем историю чата, если еще не загружена
-    if (!historyLoaded) {
-      loadChatHistory()
+const loadLatestSession = async () => {
+  if (props.sessionId) {
+    await loadSession(props.sessionId)
+    return
+  }
+  
+  try {
+    const sessionsResult = await tpClient.getChatSessions()
+    if (sessionsResult.success && sessionsResult.sessions && sessionsResult.sessions.length > 0) {
+      const latestSession = sessionsResult.sessions.sort((a, b) =>
+        new Date(b.updated_at) - new Date(a.updated_at)
+      )[0]
+      await loadSession(latestSession.id)
     }
+  } catch (error) {
+    console.error('Ошибка загрузки последней сессии:', error)
+  }
+}
+
+watch(() => props.sessionId, async (newSessionId, oldSessionId) => {
+  if (newSessionId) {
+    if (newSessionId !== currentSessionId) {
+      await loadSession(newSessionId)
+    }
+  } else if (oldSessionId) {
+    currentSessionId = null
+    documents.value = []
+    historyLoaded = false
   }
 }, { immediate: true })
 
 watch(() => props.isVisible, (newVal) => {
-  if (newVal) {
+  if (newVal && props.sessionId && !historyLoaded) {
+    loadSession(props.sessionId)
+  } else if (newVal) {
     scrollToBottom()
-    if (!historyLoaded) {
-      loadChatHistory()
-    }
   }
 })
 
 onMounted(() => {
-  // Если есть sessionId из prop, используем его
   if (props.sessionId) {
-    currentSessionId = props.sessionId
+    loadSession(props.sessionId)
+  } else if (props.isVisible) {
+    loadLatestSession()
+  } else {
+    scrollToBottom()
   }
-  
-  scrollToBottom()
-  loadDocuments()
-  if (props.isVisible && !historyLoaded) {
-    loadChatHistory()
-  }
+})
+
+defineExpose({
+  resetChat,
+  loadSession
 })
 </script>
 
@@ -835,35 +888,170 @@ onMounted(() => {
   flex: 1;
 }
 
-.tp-assistant-chat__compact-upload {
-  padding: 2rem;
+.document-preview-modal {
+  background: var(--bs-body-bg);
+  border-radius: 1rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  width: 90%;
+  max-width: 800px;
+  max-height: 85vh;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--module-color, #f59e0b) 30%, transparent);
+}
+
+.document-preview-modal__header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  background: transparent;
-  position: relative;
-  z-index: 1;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  flex-shrink: 0;
+}
+
+.document-preview-modal__title {
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.document-preview-modal__body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.document-preview-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--bs-secondary);
+}
+
+.document-preview-empty {
+  padding: 3rem;
+  text-align: center;
+  color: var(--bs-secondary);
+}
+
+.document-preview-content {
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.document-preview-content :deep(h1) {
+  font-size: 1.5rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.document-preview-content :deep(h2) {
+  font-size: 1.25rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.document-preview-content :deep(h3) {
+  font-size: 1.1rem;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.document-preview-content :deep(code) {
+  background: var(--bs-light);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+
+.document-preview-content :deep(.markdown-table-wrapper) {
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.document-preview-content :deep(.markdown-table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.document-preview-content :deep(.markdown-table th),
+.document-preview-content :deep(.markdown-table td) {
+  border: 1px solid var(--bs-border-color);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.document-preview-content :deep(.markdown-table th) {
+  background: var(--bs-light);
+  font-weight: 600;
 }
 
 .tp-assistant-chat__documents-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem;
+  flex: 0 0 auto;
+  max-height: 33%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0.75rem 1rem;
   position: relative;
   z-index: 1;
+  border-bottom: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent);
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tp-assistant-chat__documents-list--collapsed {
+  max-height: 48px;
+  padding: 0.5rem 1rem;
+}
+
+.documents-grid-wrapper {
+  overflow: hidden;
+  min-height: 0;
+  flex: 1;
 }
 
 .documents-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  min-height: 32px;
+  flex-shrink: 0;
+  transition: margin-bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tp-assistant-chat__documents-list--collapsed .documents-header {
+  margin-bottom: 0;
+}
+
+.documents-header:hover .documents-header__title {
+  color: var(--module-color, #f59e0b);
+}
+
+.documents-header__title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: color 0.2s;
+}
+
+.documents-header__chevron {
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
 .documents-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .document-card {
@@ -875,6 +1063,14 @@ onMounted(() => {
   border: 1px solid var(--bs-border-color);
   border-radius: 0.5rem;
   transition: all 0.2s;
+}
+
+.document-card--clickable {
+  cursor: pointer;
+}
+
+.document-card--clickable:hover {
+  background: color-mix(in srgb, var(--module-color, #f59e0b) 5%, var(--bs-light));
 }
 
 .document-card:hover {

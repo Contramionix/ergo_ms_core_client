@@ -125,11 +125,14 @@
           <!-- Кнопка загрузки документов для модуля tp -->
           <button 
             v-if="activeModule === 'tp'" 
+            type="button"
             class="action-btn action-btn--primary" 
-            @click="showTPUploader = !showTPUploader"
+            :disabled="tpUploaderOpening"
+            @click.prevent="handleTPUploaderClick"
             title="Загрузить документ техпроцесса"
           >
-            <Upload :size="18" />
+            <span v-if="tpUploaderOpening" class="spinner-border spinner-border-sm me-1" role="status"></span>
+            <Upload v-else :size="18" />
             <span>Загрузить</span>
           </button>
         </div>
@@ -167,6 +170,8 @@
             :force-show-uploader="showTPUploader"
             :session-id="currentChatSession?.id"
             @session-updated="handleTPSessionUpdated"
+            @uploader-opened="tpUploaderOpening = false"
+            @uploader-closed="showTPUploader = false; tpUploaderOpening = false"
           />
         </div>
       </template>
@@ -627,8 +632,18 @@ const docsChatKey = ref(0) // Ключ для принудительного п�
 
 // TP state
 const showTPUploader = ref(false)
+const tpUploaderOpening = ref(false)
 const tpAssistantChatRef = ref(null)
 const tpChatKey = ref(0) // Ключ для принудительного пересоздания компонента
+
+const handleTPUploaderClick = () => {
+  if (showTPUploader.value) {
+    showTPUploader.value = false
+    return
+  }
+  tpUploaderOpening.value = true
+  showTPUploader.value = true
+}
 
 // Chat type selector modal
 const showChatTypeSelector = ref(false)
@@ -753,7 +768,12 @@ const loadChatSession = async (sessionId, moduleId = null) => {
       activeModule.value = sessionModule
     }
     
-    if (sessionModule === 'bi') {
+    if (sessionModule === 'tp') {
+      await nextTick()
+      if (tpAssistantChatRef.value && typeof tpAssistantChatRef.value.loadSession === 'function') {
+        await tpAssistantChatRef.value.loadSession(sessionId)
+      }
+    } else if (sessionModule === 'bi') {
       // Восстанавливаем файл и подключение из metadata сессии
       if (result.session.metadata && result.session.metadata.file_id) {
         const fileId = result.session.metadata.file_id

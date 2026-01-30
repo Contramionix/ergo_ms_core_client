@@ -14,16 +14,14 @@ export default {
   colorLight: 'rgba(245, 158, 11, 0.15)',
   enabled: true,
   comingSoon: false,
-  
-  // Настройки модуля
+
   settings: {
     welcomeMessage: 'Помогу с анализом техпроцессов. Загрузите документы для начала работы.',
     placeholder: 'Задайте вопрос по техпроцессам...',
     maxTokens: 131072,
     supportedFormats: ['docx'],
   },
-  
-  // Настройки Ollama из конфига
+
   ollama_config: {
     num_gpu: 999,
     temperature: 0.3,
@@ -33,8 +31,7 @@ export default {
     seed: 42,
     repeat_penalty: 1.1,
   },
-  
-  // Подсказки для пользователя
+
   suggestions: [
     'Найди значения трудоемкости работ',
     'Какие профессии указаны в документах?',

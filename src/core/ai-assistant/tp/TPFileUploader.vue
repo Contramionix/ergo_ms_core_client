@@ -10,6 +10,10 @@
         <div 
           class="file-dropzone" 
           :class="{ 'dragover': isDragging }" 
+          role="button"
+          tabindex="0"
+          @click="triggerFileSelect"
+          @keydown.enter.prevent="triggerFileSelect"
           @dragover.prevent="isDragging = true"
           @dragleave.prevent="isDragging = false"
           @drop.prevent="handleDrop"
@@ -26,7 +30,7 @@
             <Upload :size="32" />
             <p class="mb-0 mt-2">
               Перетащите файлы DOCX сюда или
-              <button class="btn-link" @click="$refs.fileInput.click()">
+              <button type="button" class="btn-link" @click.stop.prevent="triggerFileSelect">
                 выберите файлы
               </button>
             </p>
@@ -52,8 +56,9 @@
       </div>
 
       <button
+        type="button"
         class="btn btn-primary w-100"
-        @click="uploadFiles"
+        @click.prevent="uploadFiles"
         :disabled="selectedFiles.length === 0 || uploading"
       >
         <span v-if="uploading">
@@ -73,7 +78,6 @@
 import { ref } from 'vue'
 import { Upload, File, X } from 'lucide-vue-next'
 import { tpClient } from './js/tp-client.js'
-import { useToast } from 'vue-toastification'
 
 const props = defineProps({
   sessionId: {
@@ -84,11 +88,14 @@ const props = defineProps({
 
 const emit = defineEmits(['document-uploaded', 'document-created'])
 
-const toast = useToast()
 const fileInput = ref(null)
 const selectedFiles = ref([])
 const isDragging = ref(false)
 const uploading = ref(false)
+
+const triggerFileSelect = () => {
+  fileInput.value?.click()
+}
 
 const handleFileSelect = (event) => {
   const files = Array.from(event.target.files || [])
@@ -137,16 +144,8 @@ const validateAndAddFiles = (files) => {
     validFiles.push(file)
   })
   
-  // Показываем ошибки, если есть
-  if (errors.length > 0) {
-    toast.error(errors.join('\n'))
-  }
-  
-  // Добавляем валидные файлы
   if (validFiles.length > 0) {
     selectedFiles.value.push(...validFiles)
-    const fileNames = validFiles.map(f => f.name).join(', ')
-    toast.success(`Добавлено файлов: ${validFiles.length}. ${fileNames}`)
   }
 }
 
@@ -170,7 +169,6 @@ const uploadFiles = async () => {
   }
   
   if (!props.sessionId) {
-    toast.error('Сессия чата не создана. Создайте новый чат перед загрузкой документов.')
     return
   }
   
@@ -182,36 +180,17 @@ const uploadFiles = async () => {
     if (result.success) {
       const count = result.documents?.length || 0
       if (count > 0) {
-        toast.success(`Успешно загружено документов: ${count}`)
-        
-        // Эмитим события с массивом документов
         emit('document-uploaded', result.documents)
         emit('document-created', result.documents)
-        
-        // Показываем ошибки, если есть
-        if (result.errors && result.errors.length > 0) {
-          const errorMessages = result.errors.map(e => `${e.file}: ${e.error}`).join('\n')
-          toast.warning(`Некоторые файлы не удалось загрузить:\n${errorMessages}`)
-        }
-      } else {
-        toast.error('Не удалось загрузить ни один файл')
-        if (result.errors && result.errors.length > 0) {
-          const errorMessages = result.errors.map(e => `${e.file}: ${e.error}`).join('\n')
-          toast.error(`Ошибки:\n${errorMessages}`)
-        }
       }
       
-      // Очищаем форму
       selectedFiles.value = []
       if (fileInput.value) {
         fileInput.value.value = ''
       }
-    } else {
-      toast.error(result.error || 'Не удалось загрузить документы')
     }
   } catch (error) {
     console.error('Ошибка загрузки документов:', error)
-    toast.error(error.message || 'Не удалось загрузить документы')
   } finally {
     uploading.value = false
   }
