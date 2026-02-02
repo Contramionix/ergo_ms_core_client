@@ -163,34 +163,73 @@ const formatFileSize = (bytes) => {
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
 }
 
+const POLL_INTERVAL_MS = 1500
+const POLL_MAX_ATTEMPTS = 120
+
+const pollUploadStatus = (taskId) => {
+  return new Promise((resolve, reject) => {
+    let attempts = 0
+    const poll = async () => {
+      attempts++
+      const statusResult = await tpClient.getUploadStatus(taskId)
+      if (statusResult.status === 'SUCCESS') {
+        resolve(statusResult)
+        return
+      }
+      if (statusResult.status === 'FAILURE') {
+        reject(new Error(statusResult.error || 'Ошибка обработки документов'))
+        return
+      }
+      if (attempts >= POLL_MAX_ATTEMPTS) {
+        reject(new Error('Превышено время ожидания обработки'))
+        return
+      }
+      setTimeout(poll, POLL_INTERVAL_MS)
+    }
+    poll()
+  })
+}
+
 const uploadFiles = async () => {
   if (selectedFiles.value.length === 0) {
     return
   }
-  
+
   if (!props.sessionId) {
     return
   }
-  
+
   uploading.value = true
-  
+
   try {
     const result = await tpClient.uploadDocuments(selectedFiles.value, props.sessionId)
-    
-    if (result.success) {
+
+    if (result.success && result.task_id) {
+      const statusResult = await pollUploadStatus(result.task_id)
+      if (statusResult.success && (statusResult.documents?.length > 0 || statusResult.message)) {
+        emit('document-uploaded', {
+          documents: statusResult.documents || [],
+          message: statusResult.message || null,
+        })
+        if (statusResult.documents?.length) {
+          emit('document-created', statusResult.documents)
+        }
+      }
+    } else if (result.success) {
       const count = result.documents?.length || 0
       if (count > 0) {
-        emit('document-uploaded', result.documents)
+        emit('document-uploaded', { documents: result.documents, message: result.message || null })
         emit('document-created', result.documents)
       }
-      
-      selectedFiles.value = []
-      if (fileInput.value) {
-        fileInput.value.value = ''
-      }
+    }
+
+    selectedFiles.value = []
+    if (fileInput.value) {
+      fileInput.value.value = ''
     }
   } catch (error) {
     console.error('Ошибка загрузки документов:', error)
+    emit('document-upload-error', error.message || 'Ошибка загрузки')
   } finally {
     uploading.value = false
   }

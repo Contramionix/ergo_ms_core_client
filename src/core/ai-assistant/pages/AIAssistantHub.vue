@@ -894,8 +894,6 @@ const handleChatTypeSelect = async (moduleId) => {
       
       // Обновляем список чатов после создания
       await loadChatSessions()
-      
-      toast.success(`Создан новый чат: ${module.name}`)
     } else {
       toast.error(result.error || 'Не удалось создать чат')
     }

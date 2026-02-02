@@ -111,15 +111,19 @@
       </div>
     </div>
 
-    <!-- Сообщения -->
-    <div v-if="showMessages || messages.length > 1" ref="messagesContainer" class="tp-assistant-chat__messages">
+    <!-- Сообщения (вступительное показываем сразу при messages.length >= 1) -->
+    <div v-if="showMessages || messages.length >= 1" ref="messagesContainer" class="tp-assistant-chat__messages">
       <AssistantMessage 
-        v-for="message in messages" 
+        v-for="message in displayedMessages" 
         :key="message.id" 
         :message="message"
         :class="{ 'streaming': message.isStreaming }"
       />
-      <AssistantTyping v-if="isTyping && !hasStreamingContent" />
+      <div v-if="showTypingIndicator" class="tp-assistant-chat__typing">
+        <span class="spinner-border spinner-border-sm tp-assistant-chat__typing-spinner" role="status" aria-hidden="true"></span>
+        <span class="tp-assistant-chat__typing-label">Модель отвечает...</span>
+      </div>
+      <AssistantTyping v-else-if="isTyping && !hasStreamingContent" />
     </div>
 
     <!-- Ввод -->
@@ -187,6 +191,8 @@ const emit = defineEmits(['session-updated', 'uploader-opened', 'uploader-closed
 
 const toast = useToast()
 
+const TP_INTRO_MESSAGE = 'Привет! Я ваш AI ассистент для работы с техпроцессами.\n\n**Что я умею:**\n• Отвечать на вопросы на основе загруженных документов техпроцессов\n• Искать информацию в документах\n• Анализировать таблицы и извлекать данные\n\n**Начните работу:**\n1. Нажмите кнопку "Загрузить" для добавления документов DOCX\n2. После загрузки документы автоматически конвертируются в Markdown\n3. Затем задавайте вопросы к документам!'
+
 // Метод для сброса чата
 const resetChat = async () => {
   // Если есть sessionId из prop, используем его
@@ -204,7 +210,7 @@ const resetChat = async () => {
   messages.value = [{
     id: messageIdCounter++,
     type: 'assistant',
-    content: 'Привет! Я ваш AI ассистент для работы с техпроцессами.\n\n**Что я умею:**\n• Отвечать на вопросы на основе загруженных документов техпроцессов\n• Искать информацию в документах\n• Анализировать таблицы и извлекать данные\n\n**Начните работу:**\n1. Нажмите кнопку "Загрузить" для добавления документов DOCX\n2. После загрузки документы автоматически конвертируются в Markdown\n3. Затем задавайте вопросы к документам!',
+    content: TP_INTRO_MESSAGE,
     timestamp: new Date(),
   }]
   
@@ -281,13 +287,21 @@ const messages = ref([
   {
     id: messageIdCounter++,
     type: 'assistant',
-    content: 'Привет! Я ваш AI ассистент для работы с техпроцессами.\n\n**Что я умею:**\n• Отвечать на вопросы на основе загруженных документов техпроцессов\n• Искать информацию в документах\n• Анализировать таблицы и извлекать данные\n\n**Начните работу:**\n1. Нажмите кнопку "Загрузить" для добавления документов DOCX\n2. После загрузки документы автоматически конвертируются в Markdown\n3. Затем задавайте вопросы к документам!',
+    content: TP_INTRO_MESSAGE,
     timestamp: new Date(),
   },
 ])
 
 const hasStreamingContent = computed(() => {
   return messages.value.some(m => m.isStreaming)
+})
+
+const displayedMessages = computed(() => {
+  return messages.value.filter(m => !(m.isStreaming && !(m.content || '').trim()))
+})
+
+const showTypingIndicator = computed(() => {
+  return isTyping.value && messages.value.some(m => m.isStreaming && !(m.content || '').trim())
 })
 
 const moduleColor = computed(() => {
@@ -343,48 +357,39 @@ const ensureSession = async () => {
   return true
 }
 
-const handleDocumentUploaded = async (document) => {
+const handleDocumentUploaded = async (payload) => {
   showUploader.value = false
   showMessages.value = true
-  
-  // Если есть sessionId из prop, используем его
+
+  const documents = Array.isArray(payload) ? payload : (payload?.documents ? payload.documents : [payload])
+  const serverMessage = payload?.message ?? null
+
   if (props.sessionId && !currentSessionId) {
     currentSessionId = props.sessionId
   }
-  
-  // Если сессии нет, создаем новую
   if (!currentSessionId) {
     const sessionReady = await ensureSession()
-    if (!sessionReady) {
-      return
-    }
+    if (!sessionReady) return
   }
-  
-  // Загружаем документы для текущей сессии
+
   await loadDocuments()
-  
-  // Обрабатываем как одиночный документ, так и массив
-  if (Array.isArray(document)) {
-    const count = document.length
-    if (count > 0) {
-      // Формируем таблицу с загруженными документами
-      let tableContent = '✅ Успешно загружено документов: ' + count + '\n\n'
-      tableContent += '| № | Название документа |\n'
-      tableContent += '| --- | --- |\n'
-      document.forEach((doc, index) => {
+
+  if (serverMessage) {
+    addAssistantMessageFromServer(serverMessage)
+  } else if (documents.length > 0) {
+    if (documents.length > 1) {
+      let tableContent = '✅ Успешно загружено документов: ' + documents.length + '\n\n'
+      tableContent += '| № | Название документа |\n| --- | --- |\n'
+      documents.forEach((doc, index) => {
         tableContent += `| ${index + 1} | ${doc.title} |\n`
       })
       tableContent += '\nВсе документы будут использоваться при ответах на ваши вопросы.'
       addAssistantMessage(tableContent)
+    } else {
+      const doc = documents[0]
+      const tableContent = '✅ Документ успешно загружен и сконвертирован в Markdown.\n| Название документа |\n| --- |\n| ' + (doc.title || '') + ' |\n\nДокумент будет использоваться при ответах на ваши вопросы.'
+      addAssistantMessage(tableContent)
     }
-  } else {
-    // Для одиночного документа тоже используем таблицу
-    let tableContent = '✅ Документ успешно загружен и сконвертирован в Markdown.\n'
-    tableContent += '| Название документа |\n'
-    tableContent += '| --- |\n'
-    tableContent += `| ${document.title} |\n`
-    tableContent += '\nДокумент будет использоваться при ответах на ваши вопросы.'
-    addAssistantMessage(tableContent)
   }
 }
 
@@ -394,6 +399,17 @@ const addAssistantMessage = (content) => {
     type: 'assistant',
     content: content,
     timestamp: new Date(),
+  }
+  messages.value.push(message)
+  scrollToBottom()
+}
+
+const addAssistantMessageFromServer = (serverMessage) => {
+  const message = {
+    id: serverMessage.id,
+    type: serverMessage.type || 'assistant',
+    content: serverMessage.content,
+    timestamp: serverMessage.created_at ? new Date(serverMessage.created_at) : new Date(),
   }
   messages.value.push(message)
   scrollToBottom()
@@ -482,54 +498,76 @@ const sendMessage = async () => {
   messages.value.push(streamingMessage)
   scrollToBottom()
 
+  const CHAT_POLL_INTERVAL_MS = 1500
+  const CHAT_POLL_MAX_ATTEMPTS = 120
+
+  const pollChatStatus = (taskId) => {
+    return new Promise((resolve, reject) => {
+      let attempts = 0
+      const poll = async () => {
+        attempts++
+        const statusResult = await tpClient.getChatStatus(taskId)
+        if (statusResult.status === 'SUCCESS') {
+          resolve(statusResult)
+          return
+        }
+        if (statusResult.status === 'FAILURE') {
+          reject(new Error(statusResult.error || 'Ошибка обработки запроса'))
+          return
+        }
+        if (attempts >= CHAT_POLL_MAX_ATTEMPTS) {
+          reject(new Error('Превышено время ожидания ответа'))
+          return
+        }
+        setTimeout(poll, CHAT_POLL_INTERVAL_MS)
+      }
+      poll()
+    })
+  }
+
+  const applyDone = (fullResponse, metadata) => {
+    const msg = messages.value.find(m => m.id === streamingMessageId)
+    if (msg) {
+      msg.content = fullResponse || ''
+      msg.isStreaming = false
+    }
+    isTyping.value = false
+    streamingMessageId = null
+    if (metadata?.session_id) {
+      currentSessionId = metadata.session_id
+      emit('session-updated', metadata.session_id)
+    }
+    nextTick(() => scrollToBottom())
+  }
+
   try {
     await tpClient.sendMessageStream(
       messageText,
-      // onChunk
-      (chunk) => {
-        console.log('[TP Chat] Получен chunk (длина:', chunk?.length || 0, '):', chunk?.substring(0, 100))
-        const msg = messages.value.find(m => m.id === streamingMessageId)
-        if (msg) {
-          // Принудительно обновляем контент для реактивности Vue
-          msg.content = (msg.content || '') + (chunk || '')
-          // Принудительно триггерим обновление через nextTick
-          nextTick(() => {
-            scrollToBottom()
-          })
-        } else {
-          console.warn('[TP Chat] Сообщение для streaming не найдено, ID:', streamingMessageId)
-        }
-      },
-      // onDone
+      () => {},
       async (fullResponse, metadata) => {
-        console.log('[TP Chat] ========== ПОЛНЫЙ ОТВЕТ ПОЛУЧЕН ==========')
-        console.log('[TP Chat] Длина ответа:', fullResponse?.length || 0)
-        console.log('[TP Chat] Полный текст ответа:')
-        console.log(fullResponse)
-        console.log('[TP Chat] ==========================================')
-        console.log('[TP Chat] Metadata:', metadata)
-        
-        const msg = messages.value.find(m => m.id === streamingMessageId)
-        if (msg) {
-          // Устанавливаем полный ответ и отключаем streaming
-          msg.content = fullResponse || ''
-          msg.isStreaming = false
-          console.log('[TP Chat] Сообщение обновлено, контент установлен (длина:', msg.content.length, ')')
-        } else {
-          console.error('[TP Chat] Сообщение для streaming не найдено при завершении, ID:', streamingMessageId)
+        if (metadata?.async && metadata?.task_id) {
+          try {
+            const statusResult = await pollChatStatus(metadata.task_id)
+            applyDone(statusResult.full_response || '', {
+              session_id: statusResult.session_id || metadata.session_id,
+              message_id: statusResult.message_id,
+              processing_time_ms: statusResult.processing_time_ms,
+              timestamp: statusResult.timestamp,
+            })
+          } catch (pollError) {
+            const msg = messages.value.find(m => m.id === streamingMessageId)
+            if (msg) {
+              msg.content = `**Ошибка:** ${pollError.message || 'Не удалось получить ответ'}`
+              msg.isStreaming = false
+            }
+            isTyping.value = false
+            streamingMessageId = null
+            scrollToBottom()
+          }
+          return
         }
-        isTyping.value = false
-        streamingMessageId = null
-        
-        if (metadata?.session_id) {
-          currentSessionId = metadata.session_id
-          emit('session-updated', metadata.session_id)
-        }
-        
-        await nextTick()
-        scrollToBottom()
+        applyDone(fullResponse || '', metadata)
       },
-      // onError
       (errorMsg) => {
         const msg = messages.value.find(m => m.id === streamingMessageId)
         if (msg) {
@@ -625,6 +663,7 @@ watch(showUploader, (isOpen) => {
 const loadSession = async (sessionId) => {
   if (!sessionId) return
   
+  const previousSessionId = currentSessionId
   currentSessionId = sessionId
   historyLoaded = false
   
@@ -644,12 +683,15 @@ const loadSession = async (sessionId) => {
         messages.value = historyMessages
         showMessages.value = true
       } else {
-        messages.value = [{
-          id: messageIdCounter++,
-          type: 'assistant',
-          content: 'Привет! Я ваш AI ассистент для работы с техпроцессами.\n\n**Что я умею:**\n• Отвечать на вопросы на основе загруженных документов техпроцессов\n• Искать информацию в документах\n• Анализировать таблицы и извлекать данные\n\n**Начните работу:**\n1. Нажмите кнопку "Загрузить" для добавления документов DOCX\n2. После загрузки документы автоматически конвертируются в Markdown\n3. Затем задавайте вопросы к документам!',
-          timestamp: new Date(),
-        }]
+        // С API пришло 0 сообщений: при переключении на другую сессию показываем вступительное; иначе не затираем (вступительное + сообщение о загрузке файлов)
+        if (previousSessionId !== sessionId || messages.value.length === 0) {
+          messages.value = [{
+            id: messageIdCounter++,
+            type: 'assistant',
+            content: TP_INTRO_MESSAGE,
+            timestamp: new Date(),
+          }]
+        }
         showMessages.value = false
       }
     }
@@ -1140,6 +1182,22 @@ defineExpose({
   background: transparent;
   position: relative;
   z-index: 1;
+}
+
+.tp-assistant-chat__typing {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: var(--bs-secondary-color);
+}
+
+.tp-assistant-chat__typing-spinner {
+  flex-shrink: 0;
+}
+
+.tp-assistant-chat__typing-label {
+  font-size: 0.875rem;
 }
 
 .tp-assistant-chat__input {

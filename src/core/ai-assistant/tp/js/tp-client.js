@@ -7,7 +7,9 @@ import { ragClient } from '../../rag/js/rag-client.js'
 const endpoints = {
   documents: 'ai_assistant/tp_documents/',
   documentDetail: (id) => `ai_assistant/tp_documents/${id}/`,
+  uploadStatus: (taskId) => `ai_assistant/tp_documents/upload_status/${taskId}/`,
   chatStream: 'ai_assistant/tp_chat/stream/',
+  chatStatus: (taskId) => `ai_assistant/tp_chat/status/${taskId}/`,
   chatSessions: 'ai_assistant/chat_sessions/',
 }
 
@@ -132,20 +134,30 @@ class TPClient {
           'Content-Type': 'multipart/form-data',
         },
       })
-      
+
+      const data = response.data || response
+      if (response.success && data.task_id) {
+        return {
+          success: true,
+          task_id: data.task_id,
+          async: true,
+          message: data.message || 'Документы поставлены в очередь.',
+        }
+      }
       if (response.success) {
         return {
           success: true,
-          documents: response.data.documents || [],
-          count: response.data.count || 0,
-          errors: response.data.errors || null,
+          documents: data.documents || [],
+          count: data.count || 0,
+          errors: data.errors || null,
+          message: data.message || null,
         }
       }
-      
+
       return {
         success: false,
-        error: response.data?.error || 'Не удалось загрузить документы',
-        errors: response.data?.errors || null,
+        error: data?.error || 'Не удалось загрузить документы',
+        errors: data?.errors || null,
       }
     } catch (error) {
       console.error('Ошибка загрузки документов:', error)
@@ -172,6 +184,37 @@ class TPClient {
     return {
       success: false,
       error: result.error || 'Не удалось загрузить документ',
+    }
+  }
+
+  /**
+   * Опрос статуса асинхронной загрузки документов по task_id
+   * @param {string} taskId - ID задачи Celery
+   */
+  async getUploadStatus(taskId) {
+    if (!taskId) {
+      return { success: false, error: 'Не указан task_id' }
+    }
+    try {
+      const response = await apiClient.get(endpoints.uploadStatus(taskId))
+      const data = response.data || response
+      return {
+        success: response.success,
+        status: data.status,
+        task_id: data.task_id,
+        documents: data.documents || [],
+        count: data.count || 0,
+        errors: data.errors || null,
+        message: data.message || null,
+        error: data.error || null,
+      }
+    } catch (error) {
+      console.error('Ошибка опроса статуса загрузки:', error)
+      return {
+        success: false,
+        status: 'FAILURE',
+        error: error.message || 'Ошибка опроса статуса',
+      }
     }
   }
 
@@ -203,19 +246,48 @@ class TPClient {
   }
 
   /**
-   * Отправить сообщение в чат с техпроцессами (streaming)
+   * Опрос статуса задачи ответа модели в чате техпроцессов по task_id
+   */
+  async getChatStatus(taskId) {
+    if (!taskId) {
+      return { success: false, status: 'FAILURE', error: 'Не указан task_id' }
+    }
+    try {
+      const response = await apiClient.get(endpoints.chatStatus(taskId))
+      const data = response.data || response
+      return {
+        success: response.success,
+        status: data.status,
+        task_id: data.task_id,
+        full_response: data.full_response,
+        message_id: data.message_id,
+        session_id: data.session_id,
+        processing_time_ms: data.processing_time_ms,
+        timestamp: data.timestamp,
+        error: data.error,
+      }
+    } catch (error) {
+      console.error('Ошибка опроса статуса чата:', error)
+      return {
+        success: false,
+        status: 'FAILURE',
+        error: error.message || 'Ошибка опроса статуса',
+      }
+    }
+  }
+
+  /**
+   * Отправить сообщение в чат с техпроцессами (асинхронно через Celery, опрос статуса)
    */
   async sendMessageStream(message, onChunk, onDone, onError, sessionId = null) {
     const config = this.ollamaConfig
-    
+
     const requestBody = {
       message: message,
     }
-    
     if (sessionId) {
       requestBody.session_id = sessionId
     }
-    
     if (config) {
       requestBody.ollama_config = {
         temperature: config.temperature,
@@ -223,7 +295,7 @@ class TPClient {
         top_p: config.top_p,
         top_k: config.top_k,
         repeat_penalty: config.repeat_penalty,
-        seed: config.seed,  // Seed для воспроизводимости результатов
+        seed: config.seed,
       }
     }
 
@@ -231,7 +303,7 @@ class TPClient {
       const baseUrl = apiClient.client?.defaults?.baseURL || `${apiClient.getBaseUrl()}api/`
       const url = `${baseUrl}${endpoints.chatStream}`
       const token = apiClient.getAuthToken()
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -241,72 +313,26 @@ class TPClient {
         body: JSON.stringify(requestBody),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP error ${response.status}`)
-      }
+      const data = await response.json().catch(() => ({}))
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let accumulatedContent = ''
-      let doneEventReceived = false
-
-      while (true) {
-        const { done, value } = await reader.read()
-        
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const jsonStr = line.slice(6).trim()
-            if (!jsonStr) continue
-
-            try {
-              const event = JSON.parse(jsonStr)
-              
-              if (event.type === 'chunk' && onChunk) {
-                accumulatedContent += event.text
-                console.log('[TP Client] Chunk получен (длина:', event.text?.length || 0, '):', event.text?.substring(0, 100))
-                onChunk(event.text)
-              } else if (event.type === 'done') {
-                doneEventReceived = true
-                const finalResponse = event.full_response || accumulatedContent
-                console.log('[TP Client] Done событие получено. Полный ответ (длина:', finalResponse?.length || 0, '):', finalResponse?.substring(0, 500))
-                console.log('[TP Client] Metadata:', {
-                  session_id: event.session_id,
-                  message_id: event.message_id,
-                  processing_time_ms: event.processing_time_ms,
-                })
-                if (onDone) {
-                  onDone(finalResponse, {
-                    session_id: event.session_id,
-                    message_id: event.message_id,
-                    processing_time_ms: event.processing_time_ms,
-                    timestamp: event.timestamp,
-                  })
-                }
-              } else if (event.type === 'error' && onError) {
-                doneEventReceived = true
-                console.error('[TP Client] Error событие:', event.message)
-                onError(event.message)
-              } else {
-                console.log('[TP Client] Неизвестный тип события:', event.type, event)
-              }
-            } catch (parseError) {
-              console.warn('[TP Client] Ошибка парсинга SSE события:', parseError, jsonStr)
-            }
-          }
+      if (response.status === 202 && data.task_id) {
+        if (onDone) {
+          onDone(null, { task_id: data.task_id, session_id: data.session_id, async: true })
         }
+        return
       }
 
-      if (!doneEventReceived && accumulatedContent && onDone) {
-        onDone(accumulatedContent)
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP error ${response.status}`)
+      }
+
+      if (onDone) {
+        onDone(data.full_response || '', {
+          session_id: data.session_id,
+          message_id: data.message_id,
+          processing_time_ms: data.processing_time_ms,
+          timestamp: data.timestamp,
+        })
       }
     } catch (error) {
       console.error('Ошибка streaming сообщения:', error)
