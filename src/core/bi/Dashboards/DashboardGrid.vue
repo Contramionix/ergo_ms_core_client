@@ -1488,6 +1488,7 @@ onUnmounted(() => {
 .dashboard-grid.view-mode .grid-item.item-чарт {
   border: none;
   box-shadow: none;
+  cursor: pointer;
 
   &:hover {
     border: none;
