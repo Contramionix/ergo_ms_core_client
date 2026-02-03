@@ -1065,6 +1065,7 @@ const handleDrop = (event) => {
       
       localItems.value.push(newItem)
       emit('update:items', localItems.value)
+      emit('item-edit', newItem)
     }
   }
   

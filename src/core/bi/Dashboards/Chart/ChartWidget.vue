@@ -3,7 +3,7 @@
     <!-- Строка 1: Вкладки с заголовками чартов -->
     <div v-if="chartsList && chartsList.length > 1" class="chart-tabs">
       <div class="tabs-container">
-        <div class="visible-tabs" ref="visibleTabsContainer">
+        <div class="visible-tabs">
           <button 
             v-for="(chart, index) in visibleCharts" 
             :key="chart.id"
@@ -46,7 +46,7 @@
                 'active': activeChartIndex === (visibleCharts.length + showFromIndex + index),
                 'favorite': chart.isFavorite 
               }"
-              @click="selectHiddenChart(visibleCharts.length + showFromIndex + index)"
+              @click="setActiveChart(visibleCharts.length + showFromIndex + index)"
             >
               <Star v-if="chart.isFavorite" :size="12" class="item-star" />
               <span>{{ chart.title }}</span>
@@ -66,8 +66,7 @@
     <!-- Строка 2: Сам чарт -->
     <div class="chart-content">
       <div v-if="isLoading" class="chart-loading">
-        <Loader2 class="spinner" :size="24" />
-        <span>Загрузка чарта...</span>
+        <SpinnerLoading loading-text="Загрузка чарта..." />
       </div>
       
       <div v-else-if="error" class="chart-error">
@@ -96,8 +95,7 @@
         class="chart-api-container"
       >
         <div v-if="chartLoading" class="chart-loading">
-          <Loader2 class="spinner" :size="24" />
-          <span>Загрузка данных чарта...</span>
+          <SpinnerLoading loading-text="Загрузка данных чарта..." />
         </div>
         
         <div v-else-if="chartError" class="chart-error">
@@ -168,7 +166,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue';
-import { Star, MoreHorizontal, Loader2, AlertCircle, BarChart3, CircleHelp } from 'lucide-vue-next';
+import { Star, MoreHorizontal, AlertCircle, BarChart3, CircleHelp } from 'lucide-vue-next';
 
 // Динамические импорты графических компонентов для уменьшения размера бандла
 const ChartJsComponent = defineAsyncComponent(() =>
@@ -179,6 +177,7 @@ const ApexChartsComponent = defineAsyncComponent(() =>
   import('../../Charts/ApexChartsComponent.vue')
 );
 
+import SpinnerLoading from '@/components/SpinnerLoading.vue';
 import chartService from '@/core/bi/MainPage/Sidebar/components/js/chartService.js';
 
 const props = defineProps({
@@ -201,7 +200,6 @@ const emit = defineEmits(['update:activeChartIndex', 'content-resized']);
 const isLoading = ref(false);
 const error = ref('');
 const isDropdownOpen = ref(false);
-const visibleTabsContainer = ref(null);
 const showFromIndex = ref(0);
 
 const chartLoading = ref(false);
@@ -221,9 +219,7 @@ const currentChart = computed(() => {
   return props.chartsList[props.activeChartIndex] || null;
 });
 
-const effectiveAutoHeight = computed(() => {
-  return props.autoHeight || false;
-});
+const effectiveAutoHeight = computed(() => props.autoHeight ?? false);
 
 const visibleCharts = computed(() => {
   if (!props.chartsList || props.chartsList.length <= 1) return [];
@@ -254,10 +250,6 @@ const hiddenCharts = computed(() => {
 function setActiveChart(index) {
   emit('update:activeChartIndex', index);
   isDropdownOpen.value = false;
-}
-
-function selectHiddenChart(index) {
-  setActiveChart(index);
 }
 
 function toggleDropdown() {
@@ -351,12 +343,6 @@ function getChartUrl(url) {
   }
 }
 
-function getApiChartUrl(chartId) {
-  if (!chartId) return '';
-  
-  return `#chart-${chartId}`;
-}
-
 function handleIframeLoad() {
   isLoading.value = false;
   error.value = '';
@@ -370,14 +356,17 @@ function handleIframeError() {
 }
 
 function handleClickOutside(event) {
-  if (!isDropdownOpen.value) return;
-  
-  const dropdownBtn = event.target.closest('.dropdown-btn');
-  const dropdownMenu = event.target.closest('.dropdown-menu');
-  
-  if (!dropdownBtn && !dropdownMenu) {
+  if (isDropdownOpen.value && !event.target.closest('.overflow-dropdown')) {
     isDropdownOpen.value = false;
   }
+}
+
+function extractRows(data) {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.rows)) return data.rows;
+  if (Array.isArray(data.data)) return data.data;
+  return [];
 }
 
 async function loadChartData(chartId) {
@@ -403,21 +392,10 @@ async function loadChartData(chartId) {
       try {
         if (chartData.value.params && Object.keys(chartData.value.params).length > 0) {
           const aggResponse = await chartService.getDatasetRowsAgg(chartData.value.dataset, chartData.value.params);
-          
-          if (aggResponse.success && aggResponse.data) {
-            let rows = [];
-            if (Array.isArray(aggResponse.data)) {
-              rows = aggResponse.data;
-            } else if (aggResponse.data.rows && Array.isArray(aggResponse.data.rows)) {
-              rows = aggResponse.data.rows;
-            } else if (aggResponse.data.data && Array.isArray(aggResponse.data.data)) {
-              rows = aggResponse.data.data;
-            }
-            
-            if (rows.length > 0) {
-              datasetRows.value = rows;
-              return;
-            }
+          const rows = extractRows(aggResponse?.data);
+          if (rows.length > 0) {
+            datasetRows.value = rows;
+            return;
           }
         }
         
@@ -427,21 +405,7 @@ async function loadChartData(chartId) {
           throw new Error(datasetResponse.message || 'Не удалось загрузить данные');
         }
         
-        let rows = [];
-        if (datasetResponse.data) {
-          if (Array.isArray(datasetResponse.data)) {
-            rows = datasetResponse.data;
-          } else if (datasetResponse.data.rows && Array.isArray(datasetResponse.data.rows)) {
-            rows = datasetResponse.data.rows;
-          } else if (datasetResponse.data.data && Array.isArray(datasetResponse.data.data)) {
-            rows = datasetResponse.data.data;
-          } else {
-            console.error('Неожиданный формат данных датасета:', datasetResponse.data);
-            rows = [];
-          }
-        }
-        
-        datasetRows.value = rows;
+        datasetRows.value = extractRows(datasetResponse.data);
         
       } catch (datasetError) {
         console.error('Ошибка загрузки данных датасета:', datasetError);
@@ -482,23 +446,23 @@ async function loadChartData(chartId) {
 
 watch(() => currentChart.value, (newChart) => {
   if (newChart) {
-    isLoading.value = true;
     error.value = '';
-    
-    if (newChart.chartType === 'select' && newChart.selectedChartId) {
+
+    if (newChart.chartType === 'url' && newChart.chartUrl) {
+      isLoading.value = true;
+      setTimeout(() => {
+        if (isLoading.value) isLoading.value = false;
+      }, 5000);
+    } else if (newChart.chartType === 'select' && newChart.selectedChartId) {
+      isLoading.value = false;
       loadChartData(newChart.selectedChartId);
     } else {
+      isLoading.value = false;
       chartData.value = null;
       datasetRows.value = null;
       chartError.value = '';
       chartLoading.value = false;
     }
-    
-    setTimeout(() => {
-      if (isLoading.value) {
-        isLoading.value = false;
-      }
-    }, 5000);
   }
 }, { immediate: true });
 
@@ -705,6 +669,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  flex: 1;
   gap: 12px;
   color: var(--color-text-secondary);
   font-size: 14px;
@@ -712,15 +678,6 @@ onUnmounted(() => {
 
 .chart-error {
   color: var(--color-accent);
-}
-
-.spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 .chart-iframe {
