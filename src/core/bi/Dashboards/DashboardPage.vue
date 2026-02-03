@@ -41,7 +41,7 @@
                 <template v-else>
                     <button class="btn btn-sm btn-secondary" @click="isPageWindowVisible = true">Страницы</button>
                     <button class="btn btn-sm btn-primary" :disabled="!dashboardRequiredFieldsFilled || !isDashboardDirty"
-                        @click="isSaveModalVisible = true">{{ isEditMode ? 'Сохранить изменения' : 'Создать дашборд' }}
+                        @click="handleSaveClick">{{ isEditMode ? 'Сохранить изменения' : 'Создать дашборд' }}
                     </button>
                 </template>
             </div>
@@ -161,6 +161,7 @@ const dashboardDescription = ref('')
 const dashboardId = ref(null)
 const dashboardOwnerId = ref(null)
 const dashboardDataLoaded = ref(false)
+const lastSavedSnapshot = ref(null)
 const isSaveModalVisible = ref(false)
 const isEditMode = computed(() => {
     if (dashboardId.value == null) return true
@@ -221,14 +222,27 @@ const dashboardRequiredFieldsFilled = computed(() => {
     return dashboardName.value.trim().length > 0
 })
 
-const isDashboardDirty = computed(() => {
-    // Если дашборд еще не создан, всегда считаем его "грязным"
-    if (!isEditMode.value || !dashboardId.value) {
-        return true
+function deepEqual(a, b) {
+    if (a === b) return true
+    if (a == null || b == null) return a === b
+    if (typeof a !== 'object' || typeof b !== 'object') return false
+    if (Array.isArray(a) && Array.isArray(b)) {
+        if (a.length !== b.length) return false
+        return a.every((v, i) => deepEqual(v, b[i]))
     }
-    // TODO: Добавить проверку изменений элементов и страниц
-    // Пока всегда возвращаем true для возможности сохранения
-    return true
+    if (Array.isArray(a) !== Array.isArray(b)) return false
+    const keysA = Object.keys(a).sort()
+    const keysB = Object.keys(b).sort()
+    if (keysA.length !== keysB.length) return false
+    if (keysA.some((k, i) => k !== keysB[i])) return false
+    return keysA.every(k => deepEqual(a[k], b[k]))
+}
+
+const isDashboardDirty = computed(() => {
+    if (!isEditMode.value || !dashboardId.value) return true
+    if (lastSavedSnapshot.value == null) return true
+    const current = prepareDashboardForAPI(dashboardName.value, dashboardDescription.value)
+    return !deepEqual(current, lastSavedSnapshot.value)
 })
 
 const currentPageName = computed(() => {
@@ -551,6 +565,7 @@ function loadDashboardFromAPI(dashboardData) {
         pages.value = [{ name: 'Страница 1' }]
         dashboardItems.value = { 0: [] }
     }
+    lastSavedSnapshot.value = prepareDashboardForAPI(dashboardName.value, dashboardDescription.value)
     dashboardDataLoaded.value = true
 }
 
@@ -613,6 +628,14 @@ function prepareDashboardForAPI(name, description) {
     }
 }
 
+function handleSaveClick() {
+    if (isEditMode.value && dashboardId.value) {
+        handleSaveDashboard({ name: dashboardName.value, description: dashboardDescription.value })
+    } else {
+        isSaveModalVisible.value = true
+    }
+}
+
 // Сохранение дашборда
 async function handleSaveDashboard({ name, description }) {
     saving.value = true
@@ -638,9 +661,9 @@ async function handleSaveDashboard({ name, description }) {
             })
         }
         
-        // Обновляем локальные данные
         dashboardName.value = savedDashboard.name
         dashboardDescription.value = savedDashboard.description || ''
+        lastSavedSnapshot.value = prepareDashboardForAPI(dashboardName.value, dashboardDescription.value)
         isSaveModalVisible.value = false
     } catch (error) {
         console.error('Ошибка при сохранении дашборда:', error)
@@ -680,6 +703,7 @@ onMounted(async () => {
     } else {
         dashboardId.value = null
         dashboardOwnerId.value = null
+        lastSavedSnapshot.value = null
         dashboardDataLoaded.value = true
         if (!dashboardItems.value[0]) {
             dashboardItems.value[0] = []
