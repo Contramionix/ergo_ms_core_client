@@ -387,51 +387,50 @@ async function loadChartData(chartId) {
     }
     
     chartData.value = chartResponse.data;
-    
-    if (chartData.value.dataset) {
-      try {
-        if (chartData.value.params && Object.keys(chartData.value.params).length > 0) {
-          const aggResponse = await chartService.getDatasetRowsAgg(chartData.value.dataset, chartData.value.params);
-          const rows = extractRows(aggResponse?.data);
-          if (rows.length > 0) {
-            datasetRows.value = rows;
-            return;
-          }
+
+    try {
+      const rowsResponse = await chartService.getChartRows(chartId);
+      const rows = extractRows(rowsResponse?.data ?? rowsResponse);
+      if (rows.length > 0) {
+        datasetRows.value = rows;
+      } else if (chartData.value.chart_type === 'bar' || chartData.value.chart_type === 'line') {
+        datasetRows.value = [
+          { category: 'A', value: 10, year: 2023 },
+          { category: 'B', value: 20, year: 2023 },
+          { category: 'C', value: 15, year: 2023 },
+          { category: 'A', value: 12, year: 2024 },
+          { category: 'B', value: 25, year: 2024 },
+          { category: 'C', value: 18, year: 2024 }
+        ];
+        if (!chartData.value.params || Object.keys(chartData.value.params).length === 0) {
+          chartData.value.params = {
+            x: [{ name: 'category', label: 'Категория' }],
+            y: [{ name: 'value', label: 'Значение' }]
+          };
         }
-        
-        const datasetResponse = await chartService.getDatasetRows(chartData.value.dataset);
-        
-        if (!datasetResponse.success) {
-          throw new Error(datasetResponse.message || 'Не удалось загрузить данные');
-        }
-        
-        datasetRows.value = extractRows(datasetResponse.data);
-        
-      } catch (datasetError) {
-        console.error('Ошибка загрузки данных датасета:', datasetError);
-        
-        if (chartData.value.chart_type === 'bar' || chartData.value.chart_type === 'line') {
-          datasetRows.value = [
-            { category: 'A', value: 10, year: 2023 },
-            { category: 'B', value: 20, year: 2023 },
-            { category: 'C', value: 15, year: 2023 },
-            { category: 'A', value: 12, year: 2024 },
-            { category: 'B', value: 25, year: 2024 },
-            { category: 'C', value: 18, year: 2024 }
-          ];
-          
-          if (!chartData.value.params || Object.keys(chartData.value.params).length === 0) {
-            chartData.value.params = {
-              x: [{ name: 'category', label: 'Категория' }],
-              y: [{ name: 'value', label: 'Значение' }]
-            };
-          }
-        } else {
-          datasetRows.value = [];
-        }
+      } else {
+        datasetRows.value = [];
       }
-    } else {
-      datasetRows.value = [];
+    } catch (datasetError) {
+      console.error('Ошибка загрузки данных чарта:', datasetError);
+      if (chartData.value.chart_type === 'bar' || chartData.value.chart_type === 'line') {
+        datasetRows.value = [
+          { category: 'A', value: 10, year: 2023 },
+          { category: 'B', value: 20, year: 2023 },
+          { category: 'C', value: 15, year: 2023 },
+          { category: 'A', value: 12, year: 2024 },
+          { category: 'B', value: 25, year: 2024 },
+          { category: 'C', value: 18, year: 2024 }
+        ];
+        if (!chartData.value.params || Object.keys(chartData.value.params).length === 0) {
+          chartData.value.params = {
+            x: [{ name: 'category', label: 'Категория' }],
+            y: [{ name: 'value', label: 'Значение' }]
+          };
+        }
+      } else {
+        datasetRows.value = [];
+      }
     }
     
   } catch (err) {

@@ -31,9 +31,9 @@
                 </div>
             </div>
             
-            <div class="header-label-buttons">
+            <div v-if="isHeaderButtonsReady" class="header-label-buttons">
                 <template v-if="isViewMode">
-                    <button class="btn btn-sm btn-primary" @click="goToEditMode">
+                    <button v-if="canEditDashboard" class="btn btn-sm btn-primary" @click="goToEditMode">
                         <Pencil :size="16" class="btn-icon-inline" />
                         Редактировать
                     </button>
@@ -104,7 +104,7 @@
           @save="handleSaveDashboard"
         />
         
-        <div class="body-content">
+        <div v-if="isHeaderButtonsReady" class="body-content">
             <DashboardGrid
                 ref="dashboardGridRef"
                 :items="currentPageItems"
@@ -118,7 +118,7 @@
             />
         </div>
         
-        <div v-if="!isViewMode" class="body-footer" :style="{ left: footerLeftOffset, width: footerWidth }">
+        <div v-if="isHeaderButtonsReady && !isViewMode" class="body-footer" :style="{ left: footerLeftOffset, width: footerWidth }">
             <div class="footer-buttons">
                 <DashboardToolbar 
                     @drag-start="handleToolbarDragStart"
@@ -146,6 +146,7 @@ import { isSidebarCollapsed, initializeSidebarTracking } from '@/core/bi/MainPag
 import dashboardService from '@/core/bi/MainPage/Sidebar/components/js/dashboardService.js'
 import SaveDashboardModal from './components/SaveDashboardModal.vue'
 import { useToast } from 'vue-toastification'
+import tokenService from '@/core/cms/js/tokenService'
 
 const HEADER_WIDGET_HEIGHTS = {
   'XS': 50,
@@ -158,12 +159,31 @@ const HEADER_WIDGET_HEIGHTS = {
 const dashboardName = ref('Новый дашборд')
 const dashboardDescription = ref('')
 const dashboardId = ref(null)
+const dashboardOwnerId = ref(null)
+const dashboardDataLoaded = ref(false)
 const isSaveModalVisible = ref(false)
 const isEditMode = computed(() => {
     if (dashboardId.value == null) return true
+    if (!canEditDashboard.value) return false
     return route.query.mode === 'edit'
 })
 const isViewMode = computed(() => dashboardId.value != null && route.query.mode !== 'edit')
+
+const canEditDashboard = computed(() => {
+    if (dashboardId.value == null) return true
+    if (!dashboardDataLoaded.value) return false
+    const ownerId = dashboardOwnerId.value
+    if (ownerId == null) return true
+    const currentId = tokenService.getUserId() != null ? Number(tokenService.getUserId()) : null
+    if (currentId == null) return false
+    return currentId === ownerId
+})
+
+const isHeaderButtonsReady = computed(() => {
+    const idFromRoute = route.params.id
+    if (!idFromRoute || idFromRoute === 'new') return true
+    return dashboardDataLoaded.value
+})
 const saving = ref(false)
 const dashboardItems = ref({})
 const toast = useToast()
@@ -243,6 +263,7 @@ const updateCurrentPageItems = (newItems) => {
 }
 
 const goToEditMode = () => {
+    if (!canEditDashboard.value) return
     router.replace({ path: route.path, query: { ...route.query, mode: 'edit' } })
 }
 
@@ -500,6 +521,7 @@ function loadDashboardFromAPI(dashboardData) {
     dashboardName.value = dashboardData.name || 'Новый дашборд'
     dashboardDescription.value = dashboardData.description || ''
     dashboardId.value = dashboardData.id
+    dashboardOwnerId.value = dashboardData.owner_id ?? dashboardData.owner ?? null
 
     // Загружаем страницы
     if (dashboardData.pages && dashboardData.pages.length > 0) {
@@ -529,6 +551,7 @@ function loadDashboardFromAPI(dashboardData) {
         pages.value = [{ name: 'Страница 1' }]
         dashboardItems.value = { 0: [] }
     }
+    dashboardDataLoaded.value = true
 }
 
 // Преобразование данных из формата компонента в формат API
@@ -635,6 +658,7 @@ async function loadDashboard(id) {
     } catch (error) {
         console.error('Ошибка при загрузке дашборда:', error)
         toast.error('Не удалось загрузить дашборд')
+        dashboardDataLoaded.value = true
     }
 }
 
@@ -646,9 +670,17 @@ onMounted(async () => {
     // Загружаем дашборд, если есть ID в route
     const dashboardIdFromRoute = route.params.id
     if (dashboardIdFromRoute && dashboardIdFromRoute !== 'new') {
+        dashboardDataLoaded.value = false
         await loadDashboard(parseInt(dashboardIdFromRoute))
+        if (!canEditDashboard.value && route.query.mode === 'edit') {
+            const q = { ...route.query }
+            delete q.mode
+            router.replace({ path: route.path, query: q })
+        }
     } else {
         dashboardId.value = null
+        dashboardOwnerId.value = null
+        dashboardDataLoaded.value = true
         if (!dashboardItems.value[0]) {
             dashboardItems.value[0] = []
         }

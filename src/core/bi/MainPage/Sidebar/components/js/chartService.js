@@ -13,6 +13,9 @@ export default {
   getChart(chartId) {
     return apiClient.get(`/bi_analysis/bi_charts/${chartId}/`)
   },
+  getChartRows(chartId) {
+    return apiClient.get(`/bi_analysis/bi_charts/${chartId}/rows/`)
+  },
   getDataset(datasetId) {
     return apiClient.get(`/bi_analysis/bi_datasets/${datasetId}/`)
   },
