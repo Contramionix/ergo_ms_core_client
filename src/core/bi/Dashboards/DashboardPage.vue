@@ -676,25 +676,6 @@ watch(() => pages.value.length, (newLength, oldLength) => {
     }
 })
 
-watch(currentPageItems, (items, oldItems) => {
-  if (items.length > oldItems.length) {
-    const newItem = items[items.length - 1]
-    if (newItem.type === 'Заголовок') {
-      headerSettingsData.value = { ...newItem }
-      isHeaderSettingsVisible.value = true
-    } else if (newItem.type === 'Текст') {
-      textSettingsData.value = { ...newItem }
-      isTextSettingsVisible.value = true
-    } else if (newItem.type === 'Чарт') {
-      chartSettingsData.value = { ...newItem }
-      isChartSettingsVisible.value = true
-    } else if (newItem.type === 'Селектор') {
-      selectorSettingsData.value = { ...newItem }
-      isSelectorSettingsVisible.value = true
-    }
-  }
-})
-
 watch(currentPageIndex, (newIndex) => {
     if (pages.value.length > 1) {
         updateUrlForPage(newIndex)
