@@ -18,6 +18,15 @@
     </div>
 
     <div v-else class="grid-container">
+      <div class="grid-background" aria-hidden="true" />
+      <div class="grid-rows-layer" aria-hidden="true">
+        <div
+          v-for="(line, idx) in existingRowLines"
+          :key="idx"
+          class="grid-row-line"
+          :style="{ top: `${line}px` }"
+        />
+      </div>
       <div
         v-for="item in items"
         :key="item.id"
@@ -147,6 +156,7 @@ const ELEMENT_SIZES = {
 
 const GRID_GAP = 10
 const GRID_PADDING = 10
+const GRID_CONTAINER_PADDING = 20
 const MAX_PAGE_WIDTH = 1320
 
 const props = defineProps({
@@ -200,6 +210,8 @@ let hideHintTimer = null
 const resizeObserver = ref(null)
 const autoHeightItems = ref(new Map())
 const isRecalculatingPositions = ref(false)
+const documentDragOverListenerAttached = ref(false)
+const documentMouseMoveListenerAttached = ref(false)
 
 const grayPlaceholderStyle = computed(() => {
   if (!showGrayPlaceholder.value || !currentDraggedType.value) return null
@@ -220,24 +232,22 @@ const grayPlaceholderStyle = computed(() => {
 
 const yellowPlaceholderStyle = computed(() => {
   if (!showYellowPlaceholder.value) return null
-  
+  const p = yellowPlaceholderPosition.value
   return {
     position: 'absolute',
-    left: `${yellowPlaceholderPosition.value.x}px`,
-    top: `${yellowPlaceholderPosition.value.y}px`,
-    width: `${yellowPlaceholderPosition.value.width}px`,
-    height: `${yellowPlaceholderPosition.value.height}px`,
+    left: `${(p.x || 0) + GRID_CONTAINER_PADDING}px`,
+    top: `${(p.y || 0) + GRID_CONTAINER_PADDING}px`,
+    width: `${p.width || 0}px`,
+    height: `${p.height || 0}px`,
     pointerEvents: 'none'
   }
 })
 
 const shiftedItemsStyle = computed(() => {
-  if (!showYellowPlaceholder.value || isDraggingExisting.value) {
-    return {}
-  }
-  
-  const placeholderX = yellowPlaceholderPosition.value.x
+  if (!showYellowPlaceholder.value) return {}
   const placeholderY = yellowPlaceholderPosition.value.y
+  if (placeholderY >= 10) return {}
+  const placeholderX = yellowPlaceholderPosition.value.x
   const placeholderWidth = yellowPlaceholderPosition.value.width
   const placeholderHeight = yellowPlaceholderPosition.value.height
   
@@ -412,11 +422,19 @@ const editItem = (item) => {
 
 const deleteItem = (item) => {
   const index = localItems.value.findIndex(i => i.id === item.id)
-  if (index !== -1) {
-    localItems.value.splice(index, 1)
-    emit('update:items', localItems.value)
-    emit('item-delete', item)
-  }
+  if (index === -1) return
+  const deletedY = item.y || 0
+  const deletedSize = getActualItemSize(item)
+  const deletedHeight = deletedSize.height
+  localItems.value.splice(index, 1)
+  const shiftUp = deletedHeight + GRID_GAP
+  localItems.value.forEach(i => {
+    if ((i.y || 0) > deletedY) {
+      i.y = (i.y || 0) - shiftUp
+    }
+  })
+  emit('update:items', localItems.value)
+  emit('item-delete', item)
 }
 
 const updateActiveChart = (item, newIndex) => {
@@ -586,98 +604,183 @@ const findNearestValidPositionInRow = (x, rowY, width, height, excludeItemId) =>
   return { x, y: rowY }
 }
 
+const buildVisualRows = ({ items, excludeItemId, placeholderY, placeholderHeight, elementHeight }) => {
+  const list = excludeItemId ? items.filter(item => item.id !== excludeItemId) : [...items]
+  if (list.length === 0) {
+    return [{ visualTop: 0, visualBottom: elementHeight + GRID_GAP, placementY: 0, items: [], height: elementHeight + GRID_GAP }]
+  }
+
+  const dataRows = []
+  for (const item of list) {
+    const itemY = item.y || 0
+    const actualSize = getActualItemSize(item)
+    const existing = dataRows.find(r => Math.abs(r.y - itemY) < 10)
+    if (existing) {
+      existing.items.push(item)
+      existing.height = Math.max(existing.height, actualSize.height)
+    } else {
+      dataRows.push({ y: itemY, height: actualSize.height, items: [item] })
+    }
+  }
+  dataRows.sort((a, b) => a.y - b.y)
+
+  const placeholderAtTop = placeholderY < 10 && (placeholderHeight > 0 || elementHeight > 0)
+  const visualRows = []
+
+  if (placeholderAtTop) {
+    const topHeight = (placeholderHeight || elementHeight) + GRID_GAP
+    visualRows.push({
+      visualTop: 0,
+      visualBottom: topHeight,
+      placementY: 0,
+      items: [],
+      height: topHeight
+    })
+    let offset = topHeight
+    for (const row of dataRows) {
+      visualRows.push({
+        visualTop: offset,
+        visualBottom: offset + row.height,
+        placementY: row.y,
+        items: row.items,
+        height: row.height
+      })
+      offset += row.height + GRID_GAP
+    }
+  } else {
+    for (const row of dataRows) {
+      visualRows.push({
+        visualTop: row.y,
+        visualBottom: row.y + row.height,
+        placementY: row.y,
+        items: row.items,
+        height: row.height
+      })
+    }
+  }
+
+  return visualRows
+}
+
+const findTargetRowFromVisual = (mouseY, visualRows) => {
+  if (visualRows.length === 0) return { placementY: 0, items: [], height: 0, isNewRow: true }
+
+  const first = visualRows[0]
+  if (mouseY < first.visualTop) {
+    return { placementY: 0, items: [], height: first.height, isNewRow: true }
+  }
+
+  for (let i = 0; i < visualRows.length; i++) {
+    const row = visualRows[i]
+    if (mouseY >= row.visualTop && mouseY <= row.visualBottom) {
+      return { placementY: row.placementY, items: row.items, height: row.height, isNewRow: row.items.length === 0 }
+    }
+    if (i < visualRows.length - 1) {
+      const next = visualRows[i + 1]
+      if (mouseY > row.visualBottom && mouseY < next.visualTop) {
+        const gapCenter = (row.visualBottom + next.visualTop) / 2
+        return mouseY < gapCenter ? { ...row } : { ...next }
+      }
+    }
+  }
+
+  const last = visualRows[visualRows.length - 1]
+  return {
+    placementY: last.placementY + last.height + GRID_GAP,
+    items: [],
+    height: 0,
+    isNewRow: true
+  }
+}
+
+const findBestPositionInRow = (mouseX, targetRow, elementWidth, gridWidth, excludeItemId) => {
+  const rowItems = (targetRow.items || []).filter(item => !excludeItemId || item.id !== excludeItemId)
+  const placementY = targetRow.placementY
+
+  if (rowItems.length === 0) {
+    const desiredX = mouseX - elementWidth / 2
+    const clampedX = Math.max(0, Math.min(gridWidth - elementWidth, desiredX))
+    return { x: clampedX, y: placementY }
+  }
+
+  const occupiedSegments = rowItems.map(item => {
+    const actualSize = getActualItemSize(item)
+    return {
+      left: item.x || 0,
+      right: (item.x || 0) + actualSize.width
+    }
+  }).sort((a, b) => a.left - b.left)
+
+  const freeSegments = []
+  let currentLeft = 0
+  for (const segment of occupiedSegments) {
+    const freeWidth = segment.left - GRID_GAP - currentLeft
+    if (freeWidth >= elementWidth) {
+      freeSegments.push({
+        left: currentLeft,
+        right: segment.left - GRID_GAP,
+        width: freeWidth
+      })
+    }
+    currentLeft = segment.right + GRID_GAP
+  }
+  if (gridWidth - currentLeft >= elementWidth) {
+    freeSegments.push({
+      left: currentLeft,
+      right: gridWidth,
+      width: gridWidth - currentLeft
+    })
+  }
+
+  if (freeSegments.length > 0) {
+    let bestX = 0
+    let minDistance = Infinity
+    for (const segment of freeSegments) {
+      const desiredX = mouseX - elementWidth / 2
+      const clampedX = Math.max(segment.left, Math.min(segment.right - elementWidth, desiredX))
+      const distance = Math.abs(mouseX - (clampedX + elementWidth / 2))
+      if (distance < minDistance) {
+        minDistance = distance
+        bestX = clampedX
+      }
+    }
+    return { x: bestX, y: placementY }
+  }
+
+  const desiredX = mouseX - elementWidth / 2
+  const clampedX = Math.max(0, Math.min(gridWidth - elementWidth, desiredX))
+  return { x: clampedX, y: placementY }
+}
+
 const calculatePotentialPlacement = (mouseX, mouseY, elementType) => {
   if (!gridContainer.value) return { x: 0, y: 0 }
-  
   const rect = gridContainer.value.getBoundingClientRect()
-  const relativeX = mouseX - rect.left
-  const relativeY = mouseY - rect.top
-  
+  const contentLeft = rect.left + GRID_CONTAINER_PADDING
+  const contentTop = rect.top + GRID_CONTAINER_PADDING
+  const relativeX = mouseX - contentLeft
+  const relativeY = mouseY - contentTop
   const elementSize = ELEMENT_SIZES[elementType]
   if (!elementSize) return { x: 0, y: 0 }
-  
-  const gridWidth = Math.min(gridContainer.value.clientWidth, MAX_PAGE_WIDTH)
-  
+  const gridWidth = Math.min(
+    gridContainer.value.clientWidth - GRID_CONTAINER_PADDING * 2,
+    MAX_PAGE_WIDTH - GRID_CONTAINER_PADDING * 2
+  )
+
   if (localItems.value.length === 0) {
     const snapX = Math.max(0, Math.min(gridWidth - elementSize.width, relativeX - elementSize.width / 2))
     return { x: snapX, y: 0 }
   }
-  
-  let nearestItem = null
-  let minDistance = Infinity
-  
-  for (const item of localItems.value) {
-    const actualSize = getActualItemSize(item)
-    const itemCenterX = (item.x || 0) + actualSize.width / 2
-    const itemCenterY = (item.y || 0) + actualSize.height / 2
-    
-    const distance = Math.sqrt(
-      Math.pow(relativeX - itemCenterX, 2) + Math.pow(relativeY - itemCenterY, 2)
-    )
-    
-    if (distance < minDistance) {
-      minDistance = distance
-      nearestItem = item
-    }
-  }
-  
-  if (!nearestItem) {
-    return { x: 0, y: 0 }
-  }
-  
-  const nearestItemActualSize = getActualItemSize(nearestItem)
-  const nearestItemWidth = nearestItemActualSize.width
-  const nearestItemHeight = nearestItemActualSize.height
-  const nearestItemX = nearestItem.x || 0
-  const nearestItemY = nearestItem.y || 0
-  
-  const rightOfNearest = nearestItemX + nearestItemWidth + GRID_GAP
-  const canFitRight = rightOfNearest + elementSize.width <= gridWidth
-  
-  const mouseIsAbove = relativeY < nearestItemY + nearestItemHeight / 2
-  const mouseIsLeft = relativeX < nearestItemX + nearestItemWidth / 2
 
-  if (mouseIsAbove) {
-    if (nearestItemX + elementSize.width <= gridWidth) {
-      return { x: nearestItemX, y: Math.max(0, nearestItemY - elementSize.height - GRID_GAP) }
-    }
-    
-    const centerX = Math.max(0, (gridWidth - elementSize.width) / 2)
-    return { x: centerX, y: Math.max(0, nearestItemY - elementSize.height - GRID_GAP) }
-  }
-  
-  if (mouseIsLeft && nearestItemX >= elementSize.width + GRID_GAP) {
-    const leftPosition = Math.max(0, nearestItemX - elementSize.width - GRID_GAP)
-    if (leftPosition + elementSize.width <= gridWidth) {
-      return { x: leftPosition, y: nearestItemY }
-    }
-  }
-  
-  if (canFitRight) {
-    return { x: rightOfNearest, y: nearestItemY }
-  }
-  
-  const belowNearest = nearestItemY + nearestItemHeight + GRID_GAP
-  
-  let leftMostX = nearestItemX
-  
-  for (const item of localItems.value) {
-    const itemY = item.y || 0
-    const itemX = item.x || 0
-    
-    if (Math.abs(itemY - nearestItemY) < 10) {
-      if (itemX < leftMostX) {
-        leftMostX = itemX
-      }
-    }
-  }
-  
-  if (leftMostX + elementSize.width <= gridWidth) {
-    return { x: leftMostX, y: belowNearest }
-  }
-  
-  const centerX = Math.max(0, (gridWidth - elementSize.width) / 2)
-  return { x: centerX, y: belowNearest }
+  const ph = yellowPlaceholderPosition.value
+  const visualRows = buildVisualRows({
+    items: localItems.value,
+    excludeItemId: null,
+    placeholderY: ph.y,
+    placeholderHeight: ph.height || 0,
+    elementHeight: elementSize.height
+  })
+  const targetRow = findTargetRowFromVisual(relativeY, visualRows)
+  return findBestPositionInRow(relativeX, targetRow, elementSize.width, gridWidth, null)
 }
 
 const calculateFinalPlacement = (elementType) => {
@@ -690,6 +793,15 @@ const calculateFinalPlacement = (elementType) => {
   const elementSize = ELEMENT_SIZES[elementType]
   
   if (!elementSize) return { x: 0, y: 0 }
+  
+  const hasItemsInRow = localItems.value.some(item => {
+    const itemY = item.y || 0
+    return Math.abs(itemY - placeholderY) < 10
+  })
+  
+  if (hasItemsInRow && !checkCollision(placeholderX, placeholderY, elementSize.width, elementSize.height)) {
+    return { x: placeholderX, y: placeholderY }
+  }
   
   const elementsToShift = []
   
@@ -810,48 +922,44 @@ const handleExistingItemDrag = (event) => {
     y: event.clientY
   }
   const rect = gridContainer.value.getBoundingClientRect()
-  const mouseX = event.clientX - rect.left
-  const mouseY = event.clientY - rect.top
+  const mouseX = event.clientX - rect.left - GRID_CONTAINER_PADDING
+  const mouseY = event.clientY - rect.top - GRID_CONTAINER_PADDING
   const actualSize = getActualItemSize(draggedItem.value)
   const itemWidth = actualSize.width
   const itemHeight = actualSize.height
-  const gridWidth = Math.min(gridContainer.value.clientWidth, MAX_PAGE_WIDTH)
-  const snapX = Math.max(0, Math.min(gridWidth - itemWidth, mouseX - itemWidth / 2))
-  let snapY = 0
-  if (localItems.value.length > 1) {
-    let nearestItem = null
-    let minDistance = Infinity
-    for (const item of localItems.value) {
-      if (item.id === draggedItem.value.id) continue
-      const itemActualSize = getActualItemSize(item)
-      const itemCenterX = (item.x || 0) + itemActualSize.width / 2
-      const itemCenterY = (item.y || 0) + itemActualSize.height / 2
-      const distance = Math.sqrt(
-        Math.pow(mouseX - itemCenterX, 2) + Math.pow(mouseY - itemCenterY, 2)
-      )
-      if (distance < minDistance) {
-        minDistance = distance
-        nearestItem = item
-      }
+  const gridWidth = Math.min(
+    gridContainer.value.clientWidth - GRID_CONTAINER_PADDING * 2,
+    MAX_PAGE_WIDTH - GRID_CONTAINER_PADDING * 2
+  )
+
+  const otherItems = localItems.value.filter(item => item.id !== draggedItem.value.id)
+
+  if (otherItems.length === 0) {
+    const snapX = Math.max(0, Math.min(gridWidth - itemWidth, mouseX - itemWidth / 2))
+    yellowPlaceholderPosition.value = {
+      x: snapX,
+      y: 0,
+      width: itemWidth,
+      height: itemHeight
     }
-    if (nearestItem) {
-      const nearestItemActualSize = getActualItemSize(nearestItem)
-      const nearestItemHeight = nearestItemActualSize.height
-      const nearestItemY = nearestItem.y || 0
-      const mouseIsAbove = mouseY < nearestItemY + nearestItemHeight / 2
-      if (mouseIsAbove) {
-        const topPosition = nearestItemY - itemHeight - GRID_GAP
-        snapY = topPosition >= 0 ? topPosition : nearestItemY
-      } else {
-        snapY = nearestItemY + nearestItemHeight + GRID_GAP
-      }
-    }
-  } else {
-    snapY = 0
+    showYellowPlaceholder.value = true
+    return
   }
+
+  const ph = yellowPlaceholderPosition.value
+  const visualRows = buildVisualRows({
+    items: localItems.value,
+    excludeItemId: draggedItem.value.id,
+    placeholderY: ph.y,
+    placeholderHeight: ph.height || 0,
+    elementHeight: itemHeight
+  })
+  const targetRow = findTargetRowFromVisual(mouseY, visualRows)
+  const placement = findBestPositionInRow(mouseX, targetRow, itemWidth, gridWidth, draggedItem.value.id)
+
   yellowPlaceholderPosition.value = {
-    x: snapX,
-    y: snapY,
+    x: placement.x,
+    y: placement.y,
     width: itemWidth,
     height: itemHeight
   }
@@ -861,18 +969,51 @@ const handleExistingItemDrag = (event) => {
 const stopDrag = () => {
   if (draggedItem.value && isDraggingExisting.value) {
     if (showYellowPlaceholder.value && yellowPlaceholderPosition.value) {
-      const newX = yellowPlaceholderPosition.value.x;
-      const newY = yellowPlaceholderPosition.value.y;
-      draggedItem.value.x = newX;
-      draggedItem.value.y = newY;
-      const sorted = [...localItems.value].sort((a, b) => a.y - b.y);
-      let currentY = 0;
-      for (let i = 0; i < sorted.length; i++) {
-        sorted[i].y = currentY;
-        const actualSize = getActualItemSize(sorted[i]);
-        currentY += actualSize.height + GRID_GAP;
+      const newX = yellowPlaceholderPosition.value.x
+      const newY = yellowPlaceholderPosition.value.y
+      
+      const isPlacingInExistingRow = localItems.value.some(item => {
+        if (item.id === draggedItem.value.id) return false
+        const itemY = item.y || 0
+        return Math.abs(itemY - newY) < 10
+      })
+      
+      draggedItem.value.x = newX
+      draggedItem.value.y = newY
+      
+      if (!isPlacingInExistingRow) {
+        const rows = new Map()
+        for (const item of localItems.value) {
+          const itemY = item.y || 0
+          let foundRow = false
+          for (const [rowY] of rows) {
+            if (Math.abs(rowY - itemY) < 10) {
+              rows.get(rowY).push(item)
+              foundRow = true
+              break
+            }
+          }
+          if (!foundRow) {
+            rows.set(itemY, [item])
+          }
+        }
+        
+        const sortedRowYs = [...rows.keys()].sort((a, b) => a - b)
+        let currentY = 0
+        
+        for (const rowY of sortedRowYs) {
+          const rowItems = rows.get(rowY)
+          let maxHeight = 0
+          
+          for (const item of rowItems) {
+            item.y = currentY
+            const actualSize = getActualItemSize(item)
+            maxHeight = Math.max(maxHeight, actualSize.height)
+          }
+          
+          currentY += maxHeight + GRID_GAP
+        }
       }
-      localItems.value = sorted;
     }
     emit('update:items', localItems.value)
   }
@@ -981,26 +1122,44 @@ const handleDragEnter = (event) => {
   }
 }
 
+const updatePlacementFromDrag = (clientX, clientY) => {
+  if (!gridContainer.value || !currentDraggedType.value || isDraggingExisting.value) return
+  const size = ELEMENT_SIZES[currentDraggedType.value]
+  if (!size) return
+
+  grayPlaceholderPosition.value = { x: clientX, y: clientY }
+  const position = calculatePotentialPlacement(clientX, clientY, currentDraggedType.value)
+  yellowPlaceholderPosition.value = {
+    x: position.x,
+    y: position.y,
+    width: size.width,
+    height: size.height
+  }
+}
+
+const onDocumentDragOver = (event) => {
+  if (props.viewMode || !currentDraggedType.value || isDraggingExisting.value) return
+  event.preventDefault()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
+  updatePlacementFromDrag(event.clientX, event.clientY)
+}
+
+const onDocumentMouseMove = (event) => {
+  if (!currentDraggedType.value || isDraggingExisting.value || !gridContainer.value) return
+  if (!showYellowPlaceholder.value) return
+  const rect = gridContainer.value.getBoundingClientRect()
+  if (event.clientX >= rect.left && event.clientX <= rect.right &&
+      event.clientY >= rect.top && event.clientY <= rect.bottom) {
+    updatePlacementFromDrag(event.clientX, event.clientY)
+  }
+}
+
 const handleDragOver = (event) => {
   if (props.viewMode) return
   event.preventDefault()
   event.dataTransfer.dropEffect = 'copy'
-
   if (currentDraggedType.value && !isDraggingExisting.value) {
-    grayPlaceholderPosition.value = {
-      x: event.clientX,
-      y: event.clientY
-    }
-    
-    const position = calculatePotentialPlacement(event.clientX, event.clientY, currentDraggedType.value)
-    const size = ELEMENT_SIZES[currentDraggedType.value]
-    
-    yellowPlaceholderPosition.value = {
-      x: position.x,
-      y: position.y,
-      width: size.width,
-      height: size.height
-    }
+    updatePlacementFromDrag(event.clientX, event.clientY)
   }
 }
 
@@ -1086,11 +1245,18 @@ const handleDrop = (event) => {
 }
 
 const resetDragState = () => {
+  if (documentDragOverListenerAttached.value) {
+    document.removeEventListener('dragover', onDocumentDragOver, false)
+    documentDragOverListenerAttached.value = false
+  }
+  if (documentMouseMoveListenerAttached.value) {
+    document.removeEventListener('mousemove', onDocumentMouseMove, false)
+    documentMouseMoveListenerAttached.value = false
+  }
   isDragOver.value = false
   showGrayPlaceholder.value = false
   showYellowPlaceholder.value = false
   currentDraggedType.value = ''
-  
   grayPlaceholderPosition.value = { x: 0, y: 0 }
   yellowPlaceholderPosition.value = { x: 0, y: 0, width: 0, height: 0 }
 }
@@ -1109,6 +1275,28 @@ const getActualItemSize = (item) => {
   }
 }
 
+const existingRowLines = computed(() => {
+  const list = localItems.value
+  if (list.length === 0) return []
+  const dataRows = []
+  for (const item of list) {
+    const itemY = item.y || 0
+    const actualSize = getActualItemSize(item)
+    const existing = dataRows.find(r => Math.abs(r.y - itemY) < 10)
+    if (existing) {
+      existing.height = Math.max(existing.height, actualSize.height)
+    } else {
+      dataRows.push({ y: itemY, height: actualSize.height })
+    }
+  }
+  dataRows.sort((a, b) => a.y - b.y)
+  const lines = [0]
+  dataRows.forEach(row => {
+    lines.push(row.y + row.height + GRID_GAP)
+  })
+  return lines
+})
+
 const recalculatePositions = () => {
   if (isRecalculatingPositions.value || localItems.value.length === 0) {
     return;
@@ -1117,17 +1305,39 @@ const recalculatePositions = () => {
   isRecalculatingPositions.value = true
   
   nextTick(() => {
-    const sortedItems = [...localItems.value].sort((a, b) => (a.y || 0) - (b.y || 0))
+    const rows = new Map()
     
+    for (const item of localItems.value) {
+      const itemY = item.y || 0
+      let foundRow = false
+      
+      for (const [rowY] of rows) {
+        if (Math.abs(rowY - itemY) < 10) {
+          rows.get(rowY).push(item)
+          foundRow = true
+          break
+        }
+      }
+      
+      if (!foundRow) {
+        rows.set(itemY, [item])
+      }
+    }
+    
+    const sortedRowYs = [...rows.keys()].sort((a, b) => a - b)
     let currentY = 0
     
-    for (let i = 0; i < sortedItems.length; i++) {
-      const item = sortedItems[i]
-      const actualSize = getActualItemSize(item)
+    for (const rowY of sortedRowYs) {
+      const rowItems = rows.get(rowY)
+      let maxHeight = 0
       
-      item.y = currentY
+      for (const item of rowItems) {
+        item.y = currentY
+        const actualSize = getActualItemSize(item)
+        maxHeight = Math.max(maxHeight, actualSize.height)
+      }
       
-      currentY += actualSize.height + GRID_GAP
+      currentY += maxHeight + GRID_GAP
     }
     
     emit('update:items', localItems.value)
@@ -1202,84 +1412,6 @@ const handleMouseMove = (event) => {
         }
       }
     }
-  } else if (isDraggingExisting.value && draggedItem.value) {
-    const rect = gridContainer.value.getBoundingClientRect()
-    const newX = event.clientX - rect.left - dragOffset.value.x
-    const newY = event.clientY - rect.top - dragOffset.value.y
-    
-    const gridWidth = Math.min(gridContainer.value.clientWidth, MAX_PAGE_WIDTH)
-    const actualSize = getActualItemSize(draggedItem.value)
-    const itemWidth = actualSize.width
-    const itemHeight = actualSize.height
-    
-    const clampedX = Math.max(0, Math.min(gridWidth - itemWidth, newX))
-    const clampedY = Math.max(0, newY)
-    
-    if (localItems.value.length === 1) {
-      if (!checkCollision(clampedX, draggedItem.value.y, itemWidth, itemHeight, draggedItem.value.id)) {
-        draggedItem.value.x = clampedX
-      }
-    } else {
-      if (!checkCollision(clampedX, clampedY, itemWidth, itemHeight, draggedItem.value.id)) {
-        draggedItem.value.x = clampedX
-        draggedItem.value.y = clampedY
-      }
-    }
-    
-    const mouseX = event.clientX - rect.left
-    const mouseY = event.clientY - rect.top
-    
-    const snapX = Math.max(0, Math.min(gridWidth - itemWidth, mouseX))
-    
-    let snapY = draggedItem.value.y || 0
-    
-    if (localItems.value.length > 1) {
-      let nearestItem = null
-      let minDistance = Infinity
-      
-      for (const item of localItems.value) {
-        if (item.id === draggedItem.value.id) continue
-        
-        const itemActualSize = getActualItemSize(item)
-        const itemCenterX = (item.x || 0) + itemActualSize.width / 2
-        const itemCenterY = (item.y || 0) + itemActualSize.height / 2
-        
-        const distance = Math.sqrt(
-          Math.pow(mouseX - itemCenterX, 2) + Math.pow(mouseY - itemCenterY, 2)
-        )
-        
-        if (distance < minDistance) {
-          minDistance = distance
-          nearestItem = item
-        }
-      }
-      
-      if (nearestItem) {
-        const nearestItemActualSize = getActualItemSize(nearestItem)
-        const nearestItemHeight = nearestItemActualSize.height
-        const nearestItemY = nearestItem.y || 0
-        
-        const mouseIsAbove = mouseY < nearestItemY + nearestItemHeight / 2
-        
-        if (mouseIsAbove) {
-          const topPosition = nearestItemY - itemHeight - GRID_GAP
-          if (topPosition >= 0) {
-            snapY = topPosition
-          } else {
-            snapY = nearestItemY
-          }
-        } else {
-          snapY = nearestItemY + nearestItemHeight + GRID_GAP
-        }
-      }
-    }
-    
-    yellowPlaceholderPosition.value = {
-      x: snapX,
-      y: snapY,
-      width: itemWidth,
-      height: itemHeight
-    }
   }
 }
 
@@ -1337,6 +1469,14 @@ watch(() => props.draggedType, (newType) => {
     if (isDragOver.value) {
       showYellowPlaceholder.value = true
     }
+    if (!documentDragOverListenerAttached.value) {
+      document.addEventListener('dragover', onDocumentDragOver, false)
+      documentDragOverListenerAttached.value = true
+    }
+    if (!documentMouseMoveListenerAttached.value) {
+      document.addEventListener('mousemove', onDocumentMouseMove, false)
+      documentMouseMoveListenerAttached.value = true
+    }
   } else if (!newType) {
     resetDragState()
   }
@@ -1382,11 +1522,18 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (documentDragOverListenerAttached.value) {
+    document.removeEventListener('dragover', onDocumentDragOver, false)
+    documentDragOverListenerAttached.value = false
+  }
+  if (documentMouseMoveListenerAttached.value) {
+    document.removeEventListener('mousemove', onDocumentMouseMove, false)
+    documentMouseMoveListenerAttached.value = false
+  }
   document.removeEventListener('mousemove', handleExistingItemDrag)
   document.removeEventListener('mouseup', stopDrag)
   document.removeEventListener('mousemove', handleResize)
   document.removeEventListener('mouseup', stopResize)
-  
   if (resizeObserver.value) {
     resizeObserver.value.disconnect()
     resizeObserver.value = null
@@ -1443,11 +1590,40 @@ onUnmounted(() => {
 .grid-container {
   position: relative;
   width: 100%;
-  min-height: 100%;
+  min-height: calc(100vh - 200px);
   padding: 20px;
 }
 
+.grid-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  --grid-step: 10px;
+  --grid-color: rgba(var(--color-primary-rgb, 59, 130, 246), 0.12);
+  background-image:
+    linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+  background-size: var(--grid-step) var(--grid-step);
+}
+
+.grid-rows-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.grid-row-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(var(--color-primary-rgb, 59, 130, 246), 0.35);
+}
+
 .grid-item {
+  z-index: 2;
   background: var(--color-primary-background);
   border: 2px solid var(--color-border);
   border-radius: 8px;
