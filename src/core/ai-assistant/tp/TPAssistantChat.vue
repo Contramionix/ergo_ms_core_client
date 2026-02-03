@@ -499,13 +499,10 @@ const sendMessage = async () => {
   scrollToBottom()
 
   const CHAT_POLL_INTERVAL_MS = 1500
-  const CHAT_POLL_MAX_ATTEMPTS = 120
 
   const pollChatStatus = (taskId) => {
     return new Promise((resolve, reject) => {
-      let attempts = 0
       const poll = async () => {
-        attempts++
         const statusResult = await tpClient.getChatStatus(taskId)
         if (statusResult.status === 'SUCCESS') {
           resolve(statusResult)
@@ -513,10 +510,6 @@ const sendMessage = async () => {
         }
         if (statusResult.status === 'FAILURE') {
           reject(new Error(statusResult.error || 'Ошибка обработки запроса'))
-          return
-        }
-        if (attempts >= CHAT_POLL_MAX_ATTEMPTS) {
-          reject(new Error('Превышено время ожидания ответа'))
           return
         }
         setTimeout(poll, CHAT_POLL_INTERVAL_MS)
