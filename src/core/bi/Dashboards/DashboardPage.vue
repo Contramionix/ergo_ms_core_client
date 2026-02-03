@@ -32,10 +32,18 @@
             </div>
             
             <div class="header-label-buttons">
-                <button class="btn btn-sm btn-secondary" @click="isPageWindowVisible = true">Страницы</button>
-                <button class="btn btn-sm btn-primary" :disabled="!dashboardRequiredFieldsFilled || !isDashboardDirty"
-                    @click="isSaveModalVisible = true">{{ isEditMode ? 'Сохранить изменения' : 'Создать дашборд' }}
-                </button>
+                <template v-if="isViewMode">
+                    <button class="btn btn-sm btn-primary" @click="goToEditMode">
+                        <Pencil :size="16" class="btn-icon-inline" />
+                        Редактировать
+                    </button>
+                </template>
+                <template v-else>
+                    <button class="btn btn-sm btn-secondary" @click="isPageWindowVisible = true">Страницы</button>
+                    <button class="btn btn-sm btn-primary" :disabled="!dashboardRequiredFieldsFilled || !isDashboardDirty"
+                        @click="isSaveModalVisible = true">{{ isEditMode ? 'Сохранить изменения' : 'Создать дашборд' }}
+                    </button>
+                </template>
             </div>
         </div>
         
@@ -100,8 +108,9 @@
             <DashboardGrid
                 ref="dashboardGridRef"
                 :items="currentPageItems"
-                :dragged-type="draggedType"
+                :dragged-type="isViewMode ? '' : draggedType"
                 :pages-count="pages.length"
+                :view-mode="isViewMode"
                 @update:items="updateCurrentPageItems"
                 @item-select="handleItemSelect"
                 @item-edit="handleItemEdit"
@@ -109,7 +118,7 @@
             />
         </div>
         
-        <div class="body-footer" :style="{ left: footerLeftOffset, width: footerWidth }">
+        <div v-if="!isViewMode" class="body-footer" :style="{ left: footerLeftOffset, width: footerWidth }">
             <div class="footer-buttons">
                 <DashboardToolbar 
                     @drag-start="handleToolbarDragStart"
@@ -123,7 +132,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { LayoutDashboard } from 'lucide-vue-next'
+import { LayoutDashboard, Pencil } from 'lucide-vue-next'
 import DashboardToolbar from './DashboardToolbar.vue'
 import PageWindow from './components/PageWindow.vue'
 import DashboardGrid from './DashboardGrid.vue'
@@ -150,7 +159,11 @@ const dashboardName = ref('Новый дашборд')
 const dashboardDescription = ref('')
 const dashboardId = ref(null)
 const isSaveModalVisible = ref(false)
-const isEditMode = ref(false)
+const isEditMode = computed(() => {
+    if (dashboardId.value == null) return true
+    return route.query.mode === 'edit'
+})
+const isViewMode = computed(() => dashboardId.value != null && route.query.mode !== 'edit')
 const saving = ref(false)
 const dashboardItems = ref({})
 const toast = useToast()
@@ -227,6 +240,10 @@ const footerWidth = computed(() => {
 
 const updateCurrentPageItems = (newItems) => {
     dashboardItems.value[currentPageIndex.value] = newItems
+}
+
+const goToEditMode = () => {
+    router.replace({ path: route.path, query: { ...route.query, mode: 'edit' } })
 }
 
 const handleItemSelect = (item) => {
@@ -483,8 +500,7 @@ function loadDashboardFromAPI(dashboardData) {
     dashboardName.value = dashboardData.name || 'Новый дашборд'
     dashboardDescription.value = dashboardData.description || ''
     dashboardId.value = dashboardData.id
-    isEditMode.value = true
-    
+
     // Загружаем страницы
     if (dashboardData.pages && dashboardData.pages.length > 0) {
         pages.value = dashboardData.pages.map(page => ({
@@ -591,13 +607,11 @@ async function handleSaveDashboard({ name, description }) {
             const response = await dashboardService.createDashboard(payload)
             savedDashboard = response.data
             dashboardId.value = savedDashboard.id
-            isEditMode.value = true
             toast.success('Дашборд успешно создан')
-            
-            // Обновляем URL с ID дашборда
-            router.replace({ 
-                name: 'DashboardPage', 
-                params: { id: savedDashboard.id } 
+            router.replace({
+                name: 'DashboardPage',
+                params: { id: savedDashboard.id },
+                query: { mode: 'edit' }
             })
         }
         
@@ -634,9 +648,7 @@ onMounted(async () => {
     if (dashboardIdFromRoute && dashboardIdFromRoute !== 'new') {
         await loadDashboard(parseInt(dashboardIdFromRoute))
     } else {
-        // Новый дашборд
         dashboardId.value = null
-        isEditMode.value = false
         if (!dashboardItems.value[0]) {
             dashboardItems.value[0] = []
         }
@@ -715,6 +727,12 @@ onUnmounted(() => {
     align-items: center;
     position: relative;
     flex: 1;
+}
+
+.btn-icon-inline {
+    display: inline-flex;
+    vertical-align: middle;
+    margin-right: 6px;
 }
 
 .header-label-text{

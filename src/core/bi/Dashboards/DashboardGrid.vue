@@ -1,6 +1,7 @@
 <template>
   <div 
-    class="dashboard-grid" 
+    class="dashboard-grid"
+    :class="{ 'view-mode': viewMode }"
     @dragover="handleDragOver"
     @drop="handleDrop"
     @dragenter="handleDragEnter" 
@@ -25,10 +26,10 @@
         :style="getItemStyle(item)"
         :data-item-id="item.id"
         @click="selectItem(item)"
-        @dblclick="editItem(item)"
+        @dblclick="onItemDblclick(item)"
         @mousedown="handleMouseDown(item, $event)"
       >
-        <div class="item-header">
+        <div v-if="!viewMode" class="item-header">
           <span class="item-type">{{ item.type }}</span>
           <div class="item-actions">
             <button class="btn-edit" @click.stop="editItem(item)">
@@ -74,7 +75,7 @@
           </div>
         </div>
         
-        <div v-if="item.selected" class="resize-indicators">
+        <div v-if="!viewMode && item.selected" class="resize-indicators">
           <div class="resize-indicator resize-left" @mousedown.stop="startResize(item, 'w', $event)"></div>
           <div class="resize-indicator resize-right" @mousedown.stop="startResize(item, 'e', $event)"></div>
           <div class="resize-indicator resize-bottom" @mousedown.stop="startResize(item, 's', $event)"></div>
@@ -160,6 +161,10 @@ const props = defineProps({
   pagesCount: {
     type: Number,
     default: 1
+  },
+  viewMode: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -388,7 +393,7 @@ const getHeaderStyle = (item) => {
 };
 
 const selectItem = (item) => {
-  if (draggedItem.value || isDraggingExisting.value || isMouseDown.value) return
+  if (props.viewMode || draggedItem.value || isDraggingExisting.value || isMouseDown.value) return
   
   localItems.value.forEach(i => i.selected = false)
   item.selected = true
@@ -396,7 +401,12 @@ const selectItem = (item) => {
   emit('update:items', localItems.value)
 }
 
+const onItemDblclick = (item) => {
+  if (!props.viewMode) editItem(item)
+}
+
 const editItem = (item) => {
+  if (props.viewMode) return
   emit('item-edit', item)
 }
 
@@ -740,8 +750,8 @@ const checkCollision = (x, y, width, height, excludeItemId) => {
 }
 
 const handleMouseDown = (item, event) => {
-  if (event.button !== 0) return
-  
+  if (props.viewMode || event.button !== 0) return
+
   isMouseDown.value = true
   
   const startX = event.clientX
@@ -945,9 +955,10 @@ const stopResize = () => {
 }
 
 const handleDragEnter = (event) => {
+  if (props.viewMode) return
   event.preventDefault()
   isDragOver.value = true
-  
+
   if (props.draggedType && !isDraggingExisting.value) {
     currentDraggedType.value = props.draggedType
     showGrayPlaceholder.value = true
@@ -971,9 +982,10 @@ const handleDragEnter = (event) => {
 }
 
 const handleDragOver = (event) => {
+  if (props.viewMode) return
   event.preventDefault()
   event.dataTransfer.dropEffect = 'copy'
-  
+
   if (currentDraggedType.value && !isDraggingExisting.value) {
     grayPlaceholderPosition.value = {
       x: event.clientX,
@@ -993,8 +1005,9 @@ const handleDragOver = (event) => {
 }
 
 const handleDrop = (event) => {
+  if (props.viewMode) return
   event.preventDefault()
-  
+
   let itemType = currentDraggedType.value || event.dataTransfer.getData('text/plain')
   
   if (itemType && ELEMENT_SIZES[itemType] && !isDraggingExisting.value) {
@@ -1271,6 +1284,7 @@ const handleMouseMove = (event) => {
 }
 
 const handleDragLeave = (event) => {
+  if (props.viewMode) return
   if (!event.currentTarget.contains(event.relatedTarget)) {
     showGrayPlaceholder.value = false
     showYellowPlaceholder.value = false
@@ -1469,6 +1483,16 @@ onUnmounted(() => {
 .grid-item.item-hidden-drag {
   opacity: 0 !important;
   pointer-events: none !important;
+}
+
+.dashboard-grid.view-mode .grid-item.item-чарт {
+  border: none;
+  box-shadow: none;
+
+  &:hover {
+    border: none;
+    box-shadow: none;
+  }
 }
 
 .item-header {
