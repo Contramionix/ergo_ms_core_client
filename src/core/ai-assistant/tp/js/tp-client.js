@@ -289,14 +289,7 @@ class TPClient {
       requestBody.session_id = sessionId
     }
     if (config) {
-      requestBody.ollama_config = {
-        temperature: config.temperature,
-        max_tokens: config.max_tokens,
-        top_p: config.top_p,
-        top_k: config.top_k,
-        repeat_penalty: config.repeat_penalty,
-        seed: config.seed,
-      }
+      requestBody.ollama_config = { ...config }
     }
 
     try {
