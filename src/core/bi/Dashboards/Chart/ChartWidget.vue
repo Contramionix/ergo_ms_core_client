@@ -147,7 +147,16 @@
     </div>
     
     <!-- Строка 3: Описание -->
-    <div v-if="currentChart && currentChart.showDescription && currentChart.description" class="chart-description">
+    <div
+      v-if="currentChart && currentChart.showDescription && currentChart.description"
+      class="chart-description"
+      :style="{ height: descriptionHeight + 'px' }"
+      ref="descriptionRef"
+    >
+      <div
+        class="description-resize-handle"
+        @mousedown.stop.prevent="startDescriptionResize"
+      ></div>
       <div v-html="currentChart.description" class="description-content"></div>
     </div>
 
@@ -214,12 +223,29 @@ let hideHintTimer = null;
 
 const chartWidgetRef = ref(null);
 const calculatedHeight = ref(null);
+const descriptionRef = ref(null);
+const descriptionHeight = ref(120);
+const isResizingDescription = ref(false);
+const descriptionStartY = ref(0);
+const descriptionStartHeight = ref(120);
 
 const currentChart = computed(() => {
   return props.chartsList[props.activeChartIndex] || null;
 });
 
 const effectiveAutoHeight = computed(() => props.autoHeight ?? false);
+
+watch(
+  () => currentChart.value && currentChart.value.descriptionHeight,
+  (newVal) => {
+    if (typeof newVal === 'number' && !Number.isNaN(newVal) && newVal > 0) {
+      descriptionHeight.value = newVal;
+    } else {
+      descriptionHeight.value = 120;
+    }
+  },
+  { immediate: true }
+);
 
 const visibleCharts = computed(() => {
   if (!props.chartsList || props.chartsList.length <= 1) return [];
@@ -330,6 +356,52 @@ function triggerHeightRecalculation() {
   if (effectiveAutoHeight.value) {
     setTimeout(calculateWidgetHeight, 200);
   }
+}
+
+function startDescriptionResize(event) {
+  if (!descriptionRef.value) return;
+
+  isResizingDescription.value = true;
+  descriptionStartY.value = event.clientY;
+
+  const rect = descriptionRef.value.getBoundingClientRect();
+  descriptionStartHeight.value = rect.height || descriptionHeight.value || 120;
+
+  document.addEventListener('mousemove', handleDescriptionResize);
+  document.addEventListener('mouseup', stopDescriptionResize);
+}
+
+function handleDescriptionResize(event) {
+  if (!isResizingDescription.value) return;
+
+  const deltaY = event.clientY - descriptionStartY.value;
+
+  // Двигаем границу «по направлению мыши»:
+  // тянем вниз — описание становится ниже (меньше по высоте),
+  // тянем вверх — описание выше (больше по высоте).
+  let newHeight = descriptionStartHeight.value - deltaY;
+  const minHeight = 60;
+  const maxHeight = 400;
+
+  if (newHeight < minHeight) newHeight = minHeight;
+  if (newHeight > maxHeight) newHeight = maxHeight;
+
+  descriptionHeight.value = newHeight;
+
+  if (currentChart.value) {
+    currentChart.value.descriptionHeight = newHeight;
+  }
+
+  triggerHeightRecalculation();
+}
+
+function stopDescriptionResize() {
+  if (!isResizingDescription.value) return;
+
+  isResizingDescription.value = false;
+
+  document.removeEventListener('mousemove', handleDescriptionResize);
+  document.removeEventListener('mouseup', stopDescriptionResize);
 }
 
 function getChartUrl(url) {
@@ -507,6 +579,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
+  document.removeEventListener('mousemove', handleDescriptionResize);
+  document.removeEventListener('mouseup', stopDescriptionResize);
 });
 </script>
 
@@ -724,11 +798,33 @@ onUnmounted(() => {
 }
 
 .chart-description {
+  position: relative;
   border-top: 1px solid var(--color-border);
   background: var(--color-background);
   padding: 12px 16px;
-  max-height: 120px;
+  min-height: 60px;
+  max-height: 400px;
   overflow-y: auto;
+}
+
+.description-resize-handle {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: row-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.description-resize-handle::before {
+  content: '';
+  width: 60px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--color-border);
 }
 
 .description-content {
