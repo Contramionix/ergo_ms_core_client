@@ -80,13 +80,58 @@ class RAGClient {
    * Отправить сообщение в чат (без streaming)
    * @param {string} message - Сообщение пользователя
    * @param {Object} ollamaConfig - настройки Ollama (опционально)
+   * @param {File|File[]|null} files - Файл или массив файлов для загрузки (опционально)
    * @returns {Promise<Object>}
    */
-  async sendMessage(message, ollamaConfig = null) {
+  async sendMessage(message, ollamaConfig = null, files = null) {
     try {
       // Используем настройки из параметра или из сохраненного конфига
       const config = ollamaConfig || this.ollamaConfig
       
+      // Нормализуем files в массив
+      const filesArray = files ? (Array.isArray(files) ? files : [files]) : []
+      
+      // Если есть файлы, используем FormData
+      if (filesArray.length > 0) {
+        const formData = new FormData()
+        formData.append('message', message)
+        
+        // Добавляем все файлы
+        filesArray.forEach((file) => {
+          formData.append('files', file)
+        })
+        
+        // Добавляем настройки Ollama, если они есть
+        if (config) {
+          formData.append('ollama_config', JSON.stringify({
+            base_url: config.baseUrl,
+            model: config.model,
+            temperature: config.temperature,
+            context_window: config.contextWindow,
+            max_tokens: config.maxTokens,
+          }))
+        }
+        
+        const response = await apiClient.post(endpoints.chat, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        })
+        
+        if (response.success) {
+          return {
+            success: true,
+            response: response.data.response || response.data.message,
+          }
+        }
+        
+        return {
+          success: false,
+          error: response.data?.error || response.data?.message || 'Ошибка обработки запроса',
+        }
+      }
+      
+      // Обычный JSON запрос без файла
       const requestBody = {
         message: message,
       }
@@ -142,32 +187,13 @@ class RAGClient {
    * @param {Object} ollamaConfig - настройки Ollama (опционально)
    * @param {string} sessionId - ID сессии чата (опционально)
    * @param {string} module - Модуль AI ассистента (опционально, по умолчанию 'chat')
+   * @param {File|File[]|null} files - Файл или массив файлов для загрузки (опционально)
+   * @param {boolean} enableVectorization - Включить векторизацию файлов для векторного поиска (опционально)
    * @returns {Promise<void>}
    */
-  async sendMessageStream(message, onChunk, onDone, onError, ollamaConfig = null, sessionId = null, module = 'chat') {
+  async sendMessageStream(message, onChunk, onDone, onError, ollamaConfig = null, sessionId = null, module = 'chat', files = null, enableVectorization = false) {
     // Используем настройки из параметра или из сохраненного конфига
     const config = ollamaConfig || this.ollamaConfig
-    
-    const requestBody = {
-      message: message,
-      module: module,
-    }
-    
-    // Добавляем session_id, если указан
-    if (sessionId) {
-      requestBody.session_id = sessionId
-    }
-    
-    // Добавляем настройки Ollama, если они есть
-    if (config) {
-      requestBody.ollama_config = {
-        base_url: config.baseUrl,
-        model: config.model,
-        temperature: config.temperature,
-        context_window: config.contextWindow,
-        max_tokens: config.maxTokens,
-      }
-    }
 
     try {
       // Получаем базовый URL API (используем axios instance из apiClient)
@@ -177,13 +203,80 @@ class RAGClient {
       // Получаем токен авторизации
       const token = apiClient.getAuthToken()
       
+      // Если есть файлы, используем FormData
+      let requestBody
+      let headers = {
+        'Authorization': token ? `Bearer ${token}` : '',
+      }
+      
+      // Нормализуем files в массив
+      const filesArray = files ? (Array.isArray(files) ? files : [files]) : []
+      
+      if (filesArray.length > 0) {
+        const formData = new FormData()
+        formData.append('message', message)
+        formData.append('module', module)
+        
+        // Добавляем все файлы
+        filesArray.forEach((file) => {
+          formData.append('files', file)
+        })
+        
+        // Добавляем session_id, если указан
+        if (sessionId) {
+          formData.append('session_id', sessionId)
+        }
+        
+        // Добавляем настройки Ollama, если они есть
+        if (config) {
+          formData.append('ollama_config', JSON.stringify({
+            base_url: config.baseUrl,
+            model: config.model,
+            temperature: config.temperature,
+            context_window: config.contextWindow,
+            max_tokens: config.maxTokens,
+          }))
+        }
+        
+        // Добавляем флаг векторизации
+        formData.append('enable_vectorization', enableVectorization ? 'true' : 'false')
+        
+        requestBody = formData
+        // Не устанавливаем Content-Type для FormData - браузер сделает это сам с boundary
+      } else {
+        // Обычный JSON запрос без файла
+        requestBody = {
+          message: message,
+          module: module,
+        }
+        
+        // Добавляем session_id, если указан
+        if (sessionId) {
+          requestBody.session_id = sessionId
+        }
+        
+        // Добавляем настройки Ollama, если они есть
+        if (config) {
+          requestBody.ollama_config = {
+            base_url: config.baseUrl,
+            model: config.model,
+            temperature: config.temperature,
+            context_window: config.contextWindow,
+            max_tokens: config.maxTokens,
+          }
+        }
+        
+        // Добавляем флаг векторизации
+        requestBody.enable_vectorization = enableVectorization
+        
+        headers['Content-Type'] = 'application/json'
+        requestBody = JSON.stringify(requestBody)
+      }
+      
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-        body: JSON.stringify(requestBody),
+        headers: headers,
+        body: requestBody,
       })
 
       if (!response.ok) {

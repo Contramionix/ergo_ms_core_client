@@ -30,8 +30,7 @@ const props = defineProps({
 
 const avatarStyle = computed(() => ({
   width: `${props.size}px`,
-  height: `${props.size}px`,
-  borderWidth: props.size >= 80 ? '3px' : props.size <= 32 ? '1px' : '2px'
+  height: `${props.size}px`
 }))
 
 const iconSize = computed(() => Math.round(props.size * 0.5))
@@ -45,8 +44,6 @@ const iconSize = computed(() => Math.round(props.size * 0.5))
   border-radius: 50%;
   background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
   color: #1976d2;
-  border-style: solid;
-  border-color: rgba($color: #1976d2, $alpha: 0.2);
   transition: all 0.2s ease;
   user-select: none;
   box-sizing: border-box;
@@ -54,8 +51,8 @@ const iconSize = computed(() => Math.round(props.size * 0.5))
   
   // Когда используется внутри UserAvatar, наследуем размеры от родителя
   .user-avatar & {
-    width: 100%;
-    height: 100%;
+    width: 100% !important;
+    height: 100% !important;
   }
   
   &--clickable {
@@ -63,7 +60,6 @@ const iconSize = computed(() => Math.round(props.size * 0.5))
     
     &:hover {
       transform: scale(1.05);
-      border-color: rgba($color: #1976d2, $alpha: 0.4);
       box-shadow: 0 4px 16px rgba($color: #1976d2, $alpha: 0.15);
       background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
     }

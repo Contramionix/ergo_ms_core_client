@@ -4,42 +4,20 @@
       <div class="modal-header">
         <h3>{{ isEditMode ? 'Сохранить изменения' : 'Создать дашборд' }}</h3>
         <button class="btn-close" @click="handleClose">
-          <X :size="20" />
+          <X :size="28" />
         </button>
       </div>
       
       <div class="modal-body">
         <div class="form-group">
-          <label for="dashboard-name">Название дашборда *</label>
-          <input
-            id="dashboard-name"
-            v-model="localName"
-            type="text"
-            class="form-control"
-            placeholder="Введите название дашборда"
-            @keyup.enter="handleSave"
-          />
-        </div>
-        
-        <div class="form-group">
-          <label for="dashboard-description">Описание</label>
-          <textarea
-            id="dashboard-description"
-            v-model="localDescription"
-            class="form-control"
-            rows="3"
-            placeholder="Введите описание дашборда (необязательно)"
-          />
+          <label for="dashboard-name">Название дашборда <span style="color: red">*</span></label>
+          <input id="dashboard-name" v-model="localName" type="text" class="form-control" placeholder="Введите название дашборда" @keyup.enter="handleSave"/>
         </div>
       </div>
       
       <div class="modal-footer">
-        <button class="btn btn-secondary" @click="handleClose">Отмена</button>
-        <button 
-          class="btn btn-primary" 
-          :disabled="!canSave || saving"
-          @click="handleSave"
-        >
+        <button class="btn btn-cancel" @click="handleClose">Отмена</button>
+        <button class="btn btn-primary" :disabled="!canSave || saving" @click="handleSave">
           <span v-if="saving">Сохранение...</span>
           <span v-else>{{ isEditMode ? 'Сохранить' : 'Создать' }}</span>
         </button>
@@ -82,14 +60,8 @@ const localDescription = ref('')
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {
-    localName.value = props.name
+    localName.value = ''
     localDescription.value = props.description
-  }
-})
-
-watch(() => props.name, (newVal) => {
-  if (props.visible) {
-    localName.value = newVal
   }
 })
 
@@ -201,7 +173,6 @@ function handleSave() {
       border-radius: 6px;
       font-size: 14px;
       background: var(--color-primary-background);
-      color: var(--color-text-primary);
       transition: border-color 0.2s;
       
       &:focus {
@@ -210,7 +181,7 @@ function handleSave() {
       }
       
       &::placeholder {
-        color: var(--color-text-secondary);
+        color: var(--color-secondary-text);
       }
     }
     
@@ -241,14 +212,11 @@ function handleSave() {
     align-items: center;
     justify-content: center;
     
-    &.btn-secondary {
-      background: #dc3545;
-      color: #ffffff !important;
-      border: 1px solid #dc3545;
+    &.btn-cancel {
+      color: --color-primary-text;
       
       &:hover {
-        background: #c82333;
-        border-color: #bd2130;
+        background-color: var(--color-hover-background);
       }
     }
     
@@ -256,6 +224,7 @@ function handleSave() {
       background: #28a745;
       color: #ffffff !important;
       border: 1px solid #28a745;
+      box-shadow: none;
       
       &:hover:not(:disabled) {
         background: #218838;
@@ -273,5 +242,3 @@ function handleSave() {
   }
 }
 </style>
-
-

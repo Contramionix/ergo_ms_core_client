@@ -3,8 +3,7 @@
         <div class="body-header border-elements elements-color">
             <div class="header-label-icon">
                 <LayoutDashboard />
-                <div ref="headerLabelTextRef" 
-                     class="header-label-text" 
+                <div ref="headerLabelTextRef" class="header-label-text" 
                      :class="{ 'clickable': pages.length > 1, 'dropdown-open': showPageDropdown }"
                      @click="togglePageDropdown"
                      @mouseenter="handleHeaderHover"
@@ -31,90 +30,54 @@
                 </div>
             </div>
             
-            <div class="header-label-buttons">
-                <button class="btn btn-sm btn-secondary" @click="isPageWindowVisible = true">Страницы</button>
-                <button class="btn btn-sm btn-primary" :disabled="!dashboardRequiredFieldsFilled || !isDashboardDirty"
-                    @click="isSaveModalVisible = true">{{ isEditMode ? 'Сохранить изменения' : 'Создать дашборд' }}
-                </button>
+            <div v-if="isHeaderButtonsReady" class="header-label-buttons">
+                <template v-if="isViewMode">
+                    <button v-if="canEditDashboard" class="btn btn-sm btn-primary" @click="goToEditMode"><Pencil :size="16" class="btn-icon-inline" />Редактировать</button>
+                </template>
+                <template v-else>
+                    <button class="btn btn-sm btn-secondary" @click="isPageWindowVisible = true">Страницы</button>
+                    <button class="btn btn-sm btn-primary" :disabled="!dashboardRequiredFieldsFilled || !isDashboardDirty"
+                        @click="handleSaveClick">{{ isEditMode ? 'Сохранить изменения' : 'Создать дашборд' }}
+                    </button>
+                </template>
             </div>
         </div>
         
-        <PageWindow 
-            v-if="isPageWindowVisible"
-            v-model="pages"
-            @close="isPageWindowVisible = false"
-        />
+        <PageWindow v-if="isPageWindowVisible" v-model="pages" @close="isPageWindowVisible = false"/>
 
         <div v-if="isHeaderSettingsVisible" class="page-window-overlay" @click="closeHeaderSettings">
           <div class="page-window" @click.stop>
-            <HeaderSettings 
-              :data="headerSettingsData" 
-              @close="closeHeaderSettings"
-              @save="saveHeaderSettings" 
-            />
+            <HeaderSettings :data="headerSettingsData" @close="closeHeaderSettings" @save="saveHeaderSettings" />
           </div>
         </div>
 
         <div v-if="isTextSettingsVisible" class="page-window-overlay" @click="closeTextSettings">
           <div class="page-window" @click.stop>
-            <TextSettings 
-              :data="textSettingsData" 
-              @close="closeTextSettings"
-              @save="saveTextSettings" 
-            />
+            <TextSettings :data="textSettingsData" @close="closeTextSettings" @save="saveTextSettings"/>
           </div>
         </div>
 
         <div v-if="isChartSettingsVisible" class="page-window-overlay" @click="closeChartSettings">
           <div class="page-window chart-settings-window" @click.stop>
-            <ChartSettings 
-              :data="chartSettingsData" 
-              @close="closeChartSettings"
-              @save="saveChartSettings" 
-            />
+            <ChartSettings :data="chartSettingsData" @close="closeChartSettings" @save="saveChartSettings"/>
           </div>
         </div>
         
         <div v-if="isSelectorSettingsVisible" class="page-window-overlay" @click="closeSelectorSettings">
           <div class="page-window selector-settings-window" @click.stop>
-            <SelectorSettings 
-              :key="selectorSettingsData?.id || 'new'"
-              :data="selectorSettingsData" 
-              @close="closeSelectorSettings"
-              @save="saveSelectorSettings" 
-            />
+            <SelectorSettings :key="selectorSettingsData?.id || 'new'" :data="selectorSettingsData" @close="closeSelectorSettings" @save="saveSelectorSettings"/>
           </div>
         </div>
         
-        <SaveDashboardModal
-          :visible="isSaveModalVisible"
-          :name="dashboardName"
-          :description="dashboardDescription"
-          :is-edit-mode="isEditMode"
-          :saving="saving"
-          @close="isSaveModalVisible = false"
-          @save="handleSaveDashboard"
-        />
+        <SaveDashboardModal :visible="isSaveModalVisible" :name="dashboardName" :description="dashboardDescription" :is-edit-mode="isEditMode" :saving="saving" @close="isSaveModalVisible = false" @save="handleSaveDashboard"/>
         
-        <div class="body-content">
-            <DashboardGrid
-                ref="dashboardGridRef"
-                :items="currentPageItems"
-                :dragged-type="draggedType"
-                :pages-count="pages.length"
-                @update:items="updateCurrentPageItems"
-                @item-select="handleItemSelect"
-                @item-edit="handleItemEdit"
-                @item-delete="handleItemDelete"
-            />
+        <div v-if="isHeaderButtonsReady" class="body-content">
+            <DashboardGrid ref="dashboardGridRef" :items="currentPageItems" :dragged-type="isViewMode ? '' : draggedType" :pages-count="pages.length" :view-mode="isViewMode" @update:items="updateCurrentPageItems" @item-select="handleItemSelect" @item-edit="handleItemEdit" @item-delete="handleItemDelete"/>
         </div>
         
-        <div class="body-footer" :style="{ left: footerLeftOffset, width: footerWidth }">
+        <div v-if="isHeaderButtonsReady && !isViewMode" class="body-footer" :style="{ left: footerLeftOffset, width: footerWidth }">
             <div class="footer-buttons">
-                <DashboardToolbar 
-                    @drag-start="handleToolbarDragStart"
-                    @drag-end="handleToolbarDragEnd"
-                />
+                <DashboardToolbar  @drag-start="handleToolbarDragStart" @drag-end="handleToolbarDragEnd"/>
             </div>
         </div>
     </div>
@@ -123,7 +86,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { LayoutDashboard } from 'lucide-vue-next'
+import { LayoutDashboard, Pencil } from 'lucide-vue-next'
 import DashboardToolbar from './DashboardToolbar.vue'
 import PageWindow from './components/PageWindow.vue'
 import DashboardGrid from './DashboardGrid.vue'
@@ -137,6 +100,7 @@ import { isSidebarCollapsed, initializeSidebarTracking } from '@/core/bi/MainPag
 import dashboardService from '@/core/bi/MainPage/Sidebar/components/js/dashboardService.js'
 import SaveDashboardModal from './components/SaveDashboardModal.vue'
 import { useToast } from 'vue-toastification'
+import tokenService from '@/core/cms/js/tokenService'
 
 const HEADER_WIDGET_HEIGHTS = {
   'XS': 50,
@@ -149,8 +113,32 @@ const HEADER_WIDGET_HEIGHTS = {
 const dashboardName = ref('Новый дашборд')
 const dashboardDescription = ref('')
 const dashboardId = ref(null)
+const dashboardOwnerId = ref(null)
+const dashboardDataLoaded = ref(false)
+const lastSavedSnapshot = ref(null)
 const isSaveModalVisible = ref(false)
-const isEditMode = ref(false)
+const isEditMode = computed(() => {
+    if (dashboardId.value == null) return true
+    if (!canEditDashboard.value) return false
+    return route.query.mode === 'edit'
+})
+const isViewMode = computed(() => dashboardId.value != null && route.query.mode !== 'edit')
+
+const canEditDashboard = computed(() => {
+    if (dashboardId.value == null) return true
+    if (!dashboardDataLoaded.value) return false
+    const ownerId = dashboardOwnerId.value
+    if (ownerId == null) return true
+    const currentId = tokenService.getUserId() != null ? Number(tokenService.getUserId()) : null
+    if (currentId == null) return false
+    return currentId === ownerId
+})
+
+const isHeaderButtonsReady = computed(() => {
+    const idFromRoute = route.params.id
+    if (!idFromRoute || idFromRoute === 'new') return true
+    return dashboardDataLoaded.value
+})
 const saving = ref(false)
 const dashboardItems = ref({})
 const toast = useToast()
@@ -176,6 +164,27 @@ const isSelectorSettingsVisible = ref(false)
 const selectorSettingsData = ref(null)
 const dashboardGridRef = ref(null)
 
+function getItemDefaultHeight(item) {
+  if (!item || !item.type) {
+    return 150
+  }
+
+  switch (item.type) {
+    case 'Заголовок': {
+      const sizeKey = item.size && HEADER_WIDGET_HEIGHTS[item.size] ? item.size : 'M'
+      return HEADER_WIDGET_HEIGHTS[sizeKey] || 60
+    }
+    case 'Текст':
+      return 150
+    case 'Чарт':
+      return 300
+    case 'Селектор':
+      return 50
+    default:
+      return 150
+  }
+}
+
 const handleToolbarDragStart = (itemType) => {
             draggedType.value = itemType
 }
@@ -188,14 +197,27 @@ const dashboardRequiredFieldsFilled = computed(() => {
     return dashboardName.value.trim().length > 0
 })
 
-const isDashboardDirty = computed(() => {
-    // Если дашборд еще не создан, всегда считаем его "грязным"
-    if (!isEditMode.value || !dashboardId.value) {
-        return true
+function deepEqual(a, b) {
+    if (a === b) return true
+    if (a == null || b == null) return a === b
+    if (typeof a !== 'object' || typeof b !== 'object') return false
+    if (Array.isArray(a) && Array.isArray(b)) {
+        if (a.length !== b.length) return false
+        return a.every((v, i) => deepEqual(v, b[i]))
     }
-    // TODO: Добавить проверку изменений элементов и страниц
-    // Пока всегда возвращаем true для возможности сохранения
-    return true
+    if (Array.isArray(a) !== Array.isArray(b)) return false
+    const keysA = Object.keys(a).sort()
+    const keysB = Object.keys(b).sort()
+    if (keysA.length !== keysB.length) return false
+    if (keysA.some((k, i) => k !== keysB[i])) return false
+    return keysA.every(k => deepEqual(a[k], b[k]))
+}
+
+const isDashboardDirty = computed(() => {
+    if (!isEditMode.value || !dashboardId.value) return true
+    if (lastSavedSnapshot.value == null) return true
+    const current = prepareDashboardForAPI(dashboardName.value, dashboardDescription.value)
+    return !deepEqual(current, lastSavedSnapshot.value)
 })
 
 const currentPageName = computed(() => {
@@ -227,6 +249,11 @@ const footerWidth = computed(() => {
 
 const updateCurrentPageItems = (newItems) => {
     dashboardItems.value[currentPageIndex.value] = newItems
+}
+
+const goToEditMode = () => {
+    if (!canEditDashboard.value) return
+    router.replace({ path: route.path, query: { ...route.query, mode: 'edit' } })
 }
 
 const handleItemSelect = (item) => {
@@ -483,8 +510,8 @@ function loadDashboardFromAPI(dashboardData) {
     dashboardName.value = dashboardData.name || 'Новый дашборд'
     dashboardDescription.value = dashboardData.description || ''
     dashboardId.value = dashboardData.id
-    isEditMode.value = true
-    
+    dashboardOwnerId.value = dashboardData.owner_id ?? dashboardData.owner ?? null
+
     // Загружаем страницы
     if (dashboardData.pages && dashboardData.pages.length > 0) {
         pages.value = dashboardData.pages.map(page => ({
@@ -513,6 +540,8 @@ function loadDashboardFromAPI(dashboardData) {
         pages.value = [{ name: 'Страница 1' }]
         dashboardItems.value = { 0: [] }
     }
+    lastSavedSnapshot.value = prepareDashboardForAPI(dashboardName.value, dashboardDescription.value)
+    dashboardDataLoaded.value = true
 }
 
 // Преобразование данных из формата компонента в формат API
@@ -527,7 +556,11 @@ function prepareDashboardForAPI(name, description) {
                 x: Math.round(item.x || 0),
                 y: Math.round(item.y || 0),
                 width: Math.round(item.width || 200),
-                height: Math.round(item.height || 150),
+                height: Math.round(
+                  typeof item.height === 'number'
+                    ? item.height
+                    : getItemDefaultHeight(item)
+                ),
                 order: items.indexOf(item),
                 config: {
                     // Для заголовка
@@ -536,12 +569,16 @@ function prepareDashboardForAPI(name, description) {
                         size: item.size,
                         hint: item.hint,
                         hintText: item.hintText,
-                        autoHeight: item.autoHeight
+                        autoHeight: item.autoHeight,
+                        textColor: item.textColor,
+                        background: item.background
                     }),
                     // Для текста
                     ...(item.type === 'Текст' && {
                         content: item.content,
-                        autoHeight: item.autoHeight
+                        autoHeight: item.autoHeight,
+                        textColor: item.textColor,
+                        background: item.background
                     }),
                     // Для чарта
                     ...(item.type === 'Чарт' && {
@@ -574,6 +611,14 @@ function prepareDashboardForAPI(name, description) {
     }
 }
 
+function handleSaveClick() {
+    if (isEditMode.value && dashboardId.value) {
+        handleSaveDashboard({ name: dashboardName.value, description: dashboardDescription.value })
+    } else {
+        isSaveModalVisible.value = true
+    }
+}
+
 // Сохранение дашборда
 async function handleSaveDashboard({ name, description }) {
     saving.value = true
@@ -591,19 +636,17 @@ async function handleSaveDashboard({ name, description }) {
             const response = await dashboardService.createDashboard(payload)
             savedDashboard = response.data
             dashboardId.value = savedDashboard.id
-            isEditMode.value = true
             toast.success('Дашборд успешно создан')
-            
-            // Обновляем URL с ID дашборда
-            router.replace({ 
-                name: 'DashboardPage', 
-                params: { id: savedDashboard.id } 
+            router.replace({
+                name: 'DashboardPage',
+                params: { id: savedDashboard.id },
+                query: { mode: 'edit' }
             })
         }
         
-        // Обновляем локальные данные
         dashboardName.value = savedDashboard.name
         dashboardDescription.value = savedDashboard.description || ''
+        lastSavedSnapshot.value = prepareDashboardForAPI(dashboardName.value, dashboardDescription.value)
         isSaveModalVisible.value = false
     } catch (error) {
         console.error('Ошибка при сохранении дашборда:', error)
@@ -621,6 +664,7 @@ async function loadDashboard(id) {
     } catch (error) {
         console.error('Ошибка при загрузке дашборда:', error)
         toast.error('Не удалось загрузить дашборд')
+        dashboardDataLoaded.value = true
     }
 }
 
@@ -632,11 +676,18 @@ onMounted(async () => {
     // Загружаем дашборд, если есть ID в route
     const dashboardIdFromRoute = route.params.id
     if (dashboardIdFromRoute && dashboardIdFromRoute !== 'new') {
+        dashboardDataLoaded.value = false
         await loadDashboard(parseInt(dashboardIdFromRoute))
+        if (!canEditDashboard.value && route.query.mode === 'edit') {
+            const q = { ...route.query }
+            delete q.mode
+            router.replace({ path: route.path, query: q })
+        }
     } else {
-        // Новый дашборд
         dashboardId.value = null
-        isEditMode.value = false
+        dashboardOwnerId.value = null
+        lastSavedSnapshot.value = null
+        dashboardDataLoaded.value = true
         if (!dashboardItems.value[0]) {
             dashboardItems.value[0] = []
         }
@@ -676,25 +727,6 @@ watch(() => pages.value.length, (newLength, oldLength) => {
     }
 })
 
-watch(currentPageItems, (items, oldItems) => {
-  if (items.length > oldItems.length) {
-    const newItem = items[items.length - 1]
-    if (newItem.type === 'Заголовок') {
-      headerSettingsData.value = { ...newItem }
-      isHeaderSettingsVisible.value = true
-    } else if (newItem.type === 'Текст') {
-      textSettingsData.value = { ...newItem }
-      isTextSettingsVisible.value = true
-    } else if (newItem.type === 'Чарт') {
-      chartSettingsData.value = { ...newItem }
-      isChartSettingsVisible.value = true
-    } else if (newItem.type === 'Селектор') {
-      selectorSettingsData.value = { ...newItem }
-      isSelectorSettingsVisible.value = true
-    }
-  }
-})
-
 watch(currentPageIndex, (newIndex) => {
     if (pages.value.length > 1) {
         updateUrlForPage(newIndex)
@@ -713,7 +745,7 @@ onUnmounted(() => {
 .dashboard-page {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     min-height: 100vh;
     padding-bottom: 80px;
 }
@@ -734,6 +766,12 @@ onUnmounted(() => {
     align-items: center;
     position: relative;
     flex: 1;
+}
+
+.btn-icon-inline {
+    display: inline-flex;
+    vertical-align: middle;
+    margin-right: 6px;
 }
 
 .header-label-text{
@@ -809,13 +847,19 @@ onUnmounted(() => {
 
 .header-label-buttons {
     display: flex;
+    align-items: center;
     gap: 15px;
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+    }
 }
 
 .body-content {
     flex: 1;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     padding-top: 20px;
 }
 

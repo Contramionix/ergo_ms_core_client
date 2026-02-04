@@ -20,21 +20,42 @@
 -->
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { useRoute } from 'vue-router'
 import { isDatasetSidebarOpen, currentSidebarPage } from '@/core/bi/MainPage/Sidebar/components/js/useSidebarStore'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import MenuList from '@/components/menu/MenuList.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 
-import StorageSidebar from '@/core/bi/MainPage/Sidebar/StorageSidebar.vue'
-import BIAnalysisModal from '@/core/bi/components/BIAnalysisModal.vue'
-import BIChartsModal from '@/core/bi/components/BIChartsModal.vue'
 import { biAnalysisService } from '@/core/bi/js/biAnalysisService.js'
 import { biChartsService } from '@/core/bi/js/biChartsService.js'
 import { Menu as IconMenu } from 'lucide-vue-next'
 
+// Ленивая загрузка тяжёлых компонентов (загружаются только при необходимости)
+const StorageSidebar = defineAsyncComponent(() => import('@/core/bi/MainPage/Sidebar/StorageSidebar.vue'))
+const BIAnalysisModal = defineAsyncComponent(() => import('@/core/bi/components/BIAnalysisModal.vue'))
+const BIChartsModal = defineAsyncComponent(() => import('@/core/bi/components/BIChartsModal.vue'))
+
 const userStore = useUserStore()
+const route = useRoute()
+
+// Хранилище для отписок от сервисов
+let unsubscribeAnalysis = null
+let unsubscribeCharts = null
+let resizeTimeout = null
+
+// Ключ для RouterView - позволяет не пересоздавать компонент при переключении между вкладками
+// Модули могут указать meta.cacheGroup для группировки роутов под одним ключом
+const routeViewKey = computed(() => {
+  // Если модуль указал cacheGroup - используем его как ключ
+  if (route.meta?.cacheGroup) {
+    return route.meta.cacheGroup
+  }
+  // Иначе используем полный путь
+  return route.path
+})
+
 const leftPadding = ref('300px') // Увеличиваем начальное значение для адаптивной ширины
 const isMenuVisible = ref(window.innerWidth >= 1200)
 const isMenuToggledManually = ref(false)
@@ -45,7 +66,10 @@ const isBIAnalysisModalVisible = ref(false)
 const isBIChartsModalVisible = ref(false)
 const chartsModalFileId = ref(null)
 
-function updateMenuVisibility() {
+// Полноэкранный режим (без меню и ограничений контейнера)
+const isFullPage = computed(() => route.meta?.fullPage === true)
+
+function updateMenuVisibilityImmediate() {
   if (window.innerWidth >= 1200) {
     isMenuVisible.value = true
     isOverlayVisible.value = false
@@ -54,6 +78,14 @@ function updateMenuVisibility() {
     isMenuVisible.value = false
     isOverlayVisible.value = false
   }
+}
+
+// Debounced версия для resize event (избегаем лишних вычислений при ресайзе)
+function updateMenuVisibility() {
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
+  resizeTimeout = setTimeout(updateMenuVisibilityImmediate, 150)
 }
 
 function toggleMenu(isVisible) {
@@ -77,13 +109,9 @@ function handleMenuStateChange(collapsed, width) {
   menuWidth.value = width
 }
 
-function openSidebarWithPage(pageName) {
+function openSidebar(pageName) {
   currentSidebarPage.value = pageName
   isDatasetSidebarOpen.value = true
-}
-
-function openSidebarFromMenu(page) {
-  openSidebarWithPage(page)
 }
 
 function closeSidebar() {
@@ -96,32 +124,48 @@ function onHamburgerClick() {
 }
 
 onMounted(async () => {
-  updateMenuVisibility()
+  // Инициализируем сразу без debounce
+  updateMenuVisibilityImmediate()
   window.addEventListener('resize', updateMenuVisibility)
   
   // Инициализируем пользователя при загрузке авторизованной области
   await userStore.initializeUser()
   
-  // Подписываемся на изменения состояния BI анализа
-  biAnalysisService.subscribe((isOpen) => {
+  // Подписываемся на изменения состояния BI анализа (сохраняем функцию отписки)
+  unsubscribeAnalysis = biAnalysisService.subscribe((isOpen) => {
     isBIAnalysisModalVisible.value = isOpen
   })
   
-  // Подписываемся на изменения состояния BI графиков
-  biChartsService.subscribe((isOpen, fileId) => {
+  // Подписываемся на изменения состояния BI графиков (сохраняем функцию отписки)
+  unsubscribeCharts = biChartsService.subscribe((isOpen, fileId) => {
     isBIChartsModalVisible.value = isOpen
     chartsModalFileId.value = fileId
   })
 })
 
 onBeforeUnmount(() => {
+  // Очищаем resize listener
   window.removeEventListener('resize', updateMenuVisibility)
+  
+  // Очищаем debounce timeout
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
+  
+  // Отписываемся от сервисов (предотвращаем утечку памяти)
+  if (unsubscribeAnalysis) {
+    unsubscribeAnalysis()
+  }
+  if (unsubscribeCharts) {
+    unsubscribeCharts()
+  }
 })
 </script>
 
 <template>
+  <!-- Мобильный хедер (скрывается для полноэкранных страниц) -->
   <Teleport to="body">
-    <div class="mobile-header d-xl-none">
+    <div v-if="!isFullPage" class="mobile-header d-xl-none">
       <button
         class="btn btn-link d-flex align-items-center justify-content-center mobile-header__btn"
         type="button"
@@ -136,24 +180,37 @@ onBeforeUnmount(() => {
       </RouterLink>
     </div>
   </Teleport>
-  <div class="layout-container">
+  <div class="layout-container" :class="{ 'layout-container--full-page': isFullPage }">
+    <!-- Боковое меню (скрывается для полноэкранных страниц) -->
     <MenuList
+      v-if="!isFullPage"
       :current-page="currentSidebarPage"
       @left-padding="leftToggle"
       :is-visible="isMenuVisible"
-      @open-sidebar="openSidebarFromMenu"
+      @open-sidebar="openSidebar"
       @reset-page="() => currentSidebarPage = ''"
       @menu-state-change="handleMenuStateChange"
     />
-    <div class="layout-page" :style="{ paddingLeft: leftPadding }">
-      <div class="py-4 container-xxl">
+    <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage }">
+      <!-- Полноэкранный режим для страниц с meta.fullPage: true -->
+      <template v-if="route.meta?.fullPage">
         <AccessDenied
           v-if="accessDeniedState.active"
           bordered
           :title="accessDeniedState.title"
           :message="accessDeniedState.message"
         />
-        <RouterView v-else :key="$route.path" />
+        <RouterView v-else :key="routeViewKey" />
+      </template>
+      <!-- Стандартный режим с контейнером и отступами -->
+      <div v-else class="py-4 container-xxl">
+        <AccessDenied
+          v-if="accessDeniedState.active"
+          bordered
+          :title="accessDeniedState.title"
+          :message="accessDeniedState.message"
+        />
+        <RouterView v-else :key="routeViewKey" />
       </div>
     </div>
   </div>
@@ -208,10 +265,29 @@ onBeforeUnmount(() => {
 .layout-page {
   padding-inline-start: v-bind(leftPadding);
   transition: padding-inline-start 0.3s ease;
+
+  // Полноэкранный режим - без паддингов
+  &--full-page {
+    padding-inline-start: 0 !important;
+    height: 100dvh;
+  }
 }
+
+// Полноэкранный контейнер
+.layout-container--full-page {
+  height: 100dvh;
+  overflow: hidden;
+
+  .layout-page--full-page {
+    height: 100dvh;
+    overflow: auto;
+  }
+}
+
 .layout-overlay {
   z-index: 1004;
 }
+
 @media (width < 1200px) {
   .layout-container {
     height: 100dvh;
@@ -223,6 +299,11 @@ onBeforeUnmount(() => {
     height: calc(100dvh - 56px);
     overflow: auto;
     overscroll-behavior: contain;
+
+    // Полноэкранный режим на мобильных - без верхнего отступа
+    &--full-page {
+      height: 100dvh;
+    }
   }
   :deep(.side-menu__toggle) {
     display: none !important;

@@ -1,25 +1,25 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { CircleUserRound, Power, Building2 } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { apiClient } from '@/js/api/manager'
-import { endpoints } from '@/js/api/endpoints'
 import { logout as authLogout } from '@/core/cms/adp/js/auth-index'
 import { useDropdown } from '@/composables/useDropdown.js'
+import { tokenService } from '@/core/cms/js/tokenService.js'
+import { hasAnyModulePermission } from '@/core/cms/adp/js/accessControl.js'
 
 const userStore = useUserStore()
 const emit = defineEmits(['dropdown-toggle'])
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 
-const organizations = ref([])
-const hasOrganizations = computed(() => organizations.value.length > 0)
+// Состояние для отображения вкладки "Организация"
+const canShowOrganizationTab = ref(false)
 
 // Вычисляем имя пользователя напрямую из userStore.user
 const userName = computed(() => {
   if (!userStore.user) return 'Гость'
   
-  // Используем initials_name если есть (например, "Ефремов Д.А.")
   if (userStore.user.initials_name && userStore.user.initials_name.trim()) {
     return userStore.user.initials_name
   }
@@ -62,22 +62,35 @@ const organizationMenuItem = {
 
 const menuItems = computed(() => {
   const items = baseMenuItems.slice()
-  if (hasOrganizations.value) {
+  if (canShowOrganizationTab.value) {
     items.splice(1, 0, organizationMenuItem)
   }
   return items
 })
 
-const fetchUserOrganizations = async () => {
-  if (!endpoints?.organizations?.list) return []
-
-  try {
-    const checkUrl = endpoints.organizations.list.replace(/\/$/, '') + '/check/'
-    const response = await apiClient.get(checkUrl)
-    return response.success && response.data?.exists ? [{}] : []
-  } catch {
-    return []
+/**
+ * Проверяет, должна ли отображаться вкладка "Организация".
+ * Вкладка отображается только если:
+ * 1. Пользователь авторизован в организацию (есть organization_id в JWT)
+ * 2. Пользователь имеет права на настройки организации (org_settings или org_manage)
+ */
+const checkOrganizationTabVisibility = async () => {
+  // Проверяем наличие активной организации в JWT токене
+  const hasActiveOrg = tokenService.hasActiveOrganization()
+  
+  if (!hasActiveOrg) {
+    canShowOrganizationTab.value = false
+    return
   }
+  
+  // Проверяем права на управление/просмотр настроек организации
+  // Используем константы прав модуля organizations
+  const hasOrgPermissions = await hasAnyModulePermission('organizations', [
+    'org_settings',  // Право на просмотр настроек
+    'org_manage'     // Право на управление организацией
+  ])
+  
+  canShowOrganizationTab.value = hasOrgPermissions
 }
 
 // Экспортируем метод для внешнего вызова
@@ -113,7 +126,16 @@ onMounted(async () => {
     await userStore.initializeUser()
   }
 
-  organizations.value = await fetchUserOrganizations()
+  // Проверяем, нужно ли показывать вкладку "Организация"
+  await checkOrganizationTabVisibility()
+})
+
+// Обновляем состояние при каждом открытии dropdown
+// (на случай, если пользователь вошёл/вышел из организации)
+watch(isOpen, async (newValue) => {
+  if (newValue) {
+    await checkOrganizationTabVisibility()
+  }
 })
 </script>
 

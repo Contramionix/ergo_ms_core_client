@@ -288,10 +288,23 @@ async function loadSelectorOptions(selector) {
   
   try {
     const response = await datasetService.getFieldValues(selector.selectedDatasetId, selector.selectedField);
-    const options = response.data ? response.data.map(value => ({
-      value: value,
+    
+    // Поддерживаем оба формата ответа:
+    // 1) data = [ 'A', 'B', ... ]
+    // 2) data = { values: [ 'A', 'B', ... ], ... }
+    let rawValues = [];
+    const data = response && response.data;
+
+    if (Array.isArray(data)) {
+      rawValues = data;
+    } else if (data && Array.isArray(data.values)) {
+      rawValues = data.values;
+    }
+
+    const options = rawValues.map(value => ({
+      value,
       label: value
-    })) : [];
+    }));
     
     selectorOptionsMap.value[selector.id] = options;
   } catch (error) {

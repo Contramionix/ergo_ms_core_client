@@ -173,6 +173,7 @@ import DocumentSelector from './DocumentSelector.vue'
 import DocumentUploader from './DocumentUploader.vue'
 import { docsClient } from './js/docs-client.js'
 import { ragClient } from '../rag/js/rag-client.js'
+import { getModuleById } from '../modules/index.js'
 
 const props = defineProps({
   isVisible: {
@@ -257,6 +258,11 @@ const messages = ref([
 
 const hasStreamingContent = computed(() => {
   return messages.value.some(m => m.isStreaming)
+})
+
+const moduleColor = computed(() => {
+  const module = getModuleById('docs')
+  return module?.color || '#8b5cf6'
 })
 
 const scrollToBottom = () => {

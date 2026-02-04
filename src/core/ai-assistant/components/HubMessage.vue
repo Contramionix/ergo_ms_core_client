@@ -312,7 +312,40 @@ const formatProcessingTime = (ms) => {
 
 const formattedContent = computed(() => {
   if (!props.message.content) return ''
-  return props.message.content
+  
+  let content = props.message.content
+  
+  // Обрабатываем markdown таблицы ПЕРЕД обработкой переносов строк
+  // Ищем паттерн: строки с |, включая разделитель с ---
+  // Более простой и надежный паттерн - ищем блоки с несколькими строками, начинающимися с |
+  const tableRegex = /((?:\|[^\n]+\|\s*\n)+)/g
+  const tables = []
+  let tableIndex = 0
+  
+  content = content.replace(tableRegex, (match) => {
+    // Проверяем, что это действительно таблица (есть разделитель с ---)
+    const hasSeparator = /\|[\s\-:]+\|/.test(match)
+    if (!hasSeparator) {
+      return match // Не таблица, возвращаем как есть
+    }
+    
+    // Проверяем, что есть минимум 2 строки (заголовок + разделитель)
+    const lines = match.split('\n').filter(l => l.trim().startsWith('|'))
+    if (lines.length < 2) {
+      return match // Не таблица
+    }
+    
+    const tableId = `markdown-table-${tableIndex++}`
+    const htmlTable = parseMarkdownTable(match)
+    if (htmlTable === match) {
+      return match // Парсинг не удался, возвращаем как есть
+    }
+    tables.push({ id: tableId, html: htmlTable })
+    return `\n\n__TABLE_PLACEHOLDER_${tableId}__\n\n`
+  })
+  
+  // Обрабатываем остальной markdown
+  content = content
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -325,8 +358,106 @@ const formattedContent = computed(() => {
       // Обычная ссылка
       return `<a href="${url}" target="_blank">${text}</a>`
     })
-    .replace(/\n/g, '<br>')
+  
+  // Заменяем плейсхолдеры таблиц на HTML ПЕРЕД заменой переносов строк
+  tables.forEach(table => {
+    const placeholder = `__TABLE_PLACEHOLDER_${table.id}__`
+    content = content.replace(placeholder, table.html)
+  })
+  
+  // Заменяем переносы строк на <br> в последнюю очередь
+  content = content.replace(/\n/g, '<br>')
+  
+  return content
 })
+
+const parseMarkdownTable = (markdownTable) => {
+  try {
+    const lines = markdownTable.trim().split('\n').map(line => line.trim()).filter(line => line)
+    
+    if (lines.length < 2) return markdownTable // Не таблица
+    
+    // Находим строку с разделителем
+    let separatorIndex = -1
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].match(/^\|[\s\-:|]+\|$/)) {
+        separatorIndex = i
+        break
+      }
+    }
+    
+    if (separatorIndex === -1) return markdownTable // Нет разделителя
+    
+    // Первая строка до разделителя - заголовки
+    const headerLine = lines[0]
+    if (!headerLine.startsWith('|') || !headerLine.endsWith('|')) {
+      return markdownTable // Не таблица
+    }
+    
+    const headers = headerLine
+      .split('|')
+      .map(cell => cell.trim())
+      .filter((cell, index, arr) => {
+        // Убираем пустые ячейки по краям таблицы
+        return index > 0 && index < arr.length - 1
+      })
+    
+    if (headers.length === 0) return markdownTable // Нет заголовков
+    
+    // Строки после разделителя - данные
+    const dataLines = lines.slice(separatorIndex + 1)
+    const rows = dataLines
+      .filter(line => line.startsWith('|') && line.endsWith('|'))
+      .map(line => {
+        return line
+          .split('|')
+          .map(cell => cell.trim())
+          .filter((cell, index, arr) => {
+            // Убираем пустые ячейки по краям таблицы
+            return index > 0 && index < arr.length - 1
+          })
+      })
+      .filter(row => row.length > 0)
+    
+    // Формируем HTML таблицу
+    let html = '<div class="markdown-table-wrapper"><table class="markdown-table">'
+    
+    // Заголовки
+    html += '<thead><tr>'
+    headers.forEach(header => {
+      html += `<th>${escapeHtml(header)}</th>`
+    })
+    html += '</tr></thead>'
+    
+    // Данные
+    if (rows.length > 0) {
+      html += '<tbody>'
+      rows.forEach(row => {
+        html += '<tr>'
+        headers.forEach((_, index) => {
+          const cell = row[index] || ''
+          html += `<td>${escapeHtml(cell)}</td>`
+        })
+        html += '</tr>'
+      })
+      html += '</tbody>'
+    }
+    
+    html += '</table></div>'
+    
+    return html
+  } catch (error) {
+    console.error('Ошибка парсинга таблицы:', error)
+    return markdownTable
+  }
+}
+
+const escapeHtml = (text) => {
+  if (!text) return ''
+  const div = document.createElement('div')
+  div.textContent = String(text)
+  return div.innerHTML
+}
 
 const skillCallTooltip = computed(() => {
   if (!props.message.skill_call) return ''
@@ -764,6 +895,7 @@ const downloadChart = async () => {
 }
 
 .message-content {
+  font-family: Arial, sans-serif;
   font-size: $message-font-size;
   font-weight: 200;
   line-height: $line-height-relaxed;
@@ -818,6 +950,62 @@ const downloadChart = async () => {
 
     &:active {
       transform: translateY(0);
+    }
+  }
+
+  :deep(.markdown-table-wrapper) {
+    margin: $spacing-md 0;
+    overflow-x: auto;
+    border-radius: $radius-md;
+    max-width: 100%;
+  }
+
+  :deep(.markdown-table) {
+    width: 100%;
+    min-width: 500px;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    font-size: $font-size-sm;
+    background: var(--bg-base);
+    border: 1px solid rgba(58, 232, 255, 0.2);
+    
+    th, td {
+      padding: $spacing-sm $spacing-md;
+      text-align: left;
+      border-bottom: 1px solid rgba(58, 232, 255, 0.1);
+      word-wrap: break-word;
+      white-space: normal;
+      font-family: Arial, sans-serif;
+    }
+    
+    th {
+      background: rgba(58, 232, 255, 0.1);
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: Arial, sans-serif;
+      text-transform: uppercase;
+      font-size: $font-size-xs;
+      letter-spacing: $letter-spacing-wide;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    
+    td {
+      color: var(--text-secondary);
+      font-family: Arial, sans-serif;
+    }
+    
+    tbody tr {
+      transition: background $transition-fast;
+      
+      &:hover {
+        background: rgba(58, 232, 255, 0.05);
+      }
+      
+      &:last-child td {
+        border-bottom: none;
+      }
     }
   }
 

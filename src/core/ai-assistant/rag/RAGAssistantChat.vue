@@ -216,7 +216,10 @@ const sendMessage = async () => {
         }
         isTyping.value = false
         streamingMessageId = null
-      }
+      },
+      null, // ollamaConfig
+      null, // sessionId
+      'chat' // module
     )
   } catch (error) {
     console.error('Ошибка отправки сообщения:', error)

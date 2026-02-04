@@ -71,6 +71,8 @@ export const cmsEndpoints = {
         modulePermissions: 'cms/adp/module-permissions/',
         assignRole: 'cms/adp/assign-role/',
         adminUsers: 'cms/adp/admin-users/',
+        importUsers: 'cms/adp/import-users/',
+        importUsersTaskStatus: (taskId) => `cms/adp/import-users/status/${taskId}/`,
         myPermissions: 'cms/adp/my-permissions/',
         checkURLAccess: 'cms/adp/check-url-access/',
         

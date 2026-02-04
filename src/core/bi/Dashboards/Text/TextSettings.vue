@@ -6,7 +6,13 @@
     </div>
     <div class="form-group">
       <label>Фон</label>
-      <input type="color" v-model="background" />
+      <div class="background-row">
+        <input type="color" v-model="background" :disabled="useTransparentBackground" />
+        <label class="background-transparent-toggle">
+          <input type="checkbox" v-model="useTransparentBackground" />
+          Прозрачный фон
+        </label>
+      </div>
     </div>
     <div class="form-group">
       <label>
@@ -35,12 +41,19 @@ const emit = defineEmits(['close', 'save']);
 
 const textContent = ref('');
 const background = ref('#2d2d3d');
+const useTransparentBackground = ref(false);
 const autoHeight = ref(false);
 
 watch(() => props.data, (newData) => {
   if (newData) {
     textContent.value = newData.content || '';
-    background.value = newData.background || '#2d2d3d';
+
+    const isTransparent = newData.background === 'transparent';
+    useTransparentBackground.value = isTransparent;
+    background.value = !isTransparent && newData.background
+      ? newData.background
+      : '#2d2d3d';
+
     autoHeight.value = newData.autoHeight || false;
   }
 }, { immediate: true });
@@ -53,7 +66,7 @@ function onSubmit() {
   const settings = {
     ...props.data,
     content: textContent.value,
-    background: background.value,
+    background: useTransparentBackground.value ? 'transparent' : background.value,
     autoHeight: autoHeight.value
   };
   emit('save', settings);
@@ -73,6 +86,18 @@ function onSubmit() {
   margin-bottom: 16px;
   display: flex;
   flex-direction: column;
+}
+.background-row {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.background-transparent-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
 }
 input[type="color"] {
   width: 32px;

@@ -230,6 +230,11 @@ export const GetRoleGroups = async () => {
     return response.data;
 }
 
+export const GetRoleGroupOptions = async () => {
+    const response = await CheckAccess.GetRoleGroupOptions();
+    return response.data;
+}
+
 export const CreateRoleGroup = async (payload) => {
     const response = await CheckAccess.CreateRoleGroup(payload);
     return response.data;
