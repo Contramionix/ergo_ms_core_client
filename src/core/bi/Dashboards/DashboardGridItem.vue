@@ -573,6 +573,7 @@ const onHideHint = () => {
 }
 
 .item-чарт {
+  padding: 0;
   background: linear-gradient(
     135deg,
     var(--color-primary-background) 0%,

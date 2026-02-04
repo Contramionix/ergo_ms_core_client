@@ -210,6 +210,27 @@ const isSelectorSettingsVisible = ref(false)
 const selectorSettingsData = ref(null)
 const dashboardGridRef = ref(null)
 
+function getItemDefaultHeight(item) {
+  if (!item || !item.type) {
+    return 150
+  }
+
+  switch (item.type) {
+    case 'Заголовок': {
+      const sizeKey = item.size && HEADER_WIDGET_HEIGHTS[item.size] ? item.size : 'M'
+      return HEADER_WIDGET_HEIGHTS[sizeKey] || 60
+    }
+    case 'Текст':
+      return 150
+    case 'Чарт':
+      return 300
+    case 'Селектор':
+      return 50
+    default:
+      return 150
+  }
+}
+
 const handleToolbarDragStart = (itemType) => {
             draggedType.value = itemType
 }
@@ -581,7 +602,11 @@ function prepareDashboardForAPI(name, description) {
                 x: Math.round(item.x || 0),
                 y: Math.round(item.y || 0),
                 width: Math.round(item.width || 200),
-                height: Math.round(item.height || 150),
+                height: Math.round(
+                  typeof item.height === 'number'
+                    ? item.height
+                    : getItemDefaultHeight(item)
+                ),
                 order: items.indexOf(item),
                 config: {
                     // Для заголовка

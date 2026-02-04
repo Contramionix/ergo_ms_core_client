@@ -1352,6 +1352,7 @@ onUnmounted(() => {
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  display: none;
   --grid-step: 10px;
   --grid-color: rgba(var(--color-primary-rgb, 59, 130, 246), 0.12);
   background-image:
@@ -1365,6 +1366,7 @@ onUnmounted(() => {
   inset: 0;
   z-index: 1;
   pointer-events: none;
+  display: none;
 }
 
 .grid-row-line {
