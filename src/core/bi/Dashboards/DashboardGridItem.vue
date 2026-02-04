@@ -149,6 +149,7 @@ const itemClasses = computed(() => {
   return {
     [typeClassKey]: true,
     'item-selected': props.item.selected,
+    'view-mode': props.viewMode,
     'item-dragging': props.draggedItemId === props.item.id,
     'item-hidden-drag':
       props.isDraggingExisting && props.draggedItemId === props.item.id,
@@ -321,6 +322,20 @@ const onHideHint = () => {
     transform: scale(1.02);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
   }
+}
+
+.grid-item.view-mode {
+  cursor: default;
+}
+
+.grid-item.view-mode:hover {
+  border-color: var(--color-border);
+  box-shadow: none;
+}
+
+.grid-item.view-mode.item-selected {
+  border-color: var(--color-border);
+  box-shadow: none;
 }
 
 .grid-item.item-hidden-drag {
