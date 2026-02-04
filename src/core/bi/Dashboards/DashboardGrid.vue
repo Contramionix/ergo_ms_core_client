@@ -212,18 +212,18 @@ const yellowPlaceholderStyle = computed(() => {
 
 const shiftedItemsStyle = computed(() => {
   if (!showYellowPlaceholder.value) return {}
+
   const placeholderY = yellowPlaceholderPosition.value.y
-  if (placeholderY >= 10) return {}
+  // Визуально сдвигаем элементы только при создании новой строки СВЕРХУ (y === 0),
+  // чтобы было видно будущую строку, но не трогаем остальные случаи.
+  if (placeholderY !== 0) return {}
+
   const placeholderHeight = yellowPlaceholderPosition.value.height
-  
+
   const styles = {}
-  
+
   localItems.value.forEach(item => {
     const itemY = item.y || 0
-    const itemHeight = item.height || ELEMENT_SIZES[item.type]?.height || 150
-    
-    const itemBottom = itemY + itemHeight
-    
     if (itemY >= placeholderY) {
       const shiftAmount = placeholderHeight + GRID_GAP
       styles[item.id] = {
@@ -231,15 +231,8 @@ const shiftedItemsStyle = computed(() => {
         transition: 'transform 0.2s ease'
       }
     }
-    else if (itemY < placeholderY && itemBottom > placeholderY) {
-      const shiftAmount = placeholderY + placeholderHeight - itemY + GRID_GAP
-      styles[item.id] = {
-        transform: `translateY(${shiftAmount}px)`,
-        transition: 'transform 0.2s ease'
-      }
-    }
   })
-  
+
   return styles
 })
 
@@ -475,7 +468,10 @@ const findTargetRowFromVisual = (mouseY, visualRows) => {
   if (visualRows.length === 0) return { placementY: 0, items: [], height: 0, isNewRow: true }
 
   const first = visualRows[0]
-  if (mouseY < first.visualTop) {
+  const firstMiddle = (first.visualTop + first.visualBottom) / 2
+
+  // Если курсор в верхней половине первой строки — считаем, что хотим создать новую строку сверху
+  if (mouseY <= firstMiddle) {
     return { placementY: 0, items: [], height: first.height, isNewRow: true }
   }
 
@@ -487,8 +483,15 @@ const findTargetRowFromVisual = (mouseY, visualRows) => {
     if (i < visualRows.length - 1) {
       const next = visualRows[i + 1]
       if (mouseY > row.visualBottom && mouseY < next.visualTop) {
-        const gapCenter = (row.visualBottom + next.visualTop) / 2
-        return mouseY < gapCenter ? { ...row } : { ...next }
+        // Пользователь перетаскивает элемент в "зазор" между строками:
+        // всегда создаём новую строку между ними.
+        const insertionY = row.placementY + row.height + GRID_GAP
+        return {
+          placementY: insertionY,
+          items: [],
+          height: 0,
+          isNewRow: true
+        }
       }
     }
   }
@@ -561,6 +564,42 @@ const findBestPositionInRow = (mouseX, targetRow, elementWidth, gridWidth, exclu
   return { x: clampedX, y: placementY }
 }
 
+const computePlacementForDrag = (relativeX, relativeY, elementType, excludeItemId = null) => {
+  if (!gridContainer.value) return { x: 0, y: 0 }
+
+  const elementSize = getEffectiveElementSize(elementType)
+  if (!elementSize) return { x: 0, y: 0 }
+
+  const gridWidth = gridContainer.value.clientWidth
+
+  const itemsForPlacement = excludeItemId
+    ? localItems.value.filter(item => item.id !== excludeItemId)
+    : localItems.value
+
+  if (itemsForPlacement.length === 0) {
+    const snapX = Math.max(0, Math.min(gridWidth - elementSize.width, relativeX - elementSize.width / 2))
+    return { x: snapX, y: 0, width: elementSize.width, height: elementSize.height }
+  }
+
+  const ph = yellowPlaceholderPosition.value
+  const visualRows = buildVisualRows({
+    items: localItems.value,
+    excludeItemId,
+    placeholderY: ph.y,
+    placeholderHeight: ph.height || 0,
+    elementHeight: elementSize.height
+  })
+  const targetRow = findTargetRowFromVisual(relativeY, visualRows)
+  const placement = findBestPositionInRow(relativeX, targetRow, elementSize.width, gridWidth, excludeItemId)
+
+  return {
+    x: placement.x,
+    y: placement.y,
+    width: elementSize.width,
+    height: elementSize.height
+  }
+}
+
 const calculatePotentialPlacement = (mouseX, mouseY, elementType) => {
   if (!gridContainer.value) return { x: 0, y: 0 }
   const rect = gridContainer.value.getBoundingClientRect()
@@ -568,74 +607,45 @@ const calculatePotentialPlacement = (mouseX, mouseY, elementType) => {
   const contentTop = rect.top + GRID_CONTAINER_PADDING
   const relativeX = mouseX - contentLeft
   const relativeY = mouseY - contentTop
-  const elementSize = getEffectiveElementSize(elementType)
-  if (!elementSize) return { x: 0, y: 0 }
-  const gridWidth = gridContainer.value.clientWidth
 
-  if (localItems.value.length === 0) {
-    const snapX = Math.max(0, Math.min(gridWidth - elementSize.width, relativeX - elementSize.width / 2))
-    return { x: snapX, y: 0 }
-  }
-
-  const ph = yellowPlaceholderPosition.value
-  const visualRows = buildVisualRows({
-    items: localItems.value,
-    excludeItemId: null,
-    placeholderY: ph.y,
-    placeholderHeight: ph.height || 0,
-    elementHeight: elementSize.height
-  })
-  const targetRow = findTargetRowFromVisual(relativeY, visualRows)
-  return findBestPositionInRow(relativeX, targetRow, elementSize.width, gridWidth, null)
+  const placement = computePlacementForDrag(relativeX, relativeY, elementType, null)
+  return { x: placement.x, y: placement.y }
 }
 
 const calculateFinalPlacement = (elementType) => {
   if (!yellowPlaceholderPosition.value || !elementType) {
     return { x: 0, y: 0 }
   }
-  
+
   const placeholderX = yellowPlaceholderPosition.value.x
   const placeholderY = yellowPlaceholderPosition.value.y
   const elementSize = getEffectiveElementSize(elementType)
-  
+
   if (!elementSize) return { x: 0, y: 0 }
-  
-  const hasItemsInRow = localItems.value.some(item => {
-    const itemY = item.y || 0
-    return Math.abs(itemY - placeholderY) < 10
-  })
-  
-  if (hasItemsInRow && !checkCollision(placeholderX, placeholderY, elementSize.width, elementSize.height)) {
-    return { x: placeholderX, y: placeholderY }
-  }
-  
+
   const elementsToShift = []
-  
+
   localItems.value.forEach(item => {
     const itemY = item.y || 0
     const actualSize = getActualItemSize(item)
     const itemHeight = actualSize.height
-    
+
     if (itemY >= placeholderY) {
       elementsToShift.push(item)
-    }
-    else if (itemY < placeholderY && itemY + itemHeight > placeholderY) {
+    } else if (itemY < placeholderY && itemY + itemHeight > placeholderY) {
       elementsToShift.push(item)
     }
   })
-  
+
   elementsToShift.forEach(item => {
     const itemY = item.y || 0
-    const actualSize = getActualItemSize(item)
-    const itemHeight = actualSize.height
-    
     if (itemY >= placeholderY) {
       item.y = itemY + elementSize.height + GRID_GAP
     } else {
       item.y = placeholderY + elementSize.height + GRID_GAP
     }
   })
-  
+
   return { x: placeholderX, y: placeholderY }
 }
 
@@ -730,41 +740,14 @@ const handleExistingItemDrag = (event) => {
   const rect = gridContainer.value.getBoundingClientRect()
   const mouseX = event.clientX - rect.left - GRID_CONTAINER_PADDING
   const mouseY = event.clientY - rect.top - GRID_CONTAINER_PADDING
-  const actualSize = getActualItemSize(draggedItem.value)
-  const itemWidth = actualSize.width
-  const itemHeight = actualSize.height
-  const gridWidth = gridContainer.value.clientWidth
 
-  const otherItems = localItems.value.filter(item => item.id !== draggedItem.value.id)
-
-  if (otherItems.length === 0) {
-    const snapX = Math.max(0, Math.min(gridWidth - itemWidth, mouseX - itemWidth / 2))
-    yellowPlaceholderPosition.value = {
-      x: snapX,
-      y: 0,
-      width: itemWidth,
-      height: itemHeight
-    }
-    showYellowPlaceholder.value = true
-    return
-  }
-
-  const ph = yellowPlaceholderPosition.value
-  const visualRows = buildVisualRows({
-    items: localItems.value,
-    excludeItemId: draggedItem.value.id,
-    placeholderY: ph.y,
-    placeholderHeight: ph.height || 0,
-    elementHeight: itemHeight
-  })
-  const targetRow = findTargetRowFromVisual(mouseY, visualRows)
-  const placement = findBestPositionInRow(mouseX, targetRow, itemWidth, gridWidth, draggedItem.value.id)
+  const placement = computePlacementForDrag(mouseX, mouseY, draggedItem.value.type, draggedItem.value.id)
 
   yellowPlaceholderPosition.value = {
     x: placement.x,
     y: placement.y,
-    width: itemWidth,
-    height: itemHeight
+    width: placement.width,
+    height: placement.height
   }
   showYellowPlaceholder.value = true
 }
@@ -774,50 +757,11 @@ const stopDrag = () => {
     if (showYellowPlaceholder.value && yellowPlaceholderPosition.value) {
       const newX = yellowPlaceholderPosition.value.x
       const newY = yellowPlaceholderPosition.value.y
-      
-      const isPlacingInExistingRow = localItems.value.some(item => {
-        if (item.id === draggedItem.value.id) return false
-        const itemY = item.y || 0
-        return Math.abs(itemY - newY) < 10
-      })
-      
+
       draggedItem.value.x = newX
       draggedItem.value.y = newY
-      
-      if (!isPlacingInExistingRow) {
-        const rows = new Map()
-        for (const item of localItems.value) {
-          const itemY = item.y || 0
-          let foundRow = false
-          for (const [rowY] of rows) {
-            if (Math.abs(rowY - itemY) < 10) {
-              rows.get(rowY).push(item)
-              foundRow = true
-              break
-            }
-          }
-          if (!foundRow) {
-            rows.set(itemY, [item])
-          }
-        }
-        
-        const sortedRowYs = [...rows.keys()].sort((a, b) => a - b)
-        let currentY = 0
-        
-        for (const rowY of sortedRowYs) {
-          const rowItems = rows.get(rowY)
-          let maxHeight = 0
-          
-          for (const item of rowItems) {
-            item.y = currentY
-            const actualSize = getActualItemSize(item)
-            maxHeight = Math.max(maxHeight, actualSize.height)
-          }
-          
-          currentY += maxHeight + GRID_GAP
-        }
-      }
     }
+    recalculatePositions()
     emit('update:items', localItems.value)
   }
   draggedItem.value = null
@@ -975,9 +919,10 @@ const handleDrop = (event) => {
   let itemType = currentDraggedType.value || event.dataTransfer.getData('text/plain')
   
   if (itemType && ELEMENT_SIZES[itemType] && !isDraggingExisting.value) {
-    const position = calculateFinalPlacement(itemType)
     const effectiveSize = getEffectiveElementSize(itemType)
-    if (!effectiveSize) return
+    if (!effectiveSize || !yellowPlaceholderPosition.value) return
+
+    const position = calculateFinalPlacement(itemType)
     const size = { ...effectiveSize }
     
     if (!checkCollision(position.x, position.y, size.width, size.height)) {
@@ -1043,6 +988,7 @@ const handleDrop = (event) => {
       }
       
       localItems.value.push(newItem)
+      recalculatePositions()
       emit('update:items', localItems.value)
       emit('item-edit', newItem)
     }
