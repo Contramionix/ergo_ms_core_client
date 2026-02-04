@@ -20,7 +20,7 @@
       <div
         v-if="item.type === 'Заголовок'"
         class="header-widget-title"
-        :style="[{ color: item.textColor || 'var(--color-text-primary)' }, headerStyle]"
+        :style="[{ color: item.textColor && item.textColor !== 'transparent' ? item.textColor : 'var(--color-text-primary)' }, headerStyle]"
       >
         <span>{{ item.title || 'Заголовок' }}</span>
         <div
@@ -36,7 +36,7 @@
       <div
         v-else-if="item.type === 'Текст'"
         class="text-widget-content"
-        :style="{ color: item.textColor || 'var(--color-text-primary)' }"
+        :style="{ color: item.textColor && item.textColor !== 'transparent' ? item.textColor : 'var(--color-text-primary)' }"
         v-html="item.content || 'Текстовое содержимое'"
       />
 

@@ -939,12 +939,10 @@ const handleDrop = (event) => {
       if (itemType === 'Заголовок') {
         newItem.title = ''
         newItem.size = 'M'
-        newItem.textColor = 'transparent'
       }
       
       if (itemType === 'Текст') {
         newItem.content = ''
-        newItem.textColor = 'transparent'
       }
       
       if (itemType === 'Чарт') {
