@@ -893,7 +893,13 @@ onUnmounted(() => {
 
 .header-label-buttons {
     display: flex;
+    align-items: center;
     gap: 15px;
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+    }
 }
 
 .body-content {

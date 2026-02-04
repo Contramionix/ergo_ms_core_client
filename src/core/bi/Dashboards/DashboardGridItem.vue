@@ -559,8 +559,8 @@ const onHideHint = () => {
     left: 0;
     top: 50%;
     transform: translateY(-50%);
-    width: 8px;
-    height: 30px;
+    width: 14px;
+    height: 50px;
     cursor: w-resize;
     border-radius: 4px 0 0 4px;
   }
@@ -569,8 +569,8 @@ const onHideHint = () => {
     right: 0;
     top: 50%;
     transform: translateY(-50%);
-    width: 8px;
-    height: 30px;
+    width: 14px;
+    height: 50px;
     cursor: e-resize;
     border-radius: 0 4px 4px 0;
   }
@@ -579,8 +579,8 @@ const onHideHint = () => {
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 30px;
-    height: 8px;
+    width: 50px;
+    height: 14px;
     cursor: s-resize;
     border-radius: 0 0 4px 4px;
   }
