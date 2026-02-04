@@ -15,7 +15,13 @@
     </div>
     <div class="form-group">
       <label>Фон</label>
-      <input type="color" v-model="background" />
+      <div class="background-row">
+        <input type="color" v-model="background" :disabled="useTransparentBackground" />
+        <label class="background-transparent-toggle">
+          <input type="checkbox" v-model="useTransparentBackground" />
+          Прозрачный фон
+        </label>
+      </div>
     </div>
     <div class="form-group">
       <label>
@@ -65,6 +71,7 @@ const hintText = ref('');
 const sizes = ['XS', 'S', 'M', 'L', 'XL'];
 const selectedSize = ref('XS');
 const background = ref('#2d2d3d');
+const useTransparentBackground = ref(false);
 const hint = ref(false);
 const autoHeight = ref(false);
 const showInToc = ref(true);
@@ -74,7 +81,12 @@ watch(() => props.data, (newData) => {
     title.value = newData.title || '';
     hintText.value = newData.hintText || '';
     selectedSize.value = newData.size || 'XS';
-    background.value = newData.background || '#2d2d3d';
+
+    const isTransparent = newData.background === 'transparent';
+    useTransparentBackground.value = isTransparent;
+    background.value = !isTransparent && newData.background
+      ? newData.background
+      : '#2d2d3d';
     hint.value = newData.hint || false;
     autoHeight.value = newData.autoHeight || false;
     showInToc.value = newData.showInToc === undefined ? true : newData.showInToc;
@@ -99,7 +111,7 @@ function onSubmit() {
     ...props.data,
     title: title.value,
     size: selectedSize.value,
-    background: background.value,
+    background: useTransparentBackground.value ? 'transparent' : background.value,
     hint: hint.value,
     hintText: hintText.value,
     autoHeight: autoHeight.value,
@@ -122,6 +134,18 @@ function onSubmit() {
   margin-bottom: 16px;
   display: flex;
   flex-direction: column;
+}
+.background-row {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.background-transparent-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
 }
 .size-options{
   display: flex;

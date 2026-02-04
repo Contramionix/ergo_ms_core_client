@@ -20,7 +20,7 @@
       <div
         v-if="item.type === 'Заголовок'"
         class="header-widget-title"
-        :style="headerStyle"
+        :style="[{ color: item.textColor || 'var(--color-text-primary)' }, headerStyle]"
       >
         <span>{{ item.title || 'Заголовок' }}</span>
         <div
@@ -36,6 +36,7 @@
       <div
         v-else-if="item.type === 'Текст'"
         class="text-widget-content"
+        :style="{ color: item.textColor || 'var(--color-text-primary)' }"
         v-html="item.content || 'Текстовое содержимое'"
       />
 
@@ -326,15 +327,17 @@ const onHideHint = () => {
 
 .grid-item.view-mode {
   cursor: default;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .grid-item.view-mode:hover {
-  border-color: var(--color-border);
+  border-color: transparent;
   box-shadow: none;
 }
 
 .grid-item.view-mode.item-selected {
-  border-color: var(--color-border);
+  border-color: transparent;
   box-shadow: none;
 }
 
@@ -415,7 +418,6 @@ const onHideHint = () => {
   display: flex;
   align-items: center;
   font-weight: 500;
-  color: var(--color-text-primary);
   text-align: left;
   width: 100%;
   word-break: break-word;
@@ -423,13 +425,11 @@ const onHideHint = () => {
 }
 
 .text-widget-content {
-  color: var(--color-text-primary);
   font-size: 14px;
   line-height: 1.5;
   width: 100%;
   height: 100%;
   overflow: auto;
-  padding: 8px;
   word-wrap: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
@@ -446,6 +446,34 @@ const onHideHint = () => {
   :deep(ul, ol) {
     margin: 0.5em 0;
     padding-left: 1.5em;
+  }
+
+  /* Убираем лишний отступ сверху и снизу первого / последнего блока текста,
+     чтобы расстояние сверху и снизу было более симметричным */
+  :deep(p:first-child),
+  :deep(h1:first-child),
+  :deep(h2:first-child),
+  :deep(h3:first-child),
+  :deep(h4:first-child),
+  :deep(h5:first-child),
+  :deep(h6:first-child),
+  :deep(ul:first-child),
+  :deep(ol:first-child),
+  :deep(blockquote:first-child) {
+    margin-top: 0;
+  }
+
+  :deep(p:last-child),
+  :deep(h1:last-child),
+  :deep(h2:last-child),
+  :deep(h3:last-child),
+  :deep(h4:last-child),
+  :deep(h5:last-child),
+  :deep(h6:last-child),
+  :deep(ul:last-child),
+  :deep(ol:last-child),
+  :deep(blockquote:last-child) {
+    margin-bottom: 0;
   }
 
   :deep(blockquote) {

@@ -935,6 +935,17 @@ const handleDrop = (event) => {
         width: size.width,
         height: size.height
       }
+
+      if (itemType === 'Заголовок') {
+        newItem.title = ''
+        newItem.size = 'M'
+        newItem.textColor = 'transparent'
+      }
+      
+      if (itemType === 'Текст') {
+        newItem.content = ''
+        newItem.textColor = 'transparent'
+      }
       
       if (itemType === 'Чарт') {
         newItem.chartsList = [

@@ -615,12 +615,16 @@ function prepareDashboardForAPI(name, description) {
                         size: item.size,
                         hint: item.hint,
                         hintText: item.hintText,
-                        autoHeight: item.autoHeight
+                        autoHeight: item.autoHeight,
+                        textColor: item.textColor,
+                        background: item.background
                     }),
                     // Для текста
                     ...(item.type === 'Текст' && {
                         content: item.content,
-                        autoHeight: item.autoHeight
+                        autoHeight: item.autoHeight,
+                        textColor: item.textColor,
+                        background: item.background
                     }),
                     // Для чарта
                     ...(item.type === 'Чарт' && {
