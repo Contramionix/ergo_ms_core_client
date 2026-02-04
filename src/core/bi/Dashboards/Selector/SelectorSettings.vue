@@ -1540,6 +1540,7 @@ function onSubmit() {
 
 .selector-name {
   font-size: 14px;
+  color: var(--color-primary-text);
   display: flex;
   font-weight: 500;
   flex: 1;
@@ -2601,6 +2602,7 @@ button.cancel:hover {
 }
 
 .selector-type-text {
+  color: var(--color-primary-text);
   flex: 1;
   text-align: left;
 }
@@ -2859,6 +2861,7 @@ button.cancel:hover {
 
 .field-name {
   flex: 1;
+  color: var(--color-primary-text);
   text-align: left;
   font-size: 14px;
 }
