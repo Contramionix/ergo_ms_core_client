@@ -1,14 +1,5 @@
 <template>
-  <div 
-    class="dashboard-grid"
-    :class="{ 'view-mode': viewMode }"
-    @dragover="handleDragOver"
-    @drop="handleDrop"
-    @dragenter="handleDragEnter" 
-    @dragleave="handleDragLeave"
-    @mousemove="handleMouseMove"
-    ref="gridContainer"
-  >
+  <div class="dashboard-grid" :class="{ 'view-mode': viewMode }" @dragover="handleDragOver" @drop="handleDrop" @dragenter="handleDragEnter" @dragleave="handleDragLeave" @mousemove="handleMouseMove" ref="gridContainer">
     <div v-if="items.length === 0" class="empty-grid" :class="{ 'drag-over': isDragOver }">
       <div class="empty-content">
         <LayoutDashboard :size="48" />
@@ -27,69 +18,31 @@
           :style="{ top: `${line}px` }"
         />
       </div>
-      <div
+      <DashboardGridItem
         v-for="item in items"
         :key="item.id"
-        class="grid-item"
-        :class="getItemClass(item)"
-        :style="getItemStyle(item)"
-        :data-item-id="item.id"
-        @click="selectItem(item)"
-        @dblclick="onItemDblclick(item)"
-        @mousedown="handleMouseDown(item, $event)"
-      >
-        <div v-if="!viewMode" class="item-header">
-          <span class="item-type">{{ item.type }}</span>
-          <div class="item-actions">
-            <button class="btn-edit" @click.stop="editItem(item)">
-              <Settings2 :size="16" />
-            </button>
-            <button class="btn-delete" @click.stop="deleteItem(item)">
-              <X :size="16" />
-            </button>
-          </div>
-        </div>
-        <div class="item-content">
-          <div v-if="item.type === 'Заголовок'" class="header-widget-title" :style="getHeaderStyle(item)">
-            <span>{{ item.title || 'Заголовок' }}</span>
-            <div v-if="item.hint" class="hint-icon-wrapper" @mouseenter="showHint(item, $event)" @mouseleave="hideHint">
-              <CircleHelp :size="16" />
-            </div>
-          </div>
-          <div v-else-if="item.type === 'Текст'" class="text-widget-content" v-html="item.content || 'Текстовое содержимое'">
-          </div>
-          <div v-else-if="item.type === 'Чарт'" class="chart-widget-container">
-            <ChartWidget 
-              :charts-list="item.chartsList || []"
-              :active-chart-index="item.activeChartIndex || 0"
-              :auto-height="item.autoHeight || false"
-              @update:active-chart-index="updateActiveChart(item, $event)"
-              @content-resized="handleChartResize(item, $event)"
-            />
-          </div>
-          <div v-else-if="item.type === 'Селектор'" class="selector-widget-container">
-            <SelectorWidget 
-              :selectors-list="item.selectorsList || []"
-              :active-selector-index="item.activeSelectorIndex || 0"
-              :auto-height="item.autoHeight || item.selectorGroupSettings?.autoHeight || false"
-              :selector-group-settings="item.selectorGroupSettings || {}"
-              @selection-change="handleSelectorSelectionChange(item, $event)"
-              @content-resized="handleSelectorResize(item, $event)"
-              @apply-filters="handleSelectorApplyFilters(item, $event)"
-              @clear-filters="handleSelectorClearFilters(item, $event)"
-            />
-          </div>
-          <div v-else class="item-preview">
-            {{ getItemPreview(item) }}
-          </div>
-        </div>
-        
-        <div v-if="!viewMode && item.selected" class="resize-indicators">
-          <div class="resize-indicator resize-left" @mousedown.stop="startResize(item, 'w', $event)"></div>
-          <div class="resize-indicator resize-right" @mousedown.stop="startResize(item, 'e', $event)"></div>
-          <div class="resize-indicator resize-bottom" @mousedown.stop="startResize(item, 's', $event)"></div>
-        </div>
-      </div>
+        :item="item"
+        :view-mode="viewMode"
+        :element-sizes="ELEMENT_SIZES"
+        :shift-style="shiftedItemsStyle[item.id] || {}"
+        :is-dragging-existing="isDraggingExisting"
+        :dragged-item-id="draggedItem ? draggedItem.id : null"
+        :show-hint="showHint"
+        :hide-hint="hideHint"
+        :item-preview="getItemPreview(item)"
+        @select="selectItem"
+        @dblclick="onItemDblclick"
+        @mousedown="handleMouseDown"
+        @edit="editItem"
+        @delete="deleteItem"
+        @start-resize="startResize"
+        @update-active-chart="updateActiveChart"
+        @chart-resize="handleChartResize"
+        @selector-selection-change="handleSelectorSelectionChange"
+        @selector-resize="handleSelectorResize"
+        @selector-apply-filters="handleSelectorApplyFilters"
+        @selector-clear-filters="handleSelectorClearFilters"
+      />
     </div>
 
     <Teleport to="body">
@@ -103,37 +56,37 @@
     </div>
 
     <Teleport to="body">
-      <div v-if="isDraggingExisting && draggedItem && draggedElementCursorPosition" 
-           :style="{
-             position: 'fixed',
-             left: `${draggedElementCursorPosition.x - draggedElementCursorOffset.x}px`,
-             top: `${draggedElementCursorPosition.y - draggedElementCursorOffset.y}px`,
-             width: `${draggedItem.width || ELEMENT_SIZES[draggedItem.type]?.width || 200}px`,
-             height: `${draggedItem.height || ELEMENT_SIZES[draggedItem.type]?.height || 150}px`,
-             zIndex: 2000,
-             pointerEvents: 'none',
-             opacity: 0.85,
-             boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
-             border: '2px solid var(--color-primary)',
-             borderRadius: '8px',
-             background: 'var(--color-primary-background)'
-           }"
-           class="dragged-element-preview">
-        <div class="item-header">
-          <span class="item-type">{{ draggedItem.type }}</span>
+      <div
+        v-if="isDraggingExisting && draggedItem && draggedElementCursorPosition"
+        :style="{
+          position: 'fixed',
+          left: `${draggedElementCursorPosition.x - draggedElementCursorOffset.x}px`,
+          top: `${draggedElementCursorPosition.y - draggedElementCursorOffset.y}px`,
+          width: `${draggedItem.width || ELEMENT_SIZES[draggedItem.type]?.width || 200}px`,
+          height: `${draggedItem.height || ELEMENT_SIZES[draggedItem.type]?.height || 150}px`,
+          zIndex: 2000,
+          pointerEvents: 'none',
+          opacity: 0.85,
+          boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
+          border: '2px solid var(--color-primary)',
+          borderRadius: '8px',
+          background: 'var(--color-primary-background)'
+        }"
+        class="dragged-element-preview"
+      >
+        <div class="dragged-item-header">
+          <span class="dragged-item-type">{{ draggedItem.type }}</span>
         </div>
-        <div class="item-content">
-          <div class="item-preview">{{ getItemPreview(draggedItem) }}</div>
+        <div class="dragged-item-content">
+          <div class="dragged-item-preview">
+            {{ getItemPreview(draggedItem) }}
+          </div>
         </div>
       </div>
     </Teleport>
 
     <Teleport to="body">
-      <div v-if="hintVisible"
-           class="hint-tooltip" 
-           :style="hintTooltipStyle"
-           @mouseenter="cancelHideHint"
-           @mouseleave="hideHint">
+      <div v-if="hintVisible" class="hint-tooltip"  :style="hintTooltipStyle" @mouseenter="cancelHideHint" @mouseleave="hideHint">
         <div v-html="hintContent" class="hint-content"></div>
       </div>
     </Teleport>
@@ -143,21 +96,20 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { Teleport } from 'vue'
-import { Settings2, X, LayoutDashboard, CircleHelp } from 'lucide-vue-next'
-import ChartWidget from './Chart/ChartWidget.vue'
-import SelectorWidget from './Selector/SelectorWidget.vue'
+import { LayoutDashboard } from 'lucide-vue-next'
+import DashboardGridItem from './DashboardGridItem.vue'
+
+const GRID_GAP = 10
+const GRID_PADDING = 10
+const GRID_CONTAINER_PADDING = 20
 
 const ELEMENT_SIZES = {
   'Чарт': { width: 560, height: 300 },
   'Селектор': { width: 370, height: 50 },
   'Текст': { width: 560, height: 150 },
-  'Заголовок': { width: MAX_PAGE_WIDTH - GRID_PADDING * 2 - 4, height: 50 }
+  // Для заголовка дефолтная ширина будет подставляться динамически
+  'Заголовок': { width: 600, height: 50 }
 }
-
-const GRID_GAP = 10
-const GRID_PADDING = 10
-const GRID_CONTAINER_PADDING = 20
-const MAX_PAGE_WIDTH = 1320
 
 const props = defineProps({
   items: {
@@ -213,10 +165,25 @@ const isRecalculatingPositions = ref(false)
 const documentDragOverListenerAttached = ref(false)
 const documentMouseMoveListenerAttached = ref(false)
 
+const getEffectiveElementSize = (type) => {
+  const baseSize = ELEMENT_SIZES[type]
+  if (!baseSize) return null
+
+  if (type === 'Заголовок' && gridContainer.value) {
+    const contentWidth = gridContainer.value.clientWidth
+    return {
+      width: Math.max(100, contentWidth),
+      height: baseSize.height
+    }
+  }
+
+  return baseSize
+}
+
 const grayPlaceholderStyle = computed(() => {
   if (!showGrayPlaceholder.value || !currentDraggedType.value) return null
-  
-  const size = ELEMENT_SIZES[currentDraggedType.value]
+
+  const size = getEffectiveElementSize(currentDraggedType.value)
   if (!size) return null
   
   return {
@@ -235,8 +202,8 @@ const yellowPlaceholderStyle = computed(() => {
   const p = yellowPlaceholderPosition.value
   return {
     position: 'absolute',
-    left: `${(p.x || 0) + GRID_CONTAINER_PADDING}px`,
-    top: `${(p.y || 0) + GRID_CONTAINER_PADDING}px`,
+    left: `${(p.x || 0)}px`,
+    top: `${(p.y || 0)}px`,
     width: `${p.width || 0}px`,
     height: `${p.height || 0}px`,
     pointerEvents: 'none'
@@ -247,20 +214,15 @@ const shiftedItemsStyle = computed(() => {
   if (!showYellowPlaceholder.value) return {}
   const placeholderY = yellowPlaceholderPosition.value.y
   if (placeholderY >= 10) return {}
-  const placeholderX = yellowPlaceholderPosition.value.x
-  const placeholderWidth = yellowPlaceholderPosition.value.width
   const placeholderHeight = yellowPlaceholderPosition.value.height
   
   const styles = {}
   
   localItems.value.forEach(item => {
-    const itemX = item.x || 0
     const itemY = item.y || 0
-    const itemWidth = item.width || ELEMENT_SIZES[item.type]?.width || 200
     const itemHeight = item.height || ELEMENT_SIZES[item.type]?.height || 150
     
     const itemBottom = itemY + itemHeight
-    const placeholderBottom = placeholderY + placeholderHeight
     
     if (itemY >= placeholderY) {
       const shiftAmount = placeholderHeight + GRID_GAP
@@ -281,45 +243,8 @@ const shiftedItemsStyle = computed(() => {
   return styles
 })
 
-const getItemClass = (item) => {
-  return {
-    [`item-${item.type.toLowerCase()}`]: true,
-    'item-selected': item.selected,
-    'item-dragging': draggedItem.value && draggedItem.value.id === item.id,
-    'item-hidden-drag': isDraggingExisting.value && draggedItem.value && draggedItem.value.id === item.id,
-    'item-auto-height': item.autoHeight || item.selectorGroupSettings?.autoHeight
-  }
-}
-
-const getItemStyle = (item) => {
-  const baseStyle = {
-    position: 'absolute',
-    left: `${item.x || 0}px`,
-    top: `${item.y || 0}px`,
-    width: `${item.width || ELEMENT_SIZES[item.type]?.width || 200}px`,
-    height: (item.autoHeight || item.selectorGroupSettings?.autoHeight) ? 'auto' : `${item.height || ELEMENT_SIZES[item.type]?.height || 150}px`
-  };
-
-  if (item.background) {
-    baseStyle.background = item.background;
-  }
-  
-  if (draggedItem.value && draggedItem.value.id === item.id) {
-    baseStyle.zIndex = 1000;
-    baseStyle.opacity = 0.8;
-  }
-  
-  const shiftStyle = shiftedItemsStyle.value[item.id]
-  if (shiftStyle) {
-    Object.assign(baseStyle, shiftStyle)
-  }
-  
-  return baseStyle
-}
-
 const getItemPreview = (item) => {
   const itemWidth = item.width || ELEMENT_SIZES[item.type]?.width || 200
-  const itemHeight = item.height || ELEMENT_SIZES[item.type]?.height || 150
   
   let preview = ''
   switch (item.type) {
@@ -376,32 +301,6 @@ const cancelHideHint = () => {
   }
 };
 
-const getHeaderStyle = (item) => {
-  if (item.type !== 'Заголовок' || !item.size) {
-    return {};
-  }
-
-  const style = {};
-  switch (item.size) {
-    case 'XS':
-      style.fontSize = '16px';
-      break;
-    case 'S':
-      style.fontSize = '20px';
-      break;
-    case 'M':
-      style.fontSize = '24px';
-      break;
-    case 'L':
-      style.fontSize = '28px';
-      break;
-    case 'XL':
-      style.fontSize = '32px';
-      break;
-  }
-  return style;
-};
-
 const selectItem = (item) => {
   if (props.viewMode || draggedItem.value || isDraggingExisting.value || isMouseDown.value) return
   
@@ -451,11 +350,6 @@ const handleChartResize = (item, newHeight) => {
   }
 }
 
-const updateActiveSelector = (item, newIndex) => {
-  item.activeSelectorIndex = newIndex
-  emit('update:items', localItems.value)
-}
-
 const handleSelectorSelectionChange = (item, selectionData) => {
   console.log('Selector selection changed:', selectionData);
 }
@@ -479,42 +373,6 @@ const handleSelectorApplyFilters = (item, event) => {
 
 const handleSelectorClearFilters = (item, event) => {
   console.log('Clear filters for selector:', item.id);
-}
-
-const calculateDropPosition = (mouseX, mouseY, elementType) => {
-  if (!gridContainer.value) return { x: 0, y: 0 }
-  
-  const rect = gridContainer.value.getBoundingClientRect()
-  const relativeX = mouseX - rect.left
-  const relativeY = mouseY - rect.top
-  
-  const elementSize = ELEMENT_SIZES[elementType]
-  if (!elementSize) return { x: 0, y: 0 }
-  
-  if (localItems.value.length === 0) {
-    const gridWidth = Math.min(gridContainer.value.clientWidth, MAX_PAGE_WIDTH - GRID_PADDING)
-    const initialX = Math.max(0, relativeX - elementSize.width / 2)
-    
-    if (initialX + elementSize.width > gridWidth) {
-      return {
-        x: Math.max(0, (gridWidth - elementSize.width) / 2),
-        y: 0
-      }
-    }
-    
-    return {
-      x: initialX,
-      y: 0
-    }
-  }
-  
-  const gridWidth = Math.min(gridContainer.value.clientWidth, MAX_PAGE_WIDTH)
-  const snapX = Math.max(0, Math.min(gridWidth - elementSize.width, relativeX - elementSize.width / 2))
-  
-  const nearestRow = findNearestRow(relativeY, elementSize.height)
-  const snappedPosition = findNearestValidPositionInRow(snapX, nearestRow, elementSize.width, elementSize.height)
-  
-  return snappedPosition
 }
 
 const findNearestRow = (mouseY, elementHeight) => {
@@ -553,55 +411,6 @@ const findNearestRow = (mouseY, elementHeight) => {
   }
   
   return nearestRow
-}
-
-const findNearestValidPositionInRow = (x, rowY, width, height, excludeItemId) => {
-  const gridWidth = gridContainer.value ? 
-    Math.min(gridContainer.value.clientWidth, MAX_PAGE_WIDTH) : 
-    MAX_PAGE_WIDTH
-  
-  x = Math.max(0, Math.min(gridWidth - width, x))
-  
-  const rowItems = localItems.value
-    .filter(item => {
-      if (excludeItemId && item.id === excludeItemId) return false
-      const itemY = item.y || 0
-      const actualSize = getActualItemSize(item)
-      return Math.abs(itemY - rowY) < 10
-    })
-    .map(item => {
-      const actualSize = getActualItemSize(item)
-      return {
-        left: item.x || 0,
-        right: (item.x || 0) + actualSize.width
-      }
-    })
-    .sort((a, b) => a.left - b.left)
-  
-  if (rowItems.length === 0) {
-    if (x + width > gridWidth) {
-      return { x: 0, y: rowY + height + GRID_GAP }
-    }
-    return { x, y: rowY }
-  }
-  
-  const newArea = { left: x, right: x + width }
-  
-  for (const item of rowItems) {
-    if (newArea.left < item.right + GRID_GAP && newArea.right > item.left - GRID_GAP) {
-      const nextX = item.right + GRID_GAP
-      if (nextX + width > gridWidth) {
-        return { x: 0, y: rowY + height + GRID_GAP }
-      }
-      return { x: nextX, y: rowY }
-    }
-  }
-  
-  if (x + width > gridWidth) {
-    return { x: 0, y: rowY + height + GRID_GAP }
-  }
-  
-  return { x, y: rowY }
 }
 
 const buildVisualRows = ({ items, excludeItemId, placeholderY, placeholderHeight, elementHeight }) => {
@@ -759,12 +568,9 @@ const calculatePotentialPlacement = (mouseX, mouseY, elementType) => {
   const contentTop = rect.top + GRID_CONTAINER_PADDING
   const relativeX = mouseX - contentLeft
   const relativeY = mouseY - contentTop
-  const elementSize = ELEMENT_SIZES[elementType]
+  const elementSize = getEffectiveElementSize(elementType)
   if (!elementSize) return { x: 0, y: 0 }
-  const gridWidth = Math.min(
-    gridContainer.value.clientWidth - GRID_CONTAINER_PADDING * 2,
-    MAX_PAGE_WIDTH - GRID_CONTAINER_PADDING * 2
-  )
+  const gridWidth = gridContainer.value.clientWidth
 
   if (localItems.value.length === 0) {
     const snapX = Math.max(0, Math.min(gridWidth - elementSize.width, relativeX - elementSize.width / 2))
@@ -790,7 +596,7 @@ const calculateFinalPlacement = (elementType) => {
   
   const placeholderX = yellowPlaceholderPosition.value.x
   const placeholderY = yellowPlaceholderPosition.value.y
-  const elementSize = ELEMENT_SIZES[elementType]
+  const elementSize = getEffectiveElementSize(elementType)
   
   if (!elementSize) return { x: 0, y: 0 }
   
@@ -927,10 +733,7 @@ const handleExistingItemDrag = (event) => {
   const actualSize = getActualItemSize(draggedItem.value)
   const itemWidth = actualSize.width
   const itemHeight = actualSize.height
-  const gridWidth = Math.min(
-    gridContainer.value.clientWidth - GRID_CONTAINER_PADDING * 2,
-    MAX_PAGE_WIDTH - GRID_CONTAINER_PADDING * 2
-  )
+  const gridWidth = gridContainer.value.clientWidth
 
   const otherItems = localItems.value.filter(item => item.id !== draggedItem.value.id)
 
@@ -1053,9 +856,9 @@ const handleResize = (event) => {
   let newX = resizingItem.value.x || 0
   let newY = resizingItem.value.y || 0
   
-  const gridWidth = gridContainer.value ? 
-    Math.min(gridContainer.value.clientWidth, MAX_PAGE_WIDTH) : 
-    MAX_PAGE_WIDTH
+  const gridWidth = gridContainer.value
+    ? gridContainer.value.clientWidth
+    : resizeStartSize.value.width + GRID_PADDING * 2
   
   if (resizeDirection.value === 'e') {
     newWidth = Math.max(100, resizeStartSize.value.width + deltaX)
@@ -1111,20 +914,22 @@ const handleDragEnter = (event) => {
     }
     
     const position = calculatePotentialPlacement(event.clientX, event.clientY, currentDraggedType.value)
-    const size = ELEMENT_SIZES[currentDraggedType.value]
+    const size = getEffectiveElementSize(currentDraggedType.value)
     
-    yellowPlaceholderPosition.value = {
-      x: position.x,
-      y: position.y,
-      width: size.width,
-      height: size.height
+    if (size) {
+      yellowPlaceholderPosition.value = {
+        x: position.x,
+        y: position.y,
+        width: size.width,
+        height: size.height
+      }
     }
   }
 }
 
 const updatePlacementFromDrag = (clientX, clientY) => {
   if (!gridContainer.value || !currentDraggedType.value || isDraggingExisting.value) return
-  const size = ELEMENT_SIZES[currentDraggedType.value]
+  const size = getEffectiveElementSize(currentDraggedType.value)
   if (!size) return
 
   grayPlaceholderPosition.value = { x: clientX, y: clientY }
@@ -1171,7 +976,9 @@ const handleDrop = (event) => {
   
   if (itemType && ELEMENT_SIZES[itemType] && !isDraggingExisting.value) {
     const position = calculateFinalPlacement(itemType)
-    const size = ELEMENT_SIZES[itemType]
+    const effectiveSize = getEffectiveElementSize(itemType)
+    if (!effectiveSize) return
+    const size = { ...effectiveSize }
     
     if (!checkCollision(position.x, position.y, size.width, size.height)) {
       const newItem = {
@@ -1622,188 +1429,6 @@ onUnmounted(() => {
   background: rgba(var(--color-primary-rgb, 59, 130, 246), 0.35);
 }
 
-.grid-item {
-  z-index: 2;
-  background: var(--color-primary-background);
-  border: 2px solid var(--color-border);
-  border-radius: 8px;
-  padding: 12px;
-  cursor: move;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  user-select: none;
-  overflow: hidden;
-  box-sizing: border-box;
-  
-  &:hover {
-    border-color: var(--color-primary);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    
-    .item-actions, .item-header {
-      opacity: 1;
-    }
-  }
-  
-  &.item-selected {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
-  }
-  
-  &.item-dragging {
-    transform: scale(1.02);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-  }
-}
-
-.grid-item.item-hidden-drag {
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
-.dashboard-grid.view-mode .grid-item.item-чарт {
-  border: none;
-  box-shadow: none;
-  cursor: pointer;
-
-  &:hover {
-    border: none;
-    box-shadow: none;
-  }
-}
-
-.item-header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-  min-height: 20px;
-  overflow: hidden;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  padding: 8px 12px;
-  background: rgba(45, 45, 61, 0.7);
-  backdrop-filter: blur(4px);
-  z-index: 10;
-  border-radius: 8px 8px 0 0;
-}
-
-.item-type {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--color-text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 60%;
-}
-
-.header-widget-title {
-  display: flex;
-  align-items: center;
-  font-weight: 500;
-  color: var(--color-text-primary);
-  text-align: left;
-  width: 100%;
-  word-break: break-word;
-  white-space: normal;
-}
-
-.text-widget-content {
-  color: var(--color-text-primary);
-  font-size: 14px;
-  line-height: 1.5;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  padding: 8px;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  hyphens: auto;
-  
-  :deep(h1, h2, h3, h4, h5, h6) {
-    margin: 0.5em 0;
-    font-weight: 600;
-  }
-  
-  :deep(p) {
-    margin: 0.5em 0;
-  }
-  
-  :deep(ul, ol) {
-    margin: 0.5em 0;
-    padding-left: 1.5em;
-  }
-  
-  :deep(blockquote) {
-    margin: 1em 0;
-    padding: 0.5em 1em;
-    border-left: 4px solid var(--color-border);
-    background: var(--color-background);
-  }
-  
-  :deep(pre) {
-    background: var(--color-background);
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    padding: 1em;
-    overflow-x: auto;
-    font-family: monospace;
-  }
-  
-  :deep(code) {
-    background: var(--color-background);
-    padding: 0.2em 0.4em;
-    border-radius: 3px;
-    font-family: monospace;
-  }
-}
-
-.chart-widget-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.item-auto-height {
-  height: auto !important;
-  min-height: 50px;
-  
-  .text-widget-content {
-    height: auto !important;
-    overflow: visible;
-    display: block;
-  }
-  
-  .chart-widget-container {
-    height: auto !important;
-    overflow: visible;
-  }
-  
-  .item-content {
-    height: auto !important;
-    min-height: auto;
-  }
-  
-  .selector-widget-container {
-    height: auto !important;
-    overflow: visible;
-  }
-}
-
-.hint-icon-wrapper {
-  margin-left: 5px;
-  cursor: pointer;
-}
-
 .hint-tooltip {
   position: fixed;
   background: var(--color-primary-background);
@@ -1820,125 +1445,6 @@ onUnmounted(() => {
 
   :deep(p) {
     margin-bottom: 0;
-  }
-}
-
-.item-actions {
-  display: flex;
-  gap: 5px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  z-index: 1;
-}
-
-.btn-edit,
-.btn-delete {
-  background: none;
-  border: none;
-  padding: 4px;
-  border-radius: 4px;
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: var(--color-hover-background);
-    color: var(--color-text-primary);
-  }
-}
-
-.btn-delete:hover {
-  color: var(--color-danger);
-}
-
-.item-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.item-preview {
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  line-height: 1.4;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  hyphens: auto;
-  max-width: 100%;
-  max-height: 100%;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-  
-  @media (max-width: 400px) {
-    font-size: 12px;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-  }
-}
-
-.resize-indicators {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.resize-indicator {
-  position: absolute;
-  background: var(--color-primary);
-  pointer-events: auto;
-  opacity: 0.6;
-  transition: opacity 0.2s ease;
-  
-  &:hover {
-    opacity: 1;
-  }
-  
-  &.resize-left {
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 8px;
-    height: 30px;
-    cursor: w-resize;
-    border-radius: 4px 0 0 4px;
-  }
-  
-  &.resize-right {
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 8px;
-    height: 30px;
-    cursor: e-resize;
-    border-radius: 0 4px 4px 0;
-  }
-  
-  &.resize-bottom {
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 30px;
-    height: 8px;
-    cursor: s-resize;
-    border-radius: 0 0 4px 4px;
-  }
-}
-
-.item-селектор .resize-indicator,
-.item-заголовок .resize-indicator {
-  &.resize-left,
-  &.resize-right {
-    height: 24px;
-  }
-  
-  &.resize-bottom {
-    width: 24px;
   }
 }
 
@@ -1960,7 +1466,6 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  animation: placeholderPulse 1.5s ease-in-out infinite alternate;
   
   &::before {
     content: '';
@@ -1984,61 +1489,6 @@ onUnmounted(() => {
     box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
   }
 }
-
-@keyframes placeholderPulse {
-  0% {
-    opacity: 0.4;
-    transform: scale(0.95);
-    border-color: rgba(255, 193, 7, 0.5);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.0);
-    border-color: rgba(255, 193, 7, 0.9);
-  }
-  100% {
-    opacity: 0.6;
-    transform: scale(0.98);
-    border-color: rgba(255, 193, 7, 0.7);
-  }
-}
-
-.item-чарт {
-  background: linear-gradient(135deg, var(--color-primary-background) 0%, rgba(var(--color-primary-rgb), 0.05) 100%);
-}
-
-.item-селектор {
-  background: linear-gradient(135deg, var(--color-primary-background) 0%, rgba(54, 162, 235, 0.05) 100%);
-  
-  .item-preview {
-    font-size: 12px;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    line-clamp: 1;
-    -webkit-box-orient: vertical;
-  }
-}
-
-.item-текст {
-  background: linear-gradient(135deg, var(--color-primary-background) 0%, rgba(75, 192, 192, 0.05) 100%);
-}
-
-.item-заголовок {
-  background: linear-gradient(135deg, var(--color-primary-background) 0%, rgba(255, 206, 86, 0.05) 100%);
-  
-  .item-content {
-    padding: 6px;
-  }
-  
-  .item-preview {
-    font-size: 13px;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    line-clamp: 1;
-    -webkit-box-orient: vertical;
-  }
-}
-
 .dragged-element-preview {
   pointer-events: none;
   opacity: 0.85;
@@ -2051,6 +1501,58 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   z-index: 2000;
+}
+
+.dragged-item-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(45, 45, 61, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+  border-radius: 8px 8px 0 0;
+}
+
+.dragged-item-type {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.dragged-item-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 28px;
+  overflow: hidden;
+}
+
+.dragged-item-preview {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 .hint-content {
