@@ -870,8 +870,10 @@ const handleResize = (event) => {
   
   if (resizeDirection.value === 'e') {
     newWidth = Math.max(100, resizeStartSize.value.width + deltaX)
-    if (newX + newWidth > gridWidth - GRID_PADDING * 2) {
-      newWidth = gridWidth - GRID_PADDING * 2 - newX
+    // Позволяем растягивать элемент до фактической ширины контейнера,
+    // без дополнительного «внутреннего» зазора справа.
+    if (newX + newWidth > gridWidth) {
+      newWidth = gridWidth - newX
     }
     if (!checkCollision(newX, newY, newWidth, newHeight, resizingItem.value.id)) {
       resizingItem.value.width = newWidth

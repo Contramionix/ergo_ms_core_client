@@ -3,8 +3,7 @@
         <div class="body-header border-elements elements-color">
             <div class="header-label-icon">
                 <LayoutDashboard />
-                <div ref="headerLabelTextRef" 
-                     class="header-label-text" 
+                <div ref="headerLabelTextRef" class="header-label-text" 
                      :class="{ 'clickable': pages.length > 1, 'dropdown-open': showPageDropdown }"
                      @click="togglePageDropdown"
                      @mouseenter="handleHeaderHover"
@@ -33,10 +32,7 @@
             
             <div v-if="isHeaderButtonsReady" class="header-label-buttons">
                 <template v-if="isViewMode">
-                    <button v-if="canEditDashboard" class="btn btn-sm btn-primary" @click="goToEditMode">
-                        <Pencil :size="16" class="btn-icon-inline" />
-                        Редактировать
-                    </button>
+                    <button v-if="canEditDashboard" class="btn btn-sm btn-primary" @click="goToEditMode"><Pencil :size="16" class="btn-icon-inline" />Редактировать</button>
                 </template>
                 <template v-else>
                     <button class="btn btn-sm btn-secondary" @click="isPageWindowVisible = true">Страницы</button>
@@ -47,83 +43,41 @@
             </div>
         </div>
         
-        <PageWindow 
-            v-if="isPageWindowVisible"
-            v-model="pages"
-            @close="isPageWindowVisible = false"
-        />
+        <PageWindow v-if="isPageWindowVisible" v-model="pages" @close="isPageWindowVisible = false"/>
 
         <div v-if="isHeaderSettingsVisible" class="page-window-overlay" @click="closeHeaderSettings">
           <div class="page-window" @click.stop>
-            <HeaderSettings 
-              :data="headerSettingsData" 
-              @close="closeHeaderSettings"
-              @save="saveHeaderSettings" 
-            />
+            <HeaderSettings :data="headerSettingsData" @close="closeHeaderSettings" @save="saveHeaderSettings" />
           </div>
         </div>
 
         <div v-if="isTextSettingsVisible" class="page-window-overlay" @click="closeTextSettings">
           <div class="page-window" @click.stop>
-            <TextSettings 
-              :data="textSettingsData" 
-              @close="closeTextSettings"
-              @save="saveTextSettings" 
-            />
+            <TextSettings :data="textSettingsData" @close="closeTextSettings" @save="saveTextSettings"/>
           </div>
         </div>
 
         <div v-if="isChartSettingsVisible" class="page-window-overlay" @click="closeChartSettings">
           <div class="page-window chart-settings-window" @click.stop>
-            <ChartSettings 
-              :data="chartSettingsData" 
-              @close="closeChartSettings"
-              @save="saveChartSettings" 
-            />
+            <ChartSettings :data="chartSettingsData" @close="closeChartSettings" @save="saveChartSettings"/>
           </div>
         </div>
         
         <div v-if="isSelectorSettingsVisible" class="page-window-overlay" @click="closeSelectorSettings">
           <div class="page-window selector-settings-window" @click.stop>
-            <SelectorSettings 
-              :key="selectorSettingsData?.id || 'new'"
-              :data="selectorSettingsData" 
-              @close="closeSelectorSettings"
-              @save="saveSelectorSettings" 
-            />
+            <SelectorSettings :key="selectorSettingsData?.id || 'new'" :data="selectorSettingsData" @close="closeSelectorSettings" @save="saveSelectorSettings"/>
           </div>
         </div>
         
-        <SaveDashboardModal
-          :visible="isSaveModalVisible"
-          :name="dashboardName"
-          :description="dashboardDescription"
-          :is-edit-mode="isEditMode"
-          :saving="saving"
-          @close="isSaveModalVisible = false"
-          @save="handleSaveDashboard"
-        />
+        <SaveDashboardModal :visible="isSaveModalVisible" :name="dashboardName" :description="dashboardDescription" :is-edit-mode="isEditMode" :saving="saving" @close="isSaveModalVisible = false" @save="handleSaveDashboard"/>
         
         <div v-if="isHeaderButtonsReady" class="body-content">
-            <DashboardGrid
-                ref="dashboardGridRef"
-                :items="currentPageItems"
-                :dragged-type="isViewMode ? '' : draggedType"
-                :pages-count="pages.length"
-                :view-mode="isViewMode"
-                @update:items="updateCurrentPageItems"
-                @item-select="handleItemSelect"
-                @item-edit="handleItemEdit"
-                @item-delete="handleItemDelete"
-            />
+            <DashboardGrid ref="dashboardGridRef" :items="currentPageItems" :dragged-type="isViewMode ? '' : draggedType" :pages-count="pages.length" :view-mode="isViewMode" @update:items="updateCurrentPageItems" @item-select="handleItemSelect" @item-edit="handleItemEdit" @item-delete="handleItemDelete"/>
         </div>
         
         <div v-if="isHeaderButtonsReady && !isViewMode" class="body-footer" :style="{ left: footerLeftOffset, width: footerWidth }">
             <div class="footer-buttons">
-                <DashboardToolbar 
-                    @drag-start="handleToolbarDragStart"
-                    @drag-end="handleToolbarDragEnd"
-                />
+                <DashboardToolbar  @drag-start="handleToolbarDragStart" @drag-end="handleToolbarDragEnd"/>
             </div>
         </div>
     </div>
