@@ -662,7 +662,9 @@ const downloadChart = async () => {
   flex: 1;
   min-width: 0;
   max-width: $message-max-width;
-  background: var(--bg-elevated);
+  background: color-mix(in srgb, var(--bg-elevated) 30%, transparent);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   border: 1px solid var(--border-subtle);
   border-radius: $radius-lg;
   padding: $spacing-md $spacing-lg;
@@ -763,6 +765,7 @@ const downloadChart = async () => {
 
 .message-content {
   font-size: $message-font-size;
+  font-weight: 200;
   line-height: $line-height-relaxed;
   color: var(--text-secondary);
   word-wrap: break-word;

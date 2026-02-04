@@ -167,7 +167,9 @@ const formatTime = (timestamp) => {
   flex: 1;
   padding: $spacing-sm $spacing-md;
   border-radius: $radius-lg;
-  background: var(--nc-bg-elevated, #{$dark-bg-elevated});
+  background: color-mix(in srgb, var(--nc-bg-elevated, #{$dark-bg-elevated}) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--nc-border, #{$dark-border});
   position: relative;
 

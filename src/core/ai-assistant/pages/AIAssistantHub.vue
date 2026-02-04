@@ -1158,6 +1158,7 @@ onMounted(() => {
   background: var(--bg-base);
   color: var(--text-primary);
   font-family: $font-family-base;
+  font-weight: 400;
   position: relative;
   overflow: hidden;
 

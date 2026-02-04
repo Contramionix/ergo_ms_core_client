@@ -79,9 +79,11 @@ $accent-red-light: $neon-red-light;
 $accent-cyan: $neon-cyan;
 $accent-cyan-light: $neon-cyan-light;
 
-// === Typography - Futuristic Stack ===
-$font-family-display: 'Orbitron', 'Rajdhani', sans-serif;
-$font-family-base: 'Rajdhani', 'Exo 2', -apple-system, BlinkMacSystemFont, sans-serif;
+// === Typography - Geologica (Google Fonts) ===
+@import 'fonts';
+
+$font-family-display: 'Geologica', 'Orbitron', sans-serif;
+$font-family-base: 'Geologica', 'Rajdhani', -apple-system, BlinkMacSystemFont, sans-serif;
 $font-family-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
 
 $font-size-xs: 0.75rem;    // 12px

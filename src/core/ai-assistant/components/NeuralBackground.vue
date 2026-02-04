@@ -1,10 +1,6 @@
 <template>
   <div class="neural-background" ref="containerRef">
     <canvas ref="canvasRef" class="neural-canvas"></canvas>
-    <div class="neural-overlay"></div>
-    <div class="neural-grid"></div>
-    <div class="neural-scanlines"></div>
-    <div class="neural-vignette"></div>
   </div>
 </template>
 
@@ -256,8 +252,6 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@import '../styles/variables';
-
 .neural-background {
   position: absolute;
   top: 0;
@@ -267,6 +261,7 @@ onUnmounted(() => {
   overflow: hidden;
   pointer-events: all;
   z-index: 0;
+  background: var(--bg-panel);
 }
 
 .neural-canvas {
@@ -275,75 +270,8 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
+  filter: blur(3px);
 }
 
-.neural-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(
-    ellipse at 50% 0%,
-    transparent 0%,
-    rgba(5, 5, 8, 0.4) 50%,
-    rgba(5, 5, 8, 0.8) 100%
-  );
-  pointer-events: none;
-}
-
-.neural-grid {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    linear-gradient(rgba($neon-cyan, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba($neon-cyan, 0.03) 1px, transparent 1px);
-  background-size: 50px 50px;
-  pointer-events: none;
-}
-
-.neural-scanlines {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.02) 2px,
-    rgba(0, 0, 0, 0.02) 4px
-  );
-  pointer-events: none;
-  animation: scanline-move 8s linear infinite;
-}
-
-.neural-vignette {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(
-    ellipse at 50% 50%,
-    transparent 0%,
-    transparent 60%,
-    rgba(5, 5, 8, 0.6) 100%
-  );
-  pointer-events: none;
-}
-
-@keyframes scanline-move {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: 0 100%;
-  }
-}
 </style>
 
