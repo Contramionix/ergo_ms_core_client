@@ -1,40 +1,22 @@
 <template>
   <div class="widget-settings">
-    <div class="widget-settings-left-side">
-      <h5 class="widget-settings-left-side-title">Селекторы</h5>
-      <div class="selectors-list">
-        <transition-group name="selector-list" tag="div" class="selectors-container">
-          <div v-for="(selector, index) in selectorsList" :key="selector.id" class="selector-item" :class="{ 
-              active: activeSelectorIndex === index,
-              dragging: draggedIndex === index,
-              'drag-over': dragOverIndex === index && draggedIndex !== index
-            }"
-            draggable="true"
-            @dragstart="handleDragStart(index, $event)"
-            @dragover.prevent="handleDragOver(index, $event)"
-            @drop="handleDrop(index, $event)"
-            @dragenter.prevent="handleDragEnter(index, $event)"
-            @dragleave="handleDragLeave($event)"
-            @dragend="handleDragEnd"
-            @click="setActiveSelector(index)">
-            <span class="selector-icon">
-              <GripVertical absoluteStrokeWidth size="14" class="drag-handle"/>
-              <Star size="20" :class="{ 
-                  'star-favorite': selector.isFavorite,
-                  'star-regular': !selector.isFavorite
-                }" @click.stop="toggleFavorite(index)"/>
-            </span>
-            <span class="selector-name" :title="selector.title">{{ selector.title }}</span>
-            <button v-if="selectorsList.length > 1" class="delete-selector-btn" @click.stop="removeSelector(index)" title="Удалить селектор">✕</button>
-          </div>
-        </transition-group>
-        <button class="add-selector-btn" @click="addNewSelector"><span class="plus-icon">➕</span>Добавить селектор</button>
-      </div>
-      <button class="advanced-settings-btn" @click="openAdvancedSettings">
-        <Settings size="16" class="settings-icon" />
-        Расширенные настройки
-      </button>
-    </div>
+    <SelectorListPanel
+      :selectors-list="selectorsList"
+      :active-selector-index="activeSelectorIndex"
+      :dragged-index="draggedIndex"
+      :drag-over-index="dragOverIndex"
+      :on-drag-start="handleDragStart"
+      :on-drag-over="handleDragOver"
+      :on-drop="handleDrop"
+      :on-drag-enter="handleDragEnter"
+      :on-drag-leave="handleDragLeave"
+      :on-drag-end="handleDragEnd"
+      :on-set-active-selector="setActiveSelector"
+      :on-toggle-favorite="toggleFavorite"
+      :on-remove-selector="removeSelector"
+      :on-add-selector="addNewSelector"
+      :on-open-advanced-settings="openAdvancedSettings"
+    />
     <div class="widget-settings-right-side">
       <div class="widget-settings-right-side-header">
         <h5 class="widget-settings-right-side-title">Настройки селектора</h5>
@@ -457,87 +439,24 @@
           </button>
         </div>
         <div class="dataset-modal-content">
-          <DatasetsTooltip
-            :selected-dataset="currentSelector.selectedDataset ? { name: currentSelector.selectedDataset, id: currentSelector.selectedDatasetId } : null"
-            :datasets="availableDatasets"
-            :is-loading="isDatasetsLoading"
-            @select="selectDataset"
-          />
+          <DatasetsTooltip :selected-dataset="currentSelector.selectedDataset ? { name: currentSelector.selectedDataset, id: currentSelector.selectedDatasetId } : null" :datasets="availableDatasets" :is-loading="isDatasetsLoading" @select="selectDataset"/>
         </div>
       </div>
     </div>
 
-    <!-- Модальное окно расширенных настроек -->
-    <div v-if="isAdvancedSettingsModalOpen" class="advanced-settings-modal-overlay" @click.self="closeAdvancedSettings">
-      <div class="advanced-settings-modal-container">
-        <div class="advanced-settings-modal-header">
-          <h6 class="advanced-settings-modal-title">Настройки группы селекторов</h6>
-          <button class="advanced-settings-modal-close" @click="closeAdvancedSettings" title="Закрыть">
-            <span class="close-icon">×</span>
-          </button>
-        </div>
-        <div class="advanced-settings-modal-content">
-          <div class="settings-section">
-            <h6 class="section-title">Параметры группы</h6>
-            
-            <div class="setting-item">
-              <label class="setting-label">
-                <input 
-                  type="checkbox" 
-                  v-model="selectorGroupSettings.applyButton"
-                  class="setting-checkbox"
-                />
-                Кнопка «Применить»
-              </label>
-              <span class="setting-hint">Добавляет кнопку для применения выбранных фильтров</span>
-            </div>
-
-            <div class="setting-item">
-              <label class="setting-label">
-                <input 
-                  type="checkbox" 
-                  v-model="selectorGroupSettings.clearButton"
-                  class="setting-checkbox"
-                />
-                Кнопка «Сбросить»
-              </label>
-              <span class="setting-hint">Добавляет кнопку для сброса всех фильтров</span>
-            </div>
-
-            <div class="setting-item">
-              <label class="setting-label">
-                <input 
-                  type="checkbox" 
-                  v-model="selectorGroupSettings.autoHeight"
-                  class="setting-checkbox"
-                />
-                Автовысота
-              </label>
-              <span class="setting-hint">Автоматически подстраивает высоту под содержимое</span>
-            </div>
-          </div>
-          
-          <div class="modal-actions">
-            <button class="btn btn-secondary" @click="closeAdvancedSettings">
-              Отмена
-            </button>
-            <button class="btn btn-primary" @click="saveAdvancedSettings">
-              Сохранить
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <SelectorGroupSettingsModal v-if="isAdvancedSettingsModalOpen" :settings="selectorGroupSettings" @update:settings="updateSelectorGroupSettings" @close="closeAdvancedSettings" @save="saveAdvancedSettings"/>
   </div>
 </template>
 
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
-import { Star, GripVertical, Settings, Database, HelpCircle, ChevronDown, Link, CheckCircle, CircleAlert, List, Type, Calendar, CheckSquare, Info } from 'lucide-vue-next';
+import { Database, HelpCircle, ChevronDown, Link, CheckCircle, CircleAlert, List, Type, Calendar, CheckSquare, Info } from 'lucide-vue-next';
 import DatasetsTooltip from '../../Charts/components/DatasetsTooltip.vue';
 import TextEditor from '../components/TextEditor.vue';
 import FieldTypeIcon from '../components/FieldTypeIcon.vue';
 import DefaultValueSelector from '../components/DefaultValueSelector.vue';
+import SelectorListPanel from './components/SelectorListPanel.vue';
+import SelectorGroupSettingsModal from './components/SelectorGroupSettingsModal.vue';
 import datasetService from '../../MainPage/Sidebar/components/js/datasetService.js';
 import { getFieldTypeTooltip } from './js/fieldTypeIcons.js';
 import { validateDatasetUrlWithAccess } from './js/datasetUrlUtils.js';
@@ -966,6 +885,10 @@ function closeAdvancedSettings() {
 
 function saveAdvancedSettings() {
   closeAdvancedSettings();
+}
+
+function updateSelectorGroupSettings(newSettings) {
+  selectorGroupSettings.value = newSettings;
 }
 
 function openDatasetModal() {
@@ -2938,131 +2861,5 @@ button.cancel:hover {
     color: var(--color-text-secondary);
     font-size: 14px;
   }
-}
-
-/* Стили для модального окна расширенных настроек */
-.advanced-settings-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  backdrop-filter: blur(4px);
-}
-
-.advanced-settings-modal-container {
-  background: var(--color-primary-background);
-  border-radius: 12px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  max-width: 500px;
-  width: 90vw;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.advanced-settings-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px 16px 24px;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.advanced-settings-modal-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-primary-text);
-  margin: 0;
-}
-
-.advanced-settings-modal-close {
-  background: none;
-  border: none;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: var(--color-secondary-text);
-  border-radius: 6px;
-  
-  &:hover {
-    color: var(--color-primary-text);
-    background: var(--color-hover-background);
-  }
-  
-  .close-icon {
-    font-size: 24px;
-    font-weight: 300;
-  }
-}
-
-.advanced-settings-modal-content {
-  padding: 24px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.setting-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.setting-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-primary-text);
-  cursor: pointer;
-}
-
-.setting-checkbox {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--color-accent);
-  cursor: pointer;
-}
-
-.setting-hint {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  margin-left: 26px;
-  line-height: 1.4;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--color-border);
-}
-
-.modal-actions .btn {
-  padding: 8px 20px;
-  border-radius: 0.5rem;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
 }
 </style>
