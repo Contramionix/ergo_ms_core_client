@@ -789,6 +789,29 @@ const startResize = (item, direction, event) => {
   document.addEventListener('mouseup', stopResize)
 }
 
+const groupItemsByRows = () => {
+  const rows = new Map()
+  for (const item of localItems.value) {
+    const itemY = item.y || 0
+    const size = getActualItemSize(item)
+    let foundKey = null
+    for (const [rowY] of rows) {
+      if (Math.abs(rowY - itemY) < 10) {
+        foundKey = rowY
+        break
+      }
+    }
+    if (foundKey === null) {
+      rows.set(itemY, { items: [item], height: size.height })
+    } else {
+      const row = rows.get(foundKey)
+      row.items.push(item)
+      row.height = Math.max(row.height, size.height)
+    }
+  }
+  return rows
+}
+
 const handleResize = (event) => {
   if (!resizingItem.value) return
   
@@ -809,7 +832,13 @@ const handleResize = (event) => {
     if (newX + newWidth > gridWidth - GRID_PADDING * 2) {
       newWidth = gridWidth - GRID_PADDING * 2 - newX
     }
+    if (!checkCollision(newX, newY, newWidth, newHeight, resizingItem.value.id)) {
+      resizingItem.value.width = newWidth
+      resizingItem.value.x = newX
+    }
+    return
   }
+  
   if (resizeDirection.value === 'w') {
     newWidth = Math.max(100, resizeStartSize.value.width - deltaX)
     newX = (resizingItem.value.x || 0) + deltaX
@@ -817,21 +846,44 @@ const handleResize = (event) => {
       newX = GRID_PADDING
       newWidth = resizeStartSize.value.width + (resizingItem.value.x || 0) - GRID_PADDING
     }
-  }
-  if (resizeDirection.value === 's') {
-    newHeight = Math.max(50, resizeStartSize.value.height + deltaY)
+    if (!checkCollision(newX, newY, newWidth, newHeight, resizingItem.value.id)) {
+      resizingItem.value.width = newWidth
+      resizingItem.value.x = newX
+    }
+    return
   }
   
-  if (!checkCollision(newX, newY, newWidth, newHeight, resizingItem.value.id)) {
-    resizingItem.value.width = newWidth
-    resizingItem.value.height = newHeight
-    resizingItem.value.x = newX
-    resizingItem.value.y = newY
+  if (resizeDirection.value === 's') {
+    const targetHeight = Math.max(50, resizeStartSize.value.height + deltaY)
+    const rows = groupItemsByRows()
+    const sortedRowYs = [...rows.keys()].sort((a, b) => a - b)
+    
+    const itemRowIndex = sortedRowYs.findIndex(
+      (rowY) => Math.abs(rowY - (resizingItem.value.y || 0)) < 10
+    )
+    if (itemRowIndex === -1) return
+    
+    const rowY = sortedRowYs[itemRowIndex]
+    const row = rows.get(rowY)
+    const currentRowHeight = row.height
+    const deltaRowHeight = targetHeight - currentRowHeight
+    
+    if (deltaRowHeight > 0) {
+      for (const item of localItems.value) {
+        if ((item.y || 0) > rowY) {
+          item.y = (item.y || 0) + deltaRowHeight
+        }
+      }
+    }
+    
+    resizingItem.value.height = targetHeight
+    return
   }
 }
 
 const stopResize = () => {
   if (resizingItem.value) {
+    recalculatePositions()
     emit('update:items', localItems.value)
   }
   
