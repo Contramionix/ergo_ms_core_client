@@ -293,7 +293,7 @@ const onHideHint = () => {
 .grid-item {
   z-index: 2;
   background: var(--color-primary-background);
-  border: 2px solid var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 12px;
   cursor: move;
@@ -360,8 +360,9 @@ const onHideHint = () => {
   opacity: 0;
   transition: opacity 0.2s ease;
   padding: 8px 12px;
-  background: rgba(45, 45, 61, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgba(var(--color-primary-rgb), 0.06);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(var(--color-primary-rgb), 0.18);
   z-index: 10;
   border-radius: 8px 8px 0 0;
 }
