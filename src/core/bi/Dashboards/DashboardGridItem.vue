@@ -423,6 +423,7 @@ const onHideHint = () => {
   width: 100%;
   word-break: break-word;
   white-space: normal;
+  padding: 6px 10px;
 }
 
 .text-widget-content {
@@ -657,7 +658,7 @@ const onHideHint = () => {
   );
 
   .item-content {
-    padding: 6px;
+    padding: 0;
   }
 
   .item-preview {
