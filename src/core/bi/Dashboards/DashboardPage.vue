@@ -791,7 +791,7 @@ onUnmounted(() => {
 .dashboard-page {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     min-height: 100vh;
     padding-bottom: 80px;
 }
@@ -905,7 +905,7 @@ onUnmounted(() => {
 .body-content {
     flex: 1;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     padding-top: 20px;
 }
 

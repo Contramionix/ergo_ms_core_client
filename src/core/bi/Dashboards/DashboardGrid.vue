@@ -1,5 +1,15 @@
 <template>
-  <div class="dashboard-grid" :class="{ 'view-mode': viewMode }" @dragover="handleDragOver" @drop="handleDrop" @dragenter="handleDragEnter" @dragleave="handleDragLeave" @mousemove="handleMouseMove" ref="gridContainer">
+  <div
+    class="dashboard-grid"
+    :class="{ 'view-mode': viewMode }"
+    :style="dashboardGridStyle"
+    @dragover="handleDragOver"
+    @drop="handleDrop"
+    @dragenter="handleDragEnter"
+    @dragleave="handleDragLeave"
+    @mousemove="handleMouseMove"
+    ref="gridContainer"
+  >
     <div v-if="items.length === 0" class="empty-grid" :class="{ 'drag-over': isDragOver }">
       <div class="empty-content">
         <LayoutDashboard :size="48" />
@@ -164,6 +174,37 @@ const autoHeightItems = ref(new Map())
 const isRecalculatingPositions = ref(false)
 const documentDragOverListenerAttached = ref(false)
 const documentMouseMoveListenerAttached = ref(false)
+const gridContentHeight = ref(0)
+
+const dashboardGridStyle = computed(() => {
+  if (!gridContentHeight.value) {
+    return {}
+  }
+
+  const extraSpace = props.viewMode ? 0 : 300
+  const totalHeight = gridContentHeight.value + extraSpace
+
+  return {
+    height: `${totalHeight}px`
+  }
+})
+
+const updateGridContentHeight = () => {
+  if (!localItems.value.length) {
+    gridContentHeight.value = 0
+    return
+  }
+
+  let maxBottom = 0
+  for (const item of localItems.value) {
+    const size = getActualItemSize(item)
+    const bottom = (item.y || 0) + size.height
+    if (bottom > maxBottom) {
+      maxBottom = bottom
+    }
+  }
+  gridContentHeight.value = maxBottom
+}
 
 const getEffectiveElementSize = (type) => {
   const baseSize = ELEMENT_SIZES[type]
@@ -1246,6 +1287,7 @@ watch(() => props.items, (newItems) => {
 }, { deep: true, immediate: true })
 
 watch(localItems, (newItems, oldItems) => {
+  updateGridContentHeight()
   if (!resizeObserver.value) return
   
   nextTick(() => {
@@ -1322,6 +1364,8 @@ onMounted(() => {
   }
 
   resizeObserver.value = new ResizeObserver(handleItemResize)
+
+   updateGridContentHeight()
   
   nextTick(() => {
     localItems.value.forEach(item => {
@@ -1360,9 +1404,8 @@ onUnmounted(() => {
 .dashboard-grid {
   position: relative;
   width: 100%;
-  height: 100%;
   min-height: calc(100vh - 200px);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .empty-grid {
