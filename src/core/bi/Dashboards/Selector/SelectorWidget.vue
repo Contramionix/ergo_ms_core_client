@@ -14,7 +14,7 @@
       <div v-else class="selector-render-container">
         <!-- ОТОБРАЖЕНИЕ ВСЕХ СЕЛЕКТОРОВ ПОСТРОЧНО -->
         <div class="selectors-list-container">
-          <div v-for="(selector, index) in sortedSelectors" 
+          <div v-for="selector in sortedSelectors" 
                :key="selector.id" 
                class="selector-row" 
                :class="{ 'favorite': selector.isFavorite }">
@@ -36,13 +36,10 @@
                       class="selector-dropdown" 
                       :value="getSelectorValue(selector)" 
                       @change="handleSelectionChange(selector, $event)"
-                      :class="{ 
-                        'with-internal-title': selector?.showInternalTitle && selector?.internalTitle,
-                        'with-color-accent': selector?.showColorAccent 
-                      }">
+                      :class="getInputClasses(selector)">
                 <option value="">{{ getPlaceholderText(selector) }}</option>
                 <option v-if="getSelectorOptions(selector).length === 0 && !selector?.selectedDatasetId" 
-                        value="" disabled>Настройте датасет и поле</option> -->
+                        value="" disabled>Настройте датасет и поле</option>
                 <option v-for="option in getSelectorOptions(selector)" :key="option.value" :value="option.value">
                   {{ option.label }}
                 </option>
@@ -54,10 +51,7 @@
                      :value="getSelectorValue(selector)" 
                      @change="handleSelectionChange(selector, $event)" 
                      class="date-input"
-                     :class="{ 
-                       'with-internal-title': selector?.showInternalTitle && selector?.internalTitle,
-                       'with-color-accent': selector?.showColorAccent 
-                     }"
+                     :class="getInputClasses(selector)"
                      :title="selector?.showInternalTitle && selector?.internalTitle ? selector.internalTitle : ''" />
               
               <!-- Диапазон -->
@@ -100,10 +94,7 @@
                      :value="getSelectorValue(selector)" 
                      @input="handleInputChange(selector, $event)" 
                      class="selector-input"
-                     :class="{ 
-                       'with-internal-title': selector?.showInternalTitle && selector?.internalTitle,
-                       'with-color-accent': selector?.showColorAccent 
-                     }"
+                     :class="getInputClasses(selector)"
                      :placeholder="getPlaceholderText(selector)" />
             </div>
           </div>
@@ -141,7 +132,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { Loader2, AlertCircle, Filter, ChevronDown, HelpCircle } from 'lucide-vue-next';
+import { Loader2, AlertCircle, HelpCircle } from 'lucide-vue-next';
 import datasetService from '../../MainPage/Sidebar/components/js/datasetService.js';
 
 const props = defineProps({
@@ -171,14 +162,9 @@ const emit = defineEmits(['selection-change', 'content-resized', 'apply-filters'
 
 const isLoading = ref(false);
 const error = ref('');
-const isDropdownOpen = ref(false);
-const selectedValue = ref('');
-const selectedValues = ref([]);
 const selectorWidgetRef = ref(null);
 const selectorValues = ref({});
 const selectorOptionsMap = ref({});
-const selectorLoadingStates = ref({});
-const calculatedHeight = ref(null);
 
 const hintVisible = ref(false);
 const hintContent = ref('');
@@ -186,24 +172,24 @@ const hintTooltipStyle = ref({});
 let hideHintTimer = null;
 
 const currentSelector = computed(() => {
-  const selector = props.selectorsList?.[props.activeSelectorIndex] || null;
-  
-  if (selector) {
-    try {
-      const reactiveSelector = JSON.parse(JSON.stringify(selector));
-      return reactiveSelector;
-    } catch (e) {
-      console.error('Failed to make reactive:', e);
-      return selector;
-    }
-  }
-  
-  return selector;
+  return props.selectorsList?.[props.activeSelectorIndex] || null;
 });
 
 const effectiveAutoHeight = computed(() => {
   return props.autoHeight || props.selectorGroupSettings?.autoHeight || false;
 });
+
+function initializeSelectorValue(selector) {
+  if (selectorValues.value.hasOwnProperty(selector.id)) return;
+  
+  if (selector.selectorType === 'checkbox') {
+    selectorValues.value[selector.id] = Array.isArray(selector.defaultValue) ? selector.defaultValue : [];
+  } else if (selector.selectorType === 'input') {
+    selectorValues.value[selector.id] = '';
+  } else {
+    selectorValues.value[selector.id] = selector.defaultValue || '';
+  }
+}
 
 const sortedSelectors = computed(() => {
   if (!props.selectorsList || props.selectorsList.length === 0) return [];
@@ -211,20 +197,11 @@ const sortedSelectors = computed(() => {
   const sorted = [...props.selectorsList].sort((a, b) => {
     if (a.isFavorite && !b.isFavorite) return -1;
     if (!a.isFavorite && b.isFavorite) return 1;
-    
     return (a.id || 0) - (b.id || 0);
   });
   
   sorted.forEach(selector => {
-    if (!selectorValues.value.hasOwnProperty(selector.id)) {
-      if (selector.selectorType === 'checkbox') {
-        selectorValues.value[selector.id] = Array.isArray(selector.defaultValue) ? selector.defaultValue : [];
-      } else if (selector.selectorType === 'input') {
-        selectorValues.value[selector.id] = '';
-      } else {
-        selectorValues.value[selector.id] = selector.defaultValue || '';
-      }
-    }
+    initializeSelectorValue(selector);
     
     if (!selectorOptionsMap.value.hasOwnProperty(selector.id) && 
         selector.selectedDatasetId && 
@@ -235,35 +212,6 @@ const sortedSelectors = computed(() => {
   
   return sorted;
 });
-
-
-
-const selectedLabel = computed(() => {
-  if (!currentSelector.value) return '';
-  const options = getSelectorOptions(currentSelector.value);
-  const option = options.find(opt => opt.value === selectedValue.value);
-  return option ? option.label : '';
-});
-
-const rangeMin = computed(() => {
-  return currentSelector.value?.rangeMin || 0;
-});
-
-const rangeMax = computed(() => {
-  return currentSelector.value?.rangeMax || 100;
-});
-
-const rangeStep = computed(() => {
-  return currentSelector.value?.rangeStep || 1;
-});
-
-function shouldShowTitle() {
-  return currentSelector.value?.titlePosition !== 'hidden';
-}
-
-function getDisplayTitle() {
-  return currentSelector.value?.title || 'Селектор';
-}
 
 function getPlaceholderText(selector = null) {
   const selectorData = selector || currentSelector.value;
@@ -283,8 +231,6 @@ async function loadSelectorOptions(selector) {
     selectorOptionsMap.value[selector.id] = [];
     return;
   }
-  
-  selectorLoadingStates.value[selector.id] = true;
   
   try {
     const response = await datasetService.getFieldValues(selector.selectedDatasetId, selector.selectedField);
@@ -307,11 +253,9 @@ async function loadSelectorOptions(selector) {
     }));
     
     selectorOptionsMap.value[selector.id] = options;
-  } catch (error) {
-    console.error('Ошибка загрузки опций селектора:', error);
+  } catch (err) {
+    console.error('Ошибка загрузки опций селектора:', err);
     selectorOptionsMap.value[selector.id] = [];
-  } finally {
-    selectorLoadingStates.value[selector.id] = false;
   }
 }
 
@@ -332,16 +276,6 @@ function setSelectedValues(selector, values) {
   selectorValues.value[selector.id] = values;
 }
 
-function getTitleClasses() {
-  const classes = [];
-  if (currentSelector.value?.titlePosition === 'left') {
-    classes.push('title-left');
-  } else if (currentSelector.value?.titlePosition === 'top') {
-    classes.push('title-top');
-  }
-  return classes;
-}
-
 function getSelectorLayoutClasses(selector = null) {
   const selectorData = selector || currentSelector.value;
   const classes = [];
@@ -359,17 +293,11 @@ function getSelectorLayoutClasses(selector = null) {
   return classes;
 }
 
-function getSelectorClasses() {
-  const classes = [];
-  if (currentSelector.value?.showColorAccent) {
-    classes.push('with-color-accent');
-  }
-  if (currentSelector.value?.titlePosition === 'left') {
-    classes.push('title-position-left');
-  } else if (currentSelector.value?.titlePosition === 'top') {
-    classes.push('title-position-top');
-  }
-  return classes;
+function getInputClasses(selector) {
+  return {
+    'with-internal-title': selector?.showInternalTitle && selector?.internalTitle,
+    'with-color-accent': selector?.showColorAccent
+  };
 }
 
 function getDefaultValueText(selector = null) {
@@ -420,55 +348,29 @@ function cancelHideHint() {
   }
 }
 
-function toggleDropdown() {
-  isDropdownOpen.value = !isDropdownOpen.value;
-}
-
-function selectOption(option) {
-  selectedValue.value = option.value;
-  isDropdownOpen.value = false;
-  handleSelectionChange();
-}
-
-function handleSelectionChange(selector = null, event = null) {
-  if (selector && event) {
-    const newValue = event.target.value;
-    setSelectorValue(selector, newValue);
-    
-    emit('selection-change', {
-      selectorId: selector.id,
-      value: newValue,
-      type: 'single'
-    });
-  } else {
-    emit('selection-change', {
-      selectorId: currentSelector.value?.id,
-      value: selectedValue.value,
-      type: 'single'
-    });
-  }
+function handleSelectionChange(selector, event) {
+  if (!selector || !event) return;
+  
+  const newValue = event.target.value;
+  setSelectorValue(selector, newValue);
+  
+  emit('selection-change', {
+    selectorId: selector.id,
+    value: newValue,
+    type: 'single'
+  });
 }
 
 function handleMultiSelectionChange(selector, event) {
-  if (!selector || !event) {
-    emit('selection-change', {
-      selectorId: currentSelector.value?.id,
-      value: selectedValues.value,
-      type: 'multiple'
-    });
-    return;
-  }
+  if (!selector || !event) return;
   
   const newValue = event.target.value;
   const isChecked = event.target.checked;
   const currentValues = getSelectedValues(selector);
   
-  let updatedValues;
-  if (isChecked) {
-    updatedValues = [...currentValues, newValue];
-  } else {
-    updatedValues = currentValues.filter(val => val !== newValue);
-  }
+  const updatedValues = isChecked
+    ? [...currentValues, newValue]
+    : currentValues.filter(val => val !== newValue);
   
   setSelectedValues(selector, updatedValues);
   
@@ -491,18 +393,22 @@ function handleInputChange(selector, event) {
 }
 
 function applyFilters() {
-  emit('apply-filters', {
-    selectorId: currentSelector.value?.id,
-    value: selectedValue.value
-  });
+  emit('apply-filters', { ...selectorValues.value });
 }
 
 function clearFilters() {
-  selectedValue.value = '';
-  selectedValues.value = [];
-  emit('clear-filters', {
-    selectorId: currentSelector.value?.id
+  Object.keys(selectorValues.value).forEach(id => {
+    const selector = props.selectorsList.find(s => s.id === parseInt(id));
+    if (selector) {
+      if (selector.selectorType === 'checkbox') {
+        selectorValues.value[id] = [];
+      } else {
+        selectorValues.value[id] = '';
+      }
+    }
   });
+  
+  emit('clear-filters');
 }
 
 watch(() => props.selectorsList, (newList, oldList) => {
@@ -520,11 +426,7 @@ watch(() => props.selectorsList, (newList, oldList) => {
     }
     
     if (oldSelector && oldSelector.selectorType !== selector.selectorType) {
-      if (selector.selectorType === 'checkbox') {
-        selectorValues.value[selector.id] = [];
-      } else {
-        selectorValues.value[selector.id] = '';
-      }
+      initializeSelectorValue(selector);
     }
     
     if (selector.selectorType === 'input' && selectorValues.value[selector.id]) {
@@ -534,6 +436,12 @@ watch(() => props.selectorsList, (newList, oldList) => {
       }
     }
   });
+  
+  if (effectiveAutoHeight.value) {
+    nextTick(() => {
+      calculateWidgetHeight();
+    });
+  }
 }, { deep: true });
 
 function calculateWidgetHeight() {
@@ -541,92 +449,54 @@ function calculateWidgetHeight() {
 
   nextTick(() => {
     const element = selectorWidgetRef.value;
-    if (element) {
-      element.style.height = 'auto';
+    if (!element) return;
+    
+    element.style.height = 'auto';
 
-      nextTick(() => {
-        const selectorContent = element.querySelector('.selector-content');
-        if (selectorContent) {
-          const contentHeight = selectorContent.scrollHeight;
-          
-          const computedStyle = window.getComputedStyle(element);
-          const paddingTop = parseFloat(computedStyle.paddingTop);
-          const paddingBottom = parseFloat(computedStyle.paddingBottom);
-          const borderTop = parseFloat(computedStyle.borderTopWidth);
-          const borderBottom = parseFloat(computedStyle.borderBottomWidth);
-          
-          let newHeight = contentHeight + paddingTop + paddingBottom + borderTop + borderBottom;
-          
-          newHeight = Math.max(newHeight, 50);
+    nextTick(() => {
+      const selectorContent = element.querySelector('.selector-content');
+      if (!selectorContent) return;
+      
+      const contentHeight = selectorContent.scrollHeight;
+      const computedStyle = window.getComputedStyle(element);
+      const paddingTop = parseFloat(computedStyle.paddingTop);
+      const paddingBottom = parseFloat(computedStyle.paddingBottom);
+      const borderTop = parseFloat(computedStyle.borderTopWidth);
+      const borderBottom = parseFloat(computedStyle.borderBottomWidth);
+      
+      const newHeight = Math.max(
+        contentHeight + paddingTop + paddingBottom + borderTop + borderBottom,
+        50
+      );
 
-          if (calculatedHeight.value !== newHeight) {
-            calculatedHeight.value = newHeight;
-            emit('content-resized', newHeight);
-          }
-        }
-      });
-    }
+      emit('content-resized', newHeight);
+    });
   });
 }
 
 function triggerHeightRecalculation() {
-  if (effectiveAutoHeight.value) {
-    calculateWidgetHeight();
-  }
+  recalculateHeightIfNeeded();
 }
 
-function handleClickOutside(event) {
-  if (!selectorWidgetRef.value?.contains(event.target)) {
-    isDropdownOpen.value = false;
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
-
-  if (effectiveAutoHeight.value) {
-    calculateWidgetHeight();
-  }
-});
+onMounted(recalculateHeightIfNeeded);
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
   if (hideHintTimer) {
     clearTimeout(hideHintTimer);
   }
 });
 
-watch(() => props.selectorsList, () => {
+function recalculateHeightIfNeeded() {
   if (effectiveAutoHeight.value) {
     nextTick(() => {
       calculateWidgetHeight();
     });
   }
-}, { deep: true });
+}
 
-watch(() => currentSelector.value, () => {
-  if (effectiveAutoHeight.value) {
-    nextTick(() => {
-      calculateWidgetHeight();
-    });
-  }
-}, { deep: true });
-
-watch(() => props.selectorGroupSettings?.autoHeight, (newValue) => {
-  if (newValue) {
-    nextTick(() => {
-      calculateWidgetHeight();
-    });
-  }
-});
-
-watch(() => props.activeSelectorIndex, () => {
-  if (effectiveAutoHeight.value) {
-    nextTick(() => {
-      calculateWidgetHeight();
-    });
-  }
-});
+watch(() => currentSelector.value, recalculateHeightIfNeeded, { deep: true });
+watch(() => props.selectorGroupSettings?.autoHeight, recalculateHeightIfNeeded);
+watch(() => props.activeSelectorIndex, recalculateHeightIfNeeded);
 
 defineExpose({
   triggerHeightRecalculation
@@ -705,18 +575,6 @@ defineExpose({
   height: 100%;
 }
 
-.selector-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  height: 100%;
-  text-align: center;
-}
-
 .selector-render-container {
   display: flex;
   flex-direction: column;
@@ -757,13 +615,7 @@ defineExpose({
   }
 }
 
-.selector-list,
-.selector-dropdown-container,
-.selector-radio,
-.selector-checkbox,
-.selector-date,
-.selector-range,
-.selector-default {
+.selector-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
