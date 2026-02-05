@@ -1,42 +1,24 @@
 <template>
   <div class="selector-widget" ref="selectorWidgetRef" :class="{ 'auto-height': effectiveAutoHeight }">
     <div class="selector-content">
-      <div v-if="isLoading" class="selector-loading">
-        <Loader2 class="spinner" :size="24" />
-        <span>Загрузка селектора...</span>
-      </div>
-
+      <SpinnerLoading v-if="isLoading" loading-text="Загрузка селектора..." />
       <div v-else-if="error" class="selector-error">
         <AlertCircle :size="24" />
         <span>{{ error }}</span>
       </div>
 
       <div v-else class="selector-render-container">
-        <!-- ОТОБРАЖЕНИЕ ВСЕХ СЕЛЕКТОРОВ ПОСТРОЧНО -->
         <div class="selectors-list-container">
-          <div v-for="selector in sortedSelectors" 
-               :key="selector.id" 
-               class="selector-row" 
-               :class="{ 'favorite': selector.isFavorite }">
-            
-            <!-- Рендер отдельного селектора -->
+          <div v-for="selector in sortedSelectors" :key="selector.id" class="selector-row" :class="{ 'favorite': selector.isFavorite }">
             <div class="selector-list" :class="getSelectorLayoutClasses(selector)">
               <label v-if="selector?.titlePosition !== 'hidden'" class="selector-label">
                 {{ selector?.title || 'Селектор' }}
-                <div v-if="selector?.showHint && selector?.hintText" 
-                     class="hint-icon-wrapper" 
-                     @mouseenter="showHint($event, selector)" 
-                     @mouseleave="hideHint"
-                     @click.stop>
+                <div v-if="selector?.showHint && selector?.hintText" class="hint-icon-wrapper" @mouseenter="showHint($event, selector)" @mouseleave="hideHint" @click.stop>
                   <HelpCircle :size="16" />
                 </div>
               </label>
               
-              <select v-if="!selector?.selectorType || selector?.selectorType === 'list'" 
-                      class="selector-dropdown" 
-                      :value="getSelectorValue(selector)" 
-                      @change="handleSelectionChange(selector, $event)"
-                      :class="getInputClasses(selector)">
+              <select v-if="!selector?.selectorType || selector?.selectorType === 'list'" class="selector-dropdown" :value="getSelectorValue(selector)" @change="handleSelectionChange(selector, $event)" :class="getInputClasses(selector)">
                 <option value="">{{ getPlaceholderText(selector) }}</option>
                 <option v-if="getSelectorOptions(selector).length === 0 && !selector?.selectedDatasetId" 
                         value="" disabled>Настройте датасет и поле</option>
@@ -45,85 +27,41 @@
                 </option>
               </select>
               
-              <!-- Дата -->
-              <input v-else-if="selector?.selectorType === 'date'" 
-                     type="date" 
-                     :value="getSelectorValue(selector)" 
-                     @change="handleSelectionChange(selector, $event)" 
-                     class="date-input"
-                     :class="getInputClasses(selector)"
-                     :title="selector?.showInternalTitle && selector?.internalTitle ? selector.internalTitle : ''" />
+              <input v-else-if="selector?.selectorType === 'date'" type="date" :value="getSelectorValue(selector)" @change="handleSelectionChange(selector, $event)" class="date-input" :class="getInputClasses(selector)" :title="selector?.showInternalTitle && selector?.internalTitle ? selector.internalTitle : ''" />
               
-              <!-- Диапазон -->
               <div v-else-if="selector?.selectorType === 'range'" class="range-container">
-                <input type="range" 
-                       :value="getSelectorValue(selector)" 
-                       :min="selector?.rangeMin || 0" 
-                       :max="selector?.rangeMax || 100" 
-                       :step="selector?.rangeStep || 1"
-                       @input="handleSelectionChange(selector, $event)" 
-                       class="range-input" />
+                <input type="range" :value="getSelectorValue(selector)" :min="selector?.rangeMin || 0" :max="selector?.rangeMax || 100" :step="selector?.rangeStep || 1" @input="handleSelectionChange(selector, $event)" class="range-input" />
                 <span class="range-value">{{ getSelectorValue(selector) }}</span>
               </div>
               
-              <!-- Радиокнопки -->
               <div v-else-if="selector?.selectorType === 'radio'" class="radio-group">
                 <label v-for="option in getSelectorOptions(selector)" :key="option.value" class="radio-item">
-                  <input type="radio" 
-                         :value="option.value" 
-                         :checked="getSelectorValue(selector) === option.value"
-                         @change="handleSelectionChange(selector, $event)" />
+                  <input type="radio" :value="option.value" :checked="getSelectorValue(selector) === option.value" @change="handleSelectionChange(selector, $event)" />
                   <span class="radio-label">{{ option.label }}</span>
                 </label>
               </div>
               
-              <!-- Чекбоксы -->
               <div v-else-if="selector?.selectorType === 'checkbox'" class="checkbox-group">
                 <label v-for="option in getSelectorOptions(selector)" :key="option.value" class="checkbox-item">
-                  <input type="checkbox" 
-                         :value="option.value" 
-                         :checked="getSelectedValues(selector).includes(option.value)"
-                         @change="handleMultiSelectionChange(selector, $event)" />
+                  <input type="checkbox" :value="option.value" :checked="getSelectedValues(selector).includes(option.value)" @change="handleMultiSelectionChange(selector, $event)" />
                   <span class="checkbox-label">{{ option.label }}</span>
                 </label>
               </div>
               
-              <!-- Поле ввода (input) -->
-              <input v-else-if="selector?.selectorType === 'input'" 
-                     type="text" 
-                     :value="getSelectorValue(selector)" 
-                     @input="handleInputChange(selector, $event)" 
-                     class="selector-input"
-                     :class="getInputClasses(selector)"
-                     :placeholder="getPlaceholderText(selector)" />
+              <input v-else-if="selector?.selectorType === 'input'" type="text" :value="getSelectorValue(selector)" @input="handleInputChange(selector, $event)" class="selector-input" :class="getInputClasses(selector)" :placeholder="getPlaceholderText(selector)" />
             </div>
           </div>
         </div>
         
-        <!-- Кнопки управления фильтрами - вынесены вниз -->
         <div v-if="selectorGroupSettings?.applyButton || selectorGroupSettings?.clearButton" class="selector-actions">
-          <button v-if="selectorGroupSettings?.applyButton" 
-                  class="btn-apply" 
-                  @click="applyFilters">
-            Применить
-          </button>
-          <button v-if="selectorGroupSettings?.clearButton" 
-                  class="btn-clear" 
-                  @click="clearFilters">
-            Сбросить
-          </button>
+          <button v-if="selectorGroupSettings?.applyButton" class="btn-apply" @click="applyFilters">Применить</button>
+          <button v-if="selectorGroupSettings?.clearButton" class="btn-clear" @click="clearFilters">Сбросить</button>
         </div>
-
       </div>
     </div>
 
-    <!-- Тултип подсказки -->
     <Teleport to="body">
-      <div v-if="hintVisible"
-           class="hint-tooltip" 
-           :style="hintTooltipStyle"
-           @mouseenter="cancelHideHint"
-           @mouseleave="hideHint">
+      <div v-if="hintVisible" class="hint-tooltip" :style="hintTooltipStyle" @mouseenter="cancelHideHint" @mouseleave="hideHint">
         <div v-html="hintContent" class="hint-content"></div>
       </div>
     </Teleport>
@@ -132,7 +70,8 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { Loader2, AlertCircle, HelpCircle } from 'lucide-vue-next';
+import { AlertCircle, HelpCircle } from 'lucide-vue-next';
+import SpinnerLoading from '@/components/SpinnerLoading.vue';
 import datasetService from '../../MainPage/Sidebar/components/js/datasetService.js';
 
 const props = defineProps({
@@ -539,30 +478,6 @@ defineExpose({
   flex-direction: column;
   height: 100%;
   gap: 12px;
-}
-
-.selector-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  height: 100%;
-
-  .spinner {
-    animation: spin 1s linear infinite;
-  }
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
 }
 
 .selector-error {
@@ -1002,8 +917,4 @@ defineExpose({
     background: var(--color-background-muted);
   }
 }
-
-
-
-
 </style>
