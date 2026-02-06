@@ -15,72 +15,6 @@
         </tr>
       </thead>
       <tbody>
-        <!-- Предустановленные дашборды -->
-        <tr
-          v-if="props.currentPage === 'dashboards'"
-          class="table-row"
-          @click="router.push('/bi/dashboard/review/first')"
-        >
-          <td
-            v-for="col in props.cols"
-            :key="'predefined-1-' + col.key"
-            :style="{ position: 'relative', overflow: 'hidden' }"
-            :class="{ 'td-actions': col.key === 'actions' }"
-          >
-            <template v-if="col.key === 'name'">
-              <Table class="icon" />
-              <span class="dataset-name">Дашборд 1</span>
-            </template>
-            <template v-else-if="col.key === 'created_at'">
-              <span
-                class="tooltip-wrapper"
-                @mouseenter="onIconHover($event, formatTooltipDate(predefinedCreatedAt))"
-                @mouseleave="hideTooltip"
-              >
-                {{ new Date(predefinedCreatedAt).toLocaleDateString() }}
-              </span>
-            </template>
-            <template v-else-if="col.key === 'actions'">
-              <!-- Для предустановленных элементов действий нет -->
-            </template>
-            <template v-else>
-              —
-            </template>
-          </td>
-        </tr>
-        <tr
-          v-if="props.currentPage === 'dashboards'"
-          class="table-row"
-          @click="router.push('/bi/dashboard/review/second')"
-        >
-          <td
-            v-for="col in props.cols"
-            :key="'predefined-2-' + col.key"
-            :style="{ position: 'relative', overflow: 'hidden' }"
-            :class="{ 'td-actions': col.key === 'actions' }"
-          >
-            <template v-if="col.key === 'name'">
-              <Table class="icon" />
-              <span class="dataset-name">Дашборд 2</span>
-            </template>
-            <template v-else-if="col.key === 'created_at'">
-              <span
-                class="tooltip-wrapper"
-                @mouseenter="onIconHover($event, formatTooltipDate(predefinedCreatedAt))"
-                @mouseleave="hideTooltip"
-              >
-                {{ new Date(predefinedCreatedAt).toLocaleDateString() }}
-              </span>
-            </template>
-            <template v-else-if="col.key === 'actions'">
-              <!-- Для предустановленных элементов действий нет -->
-            </template>
-            <template v-else>
-              —
-            </template>
-          </td>
-        </tr>
-
         <tr v-for="row in sortedUsers" :key="row.id" class="table-row" :class="{ favorite: isFavorite(row.id), 'force-hover': hoveredRow === row.id || (showMenu && menuRowId === row.id) }" @mouseenter="onRowMouseEnter(row.id)"
           @mouseleave="onRowMouseLeave(row.id)" @click="handleRowClick(row)">
           <td v-for="col in props.cols" :key="col.key" :style="{ position: 'relative', overflow: 'hidden' }"
@@ -235,12 +169,7 @@ const hoveredRow = ref(null)
 const favorites = ref(new Set())
 
 const totalItemsCount = computed(() => {
-  const base = Array.isArray(props.users) ? props.users.length : 0
-  if (props.currentPage === 'dashboards') {
-    // Добавляем два тестовых дашборда
-    return base + 2
-  }
-  return base
+  return Array.isArray(props.users) ? props.users.length : 0
 })
 
 const sortedUsers = computed(() => {
@@ -295,8 +224,6 @@ const connectionFilesCache = ref(new Map())
 const lastCacheUpdate = ref(0)
 const CACHE_DURATION = 30000 // 30 секунд
 
-// Дата создания для предустановленных дашбордов (текущая)
-const predefinedCreatedAt = new Date().toISOString()
 
 function handleRowClick(row) {
   if (props.currentPage === 'datasets') {
