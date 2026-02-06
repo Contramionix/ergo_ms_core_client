@@ -5,16 +5,7 @@
             <span class="params-description text-muted">Параметр — это переменная датасета или чарта, которая может заменять константные значения в вычисляемых полях. Параметр может быть числом, строкой, датой или логическим значением. Параметры датасета доступны во всех чартах, созданных на основе этого датасета. Значение по умолчанию для параметра может быть переопределено на уровне чарта.</span>
         </div>
         <div class="main-content-body">
-            <BiGrid
-                :rows="rows"
-                :columns="columns"
-                :striped="true"
-                :hover="true"
-                @duplicate="onDuplicate"
-                @edit="onEdit"
-                @copyId="onCopyId"
-                @delete="onDelete"
-            />
+            <BiGrid :rows="rows" :columns="columns" :striped="true" :hover="true" @duplicate="onDuplicate" @edit="onEdit" @copyId="onCopyId" @delete="onDelete"/>
         </div>
         <div class="main-content-footer">
             <button type="button" class="btn btn-add" data-bs-toggle="modal" data-bs-target="#paramsAddModal">Добавить</button>

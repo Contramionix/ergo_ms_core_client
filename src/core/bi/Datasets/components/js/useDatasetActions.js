@@ -231,27 +231,38 @@ export function useDatasetActions(state) {
       // Сравниваем поля (без учета порядка, только по id и name)
       const origFieldsMap = new Map(origFields.map(f => [f.id || f.name, f]))
       const currentFieldsMap = new Map(currentFields.map(f => [f.id || f.name, f]))
-      
-      const fieldsChanged = 
-        origFields.length !== currentFields.length ||
-        origFields.some(f => {
-          const current = currentFieldsMap.get(f.id || f.name)
-          return !current || 
-            current.name !== f.name ||
-            current.aggregation !== f.aggregation ||
-            current.type !== f.type ||
-            current.description !== f.description ||
-            current.source_column !== f.source_column
-        }) ||
-        currentFields.some(f => {
-          const orig = origFieldsMap.get(f.id || f.name)
-          return !orig ||
-            orig.name !== f.name ||
-            orig.aggregation !== f.aggregation ||
-            orig.type !== f.type ||
-            orig.description !== f.description ||
-            orig.source_column !== f.source_column
-        })
+
+      let fieldsChanged = false
+
+      if (origFields.length === 0 && currentFields.length === 0) {
+        // Полей не было и нет — изменений нет
+        fieldsChanged = false
+      } else if (origFields.length > 0 && currentFields.length === 0) {
+        // В БД есть поля, но state.fields ещё не загружены (например, пользователь не открывал вкладку "Поля").
+        // Не считаем это удалением всех полей, чтобы не отправлять patch.fields = [] и не вычищать поля в БД.
+        fieldsChanged = false
+      } else {
+        fieldsChanged =
+          origFields.length !== currentFields.length ||
+          origFields.some(f => {
+            const current = currentFieldsMap.get(f.id || f.name)
+            return !current || 
+              current.name !== f.name ||
+              current.aggregation !== f.aggregation ||
+              current.type !== f.type ||
+              current.description !== f.description ||
+              current.source_column !== f.source_column
+          }) ||
+          currentFields.some(f => {
+            const orig = origFieldsMap.get(f.id || f.name)
+            return !orig ||
+              orig.name !== f.name ||
+              orig.aggregation !== f.aggregation ||
+              orig.type !== f.type ||
+              orig.description !== f.description ||
+              orig.source_column !== f.source_column
+          })
+      }
 
       // Всегда отправляем fields, если они изменились (включая удаление всех полей)
       if (fieldsChanged) {
@@ -263,6 +274,36 @@ export function useDatasetActions(state) {
       // Всегда передаём массив параметров, даже пустой (позволяет удалять все параметры)
       if (Array.isArray(paramsDraft)) {
         patch.params = paramsDraft
+      }
+
+      const onlyParamsChanged = Object.keys(patch).length === 1 && Object.prototype.hasOwnProperty.call(patch, 'params')
+
+      if (onlyParamsChanged) {
+        await datasetService.updateDataset(dsId, { params: patch.params })
+
+        const updatedParams = Array.isArray(patch.params) ? patch.params : []
+
+        state.dataset.value = {
+          ...(state.dataset.value || {}),
+          params: updatedParams
+        }
+        state.origDatasetRef.value = {
+          ...(state.origDatasetRef.value || {}),
+          params: updatedParams
+        }
+
+        if (state.paramsDirtyTick) state.paramsDirtyTick.value++
+
+        try {
+          const key = getCachedParamsKey(dsId)
+          sessionStorage.setItem(key, JSON.stringify(updatedParams))
+        } catch (e) {
+          console.warn('[useDatasetActions] failed to sync params cache after params-only edit', e)
+        }
+
+        state.saveSuccess.value = true
+        setTimeout(() => state.saveSuccess.value = false, 1000)
+        return
       }
 
       if (Object.keys(patch).length) {
@@ -1258,9 +1299,15 @@ export function useDatasetActions(state) {
     if (renames.length && state.dataset.value && state.dataset.value.id) {
       const { error } = await datasetService.renameColumns(state.dataset.value.id, renames)
       if (error) return
+    }
 
+    // Всегда актуализируем список полей из API, даже если переименований не было.
+    // Это позволяет кнопке "Обновить поля" фактически перезагружать поля из бэкенда.
+    if (state.dataset.value && state.dataset.value.id) {
       const fieldsResp = await datasetService.listFields({ dataset: state.dataset.value.id })
-      if (fieldsResp && fieldsResp.data) {
+      if (fieldsResp && Array.isArray(fieldsResp.data) && fieldsResp.data.length > 0) {
+        // Обновляем поля только если backend реально вернул какие‑то поля.
+        // Пустой массив не перетирает текущие client‑side поля, собранные из preview.
         state.fields.value = fieldsResp.data
       }
     }
