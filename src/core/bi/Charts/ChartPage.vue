@@ -62,7 +62,7 @@
                 </div>
             </div>
             <div class="body-chart border-elements elements-color" :class="{ fullscreen: isFullScreen }">
-                <ChartArea :dataset="datasetRows" :chart-type="selectedChartType" :fields="selectedFields" :key="selectedChartType" :settings="settingTypes" :data-loading="datasetRowsLoading" @engineChange="selectedEngine = $event" />
+                <ChartArea :dataset="datasetRows" :chart-type="selectedChartType" :fields="selectedFields" :key="selectedChartType" :settings="settingTypes" :data-loading="datasetRowsLoading" />
             </div>
         </div>
     </div>
@@ -137,7 +137,6 @@ const datasetRows = ref([])
 const datasetRowsLoading = ref(false)
 
 const currentAllowedTypes = ref(null)
-const selectedEngine = ref('chartjs')
 const originalChart = ref({})
 
 const router = useRouter()
@@ -181,10 +180,6 @@ const chartRequiredFieldsFilled = computed(() => {
         }
     }
 
-    if (!selectedEngine.value) {
-        return false
-    }
-
     return true
 })
 
@@ -202,7 +197,7 @@ async function onChartNameSaved({ name }) {
         name,
         dataset: selectedDataset.value.id,
         chart_type: selectedChartType.value,
-        engine: selectedEngine.value,
+        engine: 'echarts',
         params: selectedFields.value,
         options: {}
     }
@@ -246,7 +241,6 @@ async function fetchChartIfEditing() {
         selectedDataset.value = dsObj
 
         selectedChartType.value = String(data.chart_type ?? '')
-        selectedEngine.value = data.engine ?? ''
         selectedFields.value = { ...(data.params ?? {}) }
 
         if (dsObj?.id) {
@@ -468,7 +462,6 @@ const isChartDirty = computed(() => {
     if (chartName.value !== (originalChart.value.name ?? '')) return true
     if ((selectedDataset.value?.id || null) !== (originalChart.value.datasetId || null)) return true
     if (selectedChartType.value !== (originalChart.value.chart_type ?? '')) return true
-    if (selectedEngine.value !== (originalChart.value.engine ?? '')) return true
 
     if (JSON.stringify(selectedFields.value) !== JSON.stringify(originalChart.value.params || {})) return true
 

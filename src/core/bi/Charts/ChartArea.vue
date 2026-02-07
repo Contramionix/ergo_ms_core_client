@@ -6,21 +6,12 @@ import ChartRenderer           from './components/ChartRenderer.vue'
 import useProcessedDataset     from '@/core/bi/MainPage/Sidebar/components/js/useProcessedDataset.js'
 
 const props = defineProps({
-  dataset :  { type: Array,            default: () => [] },
-  chartType: { type: String,           default: ''       },
-  fields  :  { type: Object,           default: () => ({}) },
-  settings:  { type: Array,            default: () => [] },
-  engine  :  { type: String,           default: 'chartjs' },
-  dataLoading: { type: Boolean,        default: false }
+  dataset: { type: Array, default: () => [] },
+  chartType: { type: String, default: '' },
+  fields: { type: Object, default: () => ({}) },
+  settings: { type: Array, default: () => [] },
+  dataLoading: { type: Boolean, default: false }
 })
-const emit = defineEmits(['update:engine'])
-
-const currentEngine = ref(props.engine)
-
-watch(() => props.engine, e => {
-  if (e && e !== currentEngine.value) currentEngine.value = e
-})
-watch(currentEngine, e => emit('update:engine', e))
 
 const isLoading = ref(false)
 
@@ -51,7 +42,7 @@ watch([() => props.dataset, () => props.fields], () => {
 
     <div v-else class="d-flex justify-content-center align-items-center w-100 h-100">
       <ChartPlaceholder v-if="placeholderCode" :code="placeholderCode"/>
-      <ChartRenderer v-if="!placeholderCode" :type="chartType" :fields="fields" :settings="settings" :dataset="datasetFilteredSorted" @engineChange="val => emit('engineChange', val)"/>
+      <ChartRenderer v-if="!placeholderCode" :type="chartType" :fields="fields" :settings="settings" :dataset="datasetFilteredSorted"/>
     </div>
   </div>
 </template>

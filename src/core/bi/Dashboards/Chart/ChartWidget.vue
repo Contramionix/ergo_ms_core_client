@@ -104,22 +104,12 @@
         </div>
         
         <div v-else-if="chartData && datasetRows && chartData.chart_type" class="chart-render-container">
-          <ChartJsComponent
-            v-if="chartData.engine === 'chartjs'"
+          <EChartsComponent
             :type="chartData.chart_type"
             :fields="chartData.params || {}"
+            :settings="[]"
             :dataset="datasetRows"
           />
-          <ApexChartsComponent
-            v-else-if="chartData.engine === 'apex'"
-            :type="chartData.chart_type"
-            :fields="chartData.params || {}"
-            :dataset="datasetRows"
-          />
-          <div v-else class="chart-error">
-            <AlertCircle :size="24" />
-            <span>Неподдерживаемый тип движка: {{ chartData.engine || 'не указан' }}</span>
-          </div>
         </div>
         
         <div v-else class="chart-placeholder">
@@ -177,13 +167,8 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue';
 import { Star, MoreHorizontal, AlertCircle, BarChart3, CircleHelp } from 'lucide-vue-next';
 
-// Динамические импорты графических компонентов для уменьшения размера бандла
-const ChartJsComponent = defineAsyncComponent(() =>
-  import('../../Charts/ChartJsComponent.vue')
-);
-
-const ApexChartsComponent = defineAsyncComponent(() =>
-  import('../../Charts/ApexChartsComponent.vue')
+const EChartsComponent = defineAsyncComponent(() =>
+  import('../../Charts/EChartsComponent.vue')
 );
 
 import SpinnerLoading from '@/components/SpinnerLoading.vue';
