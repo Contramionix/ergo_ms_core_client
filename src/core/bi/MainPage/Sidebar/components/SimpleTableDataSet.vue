@@ -15,140 +15,83 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="row in sortedUsers" :key="row.id" class="table-row" :class="{ favorite: isFavorite(row.id), 'force-hover': hoveredRow === row.id || (showMenu && menuRowId === row.id) }" @mouseenter="onRowMouseEnter(row.id)"
-          @mouseleave="onRowMouseLeave(row.id)" @click="handleRowClick(row)">
-          <td v-for="col in props.cols" :key="col.key" :style="{ position: 'relative', overflow: 'hidden' }"
-            :class="{ 'td-actions': col.key === 'actions' }">
-            <!-- Название -->
+        <tr v-for="row in sortedUsers" :key="row.id" class="table-row" :class="{ favorite: isFavorite(row.id), 'force-hover': isRowMenuActive(row.id) }" @mouseenter="onRowMouseEnter(row.id)" @mouseleave="onRowMouseLeave(row.id)" @click="handleRowClick(row)">
+          <td v-for="col in props.cols" :key="col.key" :style="{ position: 'relative', overflow: 'hidden' }" :class="{ 'td-actions': col.key === 'actions' }">
             <template v-if="col.key === 'name'">
               <template v-if="getIconComponent(row)">
-                <component
-                  v-if="typeof getIconComponent(row).src === 'object' || typeof getIconComponent(row).src === 'function'"
-                  :is="getIconComponent(row).src" class="icon"
-                  :style="getIconComponent(row).color ? { color: getIconComponent(row).color } : undefined"
-                  @mouseenter="onIconHover($event, getIconComponent(row).tooltip)" @mouseleave="hideTooltip" />
-                <img v-else :src="getIconComponent(row).src" class="icon"
-                  @mouseenter="onIconHover($event, getIconComponent(row).tooltip)" @mouseleave="hideTooltip" />
+                <component v-if="typeof getIconComponent(row).src === 'object' || typeof getIconComponent(row).src === 'function'" :is="getIconComponent(row).src" class="icon" :style="getIconComponent(row).color ? { color: getIconComponent(row).color } : undefined" @mouseenter="onIconHover($event, getIconComponent(row).tooltip)" @mouseleave="hideTooltip" />
+                <img v-else :src="getIconComponent(row).src" class="icon" @mouseenter="onIconHover($event, getIconComponent(row).tooltip)" @mouseleave="hideTooltip" />
               </template>
-              <template v-else>
-                <Table class="icon" />
-              </template>
+              <template v-else><Table class="icon" /></template>
               <span class="dataset-name">{{ getValue(row, col.key) ?? '—' }}</span>
-              <!-- Предупреждение для подключений с отсутствующими или проблемными файлами -->
-              <TriangleAlert 
-                v-if="shouldShowFileWarning(row)" 
-                class="alert-icon" 
-                :size="16" 
-                @mouseenter="onIconHover($event, getFileWarningTooltip(row), 'error-tooltip')"
-                @mouseleave="hideTooltip"
-              />
+              <TriangleAlert v-if="shouldShowFileWarning(row)" class="alert-icon" :size="16"  @mouseenter="onIconHover($event, getFileWarningTooltip(row), 'error-tooltip')" @mouseleave="hideTooltip"/>
             </template>
 
-            <!-- Дата -->
             <template v-else-if="col.key === 'created_at'">
-              <span class="tooltip-wrapper" @mouseenter="onIconHover($event, formatTooltipDate(getValue(row, col.key)))"
-                @mouseleave="hideTooltip">
+              <span class="tooltip-wrapper" @mouseenter="onIconHover($event, formatTooltipDate(getValue(row, col.key)))" @mouseleave="hideTooltip">
                 {{ new Date(getValue(row, col.key)).toLocaleDateString() }}
               </span>
             </template>
 
-            <!-- Действия -->
             <template v-else-if="col.key === 'actions'">
-              <div v-if="hasBeenOpened" class="actions-cell" :class="{ visible: hoveredRow === row.id || isFavorite(row.id) || (showMenu && menuRowId === row.id) }">
+              <div v-if="hasBeenOpened" class="actions-cell" :class="{ visible: isRowMenuActive(row.id) || isFavorite(row.id) }">
                 <div class="actions-inner">
-                  <button class="action-btn star" :class="{ active: isFavorite(row.id) }"
-                    @click.stop="toggleFavorite(row.id)" title="Избранное">
+                  <button class="action-btn star" :class="{ active: isFavorite(row.id) }" @click.stop="toggleFavorite(row.id)" title="Избранное">
                     <Star class="icon-inline" />
                   </button>
-                  <button class="action-btn more" :class="{ visible: hoveredRow === row.id || (showMenu && menuRowId === row.id), 'force-hover': showMenu && menuRowId === row.id }" @click="onMoreClick($event, row.id)" title="Еще">
+                  <button class="action-btn more" :class="{ visible: isRowMenuActive(row.id), 'force-hover': showMenu && menuRowId === row.id }" @click="onMoreClick($event, row.id)" title="Еще">
                     <MoreHorizontal class="icon-inline" />
                   </button>
                 </div>
               </div>
             </template>
-
             <template v-else>
-              {{ typeof col.format === 'function' ? col.format(getValue(row, col.key)) : getValue(row, col.key) ?? '—'
-              }}
+              {{ typeof col.format === 'function' ? col.format(getValue(row, col.key)) : getValue(row, col.key) ?? '—' }}
             </template>
           </td>
         </tr>
-
-        <tr v-if="totalItemsCount === 0">
-          <td :colspan="props.cols.length" class="no-data">Нет данных</td>
-        </tr>
+        <tr v-if="totalItemsCount === 0"><td :colspan="props.cols.length" class="no-data">Нет данных</td></tr>
       </tbody>
     </table>
 
-    <!-- Обычный тултип -->
     <teleport to="body">
       <div v-if="showTooltip" class="tooltip-fixed" :class="tooltipClass" :style="tooltipStyle">{{ tooltipText }}</div>
     </teleport>
 
-    <!-- Меню "Еще" -->
     <teleport to="body">
-      <div v-if="showMenu" class="menu-dropdown" :style="menuPosition" @mouseleave="closeMenu">
-
-        <div class="menu-item" @click="openRename(getRowById(menuRowId))">
-          <CaseSensitive :size="18" :stroke-width="2" />Переименовать
+      <Transition name="dropdown-menu">
+        <div v-if="showMenu" ref="menuDropdownRef" class="menu-dropdown" :style="menuPosition">
+          <div class="menu-item" @click="openRename(getRowById(menuRowId))"><CaseSensitive :size="18" :stroke-width="2" />Переименовать</div>
+          <div class="menu-item" @click="copyLink(getRowById(menuRowId))"><Link :size="18" :stroke-width="2" />Копировать ссылку</div>
+          <div class="menu-item danger" @click="askDelete(getRowById(menuRowId))"><Trash2 :size="18" :stroke-width="2" />Удалить</div>
         </div>
-        <hr>
-        <div class="menu-item" @click="copyLink(getRowById(menuRowId))">
-          <Link :size="18" :stroke-width="2" />Копировать ссылку
-        </div>
-        <hr>
-        <div class="menu-item danger" @click="askDelete(getRowById(menuRowId))">
-          <Trash2 :size="18" :stroke-width="2" />Удалить
-        </div>
-      </div>
+      </Transition>
     </teleport>
-
   </div>
-  <!-- Модальное окно удаления -->
-  <transition name="fade-modal">
-    <div v-if="showDeleteDialog" class="modal-overlay" @click.self="cancelDelete">
-      <div class="modal-dialog">
-        <div class="modal-title">Вы действительно хотите удалить
-          <span class="item-name">"{{ rowToDelete?.name || rowToDelete?.original_filename || 'элемент' }}"</span>
-          <span style="font-weight: normal">({{ getTypeName(rowToDelete) }})</span>?
-        </div>
-        <div class="modal-actions">
-          <button class="btn btn-danger" @click="confirmDelete" :disabled="isDeleteLocked">{{ isDeleteLocked ? `Да
-            (${deleteCountdown})` : 'Да' }}</button>
-          <button class="btn btn-outline-secondary" @click="cancelDelete">Нет</button>
-        </div>
-      </div>
-    </div>
-  </transition>
 
-  <!-- Модальное окно переименования -->
-  <transition name="fade-modal">
-    <div v-if="showRenameDialog" class="modal-overlay" @click.self="cancelRename">
-      <div class="modal-dialog">
-        <div class="modal-title">Укажите новое название элементу</div>
-        <input id="rename-input" class="form-control" v-model="renameValue" :disabled="renameLoading" maxlength="128"
-          @keyup.enter="doRename" style="margin-bottom: 1rem; width: 100%; font-size: 1.05rem;" autocomplete="off" />
-        <div v-if="renameError" style="color: #f87171; margin-bottom: 1rem;">{{ renameError }}</div>
-        <div class="modal-actions">
-          <button class="btn btn-primary" @click="doRename"
-            :disabled="renameLoading || !renameValue.trim()">Сохранить</button>
-          <button class="btn btn-secondary" @click="cancelRename" :disabled="renameLoading">Отмена</button>
-        </div>
-      </div>
-    </div>
-  </transition>
+  <teleport to="body">
+    <ConfirmDialog :show="showDeleteDialog" title="Подтверждение удаления" :message="deleteConfirmMessage" confirm-text="Да" cancel-text="Нет" variant="danger" @confirm="confirmDelete" @cancel="cancelDelete" @close="cancelDelete"/>
+  </teleport>
 
-  <!-- Модальное окно копирования ссылки в буфер обмена -->
-  <transition name="fade-modal">
-    <div v-if="showCopySuccess" class="copy-success-toast" :style="{ opacity: copyOpacity }">
-      Ссылка успешно скопирована в буфер обмена
-    </div>
-  </transition>
+  <teleport to="body">
+    <ModalCenter v-if="showRenameDialog" modal-id="renameElementModal" title="Укажите новое название элементу" custom-class="show d-block" @closemodal="cancelRename">
+      <input id="rename-input" class="form-control" v-model="renameValue" :disabled="renameLoading" maxlength="128" @keyup.enter="doRename" style="margin-bottom: 1rem; width: 100%; font-size: 1.05rem;" autocomplete="off"/>
+      <div v-if="renameError" class="text-danger mb-3">{{ renameError }}</div>
+      <div class="d-flex gap-3">
+        <button type="button" class="btn btn-primary" @click="doRename" :disabled="renameLoading || !renameValue.trim()">Сохранить</button>
+        <button type="button" class="btn btn-secondary" @click="cancelRename" :disabled="renameLoading">Отмена</button>
+      </div>
+    </ModalCenter>
+    <div v-if="showRenameDialog" class="modal-backdrop fade show" @click="cancelRename"></div>
+  </teleport>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
+import { useToast } from 'vue-toastification'
 import { Star, MoreHorizontal, Trash2, CaseSensitive, Link, Database, TriangleAlert, Table, LayoutDashboard } from 'lucide-vue-next'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import ModalCenter from '@/components/ModalCenter.vue'
 import { useRouter } from 'vue-router'
 import { apiClient } from '@/js/api/manager.js'
 import { getChartTypeIcon, getChartTypeLabel, getChartTypeColor } from '@/core/bi/Charts/js/chartTypeIcons.js'
@@ -164,9 +107,7 @@ const props = defineProps({
   currentPage: String
 })
 
-// Флаг для отслеживания, был ли уже открыт сайдбар BI
 const hasBeenOpened = ref(false)
-
 const hoveredRow = ref(null)
 const favorites = ref(new Set())
 
@@ -176,14 +117,11 @@ const totalItemsCount = computed(() => {
 
 const sortedUsers = computed(() => {
   if (!props.users) return []
-  
   return [...props.users].sort((a, b) => {
     const aIsFavorite = isFavorite(a.id)
     const bIsFavorite = isFavorite(b.id)
-    
     if (aIsFavorite && !bIsFavorite) return -1
     if (!aIsFavorite && bIsFavorite) return 1
-    
     if (aIsFavorite === bIsFavorite) {
       const aDate = new Date(a.created_at || 0)
       const bDate = new Date(b.created_at || 0)
@@ -195,16 +133,19 @@ const sortedUsers = computed(() => {
 
 const favoritesInCurrentList = computed(() => {
   if (!props.users) return 0
-  const count = props.users.filter(user => isFavorite(user.id)).length
-  return count
+  return props.users.filter(user => isFavorite(user.id)).length
 })
+
+const favoritesStorageKey = computed(() => `favorite${props.currentPage.charAt(0).toUpperCase() + props.currentPage.slice(1)}`)
 
 const showDeleteDialog = ref(false)
 const rowToDelete = ref(null)
-
-const isDeleteLocked = ref(false)
-const deleteCountdown = ref(3)
-let countdownTimer = null
+const deleteConfirmMessage = computed(() => {
+  if (!rowToDelete.value) return ''
+  const name = rowToDelete.value?.name || rowToDelete.value?.original_filename || 'элемент'
+  const typeName = getTypeName(rowToDelete.value)
+  return `Вы действительно хотите удалить "${name}" (${typeName})?`
+})
 
 const showRenameDialog = ref(false)
 const rowToRename = ref(null)
@@ -212,20 +153,12 @@ const renameValue = ref('')
 const renameLoading = ref(false)
 const renameError = ref('')
 
-const showCopySuccess = ref(false)
-const copyOpacity = ref(1)
-let fadeTimeout = null
-let fadeRaf = null
-
+const toast = useToast()
 const router = useRouter()
-
 const connectionFilesStatus = ref(new Map())
-
-// Кэш для статуса файлов подключений
 const connectionFilesCache = ref(new Map())
 const lastCacheUpdate = ref(0)
-const CACHE_DURATION = 30000 // 30 секунд
-
+const CACHE_DURATION = 30000
 
 function handleRowClick(row) {
   if (props.currentPage === 'datasets') {
@@ -239,19 +172,19 @@ function handleRowClick(row) {
   }
 }
 
+function getConnectionType(row) {
+  return (row?.connector_type_display || row?.connector_type || '').toLowerCase().trim()
+}
+
+function isFileConnectionType(type) {
+  return type === 'file' || type === 'files' || type === 'файл' || type === 'файлы' ||
+    type.includes('file') || type.includes('файл')
+}
+
 function goToConnection(row) {
   if (!row || !row.id) return
-
-  const type = (row.connector_type_display || row.connector_type || '').toLowerCase().trim()
-  
-  const isFileConnection = type === 'file' || 
-                           type === 'files' || 
-                           type === 'файл' || 
-                           type === 'файлы' ||
-                           type.includes('file') || 
-                           type.includes('файл')
-
-  if (isFileConnection) {
+  const type = getConnectionType(row)
+  if (isFileConnectionType(type)) {
     router.push(`/bi/connections/${row.id}/files/`)
   } else {
     router.push(`/bi/connections/${row.id}/`)
@@ -275,9 +208,7 @@ function goToDashboard(row) {
 
 function loadFavorites() {
   favorites.value.clear()
-  
-  const key = `favorite${props.currentPage.charAt(0).toUpperCase() + props.currentPage.slice(1)}`
-  const raw = localStorage.getItem(key)
+  const raw = localStorage.getItem(favoritesStorageKey.value)
   if (raw) {
     try {
       favorites.value = new Set(JSON.parse(raw))
@@ -288,8 +219,7 @@ function loadFavorites() {
 }
 
 function saveFavorites() {
-  const key = `favorite${props.currentPage.charAt(0).toUpperCase() + props.currentPage.slice(1)}`
-  localStorage.setItem(key, JSON.stringify([...favorites.value]))
+  localStorage.setItem(favoritesStorageKey.value, JSON.stringify([...favorites.value]))
 }
 
 function toggleFavorite(id) {
@@ -308,7 +238,6 @@ function isFavorite(id) {
 onMounted(loadFavorites)
 watch(() => props.currentPage, loadFavorites, { immediate: true })
 
-// Отслеживаем первое открытие сайдбара BI
 watch(() => props.isDatasetSidebarOpen, (newValue) => {
   if (newValue && !hasBeenOpened.value) {
     hasBeenOpened.value = true
@@ -337,6 +266,10 @@ function onRowMouseLeave(rowId) {
   hoveredRow.value = null
 }
 
+function isRowMenuActive(rowId) {
+  return hoveredRow.value === rowId || (showMenu.value && menuRowId.value === rowId)
+}
+
 function onIconHover(event, text, cssClass = '') {
   tooltipText.value = text
   tooltipClass.value = cssClass
@@ -354,7 +287,7 @@ function hideTooltip() {
 }
 
 function getIconComponent(row) {
-  const type = (row.connector_type_display || row.connector_type || '').toLowerCase().trim()
+  const type = getConnectionType(row)
 
   if (props.currentPage === 'charts') {
     return {
@@ -373,11 +306,7 @@ function getIconComponent(row) {
   if (type.includes('clickhouse')) return { src: ClickHouseIcon, tooltip: 'ClickHouse' }
   if (type.includes('postgres')) return { src: PostgresIcon, tooltip: 'PostgreSQL' }
   if (type.includes('sql server') || type.includes('mssql')) return { src: MssqlIcon, tooltip: 'Microsoft SQL Server' }
-  
-  if (type === 'file' || type === 'files' || type === 'файл' || type === 'файлы' ||
-      type.includes('file') || type.includes('файл')) {
-    return { src: FileIcon, tooltip: 'Загруженные файлы' }
-  }
+  if (isFileConnectionType(type)) return { src: FileIcon, tooltip: 'Загруженные файлы' }
 
   return null
 }
@@ -391,6 +320,7 @@ function formatTooltipDate(dateStr) {
 const showMenu = ref(false)
 const menuPosition = ref({ top: '0px', left: '0px' })
 const menuRowId = ref(null)
+const menuDropdownRef = ref(null)
 
 function onMoreClick(event, rowId) {
   event.stopPropagation()
@@ -408,40 +338,58 @@ function closeMenu() {
   showMenu.value = false
 }
 
+function handleClickOutside(event) {
+  if (!menuDropdownRef.value?.contains(event.target)) {
+    closeMenu()
+  }
+}
+
+watch(showMenu, (open) => {
+  if (open) {
+    nextTick(() => document.addEventListener('mousedown', handleClickOutside))
+  } else {
+    document.removeEventListener('mousedown', handleClickOutside)
+  }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', handleClickOutside)
+})
+
 function getTypeName(row) {
   if (!row) return ''
   if (props.currentPage === 'datasets') return 'датасет'
   if (props.currentPage === 'connections') return 'подключение'
   if (props.currentPage === 'charts') return 'чарт'
   if (props.currentPage === 'dashboards') return 'дашборд'
+  return ''
 }
 
-function getDeleteEndpoint(row) {
-  if (props.currentPage === 'connections' || row.type === 'connection') {
-    return `/bi_analysis/bi_connections/${row.id}/`
-  }
-  if (props.currentPage === 'charts' || row.type === 'chart') {
-    return `/bi_analysis/bi_charts/${row.id}/`
-  }
-  if (props.currentPage === 'dashboards' || row.type === 'dashboard') {
-    return `/bi_analysis/bi_dashboards/${row.id}/`
-  }
+function getRowApiPath(row) {
+  if (props.currentPage === 'connections' || row?.type === 'connection') return `/bi_analysis/bi_connections/${row.id}/`
+  if (props.currentPage === 'charts' || row?.type === 'chart') return `/bi_analysis/bi_charts/${row.id}/`
+  if (props.currentPage === 'dashboards' || row?.type === 'dashboard') return `/bi_analysis/bi_dashboards/${row.id}/`
   return `/bi_analysis/bi_datasets/${row.id}/`
 }
 
+function getDeleteEndpoint(row) {
+  return getRowApiPath(row)
+}
+
 async function confirmDelete() {
-  if (isDeleteLocked.value || !rowToDelete.value) return
+  if (!rowToDelete.value) return
   const endpoint = getDeleteEndpoint(rowToDelete.value)
   try {
     const res = await apiClient.delete(endpoint)
     if (res.success) {
       emit('delete-row', rowToDelete.value)
       closeMenu()
+      toast.success('Элемент успешно удалён')
     } else {
-      alert('Ошибка при удалении: ' + (res.message || ''))
+      toast.error('Ошибка при удалении: ' + (res.message || ''))
     }
   } catch (err) {
-    alert('Ошибка при удалении: ' + err)
+    toast.error('Ошибка при удалении: ' + err)
   } finally {
     cancelDelete()
   }
@@ -450,24 +398,11 @@ async function confirmDelete() {
 function askDelete(row) {
   rowToDelete.value = row
   showDeleteDialog.value = true
-  isDeleteLocked.value = true
-  deleteCountdown.value = 3
-  if (countdownTimer) clearInterval(countdownTimer)
-  countdownTimer = setInterval(() => {
-    if (deleteCountdown.value > 1) {
-      deleteCountdown.value -= 1
-    } else {
-      isDeleteLocked.value = false
-      clearInterval(countdownTimer)
-    }
-  }, 1000)
 }
 
 function cancelDelete() {
   showDeleteDialog.value = false
   rowToDelete.value = null
-  isDeleteLocked.value = false
-  if (countdownTimer) clearInterval(countdownTimer)
 }
 
 function getRowById(id) {
@@ -490,34 +425,24 @@ async function doRename() {
   renameLoading.value = true
   renameError.value = ''
   const row = rowToRename.value
-  let endpoint = ''
-  let payload = {}
-
-  if (props.currentPage === 'connections' || row.type === 'connection') {
-    endpoint = `/bi_analysis/bi_connections/${row.id}/`
-    payload = { name: renameValue.value }
-  } else if (props.currentPage === 'charts' || row.type === 'chart') {
-    endpoint = `/bi_analysis/bi_charts/${row.id}/`
-    payload = { name: renameValue.value }
-  } else if (props.currentPage === 'dashboards' || row.type === 'dashboard') {
-    endpoint = `/bi_analysis/bi_dashboards/${row.id}/`
-    payload = { name: renameValue.value }
-  } else {
-    endpoint = `/bi_analysis/bi_datasets/${row.id}/`
-    payload = { name: renameValue.value }
-  }
+  const endpoint = getRowApiPath(row)
+  const payload = { name: renameValue.value }
 
   try {
     const res = await apiClient.patch(endpoint, payload)
     if (res.success !== false) {
       const rowInList = props.users.find(u => u.id === row.id)
       if (rowInList) rowInList.name = renameValue.value
+      toast.success('Элемент успешно переименован')
       cancelRename()
     } else {
-      renameError.value = 'Ошибка: ' + (res.message || 'Не удалось переименовать')
+      const msg = res.message || 'Не удалось переименовать'
+      renameError.value = 'Ошибка: ' + msg
+      toast.error('Ошибка при переименовании: ' + msg)
     }
   } catch (e) {
     renameError.value = 'Ошибка: ' + e
+    toast.error('Ошибка при переименовании: ' + e)
   } finally {
     renameLoading.value = false
   }
@@ -545,51 +470,26 @@ function getCopyLink(row) {
 async function copyLink(row) {
   try {
     await navigator.clipboard.writeText(getCopyLink(row))
-    showCopySuccess.value = true
-    copyOpacity.value = 1
-
-    if (fadeTimeout) clearTimeout(fadeTimeout)
-    if (fadeRaf) cancelAnimationFrame(fadeRaf)
-
-    const start = performance.now()
-    function fade(ts) {
-      const elapsed = Math.min((ts - start) / 3000, 1)
-      copyOpacity.value = 1 - elapsed
-      if (elapsed < 1) {
-        fadeRaf = requestAnimationFrame(fade)
-      } else {
-        showCopySuccess.value = false
-        copyOpacity.value = 1
-      }
-    }
-    fadeRaf = requestAnimationFrame(fade)
+    toast.success('Ссылка успешно скопирована в буфер обмена')
   } catch (err) {
-    alert('Не удалось скопировать ссылку: ' + err)
+    toast.error('Не удалось скопировать ссылку: ' + err.message)
   }
   closeMenu()
 }
 
-// Функции для проверки проблем с подключениями
 function shouldShowFileWarning(connection) {
   if (!connection) return false
-  
-  const type = (connection.connector_type_display || connection.connector_type || '').toLowerCase().trim()
-  
-  // Для файловых подключений проверяем статус файлов
-  if (type.includes('file') || type.includes('файл')) {
+  const type = getConnectionType(connection)
+  if (isFileConnectionType(type)) {
     return connection.hasMissingFiles || connection.hasProblematicFiles
   }
-  
-  // Для других типов подключений можно добавить дополнительные проверки
   return false
 }
 
 function getFileWarningTooltip(connection) {
   if (!connection) return ''
-  
-  const type = (connection.connector_type_display || connection.connector_type || '').toLowerCase().trim()
-  
-  if (type.includes('file') || type.includes('файл')) {
+  const type = getConnectionType(connection)
+  if (isFileConnectionType(type)) {
     if (connection.hasProblematicFiles) {
       return 'Возникла проблема с одним из файлов в подключении'
     }
@@ -644,16 +544,7 @@ async function loadConnectionFilesStatus(connectionId) {
 
 async function loadAllConnectionFilesStatus() {
   if (props.currentPage !== 'connections') return
-  
-  const fileConnections = props.users.filter(row => {
-    const type = (row.connector_type_display || row.connector_type || '').toLowerCase().trim()
-    return type === 'file' || 
-           type === 'files' || 
-           type === 'файл' || 
-           type === 'файлы' ||
-           type.includes('file') || 
-           type.includes('файл')
-  })
+  const fileConnections = props.users.filter(row => isFileConnectionType(getConnectionType(row)))
   
   const now = Date.now()
   const needsUpdate = now - lastCacheUpdate.value > CACHE_DURATION
@@ -727,12 +618,9 @@ function clearConnectionFilesCache() {
   lastCacheUpdate.value = 0
 }
 
-// Экспортируем функцию для использования в других компонентах
 defineExpose({
   clearConnectionFilesCache
 })
-
-
 </script>
 
 <style scoped lang="scss">
@@ -744,15 +632,11 @@ defineExpose({
   color: var(--color-primary-text);
 }
 
-
-
 .custom-table {
   width: 100%;
   border-collapse: collapse;
   border-radius: 12px;
 }
-
-
 
 .transparent-header th {
   background-color: transparent;
@@ -769,13 +653,10 @@ defineExpose({
 
 .table-row {
   transition: all 0.3s ease;
+  animation: fadeInUp 0.3s ease;
 }
 
-.table-row:hover {
-  background-color: var(--color-hover-background);
-  cursor: pointer;
-}
-
+.table-row:hover,
 .table-row.force-hover {
   background-color: var(--color-hover-background);
   cursor: pointer;
@@ -792,11 +673,6 @@ defineExpose({
 
 .table-row.favorite + .table-row:not(.favorite) {
   border-top: 2px solid rgba(250, 204, 21, 0.2);
-}
-
-/* Анимация для фильтрации */
-.table-row {
-  animation: fadeInUp 0.3s ease;
 }
 
 @keyframes fadeInUp {
@@ -887,7 +763,6 @@ defineExpose({
   transform: translateY(0);
 }
 
-/* Для избранных элементов кнопка звезды всегда видна */
 .actions-cell .action-btn.star.active {
   opacity: 1 !important;
   pointer-events: auto !important;
@@ -932,7 +807,6 @@ defineExpose({
 .action-btn.star.active {
   color: #facc15;
   animation: starPop 0.3s ease;
-  /* Для избранных элементов звезда всегда видна */
   opacity: 1 !important;
   pointer-events: auto !important;
 }
@@ -959,28 +833,49 @@ defineExpose({
   height: 18px;
 }
 
+.dropdown-menu-enter-active {
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.dropdown-menu-leave-active {
+  transition: opacity 0.15s ease-in, transform 0.15s ease-in;
+}
+
+.dropdown-menu-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.dropdown-menu-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
 .menu-dropdown {
   position: fixed;
   background-color: var(--color-primary-background);
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
-  padding: 8px 0;
-  min-width: 120px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
+  padding: 6px 0;
+  min-width: 180px;
   z-index: 10000;
 }
 
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 8px 16px;
+  gap: 8px;
+  padding: 10px 16px;
   color: var(--color-primary-text);
   cursor: pointer;
   transition: background 0.2s;
+  border-radius: 6px;
+  margin: 0 6px;
 }
 
-.menu-dropdown hr {
-  margin: 4px 0;
+.menu-item + .menu-item {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .menu-item:hover {
@@ -991,52 +886,8 @@ defineExpose({
   color: #f87171;
 }
 
-
-
-
-
-.fade-modal-enter-active,
-.fade-modal-leave-active {
-  transition: opacity 0.25s;
-}
-
-.fade-modal-enter-from,
-.fade-modal-leave-to {
-  opacity: 0;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 10050;
-  background: rgba(0, 0, 0, 0.48);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-dialog {
-  background: #212127;
-  color: #fff;
-  padding: 2rem 2.5rem;
-  border-radius: 16px;
-  box-shadow: 0 8px 40px 0 rgba(0, 0, 0, 0.32);
-  min-width: 340px;
-  max-width: 90vw;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  pointer-events: all;
-}
-
-.modal-title {
-  margin-bottom: 1.6rem;
-  font-size: 1.15rem;
-  text-align: center;
-  font-weight: 500;
+.menu-item.danger:hover {
+  background-color: rgba(248, 113, 113, 0.12);
 }
 
 .item-name {
@@ -1044,39 +895,5 @@ defineExpose({
   color: #f87171;
   margin: 0 0.3em;
   word-break: break-all;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1.5rem;
-}
-
-.btn {
-  min-width: 78px;
-  padding: 0.5em 1.4em;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition:
-    background 0.2s,
-    color 0.2s,
-    box-shadow 0.15s;
-}
-
-.copy-success-toast {
-  position: fixed;
-  bottom: 44px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--color-primary-background);
-  color: var(--color-primary-text);
-  font-size: 1rem;
-  padding: 1.1rem 2rem;
-  border-radius: 12px;
-  z-index: 20000;
-  box-shadow: 0 2px 12px #0007;
-  pointer-events: none;
-  opacity: 1;
-  transition: opacity 0.2s linear;
 }
 </style>
