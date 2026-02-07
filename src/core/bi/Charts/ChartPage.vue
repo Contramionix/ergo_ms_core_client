@@ -12,38 +12,28 @@
                 </button>
             </div>
             <div class="header-label-buttons">
-                <button v-if="isEditMode && datasetRows && datasetRows.length > 0" 
-                    class="btn text-white btn-sm btn-success" 
-                    @click="runChartAnalysis"
-                    style="display: flex; gap: 5px; justify-content: center; align-items: center;">
+                <button v-if="isEditMode && datasetRows && datasetRows.length > 0" class="btn text-white btn-sm btn-success"  @click="runChartAnalysis" style="display: flex; gap: 5px; justify-content: center; align-items: center;">
                     <BrainCircuit :size="18" />Интеллектуальный анализ
                 </button>
-                <button class="btn btn-sm fw-bold" :class="{ active: isFullScreen }"
-                    style="display: flex; gap: 5px; justify-content: center; align-items: center;"
-                    @click="toggleFullScreen">
+                <button class="btn btn-sm fw-bold" :class="{ active: isFullScreen }" style="display: flex; gap: 5px; justify-content: center; align-items: center;" @click="toggleFullScreen">
                     <Maximize />На весь экран
                 </button>
-                <button class="btn btn-sm btn-primary" :disabled="!chartRequiredFieldsFilled || !isChartDirty"
-                    @click="isSaveModalVisible = true">{{ isEditMode ? 'Сохранить изменения' : 'Создать чарт'
-                    }}</button>
+                <button class="btn btn-sm btn-primary" :disabled="!chartRequiredFieldsFilled || !isChartDirty" @click="isSaveModalVisible = true">{{ isEditMode ? 'Сохранить изменения' : 'Создать чарт' }}</button>
             </div>
         </div>
         <div :class="['body-grid', { 'no-fields': !selectedChartType, fullscreen: isFullScreen }]">
             <div class="datasets sectors border-elements elements-color">
                 <h5 class="m-0 me-2">Датасет</h5>
-                <button ref="buttonRef" v-if="!selectedDataset" class="btn btn-sm fw-bold" @click="openDatasetTooltip"
-                    style="display: flex; gap: 5px; justify-content: center; align-items: center; width: 100%;">
+                <button ref="buttonRef" v-if="!selectedDataset" class="btn btn-sm fw-bold" @click="openDatasetTooltip" style="display: flex; gap: 5px; justify-content: center; align-items: center; width: 100%;">
                     <Plus size="16" />Выбрать датасет
                 </button>
-                <button ref="buttonRef" v-else class="btn btn-sm fw-bold dataset-selected" @click="openDatasetTooltip"
-                    style="display: flex; gap: 5px; align-items: center; width: 100%; border: 1.5px solid #198754;">
+                <button ref="buttonRef" v-else class="btn btn-sm fw-bold dataset-selected" @click="openDatasetTooltip" style="display: flex; gap: 5px; align-items: center; width: 100%; border: 1.5px solid #198754;">
                     <Database size="16" />{{ selectedDataset?.name || 'Без имени' }}
                 </button>
             </div>
             <div class="diagramtype sectors border-elements elements-color">
                 <h5 class="m-0 me-2">Тип диаграммы</h5>
-                <select class="form-select form-select-sm" id="smallSelect" style="cursor: pointer;"
-                    :disabled="!selectedDataset" v-model="selectedChartType">
+                <select class="form-select form-select-sm" id="smallSelect" style="cursor: pointer;" :disabled="!selectedDataset" v-model="selectedChartType">
                     <option value="" disabled hidden>Выберите тип диаграммы</option>
                     <option value="line">Линейная диаграмма</option>
                     <option value="bar">Столбчатая диаграмма</option>
@@ -54,33 +44,13 @@
                     <option value="heatmap">Тепловая карта</option>
                 </select>
             </div>
-            <div class="fields sectors body-settings border-elements elements-color"
-                v-if="!isFullScreen && selectedChartType">
-                <div v-for="setting in settingTypes" :key="setting.key" class="setting">
-                    <div class="setting-header">
-                        <div class="setting-header-left">
-                            <component :is="setting.icon" size="18" />
-                            <h6 class="m-0 me-1">{{ setting.label }}</h6>
-                        </div>
-                        <div class="setting-header-right">
-                            <button class="btn btn-sm fw-bold" style="padding: 0; margin: 0; display: flex;"
-                                @click="openFieldsModal($event, setting.key)">
-                                <Plus size="16" />
-                            </button>
-                        </div>
-                    </div>
-                    <div v-for="f in selectedFields[setting.key]" :key="f.id" class="selected-field">
-                        <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
-                            <span class="field-icon" :class="f.source">
-                                <component :is="typeIcon[f.type] || Type" size="16" />
-                            </span>
-                            {{ f.name }}
-                        </div>
-                        <button class="remove-btn" @click="removeField(f, setting.key)" title="Удалить">
-                            <X size="18" />
-                        </button>
-                    </div>
-                </div>
+            <div class="fields sectors body-settings border-elements elements-color" v-if="!isFullScreen && selectedChartType">
+                <ChartSettingsFields
+                    :setting-types="settingTypes"
+                    :selected-fields="selectedFields"
+                    @add-field-click="openFieldsModal"
+                    @remove-field="removeField"
+                />
             </div>
             <div class="indicators sectors border-elements elements-color">
                 <h5 class="m-0 me-2">Показатели</h5>
@@ -124,7 +94,7 @@
 </template>
 
 <script setup>
-import { ChartPie, Maximize, Type, Plus, Ellipsis, Database, Hash, Calendar, CheckCircle, X, MapPin, Globe, BrainCircuit } from 'lucide-vue-next'
+import { ChartPie, Maximize, Plus, Ellipsis, Database, BrainCircuit } from 'lucide-vue-next'
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 
 import { apiClient } from '@/js/api/manager'
@@ -137,6 +107,7 @@ import DatasetSettings from '@/core/bi/Charts/components/DatasetSettings.vue'
 import ChartFields from '@/core/bi/Charts/ChartFields.vue'
 import ChartArea from '@/core/bi/Charts/ChartArea.vue'
 import ChartNameDialog from '@/core/bi/Charts/components/ChartNameDialog.vue'
+import ChartSettingsFields from '@/core/bi/Charts/components/ChartSettingsFields.vue'
 
 import { useRouter, useRoute } from 'vue-router'
 import { chartSettingsConfig } from '@/core/bi/MainPage/Sidebar/components/js/chartSettingsConfig.js'
@@ -186,19 +157,6 @@ const settingTypes = computed(() =>
 const selectedFields = ref({})
 
 watch(chartData, d => { chartName.value = d?.name || 'Новая диаграмма' }, { immediate: true })
-
-const typeIcon = {
-  string: Type,
-  integer: Hash,
-  float: Hash,
-  number: Hash,
-  date: Calendar,
-  'date&time': Calendar,
-  bool: CheckCircle,
-  boolean: CheckCircle,
-  geopoint: MapPin,
-  geopolygon: Globe,
-}
 
 const chartRequiredFieldsFilled = computed(() => {
     if (!selectedDataset.value) {
@@ -637,32 +595,6 @@ onBeforeUnmount(() => {
     width: 17.5rem;
 }
 
-.setting {
-    background-color: var(--color-secondary-background);
-    width: 100%;
-    border-radius: 8px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-}
-
-.setting-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-}
-
-.setting-header-left {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.setting-header-right {
-    display: flex;
-    justify-content: flex-start;
-}
-
 .border-elements {
     border-radius: 8px;
 }
@@ -723,47 +655,6 @@ onBeforeUnmount(() => {
     padding: 1rem;
     overflow: hidden;
     color: var(--color-primary-text);
-}
-
-.selected-field {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--color-primary-background);
-    border-radius: 6px;
-    padding: 4px 10px 4px 6px;
-    font-size: 14px;
-    line-height: 1;
-    margin-top: 7px;
-    color: var(--color-primary-text, #222);
-    transition: background 0.2s;
-}
-
-.selected-field:hover {
-    background: var(--color-hover-background);
-}
-
-.selected-field .remove-btn {
-    margin-left: 8px;
-    color: var(--color-secondary-text);
-    cursor: pointer;
-    background: none;
-    border: none;
-    padding: 2px;
-    border-radius: 4px;
-    transition: background 0.15s;
-}
-
-.selected-field .remove-btn:hover {
-    color: var(--color-accent);
-}
-
-.field-icon {
-    color: var(--color-accent);
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .btn:hover {
