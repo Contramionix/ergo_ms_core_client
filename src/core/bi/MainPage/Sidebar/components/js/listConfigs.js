@@ -56,6 +56,7 @@ export const listConfigs = {
       id: item.id,
       name: item.name,
       type_display: item.type_display || item.type,
+      chart_type: item.chart_type,
       created_at: item.created_at,
       owner: item.owner
     }),

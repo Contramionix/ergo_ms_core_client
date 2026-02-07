@@ -2,7 +2,9 @@
     <div class="page-body">
         <div class="body-header border-elements elements-color">
             <div class="header-label-icon">
-                <ChartPie />
+                <span class="chart-type-icon-header" :style="chartTypeIconStyle">
+                    <component :is="chartTypeIconComponent" />
+                </span>
                 <div style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
                     <h4 class="header-label" style="margin-bottom: 3px;">{{ chartName }}</h4>
                 </div>
@@ -29,16 +31,26 @@
             </div>
             <div class="diagramtype sectors border-elements elements-color">
                 <h5 class="m-0 me-2">Тип диаграммы</h5>
-                <select class="form-select form-select-sm" id="smallSelect" style="cursor: pointer;" :disabled="!selectedDataset" v-model="selectedChartType">
-                    <option value="" disabled hidden>Выберите тип диаграммы</option>
-                    <option value="line">Линейная диаграмма</option>
-                    <option value="bar">Столбчатая диаграмма</option>
-                    <option value="pie">Круговая диаграмма</option>
-                    <option value="doughnut">Кольцевая диаграмма</option>
-                    <option value="scatter">Точечная диаграмма</option>
-                    <option value="radar">Радарная диаграмма</option>
-                    <option value="heatmap">Тепловая карта</option>
-                </select>
+                <div class="chart-type-select">
+                <SelectBox v-model="selectedChartType" :options="CHART_TYPE_OPTIONS" value-key="value" label-key="label" :include-all-option="false" all-label="Выберите тип диаграммы" :disabled="!selectedDataset" size="sm">
+                    <template #selected="{ option, label }">
+                        <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                            <span class="flex-shrink-0" :style="{ color: getChartTypeColor(option?.value ?? selectedChartType) }">
+                                <component :is="getChartTypeIcon(option?.value ?? selectedChartType)" :size="16" />
+                            </span>
+                            <span class="text-truncate">{{ label }}</span>
+                        </span>
+                    </template>
+                    <template #option="{ value, label }">
+                        <span class="d-flex align-items-center gap-2">
+                            <span class="flex-shrink-0" :style="{ color: getChartTypeColor(value) }">
+                                <component :is="getChartTypeIcon(value)" :size="16" />
+                            </span>
+                            {{ label }}
+                        </span>
+                    </template>
+                </SelectBox>
+                </div>
             </div>
             <div class="fields sectors body-settings border-elements elements-color" v-if="!isFullScreen && selectedChartType">
                 <ChartSettingsFields :setting-types="settingTypes" :selected-fields="selectedFields" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit"/>
@@ -83,8 +95,10 @@
 </template>
 
 <script setup>
-import { ChartPie, Maximize, Plus, Database, BrainCircuit } from 'lucide-vue-next'
+import { Maximize, Plus, Database, BrainCircuit } from 'lucide-vue-next'
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
+import { getChartTypeIcon, getChartTypeColor, CHART_TYPE_OPTIONS } from '@/core/bi/Charts/js/chartTypeIcons.js'
+import SelectBox from '@/components/SelectBox.vue'
 
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
@@ -154,6 +168,15 @@ const datasetsLoading = ref(false)
 const settingTypes = computed(() =>
     chartSettingsConfig[selectedChartType.value] || []
 )
+
+const chartTypeIconComponent = computed(() =>
+  getChartTypeIcon(selectedChartType.value)
+)
+
+const chartTypeIconStyle = computed(() => {
+  const color = getChartTypeColor(selectedChartType.value)
+  return color ? { color } : {}
+})
 
 const selectedFields = ref({})
 
@@ -743,6 +766,12 @@ onBeforeUnmount(() => {
 
 .btn-full-screen:hover {
     background-color: var(--color-hover-background);
+}
+
+.chart-type-select :deep(.select-trigger) {
+    min-height: 31px;
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
 }
 
 @media (max-width: 1400px) {

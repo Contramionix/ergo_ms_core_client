@@ -25,6 +25,7 @@
                 <component
                   v-if="typeof getIconComponent(row).src === 'object' || typeof getIconComponent(row).src === 'function'"
                   :is="getIconComponent(row).src" class="icon"
+                  :style="getIconComponent(row).color ? { color: getIconComponent(row).color } : undefined"
                   @mouseenter="onIconHover($event, getIconComponent(row).tooltip)" @mouseleave="hideTooltip" />
                 <img v-else :src="getIconComponent(row).src" class="icon"
                   @mouseenter="onIconHover($event, getIconComponent(row).tooltip)" @mouseleave="hideTooltip" />
@@ -147,9 +148,10 @@
 
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue'
-import { Star, MoreHorizontal, Trash2, CaseSensitive, Link, ChartPie, Database, TriangleAlert, Table, LayoutDashboard } from 'lucide-vue-next'
+import { Star, MoreHorizontal, Trash2, CaseSensitive, Link, Database, TriangleAlert, Table, LayoutDashboard } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { apiClient } from '@/js/api/manager.js'
+import { getChartTypeIcon, getChartTypeLabel, getChartTypeColor } from '@/core/bi/Charts/js/chartTypeIcons.js'
 import ClickHouseIcon from '@/core/bi/assets/icons/clickhouse.svg'
 import PostgresIcon from '@/core/bi/assets/icons/postgres.svg'
 import MssqlIcon from '@/core/bi/assets/icons/mssql.svg'
@@ -355,7 +357,11 @@ function getIconComponent(row) {
   const type = (row.connector_type_display || row.connector_type || '').toLowerCase().trim()
 
   if (props.currentPage === 'charts') {
-    return { src: ChartPie, tooltip: 'Чарт' }
+    return {
+      src: getChartTypeIcon(row.chart_type),
+      tooltip: getChartTypeLabel(row.chart_type),
+      color: getChartTypeColor(row.chart_type)
+    }
   }
   if (props.currentPage === 'datasets') {
     return { src: Database, tooltip: 'Датасет' }
