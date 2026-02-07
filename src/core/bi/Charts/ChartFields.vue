@@ -5,11 +5,13 @@
     </div>
     <ul class="fields-list">
       <b>Показатели:</b>
-      <li v-for="f in availableFields" :key="f.id" class="field-item" :class="{ selected: isSelected(f) }" @click="!isSelected(f) && selectField(f)">
+      <li v-for="f in availableFields" :key="f.id" class="field-item" :class="{ selected: isSelected(f) }" @click="!isSelected(f) && selectField(f)" @mouseenter="onFieldItemMouseEnter" @mouseleave="onFieldItemMouseLeave">
         <span class="field-icon">
           <component :is="typeIcon[f.type] || Type" size="16" />
         </span>
-        <span class="field-name">{{ f.name }}</span>
+        <span class="field-name">
+          <span class="field-name-inner">{{ f.name }}</span>
+        </span>
       </li>
       <li v-if="!availableFields.length" class="field-empty">
         <i>Ничего не найдено</i>
@@ -60,11 +62,26 @@ function isSelected(field) {
 function selectField(field) {
   emit('select', field)
 }
+
+function onFieldItemMouseEnter(ev) {
+  const nameEl = ev.currentTarget?.querySelector('.field-name')
+  const innerEl = ev.currentTarget?.querySelector('.field-name-inner')
+  if (!nameEl || !innerEl) return
+  const overflow = innerEl.scrollWidth - nameEl.clientWidth
+  if (overflow > 0) {
+    innerEl.style.transform = `translateX(-${overflow}px)`
+  }
+}
+
+function onFieldItemMouseLeave(ev) {
+  const innerEl = ev.currentTarget?.querySelector('.field-name-inner')
+  if (innerEl) innerEl.style.transform = ''
+}
 </script>
 
 <style scoped>
 .chart-fields-modal {
-  padding-right: 8px;
+  padding-right: 14px;
   overflow-y: auto;
   height: 100%;
 }
@@ -81,6 +98,7 @@ function selectField(field) {
 }
 .field-item {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 10px;
   padding: 6px 8px;
@@ -94,14 +112,27 @@ function selectField(field) {
   background: var(--color-hover-background);
 }
 .field-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
   color: var(--color-accent);
 }
 .field-name {
   font-weight: 500;
   flex: 1 1 0;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.field-name-inner {
+  display: inline-block;
+  white-space: nowrap;
+  transition: transform 2s ease;
 }
 .field-empty {
   display: flex;

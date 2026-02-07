@@ -7,17 +7,13 @@
                     <h6 class="m-0 me-1">{{ setting.label }}</h6>
                 </div>
                 <div class="setting-header-right">
-                    <button class="btn btn-sm fw-bold" style="padding: 0; margin: 0; display: flex;" @click="onAddFieldClick($event, setting.key)">
+                    <button class="btn btn-sm fw-bold" style="padding: 0; margin: 0; display: flex;" data-fields-modal-trigger @click="onAddFieldClick($event, setting.key)">
                         <Plus size="16" />
                     </button>
                 </div>
             </div>
             <div v-for="f in selectedFields[setting.key]" :key="f.id" class="selected-field" :class="{ 'selected-field--clickable': setting.key === 'filters' }">
-                <div
-                    class="selected-field-content"
-                    style="display: flex; gap: 8px; justify-content: center; align-items: center;"
-                    @click="setting.key === 'filters' ? emit('editFilter', f) : null"
-                >
+                <div class="selected-field-content" style="display: flex; gap: 8px; justify-content: center; align-items: center;" @click="setting.key === 'filters' ? emit('editFilter', f) : null">
                     <span class="field-icon" :class="f.source">
                         <component :is="typeIcon[f.type] || Type" size="16" />
                     </span>
@@ -108,7 +104,7 @@ function filterFieldSuffix(f, settingKey) {
 
     .setting-header-right {
         display: flex;
-        justify-content: flex-start;
+        justify-content: center;
     }
 
     .selected-field {

@@ -74,25 +74,16 @@
         </div>
     </transition>
     <transition name="fade-slide" appear>
-        <div v-if="isFieldsModalVisible" class="tooltip-panel-fields"
-            :style="{ left: fieldsModalPosition.x + 'px', top: fieldsModalPosition.y + 'px', position: 'fixed', zIndex: 1000 }"
-            ref="fieldsModalRef">
+        <div v-if="isFieldsModalVisible" class="tooltip-panel-fields" :style="{ left: fieldsModalPosition.x + 'px', top: fieldsModalPosition.y + 'px', position: 'fixed', zIndex: 1000 }" ref="fieldsModalRef">
             <ChartFields :fields="indicators" :selected="selectedForModal" :allowed-types="currentAllowedTypes" @select="handleFieldSelect" />
         </div>
     </transition>
     <ChartNameDialog v-if="isSaveModalVisible" :visible="isSaveModalVisible" v-model="chartName" @update:visible="isSaveModalVisible = $event" @saved="onChartNameSaved" />
-    <ChartSettingsFilterModal
-        :visible="isFilterModalVisible"
-        :field="filterModalField"
-        :dataset-id="selectedDataset?.id ?? null"
-        :initial-filter="filterModalInitialFilter"
-        @update:visible="isFilterModalVisible = $event; if (!$event) filterModalField = null"
-        @apply="onFilterModalApply"
-    />
+    <ChartSettingsFilterModal :visible="isFilterModalVisible" :field="filterModalField" :dataset-id="selectedDataset?.id ?? null" :initial-filter="filterModalInitialFilter" @update:visible="isFilterModalVisible = $event; if (!$event) filterModalField = null" @apply="onFilterModalApply"/>
 </template>
 
 <script setup>
-import { ChartPie, Maximize, Plus, Ellipsis, Database, BrainCircuit } from 'lucide-vue-next'
+import { ChartPie, Maximize, Plus, Database, BrainCircuit } from 'lucide-vue-next'
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 
 import { apiClient } from '@/js/api/manager'
@@ -197,20 +188,16 @@ const chartRequiredFieldsFilled = computed(() => {
 
 function onSaveClick() {
     if (isEditMode.value) {
-        onChartNameSaved({
-            name: chartName.value,
-            description: chartData.value?.description ?? ''
-        })
+        onChartNameSaved({ name: chartName.value })
     } else {
         isSaveModalVisible.value = true
     }
 }
 
-async function onChartNameSaved({ name, description }) {
+async function onChartNameSaved({ name }) {
     chartName.value = name
     const payload = {
         name,
-        description,
         dataset: selectedDataset.value.id,
         chart_type: selectedChartType.value,
         engine: selectedEngine.value,
@@ -297,16 +284,35 @@ const selectedForModal = computed(() => {
     return result
 })
 
+const GAP = 6
+
+function clampFloatingPosition(anchorRect, panelWidth, panelHeight) {
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    let x = anchorRect.left
+    let y = anchorRect.bottom + GAP
+    if (x + panelWidth > vw) x = Math.max(0, vw - panelWidth - GAP)
+    if (x < 0) x = GAP
+    if (y + panelHeight > vh) {
+        const spaceAbove = anchorRect.top
+        if (spaceAbove >= panelHeight + GAP) y = anchorRect.top - panelHeight - GAP
+        else y = Math.max(GAP, vh - panelHeight - GAP)
+    }
+    if (y < 0) y = GAP
+    return { x, y }
+}
+
 function toggleFullScreen() {
     isFullScreen.value = !isFullScreen.value
 }
 
 function openFieldsModal(event, settingKey) {
-    const rect = event.currentTarget.getBoundingClientRect()
-    fieldsModalPosition.value = {
-        x: rect.left,
-        y: rect.bottom + 6,
+    if (isFieldsModalVisible.value && currentSetting.value === settingKey) {
+        isFieldsModalVisible.value = false
+        return
     }
+    const rect = event.currentTarget.getBoundingClientRect()
+    fieldsModalPosition.value = clampFloatingPosition(rect, 216, 300)
     isFieldsModalVisible.value = true
     currentSetting.value = settingKey
 
@@ -315,16 +321,12 @@ function openFieldsModal(event, settingKey) {
 }
 
 function openDatasetTooltip() {
-  const rect = buttonRef.value.getBoundingClientRect()
-  let x = rect.left
-  let y = rect.bottom + 6
-  const maxX = window.innerWidth - 380 // ~ширина тултипа + отступ
-  const maxY = window.innerHeight - 240 // ~высота тултипа + отступ
-  if (x > maxX) x = maxX
-  if (y > maxY) y = maxY
-  tooltipPosition.value = { x, y }
-  isDatasetTooltipVisible.value = true
-  fetchDatasetsOnce()
+    const rect = buttonRef.value.getBoundingClientRect()
+    const panelWidth = Math.min(360, window.innerWidth * 0.9)
+    const panelHeight = Math.min(436, window.innerHeight * 0.8)
+    tooltipPosition.value = clampFloatingPosition(rect, panelWidth, panelHeight)
+    isDatasetTooltipVisible.value = true
+    fetchDatasetsOnce()
 }
 
 function closeDatasetTooltip() {
@@ -363,7 +365,8 @@ function onClickOutside(event) {
     if (
         isFieldsModalVisible.value &&
         fieldsModalEl &&
-        !fieldsModalEl.contains(event.target)
+        !fieldsModalEl.contains(event.target) &&
+        !event.target.closest('[data-fields-modal-trigger]')
     ) {
         isFieldsModalVisible.value = false
     }
@@ -676,8 +679,6 @@ onBeforeUnmount(() => {
     position: fixed;
     display: flex;
     flex-direction: column;
-    top: 300px;
-    left: 385px;
     width: min(360px, 90vw);
     min-width: 220px;
     max-width: 98vw;
@@ -699,7 +700,7 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     width: 216px;
-    max-height: 300px;
+    max-height: min(300px, 50vh);
     background-color: var(--color-primary-background);
     border-radius: 8px;
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
@@ -707,6 +708,31 @@ onBeforeUnmount(() => {
     padding: 1rem;
     overflow: hidden;
     color: var(--color-primary-text);
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.fade-slide-enter-from {
+    opacity: 0;
+    transform: translateY(-8px);
+}
+
+.fade-slide-enter-to {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.fade-slide-leave-from {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.fade-slide-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
 }
 
 .btn-full-screen:hover {

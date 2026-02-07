@@ -1,9 +1,6 @@
 <template>
   <div v-if="!props.dataset" class="fields-placeholder">
-    <div class="alert alert-info info-box">
-      <CircleAlert :size="40" class="me-1" />
-      Прежде чем увидеть содержимое, добавьте датасет
-    </div>
+    <div class="alert alert-info info-box"><CircleAlert :size="40" class="me-1" />Прежде чем увидеть содержимое, добавьте датасет</div>
   </div>
   <div v-else style="overflow-y: auto; height: 100%;">
     <ul class="fields-list">
@@ -28,8 +25,6 @@ const props = defineProps({
   dataset: Object,
   fields: { type: Array, default: () => [] }
 })
-
-
 
 const typeIcon = {
   string: Type,

@@ -3,11 +3,10 @@
     <div class="modal-window">
       <div class="modal-header">
         <h5 class="modal-title">Название графика</h5>
-        <button class="close-btn" @click="cancel">×</button>
+        <button class="close-btn" @click="cancel" type="button" aria-label="Закрыть"><X size="20" /></button>
       </div>
 
       <input v-model="localName" class="form-control my-3" placeholder="Введите название графика" @keyup.enter="submit"/>
-      <textarea v-model="localDesc" class="form-control" rows="2" placeholder="Описание (необязательно)" style="margin-bottom: 10px;"/>
       <div class="modal-footer">
         <button class="btn btn-secondary" @click="cancel">Отмена</button>
         <button class="btn btn-primary" @click="submit" :disabled="!localName">Сохранить</button>
@@ -19,29 +18,25 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { X } from 'lucide-vue-next'
 
 const props = defineProps({
   visible: Boolean,
-  modelValue: String,
-  desc: String
+  modelValue: String
 })
 const emit = defineEmits(['update:visible', 'saved', 'update:modelValue'])
 
 const localName = ref(props.modelValue || '')
-const localDesc = ref(props.desc || '')
 const error = ref('')
 
 watch(() => props.modelValue, (newVal) => {
   localName.value = newVal || ''
 })
-watch(() => props.desc, (newVal) => {
-  localDesc.value = newVal || ''
-})
 
 function submit() {
   if (!localName.value) return
   error.value = ''
-  emit('saved', { name: localName.value, description: localDesc.value })
+  emit('saved', { name: localName.value })
   emit('update:visible', false)
 }
 function cancel() {
@@ -78,9 +73,12 @@ function cancel() {
 }
 
 .close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
   background: none;
   border: none;
-  font-size: 1.5rem;
   color: var(--color-secondary-text);
   cursor: pointer;
 }

@@ -10,16 +10,12 @@
   </ul>
   
   <ul v-else-if="filteredDatasets.length > 0" class="dataset-list">
-    <li v-for="dataset in filteredDatasets" :key="dataset.id" class="dataset-item"
-      :class="{ selected: isSelected(dataset) }" @click="emit('select', dataset)">
-      <Database class="icon" />
-      <span class="dataset-name">{{ dataset.name }}</span>
+    <li v-for="dataset in filteredDatasets" :key="dataset.id" class="dataset-item" :class="{ selected: isSelected(dataset) }" @click="emit('select', dataset)">
+      <Database class="icon" /><span class="dataset-name">{{ dataset.name }}</span>
     </li>
   </ul>
   
-  <div v-else class="no-data">
-    Нет датасетов
-  </div>
+  <div v-else class="no-data">Нет датасетов</div>
 </template>
 
 <script setup>
