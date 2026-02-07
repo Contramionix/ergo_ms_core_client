@@ -12,14 +12,18 @@
                     </button>
                 </div>
             </div>
-            <div v-for="f in selectedFields[setting.key]" :key="f.id" class="selected-field">
-                <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
+            <div v-for="f in selectedFields[setting.key]" :key="f.id" class="selected-field" :class="{ 'selected-field--clickable': setting.key === 'filters' }">
+                <div
+                    class="selected-field-content"
+                    style="display: flex; gap: 8px; justify-content: center; align-items: center;"
+                    @click="setting.key === 'filters' ? emit('editFilter', f) : null"
+                >
                     <span class="field-icon" :class="f.source">
                         <component :is="typeIcon[f.type] || Type" size="16" />
                     </span>
-                    {{ f.name }}
+                    {{ f.name }}{{ filterFieldSuffix(f, setting.key) }}
                 </div>
-                <button class="remove-btn" @click="emit('removeField', f, setting.key)" title="Удалить">
+                <button class="remove-btn" @click.stop="emit('removeField', f, setting.key)" title="Удалить">
                     <X size="18" />
                 </button>
             </div>
@@ -41,7 +45,7 @@ defineProps({
     },
 })
 
-const emit = defineEmits(['addFieldClick', 'removeField'])
+const emit = defineEmits(['addFieldClick', 'removeField', 'editFilter'])
 
 const typeIcon = {
     string: Type,
@@ -58,6 +62,20 @@ const typeIcon = {
 
 function onAddFieldClick(event, settingKey) {
     emit('addFieldClick', event, settingKey)
+}
+
+function filterFieldSuffix(f, settingKey) {
+    if (settingKey !== 'filters' || !f.filter) return ''
+    const op = f.filter.op
+    const value = f.filter.value
+    if (op === 'empty' || op === 'nempty') return ''
+    if (Array.isArray(value)) {
+        const n = value.length
+        if (n === 0) return ''
+        const word = n === 1 ? 'значение' : n >= 2 && n <= 4 ? 'значения' : 'значений'
+        return `: ${n} ${word}`
+    }
+    return value == null ? '' : `: ${String(value)}`
 }
 </script>
 
@@ -109,6 +127,14 @@ function onAddFieldClick(event, settingKey) {
 
     .selected-field:hover {
         background: var(--color-hover-background);
+    }
+
+    .selected-field-content {
+        align-self: center;
+    }
+
+    .selected-field--clickable .selected-field-content {
+        cursor: pointer;
     }
 
     .selected-field .remove-btn {

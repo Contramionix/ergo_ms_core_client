@@ -50,6 +50,7 @@
                     :selected-fields="selectedFields"
                     @add-field-click="openFieldsModal"
                     @remove-field="removeField"
+                    @edit-filter="openFilterModalForEdit"
                 />
             </div>
             <div class="indicators sectors border-elements elements-color">
@@ -91,6 +92,14 @@
         </div>
     </transition>
     <ChartNameDialog v-if="isSaveModalVisible" :visible="isSaveModalVisible" v-model="chartName" @update:visible="isSaveModalVisible = $event" @saved="onChartNameSaved" />
+    <ChartSettingsFilterModal
+        :visible="isFilterModalVisible"
+        :field="filterModalField"
+        :dataset-id="selectedDataset?.id ?? null"
+        :initial-filter="filterModalInitialFilter"
+        @update:visible="isFilterModalVisible = $event; if (!$event) filterModalField = null"
+        @apply="onFilterModalApply"
+    />
 </template>
 
 <script setup>
@@ -108,6 +117,7 @@ import ChartFields from '@/core/bi/Charts/ChartFields.vue'
 import ChartArea from '@/core/bi/Charts/ChartArea.vue'
 import ChartNameDialog from '@/core/bi/Charts/components/ChartNameDialog.vue'
 import ChartSettingsFields from '@/core/bi/Charts/components/ChartSettingsFields.vue'
+import ChartSettingsFilterModal from '@/core/bi/Charts/components/ChartSettingsFilterModal.vue'
 
 import { useRouter, useRoute } from 'vue-router'
 import { chartSettingsConfig } from '@/core/bi/MainPage/Sidebar/components/js/chartSettingsConfig.js'
@@ -125,6 +135,13 @@ const buttonRef = ref(null)
 const isFieldsModalVisible = ref(false)
 const fieldsModalPosition = ref({ x: 0, y: 0 })
 const fieldsModalRef = ref(null)
+
+const isFilterModalVisible = ref(false)
+const filterModalField = ref(null)
+
+const filterModalInitialFilter = computed(() =>
+  filterModalField.value?.filter ?? null
+)
 
 const selectedDataset = ref(null)
 const selectedChartType = ref('')
@@ -347,14 +364,39 @@ function onClickOutside(event) {
 
 function handleFieldSelect(field) {
     const key = currentSetting.value
+    if (key === 'filters') {
+        isFieldsModalVisible.value = false
+        filterModalField.value = field
+        isFilterModalVisible.value = true
+        return
+    }
     if (!Array.isArray(selectedFields.value[key])) {
         selectedFields.value[key] = []
     }
     if (!selectedFields.value[key].some(f => f.id === field.id)) {
         selectedFields.value[key].push(field)
     }
-    
     isFieldsModalVisible.value = false
+}
+
+function openFilterModalForEdit(field) {
+    filterModalField.value = field
+    isFilterModalVisible.value = true
+}
+
+function onFilterModalApply({ field, filter }) {
+    if (!Array.isArray(selectedFields.value.filters)) {
+        selectedFields.value.filters = []
+    }
+    const idx = selectedFields.value.filters.findIndex((f) => f.id === field.id)
+    const entry = { ...field, filter }
+    if (idx >= 0) {
+        selectedFields.value.filters[idx] = entry
+    } else {
+        selectedFields.value.filters.push(entry)
+    }
+    isFilterModalVisible.value = false
+    filterModalField.value = null
 }
 
 function removeField(field, type) {

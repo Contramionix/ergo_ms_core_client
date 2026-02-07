@@ -4,6 +4,13 @@ export default {
   getColumns(datasetId) {
     return apiClient.get(`/bi_analysis/bi_datasets/${datasetId}/columns/`)
   },
+  getFieldValues(datasetId, fieldId, search) {
+    let url = `/bi_analysis/bi_datasets/${datasetId}/field-values/${fieldId}/`
+    if (search != null && String(search).trim() !== '') {
+      url += `?search=${encodeURIComponent(String(search).trim())}`
+    }
+    return apiClient.get(url)
+  },
   getRows(datasetId) {
     return apiClient.get(`/bi_analysis/bi_datasets/${datasetId}/rows/`)
   },

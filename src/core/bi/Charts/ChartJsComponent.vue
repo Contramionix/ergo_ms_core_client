@@ -23,6 +23,15 @@ function findField(keys, many=false) {
   return many ? [] : null
 }
 
+function normalizedFilters() {
+  const raw = props.fields?.filters ?? []
+  return raw.map((f) => ({
+    field: { name: f.name },
+    op: f.filter?.op ?? 'eq',
+    value: f.filter?.value ?? [],
+  }))
+}
+
 const chartData = computed(() => {
   if (!props.dataset.length) return { labels: [], datasets: [] }
 
@@ -35,7 +44,7 @@ const chartData = computed(() => {
     const colorField  = findField(['color', 'colors'])
     const sortFields  = props.fields?.sort ?? []
     const labelField  = findField(['labels', 'label'])   // одно поле подписи
-    const filters     = props.fields?.filters ?? []
+    const filters     = normalizedFilters()
 
     return getLineData(
       props.dataset,    // строки
@@ -53,7 +62,7 @@ const chartData = computed(() => {
   const xField     = findField(['x'],    true)
   const yField     = findField(['y'],    true)
   const colorField = findField(['color', 'colors'])
-  const filters = props.fields?.filters ?? []
+  const filters = normalizedFilters()
   const labelFields = findField(['labels', 'label'], true)
   const sort = props.fields?.sort ?? null
   return getBarData(
@@ -79,8 +88,8 @@ const chartData = computed(() => {
     categoryFields,
     valueFields,
     colorFields,
-    props.fields?.sort    ?? [],
-    props.fields?.filters ?? [],
+    props.fields?.sort ?? [],
+    normalizedFilters(),
   )
 }
 
@@ -92,8 +101,8 @@ const chartData = computed(() => {
       findField(['points'],  true),
       findField(['size'],    true),
       findField(['color'],   true),
-      props.fields?.sort    ?? [],
-      props.fields?.filters ?? [],
+      props.fields?.sort ?? [],
+      normalizedFilters(),
     )
 
     // Явно добавляем подписи и заголовки осей, если они есть
@@ -127,8 +136,8 @@ const chartData = computed(() => {
   const categoryField = findField(['category', 'labels', 'x'])
   const valueFields   = findField(['indicators', 'y'], true)
   const colorField    = findField(['color', 'colors'])
-  const sortFields    = props.fields?.sort    ?? []
-  const filters       = props.fields?.filters ?? []
+  const sortFields    = props.fields?.sort ?? []
+  const filters       = normalizedFilters()
 
   return getRadarData(
     props.dataset,

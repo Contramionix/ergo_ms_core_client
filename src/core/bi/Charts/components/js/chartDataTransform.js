@@ -1,5 +1,40 @@
 import { PALETTE, getColorMap, getRowColors } from './chartColors'
 
+function passFilterRow(row, f) {
+  const fieldName = f.field?.name ?? f.field
+  const v = row[fieldName]
+  const op = f.op ?? 'eq'
+  const value = f.value
+  const strV = String(v ?? '')
+  const strVal = String(value ?? '')
+  const lowerV = strV.toLowerCase()
+  const lowerVal = strVal.toLowerCase()
+  const numV = Number(v)
+  const numVal = Number(value)
+  const isNum = Number.isFinite(numV) && Number.isFinite(numVal)
+  switch (op) {
+    case 'eq': return String(v) === String(value)
+    case 'neq': return String(v) !== String(value)
+    case 'in': return (value ?? []).includes(v)
+    case 'nin': return !(value ?? []).includes(v)
+    case 'empty': return v == null || v === ''
+    case 'nempty': return v != null && v !== ''
+    case 'startswith': return strV.startsWith(strVal)
+    case 'startswith_i': return lowerV.startsWith(lowerVal)
+    case 'endswith': return strV.endsWith(strVal)
+    case 'endswith_i': return lowerV.endsWith(lowerVal)
+    case 'contains': return strV.includes(strVal)
+    case 'contains_i': return lowerV.includes(lowerVal)
+    case 'ncontains': return !strV.includes(strVal)
+    case 'ncontains_i': return !lowerV.includes(lowerVal)
+    case 'gt': return isNum ? numV > numVal : strV > strVal
+    case 'gte': return isNum ? numV >= numVal : strV >= strVal
+    case 'lt': return isNum ? numV < numVal : strV < strVal
+    case 'lte': return isNum ? numV <= numVal : strV <= strVal
+    default: return String(v) === String(value)
+  }
+}
+
 export function getLineData(
   rows,
   xFields      = [],
@@ -8,14 +43,12 @@ export function getLineData(
   colorField   = null,   // { name, … }  или null
   sortFields   = [],     // [{ field, desc }]
   labelField   = null,   // { name, … }  или null
-  filters      = []      // [{ field, value }]
+  filters      = []      // [{ field: { name }, op, value }] или legacy [{ field, value }]
 ) {
   if (!rows?.length) return { labels: [], datasets: [] };
 
   /* 1. Фильтры ----------------------------------------------------------- */
-  rows = rows.filter(r =>
-    filters.every(f => String(r[f.field]) === String(f.value))
-  );
+  rows = rows.filter(r => filters.every(f => passFilterRow(r, f)));
 
   /* 2. Сортировка -------------------------------------------------------- */
   sortFields.forEach(({ field, desc }) => {
@@ -102,22 +135,8 @@ export function getBarData(
   if (!dataset?.length || yFields.length === 0) return { labels: [], datasets: [] }
 
   // --- 1. фильтрация ---
-  const passFilter = (row, { field, op = 'eq', value }) => {
-    const v = row[field?.name ?? field]
-    switch (op) {
-      case 'eq'  : return v ==  value
-      case 'neq' : return v !=  value
-      case 'gt'  : return v >  value
-      case 'gte' : return v >= value
-      case 'lt'  : return v <  value
-      case 'lte' : return v <= value
-      case 'in'  : return (value ?? []).includes(v)
-      case 'nin' : return !(value ?? []).includes(v)
-      default    : return true
-    }
-  }
   const dataFiltered = dataset.filter(row =>
-    filters.every(f => passFilter(row, f))
+    filters.every(f => passFilterRow(row, f))
   )
 
   // --- 2. ключ-подпись ---
@@ -245,9 +264,7 @@ export function getPieData(
   }
 
   /* 1. фильтруем -------------------------------------------------------- */
-  rows = rows.filter(r =>
-    filters.every(f => String(r[f.field]) === String(f.value))
-  )
+  rows = rows.filter(r => filters.every(f => passFilterRow(r, f)))
 
   /* 2. формируем label по ВСЕМ категориям ------------------------------ */
   const makeLabel = r => categoryFields.map(f => r[f.name]).join(' / ')
@@ -334,9 +351,7 @@ export function getScatterData(
   if (!rows?.length || !xField || !yField) return { labels: [], datasets: [] }
 
   /* ── фильтры */
-  rows = rows.filter(r =>
-    filters.every(f => String(r[f.field]) === String(f.value))
-  )
+  rows = rows.filter(r => filters.every(f => passFilterRow(r, f)))
 
   /* ── кодировщики категорий → число */
   const xEnc = makeEncoder()
@@ -406,9 +421,7 @@ export function getRadarData (
   }
 
   /* 1. фильтры ----------------------------------------------------------- */
-  rows = rows.filter(r =>
-    filters.every(f => String(r[f.field]) === String(f.value))
-  )
+  rows = rows.filter(r => filters.every(f => passFilterRow(r, f)))
 
   /* 2. агрегируем дубликаты категорий (сумма) ---------------------------- */
   const bucket = new Map()     // key = category → { sums: valueFields.length }
