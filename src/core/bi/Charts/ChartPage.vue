@@ -35,7 +35,7 @@
                 <SelectBox v-model="selectedChartType" :options="CHART_TYPE_OPTIONS" value-key="value" label-key="label" :include-all-option="false" all-label="Выберите тип диаграммы" :disabled="!selectedDataset" size="sm">
                     <template #selected="{ option, label }">
                         <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
-                            <span class="flex-shrink-0" :style="{ color: getChartTypeColor(option?.value ?? selectedChartType) }">
+                            <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getChartTypeColor(option?.value ?? selectedChartType) }">
                                 <component :is="getChartTypeIcon(option?.value ?? selectedChartType)" :size="16" />
                             </span>
                             <span class="text-truncate">{{ label }}</span>
@@ -43,7 +43,7 @@
                     </template>
                     <template #option="{ value, label }">
                         <span class="d-flex align-items-center gap-2">
-                            <span class="flex-shrink-0" :style="{ color: getChartTypeColor(value) }">
+                            <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getChartTypeColor(value) }">
                                 <component :is="getChartTypeIcon(value)" :size="16" />
                             </span>
                             {{ label }}
