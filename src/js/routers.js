@@ -142,6 +142,10 @@ router.beforeEach(async (to, from, next) => {
       return next(params)
     }
 
+    if (to.meta?.startRoute === true && (await runCheckToken())) {
+      return safeNext({ name: 'Account' })
+    }
+
     // 1) нужна авторизация?
     if (to.meta.requiresAuth && !(await runCheckToken())) {
       // Очищаем токены при неудачной проверке
