@@ -10,7 +10,8 @@ const props = defineProps({
   chartType: { type: String,           default: ''       },
   fields  :  { type: Object,           default: () => ({}) },
   settings:  { type: Array,            default: () => [] },
-  engine  :  { type: String,           default: 'chartjs' }
+  engine  :  { type: String,           default: 'chartjs' },
+  dataLoading: { type: Boolean,        default: false }
 })
 const emit = defineEmits(['update:engine'])
 
@@ -43,7 +44,7 @@ watch([() => props.dataset, () => props.fields], () => {
 
 <template>
   <div class="chart-area">
-    <div v-if="isLoading" class="chart-loader">
+    <div v-if="isLoading || dataLoading" class="chart-loader">
       <Loader2 class="chart-loader-spinner" size="40"/>
       <span>Загружаем график…</span>
     </div>

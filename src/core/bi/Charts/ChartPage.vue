@@ -6,19 +6,15 @@
                 <div style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
                     <h4 class="header-label" style="margin-bottom: 3px;">{{ chartName }}</h4>
                 </div>
-                <button class="btn btn-sm fw-bold btn-chart-action" style="padding: 0; margin: 0; display: flex;"
-                    hidden>
-                    <Ellipsis size="20" />
-                </button>
             </div>
             <div class="header-label-buttons">
                 <button v-if="isEditMode && datasetRows && datasetRows.length > 0" class="btn text-white btn-sm btn-success"  @click="runChartAnalysis" style="display: flex; gap: 5px; justify-content: center; align-items: center;">
                     <BrainCircuit :size="18" />Интеллектуальный анализ
                 </button>
-                <button class="btn btn-sm fw-bold" :class="{ active: isFullScreen }" style="display: flex; gap: 5px; justify-content: center; align-items: center;" @click="toggleFullScreen">
+                <button class="btn btn-sm fw-bold btn-full-screen" :class="{ active: isFullScreen }" style="display: flex; gap: 5px; justify-content: center; align-items: center;" @click="toggleFullScreen">
                     <Maximize />На весь экран
                 </button>
-                <button class="btn btn-sm btn-primary" :disabled="!chartRequiredFieldsFilled || !isChartDirty" @click="isSaveModalVisible = true">{{ isEditMode ? 'Сохранить изменения' : 'Создать чарт' }}</button>
+                <button class="btn btn-sm btn-primary" :disabled="(isEditMode && loading) || !chartRequiredFieldsFilled || !isChartDirty" @click="onSaveClick">{{ isEditMode ? 'Сохранить изменения' : 'Создать чарт' }}</button>
             </div>
         </div>
         <div :class="['body-grid', { 'no-fields': !selectedChartType, fullscreen: isFullScreen }]">
@@ -45,13 +41,7 @@
                 </select>
             </div>
             <div class="fields sectors body-settings border-elements elements-color" v-if="!isFullScreen && selectedChartType">
-                <ChartSettingsFields
-                    :setting-types="settingTypes"
-                    :selected-fields="selectedFields"
-                    @add-field-click="openFieldsModal"
-                    @remove-field="removeField"
-                    @edit-filter="openFilterModalForEdit"
-                />
+                <ChartSettingsFields :setting-types="settingTypes" :selected-fields="selectedFields" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit"/>
             </div>
             <div class="indicators sectors border-elements elements-color">
                 <h5 class="m-0 me-2">Показатели</h5>
@@ -72,8 +62,7 @@
                 </div>
             </div>
             <div class="body-chart border-elements elements-color" :class="{ fullscreen: isFullScreen }">
-                <ChartArea :dataset="datasetRows" :chart-type="selectedChartType" :fields="selectedFields"
-                    :key="selectedChartType" :settings="settingTypes" @engineChange="selectedEngine = $event" />
+                <ChartArea :dataset="datasetRows" :chart-type="selectedChartType" :fields="selectedFields" :key="selectedChartType" :settings="settingTypes" :data-loading="datasetRowsLoading" @engineChange="selectedEngine = $event" />
             </div>
         </div>
     </div>
@@ -120,10 +109,12 @@ import ChartSettingsFields from '@/core/bi/Charts/components/ChartSettingsFields
 import ChartSettingsFilterModal from '@/core/bi/Charts/components/ChartSettingsFilterModal.vue'
 
 import { useRouter, useRoute } from 'vue-router'
+import { useToast } from 'vue-toastification'
 import { chartSettingsConfig } from '@/core/bi/MainPage/Sidebar/components/js/chartSettingsConfig.js'
 import chartService from '@/core/bi/MainPage/Sidebar/components/js/chartService.js'
 import { useAssistant } from '@/core/ai-assistant/js/assistantService.js'
 
+const toast = useToast()
 const isFullScreen = ref(false)
 const assistant = useAssistant()
 
@@ -150,6 +141,7 @@ const indicators = ref([])
 const currentSetting = ref('')
 
 const datasetRows = ref([])
+const datasetRowsLoading = ref(false)
 
 const currentAllowedTypes = ref(null)
 const selectedEngine = ref('chartjs')
@@ -203,6 +195,17 @@ const chartRequiredFieldsFilled = computed(() => {
     return true
 })
 
+function onSaveClick() {
+    if (isEditMode.value) {
+        onChartNameSaved({
+            name: chartName.value,
+            description: chartData.value?.description ?? ''
+        })
+    } else {
+        isSaveModalVisible.value = true
+    }
+}
+
 async function onChartNameSaved({ name, description }) {
     chartName.value = name
     const payload = {
@@ -216,20 +219,24 @@ async function onChartNameSaved({ name, description }) {
     }
     try {
         if (isEditMode.value) {
-            // Редактирование
             const { data: updated } = await chartService.updateChart(chartId.value, payload)
             chartData.value = updated
-            // Можно показать уведомление
+            originalChart.value = {
+                name: updated.name,
+                datasetId: typeof updated.dataset === 'object' && updated.dataset !== null ? updated.dataset.id : updated.dataset,
+                chart_type: updated.chart_type,
+                engine: updated.engine,
+                params: JSON.parse(JSON.stringify(updated.params ?? {})),
+            }
+            toast.success('Изменения сохранены')
         } else {
-            // Создание
             const { data } = await chartService.createChart(payload)
-            // Переход на страницу созданного чарта
             if (data && data.id) {
                 router.push({ name: 'ChartPage', params: { id: data.id } })
             }
         }
     } catch {
-        // Игнорируем ошибку
+        toast.error('Не удалось сохранить изменения')
     }
     isSaveModalVisible.value = false
 }
@@ -416,6 +423,7 @@ watch(
   selectedFields,
   async v => {
     if (selectedDataset.value?.id) {
+      datasetRowsLoading.value = true
       try {
         const { data } = await chartService.getDatasetRowsAgg(
           selectedDataset.value.id, v
@@ -423,6 +431,8 @@ watch(
         datasetRows.value = data
       } catch {
         // Игнорируем ошибку
+      } finally {
+        datasetRowsLoading.value = false
       }
     }
   },
@@ -699,7 +709,7 @@ onBeforeUnmount(() => {
     color: var(--color-primary-text);
 }
 
-.btn:hover {
+.btn-full-screen:hover {
     background-color: var(--color-hover-background);
 }
 
