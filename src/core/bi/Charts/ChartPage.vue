@@ -8,7 +8,7 @@
                 </div>
             </div>
             <div class="header-label-buttons">
-                <button v-if="isEditMode && datasetRows && datasetRows.length > 0" class="btn text-white btn-sm btn-success"  @click="runChartAnalysis" style="display: flex; gap: 5px; justify-content: center; align-items: center;">
+                <button v-if="isEditMode && datasetRows && datasetRows.length > 0 && ollamaAvailable" class="btn text-white btn-sm btn-success"  @click="runChartAnalysis" style="display: flex; gap: 5px; justify-content: center; align-items: center;">
                     <BrainCircuit :size="18" />Интеллектуальный анализ
                 </button>
                 <button class="btn btn-sm fw-bold btn-full-screen" :class="{ active: isFullScreen }" style="display: flex; gap: 5px; justify-content: center; align-items: center;" @click="toggleFullScreen">
@@ -104,10 +104,12 @@ import { useToast } from 'vue-toastification'
 import { chartSettingsConfig } from '@/core/bi/MainPage/Sidebar/components/js/chartSettingsConfig.js'
 import chartService from '@/core/bi/MainPage/Sidebar/components/js/chartService.js'
 import { useAssistant } from '@/core/ai-assistant/js/assistantService.js'
+import biClient from '@/core/ai-assistant/bi/js/bi-client.js'
 
 const toast = useToast()
 const isFullScreen = ref(false)
 const assistant = useAssistant()
+const ollamaAvailable = ref(false)
 
 const isDatasetTooltipVisible = ref(false)
 const tooltipPosition = ref({ x: 0, y: 0 })
@@ -274,9 +276,14 @@ async function fetchChartIfEditing() {
 
 function runChartAnalysis() {
     if (chartId.value) {
-        // Открываем чат ассистента и запускаем анализ
         assistant.openAndAnalyzeChart(chartId.value)
     }
+}
+
+async function checkOllamaAvailability() {
+    if (!isEditMode.value) return
+    const status = await biClient.checkOllamaStatus()
+    ollamaAvailable.value = status.available
 }
 
 const selectedForModal = computed(() => {
@@ -473,6 +480,7 @@ onMounted(() => {
 })
 
 onMounted(fetchChartIfEditing)
+onMounted(checkOllamaAvailability)
 
 onBeforeUnmount(() => {
     document.removeEventListener('mousedown', onClickOutside)
