@@ -527,6 +527,8 @@ onBeforeUnmount(() => {
     .body-chart {
         grid-column: 1 / -1;
         grid-row: 1 / -1;
+        max-height: none;
+        overflow: visible;
     }
 
     .datasets,
@@ -557,6 +559,7 @@ onBeforeUnmount(() => {
 
 .fields {
     grid-area: fields;
+    align-self: start;
 }
 
 .indicators {
@@ -669,6 +672,8 @@ onBeforeUnmount(() => {
 .body-chart {
     flex: 1 1 0%;
     min-height: 360px;
+    max-height: min(800px, 75vh);
+    overflow: auto;
     width: 100%;
     padding: 10px;
     display: flex;
