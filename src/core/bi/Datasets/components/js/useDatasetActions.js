@@ -1084,8 +1084,7 @@ export function useDatasetActions(state) {
             const result = await waitForTaskResult(data.task_id)
             if (result && (result.columns || result.rows)) {
               state.previewCols.value = result.columns || []
-              // Не сохраняем rows - они будут загружаться через DatasetTablePreview с пагинацией
-              state.previewRows.value = []
+              state.previewRows.value = result.rows || []
               await loadFields()
             } else {
               // Не очищаем данные при ошибке, чтобы таблица не исчезла
@@ -1098,8 +1097,7 @@ export function useDatasetActions(state) {
           
           if (data && data.columns) {
             state.previewCols.value = data.columns || []
-            // Не сохраняем rows - они будут загружаться через DatasetTablePreview с пагинацией
-            state.previewRows.value = []
+            state.previewRows.value = data.rows || []
             await loadFields()
           } else {
             // Не очищаем данные при ошибке, чтобы таблица не исчезла

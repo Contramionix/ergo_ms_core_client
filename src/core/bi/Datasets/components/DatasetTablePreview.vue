@@ -301,6 +301,23 @@ async function loadInitialData() {
     return
   }
 
+  if (!props.cols?.length && !props.rows?.length) {
+    return
+  }
+
+  if (props.rows?.length > 0 && props.cols?.length > 0) {
+    allColumns.value = props.cols
+    pagesCache.value.set(1, props.rows)
+    totalRowsCount.value = props.rows.length
+    hasMore.value = props.rows.length >= ITEMS_PER_PAGE
+    if (totalRowsCount.value === 0) {
+      errorState.value = 'Нет данных для отображения'
+    } else {
+      errorState.value = null
+    }
+    return
+  }
+
   loadRequestInProgress.value = true
   isLoading.value = true
   pagesCache.value.clear()
