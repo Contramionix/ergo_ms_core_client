@@ -178,7 +178,6 @@ function handlePlaceholderAction(action) {
 <style scoped lang="scss">
 .file_area {
   grid-area: field;
-  padding: 1rem;
   display: flex;
   flex-direction: column;
   height: 100%;

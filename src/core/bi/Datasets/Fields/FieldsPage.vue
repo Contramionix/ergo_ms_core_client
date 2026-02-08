@@ -1,6 +1,5 @@
 <template>
   <div class="fields-page">
-    <!-- Уведомление о проблемах с подключением -->
     <div v-if="connectionStatus === 'error'" class="connection-error-banner">
       <div class="error-icon">⚠️</div>
       <div class="error-content">
@@ -10,12 +9,9 @@
           Редактирование полей может быть ограничено.
         </div>
       </div>
-      <button class="error-action-btn" @click="$emit('switch-to-sources')">
-        Перейти к источникам
-      </button>
+      <button class="error-action-btn" @click="$emit('switch-to-sources')">Перейти к источникам</button>
     </div>
 
-    <!-- Основная таблица полей -->
     <div class="table-container">
       <table class="table table-hover">
       <thead>
@@ -32,24 +28,25 @@
       <tbody>
         <tr v-for="(f, idx) in props.fields" :key="f.id" class="hover:cursor-pointer">
           <td>{{ idx + 1 }}</td>
-          <td>
-            <input v-model="f.name" @input="updateField(idx, 'name', f.name)"
-              class="form-control form-control-sm" placeholder="Имя…" />
+          <td class="name-cell">
+            <div class="name-cell-inner">
+              <div v-show="editingNameId !== f.id" class="name-field-display" @click.prevent="startEditName(f, $event)" @mouseenter="onNameHoverStart" @mouseleave="onNameHoverEnd">
+                <span class="name-label-wrap">
+                  <span class="name-label-inner">{{ f.name || '\u00A0' }}</span>
+                </span>
+              </div>
+              <input v-if="editingNameId === f.id" :ref="nameInputRef" v-model="f.name" @input="updateField(idx, 'name', f.name)" @blur="onNameBlur" class="form-control form-control-sm name-edit-input" placeholder="Имя…"/>
+            </div>
           </td>
-          <td style="max-width: 250px;">
+          <td class="source-cell">
             <span v-if="f.expression">
-              <button class="source-btn" @click="onSourceClick(f)">
-                <SquareFunction />
-              </button>
+              <button class="source-btn" @click="onSourceClick(f)"><SquareFunction /></button>
             </span>
             <span v-else>
-              <button class="source-btn" @click="onSourceClick(f)">
-                <template v-if="f.source">
-                  {{ getFieldSourceLabel(f) }}
-                </template>
-                <template v-else>
-                  Нет источника
-                </template>
+              <button class="source-btn" @click="onSourceClick(f)" @mouseenter="onSourceHoverStart" @mouseleave="onSourceHoverEnd">
+                <span class="source-label-wrap">
+                  <span class="source-label-inner">{{ f.source ? getFieldSourceLabel(f) : 'Нет источника' }}</span>
+                </span>
               </button>
             </span>
           </td>
@@ -60,7 +57,7 @@
               </option>
             </select>
           </td>
-          <td style="max-width: 100px;">
+          <td>
             <AggSelect :modelValue="f.aggregation" @update:modelValue="val => updateField(idx, 'aggregation', val)" :options="getAggregationOptions(f.type)" :aggregationColorMap="aggregationColorMap"/>
           </td>
           <td>
@@ -77,20 +74,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-
+import { ref, nextTick } from 'vue'
 import AggSelect from '@/core/bi/Datasets/Fields/AggregationSelect.vue'
-import datasetService from '@/core/bi/MainPage/Sidebar/components/js/datasetService'
 import { SquareFunction } from 'lucide-vue-next';
 
-import {
-  getTypeOptionsForField,
-  getAggregationOptions,
-  aggregationColorMap
-} from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
+import { getTypeOptionsForField, getAggregationOptions, aggregationColorMap } from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
 
-const showModal = ref(false)
-const selectedField = ref(null)
+const editingNameId = ref(null)
+const nameInputRef = ref(null)
 
 const props = defineProps({
   fields: { type: Array, default: () => [] },
@@ -118,8 +109,54 @@ function onSourceClick(field) {
   emit('edit-field', field)
 }
 
+function onSourceHoverStart(ev) {
+  const wrap = ev.currentTarget?.querySelector('.source-label-wrap')
+  const inner = ev.currentTarget?.querySelector('.source-label-inner')
+  if (!wrap || !inner) return
+  const overflow = inner.scrollWidth - wrap.clientWidth
+  if (overflow > 0) {
+    inner.style.transform = `translateX(-${overflow}px)`
+  }
+}
+
+function onSourceHoverEnd(ev) {
+  const inner = ev.currentTarget?.querySelector('.source-label-inner')
+  if (inner) inner.style.transform = ''
+}
+
+function onNameBlur() {
+  editingNameId.value = null
+}
+
+function startEditName(field, ev) {
+  if (ev) {
+    ev.stopPropagation()
+  }
+  editingNameId.value = field.id
+  nextTick(() => {
+    setTimeout(() => {
+      const input = nameInputRef.value ?? document.querySelector('.fields-page .name-edit-input')
+      input?.focus()
+    }, 0)
+  })
+}
+
+function onNameHoverStart(ev) {
+  const wrap = ev.currentTarget?.querySelector('.name-label-wrap')
+  const inner = ev.currentTarget?.querySelector('.name-label-inner')
+  if (!wrap || !inner) return
+  const overflow = inner.scrollWidth - wrap.clientWidth
+  if (overflow > 0) {
+    inner.style.transform = `translateX(-${overflow}px)`
+  }
+}
+
+function onNameHoverEnd(ev) {
+  const inner = ev.currentTarget?.querySelector('.name-label-inner')
+  if (inner) inner.style.transform = ''
+}
+
 function getFieldSourceLabel(field) {
-  // source_table может быть либо id, либо объектом таблицы
   const isObjectTable = field && field.source_table && typeof field.source_table === 'object'
   const tbl = isObjectTable
     ? field.source_table
@@ -136,12 +173,50 @@ function getFieldSourceLabel(field) {
   }
   return columnLabel
 }
+
 </script>
 
 <style scoped lang="scss">
 .table td,
 .table th {
   vertical-align: middle;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+:deep(.table) {
+  table-layout: fixed;
+}
+
+:deep(.table th:first-child),
+:deep(.table td:first-child) {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  max-width: 2.5rem;
+}
+
+:deep(.table th:nth-child(2)),
+:deep(.table td:nth-child(2)) {
+  width: 320px;
+}
+
+:deep(.table th:nth-child(3)),
+:deep(.table td:nth-child(3)) {
+  width: 250px;
+}
+
+:deep(.table th:nth-child(5)),
+:deep(.table td:nth-child(5)) {
+  width: 150px;
+}
+
+:deep(.table tbody tr) {
+  height: 2.5rem;
+}
+
+:deep(.table tbody tr td) {
+  height: 2.5rem;
+  max-height: 2.5rem;
 }
 
 :deep(.table tbody td) {
@@ -168,7 +243,7 @@ function getFieldSourceLabel(field) {
 :deep(input.form-control:focus),
 :deep(select.form-select:focus) {
   background-color: var(--color-hover-background) !important;
-  border-radius: 12px !important;
+  border-radius: 6px !important;
   outline: none !important;
   box-shadow: none !important;
 }
@@ -183,6 +258,68 @@ function getFieldSourceLabel(field) {
   display: none;
 }
 
+.name-cell {
+  overflow: hidden;
+}
+
+.name-cell-inner {
+  height: 2.5rem;
+  max-height: 2.5rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.name-cell .name-edit-input {
+  font-size: inherit;
+  line-height: 1.25;
+  height: 2rem;
+  max-height: 2rem;
+  box-sizing: border-box;
+  padding: .25rem .5rem;
+  border: none !important;
+  outline: none !important;
+}
+
+.name-field-display {
+  cursor: text;
+  padding: .25rem .5rem;
+  border-radius: 5px;
+  transition: background-color .2s ease, border-radius .2s ease;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  line-height: 1.25;
+  height: 2rem;
+  max-height: 2rem;
+}
+
+.name-field-display:hover {
+  background-color: var(--color-hover-background);
+  border-radius: 6px;
+}
+
+.name-label-wrap {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name-label-inner {
+  display: inline-block;
+  white-space: nowrap;
+  transition: transform 2s ease;
+}
+
+.source-cell {
+  overflow: hidden;
+}
+
 .source-btn {
   width: 100%;
   text-align: left;
@@ -193,17 +330,31 @@ function getFieldSourceLabel(field) {
   color: inherit;
   display: flex;
   align-items: center;
+  min-width: 0;
   transition: background-color .2s ease, border-radius .2s ease;
+}
+
+.source-label-wrap {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-label-inner {
+  display: inline-block;
+  white-space: nowrap;
+  transition: transform 2s ease;
 }
 
 .source-btn:hover,
 .source-btn:focus {
   background-color: var(--color-hover-background) !important;
-  border-radius: 12px !important;
+  border-radius: 6px !important;
   outline: none !important;
 }
 
-/* ========== Fade (оверлей) ========== */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity .3s ease;
@@ -214,7 +365,6 @@ function getFieldSourceLabel(field) {
   opacity: 0;
 }
 
-/* ========== Scale (окно) ========== */
 .scale-enter-active,
 .scale-leave-active {
   transition: transform .3s ease, opacity .3s ease;
@@ -226,14 +376,12 @@ function getFieldSourceLabel(field) {
   opacity: 0;
 }
 
-/* ========== Страница полей ========== */
 .fields-page {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
-/* ========== Контейнер таблицы ========== */
 .table-container {
   flex: 1 1 auto;
   min-height: 300px;
@@ -273,7 +421,6 @@ function getFieldSourceLabel(field) {
   border-bottom: 0.5px solid var(--color-border);
 }
 
-/* Стили для уведомления о проблемах с подключением */
 .connection-error-banner {
   display: flex;
   align-items: center;
