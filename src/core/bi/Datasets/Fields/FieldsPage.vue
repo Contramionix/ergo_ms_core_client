@@ -103,17 +103,15 @@ const props = defineProps({
 
 const emit = defineEmits(['edit-field', 'add-field', 'update:fields', 'removeTable', 'switch-to-sources'])
 
-
-
 function updateField(idx, key, value) {
-  const newFields = props.fields.map((f, i) => i === idx ? { ...f, [key]: value } : f);
-  emit('update:fields', newFields);
+  const newFields = props.fields.map((f, i) => (i === idx ? { ...f, [key]: value } : f))
+  emit('update:fields', newFields)
 }
 
 function removeField(idx) {
-  const newFields = props.fields.slice();
-  newFields.splice(idx, 1);
-  emit('update:fields', newFields);
+  const newFields = props.fields.slice()
+  newFields.splice(idx, 1)
+  emit('update:fields', newFields)
 }
 
 function onSourceClick(field) {
