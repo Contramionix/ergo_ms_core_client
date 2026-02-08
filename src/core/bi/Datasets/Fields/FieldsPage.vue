@@ -54,7 +54,7 @@
             </span>
           </td>
           <td class="type-select-cell">
-            <SelectBox :modelValue="f.type" @update:modelValue="val => updateField(idx, 'type', val)" :options="getTypeOptionsForField(f)" value-key="value" label-key="label" :include-all-option="false" size="sm">
+            <SelectBox :modelValue="f.type" @update:modelValue="val => updateField(idx, 'type', val)" :options="getTypeOptionsForField(f)" value-key="value" label-key="label" :include-all-option="false" size="sm" hide-chevron>
               <template #selected="{ option, label }">
                 <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
                   <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(option?.value) }">

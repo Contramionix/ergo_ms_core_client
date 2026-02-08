@@ -2,42 +2,21 @@
     <div class="select-box" ref="rootEl">
         <label v-if="label" class="form-label mb-1">{{ label }}</label>
         <div class="dropdown" :class="{ 'is-open': isOpen }">
-            <button
-                class="btn btn-light w-100 d-flex align-items-center justify-content-between select-trigger"
-                type="button"
-                :disabled="disabled"
-                @click="toggle"
-                @blur="$emit('blur')"
-            >
+            <button class="btn btn-light w-100 d-flex align-items-center justify-content-between select-trigger" type="button" :disabled="disabled" @click="toggle" @blur="$emit('blur')">
                 <span class="d-flex align-items-center flex-grow-1 me-2">
                     <slot name="selected" :option="selectedOption" :label="currentLabel">
                         <span ref="valueTextEl" class="value-text" :style="{ fontSize: currentFontSize }">{{ currentLabel }}</span>
                     </slot>
                 </span>
-                <span class="d-inline-flex align-items-center"><ChevronDown class="icon-center" /></span>
+                <span v-if="!hideChevron" class="d-inline-flex align-items-center"><ChevronDown class="icon-center" /></span>
             </button>
-            <!-- Портал выпадающего списка в body с позиционированием fixed -->
             <teleport to="body">
-                <ul
-                    v-if="isOpen"
-                    class="dropdown-menu show fixed-menu"
-                    :style="fixedMenuStyle"
-                >
+                <ul v-if="isOpen" ref="menuEl" class="dropdown-menu show fixed-menu" :style="fixedMenuStyle">
                     <li v-if="includeAllOption">
-                        <a
-                            class="dropdown-item"
-                            :class="{ active: isSelected(null) }"
-                            href="#"
-                            @click.prevent="choose(null)"
-                        >{{ allLabel }}</a>
+                        <a class="dropdown-item" :class="{ active: isSelected(null) }" href="#" @click.prevent="choose(null)">{{ allLabel }}</a>
                     </li>
                     <li v-for="opt in normalizedOptions" :key="opt.key">
-                        <a
-                            class="dropdown-item multi-line"
-                            :class="{ active: isSelected(opt.value) }"
-                            href="#"
-                            @click.prevent="choose(opt.value)"
-                        >
+                        <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" @click.prevent="choose(opt.value)">
                             <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)">
                                 {{ opt.label }}
                             </slot>
@@ -65,13 +44,12 @@ const props = defineProps({
     allLabel: { type: String, default: 'Все' },
     valueKey: { type: String, default: 'id' },
     labelKey: { type: String, default: 'name' },
-    size: { type: String, default: 'md' }, // sm | md | lg
+    size: { type: String, default: 'md' },
     castToNumber: { type: Boolean, default: false },
     currentLabelFormatter: { type: Function, default: null },
-    // зарезервировано на будущее, сейчас селект всегда занимает 100% ширины контейнера
     fullWidth: { type: Boolean, default: true },
-    // ограничение длины отображаемого выбранного текста (обрезается с …)
     maxSelectedChars: { type: [Number, null], default: null },
+    hideChevron: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'change', 'blur'])
@@ -93,17 +71,6 @@ const normalizedOptions = computed(() => {
     }
     return result
 })
-
-const keyToValueMap = computed(() => {
-    const map = new Map()
-    for (const item of normalizedOptions.value) {
-        map.set(item.key, item.value)
-    }
-    map.set(NULL_VALUE, null)
-    return map
-})
-
-const internalValue = computed(() => toKey(props.modelValue))
 
 const isOpen = ref(false)
 const fixedMenuStyle = ref({ top: '0px', left: '0px', width: '0px' })
@@ -133,7 +100,6 @@ function toggle() {
     isOpen.value = !isOpen.value
     if (isOpen.value) {
         updateMenuPosition()
-        // на следующем кадре пересчитать ещё раз, если раскладка изменилась
         requestAnimationFrame(() => updateMenuPosition())
     }
 }
@@ -155,31 +121,12 @@ function choose(value) {
     close()
 }
 
-function clearSelection() {
-    emit('update:modelValue', null)
-    emit('change', null)
-}
-
-const sizeClass = computed(() => {
-    if (props.size === 'sm') return 'form-select-sm'
-    if (props.size === 'lg') return 'form-select-lg'
-    return ''
-})
-
 const rawCurrentLabel = computed(() => {
-    if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') {
-        return props.allLabel
-    }
-    const found = normalizedOptions.value.find(o => {
-        // сравнение по значению (с учётом объектов/чисел/строк)
-        if (typeof o.value === 'object' && o.value !== null) {
-            try { return JSON.stringify(o.value) === JSON.stringify(props.modelValue) } catch { return false }
-        }
-        return String(o.value) === String(props.modelValue)
-    })
+    if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') return props.allLabel
+    const found = normalizedOptions.value.find(o => valuesAreEqual(o.value, props.modelValue))
     if (!found) return props.allLabel
     if (typeof props.currentLabelFormatter === 'function') {
-        try { return props.currentLabelFormatter({ option: found.raw, value: found.value, label: found.label }) } catch { /* noop */ }
+        try { return props.currentLabelFormatter({ option: found.raw, value: found.value, label: found.label }) } catch { return found.label }
     }
     return found.label
 })
@@ -215,36 +162,27 @@ function isSelected(val) {
 function handleClickOutside(e) {
     const root = rootEl.value
     if (!root) return
-    // Если клик произошёл внутри телепортированного меню, не закрываем
-    const openMenus = document.querySelectorAll('ul.dropdown-menu.fixed-menu.show')
-    for (const menu of openMenus) {
-        if (menu.contains(e.target)) return
-    }
+    if (menuEl.value?.contains(e.target)) return
     if (!root.contains(e.target)) close()
 }
 
 const rootEl = ref(null)
+const menuEl = ref(null)
 const valueTextEl = ref(null)
 const currentFontSize = ref('1rem')
-const baseFontSize = 16 // px (примерно 1rem)
-const minFontSize = 12 // px
+const baseFontSize = 16
+const minFontSize = 12
 function adjustFontSize() {
-    // Если явно задано ограничение символов, полагаемся на CSS-ellipsis и не пытаемся уменьшать шрифт
-    if (typeof props.maxSelectedChars === 'number' && props.maxSelectedChars > 0) {
-        return
-    }
+    if (typeof props.maxSelectedChars === 'number' && props.maxSelectedChars > 0) return
     const el = valueTextEl.value
     if (!el) return
-    // Сбрасываем до базового
     el.style.fontSize = ''
     currentFontSize.value = '1rem'
     const parent = el.parentElement
     if (!parent) return
-    // Оставим место под иконку справа
-    const iconWidth = 22
+    const iconWidth = props.hideChevron ? 0 : 22
     const available = parent.clientWidth - iconWidth - 8
     if (available <= 0) return
-    // Если текст выходит за пределы, уменьшаем шрифт до minFontSize
     let size = baseFontSize
     el.style.whiteSpace = 'nowrap'
     while (el.scrollWidth > available && size > minFontSize) {
@@ -253,15 +191,19 @@ function adjustFontSize() {
     }
     currentFontSize.value = el.style.fontSize || '1rem'
 }
+const onResize = () => {
+    adjustFontSize()
+    updateMenuPosition()
+}
 onMounted(() => {
     document.addEventListener('click', handleClickOutside)
     nextTick(adjustFontSize)
-    window.addEventListener('resize', () => { adjustFontSize(); updateMenuPosition() })
+    window.addEventListener('resize', onResize)
     window.addEventListener('scroll', updateMenuPosition, true)
 })
 onBeforeUnmount(() => {
     document.removeEventListener('click', handleClickOutside)
-    window.removeEventListener('resize', adjustFontSize)
+    window.removeEventListener('resize', onResize)
     window.removeEventListener('scroll', updateMenuPosition, true)
 })
 
@@ -272,7 +214,6 @@ watch(() => props.modelValue, async () => {
 </script>
 
 <style scoped lang="scss">
-/* Кнопка-селект */
 .select-trigger {
     background-color: var(--color-primary-background);
     border: 1px solid var(--bs-border-color, #dee2e6);
@@ -293,7 +234,7 @@ watch(() => props.modelValue, async () => {
     right: 0;
     top: 100%;
     margin-top: .25rem;
-    z-index: 100002; /* поверх модалки */
+    z-index: 100002;
     max-height: 260px;
     overflow-y: auto;
     overflow-x: hidden;
@@ -307,10 +248,10 @@ watch(() => props.modelValue, async () => {
 }
 .fixed-menu {
     position: fixed;
-    z-index: 100002; /* поверх модалки */
-    left: auto; /* задаётся inline */
-    right: auto; /* сбрасываем наследование */
-    top: auto;  /* задаётся inline */
+    z-index: 100002;
+    left: auto;
+    right: auto;
+    top: auto;
     min-width: unset;
 }
 .select-box { max-width: 100%; }
