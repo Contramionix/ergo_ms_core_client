@@ -13,20 +13,30 @@
     </div>
 
     <div class="table-container">
-      <table class="table table-hover">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Имя</th>
-          <th>Источник поля</th>
-          <th>Тип</th>
-          <th>Агрегация</th>
-          <th>Описание</th>
-          <th class="text-end">…</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(f, idx) in props.fields" :key="f.id" class="hover:cursor-pointer">
+      <table class="table table-header">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Имя</th>
+            <th>Источник поля</th>
+            <th>Тип</th>
+            <th>Агрегация</th>
+            <th>Описание</th>
+            <th class="text-end"></th>
+          </tr>
+        </thead>
+      </table>
+      <div class="table-body-scroll">
+        <table class="table table-hover table-body">
+          <tbody>
+        <tr
+          v-for="(f, idx) in props.fields"
+          :key="f.id"
+          class="hover:cursor-pointer"
+          :class="{ 'show-actions': hoveredRowIdx === idx || openMenuIdx === idx }"
+          @mouseenter="hoveredRowIdx = idx"
+          @mouseleave="hoveredRowIdx = null"
+        >
           <td>{{ idx + 1 }}</td>
           <td class="name-cell">
             <div class="name-cell-inner">
@@ -63,25 +73,38 @@
           <td>
             <input v-model="f.description" class="form-control form-control-sm" placeholder="Описание…" />
           </td>
-          <td>
-            <button class="btn btn-sm btn-outline-danger rounded" @click="removeField(idx)">Удалить</button>
+          <td class="field-actions-cell">
+            <div class="field-actions-wrap">
+              <button type="button" class="field-actions-btn" @click.stop="toggleMenu(idx)" :aria-expanded="openMenuIdx === idx">
+                <MoreHorizontal :size="18" />
+              </button>
+              <div v-if="openMenuIdx === idx" ref="menuDropdownRef" class="field-actions-dropdown" @click.stop>
+                <div class="field-actions-item" @click="onDuplicate(idx)">Дублировать</div>
+                <div class="field-actions-item" @click="onEdit(idx)">Редактировать</div>
+                <div class="field-actions-item danger" @click="onRemove(idx)">Удалить</div>
+              </div>
+            </div>
           </td>
         </tr>
-      </tbody>
-    </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onBeforeUnmount, watch } from 'vue'
 import AggSelect from '@/core/bi/Datasets/Fields/AggregationSelect.vue'
-import { SquareFunction } from 'lucide-vue-next';
+import { SquareFunction, MoreHorizontal } from 'lucide-vue-next'
 
 import { getTypeOptionsForField, getAggregationOptions, aggregationColorMap } from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
 
 const editingNameId = ref(null)
 const nameInputRef = ref(null)
+const openMenuIdx = ref(null)
+const menuDropdownRef = ref(null)
+const hoveredRowIdx = ref(null)
 
 const props = defineProps({
   fields: { type: Array, default: () => [] },
@@ -104,6 +127,79 @@ function removeField(idx) {
   newFields.splice(idx, 1)
   emit('update:fields', newFields)
 }
+
+function toggleMenu(idx) {
+  openMenuIdx.value = openMenuIdx.value === idx ? null : idx
+}
+
+function closeMenu() {
+  openMenuIdx.value = null
+}
+
+function getDropdownEl() {
+  const raw = menuDropdownRef.value
+  if (!raw) return null
+  if (Array.isArray(raw)) {
+    const idx = openMenuIdx.value
+    return (idx !== null && raw[idx]) ? raw[idx] : raw.find(Boolean) ?? null
+  }
+  return raw
+}
+
+function handleClickOutside(ev) {
+  if (openMenuIdx.value === null) return
+  const target = ev.target
+  if (!target || !(target instanceof Node)) return
+  const dropdown = getDropdownEl()
+  const isInsideDropdown = dropdown && dropdown.contains(target)
+  const isOnTrigger = target.closest?.('.field-actions-btn')
+  if (isInsideDropdown || isOnTrigger) return
+  closeMenu()
+}
+
+function duplicateField(idx) {
+  const field = props.fields[idx]
+  const copy = { ...field, id: `copy-${Date.now()}-${idx}` }
+  const newFields = props.fields.slice()
+  newFields.splice(idx + 1, 0, copy)
+  emit('update:fields', newFields)
+}
+
+function onDuplicate(idx) {
+  duplicateField(idx)
+  closeMenu()
+}
+
+function onEdit(idx) {
+  emit('edit-field', props.fields[idx])
+  closeMenu()
+}
+
+function onRemove(idx) {
+  removeField(idx)
+  closeMenu()
+}
+
+let clickOutsideCleanup = null
+
+watch(openMenuIdx, (val) => {
+  if (clickOutsideCleanup) {
+    clickOutsideCleanup()
+    clickOutsideCleanup = null
+  }
+  if (val === null) return
+  const run = () => {
+    document.addEventListener('click', handleClickOutside, true)
+    clickOutsideCleanup = () => {
+      document.removeEventListener('click', handleClickOutside, true)
+    }
+  }
+  setTimeout(run, 0)
+})
+
+onBeforeUnmount(() => {
+  if (clickOutsideCleanup) clickOutsideCleanup()
+})
 
 function onSourceClick(field) {
   emit('edit-field', field)
@@ -208,6 +304,18 @@ function getFieldSourceLabel(field) {
 :deep(.table th:nth-child(5)),
 :deep(.table td:nth-child(5)) {
   width: 150px;
+}
+
+:deep(.table th:nth-child(6)),
+:deep(.table td:nth-child(6)) {
+  min-width: 170px;
+}
+
+:deep(.table th:nth-child(7)),
+:deep(.table td:nth-child(7)) {
+  width: 3.5rem;
+  min-width: 3.5rem;
+  max-width: 3.5rem;
 }
 
 :deep(.table tbody tr) {
@@ -355,6 +463,77 @@ function getFieldSourceLabel(field) {
   outline: none !important;
 }
 
+.field-actions-cell {
+  position: relative;
+  text-align: right;
+  padding-right: 1rem;
+}
+
+.field-actions-wrap {
+  position: relative;
+  display: inline-flex;
+  justify-content: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+:deep(tr.show-actions) .field-actions-wrap {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.field-actions-btn {
+  background: transparent;
+  border: none;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--color-primary-text);
+  transition: background-color 0.2s ease;
+}
+
+.field-actions-btn:hover {
+  background-color: var(--color-hover-background);
+}
+
+.field-actions-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 2px;
+  background-color: var(--color-primary-background);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  z-index: 20;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  min-width: 120px;
+  padding: 2px 0;
+  text-align: left;
+}
+
+.field-actions-item {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  color: var(--color-primary-text);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.field-actions-item:hover {
+  background-color: var(--color-hover-background);
+}
+
+.field-actions-item.danger {
+  color: var(--color-accent);
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity .3s ease;
@@ -385,40 +564,52 @@ function getFieldSourceLabel(field) {
 .table-container {
   flex: 1 1 auto;
   min-height: 300px;
-  overflow-y: auto;
-  overflow-x: auto;
+  display: flex;
+  flex-direction: column;
   position: relative;
-  -webkit-overflow-scrolling: touch;
+  min-height: 0;
 }
 
-.table-container::-webkit-scrollbar {
+.table-header {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+}
+
+.table-header thead {
+  margin-bottom: 0;
+}
+
+.table-body-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.table-body-scroll::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-.table-container::-webkit-scrollbar-track {
+.table-body-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.table-container::-webkit-scrollbar-thumb {
+.table-body-scroll::-webkit-scrollbar-thumb {
   background-color: var(--color-border, #dee2e6);
   border-radius: 4px;
 }
 
-.table-container::-webkit-scrollbar-thumb:hover {
+.table-body-scroll::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-hover-background, #e9ecef);
 }
 
-:deep(.table thead) {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background-color: var(--color-primary-background, #fff);
-}
-
-:deep(.table thead th) {
+:deep(.table-header thead th) {
   background-color: var(--color-primary-background, #fff);
   border-bottom: 0.5px solid var(--color-border);
+  padding-bottom: 0.5rem;
 }
 
 .connection-error-banner {
