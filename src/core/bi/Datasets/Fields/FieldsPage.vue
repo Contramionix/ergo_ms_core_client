@@ -29,14 +29,7 @@
       <div class="table-body-scroll">
         <table class="table table-hover table-body">
           <tbody>
-        <tr
-          v-for="(f, idx) in props.fields"
-          :key="f.id"
-          class="hover:cursor-pointer"
-          :class="{ 'show-actions': hoveredRowIdx === idx || openMenuIdx === idx }"
-          @mouseenter="hoveredRowIdx = idx"
-          @mouseleave="hoveredRowIdx = null"
-        >
+        <tr v-for="(f, idx) in props.fields" :key="f.id" class="hover:cursor-pointer" :class="{ 'show-actions': hoveredRowIdx === idx || openMenuIdx === idx }" @mouseenter="hoveredRowIdx = idx" @mouseleave="hoveredRowIdx = null">
           <td>{{ idx + 1 }}</td>
           <td class="name-cell">
             <div class="name-cell-inner">
@@ -60,12 +53,25 @@
               </button>
             </span>
           </td>
-          <td>
-            <select v-model="f.type" class="form-select form-select">
-              <option v-for="typeOption in getTypeOptionsForField(f)" :key="typeOption.value" :value="typeOption.value">
-                {{ typeOption.label }}
-              </option>
-            </select>
+          <td class="type-select-cell">
+            <SelectBox :modelValue="f.type" @update:modelValue="val => updateField(idx, 'type', val)" :options="getTypeOptionsForField(f)" value-key="value" label-key="label" :include-all-option="false" size="sm">
+              <template #selected="{ option, label }">
+                <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                  <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(option?.value) }">
+                    <component :is="typeIcon[option?.value] || Type" :size="18" />
+                  </span>
+                  <span class="text-truncate">{{ label }}</span>
+                </span>
+              </template>
+              <template #option="{ value, label }">
+                <span class="d-flex align-items-center gap-2">
+                  <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(value) }">
+                    <component :is="typeIcon[value] || Type" :size="18" />
+                  </span>
+                  {{ label }}
+                </span>
+              </template>
+            </SelectBox>
           </td>
           <td>
             <AggSelect :modelValue="f.aggregation" @update:modelValue="val => updateField(idx, 'aggregation', val)" :options="getAggregationOptions(f.type)" :aggregationColorMap="aggregationColorMap"/>
@@ -75,9 +81,7 @@
           </td>
           <td class="field-actions-cell">
             <div class="field-actions-wrap">
-              <button type="button" class="field-actions-btn" @click.stop="toggleMenu(idx)" :aria-expanded="openMenuIdx === idx">
-                <MoreHorizontal :size="18" />
-              </button>
+              <button type="button" class="field-actions-btn" @click.stop="toggleMenu(idx)" :aria-expanded="openMenuIdx === idx"><MoreHorizontal :size="18" /></button>
               <div v-if="openMenuIdx === idx" ref="menuDropdownRef" class="field-actions-dropdown" :class="{ 'field-actions-dropdown-up': menuOpenUpward }" @click.stop>
                 <div class="field-actions-item" @click="onDuplicate(idx)">Дублировать</div>
                 <div class="field-actions-item" @click="onEdit(idx)">Редактировать</div>
@@ -95,10 +99,42 @@
 
 <script setup>
 import { ref, nextTick, onBeforeUnmount, watch } from 'vue'
+import SelectBox from '@/components/SelectBox.vue'
 import AggSelect from '@/core/bi/Datasets/Fields/AggregationSelect.vue'
-import { SquareFunction, MoreHorizontal } from 'lucide-vue-next'
+import { SquareFunction, MoreHorizontal, Type, Hash, Calendar, CheckCircle, MapPin, Globe } from 'lucide-vue-next'
 
 import { getTypeOptionsForField, getAggregationOptions, aggregationColorMap } from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
+
+const typeIcon = {
+  string: Type,
+  integer: Hash,
+  float: Hash,
+  number: Hash,
+  date: Calendar,
+  'date&time': Calendar,
+  bool: CheckCircle,
+  boolean: CheckCircle,
+  geopoint: MapPin,
+  geopolygon: Globe,
+}
+
+const typeColor = {
+  string: '#0d6efd',
+  integer: '#198754',
+  float: '#198754',
+  number: '#198754',
+  date: '#fd7e14',
+  'date&time': '#fd7e14',
+  bool: '#20c997',
+  boolean: '#20c997',
+  geopoint: '#dc3545',
+  geopolygon: '#6f42c1',
+}
+
+function getTypeColor(type) {
+  if (!type || typeof type !== 'string') return 'var(--color-accent)'
+  return typeColor[type] ?? 'var(--color-accent)'
+}
 
 const editingNameId = ref(null)
 const nameInputRef = ref(null)
@@ -401,6 +437,34 @@ function getFieldSourceLabel(field) {
 
 :deep(select.form-select::-ms-expand) {
   display: none;
+}
+
+.type-select-cell {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.type-select-cell :deep(.select-box) {
+  max-width: 100%;
+}
+
+.type-select-cell :deep(.select-trigger) {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
+  padding: .25rem .5rem;
+  min-height: 2rem;
+  color: inherit;
+  transition: background-color .2s ease, border-radius .2s ease;
+}
+
+.type-select-cell :deep(.select-trigger:hover),
+.type-select-cell :deep(.select-trigger:focus) {
+  background-color: var(--color-hover-background) !important;
+  border-radius: 6px !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .name-cell {
