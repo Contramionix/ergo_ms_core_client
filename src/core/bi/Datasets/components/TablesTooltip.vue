@@ -15,9 +15,7 @@
         </li>
       </template>
     </ul>
-    <div v-if="!isLoading && filteredTables.length === 0" class="no-data">
-      Нет таблиц
-    </div>
+    <div v-if="!isLoading && filteredTables.length === 0" class="no-data">Нет таблиц</div>
 </template>
 
 <script setup>
@@ -43,57 +41,33 @@ const { loadUserFiles } = useFileList(
   ref([]), ref(null), uploadedFiles, ref(null), ref([]), ref(null), ref(false)
 )
 
-function isSelected(table) {
-  if (!props.selectedTable || !props.connectionId) return false
-
-  // Проверяем, что выбранная таблица принадлежит текущему подключению
-  let belongsToCurrentConnection = false
-  
-  if (props.connectionType === 'file') {
-    belongsToCurrentConnection = table.file_id === props.connectionId
-  } else {
-    belongsToCurrentConnection = !table.connection_id || table.connection_id === props.connectionId
+function tableBelongsToConnection(table, connectionId, connectionType) {
+  if (!connectionId) return false
+  if (connectionType === 'file') {
+    return table.file_id === connectionId || table.connection_id === connectionId || table.id === connectionId
   }
-  
-  // Если таблица не принадлежит текущему подключению, она не может быть выбрана
-  if (!belongsToCurrentConnection) return false
-
-  const curFileId = props.selectedTable.file_upload_id ?? props.selectedTable.id
-
-  const isSelected = String(table.id) === String(curFileId)
-  
-  if (isSelected) {
-    console.log('[TablesTooltip] Таблица выбрана:', table.id, 'для selectedTable:', props.selectedTable.id)
-  }
-  
-  return isSelected
+  return !table.connection_id || table.connection_id === connectionId
 }
 
-// Фильтрация по поиску
+function isSelected(table) {
+  if (!props.selectedTable || !props.connectionId) return false
+  if (!tableBelongsToConnection(table, props.connectionId, props.connectionType)) return false
+  const curFileId = props.selectedTable.file_upload_id ?? props.selectedTable.id
+  return String(table.id) === String(curFileId)
+}
+
 const filteredTables = computed(() => {
   const search = filter.value.toLowerCase()
-  const filtered = uploadedFiles.value.filter(table =>
+  return uploadedFiles.value.filter(table =>
     (table.name && table.name.toLowerCase().includes(search)) ||
     (table.table && table.table.toLowerCase().includes(search))
   )
-  
-  console.log('[TablesTooltip] Фильтрация таблиц, поиск:', search, 'результат:', filtered.length, 'из', uploadedFiles.value.length)
-  
-  return filtered
 })
 
-// Загрузка таблиц при смене подключения
 watch(() => props.connectionId, async (id, oldId) => {
   if (!id) return
-  
-  console.log('[TablesTooltip] connectionId изменился:', oldId, '→', id)
-  
-  // Если подключение изменилось, сбрасываем выбранную таблицу
-  if (oldId && oldId !== id) {
-    console.log('[TablesTooltip] Подключение изменилось, сбрасываем выбранную таблицу')
-    emit('resetSelection')
-  }
-  
+  if (oldId && oldId !== id) emit('resetSelection')
+
   isLoading.value = true
   try {
     if (props.connectionType === 'file') {
@@ -102,27 +76,11 @@ watch(() => props.connectionId, async (id, oldId) => {
       await loadDbTables(id)
       uploadedFiles.value = dbTables.value
     }
-
-    console.log('[TablesTooltip] Таблицы загружены, количество:', uploadedFiles.value.length)
     emit('tablesLoaded', uploadedFiles.value)
-    
-    // После загрузки таблиц проверяем, нужно ли сбросить выбор
-    // Это делаем только если таблица действительно не принадлежит новому подключению
-    if (props.selectedTable && props.connectionId) {
-      let belongsToCurrentConnection = false
-      
-      if (props.connectionType === 'file') {
-        belongsToCurrentConnection = props.selectedTable.file_id === props.connectionId
-      } else {
-        belongsToCurrentConnection = !props.selectedTable.connection_id || props.selectedTable.connection_id === props.connectionId
-      }
-      
-      if (!belongsToCurrentConnection) {
-        console.log('[TablesTooltip] Выбранная таблица не принадлежит новому подключению, сбрасываем выбор')
-        emit('resetSelection')
-      } else {
-        console.log('[TablesTooltip] Выбранная таблица принадлежит новому подключению, сохраняем выбор')
-      }
+
+    if (props.selectedTable && props.connectionId &&
+        !tableBelongsToConnection(props.selectedTable, props.connectionId, props.connectionType)) {
+      emit('resetSelection')
     }
   } catch (error) {
     console.error('[TablesTooltip] Ошибка загрузки таблиц:', error)
@@ -131,27 +89,10 @@ watch(() => props.connectionId, async (id, oldId) => {
   }
 }, { immediate: true })
 
-// Дополнительный watcher для отслеживания изменений selectedTable
-watch(() => props.selectedTable, (newTable, oldTable) => {
-  console.log('[TablesTooltip] selectedTable изменился:', oldTable?.id, '→', newTable?.id)
-  
-  // Если таблица изменилась, проверяем, принадлежит ли она текущему подключению
-  if (newTable && props.connectionId) {
-    let belongsToCurrentConnection = false
-    
-    if (props.connectionType === 'file') {
-      belongsToCurrentConnection = newTable.file_id === props.connectionId
-    } else {
-      belongsToCurrentConnection = !newTable.connection_id || newTable.connection_id === props.connectionId
-    }
-    
-    // Если таблица не принадлежит текущему подключению, сбрасываем выбор
-    if (!belongsToCurrentConnection) {
-      console.log('[TablesTooltip] Выбранная таблица не принадлежит текущему подключению, сбрасываем')
-      emit('resetSelection')
-    } else {
-      console.log('[TablesTooltip] Выбранная таблица принадлежит текущему подключению, сохраняем')
-    }
+watch(() => props.selectedTable, (newTable) => {
+  if (newTable && props.connectionId &&
+      !tableBelongsToConnection(newTable, props.connectionId, props.connectionType)) {
+    emit('resetSelection')
   }
 }, { deep: true, immediate: true })
 </script>
@@ -193,9 +134,6 @@ watch(() => props.selectedTable, (newTable, oldTable) => {
   &.linked {
     background-color: var(--color-hover-background);
   }
-}
-.table-item.linked {
-  background-color: var(--color-hover-background);
 }
 .icon {
   width: 16px;
