@@ -1306,9 +1306,17 @@ export function useDatasetActions(state) {
     if (state.dataset.value && state.dataset.value.id) {
       const fieldsResp = await datasetService.listFields({ dataset: state.dataset.value.id })
       if (fieldsResp && Array.isArray(fieldsResp.data) && fieldsResp.data.length > 0) {
-        // Обновляем поля только если backend реально вернул какие‑то поля.
-        // Пустой массив не перетирает текущие client‑side поля, собранные из preview.
-        state.fields.value = fieldsResp.data
+        // Нормализуем поля как в syncFieldsFromDataset, чтобы у полей был source для отображения в UI.
+        state.fields.value = fieldsResp.data.map(f => ({
+          id: f.id,
+          name: f.name || f.source_column || '',
+          aggregation: f.aggregation || 'none',
+          type: f.type || 'string',
+          description: f.description || '',
+          source: f.source || (f.source_column ? { column: f.source_column } : {}),
+          source_table: f.source_table ?? null,
+          expression: f.expression || null
+        }))
       }
     }
     
