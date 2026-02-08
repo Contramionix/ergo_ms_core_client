@@ -193,7 +193,7 @@ function goToConnection(row) {
 
 function goToDataset(row) {
   if (!row || !row.id) return
-  router.push(`/bi/datasets/${row.id}/`)
+  router.push(`/bi/datasets/${row.id}/sources`)
 }
 
 function goToChart(row) {

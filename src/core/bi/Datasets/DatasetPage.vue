@@ -93,6 +93,7 @@
 
 <script setup>
 import { onMounted, watch, ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useDatasetState } from '@/core/bi/Datasets/components/js/useDatasetState'
 import { useDatasetActions } from '@/core/bi/Datasets/components/js/useDatasetActions'
 
@@ -102,6 +103,9 @@ import DatasetToolbar from '@/core/bi/Datasets/DatasetToolbar.vue'
 import DatasetMainContent from '@/core/bi/Datasets/Sources/DatasetMainContent.vue'
 import DatasetFooter from '@/core/bi/Datasets/DatasetFooter.vue'
 import DatasetModals from '@/core/bi/Datasets/Sources/DatasetModals.vue'
+
+const route = useRoute()
+const router = useRouter()
 
 // Используем композаблы
 const state = useDatasetState()
@@ -161,7 +165,9 @@ const {
   isDirty,
   paramsDirtyTick,
   usedRightTableIds,
-  computedLinkedTableIds
+  computedLinkedTableIds,
+  activeTabFromUrlTab,
+  urlTabFromActiveTab
 } = state
 
 // Деструктурируем действия
@@ -477,9 +483,25 @@ watch(() => dataset.value?.name, (newName) => {
   }
 })
 
+// Синхронизация activeTab с URL
+watch(() => route.params.tab, (urlTab) => {
+  const tab = activeTabFromUrlTab(urlTab)
+  if (activeTab.value !== tab) {
+    activeTab.value = tab
+  }
+}, { immediate: true })
+
+watch(activeTab, (tab) => {
+  const urlTab = urlTabFromActiveTab(tab)
+  const currentUrlTab = route.params.tab
+  if (currentUrlTab !== urlTab) {
+    const basePath = isNewPage.value ? '/bi/datasets/new' : `/bi/datasets/${datasetId.value}`
+    router.replace(`${basePath}/${urlTab}`)
+  }
+}, { immediate: true })
+
 // Lifecycle
 onMounted(async () => {
-  // Загружаем предпросмотр после загрузки датасета (loadDataset вызывается через watcher)
   if (mainTable.value && dataset.value?.id) {
     await loadPreview()
   }

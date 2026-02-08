@@ -48,11 +48,18 @@ let resizeTimeout = null
 // Ключ для RouterView - позволяет не пересоздавать компонент при переключении между вкладками
 // Модули могут указать meta.cacheGroup для группировки роутов под одним ключом
 const routeViewKey = computed(() => {
-  // Если модуль указал cacheGroup - используем его как ключ
   if (route.meta?.cacheGroup) {
     return route.meta.cacheGroup
   }
-  // Иначе используем полный путь
+  // Страницы датасета с вкладками: /bi/datasets/:id/:tab — один ключ на датасет, без пересоздания при смене вкладки
+  const datasetMatch = route.path.match(/^\/bi\/datasets\/(\d+)(?:\/|$)/)
+  if (datasetMatch) {
+    return `/bi/datasets/${datasetMatch[1]}`
+  }
+  const newDatasetMatch = route.path.match(/^\/bi\/datasets\/new(?:\/|$)/)
+  if (newDatasetMatch) {
+    return '/bi/datasets/new'
+  }
   return route.path
 })
 

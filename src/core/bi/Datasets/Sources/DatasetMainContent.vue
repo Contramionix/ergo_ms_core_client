@@ -1,7 +1,7 @@
 <template>
   <main class="file_area" :class="{ 'rounded-bottom': !isPreviewVisible }">
-         <div v-if="activeTab === 'sources'" class="flow-wrapper">
-       <DatasetCreating 
+    <div v-show="activeTab === 'sources'" class="flow-wrapper">
+      <DatasetCreating
          :selectedConnection="selectedConnection" 
          :mainTable="mainTable"
          :relations="relations" 
@@ -12,10 +12,10 @@
          @tablesLoaded="$emit('tablesLoaded', $event)"
          @update:selectedConnection="$emit('update:selectedConnection', $event)"
          @update:mainTable="$emit('update:mainTable', $event)"
-         @resetAllRelations="$emit('resetAllRelations')"
-       />
-     </div>
-    <div v-else style="height: 100%;">
+        @resetAllRelations="$emit('resetAllRelations')"
+      />
+    </div>
+    <div v-show="activeTab !== 'sources'" style="height: 100%;">
       <Placeholders 
         v-if="hasConnectionIssues"
         type="connection-error"

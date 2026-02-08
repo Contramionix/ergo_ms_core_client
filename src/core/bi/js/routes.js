@@ -29,14 +29,14 @@ export default {
     }
   },
   "DatasetPage": {
-    "path": "/bi/datasets/:id(\\d+)?",
+    "path": "/bi/datasets/:id(\\d+)/:tab(sources|fields|parameters|filters|analysis)?",
     "component": "@/core/bi/Datasets/DatasetPage.vue",
     "meta": {
       "requiresAuth": true
     }
   },
   "NewDataset": {
-    "path": "/bi/datasets/new",
+    "path": "/bi/datasets/new/:tab(sources|fields|parameters|filters|analysis)?",
     "component": "@/core/bi/Datasets/DatasetPage.vue",
     "meta": {
       "requiresAuth": true

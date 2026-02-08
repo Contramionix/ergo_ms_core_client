@@ -1,6 +1,30 @@
-import { ref, computed} from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 
+const URL_TO_TAB = {
+  sources: 'sources',
+  fields: 'fields',
+  parameters: 'params',
+  filters: 'filters',
+  analysis: 'analysis'
+}
+
+const TAB_TO_URL = {
+  sources: 'sources',
+  fields: 'fields',
+  params: 'parameters',
+  filters: 'filters',
+  analysis: 'analysis'
+}
+
+function activeTabFromUrlTab(urlTab) {
+  if (!urlTab || !URL_TO_TAB[urlTab]) return 'sources'
+  return URL_TO_TAB[urlTab]
+}
+
+function urlTabFromActiveTab(activeTab) {
+  return TAB_TO_URL[activeTab] || 'sources'
+}
 
 export function useDatasetState() {
   const route = useRoute()
@@ -12,8 +36,8 @@ export function useDatasetState() {
   const allTablesOfConnection = ref([])
   const relations = ref([])
   
-  // UI состояние
-  const activeTab = ref('sources')
+  // UI состояние — инициализируем из route.params.tab
+  const activeTab = ref(activeTabFromUrlTab(route.params.tab))
   const isPreviewVisible = ref(true)
   const isPreviewLoading = ref(false)
   const saving = ref(false)
@@ -256,7 +280,9 @@ export function useDatasetState() {
     getRelationsFromDataset,
     needsDataset,
     tabLabel,
-    getTabComponent
+    getTabComponent,
+    activeTabFromUrlTab,
+    urlTabFromActiveTab
   }
 }
 
