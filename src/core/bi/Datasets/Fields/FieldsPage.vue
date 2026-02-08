@@ -78,7 +78,7 @@
               <button type="button" class="field-actions-btn" @click.stop="toggleMenu(idx)" :aria-expanded="openMenuIdx === idx">
                 <MoreHorizontal :size="18" />
               </button>
-              <div v-if="openMenuIdx === idx" ref="menuDropdownRef" class="field-actions-dropdown" @click.stop>
+              <div v-if="openMenuIdx === idx" ref="menuDropdownRef" class="field-actions-dropdown" :class="{ 'field-actions-dropdown-up': menuOpenUpward }" @click.stop>
                 <div class="field-actions-item" @click="onDuplicate(idx)">Дублировать</div>
                 <div class="field-actions-item" @click="onEdit(idx)">Редактировать</div>
                 <div class="field-actions-item danger" @click="onRemove(idx)">Удалить</div>
@@ -104,6 +104,7 @@ const editingNameId = ref(null)
 const nameInputRef = ref(null)
 const openMenuIdx = ref(null)
 const menuDropdownRef = ref(null)
+const menuOpenUpward = ref(false)
 const hoveredRowIdx = ref(null)
 
 const props = defineProps({
@@ -144,6 +145,34 @@ function getDropdownEl() {
     return (idx !== null && raw[idx]) ? raw[idx] : raw.find(Boolean) ?? null
   }
   return raw
+}
+
+function getScrollContainer(el) {
+  if (!el) return null
+  let parent = el.parentElement
+  while (parent) {
+    const style = getComputedStyle(parent)
+    const overflowY = style.overflowY || style.overflow
+    if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') return parent
+    parent = parent.parentElement
+  }
+  return null
+}
+
+function updateMenuDropdownPlacement() {
+  const dropdown = getDropdownEl()
+  if (!dropdown) return
+  const trigger = dropdown.previousElementSibling
+  if (!trigger) return
+  const triggerRect = trigger.getBoundingClientRect()
+  const dropdownHeight = dropdown.getBoundingClientRect().height
+  const gap = 4
+  const scrollContainer = getScrollContainer(trigger)
+  const visibleBottom = scrollContainer
+    ? scrollContainer.getBoundingClientRect().bottom
+    : window.innerHeight
+  const spaceBelow = visibleBottom - triggerRect.bottom
+  menuOpenUpward.value = spaceBelow < dropdownHeight + gap
 }
 
 function handleClickOutside(ev) {
@@ -187,7 +216,15 @@ watch(openMenuIdx, (val) => {
     clickOutsideCleanup()
     clickOutsideCleanup = null
   }
-  if (val === null) return
+  if (val === null) {
+    menuOpenUpward.value = false
+    return
+  }
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      updateMenuDropdownPlacement()
+    })
+  })
   const run = () => {
     document.addEventListener('click', handleClickOutside, true)
     clickOutsideCleanup = () => {
@@ -514,6 +551,12 @@ function getFieldSourceLabel(field) {
   min-width: 120px;
   padding: 2px 0;
   text-align: left;
+}
+.field-actions-dropdown.field-actions-dropdown-up {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 2px;
 }
 
 .field-actions-item {
