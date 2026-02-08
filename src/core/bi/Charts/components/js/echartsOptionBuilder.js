@@ -4,7 +4,10 @@ import {
   getPieData,
   getRadarData,
   getScatterData,
-  getHeatmapData
+  getHeatmapData,
+  getFunnelData,
+  getGaugeData,
+  getTreemapData
 } from './chartDataTransform'
 
 function findField(fields, keys, many = false) {
@@ -49,6 +52,18 @@ export function buildEChartsOption({ type, fields = {}, settings = [], dataset =
       return buildRadarOption(fields, dataset, filters)
     case 'heatmap':
       return buildHeatmapOption(fields, dataset)
+    case 'area':
+      return buildAreaOption(fields, settings, dataset, filters)
+    case 'barHorizontal':
+      return buildBarHorizontalOption(fields, settings, dataset, filters)
+    case 'combined':
+      return buildCombinedOption(fields, settings, dataset, filters)
+    case 'funnel':
+      return buildFunnelOption(fields, dataset, filters)
+    case 'gauge':
+      return buildGaugeOption(fields, dataset, filters)
+    case 'treemap':
+      return buildTreemapOption(fields, dataset, filters)
     default:
       return emptyOption()
   }
@@ -261,6 +276,183 @@ function buildRadarOption(fields, dataset, filters) {
     legend: { bottom: 0, type: 'scroll' },
     radar: { indicator, center: ['50%', '50%'], radius: '65%' },
     series
+  }
+}
+
+function buildAreaOption(fields, settings, dataset, filters) {
+  const lineOpt = buildLineOption(fields, settings, dataset, filters)
+  if (lineOpt.series?.length) {
+    lineOpt.series.forEach(s => {
+      s.areaStyle = { opacity: 0.35 }
+    })
+  }
+  return lineOpt
+}
+
+function buildBarHorizontalOption(fields, settings, dataset, filters) {
+  const xField = findField(fields, ['x'], true)
+  const yField = findField(fields, ['y'], true)
+  const colorField = findField(fields, ['color', 'colors'])
+  const labelFields = findField(fields, ['labels', 'label'], true)
+  const sort = fields?.sort ?? null
+
+  const { labels, datasets } = getBarData(
+    dataset,
+    xField,
+    yField,
+    colorField,
+    { filters, labelFields, sort }
+  )
+
+  if (!labels?.length || !datasets?.length) return emptyOption()
+
+  const series = datasets.map(ds => ({
+    name: ds.label,
+    type: 'bar',
+    data: ds.data || [],
+    itemStyle: Array.isArray(ds.backgroundColor)
+      ? (params) => ({ color: ds.backgroundColor[params.dataIndex] ?? ds.backgroundColor[0] })
+      : { color: ds.backgroundColor }
+  }))
+
+  return {
+    tooltip: { trigger: 'axis' },
+    legend: { bottom: 0, type: 'scroll' },
+    grid: { left: 60, right: 40, bottom: 80, top: 20, containLabel: true },
+    xAxis: { type: 'value', name: yField?.[0]?.label || 'Y' },
+    yAxis: { type: 'category', data: labels },
+    series
+  }
+}
+
+function buildCombinedOption(fields, settings, dataset, filters) {
+  const xFields = findField(fields, ['x'], true)
+  const yFields = findField(fields, ['y'], true)
+  const y2Fields = findField(fields, ['y2'], true)
+  const colorField = findField(fields, ['color', 'colors'])
+  const sortFields = fields?.sort ?? []
+  const labelField = findField(fields, ['labels', 'label'])
+
+  const { labels, datasets: lineDatasets } = getLineData(
+    dataset,
+    xFields || [],
+    [],
+    y2Fields || [],
+    colorField,
+    sortFields,
+    labelField,
+    filters
+  )
+
+  const xField = findField(fields, ['x'], true)
+  const yField = findField(fields, ['y'], true)
+  const labelFields = findField(fields, ['labels', 'label'], true)
+  const sort = fields?.sort ?? null
+  const { labels: barLabels, datasets: barDatasets } = getBarData(
+    dataset,
+    xField,
+    yField,
+    colorField,
+    { filters, labelFields, sort }
+  )
+
+  const useLabels = barLabels?.length ? barLabels : labels
+  if (!useLabels?.length) return emptyOption()
+
+  const series = []
+  barDatasets.forEach(ds => {
+    series.push({
+      name: ds.label,
+      type: 'bar',
+      data: ds.data,
+      itemStyle: Array.isArray(ds.backgroundColor)
+        ? (params) => ({ color: ds.backgroundColor[params.dataIndex] ?? ds.backgroundColor[0] })
+        : { color: ds.backgroundColor },
+      yAxisIndex: 0
+    })
+  })
+
+  const hasY2 = lineDatasets?.some(d => d.yAxisID === 'y2') && lineDatasets?.length
+  if (hasY2 && lineDatasets.length) {
+    lineDatasets.forEach(ds => {
+      series.push({
+        name: ds.label,
+        type: 'line',
+        data: ds.data,
+        smooth: true,
+        lineStyle: { color: ds.borderColor },
+        itemStyle: { color: ds.borderColor },
+        yAxisIndex: 1
+      })
+    })
+  }
+
+  const yAxisList = [
+    { type: 'value', name: yField?.[0]?.label || 'Y', position: 'left' }
+  ]
+  if (hasY2) {
+    yAxisList.push({
+      type: 'value',
+      name: y2Fields?.[0]?.label || 'Y2',
+      position: 'right',
+      splitLine: { show: false }
+    })
+  }
+
+  return {
+    tooltip: { trigger: 'axis' },
+    legend: { bottom: 0, type: 'scroll' },
+    grid: { left: 60, right: hasY2 ? 60 : 40, bottom: 80, top: 20, containLabel: true },
+    xAxis: { type: 'category', data: useLabels, boundaryGap: true },
+    yAxis: yAxisList.length === 1 ? yAxisList[0] : yAxisList,
+    series
+  }
+}
+
+function buildFunnelOption(fields, dataset, filters) {
+  const categoryField = findField(fields, ['category', 'categories', 'x'])
+  const valueField = findField(fields, ['value', 'indicators', 'y'])
+  if (!categoryField || !valueField) return emptyOption()
+  const valueArr = Array.isArray(valueField) ? valueField : [valueField]
+  const vf = valueArr[0]
+  const data = getFunnelData(dataset, categoryField, vf, filters)
+  if (!data.length) return emptyOption()
+  return {
+    tooltip: { trigger: 'item' },
+    series: [{ type: 'funnel', data, sort: 'descending', gap: 2, label: { show: true } }]
+  }
+}
+
+function buildGaugeOption(fields, dataset, filters) {
+  const valueField = findField(fields, ['value', 'indicators', 'y'])
+  const targetField = findField(fields, ['target'])
+  if (!valueField) return emptyOption()
+  const vf = Array.isArray(valueField) ? valueField[0] : valueField
+  const { value, target } = getGaugeData(dataset, vf, targetField, filters)
+  const max = Math.max(value, target ?? 0, 100) * 1.2
+  return {
+    tooltip: { trigger: 'item' },
+    series: [{
+      type: 'gauge',
+      min: 0,
+      max: Math.ceil(max) || 100,
+      progress: { show: true },
+      detail: { formatter: '{value}', fontSize: 16, offsetCenter: [0, '70%'] },
+      data: [{ value, name: vf?.label || 'Значение' }]
+    }]
+  }
+}
+
+function buildTreemapOption(fields, dataset, filters) {
+  const categoryField = findField(fields, ['category', 'categories', 'x'])
+  const valueField = findField(fields, ['value', 'indicators', 'y'])
+  if (!categoryField || !valueField) return emptyOption()
+  const vf = Array.isArray(valueField) ? valueField[0] : valueField
+  const data = getTreemapData(dataset, categoryField, vf, filters)
+  if (!data.length) return emptyOption()
+  return {
+    tooltip: { trigger: 'item' },
+    series: [{ type: 'treemap', data, roam: false, leafDepth: 1, levels: [{ itemStyle: { borderWidth: 1 } }] }]
   }
 }
 

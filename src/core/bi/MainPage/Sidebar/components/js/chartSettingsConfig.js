@@ -54,5 +54,59 @@ export const chartSettingsConfig = {
     { key: 'y', label: 'Y', icon: MoveUp, allowedTypes: ['string'] },
     { key: 'value', label: 'Значение', icon: ChartPie, allowedTypes: ['integer', 'float'] },
     { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'bool'] }
+  ],
+  area: [
+    { key: 'x', label: 'X', icon: MoveRight, allowedTypes: ['string', 'date', 'date&time'] },
+    { key: 'y', label: 'Y', icon: MoveUp, allowedTypes: ['integer', 'float'] },
+    { key: 'y2', label: 'Y2', icon: MoveUp, allowedTypes: ['integer', 'float'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] },
+    { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool'] },
+    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'] },
+    { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] }
+  ],
+  barHorizontal: [
+    { key: 'x', label: 'X', icon: MoveRight, allowedTypes: ['string', 'date', 'date&time', 'integer', 'float'] },
+    { key: 'y', label: 'Y', icon: MoveUp, allowedTypes: ['string', 'date', 'date&time', 'integer', 'float'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] },
+    { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool'] },
+    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'] },
+    { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] }
+  ],
+  combined: [
+    { key: 'x', label: 'X', icon: MoveRight, allowedTypes: ['string', 'date', 'date&time'] },
+    { key: 'y', label: 'Y', icon: MoveUp, allowedTypes: ['integer', 'float'] },
+    { key: 'y2', label: 'Y2', icon: MoveUp, allowedTypes: ['integer', 'float'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] },
+    { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool'] },
+    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'] },
+    { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] }
+  ],
+  funnel: [
+    { key: 'category', label: 'Категории', icon: Server, allowedTypes: ['string'] },
+    { key: 'value', label: 'Значение', icon: ChartPie, allowedTypes: ['integer', 'float'] },
+    { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float'] },
+    { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'bool'] }
+  ],
+  gauge: [
+    { key: 'value', label: 'Значение', icon: ChartPie, allowedTypes: ['integer', 'float'] },
+    { key: 'target', label: 'Целевое', icon: MoveUp, allowedTypes: ['integer', 'float'] },
+    { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'bool'] }
+  ],
+  treemap: [
+    { key: 'category', label: 'Категории', icon: Server, allowedTypes: ['string'] },
+    { key: 'value', label: 'Значение', icon: ChartPie, allowedTypes: ['integer', 'float'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'bool'] },
+    { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float'] },
+    { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'bool'] }
+  ],
+  indicator: [
+    { key: 'value', label: 'Показатель', icon: ChartPie, allowedTypes: ['integer', 'float'] },
+    { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] }
+  ],
+  table: [
+    { key: 'columns', label: 'Столбцы', icon: Type, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'bool'] },
+    { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool'] },
+    { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] }
   ]
 }

@@ -1,6 +1,8 @@
 <script setup>
-import { computed, defineAsyncComponent } from 'vue'
+import { computed } from 'vue'
 import EChartsComponent from '../EChartsComponent.vue'
+import ChartIndicator from './ChartIndicator.vue'
+import ChartTable from './ChartTable.vue'
 
 const props = defineProps({
   type: { type: [String, Number], default: '' },
@@ -23,7 +25,20 @@ const datasetArray = computed(() => (Array.isArray(props.dataset) ? props.datase
 <template>
   <div class="area d-flex flex-column h-100 w-100">
     <div class="chart d-flex h-100 w-100 justify-content-center align-items-center">
+      <ChartIndicator
+        v-if="chartKind === 'indicator'"
+        :fields="fields"
+        :settings="settings"
+        :dataset="datasetArray"
+      />
+      <ChartTable
+        v-else-if="chartKind === 'table'"
+        :fields="fields"
+        :settings="settings"
+        :dataset="datasetArray"
+      />
       <EChartsComponent
+        v-else
         :type="chartKind"
         :fields="fields"
         :settings="settings"

@@ -520,3 +520,56 @@ export function getHeatmapData(dataset, xField, yField, valueField, colorField) 
 
   return { labels: xLabels, datasets }
 }
+
+/** Воронка (funnel): массив { name, value }, сортировка по убыванию value */
+export function getFunnelData(dataset, categoryField, valueField, filters = []) {
+  if (!dataset?.length || !categoryField || !valueField) return []
+  const filtered = dataset.filter(r => filters.every(f => passFilterRow(r, f)))
+  const bucket = new Map()
+  for (const row of filtered) {
+    const name = String(row[categoryField.name] ?? '—')
+    const val = Number(row[valueField.name]) || 0
+    bucket.set(name, (bucket.get(name) || 0) + val)
+  }
+  const result = Array.from(bucket.entries()).map(([name, value]) => ({ name, value }))
+  result.sort((a, b) => b.value - a.value)
+  return result
+}
+
+/** Спидометр (gauge): одно значение и опционально target */
+export function getGaugeData(dataset, valueField, targetField = null, filters = []) {
+  if (!dataset?.length || !valueField) return { value: 0, target: null }
+  const filtered = dataset.filter(r => filters.every(f => passFilterRow(r, f)))
+  const value = filtered.reduce((s, r) => s + (Number(r[valueField.name]) || 0), 0)
+  const target = targetField && filtered.length
+    ? filtered.reduce((s, r) => s + (Number(r[targetField.name]) || 0), 0) / filtered.length
+    : null
+  return { value, target }
+}
+
+/** Древовидная карта (treemap): плоский массив { name, value } */
+export function getTreemapData(dataset, categoryField, valueField, filters = []) {
+  if (!dataset?.length || !categoryField || !valueField) return []
+  const filtered = dataset.filter(r => filters.every(f => passFilterRow(r, f)))
+  const bucket = new Map()
+  for (const row of filtered) {
+    const name = String(row[categoryField.name] ?? '—')
+    const val = Number(row[valueField.name]) || 0
+    bucket.set(name, (bucket.get(name) || 0) + val)
+  }
+  return Array.from(bucket.entries()).map(([name, value]) => ({ name, value }))
+}
+
+/** Индикатор (одно число): sum | avg | count по полю после фильтров */
+export function getIndicatorValue(dataset, valueField, aggregation = 'sum', filters = []) {
+  if (!dataset?.length) return 0
+  const filtered = dataset.filter(r => filters.every(f => passFilterRow(r, f)))
+  if (!filtered.length) return 0
+  if (aggregation === 'count') return filtered.length
+  const fieldName = valueField?.name ?? valueField
+  if (aggregation === 'avg') {
+    const sum = filtered.reduce((s, r) => s + (Number(r[fieldName]) || 0), 0)
+    return sum / filtered.length
+  }
+  return filtered.reduce((s, r) => s + (Number(r[fieldName]) || 0), 0)
+}

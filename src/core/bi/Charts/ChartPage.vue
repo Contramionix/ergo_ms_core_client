@@ -192,10 +192,18 @@ const chartRequiredFieldsFilled = computed(() => {
 
     const required = []
     if (selectedChartType.value === 'line' || selectedChartType.value === 'bar') required.push('x', 'y')
-    if (selectedChartType.value === 'pie' || selectedChartType.value === 'donut') required.push('category', 'indicators')
+    if (selectedChartType.value === 'pie' || selectedChartType.value === 'doughnut') required.push('category', 'indicators')
     if (selectedChartType.value === 'scatter') required.push('x', 'y')
     if (selectedChartType.value === 'radar') required.push('category', 'indicators')
     if (selectedChartType.value === 'heatmap') required.push('x', 'y', 'value')
+    if (selectedChartType.value === 'area') required.push('x', 'y')
+    if (selectedChartType.value === 'barHorizontal') required.push('x', 'y')
+    if (selectedChartType.value === 'combined') required.push('x', 'y')
+    if (selectedChartType.value === 'funnel') required.push('category', 'value')
+    if (selectedChartType.value === 'gauge') required.push('value')
+    if (selectedChartType.value === 'treemap') required.push('category', 'value')
+    if (selectedChartType.value === 'indicator') required.push('value')
+    if (selectedChartType.value === 'table') required.push('columns')
 
     for (const key of required) {
         if (!selectedFields.value[key] || !selectedFields.value[key].length) {

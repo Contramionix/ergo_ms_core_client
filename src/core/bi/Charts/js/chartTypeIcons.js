@@ -5,7 +5,14 @@ import {
   CircleDot,
   ChartScatter,
   Radar,
-  LayoutGrid
+  LayoutGrid,
+  AreaChart,
+  BarChartHorizontal,
+  LineChart,
+  Filter,
+  Gauge,
+  Hash,
+  Table
 } from 'lucide-vue-next'
 
 const CHART_TYPE_ICON_MAP = {
@@ -15,7 +22,15 @@ const CHART_TYPE_ICON_MAP = {
   doughnut: CircleDot,
   scatter: ChartScatter,
   radar: Radar,
-  heatmap: LayoutGrid
+  heatmap: LayoutGrid,
+  area: AreaChart,
+  barHorizontal: BarChartHorizontal,
+  combined: LineChart,
+  funnel: Filter,
+  gauge: Gauge,
+  treemap: LayoutGrid,
+  indicator: Hash,
+  table: Table
 }
 
 const CHART_TYPE_COLORS = {
@@ -25,7 +40,15 @@ const CHART_TYPE_COLORS = {
   doughnut: '#fd7e14',
   scatter: '#6f42c1',
   radar: '#0dcaf0',
-  heatmap: '#d63384'
+  heatmap: '#d63384',
+  area: '#0d6efd',
+  barHorizontal: '#dc3545',
+  combined: '#6c757d',
+  funnel: '#20c997',
+  gauge: '#fd7e14',
+  treemap: '#6610f2',
+  indicator: '#0dcaf0',
+  table: '#198754'
 }
 
 export const CHART_TYPE_OPTIONS = [
@@ -35,7 +58,15 @@ export const CHART_TYPE_OPTIONS = [
   { value: 'doughnut', label: 'Кольцевая диаграмма' },
   { value: 'scatter', label: 'Точечная диаграмма' },
   { value: 'radar', label: 'Радарная диаграмма' },
-  { value: 'heatmap', label: 'Тепловая карта' }
+  { value: 'heatmap', label: 'Тепловая карта' },
+  { value: 'area', label: 'Диаграмма с областями' },
+  { value: 'barHorizontal', label: 'Линейчатая диаграмма' },
+  { value: 'combined', label: 'Комбинированная диаграмма' },
+  { value: 'funnel', label: 'Воронка' },
+  { value: 'gauge', label: 'Спидометр' },
+  { value: 'treemap', label: 'Древовидная диаграмма' },
+  { value: 'indicator', label: 'Индикатор' },
+  { value: 'table', label: 'Таблица' }
 ]
 
 export function getChartTypeIcon(chartType) {

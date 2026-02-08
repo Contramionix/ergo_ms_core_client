@@ -104,7 +104,7 @@
         </div>
         
         <div v-else-if="chartData && datasetRows && chartData.chart_type" class="chart-render-container">
-          <EChartsComponent
+          <ChartRenderer
             :type="chartData.chart_type"
             :fields="chartData.params || {}"
             :settings="[]"
@@ -167,8 +167,8 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue';
 import { Star, MoreHorizontal, AlertCircle, BarChart3, CircleHelp } from 'lucide-vue-next';
 
-const EChartsComponent = defineAsyncComponent(() =>
-  import('../../Charts/EChartsComponent.vue')
+const ChartRenderer = defineAsyncComponent(() =>
+  import('../../Charts/components/ChartRenderer.vue')
 );
 
 import SpinnerLoading from '@/components/SpinnerLoading.vue';
