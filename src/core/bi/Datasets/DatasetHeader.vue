@@ -3,29 +3,18 @@
     <div class="file_area_header_label">
       <Database />
       <div class="header-name-input-wrapper">
-        <input 
-          v-if="!isNewPage"
-          v-model="localName" 
-          @input="onNameInput"
-          @focus="onFocus"
-          @blur="onBlur"
-          class="header-name-input" 
-          placeholder="Название датасета…"
-        />
+        <input v-if="!isNewPage" v-model="localName"  @input="onNameInput" @focus="onFocus" @blur="onBlur" class="header-name-input" placeholder="Название датасета…"/>
         <h4 v-else class="header-label" style="margin-bottom:3px;">{{ headerName }}</h4>
       </div>
     </div>
     <div class="file_area_header_buttons">
-      <button v-if="isNewPage" class="btn btn-primary" :disabled="!canCreateDataset || saving"
-        @click="$emit('showDatasetDialog')">Создать датасет</button>
-
+      <button v-if="isNewPage" class="btn btn-primary" :disabled="!canCreateDataset || saving" @click="$emit('showDatasetDialog')">Создать датасет</button>
       <button class="btn btn-success save-btn" :hidden="isNewPage" :disabled="!isDirty || saving" @click="handleSave"
         style="color: var(--color-primary-background); position: relative;">
         <span v-if="!saving && !saveSuccess">Сохранить датасет</span>
         <span v-else-if="saving" class="saving-spinner">
-          <svg class="spin" width="22" height="22" viewBox="0 0 44 44">
-            <circle cx="22" cy="22" r="18" fill="none" stroke-width="5" stroke="#fff" stroke-linecap="round" />
-          </svg>Сохраняем…</span>
+          <SpinnerLoading loading-text="Сохраняем…" color="#fff" />
+        </span>
         <span v-else-if="saveSuccess" style="display: flex; align-items: center; gap: 6px;">
           <svg width="22" height="22" viewBox="0 0 20 20">
             <polyline points="4,10 9,16 17,4" stroke="#fff" stroke-width="3" fill="none" />
@@ -39,6 +28,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { Database } from 'lucide-vue-next'
+import SpinnerLoading from '@/components/SpinnerLoading.vue'
 
 const props = defineProps({
   headerName: String,
@@ -68,18 +58,14 @@ function isValidName(name) {
 }
 
 function onFocus() {
-  // Сохраняем исходное значение при фокусе
   originalName.value = props.headerName || ''
 }
 
 function onBlur() {
-  // Проверяем валидность имени
   if (!isValidName(localName.value)) {
-    // Возвращаем исходное значение
     localName.value = originalName.value
     emit('update:headerName', originalName.value)
   } else {
-    // Обрезаем пробелы по краям
     const trimmed = localName.value.trim()
     if (trimmed !== localName.value) {
       localName.value = trimmed
@@ -93,7 +79,6 @@ function onNameInput() {
 }
 
 function handleSave() {
-  // Перед сохранением тоже проверяем валидность
   if (!isValidName(localName.value)) {
     localName.value = originalName.value
     emit('update:headerName', originalName.value)
@@ -125,24 +110,26 @@ function handleSave() {
 
 .file_area_header_label {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 5px;
   align-items: center;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .header-name-input-wrapper {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  min-width: 200px;
-  max-width: 500px;
-  width: 100%;
+  min-width: 0;
+  flex: 1;
 }
 
 .header-name-input {
   background: transparent !important;
   border: none !important;
-  border-radius: 12px !important;
+  border-radius: 6px !important;
   padding: .25rem .5rem;
   color: inherit;
   font-size: 1.25rem;
@@ -178,7 +165,6 @@ function handleSave() {
   padding: 12px;
 }
 
-/* Adaptive font sizes for different screen widths */
 @media (max-width: 575.98px) {
   .btn {
     font-size: 12px;
@@ -207,17 +193,21 @@ function handleSave() {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
 }
 
-.save-btn .spin {
-  animation: spin 0.8s linear infinite;
-  stroke: var(--color-primary);
+.save-btn .saving-spinner :deep(.spinner-loading) {
+  flex-direction: row;
+  gap: 0.5rem;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.save-btn .saving-spinner :deep(.spinner-loading__ring) {
+  width: 22px;
+  height: 22px;
+  border-width: 2px;
+}
+
+.save-btn .saving-spinner :deep(.spinner-loading__text) {
+  font-size: inherit;
+  margin: 0;
 }
 </style>
