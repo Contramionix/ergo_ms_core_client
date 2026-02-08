@@ -2,7 +2,7 @@
   <div class="split-pane vertical">
     <div class="Pane Panel vertical" :style="panelStyle">
       <div class="settings-sidebar">
-        <input v-model="search" class="form-control form-control-sm bg-dark text-white mb-2" placeholder="Поле" />
+        <input v-model="search" class="form-control form-control-sm sidebar-search-input mb-2" placeholder="Поле" />
         <ul class="fields-list">
           <li v-for="fld in filteredFields" :key="fld.name" class="field-item">
             <span class="col-icon" style="display: flex; align-items: center; justify-content: center;" :style="{ color: getTypeMeta(fld.type).color }">
@@ -29,7 +29,7 @@
 
 <script setup>
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { Hash, Text, Calendar, CheckSquare, SquareFunction } from 'lucide-vue-next'
+import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, SquareFunction } from 'lucide-vue-next'
 
 const search = ref('')
 
@@ -48,14 +48,19 @@ const filteredFields = computed(() =>
 )
 
 const typeIconMap = {
-  string: { icon: Text, color: '#3ea8ff', label: '' },
-  integer: { icon: Hash, color: '#ffd600', label: '' },
-  float: { icon: Hash, color: '#ff9100', label: '' },
-  date: { icon: Calendar, color: '#66bb6a', label: '' },
-  datetime: { icon: Calendar, color: '#00e676', label: '' },
-  bool: { icon: CheckSquare, color: '#f50057', label: '' },
-  expression: { icon: SquareFunction, color: '#ab47bc', label: 'fx' },
-  default: { icon: Text, color: '#90a4ae', label: '' }
+  string: { icon: Type, color: '#0d6efd', label: '' },
+  integer: { icon: Hash, color: '#198754', label: '' },
+  float: { icon: Hash, color: '#198754', label: '' },
+  number: { icon: Hash, color: '#198754', label: '' },
+  date: { icon: Calendar, color: '#fd7e14', label: '' },
+  'date&time': { icon: Calendar, color: '#fd7e14', label: '' },
+  datetime: { icon: Calendar, color: '#fd7e14', label: '' },
+  bool: { icon: CheckCircle, color: '#20c997', label: '' },
+  boolean: { icon: CheckCircle, color: '#20c997', label: '' },
+  geopoint: { icon: MapPin, color: '#dc3545', label: '' },
+  geopolygon: { icon: Globe, color: '#6f42c1', label: '' },
+  expression: { icon: SquareFunction, color: '#6f42c1', label: 'fx' },
+  default: { icon: Type, color: 'var(--color-accent)', label: '' }
 }
 
 function getTypeMeta(type) {
@@ -135,27 +140,25 @@ const pane2Style = computed(() => ({
   transform: translateX(-50%);
   width: 1px;
   height: 100%;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-border);
 }
 
 .Resizer.vertical:hover::before {
-  background: rgba(255, 255, 255, 0.4);
+  background: var(--color-primary-text);
 }
 
-.settings-sidebar input.form-control {
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+.settings-sidebar input.form-control.sidebar-search-input {
+  background: var(--color-primary-background) !important;
+  color: var(--color-primary-text) !important;
+  border: 1px solid var(--color-border) !important;
   border-radius: 4px !important;
   transition: border-color 0.2s ease !important;
 }
 
-.settings-sidebar input.form-control:focus {
-  border-color: rgba(255, 255, 255, 0.4) !important;
+.settings-sidebar input.form-control.sidebar-search-input:focus {
+  border-color: var(--color-border) !important;
   outline: none !important;
   box-shadow: none !important;
-}
-
-.settings-sidebar input.form-control:not(:placeholder-shown) {
-  border-color: rgba(255, 255, 255, 0.4) !important;
 }
 
 .settings-sidebar {
@@ -179,6 +182,8 @@ const pane2Style = computed(() => ({
   list-style: none;
   padding: 0;
   margin: 0;
+  max-height: min(50vh, 320px);
+  overflow-y: auto;
 }
 
 .field-item {

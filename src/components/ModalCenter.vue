@@ -45,7 +45,10 @@ const emit = defineEmits(['closemodal'])
 </template>
 
 <style lang="scss" scoped>
-// Заголовок модального окна
+.modal-dialog {
+  max-height: 90vh;
+}
+
 .modal-header {
   color: var(--color-primary-text);
   border-bottom: 1px solid var(--color-secondary-background);
@@ -55,20 +58,20 @@ const emit = defineEmits(['closemodal'])
   }
 }
 
-// Стиль модального окна
 .modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  min-height: 0;
   background-color: var(--color-primary-background);
   border: none;
   border-radius: $radius-usual;
 }
 
-// Блюр
-//.modal {
-//  backdrop-filter: blur(5px);
-//}
-
-// Стилизация прокрутки
 .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--color-hover-background) transparent;
 }

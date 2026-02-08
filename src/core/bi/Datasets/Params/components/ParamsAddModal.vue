@@ -22,12 +22,37 @@
 
                 <div class="mb-3">
                     <label class="form-label">Тип</label>
-                    <DataTypeCombobox v-model="type" />
+                    <SelectBox
+                        v-model="type"
+                        :options="typeOptions"
+                        value-key="value"
+                        label-key="label"
+                        :include-all-option="false"
+                        all-label="Тип"
+                        size="sm"
+                    >
+                        <template #selected="{ option, label }">
+                            <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                                <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(option?.value) }">
+                                    <component :is="typeIcon[option?.value] || typeIcon.string" :size="18" />
+                                </span>
+                                <span class="text-truncate">{{ label }}</span>
+                            </span>
+                        </template>
+                        <template #option="{ value, label }">
+                            <span class="d-flex align-items-center gap-2">
+                                <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(value) }">
+                                    <component :is="typeIcon[value] || typeIcon.string" :size="18" />
+                                </span>
+                                {{ label }}
+                            </span>
+                        </template>
+                    </SelectBox>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Значение по умолчанию</label>
-                    <template v-if="type === 'boolean'">
+                    <template v-if="type === 'bool' || type === 'boolean'">
                         <div class="d-flex align-items-center gap-3">
                             <div class="form-check form-check-inline m-0">
                                 <input class="form-check-input" :class="{ 'is-invalid': attemptedSubmit && isDefaultInvalid }" type="radio" name="defaultBool"
@@ -69,8 +94,9 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, defineExpose } from 'vue'
 import ModalCenter from '@/components/ModalCenter.vue'
-import { HelpCircle } from 'lucide-vue-next'
-import DataTypeCombobox from '@/core/bi/components/combobox_datetype.vue'
+import SelectBox from '@/components/SelectBox.vue'
+import { typeOptions } from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
+import { typeIcon, getTypeColor } from '@/core/bi/Datasets/Fields/js/fieldTypeDisplay.js'
 import HelpTooltip from '@/core/bi/components/help_tooltip.vue'
 
 const props = defineProps({
@@ -92,7 +118,7 @@ const originalName = ref('')
 const inputType = computed(() => {
     if (type.value === 'integer' || type.value === 'float') return 'number'
     if (type.value === 'date') return 'date'
-    if (type.value === 'datetime') return 'datetime-local'
+    if (type.value === 'date&time') return 'datetime-local'
     return 'text'
 })
 
@@ -135,7 +161,7 @@ const isNameInvalid = computed(() => {
 
 const isDefaultInvalid = computed(() => {
     const val = defaultValue.value
-    if (type.value === 'boolean') return val === null || val === ''
+    if (type.value === 'bool' || type.value === 'boolean') return val === null || val === ''
     if (type.value === 'integer') {
         if (val === '' || val === null) return true
         return Number.isNaN(parseInt(val, 10))
@@ -356,7 +382,7 @@ function open(payload){
     name.value = row.name || ''
     originalName.value = row.name || ''
     type.value = row.type || 'string'
-    if (type.value === 'boolean') {
+    if (type.value === 'bool' || type.value === 'boolean') {
         defaultValue.value = typeof row.defaultValue === 'boolean' ? row.defaultValue : null
     } else {
         defaultValue.value = row.defaultValue ?? ''

@@ -58,7 +58,7 @@
               <template #selected="{ option, label }">
                 <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
                   <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(option?.value) }">
-                    <component :is="typeIcon[option?.value] || Type" :size="18" />
+                    <component :is="typeIcon[option?.value] || typeIcon.string" :size="18" />
                   </span>
                   <span class="text-truncate">{{ label }}</span>
                 </span>
@@ -66,7 +66,7 @@
               <template #option="{ value, label }">
                 <span class="d-flex align-items-center gap-2">
                   <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(value) }">
-                    <component :is="typeIcon[value] || Type" :size="18" />
+                    <component :is="typeIcon[value] || typeIcon.string" :size="18" />
                   </span>
                   {{ label }}
                 </span>
@@ -101,40 +101,10 @@
 import { ref, nextTick, onBeforeUnmount, watch } from 'vue'
 import SelectBox from '@/components/SelectBox.vue'
 import AggSelect from '@/core/bi/Datasets/Fields/AggregationSelect.vue'
-import { SquareFunction, MoreHorizontal, Type, Hash, Calendar, CheckCircle, MapPin, Globe } from 'lucide-vue-next'
+import { SquareFunction, MoreHorizontal } from 'lucide-vue-next'
 
 import { getTypeOptionsForField, getAggregationOptions, aggregationColorMap } from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
-
-const typeIcon = {
-  string: Type,
-  integer: Hash,
-  float: Hash,
-  number: Hash,
-  date: Calendar,
-  'date&time': Calendar,
-  bool: CheckCircle,
-  boolean: CheckCircle,
-  geopoint: MapPin,
-  geopolygon: Globe,
-}
-
-const typeColor = {
-  string: '#0d6efd',
-  integer: '#198754',
-  float: '#198754',
-  number: '#198754',
-  date: '#fd7e14',
-  'date&time': '#fd7e14',
-  bool: '#20c997',
-  boolean: '#20c997',
-  geopoint: '#dc3545',
-  geopolygon: '#6f42c1',
-}
-
-function getTypeColor(type) {
-  if (!type || typeof type !== 'string') return 'var(--color-accent)'
-  return typeColor[type] ?? 'var(--color-accent)'
-}
+import { typeIcon, getTypeColor } from './js/fieldTypeDisplay.js'
 
 const editingNameId = ref(null)
 const nameInputRef = ref(null)

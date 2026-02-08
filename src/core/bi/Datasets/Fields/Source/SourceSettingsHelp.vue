@@ -2,14 +2,14 @@
   <div class="source-settings-help d-flex flex-column h-100 p-3" style="width: 100%;">
     <div class="settings-body d-flex flex-grow-1 overflow-hidden">
       <div class="func-sidebar d-flex flex-column">
-        <input v-model="funcSearch" type="text" class="form-control form-control-sm bg-dark text-white mb-2" placeholder="Поиск функции…"/>
+        <input v-model="funcSearch" type="text" class="form-control form-control-sm func-help-input mb-2" placeholder="Поиск функции…"/>
         <ul class="list-group list-group-flush flex-grow-1 overflow-auto">
-          <li v-for="cat in filteredCats" :key="cat" class="list-group-item bg-transparent text-white list-item-hover" :class="{ active: selectedCat === cat }" @click="selectedCat = cat">
+          <li v-for="cat in filteredCats" :key="cat" class="list-group-item func-cat-item list-item-hover" :class="{ active: selectedCat === cat }" @click="selectedCat = cat">
             {{ cat }}
           </li>
         </ul>
       </div>
-      <div class="func-detail flex-grow-1 ms-3 bg-dark text-white p-3 rounded overflow-auto">
+      <div class="func-detail flex-grow-1 ms-3 p-3 rounded overflow-auto">
         <h6 class="mb-2">{{ selectedCat }}</h6>
         <pre class="mb-0">{{ syntax[selectedCat] }}</pre>
       </div>
@@ -62,7 +62,7 @@ const syntax = {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .settings-body {
   display: flex;
   flex: 1 1 auto;
@@ -81,9 +81,27 @@ const syntax = {
   min-height: 0;
 }
 
+.func-help-input {
+  background: var(--color-primary-background) !important;
+  color: var(--color-primary-text) !important;
+  border: 1px solid var(--color-border) !important;
+}
+
+.func-help-input:focus {
+  border-color: var(--color-border) !important;
+  outline: none !important;
+}
+
+.func-cat-item {
+  background: transparent !important;
+  color: var(--color-primary-text);
+}
+
 .func-detail {
   flex: 1 1 auto;
   min-height: 0;
+  background: var(--color-secondary-background);
+  color: var(--color-primary-text);
 }
 
 .list-item-hover:hover,

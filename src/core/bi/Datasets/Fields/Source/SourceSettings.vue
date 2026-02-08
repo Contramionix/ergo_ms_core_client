@@ -1,29 +1,24 @@
 <template>
   <div class="source-settings" :class="{ 'resizing-footer': isResizing }" :style="{ '--footer-height': showHelp ? helpHeight + 'px' : '0px' }">
-    <div class="settings-top d-flex align-items-center gap-3">
-      <input v-model="local.name" class="form-control form-control-sm flex-grow-1" placeholder="Название поля" />
-      <div class="tab-group">
-        <button class="tab-button" :class="{ active: activeTab === 'formula' }" @click="activeTab = 'formula'">Формула</button>
-        <button class="tab-button" :class="{ active: activeTab === 'field' }" @click="activeTab = 'field'">Поле из источника</button>
+    <div class="settings-main">
+      <div class="settings-top d-flex align-items-center gap-3">
+        <input v-model="local.name" class="form-control form-control-sm flex-grow-1" placeholder="Название поля" />
+        <div class="tab-group">
+          <button class="tab-button" :class="{ active: activeTab === 'formula' }" @click="activeTab = 'formula'">Формула</button>
+          <button class="tab-button" :class="{ active: activeTab === 'field' }" @click="activeTab = 'field'">Поле из источника</button>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary ms-auto" v-if="activeTab === 'formula'" @click="showHelp = !showHelp">Справочник</button>
       </div>
-      <button class="btn btn-sm btn-outline-secondary ms-auto" v-if="activeTab === 'formula'" @click="showHelp = !showHelp">Справочник</button>
-    </div>
-    <div class="settings-body">
-      <SourceSettingsFormula v-if="activeTab === 'formula'" v-model:expression="expression" :fields="fieldsList" />
-      <SourceSettingsField 
-        v-else 
-        v-model:search="search" 
-        :tables="tables"
-        :selected-connection="selectedConnection"
-        :field="field"
-        @insert-field="insertField" 
-      />
-      <div class="modal-actions d-flex justify-content-end gap-2 mt-3" :class="{ 'no-footer': !showHelp || activeTab === 'field' }">
-        <button class="btn btn-sm btn-outline-light cancel-btn" @click="$emit('close')">Отменить</button>
-        <button class="btn btn-sm btn-primary" @click="apply">Создать</button>
+      <div class="settings-body">
+        <SourceSettingsFormula v-if="activeTab === 'formula'" v-model:expression="expression" :fields="fieldsList"/>
+        <SourceSettingsField v-else v-model:search="search" :tables="tables" :selected-connection="selectedConnection" :field="field" @insert-field="insertField"/>
+        <div class="modal-actions d-flex justify-content-end gap-2 mt-3" :class="{ 'no-footer': !showHelp || activeTab === 'field' }">
+          <button class="btn btn-sm cancel-btn" @click="$emit('close')">Отменить</button>
+          <button class="btn btn-sm btn-primary" @click="apply">Создать</button>
+        </div>
       </div>
     </div>
-    <div class="settings-footer" @mousedown="startHelpResize" @dblclick="resetHelpHeight">
+    <div v-if="showHelp" class="settings-footer" @mousedown="startHelpResize" @dblclick="resetHelpHeight">
       <SourceSettingsHelp />
     </div>
   </div>
@@ -131,24 +126,24 @@ function apply() {
 
 <style scoped lang="scss">
 .source-settings {
-  display: grid;
-  grid-template-rows: auto 1fr var(--footer-height, 200px);
+  position: relative;
   height: 100%;
   overflow: hidden;
 }
 
-.settings-footer::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 6px;
-  cursor: row-resize;
-  z-index: 10;
+.settings-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
 }
 
 .settings-top {
-  padding: 1rem 1rem 1rem 0;
+  padding: 0 1rem 1rem 0;
   gap: .5rem;
+  flex-shrink: 0;
 }
 
 .settings-body {
@@ -168,10 +163,15 @@ function apply() {
 }
 
 .settings-footer {
-  position: relative;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--footer-height, 200px);
   background: var(--color-primary-background);
   overflow: auto;
   border-top: 1px solid var(--color-border);
+  z-index: 20;
 }
 
 .settings-footer::before {
@@ -232,7 +232,7 @@ function apply() {
 
 .cancel-btn:hover,
 .cancel-btn:focus {
-  color: #fff;
+  color: var(--color-primary-text);
   background-color: var(--color-hover-background);
 }
 </style>

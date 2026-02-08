@@ -9,22 +9,10 @@
                     </button>
                     <div v-if="isTableOpen" class="dropdown-menu show floating" :style="dropdownStyle">
                         <div class="dropdown-search p-2">
-                            <input 
-                                type="text" 
-                                class="form-control form-control-sm" 
-                                placeholder="Поиск таблицы..." 
-                                v-model="tableFilter"
-                                autocomplete="off"
-                            />
+                            <input type="text" class="form-control form-control-sm" placeholder="Поиск таблицы..." v-model="tableFilter" autocomplete="off"/>
                         </div>
                         <ul class="dropdown-list">
-                            <li 
-                                v-for="t in filteredTables" 
-                                :key="t.id"
-                                class="dropdown-item"
-                                :class="{ active: isSelectedTable(t) }"
-                                @click="selectTable(t)"
-                            >
+                            <li v-for="t in filteredTables" :key="t.id" class="dropdown-item" :class="{ active: isSelectedTable(t) }" @click="selectTable(t)">
                                 {{ tableLabel(t) }}
                             </li>
                             <li v-if="filteredTables.length === 0" class="dropdown-empty">Нет результатов</li>
@@ -35,32 +23,15 @@
             <div class="table-row">
                 <div class="table-row-label">Поле источника</div>
                 <div class="dropdown-wrapper select-2">
-                    <button 
-                        type="button" 
-                        class="dropdown-toggle form-select form-select-sm table-row-select w-100" 
-                        :disabled="!selectedTable"
-                        @click="onToggleMenu('column', $event)"
-                    >
+                    <button type="button" class="dropdown-toggle form-select form-select-sm table-row-select w-100" :disabled="!selectedTable" @click="onToggleMenu('column', $event)">
                         {{ selectedColumnLabel }}
                     </button>
                     <div v-if="isColumnOpen" class="dropdown-menu show floating" :style="dropdownStyle">
                         <div class="dropdown-search p-2">
-                            <input 
-                                type="text" 
-                                class="form-control form-control-sm" 
-                                placeholder="Поиск по полям..." 
-                                v-model="columnFilter"
-                                autocomplete="off"
-                            />
+                            <input type="text" class="form-control form-control-sm" placeholder="Поиск по полям..." v-model="columnFilter" autocomplete="off"/>
                         </div>
                         <ul class="dropdown-list">
-                            <li 
-                                v-for="col in filteredColumns" 
-                                :key="col"
-                                class="dropdown-item"
-                                :class="{ active: isSelectedColumn(col) }"
-                                @click="selectColumn(col)"
-                            >
+                            <li v-for="col in filteredColumns" :key="col" class="dropdown-item" :class="{ active: isSelectedColumn(col) }" @click="selectColumn(col)">
                                 {{ col }}
                             </li>
                             <li v-if="filteredColumns.length === 0" class="dropdown-empty">Нет результатов</li>
@@ -70,54 +41,31 @@
             </div>
             <div class="table-row">
                 <div class="table-row-label">Тип поля</div>
-                <div class="dropdown-wrapper select-2">
-                    <button 
-                        type="button" 
-                        class="dropdown-toggle form-select form-select-sm table-row-select w-100"
-                        @click="onToggleMenu('type', $event)"
-                    >
-                        <span v-if="selectedType" style="display: flex; align-items: center;">
-                            <FieldTypeIcon :fieldType="selectedType" :size="16" />
-                            <span class="ms-2">{{ selectedTypeLabel }}</span>
-                        </span>
-                        <span v-else>
-                            Выберите тип
-                        </span>
-                    </button>
-                    <div v-if="isTypeOpen" class="dropdown-menu show floating" :style="dropdownStyle">
-                        <ul class="dropdown-list">
-                            <li 
-                                v-for="opt in typeOptionsAvailable" 
-                                :key="opt.value"
-                                class="dropdown-item"
-                                :class="{ active: isSelectedType(opt.value) }"
-                                @click="selectType(opt.value)"
-                            >
-                                <FieldTypeIcon :fieldType="opt.value" :size="16" />
-                                <span class="ms-2">{{ opt.label }}</span>
-                            </li>
-                            <li v-if="typeOptionsAvailable.length === 0" class="dropdown-empty">Нет вариантов</li>
-                        </ul>
-                    </div>
+                <div class="dropdown-wrapper select-2 type-select-wrap">
+                    <SelectBox :modelValue="selectedType" @update:modelValue="val => selectedType = val" :options="typeOptionsAvailable" value-key="value" label-key="label" :include-all-option="false" all-label="Выберите тип" size="sm">
+                        <template #selected="{ option, label }">
+                            <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                                <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(option?.value) }">
+                                    <component :is="typeIcon[option?.value] || typeIcon.string" :size="16" />
+                                </span>
+                                <span class="text-truncate">{{ label }}</span>
+                            </span>
+                        </template>
+                        <template #option="{ value, label }">
+                            <span class="d-flex align-items-center gap-2">
+                                <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(value) }">
+                                    <component :is="typeIcon[value] || typeIcon.string" :size="16" />
+                                </span>
+                                {{ label }}
+                            </span>
+                        </template>
+                    </SelectBox>
                 </div>
             </div>
             <div class="table-row">
                 <div class="table-row-label">Агрегация</div>
-                <div class="dropdown-wrapper select-2 has-caret">
-                    <select 
-                        class="table-row-select form-select form-select-sm w-100"
-                        v-model="selectedAggregation"
-                        :disabled="!selectedType"
-                    >
-                        <option value="">Нет</option>
-                        <option 
-                            v-for="opt in aggregationOptions" 
-                            :key="opt.value" 
-                            :value="opt.value"
-                        >
-                            {{ opt.label }}
-                        </option>
-                    </select>
+                <div class="dropdown-wrapper select-2 type-select-wrap">
+                    <SelectBox :modelValue="selectedAggregation" @update:modelValue="val => selectedAggregation = val" :options="aggregationOptionsWithNone" value-key="value" label-key="label" :include-all-option="false" all-label="Нет" size="sm" :disabled="!selectedType"/>
                 </div>
             </div>
         </div>
@@ -125,10 +73,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import SelectBox from '@/components/SelectBox.vue'
 import { fetchTableColumns } from './js/tableColumnsService'
 import { getTypeOptionsForField, getAggregationOptions } from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
-import FieldTypeIcon from '@/core/bi/Dashboards/components/FieldTypeIcon.vue'
+import { typeIcon, getTypeColor } from '../js/fieldTypeDisplay.js'
 
 const props = defineProps({
     tables: { type: Array, default: () => [] },
@@ -136,7 +85,7 @@ const props = defineProps({
     field: { type: Object, default: null }
 })
 
-const emit = defineEmits(['update:search', 'insert-field'])
+defineEmits(['update:search', 'insert-field'])
 
 const isTableOpen = ref(false)
 const tableFilter = ref('')
@@ -145,7 +94,6 @@ const isColumnOpen = ref(false)
 const columnFilter = ref('')
 const columns = ref([])
 const selectedColumn = ref('')
-const isTypeOpen = ref(false)
 const selectedType = ref('')
 const selectedAggregation = ref('')
 const menuPosition = ref({ top: 0, left: 0, width: 0 })
@@ -154,7 +102,6 @@ function computeMenuPosition(evt) {
     const target = evt?.currentTarget || evt?.target
     if (!target || typeof target.getBoundingClientRect !== 'function') return
     const rect = target.getBoundingClientRect()
-    // Для position: fixed используем координаты относительно окна
     menuPosition.value = {
         top: Math.round(rect.bottom + 6),
         left: Math.round(rect.left),
@@ -163,19 +110,12 @@ function computeMenuPosition(evt) {
 }
 
 function onToggleMenu(kind, evt) {
-    // Открываем только одно меню одновременно
-    const nextState = {
-        table: false,
-        column: false,
-        type: false
-    }
+    const nextState = { table: false, column: false }
     computeMenuPosition(evt)
     if (kind === 'table') nextState.table = !isTableOpen.value
     if (kind === 'column') nextState.column = !isColumnOpen.value
-    if (kind === 'type') nextState.type = !isTypeOpen.value
     isTableOpen.value = nextState.table
     isColumnOpen.value = nextState.column
-    isTypeOpen.value = nextState.type
 }
 
 const dropdownStyle = computed(() => ({
@@ -247,7 +187,6 @@ function onClickOutside(e) {
     if (!root) {
         isTableOpen.value = false
         isColumnOpen.value = false
-        isTypeOpen.value = false
     }
 }
 
@@ -259,7 +198,6 @@ onBeforeUnmount(() => {
     document.removeEventListener('click', onClickOutside)
 })
 
-// Автовыбор таблицы при редактировании поля
 function resolveSelectedFromField() {
     if (!props.field) return
     const srcTbl = props.field.source_table
@@ -280,7 +218,6 @@ function resolveSelectedFromField() {
     }
     if (found) {
         selectedTable.value = found
-        // загрузим колонки выбранной таблицы
         fetchTableColumns(found).then(cols => {
             columns.value = cols || []
         }).catch(() => {
@@ -295,46 +232,26 @@ function resolveSelectedFromField() {
         selectedType.value = initialType
     }
 
-    // Установим агрегацию из поля (при несоответствии типу она сбросится watcher'ом)
     selectedAggregation.value = initialAggregation
 }
 
-// Следим за приходом таблиц и полем
-import { watch } from 'vue'
-watch(() => props.tables, () => resolveSelectedFromField(), { deep: true })
-watch(() => props.field, () => resolveSelectedFromField(), { deep: true, immediate: true })
+const aggregationOptions = computed(() => getAggregationOptions(selectedType.value) || [])
 
-// Список доступных типов данных на основе значений поля (если есть)
-const typeOptionsAvailable = computed(() => {
-    const fieldLike = props.field || {}
-    return getTypeOptionsForField(fieldLike)
-})
+const aggregationOptionsWithNone = computed(() => [
+    { value: '', label: 'Нет' },
+    ...aggregationOptions.value
+])
 
-const selectedTypeLabel = computed(() => {
-    const found = typeOptionsAvailable.value.find(o => o.value === selectedType.value)
-    return found ? found.label : 'Тип не выбран'
-})
+const typeOptionsAvailable = computed(() => getTypeOptionsForField(props.field || {}))
 
-function selectType(val) {
-    selectedType.value = val
-    isTypeOpen.value = false
-}
+watch(() => props.tables, resolveSelectedFromField, { deep: true })
+watch(() => props.field, resolveSelectedFromField, { deep: true, immediate: true })
 
-function isSelectedType(val) {
-    return selectedType.value === val
-}
-
-// Сбрасываем агрегацию, если для нового типа текущая недоступна
 watch([selectedType], () => {
-    const values = new Set((aggregationOptions || []).value ? aggregationOptions.value.map(o => o.value) : [])
+    const values = new Set((aggregationOptions.value || []).map(o => o.value))
     if (!values.has(selectedAggregation.value)) {
         selectedAggregation.value = ''
     }
-})
-
-// Опции агрегаций зависят от выбранного типа
-const aggregationOptions = computed(() => {
-    return getAggregationOptions(selectedType.value) || []
 })
 </script>
 
@@ -392,6 +309,23 @@ const aggregationOptions = computed(() => {
     max-width: 260px;
 }
 
+.type-select-wrap :deep(.select-trigger) {
+    min-height: 31px;
+    padding: 0.25rem 0.5rem;
+    background: transparent !important;
+    color: var(--color-primary-text) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: 5px !important;
+    font-size: 0.875rem;
+}
+
+.type-select-wrap :deep(.select-trigger:hover),
+.type-select-wrap :deep(.select-trigger:focus) {
+    background-color: var(--color-hover-background) !important;
+    border-color: var(--color-border) !important;
+    outline: none !important;
+}
+
 .dropdown-wrapper {
   position: relative;
   width: 100%;
@@ -408,23 +342,6 @@ const aggregationOptions = computed(() => {
   content: '';
   display: inline-block;
   margin-left: 8px;
-  border-top: .35em solid currentColor;
-  border-right: .35em solid transparent;
-  border-left: .35em solid transparent;
-}
-
-/* Стрелочка для обычного select внутри обертки */
-.has-caret {
-  position: relative;
-}
-
-.has-caret::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  pointer-events: none;
   border-top: .35em solid currentColor;
   border-right: .35em solid transparent;
   border-left: .35em solid transparent;
