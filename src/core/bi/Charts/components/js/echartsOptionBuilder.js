@@ -19,7 +19,7 @@ function findField(fields, keys, many = false) {
   return many ? [] : null
 }
 
-function normalizedFilters(fields) {
+export function normalizedFilters(fields) {
   const raw = fields?.filters ?? []
   return raw.map((f) => ({
     field: { name: f.name },

@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { getIndicatorValue } from './js/chartDataTransform.js'
+import { normalizedFilters } from './js/echartsOptionBuilder.js'
 
 const props = defineProps({
   fields: { type: Object, default: () => ({}) },
@@ -19,10 +20,12 @@ const valueField = computed(() => {
 const aggregation = computed(() => props.fields?.aggregation || 'sum')
 const unit = computed(() => props.fields?.unit ?? props.fields?.suffix ?? '')
 
+const filters = computed(() => normalizedFilters(props.fields))
+
 const value = computed(() => {
   const field = valueField.value
   if (!field || !props.dataset?.length) return null
-  return getIndicatorValue(props.dataset, field, aggregation.value, [])
+  return getIndicatorValue(props.dataset, field, aggregation.value, filters.value || [])
 })
 
 const displayText = computed(() => {

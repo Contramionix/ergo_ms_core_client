@@ -56,11 +56,13 @@ export function useDatasetActions(state) {
   }
   
   // Вспомогательная функция для подготовки полей для отправки на сервер (для обновления)
+  // Включаем поля с name ИЛИ с существующим id, чтобы не терять сохранённые поля с пустым name
   function prepareFieldsForUpdate(fields) {
+    const hasName = (f) => f.name != null && String(f.name).trim() !== ''
+    const hasExistingId = (f) => f.id != null && f.id !== undefined && !String(f.id).startsWith('new_')
     return fields
-      .filter(f => f.name)
+      .filter(f => hasName(f) || hasExistingId(f))
       .map(f => {
-        // Извлекаем ID source_table, если это объект
         let source_table_id = null
         if (f.source_table) {
           if (typeof f.source_table === 'number' || typeof f.source_table === 'string') {
@@ -69,10 +71,9 @@ export function useDatasetActions(state) {
             source_table_id = f.source_table.id
           }
         }
-        
         return {
-          id: (typeof f.id === 'number' || (typeof f.id === 'string' && !f.id.toString().startsWith('new_'))) ? f.id : undefined,
-          name: f.name,
+          id: hasExistingId(f) ? f.id : undefined,
+          name: f.name != null ? String(f.name).trim() || '' : '',
           aggregation: f.aggregation,
           type: f.type || 'string',
           description: f.description || '',

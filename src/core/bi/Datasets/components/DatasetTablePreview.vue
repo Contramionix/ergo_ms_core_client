@@ -305,7 +305,9 @@ async function loadInitialData() {
     return
   }
 
-  if (props.rows?.length > 0 && props.cols?.length > 0) {
+  // Для черновика (без datasetId) используем переданные rows/cols как есть.
+  // Для сохранённого датасета всегда запрашиваем страницу 1 у API, чтобы получить total_count и корректное число страниц.
+  if (props.rows?.length > 0 && props.cols?.length > 0 && !props.datasetId) {
     allColumns.value = props.cols
     pagesCache.value.set(1, props.rows)
     totalRowsCount.value = props.rows.length
