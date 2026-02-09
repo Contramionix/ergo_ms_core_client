@@ -1,7 +1,7 @@
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 
-export function useFileUploader(tempUploadedFiles, selectedFile, isSheetPickerVisible, currentUploadFile, availableSheets, loadUserFiles, connectionId, uploadedFiles = null, selectFileCallback = null, isFinalizingRef = null) {
+export function useFileUploader(tempUploadedFiles, selectedFile, isSheetPickerVisible, currentUploadFile, availableSheets, loadUserFiles, connectionId, uploadedFiles = null, selectFileCallback = null, isFinalizingRef = null, loadUnattachedFiles = null) {
 
   const MAX_FILES = 10
   const MAX_SIZE_MB = 200
@@ -10,150 +10,76 @@ export function useFileUploader(tempUploadedFiles, selectedFile, isSheetPickerVi
     return connectionId && typeof connectionId === 'object' ? connectionId.value : connectionId
   }
 
-async function uploadFile(file, sheet = null) {
-  const formData = new FormData()
-  formData.append('file', file)
-
-  let name = file.name
-  if (sheet) {
-    const base = file.name.replace(/\.xlsx$/, '')
-    name = `${base} – ${sheet}.xlsx`
-    formData.append('sheet', sheet)
-  }
-
-  try {
-    const res = await apiClient.upload(endpoints.bi.Upload, formData, true)
-
-    if (res.success) {
-      const temp = {
-        name,
-        temp_path: res.data.temp_path,
-        original_filename: res.data.original_filename,
-        file_type: res.data.file_type,
-        originalFile: file,
-        isReady: true,
-        sheet: sheet
-      }
-      tempUploadedFiles.value.push(temp)
-      // Выбираем последний загруженный файл только если нет выбранного
-      if (!selectedFile.value) {
-        selectedFile.value = temp
-      }
-    }
-  } catch (error) {
-    console.error('[uploadFile] Исключение при загрузке:', error)
-    throw error
-  }
-}
-
-  async function uploadFileRaw(formData, newName, originalFile) {
-  try {
-    const res = await apiClient.post(endpoints.bi.uploadFinalize, formData)
-    return res
-  } catch (err) {
-    return { success: false, error: err }
-  }
-}
-
-async function finalizeUploads(connectionId) {
-  const finalizePromises = tempUploadedFiles.value.map(async file => {
-    if (!file.temp_path) {
-      return null
-    }
+  async function directUploadFile(file, sheet = null) {
     const formData = new FormData()
-    formData.append('temp_path', file.temp_path)
-    formData.append('name', file.name)
-    formData.append('original_filename', file.original_filename)
-    formData.append('file_type', file.file_type)
-    formData.append('connection', connectionId)
-    if (file.sheet) formData.append('sheet', file.sheet)
-
-    const res = await uploadFileRaw(formData, file.name, file.originalFile)
-    if (res && res.success && res.data && res.data.id) {
+    formData.append('file', file)
+    if (sheet) formData.append('sheet', sheet)
+    const res = await apiClient.upload(endpoints.bi.UploadDirect, formData, true)
+    if (res.success && res.data) {
+      if (loadUnattachedFiles) await loadUnattachedFiles()
       return res.data
     }
-    return null
-  })
-
-  const uploaded = await Promise.all(finalizePromises)
-  tempUploadedFiles.value = []
-  return uploaded.filter(Boolean)
-}
-
-async function autoFinalizeAndSelect() {
-  const currentConnectionId = getConnectionId()
-  if (!currentConnectionId || tempUploadedFiles.value.length === 0) {
-    return
+    throw new Error(res.error || 'Ошибка загрузки')
   }
 
-  // Показываем индикатор загрузки при финализации
-  if (isFinalizingRef) {
-    isFinalizingRef.value = true
+  async function uploadFileAndFinalizeToUnattached(file, sheet) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const uploadRes = await apiClient.upload(endpoints.bi.Upload, formData, true)
+    if (!uploadRes.success || !uploadRes.data?.temp_path) throw new Error('Ошибка временной загрузки')
+    const { temp_path, original_filename, file_type } = uploadRes.data
+    const base = file.name.replace(/\.xlsx$/i, '')
+    const name = sheet ? `${base} – ${sheet}.xlsx` : file.name
+    const finalizeData = new FormData()
+    finalizeData.append('temp_path', temp_path)
+    finalizeData.append('name', name)
+    finalizeData.append('original_filename', original_filename)
+    finalizeData.append('file_type', file_type)
+    if (sheet) finalizeData.append('sheet', sheet)
+    const finalizeRes = await apiClient.post(endpoints.bi.uploadFinalize, finalizeData)
+    if (!finalizeRes.success || !finalizeRes.data?.id) throw new Error('Ошибка финализации')
+    return finalizeRes.data
   }
 
-  try {
-    // Сохраняем имена загруженных файлов для последующего поиска
-    const uploadedFileNames = tempUploadedFiles.value.map(f => f.name)
-    
-    // Финализируем все загруженные файлы
-    const finalizedFiles = await finalizeUploads(currentConnectionId)
-    
-    // Обновляем список файлов подключения
-    await loadUserFiles(currentConnectionId)
-    
-    // Автоматически выбираем первый загруженный файл для просмотра
-    if (finalizedFiles && finalizedFiles.length > 0 && uploadedFiles && selectFileCallback) {
-      // Ждем немного, чтобы список файлов обновился
-      setTimeout(() => {
-        // Ищем первый загруженный файл в обновленном списке
-        const firstFinalizedFile = finalizedFiles[0]
-        if (firstFinalizedFile && firstFinalizedFile.id) {
-          // Ищем файл по ID в списке uploadedFiles
-          const foundFile = uploadedFiles.value.find(f => f.id === firstFinalizedFile.id)
-          if (foundFile) {
-            selectFileCallback(foundFile)
-          } else {
-            // Если не нашли по ID, ищем по имени
-            const foundByName = uploadedFiles.value.find(f => 
-              f.name === firstFinalizedFile.name || 
-              uploadedFileNames.includes(f.name)
-            )
-            if (foundByName) {
-              selectFileCallback(foundByName)
-            }
-          }
-        }
-      }, 200)
-    }
-  } catch (error) {
-    console.error('[autoFinalizeAndSelect] Ошибка при финализации файлов:', error)
-  } finally {
-    // Скрываем индикатор загрузки
-    if (isFinalizingRef) {
-      isFinalizingRef.value = false
+  async function uploadFileRaw(formData, newName, originalFile) {
+    try {
+      const res = await apiClient.post(endpoints.bi.uploadFinalize, formData)
+      return res
+    } catch (err) {
+      return { success: false, error: err }
     }
   }
-}
 
-async function handleSheetSelection(sheets) {
-  isSheetPickerVisible.value = false
-  const file = currentUploadFile.value
-  if (!file || !sheets.length) return
-
-  // Загружаем все выбранные листы параллельно
-  const uploadPromises = sheets.map(sheet => uploadFile(file.originalFile, sheet))
-  
-  try {
-    await Promise.all(uploadPromises)
-    
-    // Если подключение уже существует, автоматически финализируем загруженные файлы
-    await autoFinalizeAndSelect()
-  } catch (error) {
-    console.error('[handleSheetSelection] Ошибка при параллельной загрузке листов:', error)
+  async function finalizeUploads(connectionId) {
+    const finalizePromises = tempUploadedFiles.value.map(async file => {
+      if (!file.temp_path) return null
+      const formData = new FormData()
+      formData.append('temp_path', file.temp_path)
+      formData.append('name', file.name)
+      formData.append('original_filename', file.original_filename)
+      formData.append('file_type', file.file_type)
+      formData.append('connection', connectionId)
+      if (file.sheet) formData.append('sheet', file.sheet)
+      const res = await uploadFileRaw(formData, file.name, file.originalFile)
+      if (res && res.success && res.data && res.data.id) return res.data
+      return null
+    })
+    const uploaded = await Promise.all(finalizePromises)
+    tempUploadedFiles.value = []
+    return uploaded.filter(Boolean)
   }
 
-  currentUploadFile.value = null
-}
+  async function handleSheetSelection(sheets) {
+    isSheetPickerVisible.value = false
+    const file = currentUploadFile.value
+    if (!file || !sheets.length) return
+    try {
+      await Promise.all(sheets.map(sheet => uploadFileAndFinalizeToUnattached(file.originalFile, sheet)))
+      if (loadUnattachedFiles) await loadUnattachedFiles()
+    } catch (error) {
+    }
+    currentUploadFile.value = null
+  }
 
   async function handleFileUpload(event) {
     const files = Array.from(event.target.files)
@@ -190,7 +116,6 @@ async function handleSheetSelection(sheets) {
           const sheetRes = await apiClient.upload(endpoints.bi.xlsxSheets, formData)
           return { file, sheetRes }
         } catch (error) {
-          console.error(`[handleFileUpload] Ошибка проверки листов для ${file.name}:`, error)
           return { file, sheetRes: null }
         }
       })
@@ -215,40 +140,29 @@ async function handleSheetSelection(sheets) {
       return
     }
 
-    // Загружаем все файлы параллельно
     const uploadPromises = []
-
-    // Загружаем xlsx файлы (с одним листом или без выбора)
     for (const { file, sheetRes } of xlsxChecks) {
       if (sheetRes?.success && sheetRes?.data?.sheets?.length === 1) {
-        // Если лист один, загружаем сразу с этим листом
-        uploadPromises.push(uploadFile(file, sheetRes.data.sheets[0]))
+        uploadPromises.push(directUploadFile(file, sheetRes.data.sheets[0]))
       } else {
-        // Иначе загружаем без указания листа (будет использован первый)
-        uploadPromises.push(uploadFile(file))
+        uploadPromises.push(directUploadFile(file))
       }
     }
-
-    // Загружаем остальные файлы
     for (const file of otherFiles) {
-      uploadPromises.push(uploadFile(file))
+      uploadPromises.push(directUploadFile(file))
     }
 
-    // Ждем завершения всех загрузок параллельно
     try {
       await Promise.all(uploadPromises)
+      if (loadUnattachedFiles) await loadUnattachedFiles()
     } catch (error) {
-      console.error('[handleFileUpload] Ошибка при параллельной загрузке:', error)
     }
 
     event.target.value = ''
-    
-    // Если подключение уже существует, автоматически финализируем загруженные файлы
-    await autoFinalizeAndSelect()
   }
 
   return {
-    uploadFile,
+    directUploadFile,
     uploadFileRaw,
     finalizeUploads,
     handleSheetSelection,

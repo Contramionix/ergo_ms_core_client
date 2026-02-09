@@ -767,18 +767,24 @@ export function useDatasetActions(state) {
       })
     }
 
+    const isFileConn = state.selectedConnection.value &&
+      (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') ||
+       state.selectedConnection.value.connector_type?.toLowerCase().includes('файл'))
+    const connId = state.selectedConnection.value?.id
+
     dsTables.forEach(t => {
       const key = t.file_id || t.id
       if (t.file_id && uniqueStaging.has(t.file_id)) {
         const fileData = uniqueStaging.get(t.file_id)
         const mergedData = { ...fileData, ...t, id: t.id }
-
+        if (isFileConn && connId != null && mergedData.connection_id == null) mergedData.connection_id = connId
         mergedData.display_name = t.display_name || fileData.display_name
         mergedData.name = mergedData.display_name
 
         uniqueStaging.set(t.file_id, mergedData)
       } else if (key) {
-        uniqueStaging.set(key, t)
+        const tableEntry = isFileConn && connId != null && t.connection_id == null ? { ...t, connection_id: connId } : t
+        uniqueStaging.set(key, tableEntry)
       }
     })
 
@@ -788,9 +794,10 @@ export function useDatasetActions(state) {
     if (state.mainTable.value && state.selectedConnection.value) {
       let belongsToCurrentConnection = false
       
-      if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+      if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') ||
           state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
-        belongsToCurrentConnection = state.mainTable.value.file_id === state.selectedConnection.value.id
+        belongsToCurrentConnection = state.mainTable.value.file_id === state.selectedConnection.value.id ||
+          state.mainTable.value.connection_id === state.selectedConnection.value.id
       } else {
         belongsToCurrentConnection = !state.mainTable.value.connection_id || state.mainTable.value.connection_id === state.selectedConnection.value.id
       }
@@ -852,9 +859,10 @@ export function useDatasetActions(state) {
     if (state.mainTable.value && state.selectedConnection.value) {
       let belongsToCurrentConnection = false
       
-      if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') || 
+      if (state.selectedConnection.value.connector_type_display?.toLowerCase().includes('file') ||
           state.selectedConnection.value.connector_type?.toLowerCase().includes('файл')) {
-        belongsToCurrentConnection = state.mainTable.value.file_id === state.selectedConnection.value.id
+        belongsToCurrentConnection = state.mainTable.value.file_id === state.selectedConnection.value.id ||
+          state.mainTable.value.connection_id === state.selectedConnection.value.id
       } else {
         belongsToCurrentConnection = !state.mainTable.value.connection_id || state.mainTable.value.connection_id === state.selectedConnection.value.id
       }
@@ -876,9 +884,10 @@ export function useDatasetActions(state) {
       if (tbl) {
         let belongsToCurrentConnection = false
         
-        if (state.selectedConnection.value?.connector_type_display?.toLowerCase().includes('file') || 
+        if (state.selectedConnection.value?.connector_type_display?.toLowerCase().includes('file') ||
             state.selectedConnection.value?.connector_type?.toLowerCase().includes('файл')) {
-          belongsToCurrentConnection = tbl.file_id === state.selectedConnection.value.id
+          belongsToCurrentConnection = tbl.file_id === state.selectedConnection.value.id ||
+            tbl.connection_id === state.selectedConnection.value.id
         } else {
           belongsToCurrentConnection = !tbl.connection_id || tbl.connection_id === state.selectedConnection.value.id
         }

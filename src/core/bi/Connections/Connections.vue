@@ -33,8 +33,6 @@
     function goToCreateConnection() {
         if (connectionsConfig.createRoute) {
             router.push(connectionsConfig.createRoute)
-        } else {
-            console.error('createRoute не определен в конфигурации подключений')
         }
     }
 </script>

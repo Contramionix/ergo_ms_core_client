@@ -51,15 +51,8 @@ export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadU
             selectedFile.value = null
           }
         }
-
-        console.log('[deleteFile] файл удалён успешно')
-      } else {
-        console.warn('[deleteFile] ошибка удаления:', res)
-        // Только логируем ошибку, не показываем alert
       }
     } catch (error) {
-      console.error('[deleteFile] ошибка при запросе:', error)
-      // Только логируем ошибку, не показываем alert
     }
   }
 
@@ -89,10 +82,7 @@ export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadU
         formData.append('file', file)
         const sheetRes = await apiClient.upload(endpoints.bi.xlsxSheets, formData)
 
-        console.log('[handleFileReplace] Ответ API для листов:', sheetRes)
-        
         if (sheetRes.success && sheetRes.data.sheets.length > 1) {
-          console.log('[handleFileReplace] Найдено листов:', sheetRes.data.sheets.length, sheetRes.data.sheets)
           // Если файл многостраничный, показываем диалог выбора листов
           const tempFile = {
             name: file.name,
@@ -112,22 +102,17 @@ export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadU
           event.target.value = ''
           return
       } else if (sheetRes.success && sheetRes.data.sheets.length === 1) {
-        console.log('[handleFileReplace] Найден один лист:', sheetRes.data.sheets[0])
-        // Если лист один, используем его для замены
         const formData = new FormData()
         formData.append('file', file)
         formData.append('name', file.name)
         formData.append('sheet', sheetRes.data.sheets[0])
-        
-        console.log('[handleFileReplace] Заменяем с единственным листом:', sheetRes.data.sheets[0])
-        
+
         const res = await apiClient.put(
           endpoints.bi.uploadDelete(fileToReplace.value.id),
           formData
         )
 
         if (res.success) {
-          console.log('[handleFileReplace] Файл заменён с листом:', res.data)
           await loadUserFiles(connectionId)
           
           // Обновляем выбранный файл для немедленного отображения изменений
@@ -135,7 +120,6 @@ export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadU
             selectedFile.value = { ...res.data }
           }
         } else {
-          console.error('[handleFileReplace] Ошибка замены файла с листом:', res.errors)
           alert('Не удалось заменить файл')
         }
 
@@ -157,13 +141,7 @@ export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadU
       
       // Если это xlsx файл, добавляем лист по умолчанию
       if (file.name.endsWith('.xlsx')) {
-        formData.append('sheet', 'Sheet1') // или первый лист
-        console.log('[handleFileReplace] Добавлен параметр sheet для xlsx файла: Sheet1')
-      }
-
-      console.log('[handleFileReplace] FormData содержимое:')
-      for (let [key, value] of formData.entries()) {
-        console.log(`  ${key}:`, value)
+        formData.append('sheet', 'Sheet1')
       }
 
       const res = await apiClient.put(
@@ -172,7 +150,6 @@ export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadU
       )
 
       if (res.success) {
-        console.log('[handleFileReplace] Файл заменён:', res.data)
         await loadUserFiles(connectionId)
         
         // Обновляем выбранный файл для немедленного отображения изменений
@@ -180,11 +157,9 @@ export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadU
           selectedFile.value = { ...res.data }
         }
       } else {
-        console.error('[handleFileReplace] Ошибка замены файла:', res.errors)
         alert('Не удалось заменить файл')
       }
     } catch (error) {
-      console.error('[handleFileReplace] Ошибка при замене файла:', error)
       alert('Произошла ошибка при замене файла')
     }
 
@@ -210,10 +185,7 @@ export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadU
     try {
       // При замене файла используем только первый выбранный лист
       const sheet = sheets[0]
-      console.log('[handleFileReplaceWithSheets] Заменяем файл с листом:', sheet)
-      console.log('[handleFileReplaceWithSheets] Файл для замены:', file.originalFile?.name)
-      console.log('[handleFileReplaceWithSheets] ID файла для замены:', file.replaceFileId)
-      
+
       const formData = new FormData()
       formData.append('file', file.originalFile)
       formData.append('sheet', sheet)
@@ -221,19 +193,12 @@ export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadU
       // Оставляем оригинальное имя файла без изменений
       formData.append('name', file.name)
 
-      // Логируем содержимое FormData
-      console.log('[handleFileReplaceWithSheets] FormData содержимое:')
-      for (let [key, value] of formData.entries()) {
-        console.log(`  ${key}:`, value)
-      }
-
       const res = await apiClient.put(
         endpoints.bi.uploadDelete(file.replaceFileId),
         formData
       )
 
       if (res.success) {
-        console.log('[handleFileReplaceWithSheets] Файл заменён успешно:', res.data)
         await loadUserFiles(connectionId)
         
         // Обновляем выбранный файл для немедленного отображения изменений
@@ -241,11 +206,9 @@ export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadU
           selectedFile.value = { ...res.data }
         }
       } else {
-        console.error('[handleFileReplaceWithSheets] Ошибка замены файла:', res.errors)
         alert(`Не удалось заменить файл листом "${sheet}"`)
       }
     } catch (error) {
-      console.error('[handleFileReplaceWithSheets] Ошибка:', error)
       alert('Ошибка при замене файла')
     }
 
@@ -275,7 +238,6 @@ export function useFileActions(uploadedFiles, selectedFile, fileToReplace, loadU
       await loadUserFiles(connectionId)
     } else {
       alert('Ошибка переименования')
-      console.error('[renameFile] Ошибка:', res.errors)
     }
   }
 

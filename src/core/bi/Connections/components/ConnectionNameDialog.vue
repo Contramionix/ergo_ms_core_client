@@ -81,7 +81,6 @@ async function submit() {
     }
 
   } catch (err) {
-    console.error('Ошибка при сохранении подключения:', err.response?.data || err)
     error.value = extractErrorMessage(err)
   } finally {
     loading.value = false

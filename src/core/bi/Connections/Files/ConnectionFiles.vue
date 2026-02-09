@@ -23,11 +23,11 @@
             </div>
 
             <div class="file-list">
-                <div v-if="tempUploadedFiles.length">
+                <div v-if="unattachedFiles.length">
                     <div class="section-header">Новые файлы</div>
-                    <FileItem v-for="file in tempUploadedFiles" :key="file.temp_path" :file="file" :isTemp="true"
+                    <FileItem v-for="file in unattachedFiles" :key="file.id" :file="file" :isTemp="false"
                         :isActive="selectedFile === file" @select="selectFile" @tooltip-show="onIconHover"
-                        @tooltip-hide="hideTooltipWithDelay" @delete="() => removeTempFile(file)"
+                        @tooltip-hide="hideTooltipWithDelay" @delete="deleteUnattachedFile"
                         @pick-sheets="openSheetPicker" />
                 </div>
                 <div v-if="uploadedFiles.length">
@@ -158,11 +158,13 @@ import { watch, ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ArrowLeft, Upload, Waypoints, TriangleAlert } from 'lucide-vue-next'
 import { apiClient } from '@/js/api/manager'
+import { endpoints } from '@/js/api/endpoints'
 import FileItem from './FileItem.vue'
 import FilePreviewPanel from './FilePreviewPanel.vue'
 import XlsxSheetPicker from './FilePreview/XlsxSheetPicker.vue'
 import EmptyImage from './components/EmptyImage.vue'
 
+import { useToast } from 'vue-toastification'
 import { useRedirectIfFileConnection } from '@/core/bi/Datasets/components/js/useRedirectIfFileConnection'
 import { useFileUploader } from '@/core/bi/Datasets/components/js/useFileUploader'
 import { useTooltip } from '@/core/bi/Datasets/components/js/useTooltip'
@@ -170,6 +172,7 @@ import { useFileList } from '@/core/bi/Datasets/components/js/useFileList'
 import { useFileActions } from '@/core/bi/Datasets/components/js/useFileActions'
 
 const router = useRouter()
+const toast = useToast()
 const route = useRoute()
 
 const fileInput = ref(null)
@@ -193,21 +196,27 @@ const connectionId = ref(null)
 
 useRedirectIfFileConnection()
 const { tooltipText, tooltipStyle, showTooltip, tooltipClass, onIconHover, hideTooltipWithDelay, tooltipTimeout } = useTooltip()
-const { removeTempFile, openSheetPicker, selectFile: originalSelectFile, loadUserFiles, getSheetNameFromFile } = useFileList(tempUploadedFiles, selectedFile, uploadedFiles, currentUploadFile, availableSheets, sheetBeingEdited, isSheetPickerVisible, connectionId)
-
+const { unattachedFiles, loadUnattachedFiles, removeUnattachedFile, openSheetPicker, selectFile: originalSelectFile, loadUserFiles, getSheetNameFromFile } = useFileList(tempUploadedFiles, selectedFile, uploadedFiles, currentUploadFile, availableSheets, sheetBeingEdited, isSheetPickerVisible, connectionId)
 
 function selectFile(file) {
   fileError.value = null
   isLoadingContent.value = true
-  
-  // Имитируем небольшую задержку для показа анимации
   setTimeout(() => {
     originalSelectFile(file)
     isLoadingContent.value = false
   }, 500)
 }
-const { uploadFile, uploadFileRaw, finalizeUploads, handleSheetSelection, handleFileUpload } = useFileUploader(tempUploadedFiles, selectedFile, isSheetPickerVisible, currentUploadFile, availableSheets, loadUserFiles, connectionId, uploadedFiles, selectFile, isFinalizing)
+
+const { handleSheetSelection, handleFileUpload } = useFileUploader(tempUploadedFiles, selectedFile, isSheetPickerVisible, currentUploadFile, availableSheets, loadUserFiles, connectionId, uploadedFiles, selectFile, isFinalizing, loadUnattachedFiles)
 const { deleteFile, handleFileReplace, handleFileReplaceWithSheets, renameFile } = useFileActions(uploadedFiles, selectedFile, fileToReplace, loadUserFiles, connectionId, isSheetPickerVisible, currentUploadFile, availableSheets, isReplacing, { value: fileError }, selectFile)
+
+async function deleteUnattachedFile(file) {
+  try {
+    await apiClient.delete(endpoints.bi.uploadDelete(file.id))
+    removeUnattachedFile(file)
+  } catch (e) {
+  }
+}
 
 function goToNewConnection() {
     router.push('/bi/connections/new/')
@@ -284,26 +293,18 @@ async function loadConnectionFiles() {
     return
   }
 
-  console.log('[loadConnectionFiles] Загружаю файлы для подключения:', currentConnectionId)
-
   try {
     const res = await apiClient.getUploadedFiles(`bi_analysis/bi_datasets/connection/${currentConnectionId}/files/`)
-    console.log('[loadConnectionFiles] Ответ сервера:', res)
-    
     if (res.success) {
       uploadedFiles.value = res.data
       fileError.value = null
-      console.log('[loadConnectionFiles] Загружено файлов:', res.data.length)
-      console.log('[loadConnectionFiles] Файлы:', res.data)
     } else {
-      console.error('[loadConnectionFiles] Ошибка получения файлов:', res.errors)
       fileError.value = {
         code: res.status || 500,
         message: res.errors || 'Неизвестная ошибка'
       }
     }
   } catch (error) {
-    console.error('[loadConnectionFiles] Исключение при загрузке файлов:', error)
     fileError.value = {
       code: error.response?.status || 500,
       message: error.message || 'Ошибка сети'
@@ -312,7 +313,7 @@ async function loadConnectionFiles() {
 }
 
 const showSaveChangesButton = computed(() => {
-    return selectedFile.value?.originalFile != null
+    return unattachedFiles.value.length > 0
 })
 
 const hasMissingFiles = computed(() => {
@@ -328,7 +329,7 @@ const hasMissingFiles = computed(() => {
 })
 
 const hasNoFiles = computed(() => {
-  return uploadedFiles.value.length === 0 && tempUploadedFiles.value.length === 0
+  return uploadedFiles.value.length === 0 && unattachedFiles.value.length === 0
 })
 
 const hasSelectedFileError = computed(() => {
@@ -350,17 +351,23 @@ const isCreateDatasetDisabled = computed(() => {
 })
 
 async function saveChanges() {
-  if (!tempUploadedFiles.value.length) {
-    alert('Нет новых файлов для сохранения.')
+  if (!unattachedFiles.value.length) return
+  const id = connectionId.value
+  if (!id) return
+  const maxFiles = 10
+  if (uploadedFiles.value.length + unattachedFiles.value.length > maxFiles) {
+    toast.error(`В подключении может быть не более ${maxFiles} файлов.`)
     return
   }
-
   try {
-    await finalizeUploads(connectionId.value)
-    alert('Файлы успешно сохранены.')
-    await loadUserFiles(connectionId.value)
+    await Promise.all(unattachedFiles.value.map(file =>
+      apiClient.patch(endpoints.bi.uploadDelete(file.id), { connection: id })
+    ))
+    await loadConnectionFiles()
+    await loadUnattachedFiles()
+    toast.success('Файлы успешно сохранены.')
   } catch (err) {
-    alert('Не удалось сохранить файлы.')
+    toast.error('Не удалось сохранить файлы.')
   }
 }
 
@@ -379,10 +386,10 @@ async function loadConnectionInfo() {
 watch(() => route.params.pk || route.params.connectionId, async (newPk) => {
   if (newPk) {
     connectionId.value = Number(newPk)
-
     try {
       await loadConnectionInfo()
       await loadConnectionFiles()
+      await loadUnattachedFiles()
     } catch (error) {
       // Ошибка загрузки данных подключения
     }

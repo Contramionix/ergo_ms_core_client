@@ -191,7 +191,6 @@ async function fetchConnection() {
     initialPassword.value = password.value
 
   } catch (err) {
-    console.error('Ошибка загрузки подключения:', err)
     message.value = 'Не удалось загрузить подключение'
     error.value = true
     isChecked.value = true
@@ -237,7 +236,6 @@ async function changeConnection() {
     initialPassword.value = password.value
 
   } catch (err) {
-    console.error('Ошибка при сохранении:', err)
     showAutoDismissMessage('Не удалось сохранить изменения', true)
   } finally {
     loading.value = false

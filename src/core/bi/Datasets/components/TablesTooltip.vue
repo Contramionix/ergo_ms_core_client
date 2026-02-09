@@ -72,6 +72,10 @@ watch(() => props.connectionId, async (id, oldId) => {
   try {
     if (props.connectionType === 'file') {
       await loadUserFiles(id)
+      uploadedFiles.value = (uploadedFiles.value || []).map(f => ({
+        ...f,
+        connection_id: f.connection_id ?? id
+      }))
     } else {
       await loadDbTables(id)
       uploadedFiles.value = dbTables.value

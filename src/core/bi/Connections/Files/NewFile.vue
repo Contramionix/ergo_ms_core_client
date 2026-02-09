@@ -22,10 +22,11 @@
       </div>
 
       <div class="file-list">
-        <div v-if="tempUploadedFiles.length">
-          <FileItem v-for="file in tempUploadedFiles" :key="file.temp_path" :file="file" :isTemp="true"
+        <div v-if="unattachedFiles.length">
+          <div class="section-header">Новые файлы</div>
+          <FileItem v-for="file in unattachedFiles" :key="file.id" :file="file" :isTemp="false"
             :isActive="selectedFile === file" @select="selectFile" @tooltip-show="onIconHover"
-            @tooltip-hide="hideTooltipWithDelay" @delete="() => removeTempFile(file)" @pick-sheets="openSheetPicker" />
+            @tooltip-hide="hideTooltipWithDelay" @delete="deleteUnattachedFile" @pick-sheets="openSheetPicker" />
         </div>
         <div v-if="uploadedFiles.length">
           <div class="section-header">Загруженные ранее</div>
@@ -42,7 +43,7 @@
         <h4>Новое подключение</h4>
       </div>
       <div class="file_area_header_buttons">
-        <button type="button" class="btn btn-primary" @click="openConnectionDialog" :disabled="!tempUploadedFiles.length || isCreatingConnection">
+        <button type="button" class="btn btn-primary" @click="openConnectionDialog" :disabled="!unattachedFiles.length || isCreatingConnection">
           <span v-if="isCreatingConnection" class="spinner-border spinner-border-sm me-2" role="status"></span>
           {{ isCreatingConnection ? 'Создание...' : 'Создать подключение' }}
         </button>
@@ -65,24 +66,28 @@
     :singleSelect="!!currentUploadFile?.replaceFileId"
     @confirm="handleSheetSelectionOrReplace" 
     @cancel="isSheetPickerVisible = false" />
-  <ConnectionNameDialog v-model:visible="showConnectionDialog" :connectorType="connectorType" :connectionConfig="connectionConfig" :connectionFiles="tempUploadedFiles" @saved="createConnection"/>
+  <ConnectionNameDialog v-model:visible="showConnectionDialog" :connectorType="connectorType" :connectionConfig="connectionConfig" :connectionFiles="unattachedFiles" @saved="createConnection"/>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, Upload } from 'lucide-vue-next'
+import { apiClient } from '@/js/api/manager'
+import { endpoints } from '@/js/api/endpoints'
 import FileItem from './FileItem.vue'
 import FilePreviewPanel from './FilePreviewPanel.vue'
 import XlsxSheetPicker from './FilePreview/XlsxSheetPicker.vue'
 import ConnectionNameDialog from '../components/ConnectionNameDialog.vue'
 
+import { useToast } from 'vue-toastification'
 import { useFileUploader } from '@/core/bi/Datasets/components/js/useFileUploader'
 import { useTooltip } from '@/core/bi/Datasets/components/js/useTooltip'
 import { useFileList } from '@/core/bi/Datasets/components/js/useFileList'
 import { useFileActions } from '@/core/bi/Datasets/components/js/useFileActions'
 
 const router = useRouter()
+const toast = useToast()
 const fileInput = ref(null)
 const replaceInput = ref(null)
 const fileToReplace = ref(null)
@@ -100,7 +105,6 @@ const connectorType = ref('')
 const connectionConfig = ref({})
 const isCreatingConnection = ref(false)
 
-
 function goToNewConnection() {
   router.push('/bi/connections/new/')
 }
@@ -110,9 +114,21 @@ function triggerFileUpload() {
 }
 
 const { tooltipText, tooltipStyle, showTooltip, onIconHover, hideTooltipWithDelay } = useTooltip()
-const { removeTempFile, openSheetPicker, selectFile, loadUserFiles, getSheetNameFromFile } = useFileList(tempUploadedFiles, selectedFile, uploadedFiles, currentUploadFile, availableSheets, sheetBeingEdited, isSheetPickerVisible, null)
-const { finalizeUploads, handleSheetSelection, handleFileUpload } = useFileUploader(tempUploadedFiles, selectedFile, isSheetPickerVisible, currentUploadFile, availableSheets, loadUserFiles)
+const { unattachedFiles, loadUnattachedFiles, removeUnattachedFile, openSheetPicker, selectFile, loadUserFiles, getSheetNameFromFile } = useFileList(tempUploadedFiles, selectedFile, uploadedFiles, currentUploadFile, availableSheets, sheetBeingEdited, isSheetPickerVisible, null)
+const { handleSheetSelection, handleFileUpload } = useFileUploader(tempUploadedFiles, selectedFile, isSheetPickerVisible, currentUploadFile, availableSheets, loadUserFiles, null, uploadedFiles, null, null, loadUnattachedFiles)
 const { deleteFile, handleFileReplace, handleFileReplaceWithSheets, renameFile } = useFileActions(uploadedFiles, selectedFile, fileToReplace, loadUserFiles, null, isSheetPickerVisible, currentUploadFile, availableSheets)
+
+onMounted(() => {
+  loadUnattachedFiles()
+})
+
+async function deleteUnattachedFile(file) {
+  try {
+    await apiClient.delete(endpoints.bi.uploadDelete(file.id))
+    removeUnattachedFile(file)
+  } catch (e) {
+  }
+}
 
 function replaceFile(file) {
   if (file.file_type === 'xlsx' && file.pendingSheets?.length) {
@@ -143,23 +159,23 @@ function openConnectionDialog() {
 async function createConnection(data) {
   showConnectionDialog.value = false
   isCreatingConnection.value = true
-  
   try {
     const newConnectionId = data?.id
     if (!newConnectionId) {
-      alert('Не удалось создать подключение')
+      toast.error('Не удалось создать подключение')
       isCreatingConnection.value = false
       return
     }
-
-    // Финализируем загрузки параллельно (уже оптимизировано в useFileUploader)
-    await finalizeUploads(newConnectionId)
-
-    alert('Подключение успешно создано и файлы загружены!')
+    const list = unattachedFiles.value
+    if (list.length) {
+      await Promise.all(list.map(file =>
+        apiClient.patch(endpoints.bi.uploadDelete(file.id), { connection: newConnectionId })
+      ))
+    }
+    toast.success('Подключение успешно создано и файлы загружены!')
     router.push(`/bi/connections/${newConnectionId}/files/`)
   } catch (err) {
-    console.error('[createConnection] Ошибка:', err)
-    alert('Произошла ошибка при создании подключения: ' + (err?.message || err))
+    toast.error('Произошла ошибка при создании подключения: ' + (err?.message || err))
   } finally {
     isCreatingConnection.value = false
   }

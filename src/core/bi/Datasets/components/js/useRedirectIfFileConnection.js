@@ -23,14 +23,9 @@ export function useRedirectIfFileConnection() {
                                type.includes('file') || 
                                type.includes('файл')
 
-      console.log('Redirect check - Connection type:', type, 'isFileConnection:', isFileConnection)
-
       if (isFileConnection) {
-        console.log('Redirecting to files page for connection:', connectionId)
         router.replace(`/bi/connections/${connectionId}/files/`)
       }
-    } else {
-      console.error('Ошибка загрузки подключения:', res.errors || res)
     }
   })
 }
