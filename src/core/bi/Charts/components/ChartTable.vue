@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -11,16 +11,57 @@ const props = defineProps({
 const PAGE_SIZE = 20
 const currentPage = ref(1)
 
+const NUMERIC_TYPES = ['integer', 'float']
+
+function isNumericColumn(col) {
+  const t = col?.type ?? ''
+  return NUMERIC_TYPES.includes(t)
+}
+
 const columns = computed(() => {
   const cols = props.fields?.columns
   return Array.isArray(cols) ? cols : []
 })
 
-const totalRows = computed(() => props.dataset?.length ?? 0)
+const categoryColumns = computed(() =>
+  columns.value.filter(col => !isNumericColumn(col))
+)
+const numericColumns = computed(() =>
+  columns.value.filter(col => isNumericColumn(col))
+)
+
+const aggregatedRows = computed(() => {
+  const rows = props.dataset ?? []
+  const cats = categoryColumns.value
+  const nums = numericColumns.value
+  if (!rows.length || !columns.value.length) return []
+
+  const makeKey = row => cats.map(c => row[c.name] ?? '').join('\0')
+  const bucket = new Map()
+
+  for (const row of rows) {
+    const key = makeKey(row)
+    if (!bucket.has(key)) {
+      bucket.set(key, { ...Object.fromEntries(cats.map(c => [c.name, row[c.name]])), ...Object.fromEntries(nums.map(c => [c.name, 0])) })
+    }
+    const agg = bucket.get(key)
+    for (const n of nums) {
+      agg[n.name] = (agg[n.name] ?? 0) + (Number(row[n.name]) || 0)
+    }
+  }
+
+  return Array.from(bucket.values())
+})
+
+const totalRows = computed(() => aggregatedRows.value.length)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalRows.value / PAGE_SIZE)))
 
+watch(aggregatedRows, () => {
+  if (currentPage.value > totalPages.value && totalPages.value > 0) currentPage.value = 1
+}, { immediate: true })
+
 const paginatedRows = computed(() => {
-  const data = props.dataset ?? []
+  const data = aggregatedRows.value
   const start = (currentPage.value - 1) * PAGE_SIZE
   return data.slice(start, start + PAGE_SIZE)
 })
@@ -28,17 +69,11 @@ const paginatedRows = computed(() => {
 const pageStart = computed(() => (currentPage.value - 1) * PAGE_SIZE + 1)
 const pageEnd = computed(() => Math.min(currentPage.value * PAGE_SIZE, totalRows.value))
 
-const numericTypes = ['integer', 'float']
-
-function isNumericColumn(col) {
-  const t = col?.type ?? ''
-  return numericTypes.includes(t)
-}
-
 function columnMax(col) {
   const name = col?.name
-  if (!name || !props.dataset?.length) return 0
-  const values = props.dataset.map(r => Number(r[name])).filter(Number.isFinite)
+  const data = aggregatedRows.value
+  if (!name || !data?.length) return 0
+  const values = data.map(r => Number(r[name])).filter(Number.isFinite)
   return values.length ? Math.max(...values) : 0
 }
 

@@ -118,7 +118,7 @@ import { useToast } from 'vue-toastification'
 import { chartSettingsConfig } from '@/core/bi/MainPage/Sidebar/components/js/chartSettingsConfig.js'
 import chartService from '@/core/bi/MainPage/Sidebar/components/js/chartService.js'
 import { useAssistant } from '@/core/ai-assistant/js/assistantService.js'
-import biClient from '@/core/ai-assistant/bi/js/bi-client.js'
+import { biClient } from '@/core/ai-assistant/bi/js/bi-client.js'
 
 const toast = useToast()
 const isFullScreen = ref(false)
@@ -307,6 +307,7 @@ function runChartAnalysis() {
 
 async function checkOllamaAvailability() {
     if (!isEditMode.value) return
+
     const status = await biClient.checkOllamaStatus()
     ollamaAvailable.value = status.available
 }
