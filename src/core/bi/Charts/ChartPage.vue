@@ -698,7 +698,8 @@ onBeforeUnmount(() => {
     flex: 1 1 0%;
     min-height: 360px;
     max-height: min(800px, 75vh);
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: visible;
     width: 100%;
     padding: 10px;
     display: flex;

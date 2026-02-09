@@ -71,6 +71,7 @@ export function buildEChartsOption({ type, fields = {}, settings = [], dataset =
 
 function emptyOption() {
   return {
+    tooltip: { appendToBody: true },
     title: { text: 'Нет данных', left: 'center', top: 'middle', textStyle: { fontSize: 14 } },
     xAxis: { type: 'category', data: [] },
     yAxis: { type: 'value' },
@@ -122,7 +123,7 @@ function buildLineOption(fields, settings, dataset, filters) {
   }))
 
   return {
-    tooltip: { trigger: 'axis' },
+    tooltip: { trigger: 'axis', appendToBody: true },
     legend: { bottom: 0, type: 'scroll' },
     grid: { left: 60, right: hasY2 ? 60 : 40, bottom: 80, top: 20, containLabel: true },
     xAxis: { type: 'category', data: labels, boundaryGap: false },
@@ -158,7 +159,7 @@ function buildBarOption(fields, settings, dataset, filters) {
   }))
 
   return {
-    tooltip: { trigger: 'axis' },
+    tooltip: { trigger: 'axis', appendToBody: true },
     legend: { bottom: 0, type: 'scroll' },
     grid: { left: 60, right: 40, bottom: 80, top: 20, containLabel: true },
     xAxis: { type: 'category', data: labels },
@@ -194,7 +195,7 @@ function buildPieOption(fields, dataset, isDoughnut, filters) {
   }))
 
   return {
-    tooltip: { trigger: 'item' },
+    tooltip: { trigger: 'item', appendToBody: true },
     legend: { bottom: 0, type: 'scroll' },
     series: [{
       name: firstDataset.label,
@@ -231,7 +232,7 @@ function buildScatterOption(fields, dataset, filters) {
   }))
 
   const option = {
-    tooltip: { trigger: 'item' },
+    tooltip: { trigger: 'item', appendToBody: true },
     legend: { bottom: 0, type: 'scroll' },
     grid: { left: 60, right: 40, bottom: 80, top: 20, containLabel: true },
     xAxis: { type: meta?.xLabels?.length ? 'category' : 'value', data: meta?.xLabels || null, name: findField(fields, ['x'])?.label || 'X' },
@@ -272,7 +273,7 @@ function buildRadarOption(fields, dataset, filters) {
   }))
 
   return {
-    tooltip: { trigger: 'item' },
+    tooltip: { trigger: 'item', appendToBody: true },
     legend: { bottom: 0, type: 'scroll' },
     radar: { indicator, center: ['50%', '50%'], radius: '65%' },
     series
@@ -400,7 +401,7 @@ function buildCombinedOption(fields, settings, dataset, filters) {
   }
 
   return {
-    tooltip: { trigger: 'axis' },
+    tooltip: { trigger: 'axis', appendToBody: true },
     legend: { bottom: 0, type: 'scroll' },
     grid: { left: 60, right: hasY2 ? 60 : 40, bottom: 80, top: 20, containLabel: true },
     xAxis: { type: 'category', data: useLabels, boundaryGap: true },
@@ -418,7 +419,7 @@ function buildFunnelOption(fields, dataset, filters) {
   const data = getFunnelData(dataset, categoryField, vf, filters)
   if (!data.length) return emptyOption()
   return {
-    tooltip: { trigger: 'item' },
+    tooltip: { trigger: 'item', appendToBody: true },
     series: [{ type: 'funnel', data, sort: 'descending', gap: 2, label: { show: true } }]
   }
 }
@@ -431,7 +432,7 @@ function buildGaugeOption(fields, dataset, filters) {
   const { value, target } = getGaugeData(dataset, vf, targetField, filters)
   const max = Math.max(value, target ?? 0, 100) * 1.2
   return {
-    tooltip: { trigger: 'item' },
+    tooltip: { trigger: 'item', appendToBody: true },
     series: [{
       type: 'gauge',
       min: 0,
@@ -451,7 +452,7 @@ function buildTreemapOption(fields, dataset, filters) {
   const data = getTreemapData(dataset, categoryField, vf, filters)
   if (!data.length) return emptyOption()
   return {
-    tooltip: { trigger: 'item' },
+    tooltip: { trigger: 'item', appendToBody: true },
     series: [{ type: 'treemap', data, roam: false, leafDepth: 1, levels: [{ itemStyle: { borderWidth: 1 } }] }]
   }
 }
@@ -480,7 +481,7 @@ function buildHeatmapOption(fields, dataset) {
   const max = Math.max(...values)
 
   return {
-    tooltip: { position: 'top' },
+    tooltip: { position: 'top', appendToBody: true },
     grid: { left: 80, right: 40, bottom: 60, top: 20, containLabel: true },
     xAxis: { type: 'category', data: xLabels, splitArea: { show: true } },
     yAxis: { type: 'category', data: yLabels, splitArea: { show: true } },
