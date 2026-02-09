@@ -2,6 +2,11 @@ import { PALETTE, getColorMap, getRowColors } from './chartColors'
 
 function passFilterRow(row, f) {
   const fieldName = f.field?.name ?? f.field
+  // Если в агрегированных данных нет такого поля, считаем, что фильтр уже был
+  // применён на бэкенде и не отфильтровываем строку повторно.
+  if (!fieldName || !(fieldName in row)) {
+    return true
+  }
   const v = row[fieldName]
   const op = f.op ?? 'eq'
   const value = f.value
@@ -15,7 +20,10 @@ function passFilterRow(row, f) {
   switch (op) {
     case 'eq': return String(v) === String(value)
     case 'neq': return String(v) !== String(value)
-    case 'in': return (value ?? []).includes(v)
+    case 'in': {
+      const arr = value ?? []
+      return arr.includes(v)
+    }
     case 'nin': return !(value ?? []).includes(v)
     case 'empty': return v == null || v === ''
     case 'nempty': return v != null && v !== ''
