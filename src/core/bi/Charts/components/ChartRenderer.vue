@@ -47,3 +47,12 @@ const datasetArray = computed(() => (Array.isArray(props.dataset) ? props.datase
     </div>
   </div>
 </template>
+
+<style scoped>
+.area {
+  min-height: 0;
+}
+.chart {
+  min-height: 0;
+}
+</style>

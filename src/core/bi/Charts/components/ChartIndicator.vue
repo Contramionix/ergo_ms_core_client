@@ -50,7 +50,8 @@ const displayText = computed(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 200px;
+  min-height: 0;
+  flex: 1;
   padding: 1rem;
   text-align: center;
 }

@@ -715,10 +715,9 @@ onUnmounted(() => {
 
 .chart-content {
   flex: 1;
-  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-height: 250px;
 }
 
 .chart-loading,
@@ -741,7 +740,7 @@ onUnmounted(() => {
 .chart-iframe {
   width: 100%;
   height: 100%;
-  min-height: 250px;
+  min-height: 0;
   border: none;
   border-radius: 6px;
   background: white;
@@ -750,6 +749,7 @@ onUnmounted(() => {
 .chart-api-container {
   width: 100%;
   height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -777,9 +777,9 @@ onUnmounted(() => {
 .chart-render-container {
   width: 100%;
   height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-height: 250px;
 }
 
 .chart-description {
