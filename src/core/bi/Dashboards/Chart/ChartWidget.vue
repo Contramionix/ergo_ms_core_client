@@ -1,10 +1,10 @@
 <template>
   <div class="chart-widget" ref="chartWidgetRef" :class="{ 'auto-height': effectiveAutoHeight }">
-    <div v-if="currentChart && currentChart.title" class="chart-widget-header">
+    <div v-if="!preview && currentChart && currentChart.title" class="chart-widget-header">
       <span class="chart-widget-title" :title="currentChart.title">{{ currentChart.title }}</span>
     </div>
     <!-- Строка 1: Вкладки с заголовками чартов -->
-    <div v-if="chartsList && chartsList.length > 1" class="chart-tabs">
+    <div v-if="!preview && chartsList && chartsList.length > 1" class="chart-tabs">
       <div class="tabs-container">
         <div class="visible-tabs">
           <button 
@@ -68,6 +68,10 @@
     
     <!-- Строка 2: Сам чарт -->
     <div class="chart-content">
+      <div v-if="preview" class="chart-preview-static">
+        {{ currentChart?.title || 'График' }}
+      </div>
+      <template v-else>
       <div v-if="isLoading" class="chart-loading">
         <SpinnerLoading loading-text="Загрузка чарта..." />
       </div>
@@ -97,7 +101,7 @@
         v-else-if="currentChart.chartType === 'select' && currentChart.selectedChartId"
         class="chart-api-container"
       >
-        <div v-if="chartLoading" class="chart-loading">
+        <div v-if="chartLoading && !preview" class="chart-loading">
           <SpinnerLoading loading-text="Загрузка данных чарта..." />
         </div>
         
@@ -137,11 +141,12 @@
         <BarChart3 :size="48" />
         <span>Настройте чарт</span>
       </div>
+      </template>
     </div>
     
     <!-- Строка 3: Описание -->
     <div
-      v-if="currentChart && currentChart.showDescription && currentChart.description"
+      v-if="!preview && currentChart && currentChart.showDescription && currentChart.description"
       class="chart-description"
       :style="{ height: descriptionHeight + 'px' }"
       ref="descriptionRef"
@@ -187,6 +192,10 @@ const props = defineProps({
     default: 0
   },
   autoHeight: {
+    type: Boolean,
+    default: false
+  },
+  preview: {
     type: Boolean,
     default: false
   }
@@ -502,6 +511,7 @@ async function loadChartData(chartId) {
 }
 
 watch(() => currentChart.value, (newChart) => {
+  if (props.preview) return;
   if (newChart) {
     error.value = '';
 
@@ -735,6 +745,15 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.chart-preview-static {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  font-size: 14px;
+  color: var(--color-text-secondary);
 }
 
 .chart-loading,

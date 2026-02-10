@@ -127,6 +127,10 @@ const props = defineProps({
   itemPreview: {
     type: String,
     default: ''
+  },
+  dragPreview: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -160,6 +164,16 @@ const itemClasses = computed(() => {
 })
 
 const itemStyle = computed(() => {
+  if (props.dragPreview) {
+    return {
+      position: 'relative',
+      left: 0,
+      top: 0,
+      width: '100%',
+      height: '100%'
+    }
+  }
+
   const width =
     props.item.width ||
     props.elementSizes[props.item.type]?.width ||

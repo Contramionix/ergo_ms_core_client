@@ -31,6 +31,7 @@
       <DashboardGridItem
         v-for="item in items"
         :key="item.id"
+        :ref="el => setItemRef(item.id, el)"
         :item="item"
         :view-mode="viewMode"
         :element-sizes="ELEMENT_SIZES"
@@ -68,6 +69,7 @@
     <Teleport to="body">
       <div
         v-if="isDraggingExisting && draggedItem && draggedElementCursorPosition"
+        ref="previewContainerRef"
         :style="{
           position: 'fixed',
           left: `${draggedElementCursorPosition.x - draggedElementCursorOffset.x}px`,
@@ -80,19 +82,11 @@
           boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
           border: '2px solid var(--color-primary)',
           borderRadius: '8px',
-          background: 'var(--color-primary-background)'
+          background: 'var(--color-primary-background)',
+          overflow: 'hidden'
         }"
         class="dragged-element-preview"
-      >
-        <div class="dragged-item-header">
-          <span class="dragged-item-type">{{ draggedItem.type }}</span>
-        </div>
-        <div class="dragged-item-content">
-          <div class="dragged-item-preview">
-            {{ getItemPreview(draggedItem) }}
-          </div>
-        </div>
-      </div>
+      ></div>
     </Teleport>
 
     <Teleport to="body">
@@ -179,6 +173,13 @@ const documentDragOverListenerAttached = ref(false)
 const documentMouseMoveListenerAttached = ref(false)
 const gridContentHeight = ref(0)
 const dragStartSnapshot = ref(null)
+const itemRefs = ref({})
+const previewContainerRef = ref(null)
+
+const setItemRef = (id, el) => {
+  if (el) itemRefs.value[id] = el
+  else delete itemRefs.value[id]
+}
 
 const dashboardGridStyle = computed(() => {
   if (!gridContentHeight.value) {
@@ -836,6 +837,19 @@ const startDrag = (item, event) => {
   }
   document.addEventListener('mousemove', handleExistingItemDrag)
   document.addEventListener('mouseup', stopDrag, true)
+
+  nextTick(() => {
+    const container = previewContainerRef.value
+    const raw = itemRefs.value[item.id]
+    const comp = Array.isArray(raw) ? raw[0] : raw
+    const el = comp?.$el ?? comp
+    if (!container || !el?.cloneNode) return
+    const clone = el.cloneNode(true)
+    clone.classList.remove('item-hidden-drag', 'item-dragging')
+    clone.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;margin:0;box-sizing:border-box;opacity:1;'
+    container.innerHTML = ''
+    container.appendChild(clone)
+  })
 }
 
 const restoreSnapshot = () => {
@@ -918,6 +932,7 @@ const stopDrag = (event) => {
     }
     emit('update:items', localItems.value)
   }
+  if (previewContainerRef.value) previewContainerRef.value.innerHTML = ''
   draggedItem.value = null
   isDraggingExisting.value = false
   isMouseDown.value = false
@@ -1704,68 +1719,18 @@ onUnmounted(() => {
 }
 .dragged-element-preview {
   pointer-events: none;
-  opacity: 0.85;
   box-shadow: 0 8px 20px rgba(0,0,0,0.25);
   border: 2px solid var(--color-primary);
   border-radius: 8px;
   background: var(--color-primary-background);
   transition: box-shadow 0.2s, opacity 0.2s;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
   z-index: 2000;
 }
 
-.dragged-item-header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  background: rgba(45, 45, 61, 0.7);
-  backdrop-filter: blur(4px);
-  z-index: 10;
-  border-radius: 8px 8px 0 0;
-}
-
-.dragged-item-type {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--color-text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.dragged-item-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-top: 28px;
-  overflow: hidden;
-}
-
-.dragged-item-preview {
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  line-height: 1.4;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  hyphens: auto;
-  max-width: 100%;
-  max-height: 100%;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
+.dragged-element-preview :deep(.grid-item) {
+  width: 100%;
+  height: 100%;
 }
 
 .hint-content {
