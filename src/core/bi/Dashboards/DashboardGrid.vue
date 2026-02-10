@@ -169,6 +169,8 @@ const hintTooltipStyle = ref({})
 let hideHintTimer = null
 const resizeObserver = ref(null)
 const autoHeightItems = ref(new Map())
+const renderedHeights = ref(new Map())
+const observedRenderedIds = ref(new Set())
 const isRecalculatingPositions = ref(false)
 const documentDragOverListenerAttached = ref(false)
 const documentMouseMoveListenerAttached = ref(false)
@@ -623,9 +625,11 @@ const computePlacementForDrag = (relativeX, relativeY, elementType, excludeItemI
     if (over) {
       const itemMiddle = over.top + (over.bottom - over.top) / 2
       if (relativeY < itemMiddle) {
+        const rawY = targetRow.placementY - elementSize.height - GRID_GAP
+        const clampedY = Math.max(0, rawY)
         placement = {
           x: over.left,
-          y: Math.max(0, targetRow.placementY - elementSize.height - GRID_GAP)
+          y: clampedY
         }
         insertionMode = 'above'
       } else {
@@ -649,10 +653,22 @@ const computePlacementForDrag = (relativeX, relativeY, elementType, excludeItemI
           excludeItemId
         )
 
-  const isNewRowAtTop = insertionMode === 'above' && adjusted.y === 0
+  let finalY = adjusted.y
+  const firstRowItems = itemsForPlacement.filter(i => (i.y || 0) < 10)
+  if (firstRowItems.length > 0 && insertionMode === 'above') {
+    const firstRowBottom = Math.max(
+      ...firstRowItems.map(i => (i.y || 0) + getActualItemSize(i).height)
+    )
+    const minY = firstRowBottom + GRID_GAP
+    if (finalY < minY) {
+      finalY = minY
+    }
+  }
+
+  const isNewRowAtTop = insertionMode === 'above' && finalY === 0
   return {
     x: adjusted.x,
-    y: adjusted.y,
+    y: finalY,
     width: elementSize.width,
     height: elementSize.height,
     insertionMode,
@@ -1278,16 +1294,17 @@ const resetDragState = () => {
 }
 
 const getActualItemSize = (item) => {
-  const defaultHeight = ELEMENT_SIZES[item.type]?.height || 150;
-  let actualHeight = item.height || defaultHeight;
+  const defaultHeight = ELEMENT_SIZES[item.type]?.height || 150
+  let actualHeight = item.height || defaultHeight
 
   if (item.autoHeight && autoHeightItems.value.has(item.id)) {
-    const savedHeight = autoHeightItems.value.get(item.id);
-    actualHeight = savedHeight;
+    actualHeight = autoHeightItems.value.get(item.id)
+  } else if (renderedHeights.value.has(item.id)) {
+    actualHeight = renderedHeights.value.get(item.id)
   }
   const numHeight = typeof actualHeight === 'number' && !Number.isNaN(actualHeight)
     ? actualHeight
-    : defaultHeight;
+    : defaultHeight
   return {
     width: item.width || ELEMENT_SIZES[item.type]?.width || 200,
     height: numHeight
@@ -1384,23 +1401,28 @@ const recalculatePositions = () => {
 
 const handleItemResize = (entries) => {
   let hasChanges = false
-  
+
   for (const entry of entries) {
     const itemId = entry.target.getAttribute('data-item-id')
     const item = localItems.value.find(i => i.id === itemId)
-    
+    const newHeight = entry.contentRect.height
+
     if (item && item.autoHeight) {
-      const newHeight = entry.contentRect.height
       const storedHeight = autoHeightItems.value.get(itemId)
-      
       if (storedHeight !== newHeight) {
         autoHeightItems.value.set(itemId, newHeight)
         autoHeightItems.value = new Map(autoHeightItems.value)
         hasChanges = true
       }
     }
+
+    const prevRendered = renderedHeights.value.get(itemId)
+    if (prevRendered !== newHeight) {
+      renderedHeights.value.set(itemId, newHeight)
+      renderedHeights.value = new Map(renderedHeights.value)
+    }
   }
-  
+
   if (hasChanges) {
     recalculatePositions()
   }
@@ -1428,6 +1450,26 @@ const removeResizeObserver = (item) => {
     autoHeightItems.value.delete(item.id)
     autoHeightItems.value = new Map(autoHeightItems.value)
   }
+}
+
+const observeRenderedHeight = (element, itemId) => {
+  if (!resizeObserver.value || !element || observedRenderedIds.value.has(itemId)) return
+  resizeObserver.value.observe(element)
+  observedRenderedIds.value.add(itemId)
+  observedRenderedIds.value = new Set(observedRenderedIds.value)
+  const h = element.getBoundingClientRect().height
+  renderedHeights.value.set(itemId, h)
+  renderedHeights.value = new Map(renderedHeights.value)
+}
+
+const unobserveRenderedHeight = (itemId) => {
+  if (!resizeObserver.value) return
+  const element = document.querySelector(`[data-item-id="${itemId}"]`)
+  if (element) resizeObserver.value.unobserve(element)
+  observedRenderedIds.value.delete(itemId)
+  observedRenderedIds.value = new Set(observedRenderedIds.value)
+  renderedHeights.value.delete(itemId)
+  renderedHeights.value = new Map(renderedHeights.value)
 }
 
 const handleMouseMove = (event) => {
@@ -1482,15 +1524,16 @@ watch(() => props.items, (newItems) => {
 watch(localItems, (newItems, oldItems) => {
   updateGridContentHeight()
   if (!resizeObserver.value) return
-  
+
   nextTick(() => {
     oldItems.forEach(oldItem => {
       const stillExists = newItems.find(newItem => newItem.id === oldItem.id)
       if (!stillExists) {
         removeResizeObserver(oldItem)
+        unobserveRenderedHeight(oldItem.id)
       }
     })
-    
+
     newItems.forEach(newItem => {
       if (newItem.height === 'auto') {
         const element = document.querySelector(`[data-item-id="${newItem.id}"]`)
@@ -1500,8 +1543,12 @@ watch(localItems, (newItems, oldItems) => {
       } else {
         removeResizeObserver(newItem)
       }
+      if (newItem.height !== 'auto') {
+        const element = document.querySelector(`[data-item-id="${newItem.id}"]`)
+        if (element) observeRenderedHeight(element, newItem.id)
+      }
     })
-    
+
     const hasAutoHeightItems = newItems.some(item => item.height === 'auto')
     if (hasAutoHeightItems) {
       setTimeout(() => {
@@ -1571,9 +1618,10 @@ onMounted(() => {
     localItems.value.forEach(item => {
       if (item.height === 'auto') {
         const element = document.querySelector(`[data-item-id="${item.id}"]`)
-        if (element) {
-          setupResizeObserver(element, item)
-        }
+        if (element) setupResizeObserver(element, item)
+      } else {
+        const element = document.querySelector(`[data-item-id="${item.id}"]`)
+        if (element) observeRenderedHeight(element, item.id)
       }
     })
   })
@@ -1597,6 +1645,8 @@ onUnmounted(() => {
     resizeObserver.value = null
   }
   autoHeightItems.value.clear()
+  renderedHeights.value.clear()
+  observedRenderedIds.value.clear()
 })
 </script>
 
