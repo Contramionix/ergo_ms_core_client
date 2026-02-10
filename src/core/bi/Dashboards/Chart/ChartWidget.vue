@@ -1,5 +1,8 @@
 <template>
   <div class="chart-widget" ref="chartWidgetRef" :class="{ 'auto-height': effectiveAutoHeight }">
+    <div v-if="currentChart && currentChart.title" class="chart-widget-header">
+      <span class="chart-widget-title" :title="currentChart.title">{{ currentChart.title }}</span>
+    </div>
     <!-- Строка 1: Вкладки с заголовками чартов -->
     <div v-if="chartsList && chartsList.length > 1" class="chart-tabs">
       <div class="tabs-container">
@@ -578,6 +581,22 @@ onUnmounted(() => {
   background: var(--color-primary-background);
   border-radius: 8px;
   overflow: hidden;
+}
+
+.chart-widget-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 0 12px 12px;
+  flex-shrink: 0;
+}
+
+.chart-widget-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chart-tabs {
