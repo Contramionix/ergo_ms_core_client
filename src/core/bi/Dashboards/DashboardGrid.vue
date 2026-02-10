@@ -33,6 +33,7 @@
         :key="item.id"
         :ref="el => setItemRef(item.id, el)"
         :item="item"
+        :resolved-height="resolvedHeightsMap[item.id]"
         :view-mode="viewMode"
         :element-sizes="ELEMENT_SIZES"
         :shift-style="shiftedItemsStyle[item.id] || {}"
@@ -376,7 +377,9 @@ const updateActiveChart = (item, newIndex) => {
 
 const handleChartResize = (item, newHeight) => {
   if (item.autoHeight) {
+    item.height = newHeight;
     autoHeightItems.value.set(item.id, newHeight);
+    autoHeightItems.value = new Map(autoHeightItems.value);
     nextTick(() => {
       recalculatePositions();
     });
@@ -391,7 +394,7 @@ const handleSelectorResize = (item, newHeight) => {
   if (isAutoHeight) {
     item.height = newHeight;
     autoHeightItems.value.set(item.id, newHeight);
-    
+    autoHeightItems.value = new Map(autoHeightItems.value);
     nextTick(() => {
       recalculatePositions();
     });
@@ -1275,18 +1278,29 @@ const resetDragState = () => {
 }
 
 const getActualItemSize = (item) => {
-  let actualHeight = item.height || ELEMENT_SIZES[item.type]?.height || 150;
-  
+  const defaultHeight = ELEMENT_SIZES[item.type]?.height || 150;
+  let actualHeight = item.height || defaultHeight;
+
   if (item.autoHeight && autoHeightItems.value.has(item.id)) {
     const savedHeight = autoHeightItems.value.get(item.id);
     actualHeight = savedHeight;
   }
-  
+  const numHeight = typeof actualHeight === 'number' && !Number.isNaN(actualHeight)
+    ? actualHeight
+    : defaultHeight;
   return {
     width: item.width || ELEMENT_SIZES[item.type]?.width || 200,
-    height: actualHeight
+    height: numHeight
   }
 }
+
+const resolvedHeightsMap = computed(() => {
+  const map = {}
+  localItems.value.forEach((item) => {
+    map[item.id] = getActualItemSize(item).height
+  })
+  return map
+})
 
 const existingRowLines = computed(() => {
   const list = localItems.value
@@ -1381,6 +1395,7 @@ const handleItemResize = (entries) => {
       
       if (storedHeight !== newHeight) {
         autoHeightItems.value.set(itemId, newHeight)
+        autoHeightItems.value = new Map(autoHeightItems.value)
         hasChanges = true
       }
     }
@@ -1399,6 +1414,7 @@ const setupResizeObserver = (element, item) => {
     nextTick(() => {
       const rect = element.getBoundingClientRect()
       autoHeightItems.value.set(item.id, rect.height)
+      autoHeightItems.value = new Map(autoHeightItems.value)
     })
   }
 }
@@ -1410,6 +1426,7 @@ const removeResizeObserver = (item) => {
       resizeObserver.value.unobserve(element)
     }
     autoHeightItems.value.delete(item.id)
+    autoHeightItems.value = new Map(autoHeightItems.value)
   }
 }
 
@@ -1520,8 +1537,15 @@ const triggerRecalculatePositions = () => {
   })
 }
 
+const getResolvedHeight = (itemId) => {
+  const item = localItems.value.find((i) => i.id === itemId)
+  if (!item) return null
+  return getActualItemSize(item).height
+}
+
 defineExpose({
-  triggerRecalculatePositions
+  triggerRecalculatePositions,
+  getResolvedHeight
 })
 
 onMounted(() => {

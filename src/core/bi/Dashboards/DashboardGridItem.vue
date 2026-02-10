@@ -104,6 +104,10 @@ const props = defineProps({
     type: Object,
     required: true
   },
+  resolvedHeight: {
+    type: Number,
+    default: undefined
+  },
   shiftStyle: {
     type: Object,
     default: () => ({})
@@ -178,14 +182,12 @@ const itemStyle = computed(() => {
     props.item.width ||
     props.elementSizes[props.item.type]?.width ||
     200
-  const height =
+  const defaultHeight = props.elementSizes[props.item.type]?.height || 150
+  const isAutoHeight =
     props.item.autoHeight || props.item.selectorGroupSettings?.autoHeight
-      ? 'auto'
-      : `${
-          props.item.height ||
-          props.elementSizes[props.item.type]?.height ||
-          150
-        }px`
+  const height = isAutoHeight
+    ? `${props.resolvedHeight != null && props.resolvedHeight > 0 ? props.resolvedHeight : defaultHeight}px`
+    : `${props.item.height || defaultHeight}px`
 
   const baseStyle = {
     position: 'absolute',
@@ -523,6 +525,8 @@ const onHideHint = () => {
   width: 100%;
   height: 100%;
   min-height: 0;
+  flex: 1;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   overflow: hidden;

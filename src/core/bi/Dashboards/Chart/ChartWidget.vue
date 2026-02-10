@@ -336,8 +336,7 @@ function calculateWidgetHeight() {
         }
         
         newHeight = Math.max(newHeight, totalChildrenHeight);
-        
-        newHeight = Math.max(newHeight, 350);
+        newHeight = Math.max(newHeight, 80);
         if (calculatedHeight.value !== newHeight) {
           calculatedHeight.value = newHeight;
           emit('content-resized', newHeight);
@@ -933,14 +932,14 @@ onUnmounted(() => {
 
 .chart-widget.auto-height {
   height: auto !important;
-  min-height: 350px;
+  min-height: 80px;
   display: flex;
   flex-direction: column;
 }
 
 .chart-widget.auto-height .chart-content {
   flex: 1;
-  min-height: 280px;
+  min-height: 40px;
   margin-bottom: 0;
 }
 
