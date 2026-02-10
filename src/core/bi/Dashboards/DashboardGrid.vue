@@ -720,6 +720,50 @@ const checkCollision = (x, y, width, height, excludeItemId) => {
   )
 }
 
+const getMaxRightEdgeForResize = (itemY, currentRight, gridWidth, excludeItemId) => {
+  const rowItems = localItems.value.filter(
+    (i) => i.id !== excludeItemId && Math.abs((i.y || 0) - itemY) < 10 && (i.x || 0) >= currentRight
+  )
+  if (rowItems.length === 0) return gridWidth
+
+  rowItems.sort((a, b) => (a.x || 0) - (b.x || 0))
+
+  let maxAllowedRight = gridWidth
+  let totalWidth = 0
+  for (let k = 0; k < rowItems.length; k++) {
+    const size = getActualItemSize(rowItems[k])
+    totalWidth += size.width
+    const gapsCount = k + 1
+    const limit = gridWidth - gapsCount * GRID_GAP - totalWidth
+    if (limit < maxAllowedRight) maxAllowedRight = limit
+  }
+  return Math.max(currentRight, maxAllowedRight)
+}
+
+const pushNeighborsRight = (resizingItem, newRight, ourStartRight) => {
+  const itemY = resizingItem.y || 0
+  const rowItems = localItems.value.filter(
+    (i) =>
+      i.id !== resizingItem.id &&
+      Math.abs((i.y || 0) - itemY) < 10 &&
+      (i.x || 0) >= ourStartRight &&
+      (i.x || 0) < newRight + GRID_GAP
+  )
+  if (rowItems.length === 0) return
+
+  rowItems.sort((a, b) => (a.x || 0) - (b.x || 0))
+
+  let requiredLeft = newRight + GRID_GAP
+  for (const item of rowItems) {
+    const itemLeft = item.x || 0
+    if (itemLeft < requiredLeft) {
+      item.x = requiredLeft
+    }
+    const size = getActualItemSize(item)
+    requiredLeft = (item.x || 0) + size.width + GRID_GAP
+  }
+}
+
 const handleMouseDown = (item, event) => {
   if (props.viewMode || event.button !== 0) return
 
@@ -875,14 +919,19 @@ const handleResize = (event) => {
   
   if (resizeDirection.value === 'e') {
     newWidth = Math.max(100, resizeStartSize.value.width + deltaX)
-    // Позволяем растягивать элемент до фактической ширины контейнера,
-    // без дополнительного «внутреннего» зазора справа.
-    if (newX + newWidth > gridWidth) {
-      newWidth = gridWidth - newX
-    }
-    if (!checkCollision(newX, newY, newWidth, newHeight, resizingItem.value.id)) {
+    const desiredRight = newX + newWidth
+    const maxRight = getMaxRightEdgeForResize(
+      newY,
+      resizeStartRightEdge.value,
+      gridWidth,
+      resizingItem.value.id
+    )
+    const clampedRight = Math.min(desiredRight, maxRight)
+    newWidth = clampedRight - newX
+    if (newWidth >= 100) {
       resizingItem.value.width = newWidth
       resizingItem.value.x = newX
+      pushNeighborsRight(resizingItem.value, newX + newWidth, resizeStartRightEdge.value)
     }
     return
   }
