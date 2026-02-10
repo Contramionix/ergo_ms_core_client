@@ -254,11 +254,12 @@ const yellowPlaceholderStyle = computed(() => {
 })
 
 const shiftedItemsStyle = computed(() => {
-  if (!showYellowPlaceholder.value) return {}
+  if (!showYellowPlaceholder.value || isDraggingExisting.value) return {}
 
   const placeholderY = yellowPlaceholderPosition.value.y
   // Визуально сдвигаем элементы только при создании новой строки СВЕРХУ (y === 0),
-  // чтобы было видно будущую строку, но не трогаем остальные случаи.
+  // чтобы было видно будущую строку. При перемещении существующего виджета не сдвигаем —
+  // иначе при drop элементы не обновятся (calculateFinalPlacement не вызывается) и будет наложение.
   if (placeholderY !== 0) return {}
 
   const placeholderHeight = yellowPlaceholderPosition.value.height
@@ -386,9 +387,7 @@ const handleChartResize = (item, newHeight) => {
   }
 }
 
-const handleSelectorSelectionChange = (item, selectionData) => {
-  console.log('Selector selection changed:', selectionData);
-}
+const handleSelectorSelectionChange = (item, selectionData) => {}
 
 const handleSelectorResize = (item, newHeight) => {
   const isAutoHeight = item.autoHeight || item.selectorGroupSettings?.autoHeight;
@@ -403,13 +402,9 @@ const handleSelectorResize = (item, newHeight) => {
   }
 }
 
-const handleSelectorApplyFilters = (item, event) => {
-  console.log('Apply filters for selector:', item.id);
-}
+const handleSelectorApplyFilters = (item, event) => {}
 
-const handleSelectorClearFilters = (item, event) => {
-  console.log('Clear filters for selector:', item.id);
-}
+const handleSelectorClearFilters = (item, event) => {}
 
 const findNearestRow = (mouseY, elementHeight) => {
   if (localItems.value.length === 0) return 0
@@ -548,14 +543,14 @@ const findTargetRowFromVisual = (mouseY, visualRows) => {
   }
 }
 
-const findBestPositionInRow = (mouseX, targetRow, elementWidth, gridWidth, excludeItemId) => {
+const findBestPositionInRow = (mouseX, relativeY, targetRow, elementWidth, elementHeight, gridWidth, excludeItemId) => {
   const rowItems = (targetRow.items || []).filter(item => !excludeItemId || item.id !== excludeItemId)
   const placementY = targetRow.placementY
+  const rowHeight = targetRow.height || 0
+  const desiredX = Math.max(0, Math.min(gridWidth - elementWidth, mouseX - elementWidth / 2))
 
   if (rowItems.length === 0) {
-    const desiredX = mouseX - elementWidth / 2
-    const clampedX = Math.max(0, Math.min(gridWidth - elementWidth, desiredX))
-    return { x: clampedX, y: placementY }
+    return { x: desiredX, y: placementY }
   }
 
   const occupiedSegments = rowItems.map(item => {
@@ -591,8 +586,7 @@ const findBestPositionInRow = (mouseX, targetRow, elementWidth, gridWidth, exclu
     let bestX = 0
     let minDistance = Infinity
     for (const segment of freeSegments) {
-      const desiredX = mouseX - elementWidth / 2
-      const clampedX = Math.max(segment.left, Math.min(segment.right - elementWidth, desiredX))
+      const clampedX = Math.max(segment.left, Math.min(segment.right - elementWidth, mouseX - elementWidth / 2))
       const distance = Math.abs(mouseX - (clampedX + elementWidth / 2))
       if (distance < minDistance) {
         minDistance = distance
@@ -602,9 +596,12 @@ const findBestPositionInRow = (mouseX, targetRow, elementWidth, gridWidth, exclu
     return { x: bestX, y: placementY }
   }
 
-  const desiredX = mouseX - elementWidth / 2
-  const clampedX = Math.max(0, Math.min(gridWidth - elementWidth, desiredX))
-  return { x: clampedX, y: placementY }
+  const rowMiddle = placementY + rowHeight / 2
+  if (relativeY < rowMiddle) {
+    const newY = Math.max(0, placementY - GRID_GAP - elementHeight)
+    return { x: desiredX, y: newY }
+  }
+  return { x: desiredX, y: placementY + rowHeight + GRID_GAP }
 }
 
 const computePlacementForDrag = (relativeX, relativeY, elementType, excludeItemId = null, sizeOverride = null) => {
@@ -633,7 +630,15 @@ const computePlacementForDrag = (relativeX, relativeY, elementType, excludeItemI
     elementHeight: elementSize.height
   })
   const targetRow = findTargetRowFromVisual(relativeY, visualRows)
-  const placement = findBestPositionInRow(relativeX, targetRow, elementSize.width, gridWidth, excludeItemId)
+  const placement = findBestPositionInRow(
+    relativeX,
+    relativeY,
+    targetRow,
+    elementSize.width,
+    elementSize.height,
+    gridWidth,
+    excludeItemId
+  )
 
   return {
     x: placement.x,
@@ -845,6 +850,16 @@ const stopDrag = () => {
     if (showYellowPlaceholder.value && yellowPlaceholderPosition.value) {
       const newX = yellowPlaceholderPosition.value.x
       const newY = yellowPlaceholderPosition.value.y
+      const placeholderHeight = yellowPlaceholderPosition.value.height || getActualItemSize(draggedItem.value).height
+
+      if (newY < 10) {
+        const shiftAmount = placeholderHeight + GRID_GAP
+        localItems.value.forEach((item) => {
+          if (item.id !== draggedItem.value.id && (item.y || 0) >= newY) {
+            item.y = (item.y || 0) + shiftAmount
+          }
+        })
+      }
 
       draggedItem.value.x = newX
       draggedItem.value.y = newY
