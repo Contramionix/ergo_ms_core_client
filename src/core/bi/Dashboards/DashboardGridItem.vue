@@ -226,7 +226,6 @@ const headerStyle = computed(() => {
 })
 
 const itemPreview = computed(() => props.itemPreview)
-  'selector-clear-filters'
 
 const onClick = () => {
   emit('select', props.item)
@@ -365,6 +364,7 @@ const onHideHint = () => {
   border-bottom: 1px solid rgba(var(--color-primary-rgb), 0.18);
   z-index: 10;
   border-radius: 8px 8px 0 0;
+  pointer-events: none;
 }
 
 .item-type {
@@ -385,6 +385,7 @@ const onHideHint = () => {
   opacity: 0;
   transition: opacity 0.2s ease;
   z-index: 1;
+  pointer-events: auto;
 }
 
 .btn-edit,
@@ -396,6 +397,7 @@ const onHideHint = () => {
   cursor: pointer;
   color: var(--color-text-secondary);
   transition: all 0.2s ease;
+  pointer-events: auto;
 
   &:hover {
     background: var(--color-hover-background);
@@ -542,6 +544,7 @@ const onHideHint = () => {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 50;
 }
 
 .resize-indicator {

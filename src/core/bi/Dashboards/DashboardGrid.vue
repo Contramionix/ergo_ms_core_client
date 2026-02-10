@@ -162,6 +162,8 @@ const resizingItem = ref(null)
 const resizeStartPos = ref({ x: 0, y: 0 })
 const resizeStartSize = ref({ width: 0, height: 0 })
 const resizeDirection = ref('')
+const resizeStartItemPos = ref({ x: 0, y: 0 })
+const resizeStartRightEdge = ref(0)
 const draggedElementCursorOffset = ref({ x: 0, y: 0 })
 const draggedElementCursorPosition = ref({ x: 0, y: 0 })
 const isMouseDown = ref(false)
@@ -605,10 +607,10 @@ const findBestPositionInRow = (mouseX, targetRow, elementWidth, gridWidth, exclu
   return { x: clampedX, y: placementY }
 }
 
-const computePlacementForDrag = (relativeX, relativeY, elementType, excludeItemId = null) => {
+const computePlacementForDrag = (relativeX, relativeY, elementType, excludeItemId = null, sizeOverride = null) => {
   if (!gridContainer.value) return { x: 0, y: 0 }
 
-  const elementSize = getEffectiveElementSize(elementType)
+  const elementSize = sizeOverride || getEffectiveElementSize(elementType)
   if (!elementSize) return { x: 0, y: 0 }
 
   const gridWidth = gridContainer.value.clientWidth
@@ -782,7 +784,8 @@ const handleExistingItemDrag = (event) => {
   const mouseX = event.clientX - rect.left - GRID_CONTAINER_PADDING
   const mouseY = event.clientY - rect.top - GRID_CONTAINER_PADDING
 
-  const placement = computePlacementForDrag(mouseX, mouseY, draggedItem.value.type, draggedItem.value.id)
+  const draggedSize = getActualItemSize(draggedItem.value)
+  const placement = computePlacementForDrag(mouseX, mouseY, draggedItem.value.type, draggedItem.value.id, draggedSize)
 
   yellowPlaceholderPosition.value = {
     x: placement.x,
@@ -821,10 +824,12 @@ const startResize = (item, direction, event) => {
   resizingItem.value = item
   resizeDirection.value = direction
   resizeStartPos.value = { x: event.clientX, y: event.clientY }
+  resizeStartItemPos.value = { x: item.x || 0, y: item.y || 0 }
   resizeStartSize.value = { 
     width: item.width || ELEMENT_SIZES[item.type]?.width || 200,
     height: item.height || ELEMENT_SIZES[item.type]?.height || 150
   }
+  resizeStartRightEdge.value = resizeStartItemPos.value.x + resizeStartSize.value.width
   
   document.addEventListener('mousemove', handleResize)
   document.addEventListener('mouseup', stopResize)
@@ -883,12 +888,18 @@ const handleResize = (event) => {
   }
   
   if (resizeDirection.value === 'w') {
-    newWidth = Math.max(100, resizeStartSize.value.width - deltaX)
-    newX = (resizingItem.value.x || 0) + deltaX
-    if (newX < GRID_PADDING) {
-      newX = GRID_PADDING
-      newWidth = resizeStartSize.value.width + (resizingItem.value.x || 0) - GRID_PADDING
-    }
+    const minWidth = 100
+    const rightEdge = resizeStartRightEdge.value
+    let desiredLeft = resizeStartItemPos.value.x + deltaX
+
+    // Не даём левой границе пересечь правую (учёт minWidth),
+    // иначе при сильном перетягивании вправо элемент «улетает».
+    const maxLeft = rightEdge - minWidth
+    if (desiredLeft > maxLeft) desiredLeft = maxLeft
+    if (desiredLeft < GRID_PADDING) desiredLeft = GRID_PADDING
+
+    newX = desiredLeft
+    newWidth = Math.max(minWidth, rightEdge - newX)
     if (!checkCollision(newX, newY, newWidth, newHeight, resizingItem.value.id)) {
       resizingItem.value.width = newWidth
       resizingItem.value.x = newX
