@@ -610,7 +610,6 @@ function onSubmit() {
     activeChartIndex: activeChartIndex.value,
     autoHeight: elementAutoHeight.value
   };
-  
   emit('save', settings);
   emit('close');
 }

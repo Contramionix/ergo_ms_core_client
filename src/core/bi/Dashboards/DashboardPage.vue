@@ -364,10 +364,10 @@ const saveChartSettings = (updatedSettings) => {
       if (updatedSettings.autoHeight) {
         updatedSettings.height = 'auto';
       } else {
-        updatedSettings.height = 300;
+        const keepHeight = typeof oldHeight === 'number' && oldHeight > 0;
+        updatedSettings.height = keepHeight ? oldHeight : 300;
       }
     }
-    
     const newItems = [...currentPageItems.value];
     newItems[itemIndex] = {
       ...updatedSettings,

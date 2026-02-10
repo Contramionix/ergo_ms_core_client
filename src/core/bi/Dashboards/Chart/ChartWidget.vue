@@ -306,7 +306,6 @@ function cancelHideHint() {
 
 function calculateWidgetHeight() {
   if (!effectiveAutoHeight.value || !chartWidgetRef.value) return;
-  
   nextTick(() => {
     const element = chartWidgetRef.value;
     if (element) {
@@ -330,7 +329,6 @@ function calculateWidgetHeight() {
         newHeight = Math.max(newHeight, totalChildrenHeight);
         
         newHeight = Math.max(newHeight, 350);
-        
         if (calculatedHeight.value !== newHeight) {
           calculatedHeight.value = newHeight;
           emit('content-resized', newHeight);
@@ -586,7 +584,7 @@ onUnmounted(() => {
 .chart-widget-header {
   display: flex;
   align-items: center;
-  padding: 12px 0 12px 12px;
+  padding: 12px 0 0 12px;
   flex-shrink: 0;
 }
 
