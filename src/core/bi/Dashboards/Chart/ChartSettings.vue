@@ -28,27 +28,19 @@
             <button v-if="chartsList.length > 1" class="delete-chart-btn" @click.stop="removeChart(index)" title="Удалить чарт">✕</button>
           </div>
         </transition-group>
-        <button class="add-chart-btn" @click="addNewChart"><span class="plus-icon">➕</span>Добавить</button>
+        <button class="add-chart-btn" @click="addNewChart"><Plus size="18" class="plus-icon" />Добавить</button>
       </div>
     </div>
     <div class="widget-settings-right-side">
       <div class="widget-settings-right-side-header">
-        <button class="close-btn" @click="onCancel" title="Закрыть">
-          <span class="close-icon">×</span>
-        </button>
+        <button class="close-btn" @click="onCancel" title="Закрыть"><X size="20" class="close-icon" /></button>
       </div>
       <div class="widget-settings-right-side-content">
         <div class="settings-table">
           <div class="settings-row">
             <div class="settings-label">Заголовок</div>
             <div class="settings-control">
-              <input 
-                id="title" 
-                v-model="currentChart.title" 
-                type="text" 
-                placeholder="Заголовок чарта" 
-                :class="{ 'error': !isTitleValid }"
-              />
+              <input id="title" v-model="currentChart.title" type="text" placeholder="Заголовок чарта" :class="{ 'error': !isTitleValid }"/>
               <div v-if="!isTitleValid" class="error-message">
                 <span class="error-icon"><CircleAlert size="16" /></span>
                 <span class="error-text">Строка не должна быть пустой</span>
@@ -60,59 +52,48 @@
             <div class="settings-label">Чарт</div>
             <div class="settings-control">
               <div class="chart-selector">
-                <div class="input-group">
-                  <div class="input-wrapper">
-                    <div v-if="currentChart.chartType === 'select' && currentChart.selectedChart" class="input-icon-wrapper">
-                      <BarChart3 class="input-icon" />
-                    </div>
-                    <input 
-                      v-model="chartInputValue"
-                      id="chart-input"
-                      type="text" 
-                      :placeholder="chartInputPlaceholder"
-                      @click="handleChartInputClick"
-                      @input="handleChartInputChange"
-                      :readonly="currentChart.chartType === 'select'"
-                      :class="['form-control', { 
-                        'chart-select-mode': currentChart.chartType === 'select',
-                        'has-icon': currentChart.chartType === 'select' && currentChart.selectedChart,
-                        'chart-url-error': currentChart.chartType === 'url' && urlValidationResult && !urlValidationResult.isValid,
-                        'chart-url-success': currentChart.chartType === 'url' && urlValidationResult && urlValidationResult.isValid
-                      }]"
-                    />
+                <div ref="chartInputGroupRef" class="input-group"
+                  :class="{
+                    'chart-url-error': currentChart.chartType === 'url' && urlValidationResult && !urlValidationResult.isValid,
+                    'chart-url-success': currentChart.chartType === 'url' && urlValidationResult && urlValidationResult.isValid
+                  }"
+                >
+                  <div v-if="currentChart.chartType === 'select'" class="chart-select-wrapper">
+                    <SelectBox :options="availableCharts" :model-value="currentChart.selectedChartId" @update:model-value="handleChartSelectByValue" value-key="id" label-key="name" :include-all-option="false" all-label="Выберите чарт" :label="''" :hide-chevron="true" :dropdown-anchor-ref="chartInputGroupRef" :searchable="true" search-placeholder="Поиск по названию">
+                      <template #selected="{ option, label }">
+                        <span v-if="option" class="chart-option-with-icon">
+                          <span class="chart-option-icon" :style="{ color: getChartTypeColor(option?.chart_type) || 'var(--color-accent)' }">
+                            <component :is="getChartTypeIcon(option?.chart_type)" />
+                          </span>
+                          <span class="chart-option-label">{{ label }}</span>
+                        </span>
+                        <span v-else>{{ label }}</span>
+                      </template>
+                      <template #option="{ option, label }">
+                        <span class="chart-option-with-icon">
+                          <span class="chart-option-icon" :style="{ color: getChartTypeColor(option?.chart_type) || 'var(--color-accent)' }">
+                            <component :is="getChartTypeIcon(option?.chart_type)" />
+                          </span>
+                          <span class="chart-option-label">{{ label }}</span>
+                        </span>
+                      </template>
+                    </SelectBox>
                   </div>
-                  <button 
-                    :class="['btn btn-outline-secondary dropdown-toggle', {
-                      'chart-url-error': currentChart.chartType === 'url' && urlValidationResult && !urlValidationResult.isValid,
-                      'chart-url-success': currentChart.chartType === 'url' && urlValidationResult && urlValidationResult.isValid
-                    }]"
-                    @click.stop="toggleDropdown"
-                    type="button"
-                    :aria-expanded="isDropdownOpen"
-                  >
+                  <div v-else class="input-wrapper">
+                    <input v-model="chartInputValue" id="chart-input" type="text" :placeholder="chartInputPlaceholder" @input="handleChartInputChange" class="form-control"/>
+                  </div>
+                  <button type="button" class="chart-type-toggle dropdown-toggle" @click.stop="toggleDropdown" :aria-expanded="isDropdownOpen">
                     {{ currentChart.chartType === 'select' ? 'Чарт' : 'URL' }}
                   </button>
                   <ul v-if="isDropdownOpen" class="dropdown-menu">
-                    <li>
-                      <a class="dropdown-item" @click.stop="selectChartType('select')" :class="{ active: currentChart.chartType === 'select' }">
-                        Чарт
-                      </a>
-                    </li>
-                    <li>
-                      <a class="dropdown-item" @click.stop="selectChartType('url')" :class="{ active: currentChart.chartType === 'url' }">
-                        URL
-                      </a>
-                    </li>
+                    <li><a class="dropdown-item" @click.stop="selectChartType('select')" :class="{ active: currentChart.chartType === 'select' }">Чарт</a></li>
+                    <li><a class="dropdown-item" @click.stop="selectChartType('url')" :class="{ active: currentChart.chartType === 'url' }">URL</a></li>
                   </ul>
                 </div>
               </div>
               
-              <!-- Результат валидации URL чарта -->
               <div v-if="currentChart.chartType === 'url' && (isUrlValidating || urlValidationResult)" class="url-validation-result">
-                <div v-if="isUrlValidating" class="validation-loading">
-                  <span class="loading-spinner"></span>
-                  <span class="loading-text">Проверка URL...</span>
-                </div>
+                <SpinnerLoading v-if="isUrlValidating" loading-text="Проверка URL..." />
                 <div v-else-if="urlValidationResult" :class="['validation-message', urlValidationResult.isValid ? 'success-message' : 'error-message']">
                   <span class="validation-icon">
                     <CheckCircle v-if="urlValidationResult.isValid" size="16" />
@@ -125,10 +106,7 @@
           </div>
           
           <div class="settings-row">
-            <div class="settings-label">
-              <input type="checkbox" v-model="currentChart.showDescription" />
-              Описание
-            </div>
+            <div class="settings-label"><input type="checkbox" v-model="currentChart.showDescription" />Описание</div>
             <div class="settings-control">
               <div v-if="currentChart.showDescription" class="text-editor-container">
                 <TextEditor :content="currentChart.description" @update:content="val => currentChart.description = val" />
@@ -137,10 +115,7 @@
           </div>
           
           <div class="settings-row">
-            <div class="settings-label">
-              <input type="checkbox" v-model="currentChart.hint" />
-              Подсказка
-            </div>
+            <div class="settings-label"><input type="checkbox" v-model="currentChart.hint" />Подсказка</div>
             <div class="settings-control">
               <div v-if="currentChart.hint" class="text-editor-container">
                 <TextEditor :content="currentChart.hintText" @update:content="val => currentChart.hintText = val" />
@@ -149,45 +124,21 @@
           </div>
           
           <div class="settings-row">
-            <div class="settings-label">
-              <input type="checkbox" v-model="elementAutoHeight" />
-              Автовысота
-            </div>
+            <div class="settings-label"><input type="checkbox" v-model="elementAutoHeight" />Автовысота</div>
             <div class="settings-control"></div>
           </div>
           
           <div class="settings-row">
             <div class="settings-label">
-              <span class="chevron" :class="{ 'expanded': showParameters }">▼</span>
-              Параметры
+              <span class="chevron" :class="{ 'expanded': showParameters }">▼</span>Параметры
             </div>
             <div class="settings-control"></div>
           </div>
         </div>
       </div>
       <div class="widget-settings-right-side-actions">
-        <button @click="onCancel" class="cancel">Отменить</button>
-        <button class="btn btn-primary" @click="onSubmit" :disabled="!isFormValid">Добавить</button>
-      </div>
-    </div>
-    
-    <!-- Модальное окно выбора чартов -->
-    <div v-if="isChartsModalOpen" class="charts-modal-overlay" @click.self="closeChartsModal">
-      <div class="charts-modal-container">
-        <div class="charts-modal-header">
-          <h6 class="charts-modal-title">Выбор чарта</h6>
-          <button class="charts-modal-close" @click="closeChartsModal" title="Закрыть">
-            <span class="close-icon">×</span>
-          </button>
-        </div>
-        <div class="charts-modal-content">
-          <ChartsModalWindow 
-            :charts="availableCharts"
-            :selectedChart="currentChart.selectedChartId ? { id: currentChart.selectedChartId, name: currentChart.selectedChart } : null"
-            :isLoading="isChartsLoading"
-            @select="handleChartSelect"
-          />
-        </div>
+        <button type="button" class="btn btn-cancel" @click="onCancel">Отмена</button>
+        <button type="button" class="btn btn-accept" @click="onSubmit" :disabled="!isFormValid">Добавить</button>
       </div>
     </div>
   </div>
@@ -195,12 +146,14 @@
 
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
-import { Star, GripVertical, CircleAlert, BarChart3, CheckCircle } from 'lucide-vue-next';
+import { Star, GripVertical, CircleAlert, CheckCircle, X, Plus } from 'lucide-vue-next';
 import TextEditor from '../components/TextEditor.vue';
-import ChartsModalWindow from './ChartsModalWindow.vue';
+import SelectBox from '@/components/SelectBox.vue';
+import SpinnerLoading from '@/components/SpinnerLoading.vue';
 import { apiClient } from '@/js/api/manager.js';
 import { endpoints } from '@/js/api/endpoints.js';
 import { validateChartUrlWithAccess } from '@/core/bi/Dashboards/Chart/chartUrlUtils.js';
+import { getChartTypeIcon, getChartTypeColor } from '@/core/bi/Charts/js/chartTypeIcons.js';
 
 const props = defineProps({
   data: {
@@ -231,9 +184,8 @@ const draggedIndex = ref(null);
 const dragOverIndex = ref(null);
 const isDropdownOpen = ref(false);
 const chartInputValue = ref('');
-const isChartsModalOpen = ref(false);
+const chartInputGroupRef = ref(null);
 const availableCharts = ref([]);
-const isChartsLoading = ref(false);
 
 const isUrlValidating = ref(false);
 const urlValidationResult = ref(null);
@@ -433,10 +385,7 @@ watch(() => currentChart.value, (newChart) => {
     if (validationTimeout) {
       clearTimeout(validationTimeout);
     }
-    
-    if (newChart.chartType === 'select') {
-      chartInputValue.value = newChart.selectedChart || '';
-    } else {
+    if (newChart.chartType === 'url') {
       chartInputValue.value = newChart.chartUrl || '';
       if (chartInputValue.value.trim()) {
         validateChartUrl();
@@ -455,9 +404,7 @@ function selectChartType(type) {
   
   urlValidationResult.value = null;
   
-  if (type === 'select') {
-    chartInputValue.value = currentChart.value.selectedChart || '';
-  } else {
+  if (type === 'url') {
     chartInputValue.value = currentChart.value.chartUrl || '';
     if (chartInputValue.value.trim()) {
       validateChartUrl();
@@ -465,19 +412,9 @@ function selectChartType(type) {
   }
 }
 
-function handleChartInputClick() {
-  if (currentChart.value.chartType === 'select') {
-    openChartModal();
-  }
-}
-
 function handleChartInputChange() {
-  if (currentChart.value.chartType === 'select') {
-    currentChart.value.selectedChart = chartInputValue.value;
-  } else {
-    currentChart.value.chartUrl = chartInputValue.value;
-    validateChartUrl();
-  }
+  currentChart.value.chartUrl = chartInputValue.value;
+  validateChartUrl();
 }
 
 function validateChartUrl() {
@@ -517,17 +454,9 @@ function validateChartUrl() {
   }, 500);
 }
 
-function openChartModal() {
-  isChartsModalOpen.value = true;
-  loadAvailableCharts();
-}
-
 async function loadAvailableCharts() {
   try {
-    isChartsLoading.value = true;
-    
     const response = await apiClient.get(endpoints.bi.ChartsList);
-    
     if (response.success) {
       availableCharts.value = response.data.results || response.data || [];
     } else {
@@ -537,20 +466,15 @@ async function loadAvailableCharts() {
   } catch (error) {
     console.error('Ошибка при загрузке чартов:', error);
     availableCharts.value = [];
-  } finally {
-    isChartsLoading.value = false;
   }
 }
 
-function handleChartSelect(chart) {
-  currentChart.value.selectedChart = chart.name || chart.title;
-  chartInputValue.value = chart.name || chart.title;
-  currentChart.value.selectedChartId = chart.id;
-  isChartsModalOpen.value = false;
-}
-
-function closeChartsModal() {
-  isChartsModalOpen.value = false;
+function handleChartSelectByValue(id) {
+  const chart = availableCharts.value.find(c => c.id === id || String(c.id) === String(id));
+  if (chart) {
+    currentChart.value.selectedChartId = chart.id;
+    currentChart.value.selectedChart = chart.name || chart.title || '';
+  }
 }
 
 function handleClickOutside(event) {
@@ -569,18 +493,15 @@ function handleClickOutside(event) {
 }
 
 function handleKeyDown(event) {
-  if (event.key === 'Escape') {
-    if (isChartsModalOpen.value) {
-      isChartsModalOpen.value = false;
-    } else if (isDropdownOpen.value) {
-      isDropdownOpen.value = false;
-    }
+  if (event.key === 'Escape' && isDropdownOpen.value) {
+    isDropdownOpen.value = false;
   }
 }
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside, true);
   document.addEventListener('keydown', handleKeyDown);
+  loadAvailableCharts();
 });
 
 onUnmounted(() => {
@@ -802,6 +723,7 @@ function onSubmit() {
 
 .chart-name {
   font-size: 14px;
+  color: var(--color-primary-text);
   display: flex;
   font-weight: 500;
   flex: 1;
@@ -860,7 +782,7 @@ function onSubmit() {
 }
 
 .plus-icon {
-  font-size: 12px;
+  flex-shrink: 0;
   transition: transform 0.2s ease;
 }
 
@@ -903,8 +825,7 @@ function onSubmit() {
 }
 
 .close-icon {
-  font-size: 32px;
-  font-weight: 300;
+  flex-shrink: 0;
 }
 
 
@@ -960,34 +881,6 @@ input[type="text"] {
   font-weight: 500;
 }
 
-  /* Стили для валидации URL чарта */
-  
-  .validation-loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-
-.loading-spinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--color-border);
-  border-top: 2px solid var(--color-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-text {
-  font-weight: 500;
-}
-
 .validation-message {
   display: flex;
   align-items: center;
@@ -1028,9 +921,62 @@ input[type="text"] {
   display: flex;
   position: relative;
   overflow: visible;
-  align-items: center;
+  align-items: stretch;
   width: 100%;
   max-width: 100%;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 6px;
+  background-color: var(--color-primary-background);
+}
+
+.chart-select-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.chart-select-wrapper :deep(.select-box) {
+  height: 100%;
+}
+
+.chart-select-wrapper :deep(.select-trigger) {
+  border: none;
+  border-radius: 0;
+  min-height: 38px;
+  height: 100%;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.chart-option-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chart-option-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+
+.chart-option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.input-group.chart-url-error {
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 2px rgba(var(--color-accent-rgb), 0.2);
+}
+
+.input-group.chart-url-success {
+  border-color: var(--color-success, #22c55e) !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
 }
 
 .input-wrapper {
@@ -1044,49 +990,14 @@ input[type="text"] {
 .form-control {
   flex: 1;
   width: 100%;
-  border-top-right-radius: 0 !important;
-  border-bottom-right-radius: 0 !important;
-  border-right: none;
-  border-top-left-radius: 4px;
-  border-bottom-left-radius: 4px;
+  border: none !important;
+  border-radius: 0 !important;
   min-width: 0;
-  
-  &.chart-select-mode {
-    cursor: pointer;
-    user-select: none;
-    caret-color: transparent;
-    
-    &:focus {
-      outline: none;
-      border-color: var(--color-primary-text);
-      box-shadow: 0 0 0 2px rgba(var(--color-accent-rgb), 0.2);
-    }
-  }
-  
-  &.has-icon {
-    padding-left: 40px;
-    border-top-left-radius: 4px !important;
-    border-bottom-left-radius: 4px !important;
-  }
-  
-  &.chart-url-error {
-    border-color: var(--color-accent) !important;
-    box-shadow: -2px 0 0 0 rgba(var(--color-accent-rgb), 0.2), 0 -2px 0 0 rgba(var(--color-accent-rgb), 0.2), 0 2px 0 0 rgba(var(--color-accent-rgb), 0.2) !important;
-    
-    &:focus {
-      border-color: var(--color-accent) !important;
-      box-shadow: -2px 0 0 0 rgba(var(--color-accent-rgb), 0.3), 0 -2px 0 0 rgba(var(--color-accent-rgb), 0.3), 0 2px 0 0 rgba(var(--color-accent-rgb), 0.3) !important;
-    }
-  }
-  
-  &.chart-url-success {
-    border-color: var(--color-success, #22c55e) !important;
-    box-shadow: -2px 0 0 0 rgba(34, 197, 94, 0.2), 0 -2px 0 0 rgba(34, 197, 94, 0.2), 0 2px 0 0 rgba(34, 197, 94, 0.2) !important;
-    
-    &:focus {
-      border-color: var(--color-success, #22c55e) !important;
-      box-shadow: -2px 0 0 0 rgba(34, 197, 94, 0.3), 0 -2px 0 0 rgba(34, 197, 94, 0.3), 0 2px 0 0 rgba(34, 197, 94, 0.3) !important;
-    }
+  background-color: transparent;
+
+  &:focus {
+    outline: none;
+    box-shadow: none;
   }
 }
 
@@ -1126,51 +1037,26 @@ input[type="text"] {
   transition: all 0.15s ease-in-out;
 }
 
-.btn-outline-secondary {
+.chart-type-toggle {
   color: var(--color-text-primary);
-  background-color: var(--color-background);
-  border-color: var(--color-border);
-  border-left: none;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+  background-color: transparent;
+  border: none;
+  border-left: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 0;
   flex-shrink: 0;
   min-width: 80px;
-  
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+
   &:hover {
-    color: var(--color-text-primary);
     background-color: var(--color-hover-background);
-    border-color: var(--color-primary);
   }
-  
-  &.chart-url-error {
-    border-color: var(--color-accent) !important;
-    box-shadow: 2px 0 0 0 rgba(var(--color-accent-rgb), 0.2), 0 -2px 0 0 rgba(var(--color-accent-rgb), 0.2), 0 2px 0 0 rgba(var(--color-accent-rgb), 0.2) !important;
-    
-    &:hover {
-      border-color: var(--color-accent) !important;
-      box-shadow: 2px 0 0 0 rgba(var(--color-accent-rgb), 0.2), 0 -2px 0 0 rgba(var(--color-accent-rgb), 0.2), 0 2px 0 0 rgba(var(--color-accent-rgb), 0.2) !important;
-    }
-    
-    &:focus {
-      border-color: var(--color-accent) !important;
-      box-shadow: 2px 0 0 0 rgba(var(--color-accent-rgb), 0.3), 0 -2px 0 0 rgba(var(--color-accent-rgb), 0.3), 0 2px 0 0 rgba(var(--color-accent-rgb), 0.3) !important;
-    }
-  }
-  
-  &.chart-url-success {
-    border-color: var(--color-success, #22c55e) !important;
-    box-shadow: 2px 0 0 0 rgba(34, 197, 94, 0.2), 0 -2px 0 0 rgba(34, 197, 94, 0.2), 0 2px 0 0 rgba(34, 197, 94, 0.2) !important;
-    
-    &:hover {
-      border-color: var(--color-success, #22c55e) !important;
-      box-shadow: 2px 0 0 0 rgba(34, 197, 94, 0.2), 0 -2px 0 0 rgba(34, 197, 94, 0.2), 0 2px 0 0 rgba(34, 197, 94, 0.2) !important;
-    }
-    
-    &:focus {
-      border-color: var(--color-success, #22c55e) !important;
-      box-shadow: 2px 0 0 0 rgba(34, 197, 94, 0.3), 0 -2px 0 0 rgba(34, 197, 94, 0.3), 0 2px 0 0 rgba(34, 197, 94, 0.3) !important;
-    }
-  }
+}
+
+.input-group.chart-url-error .chart-type-toggle,
+.input-group.chart-url-success .chart-type-toggle {
+  border-left-color: inherit;
 }
 
 .dropdown-toggle {
@@ -1351,108 +1237,23 @@ input[type="text"] {
   padding: 16px 24px 24px 24px;
   background: var(--color-primary-background);
   flex-shrink: 0;
-}
 
-button.cancel {
-  background: none;
-  color: var(--color-secondary-text);
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-}
-button.cancel:hover {
-  color: var(--color-primary-text);
-  transition: background 0.2s, color 0.2s, opacity 0.2s;
-  cursor: pointer;
-}
-
-.btn.btn-primary {
-  border: none;
-  border-radius: 6px;
-  padding: 8px 24px;
-  font-size: 16px;
-  cursor: pointer;
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: var(--color-border);
-    color: var(--color-text-secondary);
-  }
-}
-
-
-
-/* Стили для модального окна выбора чартов */
-.charts-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  backdrop-filter: blur(4px);
-}
-
-.charts-modal-container {
-  background: var(--color-primary-background);
-  border-radius: 12px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  max-width: 500px;
-  width: 90vw;
-  max-height: 600px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.charts-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px 16px 24px;
-  flex-shrink: 0;
-}
-
-.charts-modal-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-primary-text);
-  margin: 0;
-}
-
-.charts-modal-close {
-  background: none;
-  border: none;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: var(--color-secondary-text);
-  border-radius: 6px;
-  
-  &:hover {
+  .btn-cancel {
+    background-color: var(--color-primary-background);
     color: var(--color-primary-text);
-    background: var(--color-hover-background);
-  }
-  
-  .close-icon {
-    font-size: 24px;
-    font-weight: 300;
-  }
-}
 
-.charts-modal-content {
-  padding: 0px 24px 24px 24px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+    &:hover:not(:disabled) {
+      background-color: #f0f0f0;
+    }
+  }
+
+  .btn-accept {
+    background-color: #0b5ed7;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background-color: #0a4b9a;
+    }
+  }
 }
 </style>

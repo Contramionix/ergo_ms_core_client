@@ -11,18 +11,29 @@
                 <span v-if="!hideChevron" class="d-inline-flex align-items-center"><ChevronDown class="icon-center" /></span>
             </button>
             <teleport to="body">
-                <ul v-if="isOpen" ref="menuEl" class="dropdown-menu show fixed-menu" :style="fixedMenuStyle">
-                    <li v-if="includeAllOption">
-                        <a class="dropdown-item" :class="{ active: isSelected(null) }" href="#" @click.prevent="choose(null)">{{ allLabel }}</a>
-                    </li>
-                    <li v-for="opt in normalizedOptions" :key="opt.key">
-                        <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" @click.prevent="choose(opt.value)">
-                            <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)">
-                                {{ opt.label }}
-                            </slot>
-                        </a>
-                    </li>
-                </ul>
+                <div v-if="isOpen" ref="menuEl" class="dropdown-menu show fixed-menu" :style="fixedMenuStyle">
+                    <input
+                        v-if="searchable"
+                        ref="searchInputEl"
+                        v-model="searchQuery"
+                        type="text"
+                        class="select-box-search"
+                        :placeholder="searchPlaceholder"
+                        autocomplete="off"
+                    />
+                    <ul class="dropdown-menu-list">
+                        <li v-if="includeAllOption">
+                            <a class="dropdown-item" :class="{ active: isSelected(null) }" href="#" @click.prevent="choose(null)">{{ allLabel }}</a>
+                        </li>
+                        <li v-for="opt in filteredOptions" :key="opt.key">
+                            <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" @click.prevent="choose(opt.value)">
+                                <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)">
+                                    {{ opt.label }}
+                                </slot>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </teleport>
         </div>
     </div>
@@ -50,6 +61,9 @@ const props = defineProps({
     fullWidth: { type: Boolean, default: true },
     maxSelectedChars: { type: [Number, null], default: null },
     hideChevron: { type: Boolean, default: false },
+    dropdownAnchorRef: { type: Object, default: null },
+    searchable: { type: Boolean, default: false },
+    searchPlaceholder: { type: String, default: 'Поиск...' },
 })
 
 const emit = defineEmits(['update:modelValue', 'change', 'blur'])
@@ -72,6 +86,13 @@ const normalizedOptions = computed(() => {
     return result
 })
 
+const searchQuery = ref('')
+const filteredOptions = computed(() => {
+    if (!props.searchable || !searchQuery.value.trim()) return normalizedOptions.value
+    const q = searchQuery.value.trim().toLowerCase()
+    return normalizedOptions.value.filter(opt => (opt.label ?? '').toLowerCase().includes(q))
+})
+
 const isOpen = ref(false)
 const fixedMenuStyle = ref({ top: '0px', left: '0px', width: '0px' })
 function updateMenuPosition() {
@@ -79,7 +100,10 @@ function updateMenuPosition() {
     if (!root) return
     const trigger = root.querySelector('.select-trigger')
     if (!trigger) return
-    const rect = trigger.getBoundingClientRect()
+    const triggerRect = trigger.getBoundingClientRect()
+    const anchorEl = props.dropdownAnchorRef?.value
+    const anchorRect = anchorEl ? anchorEl.getBoundingClientRect() : null
+    const rect = (anchorRect && anchorRect.width > 0) ? anchorRect : triggerRect
     const viewportPadding = 8
     const maxWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
     const width = Math.min(rect.width, maxWidth)
@@ -88,22 +112,36 @@ function updateMenuPosition() {
         window.innerWidth - viewportPadding - width
     )
     fixedMenuStyle.value = {
-        top: `${rect.bottom + 4}px`,
+        top: `${triggerRect.bottom + 4}px`,
         left: `${left}px`,
         width: `${width}px`,
         maxWidth: `${maxWidth}px`,
         boxSizing: 'border-box',
     }
 }
+const searchInputEl = ref(null)
 function toggle() {
     if (props.disabled) return
     isOpen.value = !isOpen.value
     if (isOpen.value) {
         updateMenuPosition()
-        requestAnimationFrame(() => updateMenuPosition())
+        if (props.dropdownAnchorRef) {
+            nextTick(() => {
+                updateMenuPosition()
+                requestAnimationFrame(() => updateMenuPosition())
+            })
+        } else {
+            requestAnimationFrame(() => updateMenuPosition())
+        }
+        if (props.searchable) {
+            nextTick(() => searchInputEl.value?.focus())
+        }
     }
 }
-function close() { isOpen.value = false }
+function close() {
+    isOpen.value = false
+    searchQuery.value = ''
+}
 
 function coerce(val) {
     if (val === null || val === undefined) return null
@@ -196,13 +234,13 @@ const onResize = () => {
     updateMenuPosition()
 }
 onMounted(() => {
-    document.addEventListener('click', handleClickOutside)
+    document.addEventListener('click', handleClickOutside, true)
     nextTick(adjustFontSize)
     window.addEventListener('resize', onResize)
     window.addEventListener('scroll', updateMenuPosition, true)
 })
 onBeforeUnmount(() => {
-    document.removeEventListener('click', handleClickOutside)
+    document.removeEventListener('click', handleClickOutside, true)
     window.removeEventListener('resize', onResize)
     window.removeEventListener('scroll', updateMenuPosition, true)
 })
@@ -235,9 +273,6 @@ watch(() => props.modelValue, async () => {
     top: 100%;
     margin-top: .25rem;
     z-index: 100002;
-    max-height: 260px;
-    overflow-y: auto;
-    overflow-x: hidden;
     width: auto;
     min-width: 100%;
     max-width: 100vw;
@@ -245,7 +280,38 @@ watch(() => props.modelValue, async () => {
     border: 1px solid var(--color-border);
     border-radius: .375rem;
     box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
+
+.select-box-search {
+    flex-shrink: 0;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+    border-radius: 0;
+    background-color: var(--color-primary-background);
+    color: var(--color-primary-text);
+    font-size: 14px;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.select-box-search::placeholder {
+    color: var(--color-secondary-text);
+}
+
+.dropdown-menu-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem 0;
+    max-height: 260px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
 .fixed-menu {
     position: fixed;
     z-index: 100002;

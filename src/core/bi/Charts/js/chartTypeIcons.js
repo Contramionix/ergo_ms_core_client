@@ -18,37 +18,55 @@ import {
 const CHART_TYPE_ICON_MAP = {
   line: TrendingUp,
   bar: BarChart3,
+  bar_stacked: BarChart3,
+  line_bar: BarChartHorizontal,
+  line_bar_stacked: BarChartHorizontal,
   pie: ChartPie,
   doughnut: CircleDot,
+  donut: CircleDot,
   scatter: ChartScatter,
   radar: Radar,
   heatmap: LayoutGrid,
   area: AreaChart,
+  area_stacked: AreaChart,
   barHorizontal: BarChartHorizontal,
   combined: LineChart,
+  combo: LineChart,
   funnel: Filter,
   gauge: Gauge,
   treemap: LayoutGrid,
+  tree: LayoutGrid,
   indicator: Hash,
-  table: Table
+  table: Table,
+  pivot: Table,
+  map: CircleDot
 }
 
 const CHART_TYPE_COLORS = {
   line: '#0d6efd',
   bar: '#dc3545',
+  bar_stacked: '#dc3545',
+  line_bar: '#dc3545',
+  line_bar_stacked: '#dc3545',
   pie: '#198754',
   doughnut: '#fd7e14',
+  donut: '#fd7e14',
   scatter: '#6f42c1',
   radar: '#0dcaf0',
   heatmap: '#d63384',
   area: '#0d6efd',
-  barHorizontal: '#dc3545',
+  area_stacked: '#0d6efd',
+  barhorizontal: '#dc3545',
   combined: '#6c757d',
+  combo: '#6c757d',
   funnel: '#20c997',
   gauge: '#fd7e14',
   treemap: '#6610f2',
+  tree: '#6610f2',
   indicator: '#0dcaf0',
-  table: '#198754'
+  table: '#198754',
+  pivot: '#198754',
+  map: '#fd7e14'
 }
 
 export const CHART_TYPE_OPTIONS = [
