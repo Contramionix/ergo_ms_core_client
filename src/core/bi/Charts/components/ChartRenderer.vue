@@ -8,7 +8,8 @@ const props = defineProps({
   type: { type: [String, Number], default: '' },
   fields: Object,
   settings: Array,
-  dataset: { type: [Array, Object], default: () => [] }
+  dataset: { type: [Array, Object], default: () => [] },
+  compact: { type: Boolean, default: false }
 })
 
 const chartTypeMap = { 1: 'line', 2: 'bar', 3: 'pie', 4: 'doughnut', 5: 'scatter', 6: 'radar', 7: 'heatmap' }
@@ -25,25 +26,9 @@ const datasetArray = computed(() => (Array.isArray(props.dataset) ? props.datase
 <template>
   <div class="area d-flex flex-column h-100 w-100">
     <div class="chart d-flex h-100 w-100 justify-content-center align-items-center">
-      <ChartIndicator
-        v-if="chartKind === 'indicator'"
-        :fields="fields"
-        :settings="settings"
-        :dataset="datasetArray"
-      />
-      <ChartTable
-        v-else-if="chartKind === 'table'"
-        :fields="fields"
-        :settings="settings"
-        :dataset="datasetArray"
-      />
-      <EChartsComponent
-        v-else
-        :type="chartKind"
-        :fields="fields"
-        :settings="settings"
-        :dataset="datasetArray"
-      />
+      <ChartIndicator v-if="chartKind === 'indicator'" :fields="fields" :settings="settings" :dataset="datasetArray"/>
+      <ChartTable v-else-if="chartKind === 'table'" :fields="fields" :settings="settings" :dataset="datasetArray"/>
+      <EChartsComponent v-else :type="chartKind" :fields="fields" :settings="settings" :dataset="datasetArray" :compact="compact"/>
     </div>
   </div>
 </template>

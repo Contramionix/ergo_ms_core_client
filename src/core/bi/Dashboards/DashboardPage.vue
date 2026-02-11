@@ -365,7 +365,9 @@ const saveChartSettings = (updatedSettings) => {
         updatedSettings.height = 'auto';
       } else {
         const keepHeight = typeof oldHeight === 'number' && oldHeight > 0;
-        updatedSettings.height = keepHeight ? oldHeight : 300;
+        const fromGrid = dashboardGridRef.value?.getResolvedHeight?.(updatedSettings.id);
+        const fallback = typeof fromGrid === 'number' && fromGrid > 0 ? fromGrid : 300;
+        updatedSettings.height = keepHeight ? oldHeight : fallback;
       }
     }
     const newItems = [...currentPageItems.value];

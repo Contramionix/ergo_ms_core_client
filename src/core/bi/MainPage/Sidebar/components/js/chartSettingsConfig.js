@@ -5,22 +5,22 @@ export const chartSettingsConfig = {
     { key: 'x', label: 'X', icon: MoveRight, allowedTypes: ['string', 'date', 'date&time'] },
     { key: 'y', label: 'Y', icon: MoveUp, allowedTypes: ['integer', 'float'] },
     { key: 'y2', label: 'Y2', icon: MoveUp, allowedTypes: ['integer', 'float'] },
-    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'], allowMeasureNames: true },
     { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool'] },
-    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'] },
+    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'], allowMeasureValues: true },
     { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] }
   ],
   bar: [
-    { key: 'x', label: 'X', icon: MoveRight, allowedTypes: ['string', 'date', 'date&time', 'integer', 'float'] },
+    { key: 'x', label: 'X', icon: MoveRight, allowedTypes: ['string', 'date', 'date&time', 'integer', 'float'], allowMeasureNames: true },
     { key: 'y', label: 'Y', icon: MoveUp, allowedTypes: ['string', 'date', 'date&time', 'integer', 'float'] },
-    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'], allowMeasureNames: true },
     { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool'] },
-    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'] },
+    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'], allowMeasureValues: true },
     { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] }
   ],
   pie: [
     { key: 'category', label: 'Категории', icon: Server, allowedTypes: ['string'] },
-    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'bool'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'bool'], allowMeasureNames: true },
     { key: 'indicators', label: 'Показатели', icon: ChartPie, allowedTypes: ['integer', 'float'] },
     { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float'] },
     { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'] },
@@ -28,7 +28,7 @@ export const chartSettingsConfig = {
   ],
   doughnut: [
     { key: 'category', label: 'Категории', icon: Server, allowedTypes: ['string'] },
-    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'bool'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'bool'], allowMeasureNames: true },
     { key: 'indicators', label: 'Показатели', icon: ChartPie, allowedTypes: ['integer', 'float'] },
     { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float'] },
     { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'] },
@@ -46,7 +46,7 @@ export const chartSettingsConfig = {
   radar: [
     { key: 'category', label: 'Категории', icon: Server, allowedTypes: ['string'] },
     { key: 'indicators', label: 'Показатели', icon: ChartPie, allowedTypes: ['integer', 'float'] },
-    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'bool'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'bool'], allowMeasureNames: true },
     { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'bool'] }
   ],
   heatmap: [
@@ -59,26 +59,26 @@ export const chartSettingsConfig = {
     { key: 'x', label: 'X', icon: MoveRight, allowedTypes: ['string', 'date', 'date&time'] },
     { key: 'y', label: 'Y', icon: MoveUp, allowedTypes: ['integer', 'float'] },
     { key: 'y2', label: 'Y2', icon: MoveUp, allowedTypes: ['integer', 'float'] },
-    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'], allowMeasureNames: true },
     { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool'] },
-    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'] },
+    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'], allowMeasureValues: true },
     { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] }
   ],
   barHorizontal: [
-    { key: 'x', label: 'X', icon: MoveRight, allowedTypes: ['string', 'date', 'date&time', 'integer', 'float'] },
+    { key: 'x', label: 'X', icon: MoveRight, allowedTypes: ['string', 'date', 'date&time', 'integer', 'float'], allowMeasureNames: true },
     { key: 'y', label: 'Y', icon: MoveUp, allowedTypes: ['string', 'date', 'date&time', 'integer', 'float'] },
-    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'], allowMeasureNames: true },
     { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool'] },
-    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'] },
+    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'], allowMeasureValues: true },
     { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] }
   ],
   combined: [
     { key: 'x', label: 'X', icon: MoveRight, allowedTypes: ['string', 'date', 'date&time'] },
     { key: 'y', label: 'Y', icon: MoveUp, allowedTypes: ['integer', 'float'] },
     { key: 'y2', label: 'Y2', icon: MoveUp, allowedTypes: ['integer', 'float'] },
-    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'], allowMeasureNames: true },
     { key: 'sort', label: 'Сортировка', icon: ArrowDownWideNarrow, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool'] },
-    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'] },
+    { key: 'labels', label: 'Подписи', icon: Type, allowedTypes: ['string'], allowMeasureValues: true },
     { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] }
   ],
   funnel: [

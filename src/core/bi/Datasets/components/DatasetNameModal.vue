@@ -63,7 +63,7 @@ function submit() {
 
 :deep(.modal-dataset-name) {
   .modal-body {
-    padding-bottom: 0;
+    padding: 0 1.25rem 1.25rem;
   }
 }
 </style>

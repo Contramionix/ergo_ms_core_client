@@ -3,17 +3,27 @@
     <div class="search-box">
       <input v-model="search" type="text" class="form-control form-control-sm" placeholder="Поиск..." />
     </div>
+    <ul v-if="virtualFieldsForSlot.length" class="fields-list virtual-fields">
+      <li v-for="f in virtualFieldsForSlot" :key="f.id" class="field-item" :class="{ selected: isSelected(f) }" @click="!isSelected(f) && selectField(f)" @mouseenter="onFieldItemMouseEnter" @mouseleave="onFieldItemMouseLeave">
+        <span class="field-icon">
+          <component :is="BarChart2" size="16" />
+        </span>
+        <span class="field-name field-name--virtual">
+          <span class="field-name-inner">{{ f.displayName ?? f.label ?? f.name }}</span>
+        </span>
+      </li>
+    </ul>
     <ul class="fields-list">
       <b>Показатели:</b>
       <li v-for="f in availableFields" :key="f.id" class="field-item" :class="{ selected: isSelected(f) }" @click="!isSelected(f) && selectField(f)" @mouseenter="onFieldItemMouseEnter" @mouseleave="onFieldItemMouseLeave">
         <span class="field-icon">
-          <component :is="typeIcon[f.type] || Type" size="16" />
+          <component :is="getFieldIcon(f)" size="16" />
         </span>
-        <span class="field-name">
-          <span class="field-name-inner">{{ f.name }}</span>
+        <span class="field-name" :class="{ 'field-name--virtual': isVirtualMeasureField(f) }">
+          <span class="field-name-inner">{{ getFieldDisplayName(f) }}</span>
         </span>
       </li>
-      <li v-if="!availableFields.length" class="field-empty">
+      <li v-if="!availableFields.length && !virtualFieldsForSlot.length" class="field-empty">
         <i>Ничего не найдено</i>
       </li>
     </ul>
@@ -22,17 +32,18 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Type, Hash, Calendar, CheckCircle, Globe, MapPin } from 'lucide-vue-next'
+import { Type, Hash, Calendar, CheckCircle, Globe, MapPin, BarChart2 } from 'lucide-vue-next'
+import { MEASURE_NAMES_FIELD, MEASURE_VALUES_FIELD, isVirtualMeasureField } from './js/measureVirtualFields.js'
 
 const props = defineProps({
   fields: { type: Array, default: () => [] },
   selected: { type: Array, default: () => [] },
-  allowedTypes: { type: Array, default: () => null }
+  allowedTypes: { type: Array, default: () => null },
+  measuresInChart: { type: Array, default: () => [] },
+  currentSlotConfig: { type: Object, default: () => null }
 })
 const emit = defineEmits(['select'])
 const search = ref('')
-
-
 
 const typeIcon = {
   string: Type,
@@ -47,6 +58,26 @@ const typeIcon = {
   geopolygon: Globe,
 }
 
+function getFieldIcon(f) {
+  if (isVirtualMeasureField(f)) return BarChart2
+  return typeIcon[f.type] || Type
+}
+
+function getFieldDisplayName(f) {
+  if (isVirtualMeasureField(f)) return f.displayName ?? f.label ?? f.name
+  return f.name
+}
+
+const virtualFieldsForSlot = computed(() => {
+  const measures = props.measuresInChart || []
+  const slot = props.currentSlotConfig
+  if (!measures.length || !slot) return []
+  const list = []
+  if (slot.allowMeasureNames) list.push(MEASURE_NAMES_FIELD)
+  if (slot.allowMeasureValues) list.push(MEASURE_VALUES_FIELD)
+  return list
+})
+
 const availableFields = computed(() => {
   const filtered = (props.fields || [])
     .filter(f => !props.allowedTypes || props.allowedTypes.includes(f.type))
@@ -56,7 +87,7 @@ const availableFields = computed(() => {
 })
 
 function isSelected(field) {
-  return props.selected.some(f => f.name === field.name)
+  return props.selected.some(f => (f.name ?? f.id) === (field.name ?? field.id))
 }
 
 function selectField(field) {
@@ -96,6 +127,11 @@ function onFieldItemMouseLeave(ev) {
   flex-direction: column;
   gap: 6px;
 }
+.fields-list.virtual-fields {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-secondary-background, #eee);
+}
 .field-item {
   display: flex;
   flex-direction: row;
@@ -127,6 +163,9 @@ function onFieldItemMouseLeave(ev) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.field-name--virtual {
+  font-style: italic;
 }
 
 .field-name-inner {

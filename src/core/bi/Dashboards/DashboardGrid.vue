@@ -31,7 +31,9 @@
       <DashboardGridItem
         v-for="item in items"
         :key="item.id"
+        :ref="el => setItemRef(item.id, el)"
         :item="item"
+        :resolved-height="resolvedHeightsMap[item.id]"
         :view-mode="viewMode"
         :element-sizes="ELEMENT_SIZES"
         :shift-style="shiftedItemsStyle[item.id] || {}"
@@ -68,6 +70,7 @@
     <Teleport to="body">
       <div
         v-if="isDraggingExisting && draggedItem && draggedElementCursorPosition"
+        ref="previewContainerRef"
         :style="{
           position: 'fixed',
           left: `${draggedElementCursorPosition.x - draggedElementCursorOffset.x}px`,
@@ -80,19 +83,11 @@
           boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
           border: '2px solid var(--color-primary)',
           borderRadius: '8px',
-          background: 'var(--color-primary-background)'
+          background: 'var(--color-primary-background)',
+          overflow: 'hidden'
         }"
         class="dragged-element-preview"
-      >
-        <div class="dragged-item-header">
-          <span class="dragged-item-type">{{ draggedItem.type }}</span>
-        </div>
-        <div class="dragged-item-content">
-          <div class="dragged-item-preview">
-            {{ getItemPreview(draggedItem) }}
-          </div>
-        </div>
-      </div>
+      ></div>
     </Teleport>
 
     <Teleport to="body">
@@ -174,11 +169,20 @@ const hintTooltipStyle = ref({})
 let hideHintTimer = null
 const resizeObserver = ref(null)
 const autoHeightItems = ref(new Map())
+const renderedHeights = ref(new Map())
+const observedRenderedIds = ref(new Set())
 const isRecalculatingPositions = ref(false)
 const documentDragOverListenerAttached = ref(false)
 const documentMouseMoveListenerAttached = ref(false)
 const gridContentHeight = ref(0)
 const dragStartSnapshot = ref(null)
+const itemRefs = ref({})
+const previewContainerRef = ref(null)
+
+const setItemRef = (id, el) => {
+  if (el) itemRefs.value[id] = el
+  else delete itemRefs.value[id]
+}
 
 const dashboardGridStyle = computed(() => {
   if (!gridContentHeight.value) {
@@ -247,10 +251,10 @@ const yellowPlaceholderStyle = computed(() => {
   const p = yellowPlaceholderPosition.value
   return {
     position: 'absolute',
-    left: `${(p.x || 0)}px`,
-    top: `${(p.y || 0)}px`,
-    width: `${p.width || 0}px`,
-    height: `${p.height || 0}px`,
+    left: `${p.x ?? 0}px`,
+    top: `${p.y ?? 0}px`,
+    width: `${p.width ?? 0}px`,
+    height: `${p.height ?? 0}px`,
     pointerEvents: 'none'
   }
 })
@@ -375,7 +379,9 @@ const updateActiveChart = (item, newIndex) => {
 
 const handleChartResize = (item, newHeight) => {
   if (item.autoHeight) {
+    item.height = newHeight;
     autoHeightItems.value.set(item.id, newHeight);
+    autoHeightItems.value = new Map(autoHeightItems.value);
     nextTick(() => {
       recalculatePositions();
     });
@@ -390,7 +396,7 @@ const handleSelectorResize = (item, newHeight) => {
   if (isAutoHeight) {
     item.height = newHeight;
     autoHeightItems.value.set(item.id, newHeight);
-    
+    autoHeightItems.value = new Map(autoHeightItems.value);
     nextTick(() => {
       recalculatePositions();
     });
@@ -619,9 +625,11 @@ const computePlacementForDrag = (relativeX, relativeY, elementType, excludeItemI
     if (over) {
       const itemMiddle = over.top + (over.bottom - over.top) / 2
       if (relativeY < itemMiddle) {
+        const rawY = targetRow.placementY - elementSize.height - GRID_GAP
+        const clampedY = Math.max(0, rawY)
         placement = {
           x: over.left,
-          y: Math.max(0, targetRow.placementY - elementSize.height - GRID_GAP)
+          y: clampedY
         }
         insertionMode = 'above'
       } else {
@@ -645,10 +653,22 @@ const computePlacementForDrag = (relativeX, relativeY, elementType, excludeItemI
           excludeItemId
         )
 
-  const isNewRowAtTop = insertionMode === 'above' && adjusted.y === 0
+  let finalY = adjusted.y
+  const firstRowItems = itemsForPlacement.filter(i => (i.y || 0) < 10)
+  if (firstRowItems.length > 0 && insertionMode === 'above') {
+    const firstRowBottom = Math.max(
+      ...firstRowItems.map(i => (i.y || 0) + getActualItemSize(i).height)
+    )
+    const minY = firstRowBottom + GRID_GAP
+    if (finalY < minY) {
+      finalY = minY
+    }
+  }
+
+  const isNewRowAtTop = insertionMode === 'above' && finalY === 0
   return {
     x: adjusted.x,
-    y: adjusted.y,
+    y: finalY,
     width: elementSize.width,
     height: elementSize.height,
     insertionMode,
@@ -836,6 +856,19 @@ const startDrag = (item, event) => {
   }
   document.addEventListener('mousemove', handleExistingItemDrag)
   document.addEventListener('mouseup', stopDrag, true)
+
+  nextTick(() => {
+    const container = previewContainerRef.value
+    const raw = itemRefs.value[item.id]
+    const comp = Array.isArray(raw) ? raw[0] : raw
+    const el = comp?.$el ?? comp
+    if (!container || !el?.cloneNode) return
+    const clone = el.cloneNode(true)
+    clone.classList.remove('item-hidden-drag', 'item-dragging')
+    clone.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;margin:0;box-sizing:border-box;opacity:1;'
+    container.innerHTML = ''
+    container.appendChild(clone)
+  })
 }
 
 const restoreSnapshot = () => {
@@ -881,9 +914,15 @@ const handleExistingItemDrag = (event) => {
   const mouseX = event.clientX - rect.left - GRID_CONTAINER_PADDING
   const mouseY = event.clientY - rect.top - GRID_CONTAINER_PADDING
 
-  const draggedSize = getActualItemSize(draggedItem.value)
+  let draggedSize = getActualItemSize(draggedItem.value)
+  const domEl = getItemElement(draggedItem.value.id)
+  if (domEl) {
+    const dr = domEl.getBoundingClientRect()
+    if (dr.width > 0 && dr.height > 0) {
+      draggedSize = { width: Math.round(dr.width), height: Math.round(dr.height) }
+    }
+  }
   const placement = computePlacementForDrag(mouseX, mouseY, draggedItem.value.type, draggedItem.value.id, draggedSize)
-
   const mode = placement.insertionMode ?? 'sameRow'
   if (mode === 'above' || mode === 'below') {
     applyShiftDuringDrag(placement.y, placement.height || draggedSize.height, mode, draggedItem.value.id)
@@ -918,6 +957,7 @@ const stopDrag = (event) => {
     }
     emit('update:items', localItems.value)
   }
+  if (previewContainerRef.value) previewContainerRef.value.innerHTML = ''
   draggedItem.value = null
   isDraggingExisting.value = false
   isMouseDown.value = false
@@ -1080,20 +1120,19 @@ const handleDragEnter = (event) => {
       y: event.clientY
     }
     
-    const position = calculatePotentialPlacement(event.clientX, event.clientY, currentDraggedType.value)
-    const size = getEffectiveElementSize(currentDraggedType.value)
-    
-    if (size) {
-      yellowPlaceholderPosition.value = {
-        x: position.x,
-        y: position.y,
-        width: size.width,
-        height: size.height
-      }
-      placeholderIsNewRowAtTop.value = position.isNewRowAtTop ?? false
-      placeholderInsertionMode.value = position.insertionMode ?? 'sameRow'
+  const position = calculatePotentialPlacement(event.clientX, event.clientY, currentDraggedType.value)
+  const size = getEffectiveElementSize(currentDraggedType.value)
+  if (size) {
+    yellowPlaceholderPosition.value = {
+      x: position.x,
+      y: position.y,
+      width: size.width,
+      height: size.height
     }
+    placeholderIsNewRowAtTop.value = position.isNewRowAtTop ?? false
+    placeholderInsertionMode.value = position.insertionMode ?? 'sameRow'
   }
+}
 }
 
 const updatePlacementFromDrag = (clientX, clientY) => {
@@ -1259,19 +1298,39 @@ const resetDragState = () => {
   placeholderInsertionMode.value = 'sameRow'
 }
 
-const getActualItemSize = (item) => {
-  let actualHeight = item.height || ELEMENT_SIZES[item.type]?.height || 150;
-  
-  if (item.autoHeight && autoHeightItems.value.has(item.id)) {
-    const savedHeight = autoHeightItems.value.get(item.id);
-    actualHeight = savedHeight;
+const getItemElement = (itemId) => {
+  const el = itemRefs.value[itemId]
+  if (el) {
+    return el.$el ?? el
   }
-  
+  return document.querySelector(`[data-item-id="${itemId}"]`)
+}
+
+const getActualItemSize = (item) => {
+  const defaultHeight = ELEMENT_SIZES[item.type]?.height || 150
+  let actualHeight = item.height || defaultHeight
+
+  if (item.autoHeight && autoHeightItems.value.has(item.id)) {
+    actualHeight = autoHeightItems.value.get(item.id)
+  } else if (renderedHeights.value.has(item.id)) {
+    actualHeight = renderedHeights.value.get(item.id)
+  }
+  const numHeight = typeof actualHeight === 'number' && !Number.isNaN(actualHeight)
+    ? actualHeight
+    : defaultHeight
   return {
     width: item.width || ELEMENT_SIZES[item.type]?.width || 200,
-    height: actualHeight
+    height: numHeight
   }
 }
+
+const resolvedHeightsMap = computed(() => {
+  const map = {}
+  localItems.value.forEach((item) => {
+    map[item.id] = getActualItemSize(item).height
+  })
+  return map
+})
 
 const existingRowLines = computed(() => {
   const list = localItems.value
@@ -1355,22 +1414,28 @@ const recalculatePositions = () => {
 
 const handleItemResize = (entries) => {
   let hasChanges = false
-  
+
   for (const entry of entries) {
     const itemId = entry.target.getAttribute('data-item-id')
     const item = localItems.value.find(i => i.id === itemId)
-    
+    const newHeight = entry.contentRect.height
+
     if (item && item.autoHeight) {
-      const newHeight = entry.contentRect.height
       const storedHeight = autoHeightItems.value.get(itemId)
-      
       if (storedHeight !== newHeight) {
         autoHeightItems.value.set(itemId, newHeight)
+        autoHeightItems.value = new Map(autoHeightItems.value)
         hasChanges = true
       }
     }
+
+    const prevRendered = renderedHeights.value.get(itemId)
+    if (prevRendered !== newHeight) {
+      renderedHeights.value.set(itemId, newHeight)
+      renderedHeights.value = new Map(renderedHeights.value)
+    }
   }
-  
+
   if (hasChanges) {
     recalculatePositions()
   }
@@ -1384,18 +1449,40 @@ const setupResizeObserver = (element, item) => {
     nextTick(() => {
       const rect = element.getBoundingClientRect()
       autoHeightItems.value.set(item.id, rect.height)
+      autoHeightItems.value = new Map(autoHeightItems.value)
     })
   }
 }
 
 const removeResizeObserver = (item) => {
   if (resizeObserver.value) {
-    const element = document.querySelector(`[data-item-id="${item.id}"]`)
+    const element = getItemElement(item.id)
     if (element) {
       resizeObserver.value.unobserve(element)
     }
     autoHeightItems.value.delete(item.id)
+    autoHeightItems.value = new Map(autoHeightItems.value)
   }
+}
+
+const observeRenderedHeight = (element, itemId) => {
+  if (!resizeObserver.value || !element || observedRenderedIds.value.has(itemId)) return
+  resizeObserver.value.observe(element)
+  observedRenderedIds.value.add(itemId)
+  observedRenderedIds.value = new Set(observedRenderedIds.value)
+  const h = element.getBoundingClientRect().height
+  renderedHeights.value.set(itemId, h)
+  renderedHeights.value = new Map(renderedHeights.value)
+}
+
+const unobserveRenderedHeight = (itemId) => {
+  if (!resizeObserver.value) return
+  const element = getItemElement(itemId)
+  if (element) resizeObserver.value.unobserve(element)
+  observedRenderedIds.value.delete(itemId)
+  observedRenderedIds.value = new Set(observedRenderedIds.value)
+  renderedHeights.value.delete(itemId)
+  renderedHeights.value = new Map(renderedHeights.value)
 }
 
 const handleMouseMove = (event) => {
@@ -1450,26 +1537,30 @@ watch(() => props.items, (newItems) => {
 watch(localItems, (newItems, oldItems) => {
   updateGridContentHeight()
   if (!resizeObserver.value) return
-  
+
   nextTick(() => {
     oldItems.forEach(oldItem => {
       const stillExists = newItems.find(newItem => newItem.id === oldItem.id)
       if (!stillExists) {
         removeResizeObserver(oldItem)
+        unobserveRenderedHeight(oldItem.id)
       }
     })
-    
+
     newItems.forEach(newItem => {
+      const element = getItemElement(newItem.id)
       if (newItem.height === 'auto') {
-        const element = document.querySelector(`[data-item-id="${newItem.id}"]`)
         if (element && !autoHeightItems.value.has(newItem.id)) {
           setupResizeObserver(element, newItem)
         }
       } else {
         removeResizeObserver(newItem)
       }
+      if (newItem.height !== 'auto' && element) {
+        observeRenderedHeight(element, newItem.id)
+      }
     })
-    
+
     const hasAutoHeightItems = newItems.some(item => item.height === 'auto')
     if (hasAutoHeightItems) {
       setTimeout(() => {
@@ -1505,8 +1596,15 @@ const triggerRecalculatePositions = () => {
   })
 }
 
+const getResolvedHeight = (itemId) => {
+  const item = localItems.value.find((i) => i.id === itemId)
+  if (!item) return null
+  return getActualItemSize(item).height
+}
+
 defineExpose({
-  triggerRecalculatePositions
+  triggerRecalculatePositions,
+  getResolvedHeight
 })
 
 onMounted(() => {
@@ -1530,11 +1628,12 @@ onMounted(() => {
   
   nextTick(() => {
     localItems.value.forEach(item => {
+      const element = getItemElement(item.id)
+      if (!element) return
       if (item.height === 'auto') {
-        const element = document.querySelector(`[data-item-id="${item.id}"]`)
-        if (element) {
-          setupResizeObserver(element, item)
-        }
+        setupResizeObserver(element, item)
+      } else {
+        observeRenderedHeight(element, item.id)
       }
     })
   })
@@ -1558,6 +1657,8 @@ onUnmounted(() => {
     resizeObserver.value = null
   }
   autoHeightItems.value.clear()
+  renderedHeights.value.clear()
+  observedRenderedIds.value.clear()
 })
 </script>
 
@@ -1704,68 +1805,18 @@ onUnmounted(() => {
 }
 .dragged-element-preview {
   pointer-events: none;
-  opacity: 0.85;
   box-shadow: 0 8px 20px rgba(0,0,0,0.25);
   border: 2px solid var(--color-primary);
   border-radius: 8px;
   background: var(--color-primary-background);
   transition: box-shadow 0.2s, opacity 0.2s;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
   z-index: 2000;
 }
 
-.dragged-item-header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  background: rgba(45, 45, 61, 0.7);
-  backdrop-filter: blur(4px);
-  z-index: 10;
-  border-radius: 8px 8px 0 0;
-}
-
-.dragged-item-type {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--color-text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.dragged-item-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-top: 28px;
-  overflow: hidden;
-}
-
-.dragged-item-preview {
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  line-height: 1.4;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  hyphens: auto;
-  max-width: 100%;
-  max-height: 100%;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
+.dragged-element-preview :deep(.grid-item) {
+  width: 100%;
+  height: 100%;
 }
 
 .hint-content {

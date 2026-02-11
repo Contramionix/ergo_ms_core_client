@@ -1,7 +1,7 @@
 <template>
   <div class="selector-widget" ref="selectorWidgetRef" :class="{ 'auto-height': effectiveAutoHeight }">
     <div class="selector-content">
-      <SpinnerLoading v-if="isLoading" loading-text="Загрузка селектора..." />
+      <SpinnerLoading v-if="!preview && isLoading" loading-text="Загрузка селектора..." />
       <div v-else-if="error" class="selector-error">
         <AlertCircle :size="24" />
         <span>{{ error }}</span>
@@ -94,6 +94,10 @@ const props = defineProps({
       clearButton: false,
       autoHeight: false
     })
+  },
+  preview: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -142,8 +146,9 @@ const sortedSelectors = computed(() => {
   sorted.forEach(selector => {
     initializeSelectorValue(selector);
     
-    if (!selectorOptionsMap.value.hasOwnProperty(selector.id) && 
-        selector.selectedDatasetId && 
+    if (!props.preview &&
+        !selectorOptionsMap.value.hasOwnProperty(selector.id) &&
+        selector.selectedDatasetId &&
         selector.selectedField) {
       loadSelectorOptions(selector);
     }
