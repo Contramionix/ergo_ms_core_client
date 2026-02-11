@@ -18,18 +18,7 @@ export default {
   settings: {
     welcomeMessage: 'Помогу с анализом техпроцессов. Загрузите документы для начала работы.',
     placeholder: 'Задайте вопрос по техпроцессам...',
-    maxTokens: 131072,
     supportedFormats: ['docx'],
-  },
-
-  ollama_config: {
-    num_gpu: 999,
-    temperature: 0.3,
-    max_tokens: 131072,
-    top_p: 0.9,
-    top_k: 40,
-    seed: 42,
-    repeat_penalty: 1.1,
   },
 
   suggestions: [

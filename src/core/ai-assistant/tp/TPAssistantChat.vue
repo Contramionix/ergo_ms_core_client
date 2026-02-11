@@ -48,6 +48,56 @@
       </div>
     </teleport>
 
+    <!-- Модальное окно информации о чанках -->
+    <teleport to="body">
+      <div v-if="chunksModalDocumentId" class="upload-modal-overlay" @click.self="closeChunksModal">
+        <div class="chunks-modal">
+          <div class="chunks-modal__header">
+            <h5 class="mb-0 chunks-modal__title">
+              <Layers :size="22" class="me-2" />
+              Чанки документа: {{ chunksData?.document_title || 'Загрузка...' }}
+            </h5>
+            <button class="upload-modal__close" @click="closeChunksModal" title="Закрыть">
+              <X :size="20" />
+            </button>
+          </div>
+          <div class="chunks-modal__body">
+            <div v-if="chunksLoading" class="chunks-modal__loading">
+              <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+              Загрузка чанков...
+            </div>
+            <template v-else>
+              <div v-if="!chunksData?.is_indexed && chunksData?.chunks_count === 0" class="chunks-modal__empty">
+                Документ ещё не проиндексирован. Чанки появятся после обработки.
+              </div>
+              <div v-else class="chunks-modal__summary mb-3">
+                <span class="badge bg-secondary">Всего чанков: {{ chunksData?.chunks_count ?? 0 }}</span>
+              </div>
+              <div v-if="chunksData?.chunks?.length" class="chunks-list">
+                <div
+                  v-for="chunk in chunksData.chunks"
+                  :key="chunk.id"
+                  class="chunk-card"
+                >
+                  <div class="chunk-card__header">
+                    <span class="chunk-card__index">#{{ chunk.chunk_index }}</span>
+                    <span v-if="chunk.metadata?.chunk_type" class="chunk-card__type badge bg-info">{{ chunk.metadata.chunk_type }}</span>
+                    <span v-if="chunk.metadata?.section_title" class="chunk-card__section text-muted">{{ chunk.metadata.section_title }}</span>
+                    <span v-if="chunk.metadata?.operation_numbers?.length" class="chunk-card__ops badge bg-light text-dark">Операции: {{ chunk.metadata.operation_numbers.join(', ') }}</span>
+                  </div>
+                  <div class="chunk-card__content-full">{{ chunk.content || '—' }}</div>
+                  <details v-if="chunk.metadata && Object.keys(chunk.metadata).length" class="chunk-card__meta">
+                    <summary>Метаданные</summary>
+                    <pre class="chunk-meta-json">{{ JSON.stringify(chunk.metadata, null, 2) }}</pre>
+                  </details>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </teleport>
+
     <!-- Модальное окно просмотра документа -->
     <teleport to="body">
       <div v-if="previewDocumentId" class="upload-modal-overlay" @click.self="closeDocumentPreview">
@@ -99,6 +149,13 @@
               {{ doc.file_name || 'Без имени файла' }}
             </div>
           </div>
+          <button 
+            class="document-card__action document-card__chunks"
+            @click.stop="openChunksModal(doc.id)"
+            title="Информация о чанках"
+          >
+            <Layers :size="16" />
+          </button>
           <button 
             class="document-card__delete"
             @click.stop="deleteDocument(doc.id)"
@@ -158,7 +215,7 @@
 
 <script setup>
 import { ref, nextTick, watch, computed, onMounted } from 'vue'
-import { Send, Wrench, Upload, X, FileText, ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { Send, Wrench, Upload, X, FileText, ChevronDown, ChevronUp, Layers } from 'lucide-vue-next'
 import AssistantMessage from '../base/AssistantMessage.vue'
 import AssistantTyping from '../base/AssistantTyping.vue'
 import TPFileUploader from './TPFileUploader.vue'
@@ -257,6 +314,10 @@ const previewDocumentId = ref(null)
 const previewDocument = ref(null)
 const previewLoading = ref(false)
 
+const chunksModalDocumentId = ref(null)
+const chunksData = ref(null)
+const chunksLoading = ref(false)
+
 const formatPreviewMarkdown = (content) => formatMarkdown(content || '')
 
 const openDocumentPreview = async (documentId) => {
@@ -276,6 +337,37 @@ const openDocumentPreview = async (documentId) => {
 const closeDocumentPreview = () => {
   previewDocumentId.value = null
   previewDocument.value = null
+}
+
+const openChunksModal = async (documentId) => {
+  chunksModalDocumentId.value = documentId
+  chunksData.value = null
+  chunksLoading.value = true
+  try {
+    const result = await tpClient.getDocumentChunks(documentId)
+    if (result.success) {
+      chunksData.value = {
+        document_id: result.document_id,
+        document_title: result.document_title,
+        is_indexed: result.is_indexed,
+        chunks_count: result.chunks_count,
+        chunks: result.chunks || [],
+      }
+    } else {
+      toast.error(result.error || 'Не удалось загрузить чанки')
+      closeChunksModal()
+    }
+  } catch (e) {
+    toast.error('Ошибка загрузки чанков')
+    closeChunksModal()
+  } finally {
+    chunksLoading.value = false
+  }
+}
+
+const closeChunksModal = () => {
+  chunksModalDocumentId.value = null
+  chunksData.value = null
 }
 
 let messageIdCounter = 1
@@ -480,11 +572,6 @@ const sendMessage = async () => {
       return
     }
   }
-
-  // Получаем настройки Ollama из конфига модуля
-  const module = getModuleById('tp')
-  const ollamaConfig = module?.ollama_config || {}
-  tpClient.setOllamaConfig(ollamaConfig)
 
   // Создаем сообщение для streaming
   streamingMessageId = messageIdCounter++
@@ -975,6 +1062,128 @@ defineExpose({
   color: var(--bs-secondary);
 }
 
+/* Модальное окно чанков */
+.chunks-modal {
+  background: var(--bs-body-bg);
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  max-width: 720px;
+  width: 95%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.chunks-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  flex-shrink: 0;
+}
+
+.chunks-modal__title {
+  display: flex;
+  align-items: center;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.chunks-modal__body {
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.chunks-modal__loading,
+.chunks-modal__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--bs-secondary);
+}
+
+.chunks-modal__summary {
+  flex-shrink: 0;
+}
+
+.chunks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.chunk-card {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.375rem;
+  padding: 0.75rem 1rem;
+  background: var(--bs-light);
+}
+
+.chunk-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.chunk-card__index {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--module-color, #f59e0b);
+}
+
+.chunk-card__type {
+  font-size: 0.7rem;
+}
+
+.chunk-card__section {
+  font-size: 0.8rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chunk-card__ops {
+  font-size: 0.7rem;
+}
+
+.chunk-card__content-full {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--bs-body-color);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 20rem;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+}
+
+.chunk-card__meta {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.chunk-card__meta summary {
+  cursor: pointer;
+  color: var(--bs-secondary);
+}
+
+.chunk-meta-json {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem;
+  background: var(--bs-dark);
+  color: var(--bs-light);
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  overflow-x: auto;
+  white-space: pre;
+}
+
 .document-preview-content {
   font-size: 0.9rem;
   line-height: 1.6;
@@ -1145,6 +1354,29 @@ defineExpose({
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: 0.25rem;
+}
+
+.document-card__action {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  color: var(--bs-secondary);
+}
+
+.document-card__action:hover {
+  color: var(--module-color, #f59e0b);
+  background: color-mix(in srgb, var(--module-color, #f59e0b) 12%, transparent);
+}
+
+.document-card__chunks {
+  margin-right: 0.25rem;
 }
 
 .document-card__delete {

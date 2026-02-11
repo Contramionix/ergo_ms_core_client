@@ -7,6 +7,7 @@ import { ragClient } from '../../rag/js/rag-client.js'
 const endpoints = {
   documents: 'ai_assistant/tp_documents/',
   documentDetail: (id) => `ai_assistant/tp_documents/${id}/`,
+  documentChunks: (id) => `ai_assistant/tp_documents/${id}/chunks/`,
   uploadStatus: (taskId) => `ai_assistant/tp_documents/upload_status/${taskId}/`,
   chatStream: 'ai_assistant/tp_chat/stream/',
   chatStatus: (taskId) => `ai_assistant/tp_chat/status/${taskId}/`,
@@ -17,18 +18,6 @@ const endpoints = {
  * Клиент для работы с TP Assistant (техпроцессы)
  */
 class TPClient {
-  constructor() {
-    this.ollamaConfig = null
-  }
-
-  /**
-   * Устанавливает настройки Ollama из конфига модуля
-   * @param {Object} config - настройки Ollama из module-config
-   */
-  setOllamaConfig(config) {
-    this.ollamaConfig = config
-  }
-
   /**
    * Получить список документов техпроцессов для сессии
    * @param {string} sessionId - ID сессии чата (обязательно)
@@ -76,14 +65,14 @@ class TPClient {
   async getDocument(documentId) {
     try {
       const response = await apiClient.get(endpoints.documentDetail(documentId))
-      
+
       if (response.success) {
         return {
           success: true,
           document: response.data.document,
         }
       }
-      
+
       return {
         success: false,
         error: response.data?.error || 'Документ не найден'
@@ -93,6 +82,37 @@ class TPClient {
       return {
         success: false,
         error: error.message || 'Не удалось получить документ'
+      }
+    }
+  }
+
+  /**
+   * Получить чанки RAG для документа техпроцесса (для просмотра метаданных и фрагментов)
+   */
+  async getDocumentChunks(documentId) {
+    try {
+      const response = await apiClient.get(endpoints.documentChunks(documentId))
+
+      if (response.success) {
+        return {
+          success: true,
+          document_id: response.data.document_id,
+          document_title: response.data.document_title,
+          is_indexed: response.data.is_indexed,
+          chunks_count: response.data.chunks_count ?? 0,
+          chunks: response.data.chunks ?? [],
+        }
+      }
+
+      return {
+        success: false,
+        error: response.data?.error || 'Не удалось загрузить чанки'
+      }
+    } catch (error) {
+      console.error('Ошибка получения чанков документа:', error)
+      return {
+        success: false,
+        error: error.message || 'Не удалось загрузить чанки'
       }
     }
   }
@@ -280,16 +300,11 @@ class TPClient {
    * Отправить сообщение в чат с техпроцессами (асинхронно через Celery, опрос статуса)
    */
   async sendMessageStream(message, onChunk, onDone, onError, sessionId = null) {
-    const config = this.ollamaConfig
-
     const requestBody = {
       message: message,
     }
     if (sessionId) {
       requestBody.session_id = sessionId
-    }
-    if (config) {
-      requestBody.ollama_config = { ...config }
     }
 
     try {
