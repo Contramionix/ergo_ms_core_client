@@ -87,11 +87,9 @@ function buildLegend(showLegend, compact) {
 }
 
 function buildGrid(base, compact, compactValues) {
-  if (!compact) return base
-  const nextGrid = { ...base, ...compactValues }
-  if (nextGrid.containLabel) {
-    nextGrid.containLabel = false
-  }
+  const { containLabel, ...baseWithoutContainLabel } = base
+  if (!compact) return baseWithoutContainLabel
+  const nextGrid = { ...baseWithoutContainLabel, ...compactValues }
   if (typeof nextGrid.left === 'number' && typeof nextGrid.right === 'number') {
     const minSide = Math.min(nextGrid.left, nextGrid.right)
     nextGrid.left = minSide
@@ -211,7 +209,7 @@ function buildLineOption(fields, settings, dataset, filters, compact) {
     tooltip: { trigger: 'axis', appendToBody: true },
     legend: buildLegend(true, compact),
     grid: buildGrid(
-      { left: 60, right: hasY2 ? 60 : 40, bottom: 80, top: 20, containLabel: true },
+      { left: 60, right: hasY2 ? 60 : 40, bottom: 80, top: 20 },
       compact,
       { left: 36, right: hasY2 ? 36 : 24, bottom: 56, top: 12 }
     ),
@@ -265,7 +263,7 @@ function buildBarOption(fields, settings, dataset, filters, compact) {
     tooltip: { trigger: 'axis', appendToBody: true },
     legend: buildLegend(showLegend, compact),
     grid: buildGrid(
-      { left: 60, right: 40, bottom: showLegend ? 80 : 40, top: 20, containLabel: true },
+      { left: 60, right: 40, bottom: showLegend ? 80 : 40, top: 20 },
       compact,
       { left: 36, right: 24, bottom: showLegend ? 56 : 32, top: 12 }
     ),
@@ -354,7 +352,7 @@ function buildScatterOption(fields, dataset, filters, compact) {
     tooltip: { trigger: 'item', appendToBody: true },
     legend: buildLegend(true, compact),
     grid: buildGrid(
-      { left: 60, right: 40, bottom: 80, top: 20, containLabel: true },
+      { left: 60, right: 40, bottom: 80, top: 20 },
       compact,
       { left: 36, right: 24, bottom: 56, top: 12 }
     ),
@@ -449,7 +447,7 @@ function buildBarHorizontalOption(fields, settings, dataset, filters, compact) {
     tooltip: { trigger: 'axis' },
     legend: buildLegend(showLegend, compact),
     grid: buildGrid(
-      { left: 60, right: 40, bottom: showLegend ? 80 : 40, top: 20, containLabel: true },
+      { left: 60, right: 40, bottom: showLegend ? 80 : 40, top: 20 },
       compact,
       { left: 36, right: 24, bottom: showLegend ? 56 : 32, top: 12 }
     ),
@@ -542,7 +540,7 @@ function buildCombinedOption(fields, settings, dataset, filters, compact) {
     tooltip: { trigger: 'axis', appendToBody: true },
     legend: buildLegend(true, compact),
     grid: buildGrid(
-      { left: 60, right: hasY2 ? 60 : 40, bottom: 80, top: 20, containLabel: true },
+      { left: 60, right: hasY2 ? 60 : 40, bottom: 80, top: 20 },
       compact,
       { left: 36, right: hasY2 ? 36 : 24, bottom: 56, top: 12 }
     ),
@@ -625,7 +623,7 @@ function buildHeatmapOption(fields, dataset, compact) {
   return {
     tooltip: { position: 'top', appendToBody: true },
     grid: buildGrid(
-      { left: 80, right: 40, bottom: 60, top: 20, containLabel: true },
+      { left: 80, right: 40, bottom: 60, top: 20 },
       compact,
       { left: 60, right: 24, bottom: 48, top: 12 }
     ),

@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart, BarChart, PieChart, ScatterChart, RadarChart, HeatmapChart, FunnelChart, GaugeChart, TreemapChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, LegendComponent, VisualMapComponent } from 'echarts/components'
+import { GridComponent, TooltipComponent, LegendComponent, VisualMapComponent, TitleComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { buildEChartsOption } from './components/js/echartsOptionBuilder.js'
 
@@ -21,7 +21,8 @@ use([
   GridComponent,
   TooltipComponent,
   LegendComponent,
-  VisualMapComponent
+  VisualMapComponent,
+  TitleComponent
 ])
 
 const props = defineProps({
