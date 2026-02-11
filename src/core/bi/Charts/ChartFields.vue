@@ -6,9 +6,9 @@
     <ul v-if="virtualFieldsForSlot.length" class="fields-list virtual-fields">
       <li v-for="f in virtualFieldsForSlot" :key="f.id" class="field-item" :class="{ selected: isSelected(f) }" @click="!isSelected(f) && selectField(f)" @mouseenter="onFieldItemMouseEnter" @mouseleave="onFieldItemMouseLeave">
         <span class="field-icon">
-          <component :is="typeIcon[f.type] || Type" size="16" />
+          <component :is="BarChart2" size="16" />
         </span>
-        <span class="field-name">
+        <span class="field-name field-name--virtual">
           <span class="field-name-inner">{{ f.displayName ?? f.label ?? f.name }}</span>
         </span>
       </li>
@@ -17,10 +17,10 @@
       <b>Показатели:</b>
       <li v-for="f in availableFields" :key="f.id" class="field-item" :class="{ selected: isSelected(f) }" @click="!isSelected(f) && selectField(f)" @mouseenter="onFieldItemMouseEnter" @mouseleave="onFieldItemMouseLeave">
         <span class="field-icon">
-          <component :is="typeIcon[f.type] || Type" size="16" />
+          <component :is="getFieldIcon(f)" size="16" />
         </span>
-        <span class="field-name">
-          <span class="field-name-inner">{{ f.name }}</span>
+        <span class="field-name" :class="{ 'field-name--virtual': isVirtualMeasureField(f) }">
+          <span class="field-name-inner">{{ getFieldDisplayName(f) }}</span>
         </span>
       </li>
       <li v-if="!availableFields.length && !virtualFieldsForSlot.length" class="field-empty">
@@ -32,7 +32,8 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Type, Hash, Calendar, CheckCircle, Globe, MapPin } from 'lucide-vue-next'
+import { Type, Hash, Calendar, CheckCircle, Globe, MapPin, BarChart2 } from 'lucide-vue-next'
+import { MEASURE_NAMES_FIELD, MEASURE_VALUES_FIELD, isVirtualMeasureField } from './js/measureVirtualFields.js'
 
 const props = defineProps({
   fields: { type: Array, default: () => [] },
@@ -43,8 +44,6 @@ const props = defineProps({
 })
 const emit = defineEmits(['select'])
 const search = ref('')
-
-import { MEASURE_NAMES_FIELD, MEASURE_VALUES_FIELD } from './js/measureVirtualFields.js'
 
 const typeIcon = {
   string: Type,
@@ -57,6 +56,16 @@ const typeIcon = {
   boolean: CheckCircle,
   geopoint: MapPin,
   geopolygon: Globe,
+}
+
+function getFieldIcon(f) {
+  if (isVirtualMeasureField(f)) return BarChart2
+  return typeIcon[f.type] || Type
+}
+
+function getFieldDisplayName(f) {
+  if (isVirtualMeasureField(f)) return f.displayName ?? f.label ?? f.name
+  return f.name
 }
 
 const virtualFieldsForSlot = computed(() => {
@@ -154,6 +163,9 @@ function onFieldItemMouseLeave(ev) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.field-name--virtual {
+  font-style: italic;
 }
 
 .field-name-inner {

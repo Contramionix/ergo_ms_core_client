@@ -17,7 +17,7 @@
                     <span class="field-icon" :class="f.source">
                         <component :is="getFieldIcon(f)" size="16" />
                     </span>
-                    {{ getFieldDisplayName(f) }}{{ filterFieldSuffix(f, setting.key) }}
+                    <span :class="{ 'field-name--virtual': isVirtualMeasureField(f) }">{{ getFieldDisplayName(f) }}</span>{{ filterFieldSuffix(f, setting.key) }}
                 </div>
                 <button class="remove-btn" @click.stop="emit('removeField', f, setting.key)" title="Удалить">
                     <X size="18" />
@@ -165,6 +165,10 @@ function filterFieldSuffix(f, settingKey) {
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+
+    .field-name--virtual {
+        font-style: italic;
     }
 }
 </style>

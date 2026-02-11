@@ -153,6 +153,7 @@ const datasetRowsLoading = ref(false)
 
 const currentAllowedTypes = ref(null)
 const originalChart = ref({})
+const originalSelectedFields = ref({})
 
 const router = useRouter()
 const route = useRoute()
@@ -262,7 +263,7 @@ async function onChartNameSaved({ name }) {
         dataset: selectedDataset.value.id,
         chart_type: selectedChartType.value,
         engine: 'echarts',
-        params: filterParamsForApi(selectedFields.value),
+        params: JSON.parse(JSON.stringify(selectedFields.value)),
         options: {}
     }
     try {
@@ -276,6 +277,7 @@ async function onChartNameSaved({ name }) {
                 engine: updated.engine,
                 params: JSON.parse(JSON.stringify(updated.params ?? {})),
             }
+            originalSelectedFields.value = JSON.parse(JSON.stringify(selectedFields.value))
             toast.success('Изменения сохранены')
         } else {
             const { data } = await chartService.createChart(payload)
@@ -305,7 +307,8 @@ async function fetchChartIfEditing() {
         selectedDataset.value = dsObj
 
         selectedChartType.value = String(data.chart_type ?? '')
-        selectedFields.value = { ...(data.params ?? {}) }
+        selectedFields.value = JSON.parse(JSON.stringify(data.params ?? {}))
+        originalSelectedFields.value = JSON.parse(JSON.stringify(selectedFields.value))
 
         if (dsObj?.id) {
             const { data: columnsResp } = await chartService.getColumns(dsObj.id)
@@ -528,7 +531,8 @@ const isChartDirty = computed(() => {
     if ((selectedDataset.value?.id || null) !== (originalChart.value.datasetId || null)) return true
     if (selectedChartType.value !== (originalChart.value.chart_type ?? '')) return true
 
-    if (JSON.stringify(selectedFields.value) !== JSON.stringify(originalChart.value.params || {})) return true
+    const paramsDiffer = JSON.stringify(selectedFields.value) !== JSON.stringify(originalSelectedFields.value)
+    if (paramsDiffer) return true
 
     return false
 })
