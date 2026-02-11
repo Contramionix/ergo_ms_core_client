@@ -251,10 +251,10 @@ const yellowPlaceholderStyle = computed(() => {
   const p = yellowPlaceholderPosition.value
   return {
     position: 'absolute',
-    left: `${(p.x || 0)}px`,
-    top: `${(p.y || 0)}px`,
-    width: `${p.width || 0}px`,
-    height: `${p.height || 0}px`,
+    left: `${p.x ?? 0}px`,
+    top: `${p.y ?? 0}px`,
+    width: `${p.width ?? 0}px`,
+    height: `${p.height ?? 0}px`,
     pointerEvents: 'none'
   }
 })
@@ -914,9 +914,15 @@ const handleExistingItemDrag = (event) => {
   const mouseX = event.clientX - rect.left - GRID_CONTAINER_PADDING
   const mouseY = event.clientY - rect.top - GRID_CONTAINER_PADDING
 
-  const draggedSize = getActualItemSize(draggedItem.value)
+  let draggedSize = getActualItemSize(draggedItem.value)
+  const domEl = getItemElement(draggedItem.value.id)
+  if (domEl) {
+    const dr = domEl.getBoundingClientRect()
+    if (dr.width > 0 && dr.height > 0) {
+      draggedSize = { width: Math.round(dr.width), height: Math.round(dr.height) }
+    }
+  }
   const placement = computePlacementForDrag(mouseX, mouseY, draggedItem.value.type, draggedItem.value.id, draggedSize)
-
   const mode = placement.insertionMode ?? 'sameRow'
   if (mode === 'above' || mode === 'below') {
     applyShiftDuringDrag(placement.y, placement.height || draggedSize.height, mode, draggedItem.value.id)
@@ -1114,20 +1120,19 @@ const handleDragEnter = (event) => {
       y: event.clientY
     }
     
-    const position = calculatePotentialPlacement(event.clientX, event.clientY, currentDraggedType.value)
-    const size = getEffectiveElementSize(currentDraggedType.value)
-    
-    if (size) {
-      yellowPlaceholderPosition.value = {
-        x: position.x,
-        y: position.y,
-        width: size.width,
-        height: size.height
-      }
-      placeholderIsNewRowAtTop.value = position.isNewRowAtTop ?? false
-      placeholderInsertionMode.value = position.insertionMode ?? 'sameRow'
+  const position = calculatePotentialPlacement(event.clientX, event.clientY, currentDraggedType.value)
+  const size = getEffectiveElementSize(currentDraggedType.value)
+  if (size) {
+    yellowPlaceholderPosition.value = {
+      x: position.x,
+      y: position.y,
+      width: size.width,
+      height: size.height
     }
+    placeholderIsNewRowAtTop.value = position.isNewRowAtTop ?? false
+    placeholderInsertionMode.value = position.insertionMode ?? 'sameRow'
   }
+}
 }
 
 const updatePlacementFromDrag = (clientX, clientY) => {
@@ -1293,6 +1298,14 @@ const resetDragState = () => {
   placeholderInsertionMode.value = 'sameRow'
 }
 
+const getItemElement = (itemId) => {
+  const el = itemRefs.value[itemId]
+  if (el) {
+    return el.$el ?? el
+  }
+  return document.querySelector(`[data-item-id="${itemId}"]`)
+}
+
 const getActualItemSize = (item) => {
   const defaultHeight = ELEMENT_SIZES[item.type]?.height || 150
   let actualHeight = item.height || defaultHeight
@@ -1443,7 +1456,7 @@ const setupResizeObserver = (element, item) => {
 
 const removeResizeObserver = (item) => {
   if (resizeObserver.value) {
-    const element = document.querySelector(`[data-item-id="${item.id}"]`)
+    const element = getItemElement(item.id)
     if (element) {
       resizeObserver.value.unobserve(element)
     }
@@ -1464,7 +1477,7 @@ const observeRenderedHeight = (element, itemId) => {
 
 const unobserveRenderedHeight = (itemId) => {
   if (!resizeObserver.value) return
-  const element = document.querySelector(`[data-item-id="${itemId}"]`)
+  const element = getItemElement(itemId)
   if (element) resizeObserver.value.unobserve(element)
   observedRenderedIds.value.delete(itemId)
   observedRenderedIds.value = new Set(observedRenderedIds.value)
@@ -1535,17 +1548,16 @@ watch(localItems, (newItems, oldItems) => {
     })
 
     newItems.forEach(newItem => {
+      const element = getItemElement(newItem.id)
       if (newItem.height === 'auto') {
-        const element = document.querySelector(`[data-item-id="${newItem.id}"]`)
         if (element && !autoHeightItems.value.has(newItem.id)) {
           setupResizeObserver(element, newItem)
         }
       } else {
         removeResizeObserver(newItem)
       }
-      if (newItem.height !== 'auto') {
-        const element = document.querySelector(`[data-item-id="${newItem.id}"]`)
-        if (element) observeRenderedHeight(element, newItem.id)
+      if (newItem.height !== 'auto' && element) {
+        observeRenderedHeight(element, newItem.id)
       }
     })
 
@@ -1616,12 +1628,12 @@ onMounted(() => {
   
   nextTick(() => {
     localItems.value.forEach(item => {
+      const element = getItemElement(item.id)
+      if (!element) return
       if (item.height === 'auto') {
-        const element = document.querySelector(`[data-item-id="${item.id}"]`)
-        if (element) setupResizeObserver(element, item)
+        setupResizeObserver(element, item)
       } else {
-        const element = document.querySelector(`[data-item-id="${item.id}"]`)
-        if (element) observeRenderedHeight(element, item.id)
+        observeRenderedHeight(element, item.id)
       }
     })
   })
