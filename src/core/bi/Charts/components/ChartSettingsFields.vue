@@ -15,9 +15,9 @@
             <div v-for="f in selectedFields[setting.key]" :key="f.id" class="selected-field" :class="{ 'selected-field--clickable': setting.key === 'filters' }">
                 <div class="selected-field-content" style="display: flex; gap: 8px; justify-content: center; align-items: center;" @click="setting.key === 'filters' ? emit('editFilter', f) : null">
                     <span class="field-icon" :class="f.source">
-                        <component :is="typeIcon[f.type] || Type" size="16" />
+                        <component :is="getFieldIcon(f)" size="16" />
                     </span>
-                    {{ f.name }}{{ filterFieldSuffix(f, setting.key) }}
+                    {{ getFieldDisplayName(f) }}{{ filterFieldSuffix(f, setting.key) }}
                 </div>
                 <button class="remove-btn" @click.stop="emit('removeField', f, setting.key)" title="Удалить">
                     <X size="18" />
@@ -28,7 +28,8 @@
 </template>
 
 <script setup>
-import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, Plus, X } from 'lucide-vue-next'
+import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, Plus, X, BarChart2 } from 'lucide-vue-next'
+import { isVirtualMeasureField } from '../js/measureVirtualFields.js'
 
 defineProps({
     settingTypes: {
@@ -54,6 +55,16 @@ const typeIcon = {
     boolean: CheckCircle,
     geopoint: MapPin,
     geopolygon: Globe,
+}
+
+function getFieldIcon(f) {
+    if (isVirtualMeasureField(f)) return BarChart2
+    return typeIcon[f.type] || Type
+}
+
+function getFieldDisplayName(f) {
+    if (isVirtualMeasureField(f)) return f.displayName ?? f.label ?? f.name
+    return f.name
 }
 
 function onAddFieldClick(event, settingKey) {

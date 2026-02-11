@@ -9,6 +9,7 @@ import {
   getGaugeData,
   getTreemapData
 } from './chartDataTransform'
+import { isMeasureValuesField } from '../../js/measureVirtualFields.js'
 
 function findField(fields, keys, many = false) {
   if (!fields) return many ? [] : null
@@ -86,6 +87,7 @@ function buildLineOption(fields, settings, dataset, filters) {
   const colorField = findField(fields, ['color', 'colors'])
   const sortFields = fields?.sort ?? []
   const labelField = findField(fields, ['labels', 'label'])
+  const labelFieldForX = isMeasureValuesField(labelField) ? null : labelField
 
   const { labels, datasets } = getLineData(
     dataset,
@@ -94,7 +96,7 @@ function buildLineOption(fields, settings, dataset, filters) {
     y2Fields || [],
     colorField,
     sortFields,
-    labelField,
+    labelFieldForX,
     filters
   )
 
@@ -112,6 +114,7 @@ function buildLineOption(fields, settings, dataset, filters) {
     })
   }
 
+  const showMeasureValuesLabels = isMeasureValuesField(labelField)
   const series = datasets.map((ds) => ({
     name: ds.label,
     type: 'line',
@@ -119,7 +122,8 @@ function buildLineOption(fields, settings, dataset, filters) {
     smooth: true,
     lineStyle: ds.borderDash?.length ? { type: 'dashed', color: ds.borderColor } : { color: ds.borderColor },
     itemStyle: { color: ds.borderColor },
-    yAxisIndex: ds.yAxisID === 'y2' ? 1 : 0
+    yAxisIndex: ds.yAxisID === 'y2' ? 1 : 0,
+    ...(showMeasureValuesLabels && { label: { show: true, position: 'top' } })
   }))
 
   return {
@@ -136,10 +140,12 @@ function buildBarOption(fields, settings, dataset, filters) {
   const xField = findField(fields, ['x'], true)
   const yField = findField(fields, ['y'], true)
   const colorField = findField(fields, ['color', 'colors'])
-  const labelFields = findField(fields, ['labels', 'label'], true)
+  const labelFieldsRaw = findField(fields, ['labels', 'label'], true)
+  const labelFields = labelFieldsRaw?.filter(f => !isMeasureValuesField(f)) ?? []
+  const showMeasureValuesLabels = labelFieldsRaw?.some(isMeasureValuesField)
   const sort = fields?.sort ?? null
 
-  const { labels, datasets } = getBarData(
+  const { labels, datasets, colorByCategory } = getBarData(
     dataset,
     xField,
     yField,
@@ -149,19 +155,24 @@ function buildBarOption(fields, settings, dataset, filters) {
 
   if (!labels?.length || !datasets?.length) return emptyOption()
 
-  const series = datasets.map(ds => ({
+  const series = datasets.map(ds => {
+    const itemStyle = Array.isArray(ds.backgroundColor)
+      ? { color: (params) => ds.backgroundColor[params.dataIndex] ?? ds.backgroundColor[0] }
+      : { color: ds.backgroundColor }
+    return {
     name: ds.label,
     type: 'bar',
     data: ds.data,
-    itemStyle: Array.isArray(ds.backgroundColor)
-      ? (params) => ({ color: ds.backgroundColor[params.dataIndex] ?? ds.backgroundColor[0] })
-      : { color: ds.backgroundColor }
-  }))
+    itemStyle,
+    ...(showMeasureValuesLabels && { label: { show: true, position: 'top' } })
+  }
+  })
 
+  const showLegend = !(colorByCategory && datasets.length === 1)
   return {
     tooltip: { trigger: 'axis', appendToBody: true },
-    legend: { bottom: 0, type: 'scroll' },
-    grid: { left: 60, right: 40, bottom: 80, top: 20, containLabel: true },
+    legend: showLegend ? { bottom: 0, type: 'scroll' } : { show: false },
+    grid: { left: 60, right: 40, bottom: showLegend ? 80 : 40, top: 20, containLabel: true },
     xAxis: { type: 'category', data: labels },
     yAxis: { type: 'value', name: yField?.[0]?.label || 'Y' },
     series
@@ -294,10 +305,12 @@ function buildBarHorizontalOption(fields, settings, dataset, filters) {
   const xField = findField(fields, ['x'], true)
   const yField = findField(fields, ['y'], true)
   const colorField = findField(fields, ['color', 'colors'])
-  const labelFields = findField(fields, ['labels', 'label'], true)
+  const labelFieldsRaw = findField(fields, ['labels', 'label'], true)
+  const labelFields = labelFieldsRaw?.filter(f => !isMeasureValuesField(f)) ?? []
+  const showMeasureValuesLabels = labelFieldsRaw?.some(isMeasureValuesField)
   const sort = fields?.sort ?? null
 
-  const { labels, datasets } = getBarData(
+  const { labels, datasets, colorByCategory } = getBarData(
     dataset,
     xField,
     yField,
@@ -313,13 +326,15 @@ function buildBarHorizontalOption(fields, settings, dataset, filters) {
     data: ds.data || [],
     itemStyle: Array.isArray(ds.backgroundColor)
       ? (params) => ({ color: ds.backgroundColor[params.dataIndex] ?? ds.backgroundColor[0] })
-      : { color: ds.backgroundColor }
+      : { color: ds.backgroundColor },
+    ...(showMeasureValuesLabels && { label: { show: true, position: 'right' } })
   }))
 
+  const showLegend = !(colorByCategory && datasets.length === 1)
   return {
     tooltip: { trigger: 'axis' },
-    legend: { bottom: 0, type: 'scroll' },
-    grid: { left: 60, right: 40, bottom: 80, top: 20, containLabel: true },
+    legend: showLegend ? { bottom: 0, type: 'scroll' } : { show: false },
+    grid: { left: 60, right: 40, bottom: showLegend ? 80 : 40, top: 20, containLabel: true },
     xAxis: { type: 'value', name: yField?.[0]?.label || 'Y' },
     yAxis: { type: 'category', data: labels },
     series
@@ -333,6 +348,7 @@ function buildCombinedOption(fields, settings, dataset, filters) {
   const colorField = findField(fields, ['color', 'colors'])
   const sortFields = fields?.sort ?? []
   const labelField = findField(fields, ['labels', 'label'])
+  const labelFieldForX = isMeasureValuesField(labelField) ? null : labelField
 
   const { labels, datasets: lineDatasets } = getLineData(
     dataset,
@@ -341,13 +357,15 @@ function buildCombinedOption(fields, settings, dataset, filters) {
     y2Fields || [],
     colorField,
     sortFields,
-    labelField,
+    labelFieldForX,
     filters
   )
 
   const xField = findField(fields, ['x'], true)
   const yField = findField(fields, ['y'], true)
-  const labelFields = findField(fields, ['labels', 'label'], true)
+  const labelFieldsRaw = findField(fields, ['labels', 'label'], true)
+  const labelFields = labelFieldsRaw?.filter(f => !isMeasureValuesField(f)) ?? []
+  const showMeasureValuesLabels = labelFieldsRaw?.some(isMeasureValuesField)
   const sort = fields?.sort ?? null
   const { labels: barLabels, datasets: barDatasets } = getBarData(
     dataset,
@@ -369,7 +387,8 @@ function buildCombinedOption(fields, settings, dataset, filters) {
       itemStyle: Array.isArray(ds.backgroundColor)
         ? (params) => ({ color: ds.backgroundColor[params.dataIndex] ?? ds.backgroundColor[0] })
         : { color: ds.backgroundColor },
-      yAxisIndex: 0
+      yAxisIndex: 0,
+      ...(showMeasureValuesLabels && { label: { show: true, position: 'top' } })
     })
   })
 
@@ -383,7 +402,8 @@ function buildCombinedOption(fields, settings, dataset, filters) {
         smooth: true,
         lineStyle: { color: ds.borderColor },
         itemStyle: { color: ds.borderColor },
-        yAxisIndex: 1
+        yAxisIndex: 1,
+        ...(showMeasureValuesLabels && { label: { show: true, position: 'top' } })
       })
     })
   }

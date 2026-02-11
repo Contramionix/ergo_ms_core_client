@@ -87,7 +87,7 @@
     </transition>
     <transition name="fade-slide" appear>
         <div v-if="isFieldsModalVisible" class="tooltip-panel-fields" :style="{ left: fieldsModalPosition.x + 'px', top: fieldsModalPosition.y + 'px', position: 'fixed', zIndex: 1000 }" ref="fieldsModalRef">
-            <ChartFields :fields="indicators" :selected="selectedForModal" :allowed-types="currentAllowedTypes" @select="handleFieldSelect" />
+            <ChartFields :fields="indicators" :selected="selectedForModal" :allowed-types="currentAllowedTypes" :measures-in-chart="measuresInChart" :current-slot-config="currentSlotConfig" @select="handleFieldSelect" />
         </div>
     </transition>
     <ChartNameDialog v-if="isSaveModalVisible" :visible="isSaveModalVisible" v-model="chartName" @update:visible="isSaveModalVisible = $event" @saved="onChartNameSaved" />
@@ -117,6 +117,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { chartSettingsConfig } from '@/core/bi/MainPage/Sidebar/components/js/chartSettingsConfig.js'
 import chartService from '@/core/bi/MainPage/Sidebar/components/js/chartService.js'
+import { isVirtualMeasureField } from '@/core/bi/Charts/js/measureVirtualFields.js'
 import { useAssistant } from '@/core/ai-assistant/js/assistantService.js'
 import { biClient } from '@/core/ai-assistant/bi/js/bi-client.js'
 
@@ -180,6 +181,38 @@ const chartTypeIconStyle = computed(() => {
 
 const selectedFields = ref({})
 
+function filterParamsForApi(params) {
+  if (!params || typeof params !== 'object') return params ?? {}
+  const filtered = {}
+  for (const [key, arr] of Object.entries(params)) {
+    if (!Array.isArray(arr)) {
+      filtered[key] = arr
+      continue
+    }
+    const cleaned = arr.filter(f => !isVirtualMeasureField(f))
+    if (cleaned.length || key === 'filters') {
+      filtered[key] = cleaned
+    }
+  }
+  return filtered
+}
+
+const measuresInChart = computed(() => {
+  const f = selectedFields.value
+  const measures = []
+  const measureKeys = ['y', 'y2', 'indicators', 'value']
+  for (const key of measureKeys) {
+    const arr = f[key]
+    if (Array.isArray(arr)) measures.push(...arr.filter(Boolean))
+  }
+  return measures
+})
+
+const currentSlotConfig = computed(() => {
+  const key = currentSetting.value
+  return settingTypes.value.find(s => s.key === key) ?? null
+})
+
 watch(chartData, d => { chartName.value = d?.name || 'Новая диаграмма' }, { immediate: true })
 
 const chartRequiredFieldsFilled = computed(() => {
@@ -229,7 +262,7 @@ async function onChartNameSaved({ name }) {
         dataset: selectedDataset.value.id,
         chart_type: selectedChartType.value,
         engine: 'echarts',
-        params: selectedFields.value,
+        params: filterParamsForApi(selectedFields.value),
         options: {}
     }
     try {
@@ -281,8 +314,8 @@ async function fetchChartIfEditing() {
             indicators.value = Array.isArray(columns) ? columns : []
         }
 
-        if (chartId.value) { 
-            const { data: rows } = await chartService.getDatasetRowsAgg(dsObj.id, selectedFields.value)
+        if (chartId.value) {
+            const { data: rows } = await chartService.getDatasetRowsAgg(dsObj.id, filterParamsForApi(selectedFields.value))
             datasetRows.value = rows
         }
         originalChart.value = {
@@ -377,7 +410,7 @@ async function handleSelectDataset(ds) {
             const columns = columnsResp?.columns || []
             indicators.value = Array.isArray(columns) ? columns : []
             // Загружаем агрегированные строки
-            const { data } = await chartService.getDatasetRowsAgg(ds.id, selectedFields.value)
+            const { data } = await chartService.getDatasetRowsAgg(ds.id, filterParamsForApi(selectedFields.value))
             datasetRows.value = data
         } catch {
             // Игнорируем ошибку
@@ -462,7 +495,7 @@ watch(
       datasetRowsLoading.value = true
       try {
         const { data } = await chartService.getDatasetRowsAgg(
-          selectedDataset.value.id, v
+          selectedDataset.value.id, filterParamsForApi(v)
         )
         datasetRows.value = data
       } catch {

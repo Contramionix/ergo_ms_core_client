@@ -1,4 +1,10 @@
 import { PALETTE, getColorMap, getRowColors } from './chartColors'
+import { MEASURE_NAMES_ID } from '../../js/measureVirtualFields.js'
+
+function resolveColorField(colorField) {
+  if (colorField?.name === MEASURE_NAMES_ID) return null
+  return colorField
+}
 
 function passFilterRow(row, f) {
   const fieldName = f.field?.name ?? f.field
@@ -53,10 +59,12 @@ export function getLineData(
   labelField   = null,   // { name, … }  или null
   filters      = []      // [{ field: { name }, op, value }] или legacy [{ field, value }]
 ) {
-  if (!rows?.length) return { labels: [], datasets: [] };
+  if (!rows?.length) return { labels: [], datasets: [] }
+
+  const effectiveColorField = resolveColorField(colorField)
 
   /* 1. Фильтры ----------------------------------------------------------- */
-  rows = rows.filter(r => filters.every(f => passFilterRow(r, f)));
+  rows = rows.filter(r => filters.every(f => passFilterRow(r, f)))
 
   /* 2. Сортировка -------------------------------------------------------- */
   sortFields.forEach(({ field, desc }) => {
@@ -76,25 +84,25 @@ export function getLineData(
   const xLabels = Array.from(new Set(rows.map(makeXLabel)));
 
   /* 4. Цветовые группы --------------------------------------------------- */
-  const colorValues = colorField
-    ? Array.from(new Set(rows.map(r => r[colorField.name])))
-    : [null];
+  const colorValues = effectiveColorField
+    ? Array.from(new Set(rows.map(r => r[effectiveColorField.name])))
+    : [null]
 
-  const colorMap = colorField
-    ? getColorMap(rows, colorField.name, PALETTE)   // { val → #hex }
-    : {};
+  const colorMap = effectiveColorField
+    ? getColorMap(rows, effectiveColorField.name, PALETTE)
+    : {}
 
   /* 5. Хелпер для линии -------------------------------------------------- */
   const buildSeries = ({ fieldObj, yAxisID, dashed, baseColor }) => ({
-    label : colorField
+    label : effectiveColorField
         ? `${fieldObj.name} (${baseColor.key})`
         : fieldObj.name,
     data  : xLabels.map(lbl => {
       const groupRows = rows.filter(r =>
         makeXLabel(r) === lbl &&
-        (!colorField || r[colorField.name] === baseColor.key)
-      );
-      return groupRows.reduce((s, r) => s + Number(r[fieldObj.name] ?? 0), 0);
+        (!effectiveColorField || r[effectiveColorField.name] === baseColor.key)
+      )
+      return groupRows.reduce((s, r) => s + Number(r[fieldObj.name] ?? 0), 0)
     }),
     yAxisID,
     borderColor     : baseColor.color,
@@ -108,9 +116,9 @@ export function getLineData(
   const datasets = [];
 
   colorValues.forEach((cVal, idx) => {
-    const color = colorField
+    const color = effectiveColorField
       ? (colorMap[cVal] ?? PALETTE[idx % PALETTE.length])
-      : PALETTE[idx % PALETTE.length];
+      : PALETTE[idx % PALETTE.length]
 
     const baseColor = { key: cVal ?? '—', color };
 
@@ -139,7 +147,8 @@ export function getBarData(
   const filters   = options.filters      ?? []
   const labelFlds = options.labelFields  ?? []
   const sortOpt   = options.sort         ?? null
-  const colorName = colorField?.name ?? colorField ?? null
+  const effectiveColorField = resolveColorField(colorField)
+  const colorName = effectiveColorField?.name ?? effectiveColorField ?? null
   if (!dataset?.length || yFields.length === 0) return { labels: [], datasets: [] }
 
   // --- 1. фильтрация ---
@@ -216,26 +225,31 @@ export function getBarData(
   const labels = keys.map(k => labelByKey.get(k))
 
   // --- 5. datasets (универсальный режим) ---
-  const isColorAsX = colorName && xFields.length === 1 && (xFields[0].name ?? xFields[0]) === colorName
+  const xFieldName = xFields[0] ? (xFields[0].name ?? xFields[0]) : null
+  const isColorAsX = colorName && xFields.length === 1 && xFieldName === colorName
+  const wasMeasureNames = colorField?.name === MEASURE_NAMES_ID
   if (!colorName || isColorAsX) {
-    // один dataset, разные цвета для каждого столбца если color=X
     const colorMap = colorName ? getColorMap(dataFiltered, colorName) : null
     const backgroundColors = isColorAsX
       ? keys.map(k => colorMap?.[k] || PALETTE[0])
       : PALETTE[0]
 
-    const datasets = yFields.map((f, idx) => ({
-      label: f.label || f.name || `Y${idx + 1}`,
-      data : keys.map(k => {
-        // убираем нули, если данных нет
-        const val = grouped.get(k)[f.name ?? f][isColorAsX ? k : '_single_']
-        return val != null ? val : null
-      }),
-      backgroundColor: backgroundColors,
-      borderColor    : backgroundColors,
-      stack: 'stack1'
-    }))
-    return { labels, datasets }
+    const datasets = yFields.map((f, idx) => {
+      const dsColor = wasMeasureNames
+        ? PALETTE[idx % PALETTE.length]
+        : backgroundColors
+      return {
+        label: f.label || f.name || `Y${idx + 1}`,
+        data : keys.map(k => {
+          const val = grouped.get(k)[f.name ?? f][isColorAsX ? k : '_single_']
+          return val != null ? val : null
+        }),
+        backgroundColor: dsColor,
+        borderColor    : dsColor,
+        stack: 'stack1'
+      }
+    })
+    return { labels, datasets, colorByCategory: isColorAsX }
   }
 
   // обычный режим: datasets по цвету
@@ -255,7 +269,7 @@ export function getBarData(
     //stack: 'stack1'
   }))
 
-  return { labels, datasets }
+  return { labels, datasets, colorByCategory: false }
 }
 
 /** Круговая и кольцевая диаграмма (pie/doughnut) */
@@ -308,7 +322,8 @@ export function getPieData(
   const labels = entries.map(([lbl]) => lbl)
 
   /* 5. цвета ----------------------------------------------------------- */
-  const colorField = colorFieldArr?.[0] || null
+  const rawColorField = colorFieldArr?.[0] || null
+  const colorField = resolveColorField(rawColorField)
   let background = PALETTE
   if (colorField) {
     const colorMap = getColorMap(rows, colorField.name, PALETTE)
@@ -461,13 +476,14 @@ export function getRadarData (
   })
 
   /* 5. цветовая карта ---------------------------------------------------- */
-  const colorMap = colorField
-    ? getColorMap(rows, colorField.name, PALETTE)
+  const effectiveColorField = resolveColorField(colorField)
+  const colorMap = effectiveColorField
+    ? getColorMap(rows, effectiveColorField.name, PALETTE)
     : null
 
   /* 6-a. если ЗАДАН colorField  → по нему делаем отдельный dataset ------- */
-  if (colorField) {
-    const uniqColors = Array.from(new Set(rows.map(r => r[colorField.name])))
+  if (effectiveColorField) {
+    const uniqColors = Array.from(new Set(rows.map(r => r[effectiveColorField.name])))
     const firstMetric = valueFields[0]
 
     const datasets = uniqColors.map((cVal, idx) => ({
@@ -476,7 +492,7 @@ export function getRadarData (
         // фильтруем по категории + цвету
         const rowsOfCat = rows.filter(r =>
           r[categoryField.name] === cat &&
-          r[colorField.name]   === cVal
+          r[effectiveColorField.name] === cVal
         )
         return rowsOfCat.reduce(
           (s, r) => s + Number(r[firstMetric.name] ?? 0), 0
