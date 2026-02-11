@@ -28,7 +28,8 @@ const props = defineProps({
   type: { type: String, default: 'bar' },
   fields: { type: Object, default: () => ({}) },
   settings: { type: Array, default: () => [] },
-  dataset: { type: Array, default: () => [] }
+  dataset: { type: Array, default: () => [] },
+  compact: { type: Boolean, default: false }
 })
 
 const option = computed(() =>
@@ -36,13 +37,14 @@ const option = computed(() =>
     type: props.type,
     fields: props.fields,
     settings: props.settings,
-    dataset: props.dataset
+    dataset: props.dataset,
+    compact: props.compact
   })
 )
 </script>
 
 <template>
-  <div class="echarts-wrapper">
+  <div class="echarts-wrapper" :class="{ compact: compact }">
     <VChart class="echarts-chart" :option="option" :autoresize="true" />
   </div>
 </template>
@@ -52,6 +54,9 @@ const option = computed(() =>
   height: 100%;
   width: 100%;
   min-height: 300px;
+}
+.echarts-wrapper.compact {
+  min-height: 0;
 }
 .echarts-chart {
   height: 100%;

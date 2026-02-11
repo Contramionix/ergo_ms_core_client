@@ -34,31 +34,31 @@ export function normalizedFilters(fields) {
  * @param {{ type: string, fields: Object, settings: Array, dataset: Array }} params
  * @returns {import('echarts').EChartsOption}
  */
-export function buildEChartsOption({ type, fields = {}, settings = [], dataset = [] }) {
+export function buildEChartsOption({ type, fields = {}, settings = [], dataset = [], compact = false }) {
   const filters = normalizedFilters(fields)
   if (!dataset?.length && type !== 'heatmap') return emptyOption()
 
   switch (type) {
     case 'line':
-      return buildLineOption(fields, settings, dataset, filters)
+      return buildLineOption(fields, settings, dataset, filters, compact)
     case 'bar':
-      return buildBarOption(fields, settings, dataset, filters)
+      return buildBarOption(fields, settings, dataset, filters, compact)
     case 'pie':
-      return buildPieOption(fields, dataset, false, filters)
+      return buildPieOption(fields, dataset, false, filters, compact)
     case 'doughnut':
-      return buildPieOption(fields, dataset, true, filters)
+      return buildPieOption(fields, dataset, true, filters, compact)
     case 'scatter':
-      return buildScatterOption(fields, dataset, filters)
+      return buildScatterOption(fields, dataset, filters, compact)
     case 'radar':
-      return buildRadarOption(fields, dataset, filters)
+      return buildRadarOption(fields, dataset, filters, compact)
     case 'heatmap':
-      return buildHeatmapOption(fields, dataset)
+      return buildHeatmapOption(fields, dataset, compact)
     case 'area':
-      return buildAreaOption(fields, settings, dataset, filters)
+      return buildAreaOption(fields, settings, dataset, filters, compact)
     case 'barHorizontal':
-      return buildBarHorizontalOption(fields, settings, dataset, filters)
+      return buildBarHorizontalOption(fields, settings, dataset, filters, compact)
     case 'combined':
-      return buildCombinedOption(fields, settings, dataset, filters)
+      return buildCombinedOption(fields, settings, dataset, filters, compact)
     case 'funnel':
       return buildFunnelOption(fields, dataset, filters)
     case 'gauge':
@@ -80,7 +80,88 @@ function emptyOption() {
   }
 }
 
-function buildLineOption(fields, settings, dataset, filters) {
+function buildLegend(showLegend, compact) {
+  if (!showLegend) return { show: false }
+  if (compact) return { show: false }
+  return { bottom: compact ? 8 : 0, type: 'scroll' }
+}
+
+function buildGrid(base, compact, compactValues) {
+  if (!compact) return base
+  const nextGrid = { ...base, ...compactValues }
+  if (nextGrid.containLabel) {
+    nextGrid.containLabel = false
+  }
+  if (typeof nextGrid.left === 'number' && typeof nextGrid.right === 'number') {
+    const minSide = Math.min(nextGrid.left, nextGrid.right)
+    nextGrid.left = minSide
+    nextGrid.right = minSide
+  }
+  if (typeof nextGrid.bottom === 'number') {
+    nextGrid.bottom = Math.max(16, Math.round(nextGrid.bottom * 0.4))
+  }
+  return nextGrid
+}
+
+function applyCompactAxis(axis) {
+  if (!axis) return axis
+  return {
+    ...axis,
+    nameGap: 8,
+    nameLocation: axis.nameLocation || 'middle',
+    axisLabel: {
+      ...(axis.axisLabel || {}),
+      margin: 6,
+      overflow: 'truncate',
+      width: 120,
+      ellipsis: '…',
+      hideOverlap: true
+    }
+  }
+}
+
+function applyCompactValueAxis(axis) {
+  if (!axis) return axis
+  const nextAxis = applyCompactAxis(axis)
+  return {
+    ...nextAxis,
+    name: '',
+    axisLabel: {
+      ...(nextAxis.axisLabel || {}),
+      inside: true,
+      align: 'right',
+      padding: [0, 4, 0, 0]
+    }
+  }
+}
+
+function applyCompactCategoryAxis(axis) {
+  if (!axis) return axis
+  return {
+    ...axis,
+    axisLabel: {
+      ...(axis.axisLabel || {}),
+      show: false
+    },
+    axisTick: { show: false }
+  }
+}
+
+function buildCategoryPalette(size) {
+  const palette = [
+    '#41b883', '#2f855a', '#38a169', '#68d391', '#9ae6b4',
+    '#3b82f6', '#2563eb', '#60a5fa', '#93c5fd', '#1d4ed8',
+    '#f59e0b', '#fbbf24', '#f97316', '#fb923c', '#fcd34d',
+    '#ef4444', '#f87171', '#fb7185', '#e11d48', '#f43f5e'
+  ]
+  const colors = []
+  for (let i = 0; i < size; i += 1) {
+    colors.push(palette[i % palette.length])
+  }
+  return colors
+}
+
+function buildLineOption(fields, settings, dataset, filters, compact) {
   const xFields = findField(fields, ['x'], true)
   const yFields = findField(fields, ['y'], true)
   const y2Fields = findField(fields, ['y2'], true)
@@ -128,15 +209,19 @@ function buildLineOption(fields, settings, dataset, filters) {
 
   return {
     tooltip: { trigger: 'axis', appendToBody: true },
-    legend: { bottom: 0, type: 'scroll' },
-    grid: { left: 60, right: hasY2 ? 60 : 40, bottom: 80, top: 20, containLabel: true },
+    legend: buildLegend(true, compact),
+    grid: buildGrid(
+      { left: 60, right: hasY2 ? 60 : 40, bottom: 80, top: 20, containLabel: true },
+      compact,
+      { left: 36, right: hasY2 ? 36 : 24, bottom: 56, top: 12 }
+    ),
     xAxis: { type: 'category', data: labels, boundaryGap: false },
     yAxis: yAxisList.length === 1 ? yAxisList[0] : yAxisList,
     series
   }
 }
 
-function buildBarOption(fields, settings, dataset, filters) {
+function buildBarOption(fields, settings, dataset, filters, compact) {
   const xField = findField(fields, ['x'], true)
   const yField = findField(fields, ['y'], true)
   const colorField = findField(fields, ['color', 'colors'])
@@ -155,10 +240,15 @@ function buildBarOption(fields, settings, dataset, filters) {
 
   if (!labels?.length || !datasets?.length) return emptyOption()
 
+  const shouldUseCategoryPalette = !colorField && labels.length > 1 && datasets.length === 1
+  const fallbackColors = shouldUseCategoryPalette ? buildCategoryPalette(labels.length) : null
+
   const series = datasets.map(ds => {
     const itemStyle = Array.isArray(ds.backgroundColor)
       ? { color: (params) => ds.backgroundColor[params.dataIndex] ?? ds.backgroundColor[0] }
-      : { color: ds.backgroundColor }
+      : shouldUseCategoryPalette
+        ? { color: (params) => fallbackColors[params.dataIndex] ?? fallbackColors[0] }
+        : { color: ds.backgroundColor }
     return {
     name: ds.label,
     type: 'bar',
@@ -169,17 +259,23 @@ function buildBarOption(fields, settings, dataset, filters) {
   })
 
   const showLegend = !(colorByCategory && datasets.length === 1)
+  const xAxis = { type: 'category', data: labels }
+  const yAxis = { type: 'value', name: yField?.[0]?.label || 'Y' }
   return {
     tooltip: { trigger: 'axis', appendToBody: true },
-    legend: showLegend ? { bottom: 0, type: 'scroll' } : { show: false },
-    grid: { left: 60, right: 40, bottom: showLegend ? 80 : 40, top: 20, containLabel: true },
-    xAxis: { type: 'category', data: labels },
-    yAxis: { type: 'value', name: yField?.[0]?.label || 'Y' },
+    legend: buildLegend(showLegend, compact),
+    grid: buildGrid(
+      { left: 60, right: 40, bottom: showLegend ? 80 : 40, top: 20, containLabel: true },
+      compact,
+      { left: 36, right: 24, bottom: showLegend ? 56 : 32, top: 12 }
+    ),
+    xAxis: compact ? applyCompactCategoryAxis(applyCompactAxis(xAxis)) : xAxis,
+    yAxis: compact ? applyCompactValueAxis(yAxis) : yAxis,
     series
   }
 }
 
-function buildPieOption(fields, dataset, isDoughnut, filters) {
+function buildPieOption(fields, dataset, isDoughnut, filters, compact) {
   const categoryFields = findField(fields, ['category', 'categories', 'x', 'labels'], true)
   const valueFields = findField(fields, ['indicators', 'values', 'y'], true)
   const colorFields = findField(fields, ['color', 'colors'], true)
@@ -207,19 +303,19 @@ function buildPieOption(fields, dataset, isDoughnut, filters) {
 
   return {
     tooltip: { trigger: 'item', appendToBody: true },
-    legend: { bottom: 0, type: 'scroll' },
+    legend: buildLegend(true, compact),
     series: [{
       name: firstDataset.label,
       type: 'pie',
-      radius: isDoughnut ? ['40%', '70%'] : '60%',
-      center: ['50%', '45%'],
+      radius: isDoughnut ? (compact ? ['35%', '72%'] : ['40%', '70%']) : (compact ? '68%' : '60%'),
+      center: compact ? ['50%', '50%'] : ['50%', '45%'],
       data: pieData,
       emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' } }
     }]
   }
 }
 
-function buildScatterOption(fields, dataset, filters) {
+function buildScatterOption(fields, dataset, filters, compact) {
   const scatterResult = getScatterData(
     dataset,
     findField(fields, ['x'], true),
@@ -242,12 +338,28 @@ function buildScatterOption(fields, dataset, filters) {
     itemStyle: { color: Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : ds.backgroundColor }
   }))
 
+  const xAxis = { type: meta?.xLabels?.length ? 'category' : 'value', data: meta?.xLabels || null, name: findField(fields, ['x'])?.label || 'X' }
+  const yAxis = { type: meta?.yLabels?.length ? 'category' : 'value', data: meta?.yLabels || null, name: findField(fields, ['y'])?.label || 'Y' }
+  const compactXAxis = compact
+    ? (xAxis.type === 'value'
+      ? applyCompactValueAxis(xAxis)
+      : applyCompactCategoryAxis(applyCompactAxis(xAxis)))
+    : xAxis
+  const compactYAxis = compact
+    ? (yAxis.type === 'value'
+      ? applyCompactValueAxis(yAxis)
+      : applyCompactCategoryAxis(applyCompactAxis(yAxis)))
+    : yAxis
   const option = {
     tooltip: { trigger: 'item', appendToBody: true },
-    legend: { bottom: 0, type: 'scroll' },
-    grid: { left: 60, right: 40, bottom: 80, top: 20, containLabel: true },
-    xAxis: { type: meta?.xLabels?.length ? 'category' : 'value', data: meta?.xLabels || null, name: findField(fields, ['x'])?.label || 'X' },
-    yAxis: { type: meta?.yLabels?.length ? 'category' : 'value', data: meta?.yLabels || null, name: findField(fields, ['y'])?.label || 'Y' },
+    legend: buildLegend(true, compact),
+    grid: buildGrid(
+      { left: 60, right: 40, bottom: 80, top: 20, containLabel: true },
+      compact,
+      { left: 36, right: 24, bottom: 56, top: 12 }
+    ),
+    xAxis: compactXAxis,
+    yAxis: compactYAxis,
     series
   }
 
@@ -256,7 +368,7 @@ function buildScatterOption(fields, dataset, filters) {
   return option
 }
 
-function buildRadarOption(fields, dataset, filters) {
+function buildRadarOption(fields, dataset, filters, compact) {
   const categoryField = findField(fields, ['category', 'labels', 'x'])
   const valueFields = findField(fields, ['indicators', 'y'], true)
   const colorField = findField(fields, ['color', 'colors'])
@@ -285,14 +397,14 @@ function buildRadarOption(fields, dataset, filters) {
 
   return {
     tooltip: { trigger: 'item', appendToBody: true },
-    legend: { bottom: 0, type: 'scroll' },
-    radar: { indicator, center: ['50%', '50%'], radius: '65%' },
+    legend: buildLegend(true, compact),
+    radar: { indicator, center: ['50%', '50%'], radius: compact ? '70%' : '65%' },
     series
   }
 }
 
-function buildAreaOption(fields, settings, dataset, filters) {
-  const lineOpt = buildLineOption(fields, settings, dataset, filters)
+function buildAreaOption(fields, settings, dataset, filters, compact) {
+  const lineOpt = buildLineOption(fields, settings, dataset, filters, compact)
   if (lineOpt.series?.length) {
     lineOpt.series.forEach(s => {
       s.areaStyle = { opacity: 0.35 }
@@ -301,7 +413,7 @@ function buildAreaOption(fields, settings, dataset, filters) {
   return lineOpt
 }
 
-function buildBarHorizontalOption(fields, settings, dataset, filters) {
+function buildBarHorizontalOption(fields, settings, dataset, filters, compact) {
   const xField = findField(fields, ['x'], true)
   const yField = findField(fields, ['y'], true)
   const colorField = findField(fields, ['color', 'colors'])
@@ -331,17 +443,23 @@ function buildBarHorizontalOption(fields, settings, dataset, filters) {
   }))
 
   const showLegend = !(colorByCategory && datasets.length === 1)
+  const xAxis = { type: 'value', name: yField?.[0]?.label || 'Y' }
+  const yAxis = { type: 'category', data: labels }
   return {
     tooltip: { trigger: 'axis' },
-    legend: showLegend ? { bottom: 0, type: 'scroll' } : { show: false },
-    grid: { left: 60, right: 40, bottom: showLegend ? 80 : 40, top: 20, containLabel: true },
-    xAxis: { type: 'value', name: yField?.[0]?.label || 'Y' },
-    yAxis: { type: 'category', data: labels },
+    legend: buildLegend(showLegend, compact),
+    grid: buildGrid(
+      { left: 60, right: 40, bottom: showLegend ? 80 : 40, top: 20, containLabel: true },
+      compact,
+      { left: 36, right: 24, bottom: showLegend ? 56 : 32, top: 12 }
+    ),
+    xAxis: compact ? applyCompactValueAxis(xAxis) : xAxis,
+    yAxis: compact ? applyCompactCategoryAxis(applyCompactAxis(yAxis)) : yAxis,
     series
   }
 }
 
-function buildCombinedOption(fields, settings, dataset, filters) {
+function buildCombinedOption(fields, settings, dataset, filters, compact) {
   const xFields = findField(fields, ['x'], true)
   const yFields = findField(fields, ['y'], true)
   const y2Fields = findField(fields, ['y2'], true)
@@ -422,8 +540,12 @@ function buildCombinedOption(fields, settings, dataset, filters) {
 
   return {
     tooltip: { trigger: 'axis', appendToBody: true },
-    legend: { bottom: 0, type: 'scroll' },
-    grid: { left: 60, right: hasY2 ? 60 : 40, bottom: 80, top: 20, containLabel: true },
+    legend: buildLegend(true, compact),
+    grid: buildGrid(
+      { left: 60, right: hasY2 ? 60 : 40, bottom: 80, top: 20, containLabel: true },
+      compact,
+      { left: 36, right: hasY2 ? 36 : 24, bottom: 56, top: 12 }
+    ),
     xAxis: { type: 'category', data: useLabels, boundaryGap: true },
     yAxis: yAxisList.length === 1 ? yAxisList[0] : yAxisList,
     series
@@ -477,7 +599,7 @@ function buildTreemapOption(fields, dataset, filters) {
   }
 }
 
-function buildHeatmapOption(fields, dataset) {
+function buildHeatmapOption(fields, dataset, compact) {
   const xField = findField(fields, ['x'])
   const yField = findField(fields, ['y'])
   const valueField = findField(fields, ['value', 'y2', 'indicator'])
@@ -502,7 +624,11 @@ function buildHeatmapOption(fields, dataset) {
 
   return {
     tooltip: { position: 'top', appendToBody: true },
-    grid: { left: 80, right: 40, bottom: 60, top: 20, containLabel: true },
+    grid: buildGrid(
+      { left: 80, right: 40, bottom: 60, top: 20, containLabel: true },
+      compact,
+      { left: 60, right: 24, bottom: 48, top: 12 }
+    ),
     xAxis: { type: 'category', data: xLabels, splitArea: { show: true } },
     yAxis: { type: 'category', data: yLabels, splitArea: { show: true } },
     visualMap: {
@@ -511,7 +637,7 @@ function buildHeatmapOption(fields, dataset) {
       calculable: true,
       orient: 'horizontal',
       left: 'center',
-      bottom: 10,
+      bottom: compact ? 4 : 10,
       inRange: { color: ['#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695'] }
     },
     series: [{ type: 'heatmap', data, label: { show: false }, emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.5)' } } }]

@@ -3,7 +3,6 @@
     <div v-if="!preview && currentChart && currentChart.title" class="chart-widget-header">
       <span class="chart-widget-title" :title="currentChart.title">{{ currentChart.title }}</span>
     </div>
-    <!-- Строка 1: Вкладки с заголовками чартов -->
     <div v-if="!preview && chartsList && chartsList.length > 1" class="chart-tabs">
       <div class="tabs-container">
         <div class="visible-tabs">
@@ -20,151 +19,56 @@
           >
             <Star v-if="chart.isFavorite" :size="12" class="tab-star" />
             <span class="tab-title">{{ chart.title }}</span>
-            <div v-if="chart.hint && chart.hintText" 
-                 class="hint-icon-wrapper" 
-                 @mouseenter="showHint(chart, $event)" 
-                 @mouseleave="hideHint"
-                 @click.stop>
-              <CircleHelp :size="12" />
-            </div>
+            <div v-if="chart.hint && chart.hintText" class="hint-icon-wrapper" @mouseenter="showHint(chart, $event)" @mouseleave="hideHint" @click.stop><CircleHelp :size="12" /></div>
           </button>
         </div>
         
         <div v-if="hiddenCharts.length > 0" class="overflow-dropdown">
-          <button 
-            class="dropdown-btn"
-            @click="toggleDropdown"
-            :class="{ 'active': isDropdownOpen }"
-          >
-            <MoreHorizontal :size="16" />
-            <span class="hidden-count">+{{ hiddenCharts.length }}</span>
-          </button>
-          
+          <button class="dropdown-btn" @click="toggleDropdown" :class="{ 'active': isDropdownOpen }"><MoreHorizontal :size="16" /><span class="hidden-count">+{{ hiddenCharts.length }}</span></button>   
           <div v-if="isDropdownOpen" class="dropdown-menu">
-            <button
-              v-for="(chart, index) in hiddenCharts"
-              :key="chart.id"
-              class="dropdown-item"
+            <button v-for="(chart, index) in hiddenCharts" :key="chart.id" class="dropdown-item"
               :class="{ 
                 'active': activeChartIndex === (visibleCharts.length + showFromIndex + index),
                 'favorite': chart.isFavorite 
-              }"
-              @click="setActiveChart(visibleCharts.length + showFromIndex + index)"
-            >
+              }" @click="setActiveChart(visibleCharts.length + showFromIndex + index)">
               <Star v-if="chart.isFavorite" :size="12" class="item-star" />
               <span>{{ chart.title }}</span>
-              <div v-if="chart.hint && chart.hintText" 
-                   class="hint-icon-wrapper hint-icon-dropdown" 
-                   @mouseenter="showHint(chart, $event)" 
-                   @mouseleave="hideHint"
-                   @click.stop>
-                <CircleHelp :size="12" />
-              </div>
+              <div v-if="chart.hint && chart.hintText" class="hint-icon-wrapper hint-icon-dropdown" @mouseenter="showHint(chart, $event)" @mouseleave="hideHint" @click.stop><CircleHelp :size="12" /></div>
             </button>
           </div>
         </div>
       </div>
     </div>
     
-    <!-- Строка 2: Сам чарт -->
     <div class="chart-content">
-      <div v-if="preview" class="chart-preview-static">
-        {{ currentChart?.title || 'График' }}
-      </div>
+      <div v-if="preview" class="chart-preview-static">{{ currentChart?.title || 'График' }}</div>
       <template v-else>
-      <div v-if="isLoading" class="chart-loading">
-        <SpinnerLoading loading-text="Загрузка чарта..." />
-      </div>
-      
-      <div v-else-if="error" class="chart-error">
-        <AlertCircle :size="24" />
-        <span>{{ error }}</span>
-      </div>
-      
-      <div v-else-if="!currentChart" class="chart-empty">
-        <BarChart3 :size="48" />
-        <span>Чарт не выбран</span>
-      </div>
-      
-      <!-- Отображение чарта через iframe для URL -->
-      <iframe 
-        v-else-if="currentChart.chartType === 'url' && currentChart.chartUrl"
-        :src="getChartUrl(currentChart.chartUrl)"
-        class="chart-iframe"
-        frameborder="0"
-        @load="handleIframeLoad"
-        @error="handleIframeError"
-      ></iframe>
-      
-      <!-- Отображение чарта через API для выбранных чартов -->
-      <div 
-        v-else-if="currentChart.chartType === 'select' && currentChart.selectedChartId"
-        class="chart-api-container"
-      >
+      <div v-if="isLoading" class="chart-loading"><SpinnerLoading loading-text="Загрузка чарта..." /></div>
+      <div v-else-if="error" class="chart-error"><AlertCircle :size="24" /><span>{{ error }}</span></div>
+      <div v-else-if="!currentChart" class="chart-empty"><BarChart3 :size="48" /><span>Чарт не выбран</span></div>
+      <iframe v-else-if="currentChart.chartType === 'url' && currentChart.chartUrl" :src="getChartUrl(currentChart.chartUrl)" class="chart-iframe" frameborder="0" @load="handleIframeLoad" @error="handleIframeError"></iframe>
+
+      <div v-else-if="currentChart.chartType === 'select' && currentChart.selectedChartId" class="chart-api-container">
         <div v-if="chartLoading && !preview" class="chart-loading">
           <SpinnerLoading loading-text="Загрузка данных чарта..." />
         </div>
-        
-        <div v-else-if="chartError" class="chart-error">
-          <AlertCircle :size="24" />
-          <span>{{ chartError }}</span>
-        </div>
-        
+        <div v-else-if="chartError" class="chart-error"><AlertCircle :size="24" /><span>{{ chartError }}</span></div>
         <div v-else-if="chartData && datasetRows && chartData.chart_type" class="chart-render-container">
-          <ChartRenderer
-            :type="chartData.chart_type"
-            :fields="chartData.params || {}"
-            :settings="[]"
-            :dataset="datasetRows"
-          />
+          <ChartRenderer :type="chartData.chart_type" :fields="chartData.params || {}" :settings="[]" :dataset="datasetRows" :compact="true"/>
         </div>
-        
-        <div v-else class="chart-placeholder">
-          <BarChart3 :size="48" />
-          <span>{{ currentChart.selectedChart || 'Выбранный чарт' }}</span>
-          <small>ID: {{ currentChart.selectedChartId }}</small>
-          <div v-if="chartData" style="font-size: 10px; margin-top: 8px; color: #666; text-align: left;">
-            <div><strong>Debug info:</strong></div>
-            <div>Engine: {{ chartData.engine || 'не указан' }}</div>
-            <div>Type: {{ chartData.chart_type || 'не указан' }}</div>
-            <div>Dataset: {{ chartData.dataset || 'не указан' }}</div>
-            <div>Params: {{ chartData.params ? JSON.stringify(chartData.params).substring(0, 100) + '...' : 'пустые' }}</div>
-            <div>DatasetRows: {{ datasetRows ? `${datasetRows.length} строк` : 'нет данных' }}</div>
-            <div v-if="datasetRows && datasetRows.length > 0">
-              Sample row: {{ JSON.stringify(datasetRows[0]).substring(0, 50) + '...' }}
-            </div>
-          </div>
-        </div>
+        <div v-else class="chart-empty"><BarChart3 :size="48" /><span>Данные не загружены</span></div>
       </div>
-      
-      <div v-else class="chart-empty">
-        <BarChart3 :size="48" />
-        <span>Настройте чарт</span>
-      </div>
+      <div v-else class="chart-empty"><BarChart3 :size="48" /><span>Настройте чарт</span></div>
       </template>
     </div>
     
-    <!-- Строка 3: Описание -->
-    <div
-      v-if="!preview && currentChart && currentChart.showDescription && currentChart.description"
-      class="chart-description"
-      :style="{ height: descriptionHeight + 'px' }"
-      ref="descriptionRef"
-    >
-      <div
-        class="description-resize-handle"
-        @mousedown.stop.prevent="startDescriptionResize"
-      ></div>
+    <div v-if="!preview && currentChart && currentChart.showDescription && currentChart.description" class="chart-description" :style="{ height: descriptionHeight + 'px' }" ref="descriptionRef">
+      <div class="description-resize-handle" @mousedown.stop.prevent="startDescriptionResize"></div>
       <div v-html="currentChart.description" class="description-content"></div>
     </div>
 
-    <!-- Тултип подсказки -->
     <Teleport to="body">
-      <div v-if="hintVisible"
-           class="hint-tooltip" 
-           :style="hintTooltipStyle"
-           @mouseenter="cancelHideHint"
-           @mouseleave="hideHint">
+      <div v-if="hintVisible" class="hint-tooltip" :style="hintTooltipStyle" @mouseenter="cancelHideHint" @mouseleave="hideHint">
         <div v-html="hintContent" class="hint-content"></div>
       </div>
     </Teleport>
@@ -370,9 +274,6 @@ function handleDescriptionResize(event) {
 
   const deltaY = event.clientY - descriptionStartY.value;
 
-  // Двигаем границу «по направлению мыши»:
-  // тянем вниз — описание становится ниже (меньше по высоте),
-  // тянем вверх — описание выше (больше по высоте).
   let newHeight = descriptionStartHeight.value - deltaY;
   const minHeight = 60;
   const maxHeight = 400;
@@ -744,6 +645,7 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  padding: 8px;
 }
 
 .chart-preview-static {
@@ -815,6 +717,9 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
 }
 
 .chart-description {
