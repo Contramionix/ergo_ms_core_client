@@ -89,7 +89,6 @@
         </div>
     </div>
 
-
     <transition name="fade-slide" appear>
         <div v-if="isFieldsModalVisible" class="tooltip-panel-fields" :style="{ left: fieldsModalPosition.x + 'px', top: fieldsModalPosition.y + 'px', position: 'fixed', zIndex: 1000 }" ref="fieldsModalRef">
             <ChartFields :fields="indicators" :selected="selectedForModal" :allowed-types="currentAllowedTypes" :measures-in-chart="measuresInChart" :current-slot-config="currentSlotConfig" @select="handleFieldSelect" />
@@ -169,6 +168,7 @@ const chartName = ref('Новая диаграмма')
 const datasets = ref([])
 const datasetsLoading = ref(false)
 const skipNextDatasetWatch = ref(false)
+const skipNextSelectedFieldsWatch = ref(false)
 
 const settingTypes = computed(() =>
     chartSettingsConfig[selectedChartType.value] || []
@@ -184,6 +184,8 @@ const chartTypeIconStyle = computed(() => {
 })
 
 const selectedFields = ref({})
+
+const EMPTY_SELECTED_FIELDS = { y: [], x: [], color: [], sort: [], labels: [], filters: [] }
 
 const REQUIRED_FIELDS_BY_CHART_TYPE = {
     line: ['x', 'y'],
@@ -208,14 +210,27 @@ function getDatasetId(datasetField) {
     return typeof datasetField === 'object' ? datasetField.id : datasetField
 }
 
+function buildOriginalChart(data) {
+    return {
+        name: data.name,
+        datasetId: getDatasetId(data.dataset),
+        chart_type: data.chart_type,
+        engine: data.engine,
+        params: JSON.parse(JSON.stringify(data.params ?? {})),
+    }
+}
+
+async function fetchDatasetRows(datasetId, params) {
+    const { data } = await chartService.getDatasetRowsAgg(datasetId, filterParamsForApi(params ?? selectedFields.value))
+    datasetRows.value = data
+}
+
 async function loadDatasetColumnsAndRows(datasetId, params) {
     if (!datasetId) return
     try {
         const { data: columnsResp } = await chartService.getColumns(datasetId)
-        const columns = columnsResp?.columns
-        indicators.value = Array.isArray(columns) ? columns : []
-        const { data } = await chartService.getDatasetRowsAgg(datasetId, filterParamsForApi(params ?? selectedFields.value))
-        datasetRows.value = data
+        indicators.value = Array.isArray(columnsResp?.columns) ? columnsResp.columns : []
+        await fetchDatasetRows(datasetId, params)
     } catch {
         // Игнорируем ошибку
     }
@@ -239,24 +254,17 @@ function filterParamsForApi(params) {
 
 const measuresInChart = computed(() => {
   const f = selectedFields.value
-  const measures = []
-  const measureKeys = ['y', 'y2', 'indicators', 'value']
-  for (const key of measureKeys) {
-    const arr = f[key]
-    if (Array.isArray(arr)) measures.push(...arr.filter(Boolean))
-  }
-  return measures
+  return ['y', 'y2', 'indicators', 'value'].flatMap(key => (f[key] ?? []).filter(Boolean))
 })
 
-const currentSlotConfig = computed(() => {
-  const key = currentSetting.value
-  return settingTypes.value.find(s => s.key === key) ?? null
-})
+const currentSlotConfig = computed(() =>
+  settingTypes.value.find(s => s.key === currentSetting.value) ?? null
+)
 
 watch(chartData, d => { chartName.value = d?.name || 'Новая диаграмма' }, { immediate: true })
 
 async function onSelectedDatasetChange(ds) {
-    selectedFields.value = { y: [], x: [], color: [], sort: [], labels: [], filters: [] }
+    selectedFields.value = { ...EMPTY_SELECTED_FIELDS }
     await loadDatasetColumnsAndRows(ds?.id, selectedFields.value)
 }
 
@@ -295,13 +303,7 @@ async function onChartNameSaved({ name }) {
         if (isEditMode.value) {
             const { data: updated } = await chartService.updateChart(chartId.value, payload)
             chartData.value = updated
-            originalChart.value = {
-                name: updated.name,
-                datasetId: getDatasetId(updated.dataset),
-                chart_type: updated.chart_type,
-                engine: updated.engine,
-                params: JSON.parse(JSON.stringify(updated.params ?? {})),
-            }
+            originalChart.value = buildOriginalChart(updated)
             originalSelectedFields.value = JSON.parse(JSON.stringify(selectedFields.value))
             toast.success('Изменения сохранены')
         } else {
@@ -323,12 +325,9 @@ async function fetchChartIfEditing() {
         await fetchDatasetsOnce()
         const { data } = await chartService.getChart(chartId.value)
         chartData.value = data
-        let dsObj =
-            typeof data.dataset === 'object' && data.dataset !== null
-                ? data.dataset
-                : data.dataset
-                    ? (await chartService.getDataset(data.dataset)).data
-                    : null
+        const dsObj = typeof data.dataset === 'object' && data.dataset !== null
+            ? data.dataset
+            : data.dataset ? (await chartService.getDataset(data.dataset)).data : null
         if (dsObj && !datasets.value.some(d => String(d.id) === String(dsObj.id))) {
             datasets.value = [...datasets.value, dsObj]
         }
@@ -336,30 +335,23 @@ async function fetchChartIfEditing() {
         selectedDatasetId.value = dsObj?.id ?? null
 
         selectedChartType.value = String(data.chart_type ?? '')
+        skipNextSelectedFieldsWatch.value = true
         selectedFields.value = JSON.parse(JSON.stringify(data.params ?? {}))
         originalSelectedFields.value = JSON.parse(JSON.stringify(selectedFields.value))
 
         await loadDatasetColumnsAndRows(dsObj?.id, selectedFields.value)
-
-        originalChart.value = {
-            name: data.name,
-            datasetId: getDatasetId(data.dataset),
-            chart_type: data.chart_type,
-            engine: data.engine,
-            params: JSON.parse(JSON.stringify(data.params ?? {})),
-        }
+        originalChart.value = buildOriginalChart(data)
     } catch {
         // Игнорируем ошибку
     } finally {
         skipNextDatasetWatch.value = false
+        skipNextSelectedFieldsWatch.value = false
         loading.value = false
     }
 }
 
 function runChartAnalysis() {
-    if (chartId.value) {
-        assistant.openAndAnalyzeChart(chartId.value)
-    }
+    if (chartId.value) assistant.openAndAnalyzeChart(chartId.value)
 }
 
 async function checkOllamaAvailability() {
@@ -460,34 +452,21 @@ function removeField(field, type) {
     selectedFields.value[type] = selectedFields.value[type].filter(f => f.id !== field.id)
 }
 
-watch(
-  () => selectedChartType.value,
-  (newVal, oldVal) => {
-    if (oldVal && newVal !== oldVal) {
-      selectedFields.value = {}
-    }
-  }
-)
+watch(() => selectedChartType.value, (newVal, oldVal) => {
+    if (oldVal && newVal !== oldVal) selectedFields.value = {}
+})
 
-watch(
-  selectedFields,
-  async v => {
-    if (selectedDataset.value?.id) {
-      datasetRowsLoading.value = true
-      try {
-        const { data } = await chartService.getDatasetRowsAgg(
-          selectedDataset.value.id, filterParamsForApi(v)
-        )
-        datasetRows.value = data
-      } catch {
-        // Игнорируем ошибку
-      } finally {
-        datasetRowsLoading.value = false
-      }
-    }
-  },
-  { deep: true }
-)
+watch(selectedFields, async (v) => {
+  if (skipNextSelectedFieldsWatch.value || !selectedDataset.value?.id) return
+  datasetRowsLoading.value = true
+  try {
+    await fetchDatasetRows(selectedDataset.value.id, v)
+  } catch {
+    // Игнорируем ошибку
+  } finally {
+    datasetRowsLoading.value = false
+  }
+}, { deep: true })
 
 async function fetchDatasetsOnce() {
   if (datasets.value.length || datasetsLoading.value) return
@@ -504,15 +483,11 @@ async function fetchDatasetsOnce() {
 
 const isChartDirty = computed(() => {
     if (!isEditMode.value) return true
-
-    if (chartName.value !== (originalChart.value.name ?? '')) return true
-    if ((selectedDataset.value?.id || null) !== (originalChart.value.datasetId || null)) return true
-    if (selectedChartType.value !== (originalChart.value.chart_type ?? '')) return true
-
-    const paramsDiffer = JSON.stringify(selectedFields.value) !== JSON.stringify(originalSelectedFields.value)
-    if (paramsDiffer) return true
-
-    return false
+    const orig = originalChart.value
+    return chartName.value !== (orig.name ?? '') ||
+        (selectedDataset.value?.id ?? null) !== (orig.datasetId ?? null) ||
+        selectedChartType.value !== (orig.chart_type ?? '') ||
+        JSON.stringify(selectedFields.value) !== JSON.stringify(originalSelectedFields.value)
 })
 
 onMounted(() => {
