@@ -24,16 +24,14 @@
                 <h5 class="m-0 me-2">Датасет</h5>
                 <div class="dataset-select">
                     <SelectBox v-model="selectedDatasetId" :options="datasets" value-key="id" label-key="name" :include-all-option="false" all-label="Выбрать датасет" :disabled="datasetsLoading" size="sm">
-                        <template #selected="{ option, label }">
+                        <template #selected="{ label }">
                             <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0 overflow-hidden">
-                                <Database class="flex-shrink-0" :size="16" />
-                                <span class="text-truncate min-w-0">{{ label }}</span>
+                                <Database class="flex-shrink-0" :size="16" /><span class="text-truncate min-w-0">{{ label }}</span>
                             </span>
                         </template>
                         <template #option="{ label }">
                             <span class="d-flex align-items-center gap-2">
-                                <Database class="flex-shrink-0" :size="16" />
-                                {{ label }}
+                                <Database class="flex-shrink-0" :size="16" />{{ label }}
                             </span>
                         </template>
                     </SelectBox>
@@ -43,10 +41,10 @@
                 <h5 class="m-0 me-2">Тип диаграммы</h5>
                 <div class="chart-type-select">
                 <SelectBox v-model="selectedChartType" :options="CHART_TYPE_OPTIONS" value-key="value" label-key="label" :include-all-option="false" all-label="Выберите тип диаграммы" :disabled="!selectedDataset" size="sm">
-                    <template #selected="{ option, label }">
+                    <template #selected="{ value, label }">
                         <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
-                            <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getChartTypeColor(option?.value ?? selectedChartType) }">
-                                <component :is="getChartTypeIcon(option?.value ?? selectedChartType)" :size="16" />
+                            <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getChartTypeColor(value ?? selectedChartType) }">
+                                <component :is="getChartTypeIcon(value ?? selectedChartType)" :size="16" />
                             </span>
                             <span class="text-truncate">{{ label }}</span>
                         </span>
@@ -67,24 +65,18 @@
             </div>
             <div class="indicators sectors border-elements elements-color">
                 <h5 class="m-0 me-2">Показатели</h5>
-                <div class="sectors-body">
-                    <DatasetIndicators :dataset="selectedDataset" :fields="indicators" />
-                </div>
+                <div class="sectors-body"><DatasetIndicators :dataset="selectedDataset" :fields="indicators" /></div>
             </div>
             <div class="measures sectors border-elements elements-color">
                 <h5 class="m-0 me-2">Измерения</h5>
-                <div class="sectors-body">
-                    <DatasetMeasures :dataset="selectedDataset" />
-                </div>
+                <div class="sectors-body"><DatasetMeasures :dataset="selectedDataset" /></div>
             </div>
             <div class="parameters settings sectors border-elements elements-color">
                 <h5 class="m-0 me-2">Параметры</h5>
-                <div class="sectors-body">
-                    <DatasetSettings :dataset="selectedDataset" />
-                </div>
+                <div class="sectors-body"><DatasetSettings :dataset="selectedDataset" /></div>
             </div>
             <div class="body-chart border-elements elements-color" :class="{ fullscreen: isFullScreen }">
-                <ChartArea :dataset="datasetRows" :chart-type="selectedChartType" :fields="selectedFields" :key="selectedChartType" :settings="settingTypes" :data-loading="datasetRowsLoading" />
+                <ChartArea :dataset="datasetRows" :chart-type="selectedChartType" :fields="fieldsForChart" :key="selectedChartType" :settings="settingTypes" :data-loading="datasetRowsLoading" />
             </div>
         </div>
     </div>
@@ -123,6 +115,7 @@ import chartService from '@/core/bi/MainPage/Sidebar/components/js/chartService.
 import { isVirtualMeasureField } from '@/core/bi/Charts/js/measureVirtualFields.js'
 import { useAssistant } from '@/core/ai-assistant/js/assistantService.js'
 import { biClient } from '@/core/ai-assistant/bi/js/bi-client.js'
+import { expandDateRangeFilter } from '@/core/bi/Charts/components/js/chartDateFilterUtils.js'
 
 const toast = useToast()
 const isFullScreen = ref(false)
@@ -205,6 +198,10 @@ const REQUIRED_FIELDS_BY_CHART_TYPE = {
     table: ['columns'],
 }
 
+function cloneParams(params) {
+    return JSON.parse(JSON.stringify(params ?? {}))
+}
+
 function getDatasetId(datasetField) {
     if (datasetField == null) return null
     return typeof datasetField === 'object' ? datasetField.id : datasetField
@@ -216,7 +213,7 @@ function buildOriginalChart(data) {
         datasetId: getDatasetId(data.dataset),
         chart_type: data.chart_type,
         engine: data.engine,
-        params: JSON.parse(JSON.stringify(data.params ?? {})),
+        params: cloneParams(data.params),
     }
 }
 
@@ -244,13 +241,32 @@ function filterParamsForApi(params) {
       filtered[key] = arr
       continue
     }
-    const cleaned = arr.filter(f => !isVirtualMeasureField(f))
+    let cleaned = arr.filter(f => !isVirtualMeasureField(f))
+
+    if (key === 'filters') {
+      const expanded = []
+      cleaned.forEach((f) => {
+        const op = f?.filter?.op ?? f?.op
+        if (op === 'date_range') {
+          const parts = expandDateRangeFilter(f)
+          if (Array.isArray(parts) && parts.length) {
+            expanded.push(...parts)
+          }
+        } else {
+          expanded.push(f)
+        }
+      })
+      cleaned = expanded
+    }
+
     if (cleaned.length || key === 'filters') {
       filtered[key] = cleaned
     }
   }
   return filtered
 }
+
+const fieldsForChart = computed(() => filterParamsForApi(selectedFields.value))
 
 const measuresInChart = computed(() => {
   const f = selectedFields.value
@@ -296,7 +312,7 @@ async function onChartNameSaved({ name }) {
         dataset: selectedDataset.value.id,
         chart_type: selectedChartType.value,
         engine: 'echarts',
-        params: JSON.parse(JSON.stringify(selectedFields.value)),
+        params: cloneParams(selectedFields.value),
         options: {}
     }
     try {
@@ -304,7 +320,7 @@ async function onChartNameSaved({ name }) {
             const { data: updated } = await chartService.updateChart(chartId.value, payload)
             chartData.value = updated
             originalChart.value = buildOriginalChart(updated)
-            originalSelectedFields.value = JSON.parse(JSON.stringify(selectedFields.value))
+            originalSelectedFields.value = cloneParams(selectedFields.value)
             toast.success('Изменения сохранены')
         } else {
             const { data } = await chartService.createChart(payload)
@@ -336,8 +352,8 @@ async function fetchChartIfEditing() {
 
         selectedChartType.value = String(data.chart_type ?? '')
         skipNextSelectedFieldsWatch.value = true
-        selectedFields.value = JSON.parse(JSON.stringify(data.params ?? {}))
-        originalSelectedFields.value = JSON.parse(JSON.stringify(selectedFields.value))
+        selectedFields.value = cloneParams(data.params)
+        originalSelectedFields.value = cloneParams(selectedFields.value)
 
         await loadDatasetColumnsAndRows(dsObj?.id, selectedFields.value)
         originalChart.value = buildOriginalChart(data)
@@ -672,7 +688,6 @@ onBeforeUnmount(() => {
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
-
 
 .diagramtype,
 .settings,
