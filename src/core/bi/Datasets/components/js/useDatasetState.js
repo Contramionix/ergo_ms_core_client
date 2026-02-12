@@ -193,7 +193,7 @@ export function useDatasetState() {
       return String(val).trim()
     }
     
-    const keysToCheck = ['name', 'aggregation', 'type', 'description'] as const
+    const keysToCheck = ['name', 'aggregation', 'type', 'description']
     
     // Создаем карту текущих полей по имени
     const curMap = new Map(fields.value.filter(f => f.name).map(f => [f.name, f]))
