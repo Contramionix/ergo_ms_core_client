@@ -82,11 +82,31 @@ export function useDatasetState() {
   const isDirty = computed(() => {
     // зависимости от тикера, чтобы триггерить пересчёт
     void paramsDirtyTick.value
-    if (!origDatasetRef.value) return false
-    if (selectedConnection.value?.id !== origDatasetRef.value.connection) return true
-    if (mainTable.value?.file_id !== origDatasetRef.value.file_source) return true
-    
-    // Проверяем черновые параметры в sessionStorage и сравниваем с параметрами в БД
+
+    if (!origDatasetRef.value) {
+      return false
+    }
+
+    const dirtyByConnection = selectedConnection.value?.id !== origDatasetRef.value.connection
+
+    const dirtyByMainTable = (() => {
+      const origFileSource = origDatasetRef.value ? origDatasetRef.value.file_source : null
+
+      // Если в сохранённом датасете file_source отсутствует, считаем,
+      // что грязность по главной таблице через это поле не отслеживаем.
+      if (origFileSource == null) return false
+
+      const currentFileId = mainTable.value ? mainTable.value.file_id : null
+
+      // Оба не заданы — считаем, что изменений нет
+      if (currentFileId == null && origFileSource == null) return false
+      // Один задан, второй нет — точно изменилось
+      if (currentFileId == null || origFileSource == null) return true
+      // Сравниваем по приведённым к строке значениям, чтобы игнорировать разницу типов (number vs string)
+      return String(currentFileId) !== String(origFileSource)
+    })()
+
+    let paramsDirty = false
     try {
       const storageKey = `bi:dataset:params:${datasetId.value ?? 'new'}`
       const raw = sessionStorage.getItem(storageKey)
@@ -104,20 +124,25 @@ export function useDatasetState() {
             .sort((a, b) => a.name.localeCompare(b.name))
           const curStr = JSON.stringify(norm(draft))
           const origStr = JSON.stringify(norm(origParams))
-          if (curStr !== origStr) return true
+          paramsDirty = curStr !== origStr
         }
       }
     } catch (e) {
       console.warn('[isDirty] Ошибка при проверке параметров:', e)
     }
-    
+
     const origMain = (origDatasetRef.value.tables || []).find(t => t.order === 0)
-    const cur = JSON.stringify(normalizeRelations(relations.value))
-    const orig = JSON.stringify(normalizeRelations(getRelationsFromDataset(origDatasetRef.value, origMain ? origMain.id : null)))
-    
-    if (cur !== orig) return true
-    if (isFieldsDirty()) return true
-    return false
+    const curRelations = JSON.stringify(normalizeRelations(relations.value))
+    const origRelations = JSON.stringify(
+      normalizeRelations(getRelationsFromDataset(origDatasetRef.value, origMain ? origMain.id : null))
+    )
+    const relationsDirty = curRelations !== origRelations
+
+    const fieldsDirty = isFieldsDirty()
+
+    const dirty = dirtyByConnection || dirtyByMainTable || paramsDirty || relationsDirty || fieldsDirty
+
+    return dirty
   })
   
   const usedRightTableIds = computed(() =>
@@ -168,7 +193,7 @@ export function useDatasetState() {
       return String(val).trim()
     }
     
-    const keysToCheck = ['name', 'aggregation', 'type', 'description']
+    const keysToCheck = ['name', 'aggregation', 'type', 'description'] as const
     
     // Создаем карту текущих полей по имени
     const curMap = new Map(fields.value.filter(f => f.name).map(f => [f.name, f]))
@@ -194,7 +219,7 @@ export function useDatasetState() {
         }
       }
     }
-    
+
     return false
   }
   
@@ -285,5 +310,3 @@ export function useDatasetState() {
     urlTabFromActiveTab
   }
 }
-
-
