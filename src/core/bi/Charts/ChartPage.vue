@@ -61,7 +61,7 @@
                 </div>
             </div>
             <div class="fields sectors body-settings border-elements elements-color" v-if="!isFullScreen && selectedChartType">
-                <ChartSettingsFields :setting-types="settingTypes" :selected-fields="selectedFields" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit" @open-field-settings="openFieldSettingsModal"/>
+                <ChartSettingsFields :setting-types="settingTypes" :selected-fields="selectedFields" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit" @open-field-settings="openFieldSettingsModal" @open-formula="openFormulaModal"/>
             </div>
             <div class="indicators sectors border-elements elements-color">
                 <h5 class="m-0 me-2">Показатели</h5>
@@ -89,6 +89,7 @@
     <ChartNameDialog v-if="isSaveModalVisible" :visible="isSaveModalVisible" v-model="chartName" @update:visible="isSaveModalVisible = $event" @saved="onChartNameSaved" />
     <ChartSettingsFilterModal :visible="isFilterModalVisible" :field="filterModalField" :dataset-id="selectedDataset?.id ?? null" :initial-filter="filterModalInitialFilter" @update:visible="isFilterModalVisible = $event; if (!$event) filterModalField = null" @apply="onFilterModalApply"/>
     <ChartSettingsFieldModal :visible="fieldSettingsModalVisible" :field="fieldSettingsModalField" @update:visible="onFieldSettingsModalVisibleChange" @apply="onFieldSettingsApply"/>
+    <ChartSettingsFormulaModal :visible="formulaModalVisible" :field="formulaModalField" :cols="formulaModalCols" :rows="formulaModalRows" @update:visible="onFormulaModalVisibleChange" @apply="onFormulaApply"/>
 </template>
 
 <script setup>
@@ -109,6 +110,7 @@ import ChartNameDialog from '@/core/bi/Charts/components/ChartNameDialog.vue'
 import ChartSettingsFields from '@/core/bi/Charts/components/ChartSettingsFields.vue'
 import ChartSettingsFilterModal from '@/core/bi/Charts/components/ChartSettingsFilterModal.vue'
 import ChartSettingsFieldModal from '@/core/bi/Charts/components/ChartSettingsFieldModal.vue'
+import ChartSettingsFormulaModal from '@/core/bi/Charts/components/ChartSettingsFormulaModal.vue'
 
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
@@ -134,6 +136,17 @@ const filterModalField = ref(null)
 const fieldSettingsModalVisible = ref(false)
 const fieldSettingsModalField = ref(null)
 const fieldSettingsModalSettingKey = ref(null)
+
+const formulaModalVisible = ref(false)
+const formulaModalField = ref(null)
+const formulaModalSettingKey = ref(null)
+
+const formulaModalCols = computed(() => (indicators.value || []).map((i) => i.name ?? i.id ?? ''))
+const formulaModalRows = computed(() => {
+  const cols = indicators.value || []
+  const rows = datasetRows.value || []
+  return rows.map((row) => cols.map((ind) => row[ind.name] ?? row[ind.id] ?? null))
+})
 
 const filterModalInitialFilter = computed(() =>
   filterModalField.value?.filter ?? null
@@ -481,6 +494,33 @@ function onFieldSettingsApply(payload) {
     fieldSettingsModalVisible.value = false
     fieldSettingsModalField.value = null
     fieldSettingsModalSettingKey.value = null
+}
+
+function openFormulaModal({ field, settingKey }) {
+    formulaModalField.value = field
+    formulaModalSettingKey.value = settingKey
+    formulaModalVisible.value = true
+}
+
+function onFormulaModalVisibleChange(visible) {
+    formulaModalVisible.value = visible
+    if (!visible) {
+        formulaModalField.value = null
+        formulaModalSettingKey.value = null
+    }
+}
+
+function onFormulaApply({ field, expression }) {
+    const key = formulaModalSettingKey.value
+    if (!key || !field || !Array.isArray(selectedFields.value[key])) return
+    const arr = selectedFields.value[key]
+    const idx = arr.findIndex((f) => (f.id ?? f.name) === (field.id ?? field.name))
+    if (idx >= 0) {
+        selectedFields.value[key] = arr.map((f, i) => (i === idx ? { ...f, expression } : f))
+    }
+    formulaModalVisible.value = false
+    formulaModalField.value = null
+    formulaModalSettingKey.value = null
 }
 
 function onFilterModalApply({ field, filter }) {

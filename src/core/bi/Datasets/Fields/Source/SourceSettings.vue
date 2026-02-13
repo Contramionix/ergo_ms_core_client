@@ -3,7 +3,7 @@
     <div class="settings-main">
       <div class="settings-top d-flex align-items-center gap-3">
         <input v-model="local.name" class="form-control form-control-sm flex-grow-1" placeholder="Название поля" />
-        <div class="tab-group">
+        <div v-if="!formulaOnly" class="tab-group">
           <button class="tab-button" :class="{ active: activeTab === 'formula' }" @click="activeTab = 'formula'">Формула</button>
           <button class="tab-button" :class="{ active: activeTab === 'field' }" @click="activeTab = 'field'">Поле из источника</button>
         </div>
@@ -35,7 +35,8 @@ const props = defineProps({
   cols: { type: Array, default: () => [] },
   rows: { type: Array, default: () => [] },
   tables: { type: Array, default: () => [] },
-  selectedConnection: { type: Object, default: null }
+  selectedConnection: { type: Object, default: null },
+  formulaOnly: { type: Boolean, default: false }
 })
 const emit = defineEmits(['close', 'create'])
 
@@ -49,8 +50,8 @@ function isTableSource(field) {
   return hasSourceTable || hasSourceWithTable
 }
 
-const activeTab = ref(isTableSource(props.field) ? 'field' : 'formula')
-const expression = ref('')
+const activeTab = ref(props.formulaOnly ? 'formula' : (isTableSource(props.field) ? 'field' : 'formula'))
+const expression = ref(props.field?.expression ?? '')
 const search = ref('')
 
 const fieldsList = computed(() => {
@@ -110,7 +111,12 @@ watch(activeTab, tab => {
   else showHelp.value = true
 })
 
-watch(() => props.field, (newField) => {
+watch(() => [props.field, props.formulaOnly], ([newField, formulaOnly]) => {
+  if (newField?.expression !== undefined) expression.value = newField.expression ?? ''
+  if (formulaOnly) {
+    activeTab.value = 'formula'
+    return
+  }
   if (!newField) return
   activeTab.value = isTableSource(newField) ? 'field' : 'formula'
 }, { deep: true })
