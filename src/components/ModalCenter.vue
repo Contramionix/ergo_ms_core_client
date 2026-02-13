@@ -21,8 +21,8 @@ const emit = defineEmits(['closemodal'])
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" :class="dialogClass">
       <div class="modal-content">
         <div class="modal-header">
-          <h1 class="modal-title fs-5" id="centralModalLabel">
-            {{ title }}
+          <h1 class="modal-title fs-5 d-flex align-items-center gap-2" id="centralModalLabel">
+            <slot name="title">{{ title }}</slot>
           </h1>
           <button
             type="button"
