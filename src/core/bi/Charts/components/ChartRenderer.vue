@@ -27,8 +27,8 @@ const datasetArray = computed(() => (Array.isArray(props.dataset) ? props.datase
 <template>
   <div class="area d-flex flex-column h-100 w-100">
     <div class="chart d-flex h-100 w-100 justify-content-center align-items-center">
-      <ChartIndicator v-if="chartKind === 'indicator'" :fields="fields" :settings="settings" :dataset="datasetArray"/>
-      <ChartTable v-else-if="chartKind === 'table'" :fields="fields" :settings="settings" :dataset="datasetArray"/>
+      <ChartIndicator v-if="chartKind === 'indicator'" :fields="fields" :settings="settings" :dataset="datasetArray" :display-options="displayOptions"/>
+      <ChartTable v-else-if="chartKind === 'table'" :fields="fields" :settings="settings" :dataset="datasetArray" :display-options="displayOptions"/>
       <EChartsComponent v-else :type="chartKind" :fields="fields" :settings="settings" :display-options="displayOptions" :dataset="datasetArray" :compact="compact"/>
     </div>
   </div>

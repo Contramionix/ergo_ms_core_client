@@ -5,10 +5,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
 const props = defineProps({
   fields: { type: Object, default: () => ({}) },
   settings: { type: Array, default: () => [] },
-  dataset: { type: Array, default: () => [] }
+  dataset: { type: Array, default: () => [] },
+  displayOptions: { type: Object, default: () => ({}) },
 })
 
-const PAGE_SIZE = 20
+const pageSize = computed(() => Math.max(1, Number(props.displayOptions?.limit) || 20))
 const currentPage = ref(1)
 
 const NUMERIC_TYPES = ['integer', 'float']
@@ -30,11 +31,14 @@ const numericColumns = computed(() =>
   columns.value.filter(col => isNumericColumn(col))
 )
 
+const useGrouping = computed(() => props.displayOptions?.grouping !== false)
+
 const aggregatedRows = computed(() => {
   const rows = props.dataset ?? []
   const cats = categoryColumns.value
   const nums = numericColumns.value
   if (!rows.length || !columns.value.length) return []
+  if (!useGrouping.value) return rows
 
   const makeKey = row => cats.map(c => row[c.name] ?? '').join('\0')
   const bucket = new Map()
@@ -54,7 +58,7 @@ const aggregatedRows = computed(() => {
 })
 
 const totalRows = computed(() => aggregatedRows.value.length)
-const totalPages = computed(() => Math.max(1, Math.ceil(totalRows.value / PAGE_SIZE)))
+const totalPages = computed(() => Math.max(1, Math.ceil(totalRows.value / pageSize.value)))
 
 watch(aggregatedRows, () => {
   if (currentPage.value > totalPages.value && totalPages.value > 0) currentPage.value = 1
@@ -62,12 +66,38 @@ watch(aggregatedRows, () => {
 
 const paginatedRows = computed(() => {
   const data = aggregatedRows.value
-  const start = (currentPage.value - 1) * PAGE_SIZE
-  return data.slice(start, start + PAGE_SIZE)
+  const size = pageSize.value
+  const start = (currentPage.value - 1) * size
+  return data.slice(start, start + size)
 })
 
-const pageStart = computed(() => (currentPage.value - 1) * PAGE_SIZE + 1)
-const pageEnd = computed(() => Math.min(currentPage.value * PAGE_SIZE, totalRows.value))
+const pageStart = computed(() => (currentPage.value - 1) * pageSize.value + 1)
+const pageEnd = computed(() => Math.min(currentPage.value * pageSize.value, totalRows.value))
+
+const showPagination = computed(() => props.displayOptions?.pagination !== false && totalRows.value > pageSize.value)
+
+const tableSizeClass = computed(() => {
+  const s = (props.displayOptions?.tableSize || 'm').toLowerCase()
+  return `chart-table--size-${s === 's' || s === 'l' ? s : 'm'}`
+})
+
+const showTotals = computed(() => props.displayOptions?.tableShowTotals === true)
+
+const preserveSpaces = computed(() => props.displayOptions?.preserveSpaces === true)
+
+const totalsRow = computed(() => {
+  if (!showTotals.value || !numericColumns.value.length) return null
+  const row = {}
+  for (const col of columns.value) {
+    if (isNumericColumn(col)) {
+      const values = aggregatedRows.value.map(r => Number(r[col.name])).filter(Number.isFinite)
+      row[col.name] = values.length ? values.reduce((a, b) => a + b, 0) : null
+    } else {
+      row[col.name] = null
+    }
+  }
+  return row
+})
 
 function columnMax(col) {
   const name = col?.name
@@ -104,7 +134,7 @@ function goNext() {
 </script>
 
 <template>
-  <div class="chart-table-wrapper">
+  <div class="chart-table-wrapper" :class="tableSizeClass">
     <div class="chart-table-scroll">
       <table class="chart-table table table-striped table-hover">
         <thead>
@@ -114,7 +144,7 @@ function goNext() {
         </thead>
         <tbody>
           <tr v-for="(row, idx) in paginatedRows" :key="idx">
-            <td v-for="col in columns" :key="col.id ?? col.name" class="chart-table-cell">
+            <td v-for="col in columns" :key="col.id ?? col.name" class="chart-table-cell" :class="{ 'chart-table-cell--preserve': preserveSpaces }">
               <template v-if="isNumericColumn(col) && row[col.name] != null">
                 <div class="chart-table-cell-bar-wrap">
                   <div
@@ -130,9 +160,21 @@ function goNext() {
             </td>
           </tr>
         </tbody>
+        <tfoot v-if="showTotals && totalsRow" class="chart-table-tfoot">
+          <tr>
+            <td v-for="col in columns" :key="col.id ?? col.name" class="chart-table-cell chart-table-cell--preserve">
+              <template v-if="isNumericColumn(col) && totalsRow[col.name] != null">
+                {{ formatCellValue(col, totalsRow[col.name]) }}
+              </template>
+              <template v-else>
+                {{ col.name === columns[0]?.name ? 'Итого' : '' }}
+              </template>
+            </td>
+          </tr>
+        </tfoot>
       </table>
     </div>
-    <div v-if="totalRows > PAGE_SIZE" class="chart-table-pagination">
+    <div v-if="showPagination" class="chart-table-pagination">
       <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="currentPage <= 1" @click="goPrev">
         <ChevronLeft :size="16" />
       </button>
@@ -161,6 +203,23 @@ function goNext() {
   width: 100%;
   margin-bottom: 0;
   font-size: 0.875rem;
+}
+
+.chart-table-wrapper.chart-table--size-s .chart-table {
+  font-size: 0.75rem;
+}
+
+.chart-table-wrapper.chart-table--size-l .chart-table {
+  font-size: 1rem;
+}
+
+.chart-table-cell--preserve {
+  white-space: pre-wrap;
+}
+
+.chart-table-tfoot {
+  font-weight: 600;
+  border-top: 2px solid var(--color-border, #dee2e6);
 }
 .chart-table-cell-bar-wrap {
   display: flex;

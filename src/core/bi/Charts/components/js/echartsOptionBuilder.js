@@ -122,6 +122,26 @@ function applyDisplayOptions(option, displayOptions, type) {
     }
   }
 
+  if (type === 'area' && opts.stacked === true && option.series?.length) {
+    option.series.forEach((s) => {
+      s.stack = 'stack1'
+    })
+  }
+
+  if (type === 'doughnut' && opts.doughnutShowTotals === true && option.series?.length) {
+    const series = option.series[0]
+    const data = series.data || []
+    const total = data.reduce((s, d) => s + (Number(d.value) || 0), 0)
+    series.label = {
+      show: true,
+      position: 'center',
+      formatter: () => (Number.isFinite(total) ? String(total) : ''),
+      fontSize: 14,
+      fontWeight: 'bold',
+    }
+    series.labelLine = { ...(series.labelLine || {}), show: false }
+  }
+
   if (showNavigator && (type === 'line' || type === 'area' || type === 'combined') && option.series?.length) {
     let series = option.series
     if (navigatorMode === 'select' && navigatorLineIds.length > 0) {
@@ -131,7 +151,6 @@ function applyDisplayOptions(option, displayOptions, type) {
     }
     const dataLength = option.xAxis?.data?.length ?? 0
     const defaultPeriodValue = Math.max(1, Number(opts.defaultPeriodValue) || 1)
-    const end = dataLength > 0 ? 100 : 100
     const start = dataLength > 0 ? Math.max(0, 100 - (defaultPeriodValue * 100) / Math.max(dataLength, 1)) : 0
     option.dataZoom = [
       {

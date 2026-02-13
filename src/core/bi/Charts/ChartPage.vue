@@ -2,12 +2,8 @@
     <div class="page-body">
         <div class="body-header border-elements elements-color">
             <div class="header-label-icon">
-                <span class="chart-type-icon-header" :style="chartTypeIconStyle">
-                    <component :is="chartTypeIconComponent" />
-                </span>
-                <div style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
-                    <h4 class="header-label" style="margin-bottom: 3px;">{{ chartName }}</h4>
-                </div>
+                <span class="chart-type-icon-header" :style="chartTypeIconStyle"><component :is="chartTypeIconComponent" /></span>
+                <div style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;"><h4 class="header-label" style="margin-bottom: 3px;">{{ chartName }}</h4></div>
             </div>
             <div class="header-label-buttons">
                 <button v-if="isEditMode && datasetRows && datasetRows.length > 0 && ollamaAvailable" class="btn text-white btn-sm btn-success"  @click="runChartAnalysis" style="display: flex; gap: 5px; justify-content: center; align-items: center;">
@@ -25,22 +21,15 @@
                 <div class="dataset-select">
                     <SelectBox v-model="selectedDatasetId" :options="datasets" value-key="id" label-key="name" :include-all-option="false" all-label="Выбрать датасет" :disabled="datasetsLoading" size="sm">
                         <template #selected="{ label }">
-                            <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0 overflow-hidden">
-                                <Database class="flex-shrink-0" :size="16" /><span class="text-truncate min-w-0">{{ label }}</span>
-                            </span>
+                            <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0 overflow-hidden"><Database class="flex-shrink-0" :size="16" /><span class="text-truncate min-w-0">{{ label }}</span></span>
                         </template>
-                        <template #option="{ label }">
-                            <span class="d-flex align-items-center gap-2">
-                                <Database class="flex-shrink-0" :size="16" />{{ label }}
-                            </span>
-                        </template>
+                        <template #option="{ label }"><span class="d-flex align-items-center gap-2"><Database class="flex-shrink-0" :size="16" />{{ label }}</span></template>
                     </SelectBox>
                 </div>
             </div>
             <div class="diagramtype sectors border-elements elements-color">
                 <div class="chart-page__diagram-header d-flex align-items-center gap-2 mb-0 me-2">
-                    <h5 class="m-0">Тип диаграммы</h5>
-                    <button type="button" class="chart-page__settings-btn" title="Настройки чарта" @click="showChartDisplayModal = true"><Settings class="chart-page__settings-icon" :size="16" /></button>
+                    <h5 class="m-0">Тип диаграммы</h5><button v-if="selectedChartType" type="button" class="chart-page__settings-btn" title="Настройки чарта" @click="showChartDisplayModal = true"><Settings class="chart-page__settings-icon" :size="16" /></button>
                 </div>
                 <div class="chart-type-select">
                 <SelectBox v-model="selectedChartType" :options="CHART_TYPE_OPTIONS" value-key="value" label-key="label" :include-all-option="false" all-label="Выберите тип диаграммы" :disabled="!selectedDataset" size="sm">
@@ -93,17 +82,8 @@
     <ChartSettingsFilterModal :visible="isFilterModalVisible" :field="filterModalField" :dataset-id="selectedDataset?.id ?? null" :initial-filter="filterModalInitialFilter" @update:visible="isFilterModalVisible = $event; if (!$event) filterModalField = null" @apply="onFilterModalApply"/>
     <ChartSettingsFieldModal :visible="fieldSettingsModalVisible" :field="fieldSettingsModalField" @update:visible="onFieldSettingsModalVisibleChange" @apply="onFieldSettingsApply"/>
     <ChartSettingsFormulaModal :visible="formulaModalVisible" :field="formulaModalField" :cols="formulaModalCols" :rows="formulaModalRows" @update:visible="onFormulaModalVisibleChange" @apply="onFormulaApply"/>
-    <ChartDisplaySettingsModal :visible="showChartDisplayModal" :display-options="chartDisplayOptions" :available-series="navigatorAvailableSeries" @update:visible="showChartDisplayModal = $event" @apply="onChartDisplayOptionsApply"/>
-    <ChartSectionSettingsModal
-      :visible="sectionSettingsModalVisible"
-      :setting-key="sectionSettingsModalSettingKey"
-      :setting="sectionSettingsModalSetting"
-      :chart-type="selectedChartType"
-      :section-options="sectionOptionsForModal"
-      :section-fields="sectionSettingsModalFields"
-      @update:visible="sectionSettingsModalVisible = $event"
-      @apply="onSectionSettingsApply"
-    />
+    <ChartDisplaySettingsModal :visible="showChartDisplayModal" :chart-type="selectedChartType" :display-options="chartDisplayOptions" :available-series="navigatorAvailableSeries" @update:visible="showChartDisplayModal = $event" @apply="onChartDisplayOptionsApply"/>
+    <ChartSectionSettingsModal :visible="sectionSettingsModalVisible" :setting-key="sectionSettingsModalSettingKey" :setting="sectionSettingsModalSetting" :chart-type="selectedChartType" :section-options="sectionOptionsForModal" :section-fields="sectionSettingsModalFields" @update:visible="sectionSettingsModalVisible = $event" @apply="onSectionSettingsApply"/>
 </template>
 
 <script setup>
@@ -200,9 +180,19 @@ const DEFAULT_CHART_DISPLAY_OPTIONS = {
     sectionAxisY2: {},
     sectionColors: {},
     sectionLabels: {},
+    tableSize: 'm',
+    pagination: true,
+    limit: 100,
+    grouping: true,
+    tableShowTotals: false,
+    preserveSpaces: false,
+    stacked: false,
+    doughnutShowTotals: false,
+    titleMode: 'fieldName',
+    indicatorSize: 's',
 }
 function getDefaultChartDisplayOptions() {
-    return JSON.parse(JSON.stringify(DEFAULT_CHART_DISPLAY_OPTIONS))
+    return cloneParams(DEFAULT_CHART_DISPLAY_OPTIONS)
 }
 const chartDisplayOptions = ref(getDefaultChartDisplayOptions())
 const originalChartDisplayOptions = ref(getDefaultChartDisplayOptions())
@@ -218,7 +208,7 @@ const sectionSettingsModalSettingKey = ref('')
 const sectionSettingsModalSetting = ref(null)
 const isEditMode = computed(() => !!route.params.id)
 const chartData = ref({})
-const chartName = ref('Новая диаграмма')
+const chartName = ref('')
 
 const datasets = ref([])
 const datasetsLoading = ref(false)
@@ -240,7 +230,7 @@ const chartTypeIconStyle = computed(() => {
 
 const navigatorAvailableSeries = computed(() => {
   const type = selectedChartType.value
-  if (!type || !['line', 'area', 'combined', 'bar'].includes(type)) return []
+  if (!type || !['line', 'area', 'combined'].includes(type)) return []
   const yFields = selectedFields.value.y ?? []
   const y2Fields = selectedFields.value.y2 ?? []
   const all = [...yFields, ...y2Fields]
@@ -253,12 +243,15 @@ const navigatorAvailableSeries = computed(() => {
 const sectionOptionsForModal = computed(() => {
   const key = sectionSettingsModalSettingKey.value
   const opts = chartDisplayOptions.value
-  if (key === 'x') return opts.sectionAxisX ?? {}
-  if (key === 'y') return opts.sectionAxisY ?? {}
-  if (key === 'y2') return opts.sectionAxisY2 ?? {}
-  if (key === 'color') return opts.sectionColors ?? {}
-  if (key === 'labels') return opts.sectionLabels ?? {}
-  return {}
+  const sectionKeyMap = {
+    x: 'sectionAxisX',
+    y: 'sectionAxisY',
+    y2: 'sectionAxisY2',
+    color: 'sectionColors',
+    labels: 'sectionLabels'
+  }
+  const sectionKey = sectionKeyMap[key]
+  return sectionKey ? (opts[sectionKey] ?? {}) : {}
 })
 
 const sectionSettingsModalFields = computed(() => {
@@ -292,6 +285,13 @@ const REQUIRED_FIELDS_BY_CHART_TYPE = {
     table: ['columns'],
 }
 
+function hasRequiredFieldsForChartType(chartType, fields) {
+    if (!chartType) return false
+    const required = REQUIRED_FIELDS_BY_CHART_TYPE[chartType]
+    if (!required?.length) return false
+    return required.every(key => fields[key]?.length > 0)
+}
+
 function cloneParams(params) {
     return JSON.parse(JSON.stringify(params ?? {}))
 }
@@ -312,8 +312,12 @@ function buildOriginalChart(data) {
 }
 
 async function fetchDatasetRows(datasetId, params) {
-    const { data } = await chartService.getDatasetRowsAgg(datasetId, filterParamsForApi(params ?? selectedFields.value))
-    datasetRows.value = data
+    try {
+        const { data } = await chartService.getDatasetRowsAgg(datasetId, filterParamsForApi(params ?? selectedFields.value))
+        datasetRows.value = data
+    } catch {
+        // Игнорируем ошибку
+    }
 }
 
 async function loadDatasetColumnsAndRows(datasetId, params) {
@@ -321,7 +325,9 @@ async function loadDatasetColumnsAndRows(datasetId, params) {
     try {
         const { data: columnsResp } = await chartService.getColumns(datasetId)
         indicators.value = Array.isArray(columnsResp?.columns) ? columnsResp.columns : []
-        await fetchDatasetRows(datasetId, params)
+        if (selectedChartType.value && hasRequiredFieldsForChartType(selectedChartType.value, params)) {
+            await fetchDatasetRows(datasetId, params)
+        }
     } catch {
         // Игнорируем ошибку
     }
@@ -386,9 +392,7 @@ watch(selectedDataset, async (newDs, oldDs) => {
 
 const chartRequiredFieldsFilled = computed(() => {
     if (!selectedDataset.value || !selectedChartType.value) return false
-    const required = REQUIRED_FIELDS_BY_CHART_TYPE[selectedChartType.value]
-    if (!required?.length) return false
-    return required.every(key => selectedFields.value[key]?.length > 0)
+    return hasRequiredFieldsForChartType(selectedChartType.value, selectedFields.value)
 })
 
 function onSaveClick() {
@@ -415,7 +419,7 @@ async function onChartNameSaved({ name }) {
             chartData.value = updated
             originalChart.value = buildOriginalChart(updated)
             originalSelectedFields.value = cloneParams(selectedFields.value)
-            originalChartDisplayOptions.value = JSON.parse(JSON.stringify(chartDisplayOptions.value))
+            originalChartDisplayOptions.value = cloneParams(chartDisplayOptions.value)
             toast.success('Изменения сохранены')
         } else {
             const { data } = await chartService.createChart(payload)
@@ -469,9 +473,18 @@ async function fetchChartIfEditing() {
                 sectionAxisY2: typeof loadedDisplay.sectionAxisY2 === 'object' && loadedDisplay.sectionAxisY2 ? { ...loadedDisplay.sectionAxisY2 } : {},
                 sectionColors: typeof loadedDisplay.sectionColors === 'object' && loadedDisplay.sectionColors ? { ...loadedDisplay.sectionColors } : {},
                 sectionLabels: typeof loadedDisplay.sectionLabels === 'object' && loadedDisplay.sectionLabels ? { ...loadedDisplay.sectionLabels } : {},
+                tableSize: loadedDisplay.tableSize ?? 'm',
+                pagination: loadedDisplay.pagination !== false,
+                limit: Math.max(1, Number(loadedDisplay.limit) || 100),
+                grouping: loadedDisplay.grouping !== false,
+                tableShowTotals: loadedDisplay.tableShowTotals === true,
+                preserveSpaces: loadedDisplay.preserveSpaces === true,
+                stacked: loadedDisplay.stacked === true,
+                doughnutShowTotals: loadedDisplay.doughnutShowTotals === true,
+                titleMode: loadedDisplay.titleMode ?? 'fieldName',
+                indicatorSize: loadedDisplay.indicatorSize ?? 's',
             })
-            originalChartDisplayOptions.value = getDefaultChartDisplayOptions()
-            Object.assign(originalChartDisplayOptions.value, chartDisplayOptions.value)
+            originalChartDisplayOptions.value = cloneParams(chartDisplayOptions.value)
         }
 
         await loadDatasetColumnsAndRows(dsObj?.id, selectedFields.value)
@@ -521,7 +534,7 @@ function toggleFullScreen() {
 }
 
 function onChartDisplayOptionsApply(options) {
-    chartDisplayOptions.value = { ...options }
+    chartDisplayOptions.value = { ...chartDisplayOptions.value, ...options }
     showChartDisplayModal.value = false
 }
 
@@ -534,11 +547,20 @@ function openSectionSettingsModal({ settingKey, setting }) {
 function onSectionSettingsApply(payload) {
     const key = sectionSettingsModalSettingKey.value
     const opts = chartDisplayOptions.value
-    if (key === 'x') chartDisplayOptions.value = { ...opts, sectionAxisX: { ...opts.sectionAxisX, ...payload } }
-    else if (key === 'y') chartDisplayOptions.value = { ...opts, sectionAxisY: { ...opts.sectionAxisY, ...payload } }
-    else if (key === 'y2') chartDisplayOptions.value = { ...opts, sectionAxisY2: { ...opts.sectionAxisY2, ...payload } }
-    else if (key === 'color') chartDisplayOptions.value = { ...opts, sectionColors: { ...opts.sectionColors, ...payload } }
-    else if (key === 'labels') chartDisplayOptions.value = { ...opts, sectionLabels: { ...opts.sectionLabels, ...payload } }
+    const sectionKeyMap = {
+        x: 'sectionAxisX',
+        y: 'sectionAxisY',
+        y2: 'sectionAxisY2',
+        color: 'sectionColors',
+        labels: 'sectionLabels'
+    }
+    const sectionKey = sectionKeyMap[key]
+    if (sectionKey) {
+        chartDisplayOptions.value = {
+            ...opts,
+            [sectionKey]: { ...(opts[sectionKey] ?? {}), ...payload }
+        }
+    }
     sectionSettingsModalVisible.value = false
     sectionSettingsModalSettingKey.value = ''
     sectionSettingsModalSetting.value = null
@@ -601,23 +623,26 @@ function openFieldSettingsModal({ field, settingKey }) {
 function onFieldSettingsModalVisibleChange(visible) {
     fieldSettingsModalVisible.value = visible
     if (!visible) {
-        fieldSettingsModalField.value = null
-        fieldSettingsModalSettingKey.value = null
+        closeFieldSettingsModal()
     }
+}
+
+function updateFieldInArray(key, field, updater) {
+    if (!key || !field || !Array.isArray(selectedFields.value[key])) return false
+    const arr = selectedFields.value[key]
+    const idx = arr.findIndex((f) => (f.id ?? f.name) === (field.id ?? field.name))
+    if (idx >= 0) {
+        selectedFields.value[key] = arr.map((f, i) => (i === idx ? updater(f) : f))
+        return true
+    }
+    return false
 }
 
 function onFieldSettingsApply(payload) {
     const key = fieldSettingsModalSettingKey.value
     const field = fieldSettingsModalField.value
-    if (!key || !field || !Array.isArray(selectedFields.value[key])) return
-    const arr = selectedFields.value[key]
-    const idx = arr.findIndex((f) => (f.id ?? f.name) === (field.id ?? field.name))
-    if (idx >= 0) {
-        selectedFields.value[key] = arr.map((f, i) => (i === idx ? { ...f, ...payload } : f))
-    }
-    fieldSettingsModalVisible.value = false
-    fieldSettingsModalField.value = null
-    fieldSettingsModalSettingKey.value = null
+    updateFieldInArray(key, field, (f) => ({ ...f, ...payload }))
+    closeFieldSettingsModal()
 }
 
 function openFormulaModal({ field, settingKey }) {
@@ -629,22 +654,20 @@ function openFormulaModal({ field, settingKey }) {
 function onFormulaModalVisibleChange(visible) {
     formulaModalVisible.value = visible
     if (!visible) {
-        formulaModalField.value = null
-        formulaModalSettingKey.value = null
+        closeFormulaModal()
     }
+}
+
+function closeFormulaModal() {
+    formulaModalField.value = null
+    formulaModalSettingKey.value = null
 }
 
 function onFormulaApply({ field, expression }) {
     const key = formulaModalSettingKey.value
-    if (!key || !field || !Array.isArray(selectedFields.value[key])) return
-    const arr = selectedFields.value[key]
-    const idx = arr.findIndex((f) => (f.id ?? f.name) === (field.id ?? field.name))
-    if (idx >= 0) {
-        selectedFields.value[key] = arr.map((f, i) => (i === idx ? { ...f, expression } : f))
-    }
+    updateFieldInArray(key, field, (f) => ({ ...f, expression }))
     formulaModalVisible.value = false
-    formulaModalField.value = null
-    formulaModalSettingKey.value = null
+    closeFormulaModal()
 }
 
 function onFilterModalApply({ field, filter }) {
@@ -662,24 +685,39 @@ function onFilterModalApply({ field, filter }) {
     filterModalField.value = null
 }
 
+function closeFieldSettingsModal() {
+    fieldSettingsModalVisible.value = false
+    fieldSettingsModalField.value = null
+    fieldSettingsModalSettingKey.value = null
+}
+
 function removeField(field, type) {
     selectedFields.value[type] = selectedFields.value[type].filter(f => f.id !== field.id)
 }
 
-watch(() => selectedChartType.value, (newVal, oldVal) => {
-    if (oldVal && newVal !== oldVal) selectedFields.value = {}
+async function loadDatasetRowsIfNeeded(params) {
+    if (!selectedDataset.value?.id || !selectedChartType.value) return
+    if (!hasRequiredFieldsForChartType(selectedChartType.value, params)) return
+    datasetRowsLoading.value = true
+    try {
+        await fetchDatasetRows(selectedDataset.value.id, params)
+    } finally {
+        datasetRowsLoading.value = false
+    }
+}
+
+watch(() => selectedChartType.value, async (newVal, oldVal) => {
+    if (oldVal && newVal !== oldVal) {
+        selectedFields.value = {}
+    }
+    if (newVal && !oldVal && !skipNextSelectedFieldsWatch.value) {
+        await loadDatasetRowsIfNeeded(selectedFields.value)
+    }
 })
 
 watch(selectedFields, async (v) => {
-  if (skipNextSelectedFieldsWatch.value || !selectedDataset.value?.id) return
-  datasetRowsLoading.value = true
-  try {
-    await fetchDatasetRows(selectedDataset.value.id, v)
-  } catch {
-    // Игнорируем ошибку
-  } finally {
-    datasetRowsLoading.value = false
-  }
+    if (skipNextSelectedFieldsWatch.value) return
+    await loadDatasetRowsIfNeeded(v)
 }, { deep: true })
 
 async function fetchDatasetsOnce() {
