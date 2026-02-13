@@ -150,7 +150,53 @@ function applyDisplayOptions(option, displayOptions, type) {
     }
   }
 
+  applySectionDisplayOptions(option, opts)
   return option
+}
+
+function applySectionDisplayOptions(option, opts) {
+  const sectionX = opts.sectionAxisX || {}
+  const sectionY = opts.sectionAxisY || {}
+  const sectionY2 = opts.sectionAxisY2 || {}
+
+  if (option.xAxis) {
+    const xList = Array.isArray(option.xAxis) ? option.xAxis : [option.xAxis]
+    const xConf = xList[0] ? patchAxisWithSection(xList[0], sectionX) : null
+    if (xConf) option.xAxis = Array.isArray(option.xAxis) ? [xConf, ...xList.slice(1)] : xConf
+  }
+
+  if (option.yAxis) {
+    const yList = Array.isArray(option.yAxis) ? option.yAxis : [option.yAxis]
+    const patched = yList.map((ax, i) => {
+      const section = i === 0 ? sectionY : i === 1 ? sectionY2 : {}
+      return patchAxisWithSection(ax, section)
+    })
+    option.yAxis = patched.length === 1 ? patched[0] : patched
+  }
+}
+
+function patchAxisWithSection(axis, section) {
+  if (!axis || !section || Object.keys(section).length === 0) return axis
+  const next = { ...axis }
+  if (section.axisOnChart === false) next.show = false
+  if (section.axisType === 'log' && (next.type === 'value' || next.type === 'category')) next.type = 'log'
+  if (section.axisName === false && next.name) next.name = ''
+  if (section.axisName === true && !next.name && axis.name) next.name = axis.name
+  if (section.grid === false) next.splitLine = { ...(next.splitLine || {}), show: false }
+  if (section.grid === true && next.splitLine) next.splitLine = { ...next.splitLine, show: true }
+  if (section.labels === false) next.axisLabel = { ...(next.axisLabel || {}), show: false }
+  if (section.labels === true && next.axisLabel) next.axisLabel = { ...next.axisLabel, show: true }
+  if (section.labelType === 'horizontal' && next.axisLabel) next.axisLabel = { ...next.axisLabel, rotate: 0 }
+  if (section.labelType === 'vertical' && next.axisLabel) next.axisLabel = { ...next.axisLabel, rotate: 90 }
+  if (section.labelType === 'angled' && next.axisLabel) next.axisLabel = { ...next.axisLabel, rotate: 45 }
+  if (section.scaleRange === 'zero_max' && (next.type === 'value' || next.type === 'log')) next.min = 0
+  if (section.scaleMode === 'manual' && (next.type === 'value' || next.type === 'log')) {
+    const minVal = typeof section.scaleMin === 'number' && !Number.isNaN(section.scaleMin) ? section.scaleMin : null
+    if (next.type === 'log' && (minVal == null || minVal <= 0)) next.min = 0.001
+    else if (minVal != null) next.min = minVal
+    if (typeof section.scaleMax === 'number' && !Number.isNaN(section.scaleMax)) next.max = section.scaleMax
+  }
+  return next
 }
 
 function emptyOption() {

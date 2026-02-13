@@ -64,7 +64,7 @@
                 </div>
             </div>
             <div class="fields sectors body-settings border-elements elements-color" v-if="!isFullScreen && selectedChartType">
-                <ChartSettingsFields :setting-types="settingTypes" :selected-fields="selectedFields" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit" @open-field-settings="openFieldSettingsModal" @open-formula="openFormulaModal"/>
+                <ChartSettingsFields :setting-types="settingTypes" :selected-fields="selectedFields" :fields-modal-open-for-key="fieldsModalOpenForKey" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit" @open-field-settings="openFieldSettingsModal" @open-formula="openFormulaModal" @open-section-settings="openSectionSettingsModal"/>
             </div>
             <div class="indicators sectors border-elements elements-color">
                 <h5 class="m-0 me-2">Показатели</h5>
@@ -94,6 +94,16 @@
     <ChartSettingsFieldModal :visible="fieldSettingsModalVisible" :field="fieldSettingsModalField" @update:visible="onFieldSettingsModalVisibleChange" @apply="onFieldSettingsApply"/>
     <ChartSettingsFormulaModal :visible="formulaModalVisible" :field="formulaModalField" :cols="formulaModalCols" :rows="formulaModalRows" @update:visible="onFormulaModalVisibleChange" @apply="onFormulaApply"/>
     <ChartDisplaySettingsModal :visible="showChartDisplayModal" :display-options="chartDisplayOptions" :available-series="navigatorAvailableSeries" @update:visible="showChartDisplayModal = $event" @apply="onChartDisplayOptionsApply"/>
+    <ChartSectionSettingsModal
+      :visible="sectionSettingsModalVisible"
+      :setting-key="sectionSettingsModalSettingKey"
+      :setting="sectionSettingsModalSetting"
+      :chart-type="selectedChartType"
+      :section-options="sectionOptionsForModal"
+      :section-fields="sectionSettingsModalFields"
+      @update:visible="sectionSettingsModalVisible = $event"
+      @apply="onSectionSettingsApply"
+    />
 </template>
 
 <script setup>
@@ -116,6 +126,7 @@ import ChartSettingsFilterModal from '@/core/bi/Charts/components/ChartSettingsF
 import ChartSettingsFieldModal from '@/core/bi/Charts/components/ChartSettingsFieldModal.vue'
 import ChartSettingsFormulaModal from '@/core/bi/Charts/components/ChartSettingsFormulaModal.vue'
 import ChartDisplaySettingsModal from '@/core/bi/Charts/components/ChartDisplaySettingsModal.vue'
+import ChartSectionSettingsModal from '@/core/bi/Charts/components/ChartSectionSettingsModal.vue'
 
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
@@ -184,6 +195,11 @@ const DEFAULT_CHART_DISPLAY_OPTIONS = {
     navigatorLineIds: [],
     defaultPeriodValue: 1,
     defaultPeriodUnit: 'day',
+    sectionAxisX: {},
+    sectionAxisY: {},
+    sectionAxisY2: {},
+    sectionColors: {},
+    sectionLabels: {},
 }
 function getDefaultChartDisplayOptions() {
     return JSON.parse(JSON.stringify(DEFAULT_CHART_DISPLAY_OPTIONS))
@@ -197,6 +213,9 @@ const chartId = computed(() => route.params.id)
 const loading = ref(false)
 const isSaveModalVisible = ref(false)
 const showChartDisplayModal = ref(false)
+const sectionSettingsModalVisible = ref(false)
+const sectionSettingsModalSettingKey = ref('')
+const sectionSettingsModalSetting = ref(null)
 const isEditMode = computed(() => !!route.params.id)
 const chartData = ref({})
 const chartName = ref('Новая диаграмма')
@@ -230,6 +249,26 @@ const navigatorAvailableSeries = computed(() => {
     label: f.displayName ?? f.name ?? f.label ?? String(f.id ?? f.name),
   }))
 })
+
+const sectionOptionsForModal = computed(() => {
+  const key = sectionSettingsModalSettingKey.value
+  const opts = chartDisplayOptions.value
+  if (key === 'x') return opts.sectionAxisX ?? {}
+  if (key === 'y') return opts.sectionAxisY ?? {}
+  if (key === 'y2') return opts.sectionAxisY2 ?? {}
+  if (key === 'color') return opts.sectionColors ?? {}
+  if (key === 'labels') return opts.sectionLabels ?? {}
+  return {}
+})
+
+const sectionSettingsModalFields = computed(() => {
+  const key = sectionSettingsModalSettingKey.value
+  return selectedFields.value[key] ?? []
+})
+
+const fieldsModalOpenForKey = computed(() =>
+  isFieldsModalVisible.value ? currentSetting.value : null
+)
 
 const selectedFields = ref({})
 
@@ -425,6 +464,11 @@ async function fetchChartIfEditing() {
                 navigatorLineIds: Array.isArray(loadedDisplay.navigatorLineIds) ? [...loadedDisplay.navigatorLineIds] : [],
                 defaultPeriodValue: Math.max(1, Number(loadedDisplay.defaultPeriodValue) || 1),
                 defaultPeriodUnit: loadedDisplay.defaultPeriodUnit ?? 'day',
+                sectionAxisX: typeof loadedDisplay.sectionAxisX === 'object' && loadedDisplay.sectionAxisX ? { ...loadedDisplay.sectionAxisX } : {},
+                sectionAxisY: typeof loadedDisplay.sectionAxisY === 'object' && loadedDisplay.sectionAxisY ? { ...loadedDisplay.sectionAxisY } : {},
+                sectionAxisY2: typeof loadedDisplay.sectionAxisY2 === 'object' && loadedDisplay.sectionAxisY2 ? { ...loadedDisplay.sectionAxisY2 } : {},
+                sectionColors: typeof loadedDisplay.sectionColors === 'object' && loadedDisplay.sectionColors ? { ...loadedDisplay.sectionColors } : {},
+                sectionLabels: typeof loadedDisplay.sectionLabels === 'object' && loadedDisplay.sectionLabels ? { ...loadedDisplay.sectionLabels } : {},
             })
             originalChartDisplayOptions.value = getDefaultChartDisplayOptions()
             Object.assign(originalChartDisplayOptions.value, chartDisplayOptions.value)
@@ -479,6 +523,25 @@ function toggleFullScreen() {
 function onChartDisplayOptionsApply(options) {
     chartDisplayOptions.value = { ...options }
     showChartDisplayModal.value = false
+}
+
+function openSectionSettingsModal({ settingKey, setting }) {
+    sectionSettingsModalSettingKey.value = settingKey
+    sectionSettingsModalSetting.value = setting
+    sectionSettingsModalVisible.value = true
+}
+
+function onSectionSettingsApply(payload) {
+    const key = sectionSettingsModalSettingKey.value
+    const opts = chartDisplayOptions.value
+    if (key === 'x') chartDisplayOptions.value = { ...opts, sectionAxisX: { ...opts.sectionAxisX, ...payload } }
+    else if (key === 'y') chartDisplayOptions.value = { ...opts, sectionAxisY: { ...opts.sectionAxisY, ...payload } }
+    else if (key === 'y2') chartDisplayOptions.value = { ...opts, sectionAxisY2: { ...opts.sectionAxisY2, ...payload } }
+    else if (key === 'color') chartDisplayOptions.value = { ...opts, sectionColors: { ...opts.sectionColors, ...payload } }
+    else if (key === 'labels') chartDisplayOptions.value = { ...opts, sectionLabels: { ...opts.sectionLabels, ...payload } }
+    sectionSettingsModalVisible.value = false
+    sectionSettingsModalSettingKey.value = ''
+    sectionSettingsModalSetting.value = null
 }
 
 function openFieldsModal(event, settingKey) {

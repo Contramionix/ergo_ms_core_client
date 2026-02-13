@@ -1,13 +1,16 @@
 <template>
     <div class="chart-settings-fields">
         <div v-for="setting in settingTypes" :key="setting.key" class="setting">
-            <div class="setting-header">
+            <div class="setting-header" :class="{ 'setting-header--actions-visible': fieldsModalOpenForKey === setting.key }">
                 <div class="setting-header-left">
                     <component :is="setting.icon" size="18" />
                     <h6 class="m-0 me-1">{{ setting.label }}</h6>
                 </div>
                 <div class="setting-header-right">
-                    <button class="btn btn-sm fw-bold" style="padding: 0; margin: 0; display: flex;" data-fields-modal-trigger @click="onAddFieldClick($event, setting.key)">
+                    <button v-if="showSectionSettings(setting.key)" type="button" class="action-btn settings-btn" title="Настройки секции" @click="emit('openSectionSettings', { settingKey: setting.key, setting })">
+                        <Settings size="16" class="settings-btn-icon" />
+                    </button>
+                    <button type="button" class="btn btn-sm fw-bold add-field-btn" data-fields-modal-trigger @click="onAddFieldClick($event, setting.key)">
                         <Plus size="16" />
                     </button>
                 </div>
@@ -32,7 +35,7 @@
 </template>
 
 <script setup>
-import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, Plus, X, BarChart2, SquareFunction } from 'lucide-vue-next'
+import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, Plus, X, BarChart2, SquareFunction, Settings } from 'lucide-vue-next'
 import { isVirtualMeasureField } from '../js/measureVirtualFields.js'
 
 defineProps({
@@ -44,9 +47,17 @@ defineProps({
         type: Object,
         required: true,
     },
+    fieldsModalOpenForKey: {
+        type: String,
+        default: null,
+    },
 })
 
-const emit = defineEmits(['addFieldClick', 'removeField', 'editFilter', 'openFieldSettings', 'openFormula'])
+const emit = defineEmits(['addFieldClick', 'removeField', 'editFilter', 'openFieldSettings', 'openFormula', 'openSectionSettings'])
+
+function showSectionSettings(settingKey) {
+    return settingKey !== 'filters' && settingKey !== 'sort'
+}
 
 const typeIcon = {
     string: Type,
@@ -108,7 +119,7 @@ function filterFieldSuffix(f, settingKey) {
     .setting-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
     }
 
     .setting-header-left {
@@ -119,7 +130,69 @@ function filterFieldSuffix(f, settingKey) {
 
     .setting-header-right {
         display: flex;
+        align-items: center;
+        gap: 4px;
+
+        & > button {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s, color 0.15s;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            color: var(--color-secondary-text);
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-radius: 4px;
+
+            &:hover {
+                color: var(--color-accent);
+            }
+        }
+
+        & > button.add-field-btn {
+            color: var(--color-primary-text);
+
+            &:hover {
+                color: var(--color-accent);
+            }
+        }
+    }
+
+    .setting:hover .setting-header-right > button,
+    .setting-header--actions-visible .setting-header-right > button {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .setting-header--actions-visible .setting-header-right > button.add-field-btn {
+        color: var(--color-accent);
+    }
+
+    .action-btn.settings-btn {
+        color: var(--color-primary-text);
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 2px;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
         justify-content: center;
+        transition: opacity 0.15s, background 0.15s, color 0.15s;
+
+        .settings-btn-icon {
+            transition: transform 0.2s ease;
+        }
+
+        &:hover {
+            color: var(--color-accent);
+
+            .settings-btn-icon {
+                transform: rotate(90deg);
+            }
+        }
     }
 
     .selected-field {
