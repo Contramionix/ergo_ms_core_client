@@ -9,7 +9,7 @@
             <input id="opt-show-title" v-model="local.showTitle" class="form-check-input" type="checkbox" />
             <label class="form-check-label" for="opt-show-title"></label>
           </div>
-          <input v-model="local.titleText" type="text" class="form-control form-control-sm display-setting-input" placeholder="Текст заголовка"/>
+          <input v-if="local.showTitle" v-model="local.titleText" type="text" class="form-control form-control-sm display-setting-input" placeholder="Текст заголовка"/>
         </div>
       </div>
 
@@ -29,7 +29,7 @@
         </div>
       </div>
 
-      <div class="display-setting-row">
+      <div v-if="local.showTooltip" class="display-setting-row">
         <label class="display-setting-label">Сумма в тултипах</label>
         <div class="form-check form-switch mb-0">
           <input id="opt-sum-tooltips" v-model="local.sumInTooltips" class="form-check-input" type="checkbox" />
