@@ -30,44 +30,127 @@ export function normalizedFilters(fields) {
 }
 
 /**
- * Строит опцию ECharts из type, fields, settings, dataset.
- * @param {{ type: string, fields: Object, settings: Array, dataset: Array }} params
+ * Строит опцию ECharts из type, fields, settings, dataset, displayOptions.
+ * @param {{ type: string, fields: Object, settings: Array, dataset: Array, displayOptions: Object, compact: boolean }} params
  * @returns {import('echarts').EChartsOption}
  */
-export function buildEChartsOption({ type, fields = {}, settings = [], dataset = [], compact = false }) {
+export function buildEChartsOption({ type, fields = {}, settings = [], dataset = [], displayOptions = {}, compact = false }) {
   const filters = normalizedFilters(fields)
   if (!dataset?.length && type !== 'heatmap') return emptyOption()
 
+  let option
   switch (type) {
     case 'line':
-      return buildLineOption(fields, settings, dataset, filters, compact)
+      option = buildLineOption(fields, settings, dataset, filters, compact)
+      break
     case 'bar':
-      return buildBarOption(fields, settings, dataset, filters, compact)
+      option = buildBarOption(fields, settings, dataset, filters, compact)
+      break
     case 'pie':
-      return buildPieOption(fields, dataset, false, filters, compact)
+      option = buildPieOption(fields, dataset, false, filters, compact)
+      break
     case 'doughnut':
-      return buildPieOption(fields, dataset, true, filters, compact)
+      option = buildPieOption(fields, dataset, true, filters, compact)
+      break
     case 'scatter':
-      return buildScatterOption(fields, dataset, filters, compact)
+      option = buildScatterOption(fields, dataset, filters, compact)
+      break
     case 'radar':
-      return buildRadarOption(fields, dataset, filters, compact)
+      option = buildRadarOption(fields, dataset, filters, compact)
+      break
     case 'heatmap':
-      return buildHeatmapOption(fields, dataset, compact)
+      option = buildHeatmapOption(fields, dataset, compact)
+      break
     case 'area':
-      return buildAreaOption(fields, settings, dataset, filters, compact)
+      option = buildAreaOption(fields, settings, dataset, filters, compact)
+      break
     case 'barHorizontal':
-      return buildBarHorizontalOption(fields, settings, dataset, filters, compact)
+      option = buildBarHorizontalOption(fields, settings, dataset, filters, compact)
+      break
     case 'combined':
-      return buildCombinedOption(fields, settings, dataset, filters, compact)
+      option = buildCombinedOption(fields, settings, dataset, filters, compact)
+      break
     case 'funnel':
-      return buildFunnelOption(fields, dataset, filters)
+      option = buildFunnelOption(fields, dataset, filters)
+      break
     case 'gauge':
-      return buildGaugeOption(fields, dataset, filters)
+      option = buildGaugeOption(fields, dataset, filters)
+      break
     case 'treemap':
-      return buildTreemapOption(fields, dataset, filters)
+      option = buildTreemapOption(fields, dataset, filters)
+      break
     default:
       return emptyOption()
   }
+  return applyDisplayOptions(option, displayOptions, type)
+}
+
+function applyDisplayOptions(option, displayOptions, type) {
+  const opts = displayOptions || {}
+  const showTitle = opts.showTitle !== false
+  const showLegend = opts.showLegend !== false
+  const showTooltip = opts.showTooltip !== false
+  const sumInTooltips = opts.sumInTooltips === true
+  const showNavigator = opts.showNavigator === true
+  const navigatorMode = opts.navigatorMode || 'all'
+  const navigatorLineIds = Array.isArray(opts.navigatorLineIds) ? opts.navigatorLineIds : []
+
+  if (option.title) {
+    option.title = showTitle
+      ? { ...option.title, show: true, text: opts.titleText != null ? String(opts.titleText) : (option.title.text || '') }
+      : { ...option.title, show: false }
+  } else if (showTitle && opts.titleText) {
+    option.title = { text: String(opts.titleText), left: 'center', top: 10, textStyle: { fontSize: 14 } }
+  }
+
+  if (option.legend) {
+    option.legend = { ...option.legend, show: showLegend }
+  }
+
+  if (option.tooltip) {
+    option.tooltip = { ...option.tooltip, show: showTooltip }
+    if (showTooltip && sumInTooltips && option.tooltip.trigger === 'axis' && option.series?.length) {
+      const baseFormatter = option.tooltip.formatter
+      option.tooltip.formatter = (params) => {
+        const parts = typeof baseFormatter === 'function' ? baseFormatter(params) : null
+        const lines = Array.isArray(params) ? params : (params ? [params] : [])
+        const sum = lines.reduce((acc, p) => acc + (Number(p.value) || 0), 0)
+        if (parts != null) return parts + (sum !== 0 ? `<br/>Сумма: ${sum}` : '')
+        const defaultStr = lines.map(p => `${p.marker ?? ''} ${p.seriesName ?? ''}: ${p.value ?? ''}`).join('<br/>')
+        return defaultStr + (sum !== 0 ? `<br/>Сумма: ${sum}` : '')
+      }
+    }
+  }
+
+  if (showNavigator && (type === 'line' || type === 'area' || type === 'combined') && option.series?.length) {
+    let series = option.series
+    if (navigatorMode === 'select' && navigatorLineIds.length > 0) {
+      series = option.series.filter((s) => navigatorLineIds.includes(s.name))
+      if (series.length === 0) series = option.series
+      option.series = series
+    }
+    const dataLength = option.xAxis?.data?.length ?? 0
+    const defaultPeriodValue = Math.max(1, Number(opts.defaultPeriodValue) || 1)
+    const end = dataLength > 0 ? 100 : 100
+    const start = dataLength > 0 ? Math.max(0, 100 - (defaultPeriodValue * 100) / Math.max(dataLength, 1)) : 0
+    option.dataZoom = [
+      {
+        type: 'slider',
+        show: true,
+        xAxisIndex: 0,
+        start: Math.min(start, 99),
+        end: 100,
+        bottom: 8,
+        height: 20,
+      },
+    ]
+    const gridBottom = option.grid?.bottom
+    if (typeof gridBottom === 'number') {
+      option.grid = { ...option.grid, bottom: gridBottom + 36 }
+    }
+  }
+
+  return option
 }
 
 function emptyOption() {

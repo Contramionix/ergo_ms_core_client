@@ -22,7 +22,7 @@
                         autocomplete="off"
                     />
                     <ul class="dropdown-menu-list">
-                        <li v-if="includeAllOption">
+                        <li v-if="includeAllOption && !multiple">
                             <a class="dropdown-item" :class="{ active: isSelected(null) }" href="#" @click.prevent="choose(null)">{{ allLabel }}</a>
                         </li>
                         <li v-for="opt in filteredOptions" :key="opt.key">
@@ -64,6 +64,7 @@ const props = defineProps({
     dropdownAnchorRef: { type: Object, default: null },
     searchable: { type: Boolean, default: false },
     searchPlaceholder: { type: String, default: 'Поиск...' },
+    multiple: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'change', 'blur'])
@@ -153,6 +154,16 @@ function coerce(val) {
 }
 
 function choose(value) {
+    if (props.multiple && Array.isArray(props.modelValue)) {
+        const v = coerce(value)
+        const arr = [...props.modelValue]
+        const idx = arr.findIndex((item) => valuesAreEqual(item, v))
+        if (idx >= 0) arr.splice(idx, 1)
+        else arr.push(v)
+        emit('update:modelValue', arr)
+        emit('change', arr)
+        return
+    }
     const v = coerce(value)
     emit('update:modelValue', v)
     emit('change', v)
@@ -160,6 +171,14 @@ function choose(value) {
 }
 
 const rawCurrentLabel = computed(() => {
+    if (props.multiple && Array.isArray(props.modelValue)) {
+        if (!props.modelValue.length) return props.allLabel
+        const labels = props.modelValue.map((val) => {
+            const found = normalizedOptions.value.find((o) => valuesAreEqual(o.value, val))
+            return found ? found.label : String(val)
+        })
+        return labels.join(', ')
+    }
     if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') return props.allLabel
     const found = normalizedOptions.value.find(o => valuesAreEqual(o.value, props.modelValue))
     if (!found) return props.allLabel
@@ -194,6 +213,9 @@ function valuesAreEqual(a, b) {
 }
 
 function isSelected(val) {
+    if (props.multiple && Array.isArray(props.modelValue)) {
+        return props.modelValue.some((item) => valuesAreEqual(item, val))
+    }
     return valuesAreEqual(props.modelValue, val)
 }
 
@@ -279,7 +301,6 @@ watch(() => props.modelValue, async () => {
     background-color: var(--color-primary-background);
     border: 1px solid var(--color-border);
     border-radius: .375rem;
-    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
     display: flex;
     flex-direction: column;
     overflow: hidden;

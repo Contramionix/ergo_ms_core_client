@@ -38,7 +38,10 @@
                 </div>
             </div>
             <div class="diagramtype sectors border-elements elements-color">
-                <h5 class="m-0 me-2">Тип диаграммы</h5>
+                <div class="chart-page__diagram-header d-flex align-items-center gap-2 mb-0 me-2">
+                    <h5 class="m-0">Тип диаграммы</h5>
+                    <button type="button" class="chart-page__settings-btn" title="Настройки чарта" @click="showChartDisplayModal = true"><Settings class="chart-page__settings-icon" :size="16" /></button>
+                </div>
                 <div class="chart-type-select">
                 <SelectBox v-model="selectedChartType" :options="CHART_TYPE_OPTIONS" value-key="value" label-key="label" :include-all-option="false" all-label="Выберите тип диаграммы" :disabled="!selectedDataset" size="sm">
                     <template #selected="{ value, label }">
@@ -76,7 +79,7 @@
                 <div class="sectors-body"><DatasetSettings :dataset="selectedDataset" /></div>
             </div>
             <div class="body-chart border-elements elements-color" :class="{ fullscreen: isFullScreen }">
-                <ChartArea :dataset="datasetRows" :chart-type="selectedChartType" :fields="fieldsForChart" :key="selectedChartType" :settings="settingTypes" :data-loading="datasetRowsLoading" />
+                <ChartArea :dataset="datasetRows" :chart-type="selectedChartType" :fields="fieldsForChart" :key="selectedChartType" :settings="settingTypes" :display-options="chartDisplayOptions" :data-loading="datasetRowsLoading" />
             </div>
         </div>
     </div>
@@ -90,10 +93,11 @@
     <ChartSettingsFilterModal :visible="isFilterModalVisible" :field="filterModalField" :dataset-id="selectedDataset?.id ?? null" :initial-filter="filterModalInitialFilter" @update:visible="isFilterModalVisible = $event; if (!$event) filterModalField = null" @apply="onFilterModalApply"/>
     <ChartSettingsFieldModal :visible="fieldSettingsModalVisible" :field="fieldSettingsModalField" @update:visible="onFieldSettingsModalVisibleChange" @apply="onFieldSettingsApply"/>
     <ChartSettingsFormulaModal :visible="formulaModalVisible" :field="formulaModalField" :cols="formulaModalCols" :rows="formulaModalRows" @update:visible="onFormulaModalVisibleChange" @apply="onFormulaApply"/>
+    <ChartDisplaySettingsModal :visible="showChartDisplayModal" :display-options="chartDisplayOptions" :available-series="navigatorAvailableSeries" @update:visible="showChartDisplayModal = $event" @apply="onChartDisplayOptionsApply"/>
 </template>
 
 <script setup>
-import { Maximize, Database, BrainCircuit } from 'lucide-vue-next'
+import { Maximize, Database, BrainCircuit, Settings } from 'lucide-vue-next'
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import { getChartTypeIcon, getChartTypeColor, CHART_TYPE_OPTIONS } from '@/core/bi/Charts/js/chartTypeIcons.js'
 import SelectBox from '@/components/SelectBox.vue'
@@ -111,6 +115,7 @@ import ChartSettingsFields from '@/core/bi/Charts/components/ChartSettingsFields
 import ChartSettingsFilterModal from '@/core/bi/Charts/components/ChartSettingsFilterModal.vue'
 import ChartSettingsFieldModal from '@/core/bi/Charts/components/ChartSettingsFieldModal.vue'
 import ChartSettingsFormulaModal from '@/core/bi/Charts/components/ChartSettingsFormulaModal.vue'
+import ChartDisplaySettingsModal from '@/core/bi/Charts/components/ChartDisplaySettingsModal.vue'
 
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
@@ -168,11 +173,30 @@ const currentAllowedTypes = ref(null)
 const originalChart = ref({})
 const originalSelectedFields = ref({})
 
+const DEFAULT_CHART_DISPLAY_OPTIONS = {
+    showTitle: true,
+    titleText: '',
+    showLegend: true,
+    showTooltip: true,
+    sumInTooltips: true,
+    showNavigator: false,
+    navigatorMode: 'all',
+    navigatorLineIds: [],
+    defaultPeriodValue: 1,
+    defaultPeriodUnit: 'day',
+}
+function getDefaultChartDisplayOptions() {
+    return JSON.parse(JSON.stringify(DEFAULT_CHART_DISPLAY_OPTIONS))
+}
+const chartDisplayOptions = ref(getDefaultChartDisplayOptions())
+const originalChartDisplayOptions = ref(getDefaultChartDisplayOptions())
+
 const router = useRouter()
 const route = useRoute()
 const chartId = computed(() => route.params.id)
 const loading = ref(false)
 const isSaveModalVisible = ref(false)
+const showChartDisplayModal = ref(false)
 const isEditMode = computed(() => !!route.params.id)
 const chartData = ref({})
 const chartName = ref('Новая диаграмма')
@@ -193,6 +217,18 @@ const chartTypeIconComponent = computed(() =>
 const chartTypeIconStyle = computed(() => {
   const color = getChartTypeColor(selectedChartType.value)
   return color ? { color } : {}
+})
+
+const navigatorAvailableSeries = computed(() => {
+  const type = selectedChartType.value
+  if (!type || !['line', 'area', 'combined', 'bar'].includes(type)) return []
+  const yFields = selectedFields.value.y ?? []
+  const y2Fields = selectedFields.value.y2 ?? []
+  const all = [...yFields, ...y2Fields]
+  return all.map((f) => ({
+    id: f.id ?? f.name,
+    label: f.displayName ?? f.name ?? f.label ?? String(f.id ?? f.name),
+  }))
 })
 
 const selectedFields = ref({})
@@ -332,7 +368,7 @@ async function onChartNameSaved({ name }) {
         chart_type: selectedChartType.value,
         engine: 'echarts',
         params: cloneParams(selectedFields.value),
-        options: {}
+        options: { display: { ...chartDisplayOptions.value } }
     }
     try {
         if (isEditMode.value) {
@@ -340,6 +376,7 @@ async function onChartNameSaved({ name }) {
             chartData.value = updated
             originalChart.value = buildOriginalChart(updated)
             originalSelectedFields.value = cloneParams(selectedFields.value)
+            originalChartDisplayOptions.value = JSON.parse(JSON.stringify(chartDisplayOptions.value))
             toast.success('Изменения сохранены')
         } else {
             const { data } = await chartService.createChart(payload)
@@ -373,6 +410,25 @@ async function fetchChartIfEditing() {
         skipNextSelectedFieldsWatch.value = true
         selectedFields.value = cloneParams(data.params)
         originalSelectedFields.value = cloneParams(selectedFields.value)
+
+        const loadedDisplay = data.options?.display
+        if (loadedDisplay && typeof loadedDisplay === 'object') {
+            chartDisplayOptions.value = getDefaultChartDisplayOptions()
+            Object.assign(chartDisplayOptions.value, {
+                showTitle: loadedDisplay.showTitle !== false,
+                titleText: loadedDisplay.titleText ?? '',
+                showLegend: loadedDisplay.showLegend !== false,
+                showTooltip: loadedDisplay.showTooltip !== false,
+                sumInTooltips: loadedDisplay.sumInTooltips !== false,
+                showNavigator: loadedDisplay.showNavigator === true,
+                navigatorMode: loadedDisplay.navigatorMode ?? 'all',
+                navigatorLineIds: Array.isArray(loadedDisplay.navigatorLineIds) ? [...loadedDisplay.navigatorLineIds] : [],
+                defaultPeriodValue: Math.max(1, Number(loadedDisplay.defaultPeriodValue) || 1),
+                defaultPeriodUnit: loadedDisplay.defaultPeriodUnit ?? 'day',
+            })
+            originalChartDisplayOptions.value = getDefaultChartDisplayOptions()
+            Object.assign(originalChartDisplayOptions.value, chartDisplayOptions.value)
+        }
 
         await loadDatasetColumnsAndRows(dsObj?.id, selectedFields.value)
         originalChart.value = buildOriginalChart(data)
@@ -418,6 +474,11 @@ function clampFloatingPosition(anchorRect, panelWidth, panelHeight) {
 
 function toggleFullScreen() {
     isFullScreen.value = !isFullScreen.value
+}
+
+function onChartDisplayOptionsApply(options) {
+    chartDisplayOptions.value = { ...options }
+    showChartDisplayModal.value = false
 }
 
 function openFieldsModal(event, settingKey) {
@@ -577,7 +638,8 @@ const isChartDirty = computed(() => {
     return chartName.value !== (orig.name ?? '') ||
         (selectedDataset.value?.id ?? null) !== (orig.datasetId ?? null) ||
         selectedChartType.value !== (orig.chart_type ?? '') ||
-        JSON.stringify(selectedFields.value) !== JSON.stringify(originalSelectedFields.value)
+        JSON.stringify(selectedFields.value) !== JSON.stringify(originalSelectedFields.value) ||
+        JSON.stringify(chartDisplayOptions.value) !== JSON.stringify(originalChartDisplayOptions.value)
 })
 
 onMounted(() => {
@@ -667,6 +729,47 @@ onBeforeUnmount(() => {
     flex-direction: column;
     gap: 10px;
     align-items: stretch;
+}
+
+.chart-page__diagram-header {
+    align-items: center;
+    line-height: 1;
+
+    h5 {
+        line-height: inherit;
+    }
+}
+
+.chart-page__settings-btn {
+    background: none;
+    border: none;
+    padding: 4px 2px 0 2px;
+    height: 20px;
+    min-width: 20px;
+    box-sizing: border-box;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: flex-start;
+    justify-content: center;
+    color: var(--color-primary-text);
+    transition: color 0.3s ease;
+    flex-shrink: 0;
+    line-height: 1;
+
+    &:hover {
+        color: var(--color-accent);
+        .chart-page__settings-icon {
+            transform: rotate(180deg);
+        }
+    }
+}
+
+.chart-page__settings-icon {
+    transition: transform 0.5s ease;
+    transform: rotate(0deg);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .diagramtype {

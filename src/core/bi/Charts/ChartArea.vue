@@ -10,6 +10,7 @@ const props = defineProps({
   chartType: { type: String, default: '' },
   fields: { type: Object, default: () => ({}) },
   settings: { type: Array, default: () => [] },
+  displayOptions: { type: Object, default: () => ({}) },
   dataLoading: { type: Boolean, default: false }
 })
 
@@ -42,7 +43,7 @@ watch([() => props.dataset, () => props.fields], () => {
 
     <div v-else class="d-flex justify-content-center align-items-center w-100 h-100">
       <ChartPlaceholder v-if="placeholderCode" :code="placeholderCode"/>
-      <ChartRenderer v-if="!placeholderCode" :type="chartType" :fields="fields" :settings="settings" :dataset="datasetFilteredSorted"/>
+      <ChartRenderer v-if="!placeholderCode" :type="chartType" :fields="fields" :settings="settings" :display-options="displayOptions" :dataset="datasetFilteredSorted"/>
     </div>
   </div>
 </template>

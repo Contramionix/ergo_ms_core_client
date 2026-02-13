@@ -63,7 +63,7 @@ $form-check-input-focus-box-shadow: none;
 .form-switch .form-check-input,
 .form-switch .form-check-input:focus-within {
   cursor: pointer;
-  box-shadow: 0 0 0.25rem 0 rgba(0, 0, 0, 0.16) inset;
+  box-shadow: none;
   border: none;
 }
 .form-switch .form-check-input:not(:checked):focus-within {
@@ -72,7 +72,7 @@ $form-check-input-focus-box-shadow: none;
 .form-check .form-check-input:checked,
 .form-switch .form-check-input:checked {
   cursor: pointer;
-  box-shadow: 0 0.125rem 0.25rem 0 rgba($primary, 0.4);
+  box-shadow: none;
   border: none;
 }
 
