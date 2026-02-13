@@ -45,11 +45,27 @@ const option = computed(() =>
     compact: props.compact
   })
 )
+
+const displayOptionsKey = computed(() => {
+  const o = props.displayOptions || {}
+  return [
+    o.showTitle,
+    o.titleText,
+    o.showLegend,
+    o.showTooltip,
+    o.sumInTooltips,
+    o.showNavigator,
+    o.navigatorMode,
+    (o.navigatorLineIds && o.navigatorLineIds.join(',')) || '',
+    o.defaultPeriodValue,
+    o.defaultPeriodUnit
+  ].join('|')
+})
 </script>
 
 <template>
   <div class="echarts-wrapper" :class="{ compact: compact }">
-    <VChart class="echarts-chart" :option="option" :autoresize="true" />
+    <VChart :key="displayOptionsKey" class="echarts-chart" :option="option" :autoresize="true" />
   </div>
 </template>
 
