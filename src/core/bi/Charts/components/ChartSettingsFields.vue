@@ -14,7 +14,16 @@
             </div>
             <div v-for="f in selectedFields[setting.key]" :key="f.id" class="selected-field" :class="{ 'selected-field--clickable': setting.key === 'filters' }">
                 <div class="selected-field-content" style="display: flex; gap: 8px; justify-content: center; align-items: center;" @click="setting.key === 'filters' ? emit('editFilter', f) : null">
-                    <span class="field-icon" :class="f.source">
+                    <button
+                        v-if="!isVirtualMeasureField(f)"
+                        type="button"
+                        class="field-icon-btn"
+                        :class="f.source"
+                        @click.stop="emit('openFieldSettings', { field: f, settingKey: setting.key })"
+                    >
+                        <component :is="getFieldIcon(f)" size="16" />
+                    </button>
+                    <span v-else class="field-icon" :class="f.source">
                         <component :is="getFieldIcon(f)" size="16" />
                     </span>
                     <span :class="{ 'field-name--virtual': isVirtualMeasureField(f) }">{{ getFieldDisplayName(f) }}</span>{{ filterFieldSuffix(f, setting.key) }}
@@ -42,7 +51,7 @@ defineProps({
     },
 })
 
-const emit = defineEmits(['addFieldClick', 'removeField', 'editFilter'])
+const emit = defineEmits(['addFieldClick', 'removeField', 'editFilter', 'openFieldSettings'])
 
 const typeIcon = {
     string: Type,
@@ -64,7 +73,7 @@ function getFieldIcon(f) {
 
 function getFieldDisplayName(f) {
     if (isVirtualMeasureField(f)) return f.displayName ?? f.label ?? f.name
-    return f.name
+    return f.displayName ?? f.name
 }
 
 function onAddFieldClick(event, settingKey) {
@@ -159,12 +168,26 @@ function filterFieldSuffix(f, settingKey) {
         color: var(--color-accent);
     }
 
-    .field-icon {
+    .field-icon,
+    .field-icon-btn {
         color: var(--color-accent);
         height: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+
+    .field-icon-btn {
+        padding: 0;
+        margin: 0;
+        border: none;
+        background: none;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    .field-icon-btn:hover {
+        background: var(--color-hover-background);
     }
 
     .field-name--virtual {

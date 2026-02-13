@@ -61,7 +61,7 @@
                 </div>
             </div>
             <div class="fields sectors body-settings border-elements elements-color" v-if="!isFullScreen && selectedChartType">
-                <ChartSettingsFields :setting-types="settingTypes" :selected-fields="selectedFields" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit"/>
+                <ChartSettingsFields :setting-types="settingTypes" :selected-fields="selectedFields" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit" @open-field-settings="openFieldSettingsModal"/>
             </div>
             <div class="indicators sectors border-elements elements-color">
                 <h5 class="m-0 me-2">Показатели</h5>
@@ -88,6 +88,7 @@
     </transition>
     <ChartNameDialog v-if="isSaveModalVisible" :visible="isSaveModalVisible" v-model="chartName" @update:visible="isSaveModalVisible = $event" @saved="onChartNameSaved" />
     <ChartSettingsFilterModal :visible="isFilterModalVisible" :field="filterModalField" :dataset-id="selectedDataset?.id ?? null" :initial-filter="filterModalInitialFilter" @update:visible="isFilterModalVisible = $event; if (!$event) filterModalField = null" @apply="onFilterModalApply"/>
+    <ChartSettingsFieldModal :visible="fieldSettingsModalVisible" :field="fieldSettingsModalField" @update:visible="onFieldSettingsModalVisibleChange" @apply="onFieldSettingsApply"/>
 </template>
 
 <script setup>
@@ -107,6 +108,7 @@ import ChartArea from '@/core/bi/Charts/ChartArea.vue'
 import ChartNameDialog from '@/core/bi/Charts/components/ChartNameDialog.vue'
 import ChartSettingsFields from '@/core/bi/Charts/components/ChartSettingsFields.vue'
 import ChartSettingsFilterModal from '@/core/bi/Charts/components/ChartSettingsFilterModal.vue'
+import ChartSettingsFieldModal from '@/core/bi/Charts/components/ChartSettingsFieldModal.vue'
 
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
@@ -128,6 +130,10 @@ const fieldsModalRef = ref(null)
 
 const isFilterModalVisible = ref(false)
 const filterModalField = ref(null)
+
+const fieldSettingsModalVisible = ref(false)
+const fieldSettingsModalField = ref(null)
+const fieldSettingsModalSettingKey = ref(null)
 
 const filterModalInitialFilter = computed(() =>
   filterModalField.value?.filter ?? null
@@ -447,6 +453,34 @@ function handleFieldSelect(field) {
 function openFilterModalForEdit(field) {
     filterModalField.value = field
     isFilterModalVisible.value = true
+}
+
+function openFieldSettingsModal({ field, settingKey }) {
+    fieldSettingsModalField.value = field
+    fieldSettingsModalSettingKey.value = settingKey
+    fieldSettingsModalVisible.value = true
+}
+
+function onFieldSettingsModalVisibleChange(visible) {
+    fieldSettingsModalVisible.value = visible
+    if (!visible) {
+        fieldSettingsModalField.value = null
+        fieldSettingsModalSettingKey.value = null
+    }
+}
+
+function onFieldSettingsApply(payload) {
+    const key = fieldSettingsModalSettingKey.value
+    const field = fieldSettingsModalField.value
+    if (!key || !field || !Array.isArray(selectedFields.value[key])) return
+    const arr = selectedFields.value[key]
+    const idx = arr.findIndex((f) => (f.id ?? f.name) === (field.id ?? field.name))
+    if (idx >= 0) {
+        selectedFields.value[key] = arr.map((f, i) => (i === idx ? { ...f, ...payload } : f))
+    }
+    fieldSettingsModalVisible.value = false
+    fieldSettingsModalField.value = null
+    fieldSettingsModalSettingKey.value = null
 }
 
 function onFilterModalApply({ field, filter }) {
