@@ -283,6 +283,7 @@ watch(() => props.modelValue, async () => {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding: 0;
 }
 
 .select-box-search {
@@ -306,7 +307,7 @@ watch(() => props.modelValue, async () => {
 .dropdown-menu-list {
     list-style: none;
     margin: 0;
-    padding: 0.5rem 0;
+    padding: 0;
     max-height: 260px;
     overflow-y: auto;
     overflow-x: hidden;
