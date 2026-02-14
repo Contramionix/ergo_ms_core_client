@@ -9,36 +9,10 @@ export function useMenuWidth() {
   const maxMenuWidth = Infinity
   let widthUpdateTimeout = null
 
-  // Функция для обрезки текста
-  const truncateText = (text, maxLength = 30) => {
-    if (!text || text.length <= maxLength) return text
-    return text.substring(0, maxLength) + '...'
-  }
-
-  // Функция для получения отображаемого имени пользователя
-  const getDisplayUserName = (userStore) => {
-    if (!userStore.user) return 'Гость'
-    if (userStore.displayName === 'Гость') return 'Гость'
-
-    const firstName = userStore.user.first_name?.trim()
-    const lastName = userStore.user.last_name?.trim()
-
-    const cleanFirstName = firstName === ' ' ? '' : firstName
-    const cleanLastName = lastName === ' ' ? '' : lastName
-
-    let fullName = ''
-
-    if (cleanFirstName && cleanLastName) {
-      fullName = `${cleanFirstName} ${cleanLastName}`
-    } else if (cleanFirstName) {
-      fullName = cleanFirstName
-    } else if (cleanLastName) {
-      fullName = cleanLastName
-    } else {
-      return 'Гость'
-    }
-
-    return truncateText(fullName, 30)
+  // Фиксированная ширина блока имени в тулбаре (единый размер меню с активной/неактивной вкладкой)
+  const getMinNameWidthForToolbar = (context) => {
+    context.font = '14px system-ui, -apple-system, sans-serif'
+    return context.measureText('Имя Фамилия').width
   }
 
   // Функция для расчета ширины тулбара
@@ -50,18 +24,13 @@ export function useMenuWidth() {
     try {
       const canvas = document.createElement('canvas')
       const context = canvas.getContext('2d')
-      context.font = '14px system-ui, -apple-system, sans-serif'
 
       let toolbarWidth = 40 // Аватар
 
       if (userStore.user) {
-        const displayName = getDisplayUserName(userStore)
-        const nameWidth = context.measureText(displayName).width
-        
+        const nameWidth = getMinNameWidthForToolbar(context)
         context.font = '12px system-ui, -apple-system, sans-serif'
         const statusWidth = context.measureText('В сети').width
-        context.font = '14px system-ui, -apple-system, sans-serif'
-
         toolbarWidth += Math.max(nameWidth, statusWidth) + 15
       } else {
         toolbarWidth += 60
@@ -190,4 +159,3 @@ export function useMenuWidth() {
     setupWidthTracking
   }
 }
-
