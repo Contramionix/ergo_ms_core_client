@@ -28,6 +28,11 @@
           :style="{ top: `${line}px` }"
         />
       </div>
+      <div v-if="showYellowPlaceholder && yellowPlaceholderStyle" class="yellow-placeholder" :style="yellowPlaceholderStyle">
+        <div class="placeholder-content">
+          <span>Разместить здесь</span>
+        </div>
+      </div>
       <DashboardGridItem
         v-for="item in items"
         :key="item.id"
@@ -60,12 +65,6 @@
     <Teleport to="body">
       <div v-if="showGrayPlaceholder && grayPlaceholderStyle" class="gray-placeholder" :style="grayPlaceholderStyle"></div>
     </Teleport>
-    
-    <div v-if="showYellowPlaceholder && yellowPlaceholderStyle" class="yellow-placeholder" :style="yellowPlaceholderStyle">
-      <div class="placeholder-content">
-        <span>Разместить здесь</span>
-      </div>
-    </div>
 
     <Teleport to="body">
       <div
@@ -178,6 +177,8 @@ const gridContentHeight = ref(0)
 const dragStartSnapshot = ref(null)
 const itemRefs = ref({})
 const previewContainerRef = ref(null)
+let placementRafId = null
+let pendingPlacement = null
 
 const setItemRef = (id, el) => {
   if (el) itemRefs.value[id] = el
@@ -905,40 +906,12 @@ const applyShiftDuringDrag = (placeholderY, placeholderHeight, mode, excludeItem
 
 const handleExistingItemDrag = (event) => {
   if (!draggedItem.value || !gridContainer.value || !dragStartSnapshot.value) return
-  draggedElementCursorPosition.value = {
-    x: event.clientX,
-    y: event.clientY
-  }
-  restoreSnapshot()
-  const rect = gridContainer.value.getBoundingClientRect()
-  const mouseX = event.clientX - rect.left - GRID_CONTAINER_PADDING
-  const mouseY = event.clientY - rect.top - GRID_CONTAINER_PADDING
-
-  let draggedSize = getActualItemSize(draggedItem.value)
-  const domEl = getItemElement(draggedItem.value.id)
-  if (domEl) {
-    const dr = domEl.getBoundingClientRect()
-    if (dr.width > 0 && dr.height > 0) {
-      draggedSize = { width: Math.round(dr.width), height: Math.round(dr.height) }
-    }
-  }
-  const placement = computePlacementForDrag(mouseX, mouseY, draggedItem.value.type, draggedItem.value.id, draggedSize)
-  const mode = placement.insertionMode ?? 'sameRow'
-  if (mode === 'above' || mode === 'below') {
-    applyShiftDuringDrag(placement.y, placement.height || draggedSize.height, mode, draggedItem.value.id)
-  }
-
-  yellowPlaceholderPosition.value = {
-    x: placement.x,
-    y: placement.y,
-    width: placement.width,
-    height: placement.height
-  }
-  placeholderInsertionMode.value = mode
-  showYellowPlaceholder.value = true
+  draggedElementCursorPosition.value = { x: event.clientX, y: event.clientY }
+  schedulePlacementUpdate(event.clientX, event.clientY, true)
 }
 
 const stopDrag = (event) => {
+  cancelPlacementRaf()
   const isDropInsideGrid = event && gridContainer.value && gridContainer.value.contains(event.target)
   if (draggedItem.value && isDraggingExisting.value) {
     if (isDropInsideGrid && showYellowPlaceholder.value && yellowPlaceholderPosition.value) {
@@ -1135,28 +1108,75 @@ const handleDragEnter = (event) => {
 }
 }
 
+const applyPlacementUpdate = (clientX, clientY, isExistingDrag) => {
+  if (isExistingDrag) {
+    if (!draggedItem.value || !gridContainer.value || !dragStartSnapshot.value) return
+    restoreSnapshot()
+    const rect = gridContainer.value.getBoundingClientRect()
+    const mouseX = clientX - rect.left - GRID_CONTAINER_PADDING
+    const mouseY = clientY - rect.top - GRID_CONTAINER_PADDING
+    let draggedSize = getActualItemSize(draggedItem.value)
+    const domEl = getItemElement(draggedItem.value.id)
+    if (domEl) {
+      const dr = domEl.getBoundingClientRect()
+      if (dr.width > 0 && dr.height > 0) {
+        draggedSize = { width: Math.round(dr.width), height: Math.round(dr.height) }
+      }
+    }
+    const placement = computePlacementForDrag(mouseX, mouseY, draggedItem.value.type, draggedItem.value.id, draggedSize)
+    const mode = placement.insertionMode ?? 'sameRow'
+    if (mode === 'above' || mode === 'below') {
+      applyShiftDuringDrag(placement.y, placement.height || draggedSize.height, mode, draggedItem.value.id)
+    }
+    yellowPlaceholderPosition.value = {
+      x: placement.x,
+      y: placement.y,
+      width: placement.width,
+      height: placement.height
+    }
+    placeholderInsertionMode.value = mode
+    showYellowPlaceholder.value = true
+  } else {
+    if (!gridContainer.value || !currentDraggedType.value || isDraggingExisting.value) return
+    const size = getEffectiveElementSize(currentDraggedType.value)
+    if (!size) return
+    grayPlaceholderPosition.value = { x: clientX, y: clientY }
+    const position = calculatePotentialPlacement(clientX, clientY, currentDraggedType.value)
+    yellowPlaceholderPosition.value = {
+      x: position.x,
+      y: position.y,
+      width: size.width,
+      height: size.height
+    }
+    placeholderIsNewRowAtTop.value = position.isNewRowAtTop ?? false
+    placeholderInsertionMode.value = position.insertionMode ?? 'sameRow'
+  }
+}
+
+const schedulePlacementUpdate = (clientX, clientY, isExistingDrag) => {
+  pendingPlacement = { clientX, clientY, isExistingDrag }
+  if (placementRafId !== null) return
+  placementRafId = requestAnimationFrame(() => {
+    if (pendingPlacement) {
+      applyPlacementUpdate(pendingPlacement.clientX, pendingPlacement.clientY, pendingPlacement.isExistingDrag)
+      pendingPlacement = null
+    }
+    placementRafId = null
+  })
+}
+
 const updatePlacementFromDrag = (clientX, clientY) => {
   if (!gridContainer.value || !currentDraggedType.value || isDraggingExisting.value) return
   const size = getEffectiveElementSize(currentDraggedType.value)
   if (!size) return
-
-  grayPlaceholderPosition.value = { x: clientX, y: clientY }
-  const position = calculatePotentialPlacement(clientX, clientY, currentDraggedType.value)
-  yellowPlaceholderPosition.value = {
-    x: position.x,
-    y: position.y,
-    width: size.width,
-    height: size.height
-  }
-  placeholderIsNewRowAtTop.value = position.isNewRowAtTop ?? false
-  placeholderInsertionMode.value = position.insertionMode ?? 'sameRow'
+  schedulePlacementUpdate(clientX, clientY, false)
 }
 
 const onDocumentDragOver = (event) => {
   if (props.viewMode || !currentDraggedType.value || isDraggingExisting.value) return
   event.preventDefault()
   if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
-  updatePlacementFromDrag(event.clientX, event.clientY)
+  schedulePlacementUpdate(event.clientX, event.clientY, false)
 }
 
 const onDocumentMouseMove = (event) => {
@@ -1165,7 +1185,7 @@ const onDocumentMouseMove = (event) => {
   const rect = gridContainer.value.getBoundingClientRect()
   if (event.clientX >= rect.left && event.clientX <= rect.right &&
       event.clientY >= rect.top && event.clientY <= rect.bottom) {
-    updatePlacementFromDrag(event.clientX, event.clientY)
+    schedulePlacementUpdate(event.clientX, event.clientY, false)
   }
 }
 
@@ -1174,7 +1194,7 @@ const handleDragOver = (event) => {
   event.preventDefault()
   event.dataTransfer.dropEffect = 'copy'
   if (currentDraggedType.value && !isDraggingExisting.value) {
-    updatePlacementFromDrag(event.clientX, event.clientY)
+    schedulePlacementUpdate(event.clientX, event.clientY, false)
   }
 }
 
@@ -1279,7 +1299,16 @@ const handleDrop = (event) => {
   resetDragState()
 }
 
+const cancelPlacementRaf = () => {
+  if (placementRafId !== null) {
+    cancelAnimationFrame(placementRafId)
+    placementRafId = null
+  }
+  pendingPlacement = null
+}
+
 const resetDragState = () => {
+  cancelPlacementRaf()
   if (documentDragOverListenerAttached.value) {
     document.removeEventListener('dragover', onDocumentDragOver, false)
     documentDragOverListenerAttached.value = false
@@ -1487,27 +1516,12 @@ const unobserveRenderedHeight = (itemId) => {
 
 const handleMouseMove = (event) => {
   if (showGrayPlaceholder.value && currentDraggedType.value && !isDraggingExisting.value) {
-    grayPlaceholderPosition.value = {
-      x: event.clientX,
-      y: event.clientY
-    }
-    
+    grayPlaceholderPosition.value = { x: event.clientX, y: event.clientY }
     if (gridContainer.value) {
       const rect = gridContainer.value.getBoundingClientRect()
-      if (event.clientX >= rect.left && event.clientX <= rect.right && 
+      if (event.clientX >= rect.left && event.clientX <= rect.right &&
           event.clientY >= rect.top && event.clientY <= rect.bottom) {
-        const position = calculatePotentialPlacement(event.clientX, event.clientY, currentDraggedType.value)
-        const size = getEffectiveElementSize(currentDraggedType.value)
-        if (size) {
-          yellowPlaceholderPosition.value = {
-            x: position.x,
-            y: position.y,
-            width: size.width,
-            height: size.height
-          }
-          placeholderIsNewRowAtTop.value = position.isNewRowAtTop ?? false
-          placeholderInsertionMode.value = position.insertionMode ?? 'sameRow'
-        }
+        schedulePlacementUpdate(event.clientX, event.clientY, false)
       }
     }
   }
@@ -1516,6 +1530,7 @@ const handleMouseMove = (event) => {
 const handleDragLeave = (event) => {
   if (props.viewMode) return
   if (!event.currentTarget.contains(event.relatedTarget)) {
+    cancelPlacementRaf()
     showGrayPlaceholder.value = false
     showYellowPlaceholder.value = false
     grayPlaceholderPosition.value = { x: 0, y: 0 }
@@ -1640,6 +1655,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  cancelPlacementRaf()
   if (documentDragOverListenerAttached.value) {
     document.removeEventListener('dragover', onDocumentDragOver, false)
     documentDragOverListenerAttached.value = false
