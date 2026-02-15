@@ -421,11 +421,36 @@ function buildBarOption(fields, settings, dataset, filters, compact) {
   }
 }
 
+function formatPieLabelValue(value, percent, field) {
+  const format = field?.format ?? 'number'
+  const decimalPlaces = Math.max(0, Math.min(20, Number(field?.decimalPlaces) ?? 0))
+  const digitGrouping = field?.digitGrouping ?? 'with_separator'
+  const prefix = field?.prefix ?? ''
+  const postfix = field?.postfix ?? ''
+  let str
+  if (format === 'percent') {
+    const p = Number(percent)
+    str = Number.isFinite(p) ? (digitGrouping === 'with_separator' ? p.toLocaleString('ru-RU', { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces }) : p.toFixed(decimalPlaces)) : ''
+    str = str + '%'
+  } else {
+    const n = Number(value)
+    if (!Number.isFinite(n)) {
+      str = ''
+    } else if (digitGrouping === 'with_separator') {
+      str = n.toLocaleString('ru-RU', { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces })
+    } else {
+      str = decimalPlaces > 0 ? n.toFixed(decimalPlaces) : String(Math.round(n))
+    }
+  }
+  return (prefix + str + postfix).trim() || str
+}
+
 function buildPieOption(fields, dataset, isDoughnut, filters, compact) {
   const categoryFields = findField(fields, ['category', 'categories', 'x', 'labels'], true)
   const valueFields = findField(fields, ['indicators', 'values', 'y'], true)
   const colorFields = findField(fields, ['color', 'colors'], true)
   const sortFields = fields?.sort ?? []
+  const firstValueField = Array.isArray(valueFields) && valueFields.length ? valueFields[0] : null
 
   const { labels, datasets } = getPieData(
     dataset,
@@ -447,17 +472,31 @@ function buildPieOption(fields, dataset, isDoughnut, filters, compact) {
       : { color: firstDataset.backgroundColor }
   }))
 
+  const seriesEntry = {
+    name: firstDataset.label,
+    type: 'pie',
+    radius: isDoughnut ? (compact ? ['35%', '72%'] : ['40%', '70%']) : (compact ? '68%' : '60%'),
+    center: compact ? ['50%', '50%'] : ['50%', '45%'],
+    data: pieData,
+    emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' } }
+  }
+
+  if (firstValueField && firstValueField.showCaption !== false) {
+    const valueField = firstValueField
+    seriesEntry.label = {
+      show: true,
+      formatter: (params) => {
+        const name = params.name ?? ''
+        const valueStr = formatPieLabelValue(params.value, params.percent, valueField)
+        return valueStr ? `${name}\n${valueStr}` : name
+      }
+    }
+  }
+
   return {
     tooltip: { trigger: 'item', appendToBody: true },
     legend: buildLegend(true, compact),
-    series: [{
-      name: firstDataset.label,
-      type: 'pie',
-      radius: isDoughnut ? (compact ? ['35%', '72%'] : ['40%', '70%']) : (compact ? '68%' : '60%'),
-      center: compact ? ['50%', '50%'] : ['50%', '45%'],
-      data: pieData,
-      emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' } }
-    }]
+    series: [seriesEntry]
   }
 }
 
