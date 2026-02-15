@@ -211,7 +211,8 @@ function loadFavorites() {
   const raw = localStorage.getItem(favoritesStorageKey.value)
   if (raw) {
     try {
-      favorites.value = new Set(JSON.parse(raw))
+      const parsed = JSON.parse(raw)
+      favorites.value = new Set(Array.isArray(parsed) ? parsed.map((x) => String(x)) : [])
     } catch {
       favorites.value = new Set()
     }
@@ -223,16 +224,17 @@ function saveFavorites() {
 }
 
 function toggleFavorite(id) {
-  if (favorites.value.has(id)) {
-    favorites.value.delete(id)
+  const key = String(id)
+  if (favorites.value.has(key)) {
+    favorites.value.delete(key)
   } else {
-    favorites.value.add(id)
+    favorites.value.add(key)
   }
   saveFavorites()
 }
 
 function isFavorite(id) {
-  return favorites.value.has(id)
+  return favorites.value.has(String(id))
 }
 
 onMounted(loadFavorites)

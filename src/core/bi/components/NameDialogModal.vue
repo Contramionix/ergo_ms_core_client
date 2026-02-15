@@ -2,16 +2,15 @@
   <div v-show="visible" class="modal-overlay">
     <div class="modal-window">
       <div class="modal-header">
-        <h5 class="modal-title">Название графика</h5>
+        <h5 class="modal-title">{{ title }}</h5>
         <button class="close-btn" @click="cancel" type="button" aria-label="Закрыть"><X size="20" /></button>
       </div>
 
-      <input v-model="localName" class="form-control my-3" placeholder="Введите название графика" @keyup.enter="submit"/>
+      <input v-model="localName" class="form-control my-3" :placeholder="placeholder" @keyup.enter="submit"/>
       <div class="modal-footer">
         <button class="btn btn-secondary" @click="cancel">Отмена</button>
-        <button class="btn btn-primary" @click="submit" :disabled="!localName">Сохранить</button>
+        <button class="btn btn-primary" @click="submit" :disabled="!localName?.trim()">Сохранить</button>
       </div>
-      <div v-if="error" class="text-danger mt-2">{{ error }}</div>
     </div>
   </div>
 </template>
@@ -21,24 +20,27 @@ import { ref, watch } from 'vue'
 import { X } from 'lucide-vue-next'
 
 const props = defineProps({
-  visible: Boolean,
-  modelValue: String
+  visible: { type: Boolean, default: false },
+  modelValue: { type: String, default: '' },
+  title: { type: String, default: 'Название' },
+  placeholder: { type: String, default: 'Введите название' }
 })
-const emit = defineEmits(['update:visible', 'saved', 'update:modelValue'])
+
+const emit = defineEmits(['update:visible', 'saved'])
 
 const localName = ref(props.modelValue || '')
-const error = ref('')
 
 watch(() => props.modelValue, (newVal) => {
   localName.value = newVal || ''
 })
 
 function submit() {
-  if (!localName.value) return
-  error.value = ''
-  emit('saved', { name: localName.value })
+  const name = localName.value?.trim()
+  if (!name) return
+  emit('saved', { name })
   emit('update:visible', false)
 }
+
 function cancel() {
   emit('update:visible', false)
 }
