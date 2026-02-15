@@ -28,6 +28,10 @@
                 <div class="selected-field-actions">
                     <button v-if="!isVirtualMeasureField(f)" type="button" class="action-btn formula-btn" title="Формула" @click.stop="emit('openFormula', { field: f, settingKey: setting.key })"><SquareFunction size="16" /></button>
                     <button class="remove-btn" @click.stop="emit('removeField', f, setting.key)" title="Удалить"><X size="16" /></button>
+                    <button v-if="setting.key === 'sort'" type="button" class="action-btn settings-btn sort-direction-btn" :title="sortDesc ? 'По убыванию' : 'По возрастанию'" @click.stop="emit('toggleSortDirection')">
+                        <ArrowUpNarrowWide v-if="sortDesc" size="16" class="settings-btn-icon" />
+                        <ArrowDownWideNarrow v-else size="16" class="settings-btn-icon" />
+                    </button>
                 </div>
             </div>
         </div>
@@ -35,7 +39,7 @@
 </template>
 
 <script setup>
-import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, Plus, X, BarChart2, SquareFunction, Settings } from 'lucide-vue-next'
+import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, Plus, X, BarChart2, SquareFunction, Settings, ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-vue-next'
 import { isVirtualMeasureField } from '../js/measureVirtualFields.js'
 
 const props = defineProps({
@@ -55,9 +59,13 @@ const props = defineProps({
         type: String,
         default: '',
     },
+    sortDesc: {
+        type: Boolean,
+        default: false,
+    },
 })
 
-const emit = defineEmits(['addFieldClick', 'removeField', 'editFilter', 'openFieldSettings', 'openFormula', 'openSectionSettings'])
+const emit = defineEmits(['addFieldClick', 'removeField', 'editFilter', 'openFieldSettings', 'openFormula', 'openSectionSettings', 'toggleSortDirection'])
 
 const SECTION_KEYS_WITH_SETTINGS_BY_CHART_TYPE = {
     table: ['columns', 'color'],
@@ -215,6 +223,10 @@ function filterFieldSuffix(f, settingKey) {
             .settings-btn-icon {
                 transform: rotate(90deg);
             }
+        }
+
+        &.sort-direction-btn:hover .settings-btn-icon {
+            transform: rotate(180deg);
         }
     }
 

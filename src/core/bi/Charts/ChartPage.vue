@@ -1,7 +1,7 @@
 <template>
     <div class="page-body">
         <ChartHeader :chart-name="chartName" :chart-type-icon-component="chartTypeIconComponent" :chart-type-icon-style="chartTypeIconStyle" :is-edit-mode="isEditMode" :dataset-rows="datasetRows" :ollama-available="ollamaAvailable" :is-full-screen="isFullScreen" :loading="loading" :chart-required-fields-filled="chartRequiredFieldsFilled" :is-chart-dirty="isChartDirty" @run-chart-analysis="runChartAnalysis" @toggle-full-screen="toggleFullScreen" @save-click="onSaveClick"/>
-        <ChartBodyGrid v-model:selected-dataset-id="selectedDatasetId" v-model:selected-chart-type="selectedChartType" :datasets="datasets" :datasets-loading="datasetsLoading" :selected-dataset="selectedDataset" :setting-types="settingTypes" :selected-fields="selectedFields" :fields-modal-open-for-key="fieldsModalOpenForKey" :indicators="indicators" :dataset-rows="datasetRows" :fields-for-chart="fieldsForChart" :chart-display-options="chartDisplayOptions" :dataset-rows-loading="datasetRowsLoading" :is-full-screen="isFullScreen" @open-display-settings="showChartDisplayModal = true" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit" @open-field-settings="openFieldSettingsModal" @open-formula="openFormulaModal" @open-section-settings="openSectionSettingsModal"/>
+        <ChartBodyGrid v-model:selected-dataset-id="selectedDatasetId" v-model:selected-chart-type="selectedChartType" :datasets="datasets" :datasets-loading="datasetsLoading" :selected-dataset="selectedDataset" :setting-types="settingTypes" :selected-fields="selectedFields" :fields-modal-open-for-key="fieldsModalOpenForKey" :indicators="indicators" :dataset-rows="datasetRows" :fields-for-chart="fieldsForChart" :chart-display-options="chartDisplayOptions" :dataset-rows-loading="datasetRowsLoading" :is-full-screen="isFullScreen" :sort-desc="sortDesc" @open-display-settings="showChartDisplayModal = true" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit" @open-field-settings="openFieldSettingsModal" @open-formula="openFormulaModal" @open-section-settings="openSectionSettingsModal" @toggle-sort-direction="onToggleSortDirection"/>
     </div>
 
     <transition name="fade-slide" appear>
@@ -108,6 +108,7 @@ const DEFAULT_CHART_DISPLAY_OPTIONS = {
     sectionLabels: {},
     sectionColumns: {},
     sectionSizeDots: {},
+    sectionSort: { desc: false },
     tableSize: 'm',
     pagination: true,
     limit: 100,
@@ -296,7 +297,17 @@ function filterParamsForApi(params) {
   return filtered
 }
 
-const fieldsForChart = computed(() => filterParamsForApi(selectedFields.value))
+const sortDesc = computed(() => chartDisplayOptions.value.sectionSort?.desc ?? false)
+
+const fieldsForChart = computed(() => {
+  const params = filterParamsForApi(selectedFields.value)
+  const sortArr = Array.isArray(params.sort) ? params.sort : []
+  const sortMapped = sortArr.map((f) => ({ field: f.name, desc: sortDesc.value }))
+  return {
+    ...params,
+    sort: sortMapped,
+  }
+})
 
 const measuresInChart = computed(() => {
   const f = selectedFields.value
@@ -405,6 +416,7 @@ async function fetchChartIfEditing() {
                 sectionLabels: typeof loadedDisplay.sectionLabels === 'object' && loadedDisplay.sectionLabels ? { ...loadedDisplay.sectionLabels } : {},
                 sectionColumns: typeof loadedDisplay.sectionColumns === 'object' && loadedDisplay.sectionColumns ? { ...loadedDisplay.sectionColumns } : {},
                 sectionSizeDots: typeof loadedDisplay.sectionSizeDots === 'object' && loadedDisplay.sectionSizeDots ? { ...loadedDisplay.sectionSizeDots } : {},
+                sectionSort: typeof loadedDisplay.sectionSort === 'object' && loadedDisplay.sectionSort ? { ...loadedDisplay.sectionSort } : { desc: false },
                 tableSize: loadedDisplay.tableSize ?? 'm',
                 pagination: loadedDisplay.pagination !== false,
                 limit: Math.max(1, Number(loadedDisplay.limit) || 100),
@@ -468,6 +480,15 @@ function toggleFullScreen() {
 function onChartDisplayOptionsApply(options) {
     chartDisplayOptions.value = { ...chartDisplayOptions.value, ...options }
     showChartDisplayModal.value = false
+}
+
+function onToggleSortDirection() {
+  const opts = chartDisplayOptions.value
+  const prev = opts.sectionSort ?? { desc: false }
+  chartDisplayOptions.value = {
+    ...opts,
+    sectionSort: { ...prev, desc: !prev.desc },
+  }
 }
 
 function openSectionSettingsModal({ settingKey, setting }) {

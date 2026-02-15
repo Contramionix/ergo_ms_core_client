@@ -146,7 +146,11 @@ export function getBarData(
   const yFields   = (Array.isArray(yField) ? yField : [yField]).filter(Boolean)
   const filters   = options.filters      ?? []
   const labelFlds = options.labelFields  ?? []
-  const sortOpt   = options.sort         ?? null
+  let sortOpt     = options.sort         ?? null
+  if (Array.isArray(sortOpt) && sortOpt.length > 0) {
+    const first = sortOpt[0]
+    sortOpt = { dir: first.desc ? 'desc' : 'asc', by: first.field }
+  }
   const effectiveColorField = resolveColorField(colorField)
   const colorName = effectiveColorField?.name ?? effectiveColorField ?? null
   if (!dataset?.length || yFields.length === 0) return { labels: [], datasets: [] }

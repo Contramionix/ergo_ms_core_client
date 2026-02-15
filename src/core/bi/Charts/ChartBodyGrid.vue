@@ -40,7 +40,7 @@
       </div>
     </div>
     <div class="fields sectors body-settings border-elements elements-color" v-if="!isFullScreen && selectedChartType">
-      <ChartSettingsFields :setting-types="settingTypes" :selected-fields="selectedFields" :fields-modal-open-for-key="fieldsModalOpenForKey" :chart-type="selectedChartType" @add-field-click="(event, key) => emit('add-field-click', event, key)" @remove-field="(field, type) => emit('remove-field', field, type)" @edit-filter="emit('edit-filter', $event)" @open-field-settings="emit('open-field-settings', $event)" @open-formula="emit('open-formula', $event)" @open-section-settings="emit('open-section-settings', $event)"/>
+      <ChartSettingsFields :setting-types="settingTypes" :selected-fields="selectedFields" :fields-modal-open-for-key="fieldsModalOpenForKey" :chart-type="selectedChartType" :sort-desc="sortDesc" @add-field-click="(event, key) => emit('add-field-click', event, key)" @remove-field="(field, type) => emit('remove-field', field, type)" @edit-filter="emit('edit-filter', $event)" @open-field-settings="emit('open-field-settings', $event)" @open-formula="emit('open-formula', $event)" @open-section-settings="emit('open-section-settings', $event)" @toggle-sort-direction="emit('toggle-sort-direction')"/>
     </div>
     <div class="indicators sectors border-elements elements-color">
       <h5 class="m-0 me-2">Показатели</h5>
@@ -127,9 +127,14 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  sortDesc: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits([
+  'toggle-sort-direction',
   'update:selectedDatasetId',
   'update:selectedChartType',
   'open-display-settings',

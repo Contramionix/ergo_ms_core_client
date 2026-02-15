@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { makeSortComparator } from '@/core/bi/js/sortComparator.js'
 import { getColorForValue } from './ChartSectionSettings/tableColorPresets.js'
 
 const props = defineProps({
@@ -120,7 +121,13 @@ const aggregatedRows = computed(() => {
     }
   }
 
-  return Array.from(bucket.values())
+  let result = Array.from(bucket.values())
+  const sortSpec = props.fields?.sort?.[0]
+  const fieldName = sortSpec ? (sortSpec.field ?? sortSpec.name) : null
+  if (fieldName != null) {
+    result = result.slice().sort(makeSortComparator(fieldName, sortSpec.desc === true))
+  }
+  return result
 })
 
 const totalRows = computed(() => aggregatedRows.value.length)
