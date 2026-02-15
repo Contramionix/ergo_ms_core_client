@@ -60,7 +60,7 @@
                   <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(option?.value) }">
                     <component :is="typeIcon[option?.value] || typeIcon.string" :size="18" />
                   </span>
-                  <span class="text-truncate">{{ label }}</span>
+                  <span class="text-truncate min-w-0">{{ label }}</span>
                 </span>
               </template>
               <template #option="{ value, label }">
@@ -325,40 +325,49 @@ function getFieldSourceLabel(field) {
 
 :deep(.table) {
   table-layout: fixed;
+  width: 100%;
 }
 
 :deep(.table th:first-child),
 :deep(.table td:first-child) {
-  width: 2.5rem;
+  width: 3%;
   min-width: 2.5rem;
-  max-width: 2.5rem;
 }
 
 :deep(.table th:nth-child(2)),
 :deep(.table td:nth-child(2)) {
-  width: 320px;
+  width: 24%;
+  min-width: 120px;
 }
 
 :deep(.table th:nth-child(3)),
 :deep(.table td:nth-child(3)) {
-  width: 250px;
+  width: 20%;
+  min-width: 100px;
+}
+
+:deep(.table th:nth-child(4)),
+:deep(.table td:nth-child(4)) {
+  width: 14%;
+  min-width: 140px;
 }
 
 :deep(.table th:nth-child(5)),
 :deep(.table td:nth-child(5)) {
-  width: 150px;
+  width: 14%;
+  min-width: 100px;
 }
 
 :deep(.table th:nth-child(6)),
 :deep(.table td:nth-child(6)) {
-  min-width: 170px;
+  width: 19%;
+  min-width: 120px;
 }
 
 :deep(.table th:nth-child(7)),
 :deep(.table td:nth-child(7)) {
-  width: 3.5rem;
+  width: 6%;
   min-width: 3.5rem;
-  max-width: 3.5rem;
 }
 
 :deep(.table tbody tr) {
@@ -411,7 +420,7 @@ function getFieldSourceLabel(field) {
 
 .type-select-cell {
   max-width: 100%;
-  min-width: 0;
+  min-width: 140px;
 }
 
 .type-select-cell :deep(.select-box) {
@@ -641,6 +650,7 @@ function getFieldSourceLabel(field) {
 .table-container {
   flex: 1 1 auto;
   min-height: 300px;
+  min-width: 720px;
   display: flex;
   flex-direction: column;
   position: relative;

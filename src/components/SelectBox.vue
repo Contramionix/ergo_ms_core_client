@@ -3,7 +3,7 @@
         <label v-if="label" class="form-label mb-1">{{ label }}</label>
         <div class="dropdown" :class="{ 'is-open': isOpen }">
             <button class="btn btn-light w-100 d-flex align-items-center justify-content-between select-trigger" type="button" :disabled="disabled" @click="toggle" @blur="$emit('blur')">
-                <span class="d-flex align-items-center flex-grow-1 me-2">
+                <span class="select-trigger-slot d-flex align-items-center flex-grow-1 me-2">
                     <slot name="selected" :option="selectedOption" :label="currentLabel">
                         <span ref="valueTextEl" class="value-text" :style="{ fontSize: currentFontSize }">{{ currentLabel }}</span>
                     </slot>
@@ -106,8 +106,9 @@ function updateMenuPosition() {
     const anchorRect = anchorEl ? anchorEl.getBoundingClientRect() : null
     const rect = (anchorRect && anchorRect.width > 0) ? anchorRect : triggerRect
     const viewportPadding = 8
+    const minDropdownWidth = 120
     const maxWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
-    const width = Math.min(rect.width, maxWidth)
+    const width = Math.max(minDropdownWidth, Math.min(rect.width, maxWidth))
     const left = Math.min(
         rect.left,
         window.innerWidth - viewportPadding - width
@@ -282,6 +283,10 @@ watch(() => props.modelValue, async () => {
     text-align: left;
     display: inline-flex;
 }
+.select-trigger-slot {
+    min-width: 0;
+    overflow: hidden;
+}
 .select-trigger .value-text {
     display: block;
     white-space: nowrap;
@@ -348,7 +353,8 @@ watch(() => props.modelValue, async () => {
 .dropdown-item {
     color: var(--color-primary-text);
     background-color: transparent;
-    padding: 0.5rem 1rem;
+    font-size: clamp(0.75rem, 2vmin, 1rem);
+    padding: clamp(0.35rem, 1vmin, 0.5rem) clamp(0.75rem, 2vmin, 1rem);
     display: block;
     width: 100%;
     clear: both;
@@ -358,6 +364,13 @@ watch(() => props.modelValue, async () => {
     transition: all 0.15s ease-in-out;
     border: 0;
     cursor: pointer;
+}
+
+.dropdown-item :deep(svg) {
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+    vertical-align: middle;
 }
 
 .dropdown-item:hover {
