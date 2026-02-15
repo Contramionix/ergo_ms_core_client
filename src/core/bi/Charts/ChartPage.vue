@@ -876,7 +876,7 @@ onBeforeUnmount(() => {
 .page-body {
     display: flex;
     flex-direction: column;
-    gap: 30px;
+    gap: 20px;
     margin-bottom: 20px;
     width: 100%;
     max-width: 100%;
