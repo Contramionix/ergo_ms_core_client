@@ -593,10 +593,16 @@ function updateFieldInArray(key, field, updater) {
     return false
 }
 
+function updateFieldInAllCategories(field, updater) {
+    if (!field) return
+    for (const key of Object.keys(selectedFields.value)) {
+        updateFieldInArray(key, field, updater)
+    }
+}
+
 function onFieldSettingsApply(payload) {
-    const key = fieldSettingsModalSettingKey.value
     const field = fieldSettingsModalField.value
-    updateFieldInArray(key, field, (f) => ({ ...f, ...payload }))
+    updateFieldInAllCategories(field, (f) => ({ ...f, ...payload }))
     closeFieldSettingsModal()
 }
 
@@ -619,8 +625,7 @@ function closeFormulaModal() {
 }
 
 function onFormulaApply({ field, expression }) {
-    const key = formulaModalSettingKey.value
-    updateFieldInArray(key, field, (f) => ({ ...f, expression }))
+    updateFieldInAllCategories(field, (f) => ({ ...f, expression }))
     formulaModalVisible.value = false
     closeFormulaModal()
 }
