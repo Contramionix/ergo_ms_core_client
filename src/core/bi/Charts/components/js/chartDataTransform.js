@@ -204,13 +204,14 @@ export function getBarData(
   }
 
   // --- 4. сортировка ---
+  const yFieldNames = new Set(yFields.map((f) => f.name ?? f))
   let keys = Array.from(grouped.keys())
   if (sortOpt) {
     const dir = sortOpt.dir === 'desc' ? -1 : 1
     const cmp = (a, b) => {
-      if (sortOpt.by === 'value') {
-        const yName = yFields[0].name ?? yFields[0]
-        const sum = k => Object.values(grouped.get(k)[yName]).reduce((s, v) => s + v, 0)
+      if (sortOpt.by === 'value' || yFieldNames.has(sortOpt.by)) {
+        const yName = sortOpt.by === 'value' ? (yFields[0].name ?? yFields[0]) : sortOpt.by
+        const sum = (k) => Object.values(grouped.get(k)[yName] || {}).reduce((s, v) => s + v, 0)
         return (sum(a) - sum(b)) * dir
       }
       if (sortOpt.by === 'label') {
@@ -218,8 +219,8 @@ export function getBarData(
       }
       const fieldName = sortOpt.by === 'x' ? (xFields[0].name ?? xFields[0])
                                            : sortOpt.by
-      const get = k => {
-        const sample = dataFiltered.find(r => makeXKey(r) === k)
+      const get = (k) => {
+        const sample = dataFiltered.find((r) => makeXKey(r) === k)
         return sample?.[fieldName]
       }
       return (get(a) > get(b) ? 1 : -1) * dir

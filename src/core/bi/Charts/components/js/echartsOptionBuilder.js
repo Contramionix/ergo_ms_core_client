@@ -410,8 +410,23 @@ function buildBarOption(fields, settings, dataset, filters, compact) {
   const showLegend = !(colorByCategory && datasets.length === 1)
   const xAxis = { type: 'category', data: labels }
   const yAxis = { type: 'value', name: yField?.[0]?.label || 'Y' }
+  const xAxisLabel = xField?.[0]?.label || 'Категория'
   return {
-    tooltip: { trigger: 'axis', appendToBody: true },
+    tooltip: {
+      trigger: 'axis',
+      appendToBody: true,
+      formatter: (params) => {
+        const arr = Array.isArray(params) ? params : (params ? [params] : [])
+        const axisValue = arr[0]?.axisValue
+        const lines = []
+        if (axisValue !== undefined && axisValue !== null && String(axisValue).trim() !== '') {
+          lines.push(`${xAxisLabel}: ${axisValue}`)
+        }
+        const seriesLines = arr.map((p) => `${p.marker ?? ''} ${p.seriesName ?? ''}: ${p.value ?? ''}`).filter(Boolean)
+        if (seriesLines.length) lines.push(seriesLines.join('<br/>'))
+        return lines.join('<br/>')
+      }
+    },
     legend: buildLegend(showLegend, compact),
     grid: buildGrid(
       { left: 60, right: 40, bottom: showLegend ? 80 : 40, top: 20 },
@@ -634,8 +649,23 @@ function buildBarHorizontalOption(fields, settings, dataset, filters, compact) {
   const showLegend = !(colorByCategory && datasets.length === 1)
   const xAxis = { type: 'value', name: yField?.[0]?.label || 'Y' }
   const yAxis = { type: 'category', data: labels }
+  const categoryAxisLabel = xField?.[0]?.label || 'Категория'
   return {
-    tooltip: { trigger: 'axis' },
+    tooltip: {
+      trigger: 'axis',
+      appendToBody: true,
+      formatter: (params) => {
+        const arr = Array.isArray(params) ? params : (params ? [params] : [])
+        const axisValue = arr[0]?.axisValue
+        const lines = []
+        if (axisValue !== undefined && axisValue !== null && String(axisValue).trim() !== '') {
+          lines.push(`${categoryAxisLabel}: ${axisValue}`)
+        }
+        const seriesLines = arr.map((p) => `${p.marker ?? ''} ${p.seriesName ?? ''}: ${p.value ?? ''}`).filter(Boolean)
+        if (seriesLines.length) lines.push(seriesLines.join('<br/>'))
+        return lines.join('<br/>')
+      }
+    },
     legend: buildLegend(showLegend, compact),
     grid: buildGrid(
       { left: 60, right: 40, bottom: showLegend ? 80 : 40, top: 20 },
