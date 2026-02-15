@@ -483,13 +483,17 @@ function buildPieOption(fields, dataset, isDoughnut, filters, compact) {
   if (!labels?.length || !datasets?.length) return emptyOption()
 
   const firstDataset = datasets[0]
-  const pieData = labels.map((name, i) => ({
-    name,
-    value: firstDataset.data[i],
-    itemStyle: Array.isArray(firstDataset.backgroundColor)
-      ? { color: firstDataset.backgroundColor[i] }
-      : { color: firstDataset.backgroundColor }
-  }))
+  const pieData = labels
+    .map((name, i) => ({
+      name,
+      value: firstDataset.data[i],
+      itemStyle: Array.isArray(firstDataset.backgroundColor)
+        ? { color: firstDataset.backgroundColor[i] }
+        : { color: firstDataset.backgroundColor }
+    }))
+    .filter((d) => d.value != null && Number(d.value) !== 0)
+
+  if (!pieData.length) return emptyOption()
 
   const seriesEntry = {
     name: firstDataset.label,
