@@ -441,7 +441,8 @@ function buildBarOption(fields, settings, dataset, filters, compact) {
 
 function formatPieLabelValue(value, percent, field) {
   const format = field?.format ?? 'number'
-  const decimalPlaces = Math.max(0, Math.min(20, Number(field?.decimalPlaces) ?? 0))
+  const raw = Number(field?.decimalPlaces)
+  const decimalPlaces = Number.isFinite(raw) ? Math.max(0, Math.min(20, Math.floor(raw))) : 0
   const digitGrouping = field?.digitGrouping ?? 'with_separator'
   const prefix = field?.prefix ?? ''
   const postfix = field?.postfix ?? ''
