@@ -1,12 +1,12 @@
 <template>
     <div class="page-body">
         <ChartHeader :chart-name="chartName" :chart-type-icon-component="chartTypeIconComponent" :chart-type-icon-style="chartTypeIconStyle" :is-edit-mode="isEditMode" :dataset-rows="datasetRows" :ollama-available="ollamaAvailable" :is-full-screen="isFullScreen" :loading="loading" :chart-required-fields-filled="chartRequiredFieldsFilled" :is-chart-dirty="isChartDirty" @run-chart-analysis="runChartAnalysis" @toggle-full-screen="toggleFullScreen" @save-click="onSaveClick"/>
-        <ChartBodyGrid v-model:selected-dataset-id="selectedDatasetId" v-model:selected-chart-type="selectedChartType" :datasets="datasets" :datasets-loading="datasetsLoading" :selected-dataset="selectedDataset" :setting-types="settingTypes" :selected-fields="selectedFields" :fields-modal-open-for-key="fieldsModalOpenForKey" :indicators="indicators" :dataset-rows="datasetRows" :fields-for-chart="fieldsForChart" :chart-display-options="chartDisplayOptions" :dataset-rows-loading="datasetRowsLoading" :is-full-screen="isFullScreen" :sort-desc="sortDesc" @open-display-settings="showChartDisplayModal = true" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit" @open-field-settings="openFieldSettingsModal" @open-formula="openFormulaModal" @open-section-settings="openSectionSettingsModal" @toggle-sort-direction="onToggleSortDirection"/>
+        <ChartBodyGrid v-model:selected-dataset-id="selectedDatasetId" v-model:selected-chart-type="selectedChartType" :datasets="datasets" :datasets-loading="datasetsLoading" :selected-dataset="selectedDataset" :setting-types="settingTypes" :selected-fields="selectedFields" :fields-modal-open-for-key="fieldsModalOpenForKey" :indicators="displayedIndicators" :dataset-rows="datasetRows" :fields-for-chart="fieldsForChart" :chart-display-options="chartDisplayOptions" :dataset-rows-loading="datasetRowsLoading" :is-full-screen="isFullScreen" :sort-desc="sortDesc" @open-display-settings="showChartDisplayModal = true" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit" @open-field-settings="openFieldSettingsModal" @open-formula="openFormulaModal" @open-section-settings="openSectionSettingsModal" @toggle-sort-direction="onToggleSortDirection" @duplicate-indicator="duplicateIndicator" @remove-duplicate-indicator="removeDuplicateIndicator" :measures="displayedMeasures" :parameters="displayedParameters" @duplicate-measure="duplicateMeasure" @remove-duplicate-measure="removeDuplicateMeasure" @edit-parameter="onEditParameter"/>
     </div>
 
     <transition name="fade-slide" appear>
         <div v-if="isFieldsModalVisible" class="tooltip-panel-fields" :style="{ left: fieldsModalPosition.x + 'px', top: fieldsModalPosition.y + 'px', position: 'fixed', zIndex: 1000 }" ref="fieldsModalRef">
-            <ChartFields :fields="indicators" :selected="selectedForModal" :allowed-types="currentAllowedTypes" :measures-in-chart="measuresInChart" :current-slot-config="currentSlotConfig" @select="handleFieldSelect" />
+            <ChartFields :fields="displayedIndicators" :measures="displayedMeasures" :parameters="displayedParameters" :selected="selectedForModal" :allowed-types="currentAllowedTypes" :measures-in-chart="measuresInChart" :current-slot-config="currentSlotConfig" @select="handleFieldSelect" />
         </div>
     </transition>
     <ChartNameDialog v-if="isSaveModalVisible" :visible="isSaveModalVisible" v-model="chartName" @update:visible="isSaveModalVisible = $event" @saved="onChartNameSaved" />
@@ -15,6 +15,7 @@
     <ChartSettingsFormulaModal :visible="formulaModalVisible" :field="formulaModalField" :cols="formulaModalCols" :rows="formulaModalRows" @update:visible="onFormulaModalVisibleChange" @apply="onFormulaApply"/>
     <ChartDisplaySettingsModal :visible="showChartDisplayModal" :chart-type="selectedChartType" :display-options="chartDisplayOptions" :available-series="navigatorAvailableSeries" @update:visible="showChartDisplayModal = $event" @apply="onChartDisplayOptionsApply"/>
     <ChartSectionSettingsModal :visible="sectionSettingsModalVisible" :setting-key="sectionSettingsModalSettingKey" :setting="sectionSettingsModalSetting" :chart-type="selectedChartType" :section-options="sectionOptionsForModal" :section-fields="sectionSettingsModalFields" @update:visible="sectionSettingsModalVisible = $event" @apply="onSectionSettingsApply"/>
+    <ParamsAddModal ref="paramEditModalRef" modal-id="chartParamEditModal" :existing-names="paramEditExistingNames" @update="onParamEditUpdate"/>
 </template>
 
 <script setup>
@@ -33,6 +34,7 @@ import ChartSettingsFieldModal from '@/core/bi/Charts/components/ChartSettingsFi
 import ChartSettingsFormulaModal from '@/core/bi/Charts/components/ChartSettingsFormulaModal.vue'
 import ChartDisplaySettingsModal from '@/core/bi/Charts/components/ChartDisplaySettingsModal.vue'
 import ChartSectionSettingsModal from '@/core/bi/Charts/components/ChartSectionSettingsModal.vue'
+import ParamsAddModal from '@/core/bi/Datasets/Params/components/ParamsAddModal.vue'
 
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
@@ -61,13 +63,30 @@ const fieldSettingsModalSettingKey = ref(null)
 
 const formulaModalVisible = ref(false)
 const formulaModalField = ref(null)
+const formulaModalFieldType = ref('indicator')
 const formulaModalSettingKey = ref(null)
 
-const formulaModalCols = computed(() => (indicators.value || []).map((i) => i.name ?? i.id ?? ''))
+function mergeWithDuplicates(fromApi, dups) {
+  const result = []
+  for (const f of fromApi || []) {
+    const sourceKey = f.id ?? f.name
+    result.push(f)
+    result.push(...(dups || []).filter((d) => (d.sourceId ?? d.name) === sourceKey))
+  }
+  return result
+}
+
+const displayedIndicators = computed(() => mergeWithDuplicates(indicators.value, indicatorDuplicates.value))
+const displayedMeasures = computed(() => mergeWithDuplicates(measures.value, measureDuplicates.value))
+const displayedParameters = computed(() => mergeWithDuplicates(parameters.value, parameterDuplicates.value))
+
+const formulaModalCols = computed(() =>
+  (displayedIndicators.value || []).map((i) => i.displayName ?? i.name ?? i.id ?? '')
+)
 const formulaModalRows = computed(() => {
-  const cols = indicators.value || []
+  const fields = displayedIndicators.value || []
   const rows = datasetRows.value || []
-  return rows.map((row) => cols.map((ind) => row[ind.name] ?? row[ind.id] ?? null))
+  return rows.map((row) => fields.map((ind) => row[ind.name] ?? row[ind.id] ?? null))
 })
 
 const filterModalInitialFilter = computed(() =>
@@ -81,6 +100,11 @@ const selectedDataset = computed(() =>
 const selectedChartType = ref('')
 
 const indicators = ref([])
+const indicatorDuplicates = ref([])
+const measures = ref([])
+const measureDuplicates = ref([])
+const parameters = ref([])
+const parameterDuplicates = ref([])
 const currentSetting = ref('')
 
 const datasetRows = ref([])
@@ -89,6 +113,18 @@ const datasetRowsLoading = ref(false)
 const currentAllowedTypes = ref(null)
 const originalChart = ref({})
 const originalSelectedFields = ref({})
+const originalIndicatorDuplicates = ref([])
+const originalMeasureDuplicates = ref([])
+const originalParameterDuplicates = ref([])
+const paramToEdit = ref(null)
+const paramEditModalRef = ref(null)
+
+const paramEditExistingNames = computed(() => {
+  const list = parameters.value || []
+  const editingName = paramToEdit.value?.name
+  if (!editingName) return list.map(p => p.name).filter(Boolean)
+  return list.map(p => p.name).filter(n => n && n !== editingName)
+})
 
 const DEFAULT_CHART_DISPLAY_OPTIONS = {
     showTitle: true,
@@ -169,20 +205,20 @@ const navigatorAvailableSeries = computed(() => {
   }))
 })
 
+const SECTION_KEY_MAP = {
+  x: 'sectionAxisX',
+  y: 'sectionAxisY',
+  y2: 'sectionAxisY2',
+  color: 'sectionColors',
+  labels: 'sectionLabels',
+  columns: 'sectionColumns',
+  sizeDots: 'sectionSizeDots',
+}
+
 const sectionOptionsForModal = computed(() => {
   const key = sectionSettingsModalSettingKey.value
-  const opts = chartDisplayOptions.value
-  const sectionKeyMap = {
-    x: 'sectionAxisX',
-    y: 'sectionAxisY',
-    y2: 'sectionAxisY2',
-    color: 'sectionColors',
-    labels: 'sectionLabels',
-    columns: 'sectionColumns',
-    sizeDots: 'sectionSizeDots',
-  }
-  const sectionKey = sectionKeyMap[key]
-  return sectionKey ? (opts[sectionKey] ?? {}) : {}
+  const sectionKey = SECTION_KEY_MAP[key]
+  return sectionKey ? (chartDisplayOptions.value[sectionKey] ?? {}) : {}
 })
 
 const sectionSettingsModalFields = computed(() => {
@@ -227,6 +263,10 @@ function cloneParams(params) {
     return JSON.parse(JSON.stringify(params ?? {}))
 }
 
+function normalizeListResponse(data) {
+    return Array.isArray(data) ? data : (data?.results ?? [])
+}
+
 function getDatasetId(datasetField) {
     if (datasetField == null) return null
     return typeof datasetField === 'object' ? datasetField.id : datasetField
@@ -254,8 +294,14 @@ async function fetchDatasetRows(datasetId, params) {
 async function loadDatasetColumnsAndRows(datasetId, params) {
     if (!datasetId) return
     try {
-        const { data: columnsResp } = await chartService.getColumns(datasetId)
-        indicators.value = Array.isArray(columnsResp?.columns) ? columnsResp.columns : []
+        const [columnsRes, paramsRes] = await Promise.all([
+            chartService.getColumns(datasetId),
+            chartService.getParams(datasetId)
+        ])
+        const columns = Array.isArray(columnsRes?.data?.columns) ? columnsRes.data.columns : []
+        indicators.value = columns
+        measures.value = columns.filter((c) => (c.expression || '').trim() !== '')
+        parameters.value = normalizeListResponse(paramsRes?.data)
         if (selectedChartType.value && hasRequiredFieldsForChartType(selectedChartType.value, params)) {
             await fetchDatasetRows(datasetId, params)
         }
@@ -322,6 +368,9 @@ watch(chartData, d => { chartName.value = d?.name || 'Новая диаграм�
 
 async function onSelectedDatasetChange(ds) {
     selectedFields.value = { ...EMPTY_SELECTED_FIELDS }
+    indicatorDuplicates.value = []
+    measureDuplicates.value = []
+    parameterDuplicates.value = []
     await loadDatasetColumnsAndRows(ds?.id, selectedFields.value)
 }
 
@@ -346,12 +395,16 @@ function onSaveClick() {
 
 async function onChartNameSaved({ name }) {
     chartName.value = name
+    const params = cloneParams(selectedFields.value)
+    params.indicatorDuplicates = cloneParams(indicatorDuplicates.value)
+    params.measureDuplicates = cloneParams(measureDuplicates.value)
+    params.parameterDuplicates = cloneParams(parameterDuplicates.value)
     const payload = {
         name,
         dataset: selectedDataset.value.id,
         chart_type: selectedChartType.value,
         engine: 'echarts',
-        params: cloneParams(selectedFields.value),
+        params,
         options: { display: { ...chartDisplayOptions.value } }
     }
     try {
@@ -360,6 +413,9 @@ async function onChartNameSaved({ name }) {
             chartData.value = updated
             originalChart.value = buildOriginalChart(updated)
             originalSelectedFields.value = cloneParams(selectedFields.value)
+            originalIndicatorDuplicates.value = cloneParams(indicatorDuplicates.value)
+            originalMeasureDuplicates.value = cloneParams(measureDuplicates.value)
+            originalParameterDuplicates.value = cloneParams(parameterDuplicates.value)
             originalChartDisplayOptions.value = cloneParams(chartDisplayOptions.value)
             toast.success('Изменения сохранены')
         } else {
@@ -392,8 +448,21 @@ async function fetchChartIfEditing() {
 
         selectedChartType.value = String(data.chart_type ?? '')
         skipNextSelectedFieldsWatch.value = true
-        selectedFields.value = cloneParams(data.params)
+        const loadedParams = data.params ?? {}
+        const {
+            indicatorDuplicates: loadedDups,
+            measureDuplicates: loadedMeasureDups,
+            parameterDuplicates: loadedParamDups,
+            ...restParams
+        } = loadedParams
+        selectedFields.value = cloneParams(restParams)
+        indicatorDuplicates.value = Array.isArray(loadedDups) ? cloneParams(loadedDups) : []
+        measureDuplicates.value = Array.isArray(loadedMeasureDups) ? cloneParams(loadedMeasureDups) : []
+        parameterDuplicates.value = Array.isArray(loadedParamDups) ? cloneParams(loadedParamDups) : []
         originalSelectedFields.value = cloneParams(selectedFields.value)
+        originalIndicatorDuplicates.value = cloneParams(indicatorDuplicates.value)
+        originalMeasureDuplicates.value = cloneParams(measureDuplicates.value)
+        originalParameterDuplicates.value = cloneParams(parameterDuplicates.value)
 
         const loadedDisplay = data.options?.display
         if (loadedDisplay && typeof loadedDisplay === 'object') {
@@ -498,19 +567,9 @@ function openSectionSettingsModal({ settingKey, setting }) {
 }
 
 function onSectionSettingsApply(payload) {
-    const key = sectionSettingsModalSettingKey.value
-    const opts = chartDisplayOptions.value
-    const sectionKeyMap = {
-        x: 'sectionAxisX',
-        y: 'sectionAxisY',
-        y2: 'sectionAxisY2',
-        color: 'sectionColors',
-        labels: 'sectionLabels',
-        columns: 'sectionColumns',
-        sizeDots: 'sectionSizeDots',
-    }
-    const sectionKey = sectionKeyMap[key]
+    const sectionKey = SECTION_KEY_MAP[sectionSettingsModalSettingKey.value]
     if (sectionKey) {
+        const opts = chartDisplayOptions.value
         chartDisplayOptions.value = {
             ...opts,
             [sectionKey]: { ...(opts[sectionKey] ?? {}), ...payload }
@@ -606,9 +665,10 @@ function onFieldSettingsApply(payload) {
     closeFieldSettingsModal()
 }
 
-function openFormulaModal({ field, settingKey }) {
+function openFormulaModal({ field, settingKey, fieldType }) {
     formulaModalField.value = field
     formulaModalSettingKey.value = settingKey
+    formulaModalFieldType.value = fieldType ?? 'indicator'
     formulaModalVisible.value = true
 }
 
@@ -622,10 +682,23 @@ function onFormulaModalVisibleChange(visible) {
 function closeFormulaModal() {
     formulaModalField.value = null
     formulaModalSettingKey.value = null
+    formulaModalFieldType.value = 'indicator'
+}
+
+function updateDuplicateExpression(duplicatesRef, fieldId, expression) {
+    duplicatesRef.value = (duplicatesRef.value || []).map((d) =>
+        d.id === fieldId ? { ...d, expression } : d
+    )
 }
 
 function onFormulaApply({ field, expression }) {
     updateFieldInAllCategories(field, (f) => ({ ...f, expression }))
+    if (field?.isDuplicate && field?.id) {
+        const type = formulaModalFieldType.value
+        const refByType = { measure: measureDuplicates, parameter: parameterDuplicates, indicator: indicatorDuplicates }
+        const ref = refByType[type] ?? indicatorDuplicates
+        updateDuplicateExpression(ref, field.id, expression)
+    }
     formulaModalVisible.value = false
     closeFormulaModal()
 }
@@ -653,6 +726,87 @@ function closeFieldSettingsModal() {
 
 function removeField(field, type) {
     selectedFields.value[type] = selectedFields.value[type].filter(f => f.id !== field.id)
+}
+
+function getSourceId(f) {
+    return f?.sourceId ?? f?.id ?? f?.name
+}
+
+function getBaseDisplayName(f) {
+    return f?.displayName ?? f?.name ?? f?.title ?? 'Без имени'
+}
+
+function addDuplicate(field, duplicatesRef, idPrefix) {
+    const sourceId = getSourceId(field)
+    const baseName = field.isDuplicate ? (field.displayName ?? field.name).replace(/\s*\(\d+\)\s*$/, '').trim() : getBaseDisplayName(field)
+    const dups = duplicatesRef.value || []
+    const n = dups.filter((d) => getSourceId(d) === sourceId).length + 1
+    duplicatesRef.value = [...dups, {
+        id: `${idPrefix}${sourceId}_${Date.now()}_${n}`,
+        sourceId,
+        name: field.name,
+        type: field.type,
+        displayName: `${baseName} (${n})`,
+        isDuplicate: true,
+    }]
+}
+
+function duplicateIndicator(field) {
+    addDuplicate(field, indicatorDuplicates, '__dup_')
+}
+
+function removeDuplicateIndicator(field) {
+    if (!field?.isDuplicate) return
+    const id = field.id
+    indicatorDuplicates.value = (indicatorDuplicates.value || []).filter((d) => d.id !== id)
+    for (const key of Object.keys(selectedFields.value)) {
+        const arr = selectedFields.value[key]
+        if (Array.isArray(arr)) {
+            selectedFields.value[key] = arr.filter((f) => (f.id ?? f.name) !== id)
+        }
+    }
+}
+
+function duplicateMeasure(field) {
+    addDuplicate(field, measureDuplicates, '__dup_measure_')
+}
+
+function removeDuplicateMeasure(field) {
+    if (!field?.isDuplicate) return
+    measureDuplicates.value = (measureDuplicates.value || []).filter((d) => d.id !== field.id)
+}
+
+function onEditParameter(param) {
+    if (!param || typeof param.id !== 'number') return
+    paramToEdit.value = param
+    const row = {
+        name: param.name ?? '',
+        type: param.type ?? 'string',
+        defaultValue: param.default_value ?? param.defaultValue ?? ''
+    }
+    if (paramEditModalRef.value && typeof paramEditModalRef.value.open === 'function') {
+        paramEditModalRef.value.open({ row, editId: param.id })
+    }
+}
+
+async function onParamEditUpdate(payload) {
+    if (payload?.id == null) return
+    try {
+        await chartService.updateParam(payload.id, {
+            name: payload.name,
+            type: payload.type,
+            default_value: payload.default
+        })
+        paramToEdit.value = null
+        const dsId = selectedDataset.value?.id
+        if (dsId) {
+            const { data } = await chartService.getParams(dsId)
+            parameters.value = normalizeListResponse(data)
+        }
+        toast.success('Параметр обновлён')
+    } catch {
+        toast.error('Не удалось обновить параметр')
+    }
 }
 
 async function loadDatasetRowsIfNeeded(params) {
@@ -700,6 +854,9 @@ const isChartDirty = computed(() => {
         (selectedDataset.value?.id ?? null) !== (orig.datasetId ?? null) ||
         selectedChartType.value !== (orig.chart_type ?? '') ||
         JSON.stringify(selectedFields.value) !== JSON.stringify(originalSelectedFields.value) ||
+        JSON.stringify(indicatorDuplicates.value) !== JSON.stringify(originalIndicatorDuplicates.value) ||
+        JSON.stringify(measureDuplicates.value) !== JSON.stringify(originalMeasureDuplicates.value) ||
+        JSON.stringify(parameterDuplicates.value) !== JSON.stringify(originalParameterDuplicates.value) ||
         JSON.stringify(chartDisplayOptions.value) !== JSON.stringify(originalChartDisplayOptions.value)
 })
 

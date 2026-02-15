@@ -22,15 +22,7 @@
 
                 <div class="mb-3">
                     <label class="form-label">Тип</label>
-                    <SelectBox
-                        v-model="type"
-                        :options="typeOptions"
-                        value-key="value"
-                        label-key="label"
-                        :include-all-option="false"
-                        all-label="Тип"
-                        size="sm"
-                    >
+                    <SelectBox v-model="type" :options="typeOptions" value-key="value" label-key="label" :include-all-option="false" all-label="Тип" size="sm">
                         <template #selected="{ option, label }">
                             <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
                                 <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(option?.value) }">
@@ -67,25 +59,14 @@
                         </div>
                     </template>
                     <template v-else>
-                        <input
-                            v-model="defaultValue"
-                            :type="inputType"
-                            :step="inputStep"
-                            :inputmode="inputMode"
-                            class="form-control"
-                            :class="{ 'is-invalid': attemptedSubmit && isDefaultInvalid }"
-                            placeholder=""
-                            @keydown="handleNumberKeydown"
-                            @input="handleNumberInput"
-                            @paste="handleNumberPaste"
-                        />
+                        <input v-model="defaultValue" :type="inputType" :step="inputStep" :inputmode="inputMode" class="form-control" :class="{ 'is-invalid': attemptedSubmit && isDefaultInvalid }" placeholder="" @keydown="handleNumberKeydown" @input="handleNumberInput" @paste="handleNumberPaste"/>
                     </template>
                 </div>
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-4">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
-                <button type="submit" class="btn btn-primary" :disabled="attemptedSubmit && !canSubmit">{{ submitButtonText }}</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="submit" class="btn btn-apply" :disabled="attemptedSubmit && !canSubmit">{{ submitButtonText }}</button>
             </div>
         </form>
     </ModalCenter>
@@ -112,6 +93,7 @@ const defaultValue = ref('')
 const attemptedSubmit = ref(false)
 const isEditMode = ref(false)
 const editIndex = ref(null)
+const editId = ref(null)
 const originalName = ref('')
 
 
@@ -185,6 +167,7 @@ function resetForm() {
     attemptedSubmit.value = false
     isEditMode.value = false
     editIndex.value = null
+    editId.value = null
     originalName.value = ''
 }
 
@@ -201,12 +184,21 @@ function onAdd() {
         emittedDefault = parseFloat(String(emittedDefault).replace(',', '.'))
     }
     if (isEditMode.value) {
-        emit('update', {
-            index: editIndex.value,
-            name: name.value,
-            type: type.value,
-            default: emittedDefault,
-        })
+        if (editId.value != null) {
+            emit('update', {
+                id: editId.value,
+                name: name.value,
+                type: type.value,
+                default: emittedDefault,
+            })
+        } else {
+            emit('update', {
+                index: editIndex.value,
+                name: name.value,
+                type: type.value,
+                default: emittedDefault,
+            })
+        }
     } else {
         emit('submit', {
             name: name.value,
@@ -379,13 +371,15 @@ function open(payload){
     const row = payload.row
     isEditMode.value = true
     editIndex.value = payload.index
+    editId.value = payload.editId ?? null
     name.value = row.name || ''
     originalName.value = row.name || ''
     type.value = row.type || 'string'
+    const defVal = row.defaultValue ?? row.default_value
     if (type.value === 'bool' || type.value === 'boolean') {
-        defaultValue.value = typeof row.defaultValue === 'boolean' ? row.defaultValue : null
+        defaultValue.value = typeof defVal === 'boolean' ? defVal : null
     } else {
-        defaultValue.value = row.defaultValue ?? ''
+        defaultValue.value = defVal ?? ''
     }
     attemptedSubmit.value = false
     try {
@@ -459,5 +453,25 @@ defineExpose({ open })
 .tooltip-list li{
     margin: 4px 0;
 }
-</style>
 
+.btn-secondary {
+    background-color: var(--color-primary-background);
+    border-color: var(--color-primary-background);
+    box-shadow: none;
+    border-radius: 6px;
+
+    &:hover:not(:disabled) {
+        background-color: var(--color-hover-background);
+    }
+}
+
+.btn-apply {
+    background-color: #0b5ed7;
+    color: white;
+    border-radius: 6px;
+
+    &:hover:not(:disabled) {
+        background-color: #0a4b9a;
+    }
+}
+</style>

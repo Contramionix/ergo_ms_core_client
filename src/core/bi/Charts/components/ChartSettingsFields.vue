@@ -39,8 +39,9 @@
 </template>
 
 <script setup>
-import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, Plus, X, BarChart2, SquareFunction, Settings, ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-vue-next'
+import { Plus, X, SquareFunction, Settings, ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-vue-next'
 import { isVirtualMeasureField } from '../js/measureVirtualFields.js'
+import { getFieldIcon, getFieldDisplayName } from '../js/fieldIcons.js'
 
 const props = defineProps({
     settingTypes: {
@@ -88,29 +89,6 @@ function showSectionSettings(settingKey) {
         return (props.selectedFields?.columns?.length ?? 0) > 0
     }
     return true
-}
-
-const typeIcon = {
-    string: Type,
-    integer: Hash,
-    float: Hash,
-    number: Hash,
-    date: Calendar,
-    'date&time': Calendar,
-    bool: CheckCircle,
-    boolean: CheckCircle,
-    geopoint: MapPin,
-    geopolygon: Globe,
-}
-
-function getFieldIcon(f) {
-    if (isVirtualMeasureField(f)) return BarChart2
-    return typeIcon[f.type] || Type
-}
-
-function getFieldDisplayName(f) {
-    if (isVirtualMeasureField(f)) return f.displayName ?? f.label ?? f.name
-    return f.displayName ?? f.name
 }
 
 function onAddFieldClick(event, settingKey) {

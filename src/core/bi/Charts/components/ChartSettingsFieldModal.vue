@@ -138,11 +138,12 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { Type, Hash, Calendar, CheckCircle, MapPin, Globe } from 'lucide-vue-next'
+import { Type } from 'lucide-vue-next'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SelectBox from '@/components/SelectBox.vue'
 import { typeOptions, getAggregationOptions } from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
 import { isVirtualMeasureField } from '../js/measureVirtualFields.js'
+import { getFieldIcon as getFieldIconBase } from '../js/fieldIcons.js'
 
 const DIMENSION_OPTIONS = [
   { value: 'none', label: 'Нет' },
@@ -175,22 +176,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'apply'])
 
-const typeIcon = {
-  string: Type,
-  integer: Hash,
-  float: Hash,
-  number: Hash,
-  date: Calendar,
-  'date&time': Calendar,
-  bool: CheckCircle,
-  boolean: CheckCircle,
-  geopoint: MapPin,
-  geopolygon: Globe,
-}
-
 function getFieldIcon(f) {
-  if (isVirtualMeasureField(f)) return Type
-  return typeIcon[f?.type] || Type
+  return getFieldIconBase(f, Type)
 }
 
 const aggregationOptions = computed(() => {

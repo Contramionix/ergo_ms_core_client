@@ -6,24 +6,72 @@
     <ul v-if="virtualFieldsForSlot.length" class="fields-list virtual-fields">
       <li v-for="f in virtualFieldsForSlot" :key="f.id" class="field-item" :class="{ selected: isSelected(f) }" @click="!isSelected(f) && selectField(f)" @mouseenter="onFieldItemMouseEnter" @mouseleave="onFieldItemMouseLeave">
         <span class="field-icon">
-          <component :is="BarChart2" size="16" />
-        </span>
-        <span class="field-name field-name--virtual">
-          <span class="field-name-inner">{{ f.displayName ?? f.label ?? f.name }}</span>
-        </span>
-      </li>
-    </ul>
-    <ul class="fields-list">
-      <b>Показатели:</b>
-      <li v-for="f in availableFields" :key="f.id" class="field-item" :class="{ selected: isSelected(f) }" @click="!isSelected(f) && selectField(f)" @mouseenter="onFieldItemMouseEnter" @mouseleave="onFieldItemMouseLeave">
-        <span class="field-icon">
           <component :is="getFieldIcon(f)" size="16" />
         </span>
-        <span class="field-name" :class="{ 'field-name--virtual': isVirtualMeasureField(f) }">
+        <span class="field-name field-name--virtual">
           <span class="field-name-inner">{{ getFieldDisplayName(f) }}</span>
         </span>
       </li>
-      <li v-if="!availableFields.length && !virtualFieldsForSlot.length" class="field-empty">
+    </ul>
+    <template v-if="availableFields.length">
+      <div class="fields-section">
+        <button type="button" class="section-header" :aria-expanded="indicatorsOpen" @click="indicatorsOpen = !indicatorsOpen">
+          <ChevronDown v-if="indicatorsOpen" :size="16" />
+          <ChevronRight v-else :size="16" />
+          <span>Показатели</span>
+        </button>
+        <ul v-show="indicatorsOpen" class="fields-list">
+          <li v-for="f in availableFields" :key="f.id" class="field-item" :class="{ selected: isSelected(f) }" @click="!isSelected(f) && selectField(f)" @mouseenter="onFieldItemMouseEnter" @mouseleave="onFieldItemMouseLeave">
+            <span class="field-icon">
+              <component :is="getFieldIcon(f)" size="16" />
+            </span>
+            <span class="field-name" :class="{ 'field-name--virtual': isVirtualMeasureField(f) }">
+              <span class="field-name-inner">{{ getFieldDisplayName(f) }}</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </template>
+    <template v-if="availableMeasures.length">
+      <div class="fields-section fields-section--with-border">
+        <button type="button" class="section-header" :aria-expanded="measuresOpen" @click="measuresOpen = !measuresOpen">
+          <ChevronDown v-if="measuresOpen" :size="16" />
+          <ChevronRight v-else :size="16" />
+          <span>Измерения</span>
+        </button>
+        <ul v-show="measuresOpen" class="fields-list">
+          <li v-for="f in availableMeasures" :key="f.id ?? f.name" class="field-item" :class="{ selected: isSelected(f) }" @click="!isSelected(f) && selectField(f)" @mouseenter="onFieldItemMouseEnter" @mouseleave="onFieldItemMouseLeave">
+            <span class="field-icon field-icon--measures">
+              <component :is="getFieldIcon(f)" size="16" />
+            </span>
+            <span class="field-name">
+              <span class="field-name-inner">{{ getFieldDisplayName(f) }}</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </template>
+    <template v-if="availableParameters.length">
+      <div class="fields-section fields-section--with-border">
+        <button type="button" class="section-header" :aria-expanded="parametersOpen" @click="parametersOpen = !parametersOpen">
+          <ChevronDown v-if="parametersOpen" :size="16" />
+          <ChevronRight v-else :size="16" />
+          <span>Параметры</span>
+        </button>
+        <ul v-show="parametersOpen" class="fields-list">
+          <li v-for="f in availableParameters" :key="f.id ?? f.name" class="field-item" :class="{ selected: isSelected(f) }" @click="!isSelected(f) && selectField(f)" @mouseenter="onFieldItemMouseEnter" @mouseleave="onFieldItemMouseLeave">
+            <span class="field-icon field-icon--parameters">
+              <component :is="getFieldIcon(f)" size="16" />
+            </span>
+            <span class="field-name">
+              <span class="field-name-inner">{{ getFieldDisplayName(f) }}</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </template>
+    <ul v-if="nothingFound" class="fields-list">
+      <li class="field-empty">
         <i>Ничего не найдено</i>
       </li>
     </ul>
@@ -32,11 +80,14 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Type, Hash, Calendar, CheckCircle, Globe, MapPin, BarChart2 } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import { MEASURE_NAMES_FIELD, MEASURE_VALUES_FIELD, isVirtualMeasureField } from './js/measureVirtualFields.js'
+import { getFieldIcon, getFieldDisplayName } from './js/fieldIcons.js'
 
 const props = defineProps({
   fields: { type: Array, default: () => [] },
+  measures: { type: Array, default: () => [] },
+  parameters: { type: Array, default: () => [] },
   selected: { type: Array, default: () => [] },
   allowedTypes: { type: Array, default: () => null },
   measuresInChart: { type: Array, default: () => [] },
@@ -44,29 +95,9 @@ const props = defineProps({
 })
 const emit = defineEmits(['select'])
 const search = ref('')
-
-const typeIcon = {
-  string: Type,
-  integer: Hash,
-  float: Hash,
-  number: Hash,
-  date: Calendar,
-  'date&time': Calendar,
-  bool: CheckCircle,
-  boolean: CheckCircle,
-  geopoint: MapPin,
-  geopolygon: Globe,
-}
-
-function getFieldIcon(f) {
-  if (isVirtualMeasureField(f)) return BarChart2
-  return typeIcon[f.type] || Type
-}
-
-function getFieldDisplayName(f) {
-  if (isVirtualMeasureField(f)) return f.displayName ?? f.label ?? f.name
-  return f.name
-}
+const indicatorsOpen = ref(true)
+const measuresOpen = ref(true)
+const parametersOpen = ref(true)
 
 const virtualFieldsForSlot = computed(() => {
   const measures = props.measuresInChart || []
@@ -78,16 +109,33 @@ const virtualFieldsForSlot = computed(() => {
   return list
 })
 
+const searchLower = computed(() => search.value.trim().toLowerCase())
+
 const availableFields = computed(() => {
-  const filtered = (props.fields || [])
+  return (props.fields || [])
     .filter(f => !props.allowedTypes || props.allowedTypes.includes(f.type))
-    .filter(f => f.name.toLowerCase().includes(search.value.trim().toLowerCase()))
-  
-  return filtered
+    .filter(f => (f.name ?? '').toLowerCase().includes(searchLower.value) || (f.displayName ?? '').toLowerCase().includes(searchLower.value) || (f.title ?? '').toLowerCase().includes(searchLower.value))
 })
 
+const availableMeasures = computed(() => {
+  return (props.measures || [])
+    .filter(f => !props.allowedTypes || props.allowedTypes.includes(f.type))
+    .filter(f => (f.name ?? '').toLowerCase().includes(searchLower.value) || (f.displayName ?? '').toLowerCase().includes(searchLower.value) || (f.title ?? '').toLowerCase().includes(searchLower.value))
+})
+
+const availableParameters = computed(() => {
+  return (props.parameters || [])
+    .filter(f => !props.allowedTypes || props.allowedTypes.includes(f.type))
+    .filter(f => (f.name ?? '').toLowerCase().includes(searchLower.value) || (f.displayName ?? '').toLowerCase().includes(searchLower.value) || (f.title ?? '').toLowerCase().includes(searchLower.value))
+})
+
+const nothingFound = computed(() =>
+  !virtualFieldsForSlot.value.length && !availableFields.value.length && !availableMeasures.value.length && !availableParameters.value.length
+)
+
 function isSelected(field) {
-  return props.selected.some(f => (f.name ?? f.id) === (field.name ?? field.id))
+  const fieldKey = field.id ?? field.name
+  return props.selected.some(f => (f.id ?? f.name) === fieldKey)
 }
 
 function selectField(field) {
@@ -132,6 +180,40 @@ function onFieldItemMouseLeave(ev) {
   padding-bottom: 8px;
   border-bottom: 1px solid var(--color-secondary-background, #eee);
 }
+.fields-list--section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-secondary-background, #eee);
+}
+.fields-section {
+  margin-bottom: 4px;
+}
+.fields-section--with-border {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-secondary-background, #eee);
+}
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-primary-text);
+  text-align: left;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.section-header:hover,
+.section-header:focus-visible {
+  background: var(--color-hover-background);
+}
 .field-item {
   display: flex;
   flex-direction: row;
@@ -155,6 +237,12 @@ function onFieldItemMouseLeave(ev) {
   height: 16px;
   flex-shrink: 0;
   color: var(--color-accent);
+}
+.field-icon--measures {
+  color: #198754;
+}
+.field-icon--parameters {
+  color: #6f42c1;
 }
 .field-name {
   font-weight: 500;

@@ -28,25 +28,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Type, Hash, Calendar, CheckCircle, MapPin, Globe } from 'lucide-vue-next'
 import HelpTooltip from '@/core/bi/components/help_tooltip.vue'
-
-const typeIcon = {
-  string: Type,
-  integer: Hash,
-  float: Hash,
-  number: Hash,
-  date: Calendar,
-  'date&time': Calendar,
-  bool: CheckCircle,
-  boolean: CheckCircle,
-  geopoint: MapPin,
-  geopolygon: Globe,
-}
-
-function getFieldIcon(f) {
-  return typeIcon[f?.type] || Type
-}
+import { getFieldIcon } from '../../js/fieldIcons.js'
 
 const WIDTH_MODE_OPTIONS = [
   { value: 'auto', label: 'Авто' },

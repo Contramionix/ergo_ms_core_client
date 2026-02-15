@@ -44,15 +44,19 @@
     </div>
     <div class="indicators sectors border-elements elements-color">
       <h5 class="m-0 me-2">Показатели</h5>
-      <div class="sectors-body"><DatasetIndicators :dataset="selectedDataset" :fields="indicators" /></div>
+      <div class="sectors-body"><DatasetIndicators :dataset="selectedDataset" :fields="indicators" @open-formula="(e) => emit('open-formula', e)" @duplicate="(f) => emit('duplicate-indicator', f)" @remove-duplicate="(f) => emit('remove-duplicate-indicator', f)" /></div>
     </div>
     <div class="measures sectors border-elements elements-color">
       <h5 class="m-0 me-2">Измерения</h5>
-      <div class="sectors-body"><DatasetMeasures :dataset="selectedDataset" /></div>
+      <div class="sectors-body">
+        <DatasetMeasures :dataset="selectedDataset" :fields="measures" @open-formula="(e) => emit('open-formula', { ...e, fieldType: 'measure' })" @duplicate="(f) => emit('duplicate-measure', f)" @remove-duplicate="(f) => emit('remove-duplicate-measure', f)"/>
+      </div>
     </div>
     <div class="parameters settings sectors border-elements elements-color">
       <h5 class="m-0 me-2">Параметры</h5>
-      <div class="sectors-body"><DatasetSettings :dataset="selectedDataset" /></div>
+      <div class="sectors-body">
+        <DatasetSettings :dataset="selectedDataset" :fields="parameters" @edit-parameter="(f) => emit('edit-parameter', f)"/>
+      </div>
     </div>
     <div class="body-chart border-elements elements-color" :class="{ fullscreen: isFullScreen }">
       <ChartArea :dataset="datasetRows" :chart-type="selectedChartType" :fields="fieldsForChart" :key="selectedChartType" :settings="settingTypes" :display-options="chartDisplayOptions" :data-loading="datasetRowsLoading"/>
@@ -107,6 +111,14 @@ defineProps({
     type: Array,
     default: () => [],
   },
+  measures: {
+    type: Array,
+    default: () => [],
+  },
+  parameters: {
+    type: Array,
+    default: () => [],
+  },
   datasetRows: {
     type: Array,
     default: () => [],
@@ -144,6 +156,11 @@ const emit = defineEmits([
   'open-field-settings',
   'open-formula',
   'open-section-settings',
+  'duplicate-indicator',
+  'remove-duplicate-indicator',
+  'duplicate-measure',
+  'remove-duplicate-measure',
+  'edit-parameter',
 ])
 </script>
 
