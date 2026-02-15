@@ -341,7 +341,9 @@ function buildLineOption(fields, settings, dataset, filters, compact) {
     })
   }
 
-  const showMeasureValuesLabels = isMeasureValuesField(labelField)
+  const showLabelsFromY = (yFields || []).some((f) => f.showCaption !== false) ||
+    (y2Fields || []).some((f) => f.showCaption !== false)
+  const showMeasureValuesLabels = isMeasureValuesField(labelField) || showLabelsFromY
   const series = datasets.map((ds) => ({
     name: ds.label,
     type: 'line',
@@ -373,7 +375,8 @@ function buildBarOption(fields, settings, dataset, filters, compact) {
   const colorField = findField(fields, ['color', 'colors'])
   const labelFieldsRaw = findField(fields, ['labels', 'label'], true)
   const labelFields = labelFieldsRaw?.filter(f => !isMeasureValuesField(f)) ?? []
-  const showMeasureValuesLabels = labelFieldsRaw?.some(isMeasureValuesField)
+  const showLabelsFromY = (yField || []).some((f) => f.showCaption !== false)
+  const showMeasureValuesLabels = labelFieldsRaw?.some(isMeasureValuesField) || showLabelsFromY
   const sort = fields?.sort ?? null
 
   const { labels, datasets, colorByCategory } = getBarData(
@@ -604,7 +607,8 @@ function buildBarHorizontalOption(fields, settings, dataset, filters, compact) {
   const colorField = findField(fields, ['color', 'colors'])
   const labelFieldsRaw = findField(fields, ['labels', 'label'], true)
   const labelFields = labelFieldsRaw?.filter(f => !isMeasureValuesField(f)) ?? []
-  const showMeasureValuesLabels = labelFieldsRaw?.some(isMeasureValuesField)
+  const showLabelsFromY = (yField || []).some((f) => f.showCaption !== false)
+  const showMeasureValuesLabels = labelFieldsRaw?.some(isMeasureValuesField) || showLabelsFromY
   const sort = fields?.sort ?? null
 
   const { labels, datasets, colorByCategory } = getBarData(
@@ -668,7 +672,8 @@ function buildCombinedOption(fields, settings, dataset, filters, compact) {
   const yField = findField(fields, ['y'], true)
   const labelFieldsRaw = findField(fields, ['labels', 'label'], true)
   const labelFields = labelFieldsRaw?.filter(f => !isMeasureValuesField(f)) ?? []
-  const showMeasureValuesLabels = labelFieldsRaw?.some(isMeasureValuesField)
+  const showLabelsFromY = (yField || []).some((f) => f.showCaption !== false) || (y2Fields || []).some((f) => f.showCaption !== false)
+  const showMeasureValuesLabels = labelFieldsRaw?.some(isMeasureValuesField) || showLabelsFromY
   const sort = fields?.sort ?? null
   const { labels: barLabels, datasets: barDatasets } = getBarData(
     dataset,
