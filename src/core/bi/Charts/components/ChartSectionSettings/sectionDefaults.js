@@ -24,9 +24,20 @@ export const defaultSectionAxisYExtras = {
 export const defaultSectionColors = {
   palette: 'classic20',
   customColors: {},
+  gradientType: 'two',
+  gradientPreset: 'blue',
+  reverseGradient: false,
+  useThresholds: false,
+  thresholds: [],
+  emptyAsZero: false,
 }
 
 export const defaultSectionLabels = {
   labelOverlap: false,
   innerLabel: true,
+}
+
+export const defaultSectionColumns = {
+  pinnedCount: 0,
+  widths: {},
 }

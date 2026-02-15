@@ -38,7 +38,7 @@
 import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, Plus, X, BarChart2, SquareFunction, Settings } from 'lucide-vue-next'
 import { isVirtualMeasureField } from '../js/measureVirtualFields.js'
 
-defineProps({
+const props = defineProps({
     settingTypes: {
         type: Array,
         required: true,
@@ -51,12 +51,35 @@ defineProps({
         type: String,
         default: null,
     },
+    chartType: {
+        type: String,
+        default: '',
+    },
 })
 
 const emit = defineEmits(['addFieldClick', 'removeField', 'editFilter', 'openFieldSettings', 'openFormula', 'openSectionSettings'])
 
+const SECTION_KEYS_WITH_SETTINGS_BY_CHART_TYPE = {
+    table: ['columns', 'color'],
+    indicator: ['color'],
+    pie: [],
+    doughnut: [],
+    bar: ['x', 'y', 'labels'],
+    area: ['x', 'y', 'labels'],
+    scatter: ['x', 'y', 'sizeDots'],
+}
+
 function showSectionSettings(settingKey) {
-    return settingKey !== 'filters' && settingKey !== 'sort'
+    const type = (props.chartType || '').toLowerCase().trim()
+    const allowed = SECTION_KEYS_WITH_SETTINGS_BY_CHART_TYPE[type]
+    if (!Array.isArray(allowed) || !allowed.includes(settingKey)) return false
+    if (type === 'table' && settingKey === 'color') {
+        return (props.selectedFields?.color?.length ?? 0) > 0
+    }
+    if (type === 'table' && settingKey === 'columns') {
+        return (props.selectedFields?.columns?.length ?? 0) > 0
+    }
+    return true
 }
 
 const typeIcon = {

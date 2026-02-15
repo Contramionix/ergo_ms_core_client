@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { getColorForValue } from './ChartSectionSettings/tableColorPresets.js'
 
 const props = defineProps({
   fields: { type: Object, default: () => ({}) },
@@ -23,6 +24,71 @@ const columns = computed(() => {
   const cols = props.fields?.columns
   return Array.isArray(cols) ? cols : []
 })
+
+const sectionColumns = computed(() => props.displayOptions?.sectionColumns ?? {})
+const sectionColors = computed(() => props.displayOptions?.sectionColors ?? {})
+
+const colorField = computed(() => {
+  const arr = props.fields?.color
+  return Array.isArray(arr) && arr.length > 0 ? arr[0] : null
+})
+
+const colorColumnIndex = computed(() => {
+  const cf = colorField.value
+  if (!cf) return -1
+  const key = cf.id ?? cf.name
+  const idx = columns.value.findIndex((c) => (c.id ?? c.name) === key)
+  return idx >= 0 ? idx : -1
+})
+
+const pinnedCount = computed(() => {
+  const n = Math.max(0, Math.floor(Number(sectionColumns.value.pinnedCount)) || 0)
+  return Math.min(n, columns.value.length)
+})
+
+const STICKY_FALLBACK_PX = 100
+
+function colKey(col) {
+  return col.id ?? col.name
+}
+
+function getColumnWidth(col) {
+  const key = colKey(col)
+  const w = sectionColumns.value.widths?.[key]
+  if (!w || w.mode === 'auto') return null
+  if (w.mode === 'percent' && w.value != null) return `${w.value}%`
+  if (w.mode === 'px' && w.value != null) return `${w.value}px`
+  return null
+}
+
+function getStickyLeft(colIndex) {
+  if (colIndex <= 0 || sectionColumns.value.widths == null) return 0
+  let left = 0
+  for (let i = 0; i < colIndex && i < columns.value.length; i++) {
+    const col = columns.value[i]
+    const key = colKey(col)
+    const w = sectionColumns.value.widths?.[key]
+    if (w?.mode === 'px' && w.value != null) left += w.value
+    else left += STICKY_FALLBACK_PX
+  }
+  return left
+}
+
+function getCellStyle(col, colIndex, isHeader, isFooter, row, totalsRowData) {
+  const style = {}
+  const width = getColumnWidth(col)
+  if (width) style.width = width
+  const bgColor = !isHeader ? getCellBackgroundColor(col, colIndex, row, isFooter, totalsRowData) : null
+  if (bgColor) style.backgroundColor = bgColor
+  if (colIndex < pinnedCount.value) {
+    style.position = 'sticky'
+    style.left = `${getStickyLeft(colIndex)}px`
+    style.zIndex = isHeader ? 2 : isFooter ? 2 : 1
+    if (!bgColor) style.background = isHeader || isFooter ? 'var(--color-primary-background, #fff)' : 'inherit'
+    style.boxShadow = colIndex < pinnedCount.value - 1 ? '2px 0 4px -2px rgba(0,0,0,0.1)' : 'none'
+  }
+  return style
+}
 
 const categoryColumns = computed(() =>
   columns.value.filter(col => !isNumericColumn(col))
@@ -99,20 +165,23 @@ const totalsRow = computed(() => {
   return row
 })
 
-function columnMax(col) {
-  const name = col?.name
-  const data = aggregatedRows.value
-  if (!name || !data?.length) return 0
-  const values = data.map(r => Number(r[name])).filter(Number.isFinite)
-  return values.length ? Math.max(...values) : 0
-}
+const colorColumnMinMax = computed(() => {
+  const cf = colorField.value
+  if (!cf || colorColumnIndex.value < 0) return { min: 0, max: 1 }
+  const name = cf.name
+  const values = aggregatedRows.value.map((r) => Number(r[name])).filter(Number.isFinite)
+  if (!values.length) return { min: 0, max: 1 }
+  return { min: Math.min(...values), max: Math.max(...values) }
+})
 
-function barWidth(col, value) {
-  const max = columnMax(col)
-  if (!max || value == null) return 0
-  const num = Number(value)
-  if (!Number.isFinite(num) || num <= 0) return 0
-  return Math.min(100, (num / max) * 100)
+function getCellBackgroundColor(col, colIndex, row, isFooter, totalsRowData) {
+  const cf = colorField.value
+  if (!cf || colorColumnIndex.value < 0) return null
+  const opts = sectionColors.value
+  if (!opts?.gradientPreset) return null
+  const value = isFooter && totalsRowData ? totalsRowData[cf.name] : row?.[cf.name]
+  const { min, max } = colorColumnMinMax.value
+  return getColorForValue(value, opts, min, max)
 }
 
 function formatCellValue(col, value) {
@@ -139,30 +208,19 @@ function goNext() {
       <table class="chart-table table table-striped table-hover">
         <thead>
           <tr>
-            <th v-for="col in columns" :key="col.id ?? col.name" scope="col">{{ col.label ?? col.name }}</th>
+            <th v-for="(col, colIndex) in columns" :key="col.id ?? col.name" scope="col" class="chart-table-cell" :style="getCellStyle(col, colIndex, true, false, null, null)">{{ col.label ?? col.name }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(row, idx) in paginatedRows" :key="idx">
-            <td v-for="col in columns" :key="col.id ?? col.name" class="chart-table-cell" :class="{ 'chart-table-cell--preserve': preserveSpaces }">
-              <template v-if="isNumericColumn(col) && row[col.name] != null">
-                <div class="chart-table-cell-bar-wrap">
-                  <div
-                    class="chart-table-cell-bar"
-                    :style="{ width: barWidth(col, row[col.name]) + '%' }"
-                  />
-                  <span class="chart-table-cell-value">{{ formatCellValue(col, row[col.name]) }}</span>
-                </div>
-              </template>
-              <template v-else>
-                {{ formatCellValue(col, row[col.name]) }}
-              </template>
+            <td v-for="(col, colIndex) in columns" :key="col.id ?? col.name" class="chart-table-cell" :class="{ 'chart-table-cell--preserve': preserveSpaces }" :style="getCellStyle(col, colIndex, false, false, row, null)">
+              {{ formatCellValue(col, row[col.name]) }}
             </td>
           </tr>
         </tbody>
         <tfoot v-if="showTotals && totalsRow" class="chart-table-tfoot">
           <tr>
-            <td v-for="col in columns" :key="col.id ?? col.name" class="chart-table-cell chart-table-cell--preserve">
+            <td v-for="(col, colIndex) in columns" :key="col.id ?? col.name" class="chart-table-cell chart-table-cell--preserve" :style="getCellStyle(col, colIndex, false, true, null, totalsRow)">
               <template v-if="isNumericColumn(col) && totalsRow[col.name] != null">
                 {{ formatCellValue(col, totalsRow[col.name]) }}
               </template>
@@ -191,15 +249,19 @@ function goNext() {
 .chart-table-wrapper {
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: 100%;
   min-height: 200px;
   overflow: hidden;
 }
 .chart-table-scroll {
   flex: 1;
+  min-width: 0;
+  width: 100%;
   overflow: auto;
 }
 .chart-table {
+  table-layout: fixed;
   width: 100%;
   margin-bottom: 0;
   font-size: 0.875rem;
@@ -220,22 +282,6 @@ function goNext() {
 .chart-table-tfoot {
   font-weight: 600;
   border-top: 2px solid var(--color-border, #dee2e6);
-}
-.chart-table-cell-bar-wrap {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-.chart-table-cell-bar {
-  flex-shrink: 0;
-  height: 8px;
-  min-width: 4px;
-  background: var(--bs-primary, #0d6efd);
-  border-radius: 4px;
-}
-.chart-table-cell-value {
-  flex-shrink: 0;
 }
 .chart-table-pagination {
   display: flex;

@@ -106,6 +106,8 @@ const DEFAULT_CHART_DISPLAY_OPTIONS = {
     sectionAxisY2: {},
     sectionColors: {},
     sectionLabels: {},
+    sectionColumns: {},
+    sectionSizeDots: {},
     tableSize: 'm',
     pagination: true,
     limit: 100,
@@ -174,7 +176,9 @@ const sectionOptionsForModal = computed(() => {
     y: 'sectionAxisY',
     y2: 'sectionAxisY2',
     color: 'sectionColors',
-    labels: 'sectionLabels'
+    labels: 'sectionLabels',
+    columns: 'sectionColumns',
+    sizeDots: 'sectionSizeDots',
   }
   const sectionKey = sectionKeyMap[key]
   return sectionKey ? (opts[sectionKey] ?? {}) : {}
@@ -399,6 +403,8 @@ async function fetchChartIfEditing() {
                 sectionAxisY2: typeof loadedDisplay.sectionAxisY2 === 'object' && loadedDisplay.sectionAxisY2 ? { ...loadedDisplay.sectionAxisY2 } : {},
                 sectionColors: typeof loadedDisplay.sectionColors === 'object' && loadedDisplay.sectionColors ? { ...loadedDisplay.sectionColors } : {},
                 sectionLabels: typeof loadedDisplay.sectionLabels === 'object' && loadedDisplay.sectionLabels ? { ...loadedDisplay.sectionLabels } : {},
+                sectionColumns: typeof loadedDisplay.sectionColumns === 'object' && loadedDisplay.sectionColumns ? { ...loadedDisplay.sectionColumns } : {},
+                sectionSizeDots: typeof loadedDisplay.sectionSizeDots === 'object' && loadedDisplay.sectionSizeDots ? { ...loadedDisplay.sectionSizeDots } : {},
                 tableSize: loadedDisplay.tableSize ?? 'm',
                 pagination: loadedDisplay.pagination !== false,
                 limit: Math.max(1, Number(loadedDisplay.limit) || 100),
@@ -478,7 +484,9 @@ function onSectionSettingsApply(payload) {
         y: 'sectionAxisY',
         y2: 'sectionAxisY2',
         color: 'sectionColors',
-        labels: 'sectionLabels'
+        labels: 'sectionLabels',
+        columns: 'sectionColumns',
+        sizeDots: 'sectionSizeDots',
     }
     const sectionKey = sectionKeyMap[key]
     if (sectionKey) {

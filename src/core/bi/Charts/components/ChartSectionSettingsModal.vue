@@ -15,17 +15,21 @@
         <SectionAxisYForm v-model="localAxis" :axis-fields="sectionFields" />
       </template>
       <template v-else-if="settingKey === 'color'">
-        <SectionColorForm v-model="localColors" :section-fields="sectionFields" />
+        <SectionColorTableForm v-if="chartTypeNorm === 'table'" v-model="localColors" />
+        <SectionColorForm v-else v-model="localColors" :section-fields="sectionFields" />
       </template>
       <template v-else-if="settingKey === 'labels'">
         <SectionLabelsForm v-model="localLabels" />
+      </template>
+      <template v-else-if="settingKey === 'columns'">
+        <SectionColumnsForm v-model="localColumns" :section-fields="sectionFields" />
       </template>
       <template v-else>
         <p class="section-modal-placeholder">Дополнительные настройки для этой секции отсутствуют.</p>
       </template>
 
       <div class="modal-actions-buttons">
-        <button v-if="settingKey === 'color'" type="button" class="btn btn-reset" @click="onColorsReset">Сбросить</button>
+        <button v-if="settingKey === 'color' || settingKey === 'columns'" type="button" class="btn btn-reset" @click="onResetClick">Сбросить</button>
         <button type="button" class="btn btn-cancel" @click="close">Отменить</button>
         <button type="button" class="btn btn-apply" @click="apply">Применить</button>
       </div>
@@ -41,7 +45,9 @@ import SectionAxisXForm from './ChartSectionSettings/SectionAxisXForm.vue'
 import SectionAxisYForm from './ChartSectionSettings/SectionAxisYForm.vue'
 import SectionColorForm from './ChartSectionSettings/SectionColorForm.vue'
 import SectionLabelsForm from './ChartSectionSettings/SectionLabelsForm.vue'
-import { defaultSectionAxis, defaultSectionAxisYExtras, defaultSectionColors, defaultSectionLabels } from './ChartSectionSettings/sectionDefaults.js'
+import SectionColumnsForm from './ChartSectionSettings/SectionColumnsForm.vue'
+import SectionColorTableForm from './ChartSectionSettings/SectionColorTableForm.vue'
+import { defaultSectionAxis, defaultSectionAxisYExtras, defaultSectionColors, defaultSectionLabels, defaultSectionColumns } from './ChartSectionSettings/sectionDefaults.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -60,12 +66,15 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'apply'])
 
+const chartTypeNorm = computed(() => (props.chartType || '').toLowerCase().trim())
+
 const modalTitle = computed(() => {
   if (props.settingKey === 'x') return 'X'
   if (props.settingKey === 'y') return 'Y'
   if (props.settingKey === 'y2') return 'Y2'
   if (props.settingKey === 'color') return 'Настройки цветов'
   if (props.settingKey === 'labels') return 'Подписи'
+  if (props.settingKey === 'columns') return 'Настройка столбцов'
   return props.setting?.label ?? 'Настройки'
 })
 
@@ -80,6 +89,7 @@ const sectionIcon = computed(() => {
 const localAxis = ref({ ...defaultSectionAxis })
 const localColors = ref({ ...defaultSectionColors })
 const localLabels = ref({ ...defaultSectionLabels })
+const localColumns = ref({ ...defaultSectionColumns })
 
 function syncFromProps() {
   if (!props.visible) return
@@ -92,6 +102,8 @@ function syncFromProps() {
     localColors.value = { ...defaultSectionColors, ...opts }
   } else if (props.settingKey === 'labels') {
     localLabels.value = { ...defaultSectionLabels, ...opts }
+  } else if (props.settingKey === 'columns') {
+    localColumns.value = { ...defaultSectionColumns, ...opts }
   }
 }
 
@@ -99,18 +111,6 @@ watch(
   () => [props.visible, props.settingKey, props.sectionOptions],
   () => {
     if (props.visible) syncFromProps()
-  },
-  { immediate: true }
-)
-
-watch(
-  () => [props.visible, props.settingKey, props.sectionFields],
-  ([visible, key, fields]) => {
-    if (visible && key === 'x' && Array.isArray(fields)) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/eb3e6660-cc3f-4822-a816-bf4938ca4409',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartSectionSettingsModal.vue:watch',message:'sectionFields for x',data:{settingKey:key,sectionFieldsLen:fields?.length,firstType:fields?.[0]?.type},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
-    }
   },
   { immediate: true }
 )
@@ -126,14 +126,20 @@ function apply() {
     emit('apply', { ...localColors.value })
   } else if (props.settingKey === 'labels') {
     emit('apply', { ...localLabels.value })
+  } else if (props.settingKey === 'columns') {
+    emit('apply', { ...localColumns.value })
   } else {
     emit('apply', {})
   }
   close()
 }
 
-function onColorsReset() {
-  localColors.value = { ...defaultSectionColors }
+function onResetClick() {
+  if (props.settingKey === 'color') {
+    localColors.value = { ...defaultSectionColors }
+  } else if (props.settingKey === 'columns') {
+    localColumns.value = { ...defaultSectionColumns }
+  }
 }
 </script>
 

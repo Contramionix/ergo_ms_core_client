@@ -134,20 +134,13 @@ const formatOptions = computed(() => {
   let result = []
   if (type === 'date' || type === 'date&time') result = DATE_FORMAT_OPTIONS
   else if (type === 'integer' || type === 'float' || type === 'number') result = NUMBER_FORMAT_OPTIONS
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/eb3e6660-cc3f-4822-a816-bf4938ca4409',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SectionAxisXForm.vue:formatOptions',message:'formatOptions computed',data:{axisFieldsLen:props.axisFields?.length,firstType:type,firstField:first?{type:first.type,name:first.name}:null,formatOptionsLen:result.length},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
   return result
 })
 
 const showFormatRow = computed(() => {
   const axisFormat = model.value?.axisFormat
   const len = formatOptions.value?.length ?? 0
-  const show = axisFormat === 'manual' && len > 0
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/eb3e6660-cc3f-4822-a816-bf4938ca4409',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SectionAxisXForm.vue:showFormatRow',message:'showFormatRow condition',data:{axisFormat,axisFormatType:typeof axisFormat,formatOptionsLen:len,show},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-  return show
+  return axisFormat === 'manual' && len > 0
 })
 
 function update(key, value) {
@@ -155,9 +148,6 @@ function update(key, value) {
   if (key === 'displayMode' && value === 'discrete' && next.gridStep === 'manual') {
     next.gridStep = 'auto'
   }
-  // #region agent log
-  if (key === 'axisFormat') fetch('http://127.0.0.1:7242/ingest/eb3e6660-cc3f-4822-a816-bf4938ca4409',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SectionAxisXForm.vue:update',message:'update axisFormat',data:{key,value,valueType:typeof value,nextAxisFormat:next.axisFormat},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-  // #endregion
   model.value = next
 }
 </script>

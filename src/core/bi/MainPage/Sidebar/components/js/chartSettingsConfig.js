@@ -101,6 +101,7 @@ export const chartSettingsConfig = {
   ],
   indicator: [
     { key: 'value', label: 'Показатель', icon: ChartPie, allowedTypes: ['integer', 'float'] },
+    { key: 'color', label: 'Цвета', icon: PaintBucket, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'], allowMeasureNames: true },
     { key: 'filters', label: 'Фильтры', icon: Filter, allowedTypes: ['string', 'integer', 'float', 'date', 'date&time', 'bool', 'geopoint', 'geopolygon'] }
   ],
   table: [
