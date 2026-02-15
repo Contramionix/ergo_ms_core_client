@@ -1,47 +1,6 @@
 <template>
     <div class="dashboard-page">
-        <div class="body-header border-elements elements-color">
-            <div class="header-label-icon">
-                <LayoutDashboard />
-                <div ref="headerLabelTextRef" class="header-label-text" 
-                     :class="{ 'clickable': pages.length > 1, 'dropdown-open': showPageDropdown }"
-                     @click="togglePageDropdown"
-                     @mouseenter="handleHeaderHover"
-                     @mouseleave="handleHeaderLeave">
-                    <h4 class="header-label" :style="{ marginBottom: pages.length > 1 ? '-2px' : '3px' }">{{ dashboardName }}</h4>
-                    <div v-if="pages.length > 1" 
-                         class="header-label-pages" 
-                         :class="{ 'flipping': isFlipping }"
-                         style="color: var(--color-secondary-text); font-size: 14px;">
-                        <span class="text-content">{{ displayText }}</span>
-                    </div>
-                    
-                    <div v-if="showPageDropdown && pages.length > 1" 
-                         class="page-dropdown"
-                         :style="{ width: dropdownWidth + 'px' }">
-                        <div v-for="(page, index) in pages" 
-                             :key="index" 
-                             class="page-dropdown-item"
-                             :class="{ 'active': index === currentPageIndex }"
-                             @click="selectPage(index, $event)">
-                            {{ page.name }}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div v-if="isHeaderButtonsReady" class="header-label-buttons">
-                <template v-if="isViewMode">
-                    <button v-if="canEditDashboard" class="btn btn-sm btn-primary" @click="goToEditMode"><Pencil :size="16" class="btn-icon-inline" />Редактировать</button>
-                </template>
-                <template v-else>
-                    <button class="btn btn-sm btn-secondary" @click="isPageWindowVisible = true">Страницы</button>
-                    <button class="btn btn-sm btn-primary" :disabled="!dashboardRequiredFieldsFilled || !isDashboardDirty"
-                        @click="handleSaveClick">{{ isEditMode ? 'Сохранить изменения' : 'Создать дашборд' }}
-                    </button>
-                </template>
-            </div>
-        </div>
+        <DashboardHeader :dashboard-name="dashboardName" :dashboard-id="dashboardId" :pages="pages" :current-page-index="currentPageIndex" :is-view-mode="isViewMode" :can-edit-dashboard="canEditDashboard" :is-edit-mode="isEditMode" :dashboard-required-fields-filled="dashboardRequiredFieldsFilled" :is-dashboard-dirty="isDashboardDirty" :is-header-buttons-ready="isHeaderButtonsReady" @select-page="onSelectPage" @go-to-edit-mode="goToEditMode" @save-click="handleSaveClick" @show-pages="isPageWindowVisible = true" @rename="onRenameClick" @delete="onDeleteClick"/>
         
         <PageWindow v-if="isPageWindowVisible" v-model="pages" @close="isPageWindowVisible = false"/>
 
@@ -70,9 +29,11 @@
         </div>
         
         <SaveDashboardModal :visible="isSaveModalVisible" :name="dashboardName" :description="dashboardDescription" :is-edit-mode="isEditMode" :saving="saving" @close="isSaveModalVisible = false" @save="handleSaveDashboard"/>
+        <NameDialogModal v-if="renameModalVisible" :visible="renameModalVisible" :model-value="dashboardName" title="Переименовать дашборд" placeholder="Введите название дашборда" @saved="onRenameSaved" @update:visible="renameModalVisible = $event"/>
+        <ConfirmDialog :show="showDeleteDialog" title="Удаление дашборда" :message="deleteConfirmMessage" confirm-text="Удалить" variant="danger" :loading="deleteInProgress" @confirm="confirmDeleteDashboard" @close="showDeleteDialog = false"/>
         
         <div v-if="isHeaderButtonsReady" class="body-content">
-            <DashboardGrid ref="dashboardGridRef" :items="currentPageItems" :dragged-type="isViewMode ? '' : draggedType" :pages-count="pages.length" :view-mode="isViewMode" @update:items="updateCurrentPageItems" @item-select="handleItemSelect" @item-edit="handleItemEdit" @item-delete="handleItemDelete"/>
+            <DashboardGrid ref="dashboardGridRef" :items="currentPageItems" :dragged-type="isViewMode ? '' : draggedType" :pages-count="pages.length" :view-mode="isViewMode" @update:items="updateCurrentPageItems" @item-edit="handleItemEdit"/>
         </div>
         
         <div v-if="isHeaderButtonsReady && !isViewMode" class="body-footer" :style="{ left: footerLeftOffset, width: footerWidth }">
@@ -86,8 +47,10 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { LayoutDashboard, Pencil } from 'lucide-vue-next'
 import DashboardToolbar from './DashboardToolbar.vue'
+import DashboardHeader from './DashboardHeader.vue'
+import NameDialogModal from '@/core/bi/components/NameDialogModal.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PageWindow from './components/PageWindow.vue'
 import DashboardGrid from './DashboardGrid.vue'
 import HeaderSettings from './Header/HeaderSettings.vue'
@@ -145,11 +108,10 @@ const toast = useToast()
 const isPageWindowVisible = ref(false)
 const pages = ref([{ name: 'Страница 1' }])
 const currentPageIndex = ref(0)
-const showPageDropdown = ref(false)
-const headerHoverText = ref('')
-const isFlipping = ref(false)
-const headerLabelTextRef = ref(null)
-const dropdownWidth = ref(200)
+const renameModalVisible = ref(false)
+const showDeleteDialog = ref(false)
+const deleteConfirmMessage = ref('')
+const deleteInProgress = ref(false)
 const route = useRoute()
 const router = useRouter()
 const draggedType = ref('')
@@ -185,17 +147,10 @@ function getItemDefaultHeight(item) {
   }
 }
 
-const handleToolbarDragStart = (itemType) => {
-            draggedType.value = itemType
-}
+const handleToolbarDragStart = (itemType) => { draggedType.value = itemType }
+const handleToolbarDragEnd = () => { draggedType.value = '' }
 
-const handleToolbarDragEnd = () => {
-    draggedType.value = ''
-}
-
-const dashboardRequiredFieldsFilled = computed(() => {
-    return dashboardName.value.trim().length > 0
-})
+const dashboardRequiredFieldsFilled = computed(() => dashboardName.value.trim().length > 0)
 
 function deepEqual(a, b) {
     if (a === b) return true
@@ -220,32 +175,18 @@ const isDashboardDirty = computed(() => {
     return !deepEqual(current, lastSavedSnapshot.value)
 })
 
-const currentPageName = computed(() => {
-    return pages.value[currentPageIndex.value]?.name || 'Страница 1'
-})
-
-const displayText = computed(() => {
-    if (showPageDropdown.value) {
-        return 'Сменить страницу'
-    }
-    return headerHoverText.value || currentPageName.value
-})
-
 const currentPageItems = computed(() => {
     return dashboardItems.value[currentPageIndex.value] || []
 })
 
-const footerLeftOffset = computed(() => {
-    const mainSidebarWidth = isSidebarCollapsed.value ? 120 : 260
-    const biSidebarWidth = isDatasetSidebarOpen.value ? 768 : 0
-    return `${mainSidebarWidth + biSidebarWidth}px`
+const sidebarWidthTotal = computed(() => {
+    const main = isSidebarCollapsed.value ? 120 : 260
+    const bi = isDatasetSidebarOpen.value ? 768 : 0
+    return main + bi
 })
 
-const footerWidth = computed(() => {
-    const mainSidebarWidth = isSidebarCollapsed.value ? 120 : 260
-    const biSidebarWidth = isDatasetSidebarOpen.value ? 768 : 0
-    return `calc(100% - ${mainSidebarWidth + biSidebarWidth}px)`
-})
+const footerLeftOffset = computed(() => `${sidebarWidthTotal.value}px`)
+const footerWidth = computed(() => `calc(100% - ${sidebarWidthTotal.value}px)`)
 
 const updateCurrentPageItems = (newItems) => {
     dashboardItems.value[currentPageIndex.value] = newItems
@@ -254,9 +195,6 @@ const updateCurrentPageItems = (newItems) => {
 const goToEditMode = () => {
     if (!canEditDashboard.value) return
     router.replace({ path: route.path, query: { ...route.query, mode: 'edit' } })
-}
-
-const handleItemSelect = (item) => {
 }
 
 const handleItemEdit = (item) => {
@@ -275,36 +213,28 @@ const handleItemEdit = (item) => {
   }
 }
 
-const handleItemDelete = (item) => {
+function applyItemSettingsUpdate(updatedSettings, mergeItem) {
+    const itemIndex = currentPageItems.value.findIndex(item => item.id === updatedSettings.id)
+    if (itemIndex === -1) return
+    const oldItem = currentPageItems.value[itemIndex]
+    const oldHeight = oldItem.height
+    const mergedItem = mergeItem(updatedSettings, oldItem)
+    const newItems = [...currentPageItems.value]
+    newItems[itemIndex] = mergedItem
+    updateCurrentPageItems(newItems)
+    if (oldHeight !== mergedItem.height && dashboardGridRef.value) {
+        setTimeout(() => dashboardGridRef.value.triggerRecalculatePositions(), 50)
+    }
 }
 
 const saveHeaderSettings = (updatedSettings) => {
-  const itemIndex = currentPageItems.value.findIndex(item => item.id === updatedSettings.id);
-  if (itemIndex !== -1) {
-    const oldItem = currentPageItems.value[itemIndex];
-    const oldHeight = oldItem.height;
-    
-    if (updatedSettings.type === 'Заголовок') {
-      if (updatedSettings.autoHeight) {
-        updatedSettings.height = 'auto';
-      } else if (updatedSettings.size) {
-        updatedSettings.height = HEADER_WIDGET_HEIGHTS[updatedSettings.size] || 50;
-      }
-    }
-    
-    const newItems = [...currentPageItems.value];
-    newItems[itemIndex] = updatedSettings;
-    updateCurrentPageItems(newItems);
-    
-    const heightChanged = oldHeight !== updatedSettings.height;
-    if (heightChanged && dashboardGridRef.value) {
-      setTimeout(() => {
-        dashboardGridRef.value.triggerRecalculatePositions();
-      }, 50);
-    }
+  if (updatedSettings.type === 'Заголовок') {
+    if (updatedSettings.autoHeight) updatedSettings.height = 'auto'
+    else if (updatedSettings.size) updatedSettings.height = HEADER_WIDGET_HEIGHTS[updatedSettings.size] || 50
   }
-  closeHeaderSettings();
-};
+  applyItemSettingsUpdate(updatedSettings, (s) => s)
+  closeHeaderSettings()
+}
 
 function closeHeaderSettings() {
   isHeaderSettingsVisible.value = false
@@ -327,156 +257,68 @@ function closeSelectorSettings() {
 }
 
 const saveTextSettings = (updatedSettings) => {
-  const itemIndex = currentPageItems.value.findIndex(item => item.id === updatedSettings.id);
-  if (itemIndex !== -1) {
-    const oldItem = currentPageItems.value[itemIndex];
-    const oldHeight = oldItem.height;
-    
-    if (updatedSettings.type === 'Текст') {
-      if (updatedSettings.autoHeight) {
-        updatedSettings.height = 'auto';
-      } else {
-        updatedSettings.height = 150;
-      }
-    }
-    
-    const newItems = [...currentPageItems.value];
-    newItems[itemIndex] = updatedSettings;
-    updateCurrentPageItems(newItems);
-    
-    const heightChanged = oldHeight !== updatedSettings.height;
-    if (heightChanged && dashboardGridRef.value) {
-      setTimeout(() => {
-        dashboardGridRef.value.triggerRecalculatePositions();
-      }, 50);
-    }
+  if (updatedSettings.type === 'Текст') {
+    updatedSettings.height = updatedSettings.autoHeight ? 'auto' : 150
   }
-  closeTextSettings();
-};
+  applyItemSettingsUpdate(updatedSettings, (s) => s)
+  closeTextSettings()
+}
 
 const saveChartSettings = (updatedSettings) => {
-  const itemIndex = currentPageItems.value.findIndex(item => item.id === updatedSettings.id);
-  if (itemIndex !== -1) {
-    const oldItem = currentPageItems.value[itemIndex];
-    const oldHeight = oldItem.height;
-    
-    if (updatedSettings.type === 'Чарт') {
-      if (updatedSettings.autoHeight) {
-        updatedSettings.height = 'auto';
-      } else {
-        const keepHeight = typeof oldHeight === 'number' && oldHeight > 0;
-        const fromGrid = dashboardGridRef.value?.getResolvedHeight?.(updatedSettings.id);
-        const fallback = typeof fromGrid === 'number' && fromGrid > 0 ? fromGrid : 300;
-        updatedSettings.height = keepHeight ? oldHeight : fallback;
-      }
-    }
-    const newItems = [...currentPageItems.value];
-    newItems[itemIndex] = {
-      ...updatedSettings,
-      title: updatedSettings.title,
-      selectedChart: updatedSettings.selectedChart,
-      description: updatedSettings.description,
-      showDescription: updatedSettings.showDescription,
-      hint: updatedSettings.hint,
-      hintText: updatedSettings.hintText,
-      autoHeight: updatedSettings.autoHeight,
-      filtering: updatedSettings.filtering,
-      chartsList: updatedSettings.chartsList,
-      activeChartIndex: updatedSettings.activeChartIndex || 0
-    };
-    updateCurrentPageItems(newItems);
-    
-    const heightChanged = oldHeight !== updatedSettings.height;
-    if (heightChanged && dashboardGridRef.value) {
-      setTimeout(() => {
-        dashboardGridRef.value.triggerRecalculatePositions();
-      }, 50);
+  if (updatedSettings.type === 'Чарт') {
+    if (updatedSettings.autoHeight) {
+      updatedSettings.height = 'auto'
+    } else {
+      const oldHeight = currentPageItems.value.find(i => i.id === updatedSettings.id)?.height
+      const keepHeight = typeof oldHeight === 'number' && oldHeight > 0
+      const fromGrid = dashboardGridRef.value?.getResolvedHeight?.(updatedSettings.id)
+      const fallback = typeof fromGrid === 'number' && fromGrid > 0 ? fromGrid : 300
+      updatedSettings.height = keepHeight ? oldHeight : fallback
     }
   }
-  closeChartSettings();
-};
+  const merged = {
+    ...updatedSettings,
+    title: updatedSettings.title,
+    selectedChart: updatedSettings.selectedChart,
+    description: updatedSettings.description,
+    showDescription: updatedSettings.showDescription,
+    hint: updatedSettings.hint,
+    hintText: updatedSettings.hintText,
+    autoHeight: updatedSettings.autoHeight,
+    filtering: updatedSettings.filtering,
+    chartsList: updatedSettings.chartsList,
+    activeChartIndex: updatedSettings.activeChartIndex || 0
+  }
+  applyItemSettingsUpdate(updatedSettings, () => merged)
+  closeChartSettings()
+}
 
 const saveSelectorSettings = (updatedSettings) => {
-  const itemIndex = currentPageItems.value.findIndex(item => item.id === updatedSettings.id);
-  if (itemIndex !== -1) {
-    const oldItem = currentPageItems.value[itemIndex];
-    const oldHeight = oldItem.height;
-    
-    if (updatedSettings.type === 'Селектор') {
-      if (updatedSettings.autoHeight) {
-        updatedSettings.height = 'auto';
-      } else {
-        updatedSettings.height = 50;
-      }
-    }
-    
-    const newItems = [...currentPageItems.value];
-    newItems[itemIndex] = {
-      ...newItems[itemIndex],
-      selectorsList: updatedSettings.selectorsList,
-      activeSelectorIndex: updatedSettings.activeSelectorIndex || 0,
-      selectorGroupSettings: updatedSettings.selectorGroupSettings || {
-        applyButton: false,
-        clearButton: false,
-        autoHeight: false
-      }
-    };
-    updateCurrentPageItems(newItems);
-    
-    const heightChanged = oldHeight !== updatedSettings.height;
-    if (heightChanged && dashboardGridRef.value) {
-      setTimeout(() => {
-        dashboardGridRef.value.triggerRecalculatePositions();
-      }, 50);
-    }
+  if (updatedSettings.type === 'Селектор') {
+    updatedSettings.height = updatedSettings.autoHeight ? 'auto' : 50
   }
-  closeSelectorSettings();
-};
-
-const togglePageDropdown = () => {
-    if (pages.value.length > 1) {
-        showPageDropdown.value = !showPageDropdown.value
-        if (showPageDropdown.value && headerLabelTextRef.value) {
-            dropdownWidth.value = headerLabelTextRef.value.offsetWidth
-        }
-    }
+  applyItemSettingsUpdate(updatedSettings, (s, old) => ({
+    ...old,
+    selectorsList: s.selectorsList,
+    activeSelectorIndex: s.activeSelectorIndex || 0,
+    selectorGroupSettings: s.selectorGroupSettings || { applyButton: false, clearButton: false, autoHeight: false }
+  }))
+  closeSelectorSettings()
 }
 
-const handleHeaderHover = () => {
-    if (pages.value.length > 1) {
-        isFlipping.value = true
-        setTimeout(() => {
-            headerHoverText.value = 'Сменить страницу'
-            isFlipping.value = false
-        }, 150)
-    }
+function onSelectPage(idx) {
+    currentPageIndex.value = idx
 }
 
-const handleHeaderLeave = () => {
-    if (pages.value.length > 1) {
-        isFlipping.value = true
-        setTimeout(() => {
-            headerHoverText.value = ''
-            isFlipping.value = false
-        }, 150)
-    }
-}
-
-const selectPage = (index, event) => {
-    event.stopPropagation()
-    currentPageIndex.value = index
-    showPageDropdown.value = false
+function replaceQueryTab(tab) {
+    const q = { ...route.query }
+    if (tab != null) q.tab = String(tab)
+    else delete q.tab
+    router.replace({ query: q })
 }
 
 const updateUrlForPage = (pageIndex) => {
-    if (pages.value.length > 1) {
-        const newQuery = { ...route.query, tab: pageIndex.toString() }
-        router.replace({ query: newQuery })
-    } else {
-        const newQuery = { ...route.query }
-        delete newQuery.tab
-        router.replace({ query: newQuery })
-    }
+    replaceQueryTab(pages.value.length > 1 ? pageIndex : null)
 }
 
 const initializePageFromUrl = () => {
@@ -487,25 +329,48 @@ const initializePageFromUrl = () => {
             currentPageIndex.value = pageIndex
         } else {
             currentPageIndex.value = 0
-            updateUrlForPage(0)
+            replaceQueryTab(0)
         }
     } else if (pages.value.length === 0) {
-        const newQuery = { ...route.query }
-        delete newQuery.tab
-        router.replace({ query: newQuery })
-    }
-}
-
-const handleClickOutside = (event) => {
-    const headerLabelText = event.target.closest('.header-label-text')
-    const pageDropdown = event.target.closest('.page-dropdown')
-    
-    if (!headerLabelText && !pageDropdown) {
-        showPageDropdown.value = false
+        replaceQueryTab(null)
     }
 }
 
 let cleanupSidebarTracking = null
+
+function onRenameClick() {
+    renameModalVisible.value = true
+}
+
+async function onRenameSaved({ name }) {
+    if (!dashboardId.value || !name?.trim()) return
+    try {
+        await dashboardService.patchDashboard(dashboardId.value, { name })
+        dashboardName.value = name.trim()
+        toast.success('Дашборд переименован')
+        renameModalVisible.value = false
+    } catch (err) {
+        toast.error(err.response?.data?.detail || 'Не удалось переименовать дашборд')
+    }
+}
+
+function onDeleteClick() {
+    const name = dashboardName.value || 'Дашборд'
+    deleteConfirmMessage.value = `Вы уверены, что хотите удалить дашборд "${name}"? Это действие нельзя отменить.`
+    showDeleteDialog.value = true
+}
+
+async function confirmDeleteDashboard() {
+    if (!dashboardId.value) return
+    deleteInProgress.value = true
+    try {
+        await dashboardService.deleteDashboard(dashboardId.value)
+        router.push('/bi')
+    } finally {
+        deleteInProgress.value = false
+        showDeleteDialog.value = false
+    }
+}
 
 // Преобразование данных из API в формат компонента
 function loadDashboardFromAPI(dashboardData) {
@@ -565,7 +430,6 @@ function prepareDashboardForAPI(name, description) {
                 ),
                 order: items.indexOf(item),
                 config: {
-                    // Для заголовка
                     ...(item.type === 'Заголовок' && {
                         title: item.title,
                         size: item.size,
@@ -575,14 +439,12 @@ function prepareDashboardForAPI(name, description) {
                         textColor: item.textColor,
                         background: item.background
                     }),
-                    // Для текста
                     ...(item.type === 'Текст' && {
                         content: item.content,
                         autoHeight: item.autoHeight,
                         textColor: item.textColor,
                         background: item.background
                     }),
-                    // Для чарта
                     ...(item.type === 'Чарт' && {
                         chartsList: item.chartsList || [],
                         activeChartIndex: item.activeChartIndex || 0,
@@ -594,7 +456,6 @@ function prepareDashboardForAPI(name, description) {
                         autoHeight: item.autoHeight,
                         filtering: item.filtering
                     }),
-                    // Для селектора
                     ...(item.type === 'Селектор' && {
                         selectorsList: item.selectorsList || [],
                         activeSelectorIndex: item.activeSelectorIndex || 0,
@@ -672,7 +533,6 @@ async function loadDashboard(id) {
 
 onMounted(async () => {
     cleanupSidebarTracking = initializeSidebarTracking()
-    document.addEventListener('click', handleClickOutside)
     initializePageFromUrl()
     
     // Загружаем дашборд, если есть ID в route
@@ -697,15 +557,10 @@ onMounted(async () => {
 })
 
 watch(() => pages.value.length, (newLength, oldLength) => {
-    if (newLength === 0) {
-        const newQuery = { ...route.query }
-        delete newQuery.tab
-        router.replace({ query: newQuery })
-    } else if (newLength === 1) {
-        const newQuery = { ...route.query }
-        delete newQuery.tab
-        router.replace({ query: newQuery })
-    } else if (newLength > 1) {
+    if (newLength <= 1) {
+        replaceQueryTab(null)
+    }
+    if (newLength > 1) {
         if (currentPageIndex.value >= newLength) {
             currentPageIndex.value = newLength - 1
         }
@@ -739,7 +594,6 @@ onUnmounted(() => {
     if (cleanupSidebarTracking) {
         cleanupSidebarTracking()
     }
-    document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -750,112 +604,6 @@ onUnmounted(() => {
     justify-content: flex-start;
     min-height: 100vh;
     padding-bottom: 80px;
-}
-
-.body-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 15px 15px;
-    flex-shrink: 0;
-    position: relative;
-}
-
-.header-label-icon {
-    display: flex;
-    justify-content: flex-start;
-    gap: 10px;
-    align-items: center;
-    position: relative;
-    flex: 1;
-}
-
-.btn-icon-inline {
-    display: inline-flex;
-    vertical-align: middle;
-    margin-right: 6px;
-}
-
-.header-label-text{
-    position: relative;
-    overflow: visible;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    padding: 5px;
-    border-radius: 6px;
-    transition: all 0.2s ease;
-    
-    &.clickable:hover{
-        cursor: pointer;
-        background-color: var(--color-hover-background);
-    }
-    
-    &.dropdown-open{
-        background-color: var(--color-hover-background);
-    }
-}
-
-.page-dropdown {
-    position: absolute;
-    top: calc(100% + 2px);
-    left: 0;
-    background: var(--color-primary-background);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 10000;
-    min-width: 150px;
-    animation: dropdownFadeIn 0.2s ease;
-}
-
-.page-dropdown-item {
-    padding: 10px 16px;
-    cursor: pointer;
-    color: var(--color-text-primary);
-    font-size: 14px;
-    transition: background-color 0.2s ease;
-    
-    &:hover {
-        background-color: var(--color-hover-background);
-    }
-    
-    &.active {
-        background-color: var(--color-primary);
-        color: white;
-    }
-    
-    &:first-child {
-        border-radius: 8px 8px 0 0;
-    }
-    
-    &:last-child {
-        border-radius: 0 0 8px 8px;
-    }
-}
-
-.header-label-pages {
-    position: relative;
-    overflow: hidden;
-    height: 20px;
-    
-    .text-content {
-        transition: transform 0.3s ease;
-    }
-    
-    &.flipping .text-content {
-        transform: rotateX(90deg);
-    }
-}
-
-.header-label-buttons {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-    }
 }
 
 .body-content {
@@ -882,25 +630,6 @@ onUnmounted(() => {
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.border-elements {
-    border-radius: 8px;
-}
-
-.elements-color {
-    background-color: var(--color-primary-background);
-}
-
-@keyframes dropdownFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 .page-window-overlay {
     position: fixed;
     top: 0;
@@ -917,32 +646,26 @@ onUnmounted(() => {
 .page-window {
     background: var(--color-primary-background);
     border-radius: 12px;
-    
-    &.chart-settings-window {
-        max-width: 90vw;
-        max-height: 90vh;
-        width: 960px;
-        height: 470px;
-    }
-    
-    &.selector-settings-window {
-        max-width: 90vw;
-        max-height: 90vh;
-        width: 870px;
-        height: 640px;
-    }
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     width: 600px;
     min-height: 445px;
     display: flex;
     flex-direction: column;
     overflow: visible;
-}
 
-.chart-settings-window {
-    width: 965px;
-    height: 550px;
-    min-height: 550px;
-    max-height: 550px;
+    &.chart-settings-window {
+        max-width: 90vw;
+        max-height: 90vh;
+        width: 965px;
+        height: 550px;
+        min-height: 550px;
+    }
+
+    &.selector-settings-window {
+        max-width: 90vw;
+        max-height: 90vh;
+        width: 870px;
+        height: 640px;
+    }
 }
 </style>

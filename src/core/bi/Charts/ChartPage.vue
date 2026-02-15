@@ -1,6 +1,6 @@
 <template>
     <div class="page-body">
-        <ChartHeader :chart-name="chartName" :chart-type-icon-component="chartTypeIconComponent" :chart-type-icon-style="chartTypeIconStyle" :is-edit-mode="isEditMode" :dataset-rows="datasetRows" :ollama-available="ollamaAvailable" :is-full-screen="isFullScreen" :loading="loading" :chart-required-fields-filled="chartRequiredFieldsFilled" :is-chart-dirty="isChartDirty" @run-chart-analysis="runChartAnalysis" @toggle-full-screen="toggleFullScreen" @save-click="onSaveClick"/>
+        <ChartHeader :chart-name="chartName" :chart-id="chartId" :chart-type-icon-component="chartTypeIconComponent" :chart-type-icon-style="chartTypeIconStyle" :is-edit-mode="isEditMode" :dataset-rows="datasetRows" :ollama-available="ollamaAvailable" :is-full-screen="isFullScreen" :loading="loading" :chart-required-fields-filled="chartRequiredFieldsFilled" :is-chart-dirty="isChartDirty" @run-chart-analysis="runChartAnalysis" @toggle-full-screen="toggleFullScreen" @save-click="onSaveClick" @rename="onRenameClick" @delete="onDeleteClick"/>
         <ChartBodyGrid v-model:selected-dataset-id="selectedDatasetId" v-model:selected-chart-type="selectedChartType" :datasets="datasets" :datasets-loading="datasetsLoading" :selected-dataset="selectedDataset" :setting-types="settingTypes" :selected-fields="selectedFields" :fields-modal-open-for-key="fieldsModalOpenForKey" :indicators="displayedIndicators" :dataset-rows="datasetRows" :fields-for-chart="fieldsForChart" :chart-display-options="chartDisplayOptions" :dataset-rows-loading="datasetRowsLoading" :is-full-screen="isFullScreen" :sort-desc="sortDesc" @open-display-settings="showChartDisplayModal = true" @add-field-click="openFieldsModal" @remove-field="removeField" @edit-filter="openFilterModalForEdit" @open-field-settings="openFieldSettingsModal" @open-formula="openFormulaModal" @open-section-settings="openSectionSettingsModal" @toggle-sort-direction="onToggleSortDirection" @duplicate-indicator="duplicateIndicator" @remove-duplicate-indicator="removeDuplicateIndicator" :measures="displayedMeasures" :parameters="displayedParameters" @duplicate-measure="duplicateMeasure" @remove-duplicate-measure="removeDuplicateMeasure" @edit-parameter="onEditParameter"/>
     </div>
 
@@ -9,7 +9,9 @@
             <ChartFields :fields="displayedIndicators" :measures="displayedMeasures" :parameters="displayedParameters" :selected="selectedForModal" :allowed-types="currentAllowedTypes" :measures-in-chart="measuresInChart" :current-slot-config="currentSlotConfig" @select="handleFieldSelect" />
         </div>
     </transition>
-    <ChartNameDialog v-if="isSaveModalVisible" :visible="isSaveModalVisible" v-model="chartName" @update:visible="isSaveModalVisible = $event" @saved="onChartNameSaved" />
+    <NameDialogModal v-if="isSaveModalVisible" :visible="isSaveModalVisible" :model-value="chartName" @update:visible="isSaveModalVisible = $event" title="Название графика" placeholder="Введите название графика" @saved="onChartNameSaved" />
+    <NameDialogModal v-if="renameModalVisible" :visible="renameModalVisible" :model-value="chartName" @update:visible="renameModalVisible = $event" title="Название графика" placeholder="Введите название графика" @saved="onRenameSaved" />
+    <ConfirmDialog :show="showDeleteDialog" title="Подтверждение удаления" :message="deleteConfirmMessage" confirm-text="Да" cancel-text="Нет" variant="danger" @confirm="confirmDelete" @cancel="cancelDelete" @close="cancelDelete"/>
     <ChartSettingsFilterModal :visible="isFilterModalVisible" :field="filterModalField" :dataset-id="selectedDataset?.id ?? null" :initial-filter="filterModalInitialFilter" @update:visible="isFilterModalVisible = $event; if (!$event) filterModalField = null" @apply="onFilterModalApply"/>
     <ChartSettingsFieldModal :visible="fieldSettingsModalVisible" :field="fieldSettingsModalField" @update:visible="onFieldSettingsModalVisibleChange" @apply="onFieldSettingsApply"/>
     <ChartSettingsFormulaModal :visible="formulaModalVisible" :field="formulaModalField" :cols="formulaModalCols" :rows="formulaModalRows" @update:visible="onFormulaModalVisibleChange" @apply="onFormulaApply"/>
@@ -28,7 +30,8 @@ import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 
 import ChartFields from '@/core/bi/Charts/ChartFields.vue'
-import ChartNameDialog from '@/core/bi/Charts/components/ChartNameDialog.vue'
+import NameDialogModal from '@/core/bi/components/NameDialogModal.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ChartSettingsFilterModal from '@/core/bi/Charts/components/ChartSettingsFilterModal.vue'
 import ChartSettingsFieldModal from '@/core/bi/Charts/components/ChartSettingsFieldModal.vue'
 import ChartSettingsFormulaModal from '@/core/bi/Charts/components/ChartSettingsFormulaModal.vue'
@@ -167,6 +170,8 @@ const route = useRoute()
 const chartId = computed(() => route.params.id)
 const loading = ref(false)
 const isSaveModalVisible = ref(false)
+const renameModalVisible = ref(false)
+const showDeleteDialog = ref(false)
 const showChartDisplayModal = ref(false)
 const sectionSettingsModalVisible = ref(false)
 const sectionSettingsModalSettingKey = ref('')
@@ -385,12 +390,70 @@ const chartRequiredFieldsFilled = computed(() => {
     return hasRequiredFieldsForChartType(selectedChartType.value, selectedFields.value)
 })
 
+const deleteConfirmMessage = computed(() => {
+    const name = chartName.value || 'график'
+    return `Вы действительно хотите удалить график "${name}"?`
+})
+
 function onSaveClick() {
     if (isEditMode.value) {
         onChartNameSaved({ name: chartName.value })
     } else {
         isSaveModalVisible.value = true
     }
+}
+
+function onRenameClick() {
+    renameModalVisible.value = true
+}
+
+async function onRenameSaved({ name }) {
+    chartName.value = name
+    const params = cloneParams(selectedFields.value)
+    params.indicatorDuplicates = cloneParams(indicatorDuplicates.value)
+    params.measureDuplicates = cloneParams(measureDuplicates.value)
+    params.parameterDuplicates = cloneParams(parameterDuplicates.value)
+    const payload = {
+        name,
+        dataset: selectedDataset.value.id,
+        chart_type: selectedChartType.value,
+        engine: 'echarts',
+        params,
+        options: { display: { ...chartDisplayOptions.value } }
+    }
+    try {
+        const { data: updated } = await chartService.updateChart(chartId.value, payload)
+        chartData.value = updated
+        originalChart.value = buildOriginalChart(updated)
+        toast.success('График успешно переименован')
+    } catch {
+        toast.error('Не удалось переименовать график')
+    }
+    renameModalVisible.value = false
+}
+
+function onDeleteClick() {
+    showDeleteDialog.value = true
+}
+
+async function confirmDelete() {
+    if (!chartId.value) return
+    try {
+        const res = await apiClient.delete(`/bi_analysis/bi_charts/${chartId.value}/`)
+        if (res?.success !== false) {
+            toast.success('График успешно удалён')
+            router.push('/bi/charts/')
+        } else {
+            toast.error('Ошибка при удалении: ' + (res?.message || ''))
+        }
+    } catch (err) {
+        toast.error('Ошибка при удалении: ' + err)
+    }
+    cancelDelete()
+}
+
+function cancelDelete() {
+    showDeleteDialog.value = false
 }
 
 async function onChartNameSaved({ name }) {

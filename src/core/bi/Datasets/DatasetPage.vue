@@ -1,13 +1,52 @@
 <template>
   <div class="layout">
-    <DatasetHeader  :header-name="editableDatasetName" :is-new-page="isNewPage" :can-create-dataset="canCreateDataset" :saving="saving" :save-success="saveSuccess" :is-dirty="computedIsDirty" @show-dataset-dialog="showDatasetDialog = true" @edit-dataset="handleEditDataset" @update:header-name="editableDatasetName = $event"/>
+    <DatasetHeader
+      :header-name="editableDatasetName"
+      :dataset-id="datasetId"
+      :is-new-page="isNewPage"
+      :can-create-dataset="canCreateDataset"
+      :saving="saving"
+      :save-success="saveSuccess"
+      :is-dirty="computedIsDirty"
+      @show-dataset-dialog="showDatasetDialog = true"
+      @edit-dataset="handleEditDataset"
+      @rename="onRenameClick"
+      @delete="onDeleteClick"
+    />
     <DatasetToolbar v-model:active-tab="activeTab" :is-preview-loading="isPreviewLoading" :connection-status="getConnectionStatus()" @refresh-fields="refreshFields" @toggle-preview="togglePreview" @add-field="addField"/>
     <DatasetMainContent :active-tab="activeTab" :selected-connection="selectedConnection" :main-table="mainTable" :relations="relations" :all-tables-of-connection="allTablesOfConnection" :selected-tables="selectedTables" :fields="fields" :preview-cols="previewCols" :preview-rows="previewRows" :dataset="dataset" :is-preview-visible="isPreviewVisible" :connection-status="getConnectionStatus()" @edit-relation="onEditRelation" @remove-relation="removeRelationById" @open-table-link-modal="openTableLinkModal" @tables-loaded="handleTablesLoaded" @remove-table="handleRemoveTable" @edit-field="onEditField" @update:fields="fields = $event" @update:selected-connection="selectedConnection = $event" @update:main-table="mainTable = $event" @update:active-tab="activeTab = $event" @resetAllRelations="handleResetAllRelations" @params-changed="paramsDirtyTick++"/>
     <DatasetFooter v-if="isPreviewVisible" :is-preview-visible="isPreviewVisible" :preview-rows="previewRows" :preview-cols="previewCols" :fields="fields" :dataset-id="currentDatasetId" :is-preview-loading="isPreviewLoading" :connection-status="getConnectionStatus()" @switch-to-sources="activeTab = 'sources'"/>
     <div class="dataset-modals">
       <FieldSettingsModal :show="showModal" :selected-field="selectedField" :all-tables-of-connection="allTablesOfConnection" :selected-connection="selectedConnection" :preview-cols="previewCols" :preview-rows="previewRows" @close="showModal = false" @source-save="onSourceSave"/>
       <RelationModal :show="showTableLinkModal" :all-tables-of-connection="allTablesOfConnection" :used-right-table-ids="usedRightTableIds" :editing-relation="editingRelation" :main-table="mainTable" :current-dataset-id="currentDatasetId" :selected-connection="selectedConnection" @close="showTableLinkModal = false" @relation-apply="handleRelationApply"/>
-      <DatasetNameModal :show="showDatasetDialog" :dataset-name="dataset?.name" @saved="saveDataset" @update:show="showDatasetDialog = $event"/>
+      <NameDialogModal
+        v-if="showDatasetDialog"
+        :visible="showDatasetDialog"
+        :model-value="dataset?.name"
+        title="Название датасета"
+        placeholder="Введите название"
+        @saved="(e) => saveDataset(e.name)"
+        @update:visible="showDatasetDialog = $event"
+      />
+      <NameDialogModal
+        v-if="renameModalVisible"
+        :visible="renameModalVisible"
+        :model-value="dataset?.name"
+        title="Переименовать датасет"
+        placeholder="Введите название"
+        @saved="(e) => onRenameSaved(e.name)"
+        @update:visible="renameModalVisible = $event"
+      />
+      <ConfirmDialog
+        :show="showDeleteDialog"
+        title="Удаление датасета"
+        :message="deleteConfirmMessage"
+        confirm-text="Удалить"
+        variant="danger"
+        :loading="deleteInProgress"
+        @confirm="confirmDeleteDataset"
+        @close="showDeleteDialog = false"
+      />
     </div>
   </div>
 </template>
@@ -24,7 +63,9 @@ import DatasetMainContent from '@/core/bi/Datasets/Sources/DatasetMainContent.vu
 import DatasetFooter from '@/core/bi/Datasets/DatasetFooter.vue'
 import FieldSettingsModal from '@/core/bi/Datasets/components/FieldSettingsModal.vue'
 import RelationModal from '@/core/bi/Datasets/components/RelationModal.vue'
-import DatasetNameModal from '@/core/bi/Datasets/components/DatasetNameModal.vue'
+import NameDialogModal from '@/core/bi/components/NameDialogModal.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import datasetService from '@/core/bi/MainPage/Sidebar/components/js/datasetService'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,6 +75,10 @@ const actions = useDatasetActions(state)
 
 const editableDatasetName = ref('')
 const isLoadingDataset = ref(false)
+const renameModalVisible = ref(false)
+const showDeleteDialog = ref(false)
+const deleteConfirmMessage = ref('')
+const deleteInProgress = ref(false)
 
 const computedIsDirty = computed(() => {
   if (isDirty.value) return true
@@ -125,6 +170,34 @@ function handleEditDataset(datasetName) {
   const name = datasetName || editableDatasetName.value
   if (!dataset.value?.id) saveDataset(name)
   else editDataset(name)
+}
+
+function onRenameClick() {
+  renameModalVisible.value = true
+}
+
+function onRenameSaved(newName) {
+  editDataset(newName)
+  renameModalVisible.value = false
+}
+
+function onDeleteClick() {
+  const name = dataset.value?.name || editableDatasetName.value || 'Датасет'
+  deleteConfirmMessage.value = `Вы уверены, что хотите удалить датасет "${name}"? Это действие нельзя отменить.`
+  showDeleteDialog.value = true
+}
+
+async function confirmDeleteDataset() {
+  const id = currentDatasetId.value
+  if (!id) return
+  deleteInProgress.value = true
+  try {
+    await datasetService.deleteDataset(id)
+    router.push('/bi/datasets/')
+  } finally {
+    deleteInProgress.value = false
+    showDeleteDialog.value = false
+  }
 }
 
 function onEditField(field) {
