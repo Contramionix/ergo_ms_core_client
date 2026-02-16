@@ -108,10 +108,23 @@ const GRID_CONTAINER_PADDING = 20
 
 const ELEMENT_SIZES = {
   'Чарт': { width: 560, height: 300 },
-  'Селектор': { width: 370, height: 50 },
+  'Селектор': { width: 370, height: 160 },
   'Текст': { width: 560, height: 150 },
-  // Для заголовка дефолтная ширина будет подставляться динамически
   'Заголовок': { width: 600, height: 50 }
+}
+
+const ELEMENT_MIN_SIZES = {
+  'Селектор': { minWidth: 240, minHeight: 200 },
+  'Чарт': { minWidth: 100, minHeight: 50 },
+  'Текст': { minWidth: 100, minHeight: 50 },
+  'Заголовок': { minWidth: 100, minHeight: 50 }
+}
+
+const ELEMENT_MAX_SIZES = {
+  'Селектор': { maxHeight: 800 },
+  'Чарт': { maxHeight: 800 },
+  'Текст': { maxHeight: 600 },
+  'Заголовок': { maxHeight: 120 }
 }
 
 const props = defineProps({
@@ -393,7 +406,6 @@ const handleSelectorSelectionChange = (item, selectionData) => {}
 
 const handleSelectorResize = (item, newHeight) => {
   const isAutoHeight = item.autoHeight || item.selectorGroupSettings?.autoHeight;
-  
   if (isAutoHeight) {
     item.height = newHeight;
     autoHeightItems.value.set(item.id, newHeight);
@@ -998,8 +1010,13 @@ const handleResize = (event) => {
     ? gridContainer.value.clientWidth
     : resizeStartSize.value.width + GRID_PADDING * 2
   
+  const itemType = resizingItem.value.type
+  const minWidth = ELEMENT_MIN_SIZES[itemType]?.minWidth ?? 100
+  const minHeight = ELEMENT_MIN_SIZES[itemType]?.minHeight ?? 50
+  const maxHeight = ELEMENT_MAX_SIZES[itemType]?.maxHeight ?? 2000
+
   if (resizeDirection.value === 'e') {
-    newWidth = Math.max(100, resizeStartSize.value.width + deltaX)
+    newWidth = Math.max(minWidth, resizeStartSize.value.width + deltaX)
     const desiredRight = newX + newWidth
     const maxRight = getMaxRightEdgeForResize(
       newY,
@@ -1009,16 +1026,15 @@ const handleResize = (event) => {
     )
     const clampedRight = Math.min(desiredRight, maxRight)
     newWidth = clampedRight - newX
-    if (newWidth >= 100) {
+    if (newWidth >= minWidth) {
       resizingItem.value.width = newWidth
       resizingItem.value.x = newX
       pushNeighborsRight(resizingItem.value, newX + newWidth, resizeStartRightEdge.value)
     }
     return
   }
-  
+
   if (resizeDirection.value === 'w') {
-    const minWidth = 100
     const rightEdge = resizeStartRightEdge.value
     let desiredLeft = resizeStartItemPos.value.x + deltaX
 
@@ -1038,7 +1054,10 @@ const handleResize = (event) => {
   }
   
   if (resizeDirection.value === 's') {
-    const targetHeight = Math.max(50, resizeStartSize.value.height + deltaY)
+    const isSelectorWithAutoHeight = resizingItem.value.type === 'Селектор' &&
+      (resizingItem.value.autoHeight || resizingItem.value.selectorGroupSettings?.autoHeight);
+    if (isSelectorWithAutoHeight) return;
+    const targetHeight = Math.min(maxHeight, Math.max(minHeight, resizeStartSize.value.height + deltaY))
     const rows = groupItemsByRows()
     const sortedRowYs = [...rows.keys()].sort((a, b) => a - b)
     
@@ -1278,10 +1297,11 @@ const handleDrop = (event) => {
           }
         ]
         newItem.activeSelectorIndex = 0
+        newItem.autoHeight = true
         newItem.selectorGroupSettings = {
           applyButton: true,
           clearButton: true,
-          autoHeight: false
+          autoHeight: true
         }
       }
 

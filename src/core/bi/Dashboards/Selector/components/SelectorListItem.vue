@@ -2,35 +2,27 @@
   <div
     class="selector-item"
     :class="{
-      active: activeIndex === index,
-      dragging: draggedIndex === index,
-      'drag-over': dragOverIndex === index && draggedIndex !== index
+      active: props.activeIndex === props.index,
+      dragging: props.draggedIndex === props.index,
+      'drag-over': props.dragOverIndex === props.index && props.draggedIndex !== props.index
     }"
     draggable="true"
-    @dragstart="onDragStart && onDragStart(index, $event)"
-    @dragover.prevent="onDragOver && onDragOver(index, $event)"
-    @drop="onDrop && onDrop(index, $event)"
-    @dragenter.prevent="onDragEnter && onDragEnter(index, $event)"
+    @dragstart="onDragStart && onDragStart(props.index, $event)"
+    @dragover.prevent="onDragOver && onDragOver(props.index, $event)"
+    @drop="onDrop && onDrop(props.index, $event)"
+    @dragenter.prevent="onDragEnter && onDragEnter(props.index, $event)"
     @dragleave="onDragLeave && onDragLeave($event)"
     @dragend="onDragEnd && onDragEnd($event)"
-    @click="onSetActiveSelector && onSetActiveSelector(index)"
+    @click="onSetActiveSelector && onSetActiveSelector(props.index)"
   >
     <span class="selector-icon">
       <GripVertical absolute-stroke-width size="14" class="drag-handle" />
-      <Star
-        size="20"
-        :class="{
-          'star-favorite': selector.isFavorite,
-          'star-regular': !selector.isFavorite
-        }"
-        @click.stop="onToggleFavorite && onToggleFavorite(index)"
-      />
     </span>
     <span class="selector-name" :title="selector.title">{{ selector.title }}</span>
     <button
-      v-if="listLength > 1"
+      v-if="props.listLength > 1"
       class="delete-selector-btn"
-      @click.stop="onRemoveSelector && onRemoveSelector(index)"
+      @click.stop="onRemoveSelector && onRemoveSelector(props.index)"
       title="Удалить селектор"
     >
       ✕
@@ -39,7 +31,7 @@
 </template>
 
 <script setup>
-import { GripVertical, Star } from 'lucide-vue-next';
+import { GripVertical } from 'lucide-vue-next';
 
 const props = defineProps({
   selector: {
@@ -94,10 +86,6 @@ const props = defineProps({
     type: Function,
     default: null
   },
-  onToggleFavorite: {
-    type: Function,
-    default: null
-  },
   onRemoveSelector: {
     type: Function,
     default: null
@@ -118,7 +106,6 @@ const {
   onDragLeave,
   onDragEnd,
   onSetActiveSelector,
-  onToggleFavorite,
   onRemoveSelector
 } = props;
 </script>
@@ -193,31 +180,6 @@ const {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-
-.star-favorite {
-  fill: var(--color-warning, #ffc107);
-  stroke: var(--color-warning, #ffc107);
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    transform: scale(1.1);
-    filter: brightness(1.1);
-  }
-}
-
-.star-regular {
-  fill: none;
-  stroke: var(--color-text-secondary, #888);
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    fill: var(--color-warning-light, rgba(255, 193, 7, 0.2));
-    stroke: var(--color-warning, #ffc107);
-    transform: scale(1.1);
-  }
 }
 
 .drag-handle {

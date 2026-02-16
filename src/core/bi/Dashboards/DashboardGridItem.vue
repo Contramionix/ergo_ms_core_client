@@ -54,7 +54,7 @@
         <SelectorWidget
           :selectors-list="item.selectorsList || []"
           :active-selector-index="item.activeSelectorIndex || 0"
-          :auto-height="item.autoHeight || item.selectorGroupSettings?.autoHeight || false"
+          :auto-height="isItemAutoHeight || false"
           :selector-group-settings="item.selectorGroupSettings || {}"
           @selection-change="onSelectorSelectionChange"
           @content-resized="onSelectorResize"
@@ -78,6 +78,7 @@
         @mousedown.stop="onStartResize('e', $event)"
       ></div>
       <div
+        v-if="item.type !== 'Селектор' || !isItemAutoHeight"
         class="resize-indicator resize-bottom"
         @mousedown.stop="onStartResize('s', $event)"
       ></div>
@@ -153,6 +154,10 @@ const emit = defineEmits([
   'selector-clear-filters'
 ])
 
+const isItemAutoHeight = computed(
+  () => props.item.autoHeight || props.item.selectorGroupSettings?.autoHeight
+)
+
 const itemClasses = computed(() => {
   const typeClassKey = `item-${(props.item.type || '').toLowerCase()}`
   return {
@@ -162,8 +167,7 @@ const itemClasses = computed(() => {
     'item-dragging': props.draggedItemId === props.item.id,
     'item-hidden-drag':
       props.isDraggingExisting && props.draggedItemId === props.item.id,
-    'item-auto-height':
-      props.item.autoHeight || props.item.selectorGroupSettings?.autoHeight
+    'item-auto-height': isItemAutoHeight.value
   }
 })
 
@@ -183,10 +187,8 @@ const itemStyle = computed(() => {
     props.elementSizes[props.item.type]?.width ||
     200
   const defaultHeight = props.elementSizes[props.item.type]?.height || 150
-  const isAutoHeight =
-    props.item.autoHeight || props.item.selectorGroupSettings?.autoHeight
-  const height = isAutoHeight
-    ? `${props.resolvedHeight != null && props.resolvedHeight > 0 ? props.resolvedHeight : defaultHeight}px`
+  const height = isItemAutoHeight.value
+    ? `${(props.resolvedHeight != null && props.resolvedHeight > 0 ? props.resolvedHeight : defaultHeight)}px`
     : `${props.item.height || defaultHeight}px`
 
   const baseStyle = {
@@ -240,8 +242,6 @@ const headerStyle = computed(() => {
   }
   return style
 })
-
-const itemPreview = computed(() => props.itemPreview)
 
 const onClick = () => {
   emit('select', props.item)
@@ -650,11 +650,7 @@ const onHideHint = () => {
 }
 
 .item-селектор {
-  background: linear-gradient(
-    135deg,
-    var(--color-primary-background) 0%,
-    rgba(54, 162, 235, 0.05) 100%
-  );
+  background-color: var(--color-primary-background);
 
   .item-preview {
     font-size: 12px;

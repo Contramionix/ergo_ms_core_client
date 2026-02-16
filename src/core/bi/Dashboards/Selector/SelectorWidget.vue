@@ -8,8 +8,12 @@
       </div>
 
       <div v-else class="selector-render-container">
-        <div class="selectors-list-container">
-          <div v-for="selector in sortedSelectors" :key="selector.id" class="selector-row" :class="{ 'favorite': selector.isFavorite }">
+        <div class="selector-flex-layout">
+          <div
+            v-for="selector in sortedSelectors"
+            :key="selector.id"
+            class="selector-block"
+          >
             <div class="selector-list" :class="getSelectorLayoutClasses(selector)">
               <label v-if="selector?.titlePosition !== 'hidden'" class="selector-label">
                 {{ selector?.title || 'Селектор' }}
@@ -17,46 +21,27 @@
                   <HelpCircle :size="16" />
                 </div>
               </label>
-              
-              <select v-if="!selector?.selectorType || selector?.selectorType === 'list'" class="selector-dropdown" :value="getSelectorValue(selector)" @change="handleSelectionChange(selector, $event)" :class="getInputClasses(selector)">
-                <option value="">{{ getPlaceholderText(selector) }}</option>
-                <option v-if="getSelectorOptions(selector).length === 0 && !selector?.selectedDatasetId" 
-                        value="" disabled>Настройте датасет и поле</option>
-                <option v-for="option in getSelectorOptions(selector)" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </option>
-              </select>
-              
+              <CompactMultiSelect v-if="selector?.selectorType === 'list'" :options="getSelectorOptions(selector)" :model-value="getListOrCheckboxValue(selector)" :multiple="!!selector?.multipleSelection" :placeholder="getPlaceholderText(selector)" :with-color-accent="false" @update:model-value="handleCompactMultiSelectChange(selector, $event)" />
               <input v-else-if="selector?.selectorType === 'date'" type="date" :value="getSelectorValue(selector)" @change="handleSelectionChange(selector, $event)" class="date-input" :class="getInputClasses(selector)" :title="selector?.showInternalTitle && selector?.internalTitle ? selector.internalTitle : ''" />
-              
               <div v-else-if="selector?.selectorType === 'range'" class="range-container">
                 <input type="range" :value="getSelectorValue(selector)" :min="selector?.rangeMin || 0" :max="selector?.rangeMax || 100" :step="selector?.rangeStep || 1" @input="handleSelectionChange(selector, $event)" class="range-input" />
                 <span class="range-value">{{ getSelectorValue(selector) }}</span>
               </div>
-              
               <div v-else-if="selector?.selectorType === 'radio'" class="radio-group">
                 <label v-for="option in getSelectorOptions(selector)" :key="option.value" class="radio-item">
                   <input type="radio" :value="option.value" :checked="getSelectorValue(selector) === option.value" @change="handleSelectionChange(selector, $event)" />
                   <span class="radio-label">{{ option.label }}</span>
                 </label>
               </div>
-              
-              <div v-else-if="selector?.selectorType === 'checkbox'" class="checkbox-group">
-                <label v-for="option in getSelectorOptions(selector)" :key="option.value" class="checkbox-item">
-                  <input type="checkbox" :value="option.value" :checked="getSelectedValues(selector).includes(option.value)" @change="handleMultiSelectionChange(selector, $event)" />
-                  <span class="checkbox-label">{{ option.label }}</span>
-                </label>
-              </div>
-              
+              <CompactMultiSelect v-else-if="selector?.selectorType === 'checkbox'" :options="getSelectorOptions(selector)" :model-value="getSelectedValues(selector)" :multiple="true" :placeholder="getPlaceholderText(selector)" :with-color-accent="false" @update:model-value="handleCompactMultiSelectChange(selector, $event)" />
               <input v-else-if="selector?.selectorType === 'input'" type="text" :value="getSelectorValue(selector)" @input="handleInputChange(selector, $event)" class="selector-input" :class="getInputClasses(selector)" :placeholder="getPlaceholderText(selector)" />
             </div>
           </div>
         </div>
-        
-        <div v-if="selectorGroupSettings?.applyButton || selectorGroupSettings?.clearButton" class="selector-actions">
-          <button v-if="selectorGroupSettings?.applyButton" class="btn-apply" @click="applyFilters">Применить</button>
-          <button v-if="selectorGroupSettings?.clearButton" class="btn-clear" @click="clearFilters">Сбросить</button>
-        </div>
+      </div>
+      <div v-if="hasActions" class="selector-actions">
+        <button v-if="selectorGroupSettings?.applyButton" class="btn-apply" @click="applyFilters">Применить</button>
+        <button v-if="selectorGroupSettings?.clearButton" class="btn-clear" @click="clearFilters">Сбросить</button>
       </div>
     </div>
 
@@ -72,6 +57,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { AlertCircle, HelpCircle } from 'lucide-vue-next';
 import SpinnerLoading from '@/components/SpinnerLoading.vue';
+import CompactMultiSelect from './components/CompactMultiSelect.vue';
 import datasetService from '../../MainPage/Sidebar/components/js/datasetService.js';
 
 const props = defineProps({
@@ -122,27 +108,27 @@ const effectiveAutoHeight = computed(() => {
   return props.autoHeight || props.selectorGroupSettings?.autoHeight || false;
 });
 
+const hasActions = computed(() => !!(props.selectorGroupSettings?.applyButton || props.selectorGroupSettings?.clearButton));
+
 function initializeSelectorValue(selector) {
   if (selectorValues.value.hasOwnProperty(selector.id)) return;
-  
+
   if (selector.selectorType === 'checkbox') {
-    selectorValues.value[selector.id] = Array.isArray(selector.defaultValue) ? selector.defaultValue : [];
+    selectorValues.value[selector.id] = Array.isArray(selector.defaultValue) ? [...selector.defaultValue] : [];
+  } else if (selector.selectorType === 'list' && selector.multipleSelection) {
+    selectorValues.value[selector.id] = Array.isArray(selector.defaultValue) ? [...selector.defaultValue] : [];
   } else if (selector.selectorType === 'input') {
     selectorValues.value[selector.id] = '';
   } else {
-    selectorValues.value[selector.id] = selector.defaultValue || '';
+    selectorValues.value[selector.id] = selector.defaultValue ?? '';
   }
 }
 
 const sortedSelectors = computed(() => {
   if (!props.selectorsList || props.selectorsList.length === 0) return [];
-  
-  const sorted = [...props.selectorsList].sort((a, b) => {
-    if (a.isFavorite && !b.isFavorite) return -1;
-    if (!a.isFavorite && b.isFavorite) return 1;
-    return (a.id || 0) - (b.id || 0);
-  });
-  
+
+  const sorted = [...props.selectorsList].sort((a, b) => (a.id || 0) - (b.id || 0));
+
   sorted.forEach(selector => {
     initializeSelectorValue(selector);
     
@@ -216,6 +202,29 @@ function getSelectedValues(selector) {
   return Array.isArray(value) ? value : [];
 }
 
+function getListOrCheckboxValue(selector) {
+  if (selector?.selectorType === 'list' && selector?.multipleSelection) {
+    return getSelectedValues(selector);
+  }
+  return getSelectorValue(selector);
+}
+
+function handleCompactMultiSelectChange(selector, value) {
+  if (selector?.selectorType === 'list' && selector?.multipleSelection) {
+    const arr = Array.isArray(value) ? value : [];
+    setSelectedValues(selector, arr);
+    emit('selection-change', { selectorId: selector.id, value: arr, type: 'multiple' });
+  } else if (selector?.selectorType === 'list') {
+    const str = value != null ? String(value) : '';
+    setSelectorValue(selector, str);
+    emit('selection-change', { selectorId: selector.id, value: str, type: 'single' });
+  } else if (selector?.selectorType === 'checkbox') {
+    const arr = Array.isArray(value) ? value : [];
+    setSelectedValues(selector, arr);
+    emit('selection-change', { selectorId: selector.id, value: arr, type: 'multiple' });
+  }
+}
+
 function setSelectedValues(selector, values) {
   selectorValues.value[selector.id] = values;
 }
@@ -223,24 +232,20 @@ function setSelectedValues(selector, values) {
 function getSelectorLayoutClasses(selector = null) {
   const selectorData = selector || currentSelector.value;
   const classes = [];
-  
-  if (selectorData?.titlePosition === 'left') {
-    classes.push('title-position-left');
-  } else if (selectorData?.titlePosition === 'top') {
+  if (selectorData?.titlePosition === 'top') {
     classes.push('title-position-top');
+  } else {
+    classes.push('title-position-left');
   }
-  
   if (selectorData?.showColorAccent) {
     classes.push('with-color-accent');
   }
-  
   return classes;
 }
 
 function getInputClasses(selector) {
   return {
-    'with-internal-title': selector?.showInternalTitle && selector?.internalTitle,
-    'with-color-accent': selector?.showColorAccent
+    'with-internal-title': selector?.showInternalTitle && selector?.internalTitle
   };
 }
 
@@ -344,20 +349,19 @@ function clearFilters() {
   Object.keys(selectorValues.value).forEach(id => {
     const selector = props.selectorsList.find(s => s.id === parseInt(id));
     if (selector) {
-      if (selector.selectorType === 'checkbox') {
+      if (selector.selectorType === 'checkbox' || (selector.selectorType === 'list' && selector.multipleSelection)) {
         selectorValues.value[id] = [];
       } else {
         selectorValues.value[id] = '';
       }
     }
   });
-  
+
   emit('clear-filters');
 }
 
 watch(() => props.selectorsList, (newList, oldList) => {
   if (!newList) return;
-  
   newList.forEach(selector => {
     const oldSelector = oldList?.find(old => old.id === selector.id);
     
@@ -369,7 +373,8 @@ watch(() => props.selectorsList, (newList, oldList) => {
       }
     }
     
-    if (oldSelector && oldSelector.selectorType !== selector.selectorType) {
+    if (oldSelector && (oldSelector.selectorType !== selector.selectorType || (selector.selectorType === 'list' && oldSelector.multipleSelection !== selector.multipleSelection))) {
+      delete selectorValues.value[selector.id];
       initializeSelectorValue(selector);
     }
     
@@ -398,22 +403,22 @@ function calculateWidgetHeight() {
     element.style.height = 'auto';
 
     nextTick(() => {
-      const selectorContent = element.querySelector('.selector-content');
-      if (!selectorContent) return;
-      
-      const contentHeight = selectorContent.scrollHeight;
-      const computedStyle = window.getComputedStyle(element);
-      const paddingTop = parseFloat(computedStyle.paddingTop);
-      const paddingBottom = parseFloat(computedStyle.paddingBottom);
-      const borderTop = parseFloat(computedStyle.borderTopWidth);
-      const borderBottom = parseFloat(computedStyle.borderBottomWidth);
-      
-      const newHeight = Math.max(
-        contentHeight + paddingTop + paddingBottom + borderTop + borderBottom,
-        50
-      );
-
-      emit('content-resized', newHeight);
+      requestAnimationFrame(() => {
+        const selectorContent = element.querySelector('.selector-content');
+        if (!selectorContent) return;
+        
+        const contentHeight = selectorContent.scrollHeight;
+        const computedStyle = window.getComputedStyle(element);
+        const paddingTop = parseFloat(computedStyle.paddingTop);
+        const paddingBottom = parseFloat(computedStyle.paddingBottom);
+        const borderTop = parseFloat(computedStyle.borderTopWidth);
+        const borderBottom = parseFloat(computedStyle.borderBottomWidth);
+        const newHeight = Math.max(
+          contentHeight + paddingTop + paddingBottom + borderTop + borderBottom,
+          50
+        );
+        emit('content-resized', newHeight);
+      });
     });
   });
 }
@@ -422,7 +427,9 @@ function triggerHeightRecalculation() {
   recalculateHeightIfNeeded();
 }
 
-onMounted(recalculateHeightIfNeeded);
+onMounted(() => {
+  recalculateHeightIfNeeded();
+});
 
 onUnmounted(() => {
   if (hideHintTimer) {
@@ -441,6 +448,9 @@ function recalculateHeightIfNeeded() {
 watch(() => currentSelector.value, recalculateHeightIfNeeded, { deep: true });
 watch(() => props.selectorGroupSettings?.autoHeight, recalculateHeightIfNeeded);
 watch(() => props.activeSelectorIndex, recalculateHeightIfNeeded);
+watch(() => (props.selectorsList || []).length, () => {
+  recalculateHeightIfNeeded();
+});
 
 defineExpose({
   triggerHeightRecalculation
@@ -456,6 +466,8 @@ defineExpose({
   border-radius: 8px;
   padding: 3px;
   box-sizing: border-box;
+  container-type: inline-size;
+  container-name: selector-widget;
 
   &.auto-height {
     height: auto !important;
@@ -485,6 +497,47 @@ defineExpose({
   gap: 12px;
 }
 
+.selector-widget:not(.auto-height) .selector-content {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.selector-widget:not(.auto-height) .selector-render-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.selector-widget:not(.auto-height) .selector-flex-layout {
+  gap: 8px;
+}
+
+.selector-widget:not(.auto-height) .selector-actions {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+@container selector-widget (min-width: 560px) {
+  .selector-widget:not(.auto-height) .selector-content {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .selector-widget:not(.auto-height) .selector-render-container {
+    min-width: 0;
+  }
+
+  .selector-widget:not(.auto-height) .selector-actions {
+    margin-left: 12px;
+  }
+}
+
 .selector-error {
   display: flex;
   align-items: center;
@@ -501,6 +554,35 @@ defineExpose({
   gap: 8px;
   height: 100%;
   width: 100%;
+  container-type: inline-size;
+  container-name: selector-container;
+}
+
+.selector-flex-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.selector-flex-layout .selector-block {
+  width: 100%;
+  min-width: 0;
+}
+
+@container selector-container (min-width: 560px) {
+  .selector-flex-layout {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .selector-flex-layout .selector-block {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+  }
 }
 
 .selector-label {
@@ -541,6 +623,11 @@ defineExpose({
   gap: 8px;
   height: 100%;
   width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--color-hover-background, var(--color-background));
+  border: 1px solid var(--color-border);
+
   &.title-position-left {
     display: flex;
     flex-direction: row;
@@ -557,8 +644,11 @@ defineExpose({
     .radio-group,
     .checkbox-group,
     .date-input,
-    .range-container {
+    .range-container,
+    .compact-multi-select,
+    .selector-input {
       flex: 1;
+      min-width: 0;
     }
   }
   
@@ -573,31 +663,8 @@ defineExpose({
   }
 
   &.with-color-accent {
-    border: 2px solid var(--color-accent);
     border-radius: 6px;
     padding: 8px;
-    background: rgba(var(--color-accent-rgb), 0.05);
-    
-    .selector-dropdown,
-    .dropdown-button,
-    .date-input {
-      border-color: var(--color-accent);
-      background: rgba(var(--color-accent-rgb), 0.1);
-      
-      &:focus {
-        border-color: var(--color-accent);
-        box-shadow: 0 0 0 2px rgba(var(--color-accent-rgb), 0.2);
-      }
-      
-      &.with-internal-title {
-        background: rgba(var(--color-accent-rgb), 0.15);
-        
-        &::placeholder {
-          color: var(--color-accent);
-          font-weight: 500;
-        }
-      }
-    }
   }
 }
 
@@ -825,15 +892,15 @@ defineExpose({
   }
   
   .btn-apply {
-    background: var(--color-primary);
+    background-color: #0b5ed7;
     color: white;
-    border-color: var(--color-primary);
-    
-    &:hover {
-      background: var(--color-primary-hover, var(--color-primary));
-      filter: brightness(1.1);
+    border-color: #0b5ed7;
+
+    &:hover:not(:disabled) {
+      background-color: #0a4b9a;
+      border-color: #0a4b9a;
     }
-    
+
     &:active {
       transform: translateY(1px);
     }
@@ -856,30 +923,11 @@ defineExpose({
   }
 }
 
-.selectors-list-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.selector-block {
   width: 100%;
-  height: 100%;
-}
 
-.selector-row {
-  width: 100%;
-  
-  &.favorite {
-    order: -1;
-    
-    .selector-label {
-      font-weight: 600;
-      color: var(--color-primary);
-      
-      &::before {
-        content: '★ ';
-        color: var(--color-primary);
-        font-size: 14px;
-      }
-    }
+  .selector-list {
+    height: auto;
   }
 }
 

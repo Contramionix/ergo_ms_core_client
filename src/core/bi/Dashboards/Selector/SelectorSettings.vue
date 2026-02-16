@@ -1,27 +1,11 @@
 <template>
   <div class="widget-settings">
-    <SelectorListPanel
-      :selectors-list="selectorsList"
-      :active-selector-index="activeSelectorIndex"
-      :dragged-index="draggedIndex"
-      :drag-over-index="dragOverIndex"
-      :on-drag-start="handleDragStart"
-      :on-drag-over="handleDragOver"
-      :on-drop="handleDrop"
-      :on-drag-enter="handleDragEnter"
-      :on-drag-leave="handleDragLeave"
-      :on-drag-end="handleDragEnd"
-      :on-set-active-selector="setActiveSelector"
-      :on-toggle-favorite="toggleFavorite"
-      :on-remove-selector="removeSelector"
-      :on-add-selector="addNewSelector"
-      :on-open-advanced-settings="openAdvancedSettings"
-    />
+    <SelectorListPanel :selectors-list="selectorsList" :active-selector-index="activeSelectorIndex" :dragged-index="draggedIndex" :drag-over-index="dragOverIndex" :on-drag-start="handleDragStart" :on-drag-over="handleDragOver" :on-drop="handleDrop" :on-drag-enter="handleDragEnter" :on-drag-leave="handleDragLeave" :on-drag-end="handleDragEnd" :on-set-active-selector="setActiveSelector" :on-remove-selector="removeSelector" :on-add-selector="addNewSelector" :on-open-advanced-settings="openAdvancedSettings"/>
     <div class="widget-settings-right-side">
       <div class="widget-settings-right-side-header">
         <h5 class="widget-settings-right-side-title">Настройки селектора</h5>
         <button class="close-btn" @click="onCancel" title="Закрыть">
-          <span class="close-icon">×</span>
+          <X :size="20" class="close-icon" />
         </button>
       </div>
       <div class="widget-settings-right-side-content">
@@ -74,7 +58,7 @@
         <div class="dataset-modal-header">
           <h6 class="dataset-modal-title">Выбор датасета</h6>
           <button class="dataset-modal-close" @click="closeDatasetModal" title="Закрыть">
-            <span class="close-icon">×</span>
+            <X :size="20" class="close-icon" />
           </button>
         </div>
         <div class="dataset-modal-content">
@@ -83,13 +67,13 @@
       </div>
     </div>
 
-    <SelectorGroupSettingsModal v-if="isAdvancedSettingsModalOpen" :settings="selectorGroupSettings" @update:settings="updateSelectorGroupSettings" @close="closeAdvancedSettings" @save="saveAdvancedSettings"/>
+    <SelectorGroupSettingsModal v-if="isAdvancedSettingsModalOpen" :settings="selectorGroupSettings" @update:settings="updateSelectorGroupSettings" @close="closeAdvancedSettings" @save="closeAdvancedSettings"/>
   </div>
 </template>
 
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
-import { CircleAlert, } from 'lucide-vue-next';
+import { CircleAlert, X } from 'lucide-vue-next';
 import DatasetsTooltip from '../../Charts/components/DatasetsTooltip.vue';
 import SelectorListPanel from './components/SelectorListPanel.vue';
 import SelectorGroupSettingsModal from './components/SelectorGroupSettingsModal.vue';
@@ -107,9 +91,9 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save']);
 
-const selectorsList = ref([
-  {
-    id: 1,
+function createSelectorDefaults(overrides = {}) {
+  return {
+    id: Date.now() + Math.random(),
     title: 'Селектор 1',
     titlePosition: 'left',
     showInternalTitle: false,
@@ -120,15 +104,19 @@ const selectorsList = ref([
     sourceType: 'dataset',
     selectedDataset: '',
     selectedDatasetId: null,
+    datasetUrl: '',
     selectedField: '',
     selectorType: 'list',
     operation: '',
     multipleSelection: false,
     defaultValue: [],
+    inputDefaultValue: '',
     required: false,
-    isFavorite: true
-  }
-]);
+    ...overrides
+  };
+}
+
+const selectorsList = ref([createSelectorDefaults({ id: 1, title: 'Селектор 1' })]);
 
 const activeSelectorIndex = ref(0);
 const draggedIndex = ref(null);
@@ -152,112 +140,49 @@ const currentSelector = computed(() => {
   return selectorsList.value[activeSelectorIndex.value] || {};
 });
 
-function validateSelector(selector, isCurrentSelector = false) {
-  if (!selector.title || selector.title.trim().length === 0) {
-    return false;
-  }
-  
-  if (selector.sourceType === 'dataset') {
-    if (!selector.selectedDataset || !selector.selectedDatasetId) {
-      return false;
-    }
-  } else if (selector.sourceType === 'url') {
-    if (isCurrentSelector) {
-      if (!urlValidationResult.value || !urlValidationResult.value.isValid || !selector.selectedDatasetId) {
-        return false;
-      }
-    } else {
-      if (!selector.selectedDatasetId) {
-        return false;
-      }
-    }
-  }
-  
-  if (!selector.selectedField) {
-    return false;
-  }
-  
-  if (selector.required) {
-    if (!selector.defaultValue || 
-        (Array.isArray(selector.defaultValue) && selector.defaultValue.length === 0) ||
-        (typeof selector.defaultValue === 'string' && selector.defaultValue.trim().length === 0)) {
-      return false;
-    }
-  }
-  
-  return true;
-}
-
-const isFormValid = computed(() => {
+const validationResult = computed(() => {
   for (let i = 0; i < selectorsList.value.length; i++) {
     const selector = selectorsList.value[i];
     const isCurrentSelector = i === activeSelectorIndex.value;
-    
-    if (!validateSelector(selector, isCurrentSelector)) {
-      return false;
-    }
-  }
-  
-  return true;
-});
+    const n = i + 1;
 
-const validationMessage = computed(() => {
-  for (let i = 0; i < selectorsList.value.length; i++) {
-    const selector = selectorsList.value[i];
-    const isCurrentSelector = i === activeSelectorIndex.value;
-    const selectorNumber = i + 1;
-    
     if (!selector.title || selector.title.trim().length === 0) {
-      return `Селектор ${selectorNumber}: Заполните заголовок`;
+      return { index: i, message: `Селектор ${n}: Заполните заголовок` };
     }
-    
     if (selector.sourceType === 'dataset') {
       if (!selector.selectedDataset || !selector.selectedDatasetId) {
-        return `Селектор ${selectorNumber}: Выберите датасет`;
+        return { index: i, message: `Селектор ${n}: Выберите датасет` };
       }
     } else if (selector.sourceType === 'url') {
       if (isCurrentSelector) {
         if (!urlValidationResult.value || !urlValidationResult.value.isValid) {
-          return `Селектор ${selectorNumber}: Введите корректный URL датасета`;
+          return { index: i, message: `Селектор ${n}: Введите корректный URL датасета` };
         }
         if (!selector.selectedDatasetId) {
-          return `Селектор ${selectorNumber}: Дождитесь загрузки данных датасета`;
+          return { index: i, message: `Селектор ${n}: Дождитесь загрузки данных датасета` };
         }
-      } else {
-        if (!selector.selectedDatasetId) {
-          return `Селектор ${selectorNumber}: Настройте источник данных (URL)`;
-        }
+      } else if (!selector.selectedDatasetId) {
+        return { index: i, message: `Селектор ${n}: Настройте источник данных (URL)` };
       }
     }
-    
     if (!selector.selectedField) {
-      return `Селектор ${selectorNumber}: Выберите поле датасета`;
+      return { index: i, message: `Селектор ${n}: Выберите поле датасета` };
     }
-    
     if (selector.required) {
-      if (!selector.defaultValue || 
-          (Array.isArray(selector.defaultValue) && selector.defaultValue.length === 0) ||
-          (typeof selector.defaultValue === 'string' && selector.defaultValue.trim().length === 0)) {
-        return `Селектор ${selectorNumber}: Выберите значение по умолчанию (обязательный)`;
+      const empty = !selector.defaultValue ||
+        (Array.isArray(selector.defaultValue) && selector.defaultValue.length === 0) ||
+        (typeof selector.defaultValue === 'string' && selector.defaultValue.trim().length === 0);
+      if (empty) {
+        return { index: i, message: `Селектор ${n}: Выберите значение по умолчанию (обязательный)` };
       }
     }
   }
-  
-  return '';
+  return { index: -1, message: '' };
 });
 
-const invalidSelectorIndex = computed(() => {
-  for (let i = 0; i < selectorsList.value.length; i++) {
-    const selector = selectorsList.value[i];
-    const isCurrentSelector = i === activeSelectorIndex.value;
-    
-    if (!validateSelector(selector, isCurrentSelector)) {
-      return i;
-    }
-  }
-  
-  return -1;
-});
+const isFormValid = computed(() => validationResult.value.index === -1);
+const validationMessage = computed(() => validationResult.value.message);
+const invalidSelectorIndex = computed(() => validationResult.value.index);
 
 function goToInvalidSelector() {
   if (invalidSelectorIndex.value >= 0) {
@@ -276,21 +201,14 @@ const sourceInputPlaceholder = computed(() => {
   return '';
 });
 
-const selectedFieldType = computed(() => {
-  if (!currentSelector.value.selectedField) return null;
-  
-  const selectedFieldId = String(currentSelector.value.selectedField);
-  const selectedField = availableFields.value.find(field => String(field.id) === selectedFieldId);
-  return selectedField ? selectedField.type : null;
+const selectedField = computed(() => {
+  if (!currentSelector.value?.selectedField) return null;
+  const id = String(currentSelector.value.selectedField);
+  return availableFields.value.find(f => String(f.id) === id) ?? null;
 });
 
-const selectedFieldName = computed(() => {
-  if (!currentSelector.value.selectedField) return null;
-  
-  const selectedFieldId = String(currentSelector.value.selectedField);
-  const selectedField = availableFields.value.find(field => String(field.id) === selectedFieldId);
-  return selectedField ? selectedField.name : null;
-});
+const selectedFieldType = computed(() => selectedField.value?.type ?? null);
+const selectedFieldName = computed(() => selectedField.value?.name ?? null);
 
 const shouldShowDefaultValueSelector = computed(() => {
   const hasField = currentSelector.value.selectedField && 
@@ -387,48 +305,22 @@ const currentOperationLabel = computed(() => {
   return operation ? operation.label : '—';
 });
 
-function createNewSelector() {
-  return {
-    id: Date.now() + Math.random(),
-    title: `Селектор ${selectorsList.value.length + 1}`,
-    titlePosition: 'left',
-    showInternalTitle: false,
-    internalTitle: '',
-    showColorAccent: false,
-    showHint: false,
-    hintText: '',
-    sourceType: 'dataset',
-    selectedDataset: '',
-    selectedDatasetId: null,
-    datasetUrl: '',
-    selectedField: '',
-    selectorType: 'list',
-    operation: '',
-    multipleSelection: false,
-    defaultValue: [],
-    inputDefaultValue: '',
-    required: false,
-    isFavorite: false
-  };
-}
-
 function addNewSelector() {
-  const newSelector = createNewSelector();
+  const newSelector = createSelectorDefaults({
+    title: `Селектор ${selectorsList.value.length + 1}`
+  });
   selectorsList.value.push(newSelector);
   activeSelectorIndex.value = selectorsList.value.length - 1;
 }
 
 function removeSelector(index) {
   if (selectorsList.value.length <= 1) return;
-  
-  const wasRemovalFavorite = selectorsList.value[index].isFavorite;
-  
+
+  draggedIndex.value = null;
+  dragOverIndex.value = null;
+
   selectorsList.value.splice(index, 1);
-  
-  if (wasRemovalFavorite && selectorsList.value.length > 0) {
-    selectorsList.value[0].isFavorite = true;
-  }
-  
+
   if (activeSelectorIndex.value >= selectorsList.value.length) {
     activeSelectorIndex.value = selectorsList.value.length - 1;
   } else if (activeSelectorIndex.value > index) {
@@ -501,26 +393,12 @@ function handleDragEnd(event) {
   dragOverIndex.value = null;
 }
 
-function toggleFavorite(index) {
-  if (selectorsList.value[index].isFavorite) {
-    return;
-  }
-  
-  selectorsList.value.forEach((selector, i) => {
-    selector.isFavorite = i === index;
-  });
-}
-
 function openAdvancedSettings() {
   isAdvancedSettingsModalOpen.value = true;
 }
 
 function closeAdvancedSettings() {
   isAdvancedSettingsModalOpen.value = false;
-}
-
-function saveAdvancedSettings() {
-  closeAdvancedSettings();
 }
 
 function updateSelectorGroupSettings(newSettings) {
@@ -711,58 +589,44 @@ function validateUrl(url) {
   }, 500);
 }
 
+const DROPDOWN_OUTSIDE_SELECTORS = [
+  ['.dropdown-toggle', '.dropdown-menu'],
+  ['.selector-type-toggle', '.selector-type-menu'],
+  ['.field-select-button', '.field-dropdown-menu'],
+  ['.operation-toggle', '.operation-menu']
+];
+
 function handleClickOutside(event) {
-  if (!isDropdownOpen.value && !isSelectorTypeDropdownOpen.value && !isFieldDropdownOpen.value && !isOperationDropdownOpen.value) {
+  const dropdownStates = [
+    isDropdownOpen,
+    isSelectorTypeDropdownOpen,
+    isFieldDropdownOpen,
+    isOperationDropdownOpen
+  ];
+  if (!dropdownStates.some(ref => ref.value)) return;
+
+  const insideAny = DROPDOWN_OUTSIDE_SELECTORS.some(selectors =>
+    selectors.some(sel => event.target.closest(sel))
+  );
+  if (insideAny) return;
+
+  dropdownStates.forEach(ref => { ref.value = false; });
+}
+
+function handleKeyDown(event) {
+  if (event.key !== 'Escape') return;
+  if (isAdvancedSettingsModalOpen.value) {
+    isAdvancedSettingsModalOpen.value = false;
     return;
   }
-  
-  const dropdownToggle = event.target.closest('.dropdown-toggle');
-  const dropdownMenu = event.target.closest('.dropdown-menu');
-  const selectorTypeToggle = event.target.closest('.selector-type-toggle');
-  const selectorTypeMenu = event.target.closest('.selector-type-menu');
-  const fieldSelectButton = event.target.closest('.field-select-button');
-  const fieldDropdownMenu = event.target.closest('.field-dropdown-menu');
-  const operationToggle = event.target.closest('.operation-toggle');
-  const operationMenu = event.target.closest('.operation-menu');
-   
-  if (dropdownToggle || dropdownMenu) {
+  if (isDatasetModalOpen.value) {
+    isDatasetModalOpen.value = false;
     return;
   }
-  
-  if (selectorTypeToggle || selectorTypeMenu) {
-    return;
-  }
-  
-  if (fieldSelectButton || fieldDropdownMenu) {
-    return;
-  }
-  
-  if (operationToggle || operationMenu) {
-    return;
-  }
-  
   isDropdownOpen.value = false;
   isSelectorTypeDropdownOpen.value = false;
   isFieldDropdownOpen.value = false;
   isOperationDropdownOpen.value = false;
-}
-
-function handleKeyDown(event) {
-  if (event.key === 'Escape') {
-    if (isAdvancedSettingsModalOpen.value) {
-      isAdvancedSettingsModalOpen.value = false;
-    } else if (isDatasetModalOpen.value) {
-      isDatasetModalOpen.value = false;
-    } else if (isDropdownOpen.value) {
-      isDropdownOpen.value = false;
-    } else if (isSelectorTypeDropdownOpen.value) {
-      isSelectorTypeDropdownOpen.value = false;
-    } else if (isFieldDropdownOpen.value) {
-      isFieldDropdownOpen.value = false;
-    } else if (isOperationDropdownOpen.value) {
-      isOperationDropdownOpen.value = false;
-    }
-  }
 }
 
 onMounted(() => {
@@ -790,10 +654,7 @@ watch(() => props.data, (newData) => {
       selectorGroupSettings.value = { ...newData.selectorGroupSettings };
     }
     
-    selectorsList.value.forEach((selector, index) => {
-      if (selector.isFavorite === undefined) {
-        selector.isFavorite = index === 0;
-      }
+    selectorsList.value.forEach((selector) => {
       if (selector.sourceType === undefined) {
         selector.sourceType = 'dataset';
       }
@@ -807,12 +668,7 @@ watch(() => props.data, (newData) => {
         selector.selectedField = '';
       }
     });
-    
-    const hasFavorite = selectorsList.value.some(selector => selector.isFavorite);
-    if (!hasFavorite && selectorsList.value.length > 0) {
-      selectorsList.value[0].isFavorite = true;
-    }
-    
+
     if (currentSelector.value.selectedDatasetId) {
       loadAvailableFields();
     }
@@ -947,8 +803,9 @@ function onSubmit() {
 }
 
 .close-icon {
-  font-size: 32px;
-  font-weight: 300;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .widget-settings-right-side-content{
@@ -1027,7 +884,6 @@ button.cancel {
 button.cancel:hover {
   color: var(--color-primary-text);
   transition: background 0.2s, color 0.2s, opacity 0.2s;
-  cursor: pointer;
 }
 
 .btn.btn-primary {
@@ -1102,11 +958,6 @@ button.cancel:hover {
   &:hover {
     color: var(--color-primary-text);
     background: var(--color-hover-background);
-  }
-  
-  .close-icon {
-    font-size: 24px;
-    font-weight: 300;
   }
 }
 

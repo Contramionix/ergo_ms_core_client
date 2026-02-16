@@ -294,15 +294,21 @@ const saveChartSettings = (updatedSettings) => {
 }
 
 const saveSelectorSettings = (updatedSettings) => {
-  if (updatedSettings.type === 'Селектор') {
-    updatedSettings.height = updatedSettings.autoHeight ? 'auto' : 50
-  }
-  applyItemSettingsUpdate(updatedSettings, (s, old) => ({
-    ...old,
-    selectorsList: s.selectorsList,
-    activeSelectorIndex: s.activeSelectorIndex || 0,
-    selectorGroupSettings: s.selectorGroupSettings || { applyButton: false, clearButton: false, autoHeight: false }
-  }))
+  const groupSettings = updatedSettings.selectorGroupSettings || { applyButton: false, clearButton: false, autoHeight: false }
+  const autoHeight = groupSettings.autoHeight ?? updatedSettings.autoHeight ?? false
+  applyItemSettingsUpdate(updatedSettings, (s, old) => {
+    const merged = {
+      ...old,
+      selectorsList: s.selectorsList,
+      activeSelectorIndex: s.activeSelectorIndex || 0,
+      selectorGroupSettings: groupSettings,
+      autoHeight
+    }
+    if (!autoHeight && (merged.height == null || merged.height === 'auto')) {
+      merged.height = 160
+    }
+    return merged
+  })
   closeSelectorSettings()
 }
 

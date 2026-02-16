@@ -4,14 +4,14 @@
     <div class="selectors-list">
       <transition-group name="selector-list" tag="div" class="selectors-container">
         <SelectorListItem
-          v-for="(selector, index) in selectorsList"
+          v-for="(selector, index) in props.selectorsList"
           :key="selector.id"
           :selector="selector"
           :index="index"
-          :active-index="activeSelectorIndex"
-          :dragged-index="draggedIndex"
-          :drag-over-index="dragOverIndex"
-          :list-length="selectorsList.length"
+          :active-index="props.activeSelectorIndex"
+          :dragged-index="props.draggedIndex"
+          :drag-over-index="props.dragOverIndex"
+          :list-length="props.selectorsList.length"
           :on-drag-start="onDragStart"
           :on-drag-over="onDragOver"
           :on-drop="onDrop"
@@ -19,7 +19,6 @@
           :on-drag-leave="onDragLeave"
           :on-drag-end="onDragEnd"
           :on-set-active-selector="onSetActiveSelector"
-          :on-toggle-favorite="onToggleFavorite"
           :on-remove-selector="onRemoveSelector"
         />
       </transition-group>
@@ -78,10 +77,6 @@ const props = defineProps({
     type: Function,
     default: null
   },
-  onToggleFavorite: {
-    type: Function,
-    default: null
-  },
   onRemoveSelector: {
     type: Function,
     default: null
@@ -108,7 +103,6 @@ const {
   onDragLeave,
   onDragEnd,
   onSetActiveSelector,
-  onToggleFavorite,
   onRemoveSelector,
   onAddSelector,
   onOpenAdvancedSettings
@@ -146,6 +140,7 @@ const {
 }
 
 .selectors-container {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
