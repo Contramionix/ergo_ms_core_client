@@ -25,7 +25,7 @@
                     <SelectBox v-model="type" :options="typeOptions" value-key="value" label-key="label" :include-all-option="false" all-label="Тип" size="sm">
                         <template #selected="{ option, label }">
                             <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
-                                <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(option?.value) }">
+                                <span class="d-flex align-items-center flex-shrink-0" :style="{ color: PARAMETER_ICON_COLOR }">
                                     <component :is="typeIcon[option?.value] || typeIcon.string" :size="18" />
                                 </span>
                                 <span class="text-truncate">{{ label }}</span>
@@ -33,7 +33,7 @@
                         </template>
                         <template #option="{ value, label }">
                             <span class="d-flex align-items-center gap-2">
-                                <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(value) }">
+                                <span class="d-flex align-items-center flex-shrink-0" :style="{ color: PARAMETER_ICON_COLOR }">
                                     <component :is="typeIcon[value] || typeIcon.string" :size="18" />
                                 </span>
                                 {{ label }}
@@ -77,7 +77,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SelectBox from '@/components/SelectBox.vue'
 import { typeOptions } from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
-import { typeIcon, getTypeColor } from '@/core/bi/Datasets/Fields/js/fieldTypeDisplay.js'
+import { typeIcon, PARAMETER_ICON_COLOR } from '@/core/bi/Datasets/Fields/js/fieldTypeDisplay.js'
 import HelpTooltip from '@/core/bi/components/help_tooltip.vue'
 
 const props = defineProps({

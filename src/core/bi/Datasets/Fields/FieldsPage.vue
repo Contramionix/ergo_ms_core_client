@@ -57,7 +57,7 @@
             <SelectBox :modelValue="f.type" @update:modelValue="val => updateField(idx, 'type', val)" :options="getTypeOptionsForField(f)" value-key="value" label-key="label" :include-all-option="false" size="sm" hide-chevron>
               <template #selected="{ option, label }">
                 <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
-                  <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(option?.value) }">
+                  <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getFieldCategoryColor(f) }">
                     <component :is="typeIcon[option?.value] || typeIcon.string" :size="18" />
                   </span>
                   <span class="text-truncate min-w-0">{{ label }}</span>
@@ -65,7 +65,7 @@
               </template>
               <template #option="{ value, label }">
                 <span class="d-flex align-items-center gap-2">
-                  <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(value) }">
+                  <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getFieldCategoryColor(f) }">
                     <component :is="typeIcon[value] || typeIcon.string" :size="18" />
                   </span>
                   {{ label }}
@@ -74,7 +74,9 @@
             </SelectBox>
           </td>
           <td>
-            <AggSelect :modelValue="f.aggregation" @update:modelValue="val => updateField(idx, 'aggregation', val)" :options="getAggregationOptions(f.type)" :aggregationColorMap="aggregationColorMap"/>
+            <SelectBox :modelValue="f.aggregation" @update:modelValue="val => updateField(idx, 'aggregation', val)" :options="getAggregationOptions(f.type)" value-key="value" label-key="label" :include-all-option="false"  size="sm"  hide-chevron>
+              <template #selected="{ label }">{{ label }}</template>
+            </SelectBox>
           </td>
           <td>
             <input v-model="f.description" class="form-control form-control-sm" placeholder="Описание…" />
@@ -100,11 +102,10 @@
 <script setup>
 import { ref, nextTick, onBeforeUnmount, watch } from 'vue'
 import SelectBox from '@/components/SelectBox.vue'
-import AggSelect from '@/core/bi/Datasets/Fields/AggregationSelect.vue'
 import { SquareFunction, MoreHorizontal } from 'lucide-vue-next'
 
-import { getTypeOptionsForField, getAggregationOptions, aggregationColorMap } from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
-import { typeIcon, getTypeColor } from './js/fieldTypeDisplay.js'
+import { getTypeOptionsForField, getAggregationOptions } from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
+import { typeIcon, getFieldCategoryColor } from './js/fieldTypeDisplay.js'
 
 const editingNameId = ref(null)
 const nameInputRef = ref(null)
@@ -116,13 +117,11 @@ const hoveredRowIdx = ref(null)
 const props = defineProps({
   fields: { type: Array, default: () => [] },
   tables: { type: Array, default: () => [] },
-  cols: { type: Array, default: () => [] },
-  rows: { type: Array, default: () => [] },
   datasetId: { type: [Number, String], default: null },
   connectionStatus: { type: String, default: 'connected' }
 })
 
-const emit = defineEmits(['edit-field', 'add-field', 'update:fields', 'removeTable', 'switch-to-sources'])
+const emit = defineEmits(['edit-field', 'add-field', 'update:fields', 'switch-to-sources'])
 
 function updateField(idx, key, value) {
   const newFields = props.fields.map((f, i) => (i === idx ? { ...f, [key]: value } : f))
@@ -200,19 +199,21 @@ function duplicateField(idx) {
   emit('update:fields', newFields)
 }
 
-function onDuplicate(idx) {
-  duplicateField(idx)
+function handleMenuAction(actionFn) {
+  actionFn()
   closeMenu()
+}
+
+function onDuplicate(idx) {
+  handleMenuAction(() => duplicateField(idx))
 }
 
 function onEdit(idx) {
-  emit('edit-field', props.fields[idx])
-  closeMenu()
+  handleMenuAction(() => emit('edit-field', props.fields[idx]))
 }
 
 function onRemove(idx) {
-  removeField(idx)
-  closeMenu()
+  handleMenuAction(() => removeField(idx))
 }
 
 let clickOutsideCleanup = null
@@ -248,9 +249,9 @@ function onSourceClick(field) {
   emit('edit-field', field)
 }
 
-function onSourceHoverStart(ev) {
-  const wrap = ev.currentTarget?.querySelector('.source-label-wrap')
-  const inner = ev.currentTarget?.querySelector('.source-label-inner')
+function handleLabelHoverStart(ev, wrapSelector, innerSelector) {
+  const wrap = ev.currentTarget?.querySelector(wrapSelector)
+  const inner = ev.currentTarget?.querySelector(innerSelector)
   if (!wrap || !inner) return
   const overflow = inner.scrollWidth - wrap.clientWidth
   if (overflow > 0) {
@@ -258,9 +259,17 @@ function onSourceHoverStart(ev) {
   }
 }
 
-function onSourceHoverEnd(ev) {
-  const inner = ev.currentTarget?.querySelector('.source-label-inner')
+function handleLabelHoverEnd(ev, innerSelector) {
+  const inner = ev.currentTarget?.querySelector(innerSelector)
   if (inner) inner.style.transform = ''
+}
+
+function onSourceHoverStart(ev) {
+  handleLabelHoverStart(ev, '.source-label-wrap', '.source-label-inner')
+}
+
+function onSourceHoverEnd(ev) {
+  handleLabelHoverEnd(ev, '.source-label-inner')
 }
 
 function onNameBlur() {
@@ -281,18 +290,11 @@ function startEditName(field, ev) {
 }
 
 function onNameHoverStart(ev) {
-  const wrap = ev.currentTarget?.querySelector('.name-label-wrap')
-  const inner = ev.currentTarget?.querySelector('.name-label-inner')
-  if (!wrap || !inner) return
-  const overflow = inner.scrollWidth - wrap.clientWidth
-  if (overflow > 0) {
-    inner.style.transform = `translateX(-${overflow}px)`
-  }
+  handleLabelHoverStart(ev, '.name-label-wrap', '.name-label-inner')
 }
 
 function onNameHoverEnd(ev) {
-  const inner = ev.currentTarget?.querySelector('.name-label-inner')
-  if (inner) inner.style.transform = ''
+  handleLabelHoverEnd(ev, '.name-label-inner')
 }
 
 function getFieldSourceLabel(field) {
@@ -383,9 +385,12 @@ function getFieldSourceLabel(field) {
   border-bottom: none !important;
 }
 
-
 :deep(.table-hover tbody tr:hover) {
   background-color: var(--color-hover-background);
+}
+
+:deep(.table-hover tbody tr:hover td:nth-child(5) .select-box .select-trigger) {
+  background-color: var(--bs-table-accent-bg) !important;
 }
 
 :deep(input.form-control),
@@ -490,7 +495,8 @@ function getFieldSourceLabel(field) {
   border-radius: 6px;
 }
 
-.name-label-wrap {
+.name-label-wrap,
+.source-label-wrap {
   flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
@@ -498,7 +504,8 @@ function getFieldSourceLabel(field) {
   white-space: nowrap;
 }
 
-.name-label-inner {
+.name-label-inner,
+.source-label-inner {
   display: inline-block;
   white-space: nowrap;
   transition: transform 2s ease;
@@ -520,20 +527,6 @@ function getFieldSourceLabel(field) {
   align-items: center;
   min-width: 0;
   transition: background-color .2s ease, border-radius .2s ease;
-}
-
-.source-label-wrap {
-  flex: 1 1 0;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.source-label-inner {
-  display: inline-block;
-  white-space: nowrap;
-  transition: transform 2s ease;
 }
 
 .source-btn:hover,
@@ -618,27 +611,6 @@ function getFieldSourceLabel(field) {
 
 .field-actions-item.danger {
   color: var(--color-accent);
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity .3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.scale-enter-active,
-.scale-leave-active {
-  transition: transform .3s ease, opacity .3s ease;
-}
-
-.scale-enter-from,
-.scale-leave-to {
-  transform: scale(0.9);
-  opacity: 0;
 }
 
 .fields-page {
@@ -747,5 +719,20 @@ function getFieldSourceLabel(field) {
 
 .error-action-btn:hover {
   background: #9b2c2c;
+}
+
+:deep(.table-body td:nth-child(5) .select-box .select-trigger) {
+  background-color: var(--color-secondary-background) !important;
+  border: none !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
+  padding: .25rem .5rem;
+  min-height: 2rem;
+  transition: none !important;
+}
+
+:deep(.table-body td:nth-child(5) .select-box .select-trigger:hover),
+:deep(.table-hover tbody tr:hover td:nth-child(5) .select-box .select-trigger:hover) {
+  background-color: var(--color-hover-background) !important;
 }
 </style>

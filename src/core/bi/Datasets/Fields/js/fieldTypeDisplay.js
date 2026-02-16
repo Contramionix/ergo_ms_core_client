@@ -13,20 +13,23 @@ export const typeIcon = {
   geopolygon: Globe,
 }
 
-export const typeColor = {
-  string: '#0d6efd',
-  integer: '#198754',
-  float: '#198754',
-  number: '#198754',
-  date: '#fd7e14',
-  'date&time': '#fd7e14',
-  bool: '#20c997',
-  boolean: '#20c997',
-  geopoint: '#dc3545',
-  geopolygon: '#6f42c1',
+export const PARAMETER_ICON_COLOR = '#6f42c1'
+
+export function getFieldCategoryColor(field) {
+  const aggregation = field?.aggregation
+  
+  if (!aggregation || aggregation === 'none') {
+    return '#dc3545'
+  }
+  return '#198754'
 }
 
-export function getTypeColor(type) {
-  if (!type || typeof type !== 'string') return 'var(--color-accent)'
-  return typeColor[type] ?? 'var(--color-accent)'
+export function isFieldMeasure(field) {
+  const aggregation = field?.aggregation
+  return aggregation && aggregation !== 'none'
+}
+
+export function isFieldIndicator(field) {
+  const aggregation = field?.aggregation
+  return !aggregation || aggregation === 'none'
 }

@@ -164,7 +164,7 @@
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
-        padding: 0 5rem 0 5rem;
+        padding: 1.25rem 5rem 0 5rem;
         height: 100%;
         gap: 15px;
     }

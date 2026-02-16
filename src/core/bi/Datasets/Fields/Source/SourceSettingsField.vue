@@ -45,7 +45,7 @@
                     <SelectBox :modelValue="selectedType" @update:modelValue="val => selectedType = val" :options="typeOptionsAvailable" value-key="value" label-key="label" :include-all-option="false" all-label="Выберите тип" size="sm">
                         <template #selected="{ option, label }">
                             <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
-                                <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(option?.value) }">
+                                <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getFieldCategoryColor(fieldForCategory) }">
                                     <component :is="typeIcon[option?.value] || typeIcon.string" :size="16" />
                                 </span>
                                 <span class="text-truncate">{{ label }}</span>
@@ -53,7 +53,7 @@
                         </template>
                         <template #option="{ value, label }">
                             <span class="d-flex align-items-center gap-2">
-                                <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getTypeColor(value) }">
+                                <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getFieldCategoryColor(fieldForCategory) }">
                                     <component :is="typeIcon[value] || typeIcon.string" :size="16" />
                                 </span>
                                 {{ label }}
@@ -77,7 +77,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import SelectBox from '@/components/SelectBox.vue'
 import { fetchTableColumns } from './js/tableColumnsService'
 import { getTypeOptionsForField, getAggregationOptions } from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
-import { typeIcon, getTypeColor } from '../js/fieldTypeDisplay.js'
+import { typeIcon, getFieldCategoryColor } from '../js/fieldTypeDisplay.js'
 
 const props = defineProps({
     tables: { type: Array, default: () => [] },
@@ -97,6 +97,10 @@ const selectedColumn = ref('')
 const selectedType = ref('')
 const selectedAggregation = ref('')
 const menuPosition = ref({ top: 0, left: 0, width: 0 })
+
+const fieldForCategory = computed(() => ({
+  aggregation: selectedAggregation.value ?? props.field?.aggregation ?? 'none'
+}))
 
 function computeMenuPosition(evt) {
     const target = evt?.currentTarget || evt?.target

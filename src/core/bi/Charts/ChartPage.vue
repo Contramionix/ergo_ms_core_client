@@ -271,8 +271,10 @@ async function loadDatasetColumnsAndRows(datasetId, params) {
             chartService.getParams(datasetId)
         ])
         const columns = Array.isArray(columnsRes?.data?.columns) ? columnsRes.data.columns : []
-        indicators.value = columns
-        measures.value = columns.filter((c) => (c.expression || '').trim() !== '')
+        // Показатели: поля с категорией 'indicator'
+        indicators.value = columns.filter((c) => c.category === 'indicator')
+        // Измерения: поля с категорией 'measure'
+        measures.value = columns.filter((c) => c.category === 'measure')
         parameters.value = normalizeListResponse(paramsRes?.data)
         if (selectedChartType.value && hasRequiredFieldsForChartType(selectedChartType.value, params)) {
             await fetchDatasetRows(datasetId, params)
