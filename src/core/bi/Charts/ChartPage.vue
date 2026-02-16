@@ -43,10 +43,10 @@ import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { chartSettingsConfig } from '@/core/bi/MainPage/Sidebar/components/js/chartSettingsConfig.js'
 import chartService from '@/core/bi/MainPage/Sidebar/components/js/chartService.js'
-import { isVirtualMeasureField } from '@/core/bi/Charts/js/measureVirtualFields.js'
 import { useAssistant } from '@/core/ai-assistant/js/assistantService.js'
 import { biClient } from '@/core/ai-assistant/bi/js/bi-client.js'
-import { expandDateRangeFilter } from '@/core/bi/Charts/components/js/chartDateFilterUtils.js'
+import { buildFieldsForChart, filterParamsForApi } from '@/core/bi/Charts/js/chartFieldUtils.js'
+import { getDefaultChartDisplayOptions, mergeDisplayOptionsFromApi } from '@/core/bi/Charts/js/chartDisplayOptions.js'
 
 const toast = useToast()
 const isFullScreen = ref(false)
@@ -129,39 +129,6 @@ const paramEditExistingNames = computed(() => {
   return list.map(p => p.name).filter(n => n && n !== editingName)
 })
 
-const DEFAULT_CHART_DISPLAY_OPTIONS = {
-    showTitle: true,
-    titleText: '',
-    showLegend: true,
-    showTooltip: true,
-    sumInTooltips: true,
-    showNavigator: false,
-    navigatorMode: 'all',
-    navigatorLineIds: [],
-    defaultPeriodValue: 1,
-    defaultPeriodUnit: 'day',
-    sectionAxisX: {},
-    sectionAxisY: {},
-    sectionAxisY2: {},
-    sectionColors: {},
-    sectionLabels: {},
-    sectionColumns: {},
-    sectionSizeDots: {},
-    sectionSort: { desc: false },
-    tableSize: 'm',
-    pagination: true,
-    limit: 100,
-    grouping: true,
-    tableShowTotals: false,
-    preserveSpaces: false,
-    stacked: false,
-    doughnutShowTotals: false,
-    titleMode: 'fieldName',
-    indicatorSize: 's',
-}
-function getDefaultChartDisplayOptions() {
-    return cloneParams(DEFAULT_CHART_DISPLAY_OPTIONS)
-}
 const chartDisplayOptions = ref(getDefaultChartDisplayOptions())
 const originalChartDisplayOptions = ref(getDefaultChartDisplayOptions())
 
@@ -315,50 +282,11 @@ async function loadDatasetColumnsAndRows(datasetId, params) {
     }
 }
 
-function filterParamsForApi(params) {
-  if (!params || typeof params !== 'object') return params ?? {}
-  const filtered = {}
-  for (const [key, arr] of Object.entries(params)) {
-    if (!Array.isArray(arr)) {
-      filtered[key] = arr
-      continue
-    }
-    let cleaned = arr.filter(f => !isVirtualMeasureField(f))
-
-    if (key === 'filters') {
-      const expanded = []
-      cleaned.forEach((f) => {
-        const op = f?.filter?.op ?? f?.op
-        if (op === 'date_range') {
-          const parts = expandDateRangeFilter(f)
-          if (Array.isArray(parts) && parts.length) {
-            expanded.push(...parts)
-          }
-        } else {
-          expanded.push(f)
-        }
-      })
-      cleaned = expanded
-    }
-
-    if (cleaned.length || key === 'filters') {
-      filtered[key] = cleaned
-    }
-  }
-  return filtered
-}
-
 const sortDesc = computed(() => chartDisplayOptions.value.sectionSort?.desc ?? false)
 
-const fieldsForChart = computed(() => {
-  const params = filterParamsForApi(selectedFields.value)
-  const sortArr = Array.isArray(params.sort) ? params.sort : []
-  const sortMapped = sortArr.map((f) => ({ field: f.name, desc: sortDesc.value }))
-  return {
-    ...params,
-    sort: sortMapped,
-  }
-})
+const fieldsForChart = computed(() =>
+  buildFieldsForChart(selectedFields.value, sortDesc.value)
+)
 
 const measuresInChart = computed(() => {
   const f = selectedFields.value
@@ -529,37 +457,7 @@ async function fetchChartIfEditing() {
 
         const loadedDisplay = data.options?.display
         if (loadedDisplay && typeof loadedDisplay === 'object') {
-            chartDisplayOptions.value = getDefaultChartDisplayOptions()
-            Object.assign(chartDisplayOptions.value, {
-                showTitle: loadedDisplay.showTitle !== false,
-                titleText: loadedDisplay.titleText ?? '',
-                showLegend: loadedDisplay.showLegend !== false,
-                showTooltip: loadedDisplay.showTooltip !== false,
-                sumInTooltips: loadedDisplay.sumInTooltips !== false,
-                showNavigator: loadedDisplay.showNavigator === true,
-                navigatorMode: loadedDisplay.navigatorMode ?? 'all',
-                navigatorLineIds: Array.isArray(loadedDisplay.navigatorLineIds) ? [...loadedDisplay.navigatorLineIds] : [],
-                defaultPeriodValue: Math.max(1, Number(loadedDisplay.defaultPeriodValue) || 1),
-                defaultPeriodUnit: loadedDisplay.defaultPeriodUnit ?? 'day',
-                sectionAxisX: typeof loadedDisplay.sectionAxisX === 'object' && loadedDisplay.sectionAxisX ? { ...loadedDisplay.sectionAxisX } : {},
-                sectionAxisY: typeof loadedDisplay.sectionAxisY === 'object' && loadedDisplay.sectionAxisY ? { ...loadedDisplay.sectionAxisY } : {},
-                sectionAxisY2: typeof loadedDisplay.sectionAxisY2 === 'object' && loadedDisplay.sectionAxisY2 ? { ...loadedDisplay.sectionAxisY2 } : {},
-                sectionColors: typeof loadedDisplay.sectionColors === 'object' && loadedDisplay.sectionColors ? { ...loadedDisplay.sectionColors } : {},
-                sectionLabels: typeof loadedDisplay.sectionLabels === 'object' && loadedDisplay.sectionLabels ? { ...loadedDisplay.sectionLabels } : {},
-                sectionColumns: typeof loadedDisplay.sectionColumns === 'object' && loadedDisplay.sectionColumns ? { ...loadedDisplay.sectionColumns } : {},
-                sectionSizeDots: typeof loadedDisplay.sectionSizeDots === 'object' && loadedDisplay.sectionSizeDots ? { ...loadedDisplay.sectionSizeDots } : {},
-                sectionSort: typeof loadedDisplay.sectionSort === 'object' && loadedDisplay.sectionSort ? { ...loadedDisplay.sectionSort } : { desc: false },
-                tableSize: loadedDisplay.tableSize ?? 'm',
-                pagination: loadedDisplay.pagination !== false,
-                limit: Math.max(1, Number(loadedDisplay.limit) || 100),
-                grouping: loadedDisplay.grouping !== false,
-                tableShowTotals: loadedDisplay.tableShowTotals === true,
-                preserveSpaces: loadedDisplay.preserveSpaces === true,
-                stacked: loadedDisplay.stacked === true,
-                doughnutShowTotals: loadedDisplay.doughnutShowTotals === true,
-                titleMode: loadedDisplay.titleMode ?? 'fieldName',
-                indicatorSize: loadedDisplay.indicatorSize ?? 's',
-            })
+            chartDisplayOptions.value = mergeDisplayOptionsFromApi(loadedDisplay)
             originalChartDisplayOptions.value = cloneParams(chartDisplayOptions.value)
         }
 

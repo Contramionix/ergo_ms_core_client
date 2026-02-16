@@ -6,17 +6,11 @@
     <div v-if="!preview && chartsList && chartsList.length > 1" class="chart-tabs">
       <div class="tabs-container">
         <div class="visible-tabs">
-          <button 
-            v-for="(chart, index) in visibleCharts" 
-            :key="chart.id"
-            class="chart-tab"
+          <button v-for="(chart, index) in visibleCharts" :key="chart.id" class="chart-tab"
             :class="{ 
               'active': activeChartIndex === (showFromIndex + index),
               'favorite': chart.isFavorite 
-            }"
-            @click="setActiveChart(showFromIndex + index)"
-            :title="chart.title"
-          >
+            }" @click="setActiveChart(showFromIndex + index)" :title="chart.title">
             <Star v-if="chart.isFavorite" :size="12" class="tab-star" />
             <span class="tab-title">{{ chart.title }}</span>
             <div v-if="chart.hint && chart.hintText" class="hint-icon-wrapper" @mouseenter="showHint(chart, $event)" @mouseleave="hideHint" @click.stop><CircleHelp :size="12" /></div>
@@ -54,7 +48,7 @@
         </div>
         <div v-else-if="chartError" class="chart-error"><AlertCircle :size="24" /><span>{{ chartError }}</span></div>
         <div v-else-if="chartData && datasetRows && chartData.chart_type" class="chart-render-container">
-          <ChartRenderer :type="chartData.chart_type" :fields="chartData.params || {}" :settings="[]" :dataset="datasetRows" :compact="true"/>
+          <ChartRenderer :type="chartData.chart_type" :fields="fieldsForChart" :settings="settingTypes" :display-options="chartDisplayOptions" :dataset="processedDataset" :compact="true"/>
         </div>
         <div v-else class="chart-empty"><BarChart3 :size="48" /><span>Данные не загружены</span></div>
       </div>
@@ -85,6 +79,10 @@ const ChartRenderer = defineAsyncComponent(() =>
 
 import SpinnerLoading from '@/components/SpinnerLoading.vue';
 import chartService from '@/core/bi/MainPage/Sidebar/components/js/chartService.js';
+import { chartSettingsConfig } from '@/core/bi/MainPage/Sidebar/components/js/chartSettingsConfig.js';
+import { buildFieldsForChart } from '@/core/bi/Charts/js/chartFieldUtils.js';
+import { getDefaultChartDisplayOptions, mergeDisplayOptionsFromApi } from '@/core/bi/Charts/js/chartDisplayOptions.js';
+import useProcessedDataset from '@/core/bi/MainPage/Sidebar/components/js/useProcessedDataset.js';
 
 const props = defineProps({
   chartsList: {
@@ -135,6 +133,31 @@ const currentChart = computed(() => {
 });
 
 const effectiveAutoHeight = computed(() => props.autoHeight ?? false);
+
+const selectedParams = computed(() => {
+  const params = chartData.value?.params;
+  if (!params || typeof params !== 'object') return {};
+  const { indicatorDuplicates, measureDuplicates, parameterDuplicates, ...rest } = params;
+  return rest;
+});
+
+const chartDisplayOptions = computed(() => {
+  const display = chartData.value?.options?.display;
+  return display && typeof display === 'object'
+    ? mergeDisplayOptionsFromApi(display)
+    : getDefaultChartDisplayOptions();
+});
+
+const sortDesc = computed(() => chartDisplayOptions.value?.sectionSort?.desc ?? false);
+
+const fieldsForChart = computed(() => {
+  if (!chartData.value) return {};
+  return buildFieldsForChart(selectedParams.value, sortDesc.value);
+});
+
+const settingTypes = computed(() => chartSettingsConfig[chartData.value?.chart_type] ?? []);
+
+const processedDataset = useProcessedDataset(datasetRows, fieldsForChart);
 
 watch(
   () => currentChart.value && currentChart.value.descriptionHeight,
