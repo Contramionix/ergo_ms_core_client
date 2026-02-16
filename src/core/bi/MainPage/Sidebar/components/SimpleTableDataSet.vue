@@ -326,6 +326,10 @@ const menuDropdownRef = ref(null)
 
 function onMoreClick(event, rowId) {
   event.stopPropagation()
+  if (showMenu.value && menuRowId.value === rowId) {
+    showMenu.value = false
+    return
+  }
   const rect = event.currentTarget.getBoundingClientRect()
   showMenu.value = true
   menuRowId.value = rowId
@@ -341,6 +345,7 @@ function closeMenu() {
 }
 
 function handleClickOutside(event) {
+  if (event.target.closest?.('.action-btn.more')) return
   if (!menuDropdownRef.value?.contains(event.target)) {
     closeMenu()
   }
@@ -855,41 +860,36 @@ defineExpose({
 
 .menu-dropdown {
   position: fixed;
-  background-color: var(--color-primary-background);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
-  padding: 6px 0;
-  min-width: 180px;
+  min-width: 140px;
+  background: var(--color-primary-background);
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
   z-index: 10000;
 }
 
-.menu-item {
+.menu-dropdown .menu-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
+  width: 100%;
+  padding: 6px 12px;
+  font-size: 14px;
+  border: none;
+  background: none;
   color: var(--color-primary-text);
   cursor: pointer;
-  transition: background 0.2s;
-  border-radius: 6px;
-  margin: 0 6px;
+  transition: background 0.15s;
+  text-align: left;
 }
 
-.menu-item + .menu-item {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+.menu-dropdown .menu-item:hover {
+  background: var(--color-hover-background);
 }
 
-.menu-item:hover {
-  background-color: var(--color-hover-background);
-}
-
-.menu-item.danger {
-  color: #f87171;
-}
-
-.menu-item.danger:hover {
-  background-color: rgba(248, 113, 113, 0.12);
+.menu-dropdown .menu-item.danger:hover {
+  color: var(--color-danger, #dc3545);
 }
 
 .item-name {

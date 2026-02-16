@@ -10,7 +10,7 @@
           <button class="action-btn star" :class="{ active: isFavorite }" @click.stop="toggleFavorite" title="Избранное">
             <Star :size="18" />
           </button>
-          <button class="action-btn more" :class="{ 'menu-open': showMenu }" @click="onMoreClick" title="Ещё">
+          <button ref="moreButtonRef" class="action-btn more" :class="{ 'menu-open': showMenu }" @click="onMoreClick" title="Ещё">
             <MoreHorizontal :size="18" />
           </button>
         </div>
@@ -72,6 +72,7 @@ const favorites = ref(new Set())
 const showMenu = ref(false)
 const menuPosition = ref({ top: '0px', left: '0px' })
 const menuDropdownRef = ref(null)
+const moreButtonRef = ref(null)
 
 const isFavorite = computed(() => {
   if (!props.datasetId) return false
@@ -108,11 +109,13 @@ function toggleFavorite() {
 
 function onMoreClick(event) {
   event.stopPropagation()
-  const rect = event.currentTarget.getBoundingClientRect()
-  showMenu.value = true
-  menuPosition.value = {
-    top: `${rect.bottom + 6}px`,
-    left: `${rect.left}px`
+  showMenu.value = !showMenu.value
+  if (showMenu.value) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    menuPosition.value = {
+      top: `${rect.bottom + 6}px`,
+      left: `${rect.left}px`
+    }
   }
 }
 
@@ -121,6 +124,7 @@ function closeMenu() {
 }
 
 function handleClickOutside(event) {
+  if (moreButtonRef.value?.contains(event.target)) return
   if (!menuDropdownRef.value?.contains(event.target)) {
     closeMenu()
   }
