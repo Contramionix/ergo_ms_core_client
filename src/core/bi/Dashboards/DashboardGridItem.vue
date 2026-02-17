@@ -1,52 +1,40 @@
 <template>
-  <div
-    class="grid-item"
-    :class="itemClasses"
-    :style="itemStyle"
-    :data-item-id="item.id"
-    @click="onClick"
-    @dblclick="onDblclick"
-    @mousedown="onMouseDown"
-  >
+  <div class="grid-item" :class="itemClasses" :style="itemStyle" :data-item-id="item.id" @click="onClick" @dblclick="onDblclick" @mousedown="onMouseDown">
     <div v-if="!viewMode" class="item-header">
       <span class="item-type">{{ item.type }}</span>
       <div class="item-actions">
+        <button
+          v-if="item.type === 'Чарт' || item.type === 'Селектор'"
+          class="btn-links"
+          title="Связи"
+          @click.stop="onEditConnections"
+        >
+          <Link :size="16" />
+        </button>
         <button class="btn-edit" @click.stop="onEdit"><Settings2 :size="16" /></button>
         <button class="btn-delete" @click.stop="onDelete"><X :size="16" /></button>
       </div>
     </div>
 
     <div class="item-content">
-      <div
-        v-if="item.type === 'Заголовок'"
-        class="header-widget-title"
-        :style="[{ color: item.textColor && item.textColor !== 'transparent' ? item.textColor : 'var(--color-text-primary)' }, headerStyle]"
-      >
+      <div v-if="item.type === 'Заголовок'" class="header-widget-title" :style="[{ color: item.textColor && item.textColor !== 'transparent' ? item.textColor : 'var(--color-text-primary)' }, headerStyle]">
         <span>{{ item.title || 'Заголовок' }}</span>
-        <div
-          v-if="item.hint"
-          class="hint-icon-wrapper"
-          @mouseenter="onShowHint"
-          @mouseleave="onHideHint"
-        >
+        <div v-if="item.hint" class="hint-icon-wrapper" @mouseenter="onShowHint" @mouseleave="onHideHint">
           <CircleHelp :size="16" />
         </div>
       </div>
 
-      <div
-        v-else-if="item.type === 'Текст'"
-        class="text-widget-content"
-        :style="{ color: item.textColor && item.textColor !== 'transparent' ? item.textColor : 'var(--color-text-primary)' }"
-        v-html="item.content || 'Текстовое содержимое'"
-      />
+      <div v-else-if="item.type === 'Текст'" class="text-widget-content" :style="{ color: item.textColor && item.textColor !== 'transparent' ? item.textColor : 'var(--color-text-primary)' }" v-html="item.content || 'Текстовое содержимое'"/>
 
       <div v-else-if="item.type === 'Чарт'" class="chart-widget-container">
         <ChartWidget
           :charts-list="item.chartsList || []"
           :active-chart-index="item.activeChartIndex || 0"
           :auto-height="item.autoHeight || false"
+          :external-filters="externalFilters"
           @update:active-chart-index="onUpdateActiveChart"
           @content-resized="onChartResize"
+          @chart-type-loaded="onChartTypeLoaded"
         />
       </div>
 
@@ -69,26 +57,16 @@
     </div>
 
     <div v-if="!viewMode && item.selected" class="resize-indicators">
-      <div
-        class="resize-indicator resize-left"
-        @mousedown.stop="onStartResize('w', $event)"
-      ></div>
-      <div
-        class="resize-indicator resize-right"
-        @mousedown.stop="onStartResize('e', $event)"
-      ></div>
-      <div
-        v-if="item.type !== 'Селектор' || !isItemAutoHeight"
-        class="resize-indicator resize-bottom"
-        @mousedown.stop="onStartResize('s', $event)"
-      ></div>
+      <div class="resize-indicator resize-left" @mousedown.stop="onStartResize('w', $event)"></div>
+      <div class="resize-indicator resize-right" @mousedown.stop="onStartResize('e', $event)"></div>
+      <div v-if="item.type !== 'Селектор' || !isItemAutoHeight" class="resize-indicator resize-bottom" @mousedown.stop="onStartResize('s', $event)"></div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { Settings2, X, CircleHelp } from 'lucide-vue-next'
+import { Settings2, X, CircleHelp, Link } from 'lucide-vue-next'
 import ChartWidget from './Chart/ChartWidget.vue'
 import SelectorWidget from './Selector/SelectorWidget.vue'
 
@@ -96,6 +74,10 @@ const props = defineProps({
   item: {
     type: Object,
     required: true
+  },
+  externalFilters: {
+    type: Object,
+    default: () => ({})
   },
   viewMode: {
     type: Boolean,
@@ -142,8 +124,10 @@ const props = defineProps({
 const emit = defineEmits([
   'select',
   'dblclick',
+  'update-chart-type',
   'mousedown',
   'edit',
+  'edit-connections',
   'delete',
   'start-resize',
   'update-active-chart',
@@ -259,6 +243,10 @@ const onEdit = () => {
   emit('edit', props.item)
 }
 
+const onEditConnections = () => {
+  emit('edit-connections', props.item)
+}
+
 const onDelete = () => {
   emit('delete', props.item)
 }
@@ -269,6 +257,10 @@ const onStartResize = (direction, event) => {
 
 const onUpdateActiveChart = (newIndex) => {
   emit('update-active-chart', props.item, newIndex)
+}
+
+const onChartTypeLoaded = (chartIndex, chartType) => {
+  emit('update-chart-type', props.item, chartIndex, chartType)
 }
 
 const onChartResize = (newHeight) => {
@@ -404,8 +396,12 @@ const onHideHint = () => {
   pointer-events: auto;
 }
 
+.btn-links,
 .btn-edit,
 .btn-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   padding: 4px;

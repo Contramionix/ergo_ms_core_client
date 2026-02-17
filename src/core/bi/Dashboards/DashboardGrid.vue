@@ -38,6 +38,7 @@
         :key="item.id"
         :ref="el => setItemRef(item.id, el)"
         :item="item"
+        :external-filters="getChartFiltersForItem(item)"
         :resolved-height="resolvedHeightsMap[item.id]"
         :view-mode="viewMode"
         :element-sizes="ELEMENT_SIZES"
@@ -51,9 +52,11 @@
         @dblclick="onItemDblclick"
         @mousedown="handleMouseDown"
         @edit="editItem"
+        @edit-connections="handleEditConnections"
         @delete="deleteItem"
         @start-resize="startResize"
         @update-active-chart="updateActiveChart"
+        @update-chart-type="handleUpdateChartType"
         @chart-resize="handleChartResize"
         @selector-selection-change="handleSelectorSelectionChange"
         @selector-resize="handleSelectorResize"
@@ -149,7 +152,8 @@ const props = defineProps({
 const emit = defineEmits([
   'update:items',
   'item-select',
-  'item-edit', 
+  'item-edit',
+  'edit-connections',
   'item-delete'
 ])
 
@@ -369,6 +373,11 @@ const editItem = (item) => {
   emit('item-edit', item)
 }
 
+const handleEditConnections = (item) => {
+  if (props.viewMode) return
+  emit('edit-connections', item)
+}
+
 const deleteItem = (item) => {
   const index = localItems.value.findIndex(i => i.id === item.id)
   if (index === -1) return
@@ -389,6 +398,13 @@ const deleteItem = (item) => {
 const updateActiveChart = (item, newIndex) => {
   item.activeChartIndex = newIndex
   emit('update:items', localItems.value)
+}
+
+const handleUpdateChartType = (item, chartIndex, chartType) => {
+  const list = item.chartsList || []
+  if (chartIndex >= 0 && chartIndex < list.length && chartType != null) {
+    list[chartIndex].chart_type = chartType
+  }
 }
 
 const handleChartResize = (item, newHeight) => {
@@ -416,9 +432,65 @@ const handleSelectorResize = (item, newHeight) => {
   }
 }
 
-const handleSelectorApplyFilters = (item, event) => {}
+const chartFiltersByItemId = ref({})
 
-const handleSelectorClearFilters = (item, event) => {}
+const handleSelectorApplyFilters = (item, event) => {
+  if (item.type !== 'Селектор' || !event || typeof event !== 'object') return
+  const selectorValues = event
+  const next = { ...chartFiltersByItemId.value }
+  const chartItems = localItems.value.filter(i => i.type === 'Чарт')
+  chartItems.forEach(chartItem => {
+    const links = (chartItem.incomingLinks || []).filter(
+      l => String(l.sourceItemId) === String(item.id)
+    )
+    if (links.length === 0) return
+    const chartFilters = { ...(next[chartItem.id] || {}) }
+    links.forEach(link => {
+      const selectorId = link.sourceSelectorId != null ? link.sourceSelectorId : ''
+      const value = selectorValues[selectorId] ?? selectorValues[link.sourceSelectorId]
+      if (value === undefined) return
+      const fieldName = link.sourceFieldName || (() => {
+        const sel = (item.selectorsList || []).find(s => String(s.id) === String(link.sourceSelectorId))
+        return sel?.selectedField || null
+      })()
+      if (fieldName) chartFilters[fieldName] = value
+    })
+    if (Object.keys(chartFilters).length > 0) next[chartItem.id] = chartFilters
+  })
+  chartFiltersByItemId.value = next
+}
+
+const handleSelectorClearFilters = (item, event) => {
+  if (item.type !== 'Селектор') return
+  const chartItems = localItems.value.filter(i => i.type === 'Чарт')
+  const next = { ...chartFiltersByItemId.value }
+  chartItems.forEach(chartItem => {
+    const links = (chartItem.incomingLinks || []).filter(
+      l => String(l.sourceItemId) === String(item.id)
+    )
+    if (links.length === 0) return
+    const fieldNamesToRemove = new Set()
+    links.forEach(link => {
+      const name = link.sourceFieldName || (() => {
+        const sel = (item.selectorsList || []).find(s => String(s.id) === String(link.sourceSelectorId))
+        return sel?.selectedField || null
+      })()
+      if (name) fieldNamesToRemove.add(name)
+    })
+    const current = next[chartItem.id]
+    if (!current) return
+    const nextChartFilters = { ...current }
+    fieldNamesToRemove.forEach(name => delete nextChartFilters[name])
+    if (Object.keys(nextChartFilters).length === 0) delete next[chartItem.id]
+    else next[chartItem.id] = nextChartFilters
+  })
+  chartFiltersByItemId.value = next
+}
+
+function getChartFiltersForItem(item) {
+  if (item.type !== 'Чарт') return {}
+  return chartFiltersByItemId.value[item.id] || {}
+}
 
 const buildVisualRows = ({ items, excludeItemId, placeholderY, placeholderHeight, elementHeight }) => {
   const list = excludeItemId ? items.filter(item => item.id !== excludeItemId) : [...items]

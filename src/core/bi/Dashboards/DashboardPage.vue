@@ -31,9 +31,16 @@
         <SaveDashboardModal :visible="isSaveModalVisible" :name="dashboardName" :description="dashboardDescription" :is-edit-mode="isEditMode" :saving="saving" @close="isSaveModalVisible = false" @save="handleSaveDashboard"/>
         <NameDialogModal v-if="renameModalVisible" :visible="renameModalVisible" :model-value="dashboardName" title="Переименовать дашборд" placeholder="Введите название дашборда" @saved="onRenameSaved" @update:visible="renameModalVisible = $event"/>
         <ConfirmDialog :show="showDeleteDialog" title="Удаление дашборда" :message="deleteConfirmMessage" confirm-text="Удалить" variant="danger" :loading="deleteInProgress" @confirm="confirmDeleteDashboard" @close="showDeleteDialog = false"/>
-        
+        <ConnectionsModal
+          :visible="isConnectionsModalVisible"
+          :items="currentPageItems"
+          :initial-item="connectionsModalItem"
+          @close="closeConnectionsModal"
+          @apply="handleConnectionsApply"
+        />
+
         <div v-if="isHeaderButtonsReady" class="body-content">
-            <DashboardGrid ref="dashboardGridRef" :items="currentPageItems" :dragged-type="isViewMode ? '' : draggedType" :pages-count="pages.length" :view-mode="isViewMode" @update:items="updateCurrentPageItems" @item-edit="handleItemEdit"/>
+            <DashboardGrid ref="dashboardGridRef" :items="currentPageItems" :dragged-type="isViewMode ? '' : draggedType" :pages-count="pages.length" :view-mode="isViewMode" @update:items="updateCurrentPageItems" @item-edit="handleItemEdit" @edit-connections="handleEditConnections"/>
         </div>
         
         <div v-if="isHeaderButtonsReady && !isViewMode" class="body-footer" :style="{ left: footerLeftOffset, width: footerWidth }">
@@ -62,6 +69,7 @@ import { isDatasetSidebarOpen } from '@/core/bi/MainPage/Sidebar/components/js/u
 import { isSidebarCollapsed, initializeSidebarTracking } from '@/core/bi/MainPage/Sidebar/components/js/useMainSidebarStore.js'
 import dashboardService from '@/core/bi/MainPage/Sidebar/components/js/dashboardService.js'
 import SaveDashboardModal from './components/SaveDashboardModal.vue'
+import ConnectionsModal from './components/connections/ConnectionsModal.vue'
 import { useToast } from 'vue-toastification'
 import tokenService from '@/core/cms/js/tokenService'
 
@@ -124,6 +132,8 @@ const isChartSettingsVisible = ref(false)
 const chartSettingsData = ref(null)
 const isSelectorSettingsVisible = ref(false)
 const selectorSettingsData = ref(null)
+const isConnectionsModalVisible = ref(false)
+const connectionsModalItem = ref(null)
 const dashboardGridRef = ref(null)
 
 function getItemDefaultHeight(item) {
@@ -211,6 +221,26 @@ const handleItemEdit = (item) => {
     selectorSettingsData.value = { ...item }
     isSelectorSettingsVisible.value = true
   }
+}
+
+const handleEditConnections = (item) => {
+  if (item.type !== 'Чарт' && item.type !== 'Селектор') return
+  connectionsModalItem.value = item
+  isConnectionsModalVisible.value = true
+}
+
+function closeConnectionsModal() {
+  isConnectionsModalVisible.value = false
+  connectionsModalItem.value = null
+}
+
+function handleConnectionsApply(updatedItems) {
+  if (!Array.isArray(updatedItems) || updatedItems.length === 0) {
+    closeConnectionsModal()
+    return
+  }
+  dashboardItems.value[currentPageIndex.value] = updatedItems
+  closeConnectionsModal()
 }
 
 function applyItemSettingsUpdate(updatedSettings, mergeItem) {
@@ -460,7 +490,8 @@ function prepareDashboardForAPI(name, description) {
                         hint: item.hint,
                         hintText: item.hintText,
                         autoHeight: item.autoHeight,
-                        filtering: item.filtering
+                        filtering: item.filtering,
+                        incomingLinks: item.incomingLinks || []
                     }),
                     ...(item.type === 'Селектор' && {
                         selectorsList: item.selectorsList || [],

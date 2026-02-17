@@ -48,7 +48,7 @@
         </div>
         <div v-else-if="chartError" class="chart-error"><AlertCircle :size="24" /><span>{{ chartError }}</span></div>
         <div v-else-if="chartData && datasetRows && chartData.chart_type" class="chart-render-container">
-          <ChartRenderer :type="chartData.chart_type" :fields="fieldsForChart" :settings="settingTypes" :display-options="chartDisplayOptions" :dataset="processedDataset" :compact="true"/>
+          <ChartRenderer :type="chartData.chart_type" :fields="fieldsForChart" :settings="settingTypes" :display-options="chartDisplayOptions" :dataset="chartDisplayDataset" :compact="true"/>
         </div>
         <div v-else class="chart-empty"><BarChart3 :size="48" /><span>Данные не загружены</span></div>
       </div>
@@ -97,13 +97,17 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  externalFilters: {
+    type: Object,
+    default: () => ({})
+  },
   preview: {
     type: Boolean,
     default: false
   }
 });
 
-const emit = defineEmits(['update:activeChartIndex', 'content-resized']);
+const emit = defineEmits(['update:activeChartIndex', 'content-resized', 'chart-type-loaded']);
 
 const isLoading = ref(false);
 const error = ref('');
@@ -158,6 +162,31 @@ const fieldsForChart = computed(() => {
 const settingTypes = computed(() => chartSettingsConfig[chartData.value?.chart_type] ?? []);
 
 const processedDataset = useProcessedDataset(datasetRows, fieldsForChart);
+
+function rowMatchesExternalFilters(row, filters) {
+  if (!filters || typeof filters !== 'object') return true
+  for (const fieldName of Object.keys(filters)) {
+    const filterValue = filters[fieldName]
+    const rowValue = row[fieldName]
+    if (Array.isArray(filterValue)) {
+      const inArray = filterValue.some(v => v == null ? rowValue == null : String(v) === String(rowValue))
+      if (!inArray) return false
+    } else if (rowValue != null && filterValue != null && String(rowValue) !== String(filterValue)) {
+      return false
+    } else if (rowValue != null || filterValue != null) {
+      if (rowValue == null || filterValue == null) return false
+      if (String(rowValue) !== String(filterValue)) return false
+    }
+  }
+  return true
+}
+
+const chartDisplayDataset = computed(() => {
+  const rows = processedDataset.value || []
+  const filters = props.externalFilters || {}
+  if (Object.keys(filters).length === 0) return rows
+  return rows.filter(row => rowMatchesExternalFilters(row, filters))
+});
 
 watch(
   () => currentChart.value && currentChart.value.descriptionHeight,
@@ -377,6 +406,10 @@ async function loadChartData(chartId) {
     }
     
     chartData.value = chartResponse.data;
+    const chartType = chartResponse.data?.chart_type;
+    if (chartType != null) {
+      emit('chart-type-loaded', props.activeChartIndex, chartType);
+    }
 
     try {
       const rowsResponse = await chartService.getChartRows(chartId);
