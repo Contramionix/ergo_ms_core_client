@@ -3,12 +3,7 @@
     <div v-if="!viewMode" class="item-header">
       <span class="item-type">{{ item.type }}</span>
       <div class="item-actions">
-        <button
-          v-if="item.type === 'Чарт' || item.type === 'Селектор'"
-          class="btn-links"
-          title="Связи"
-          @click.stop="onEditConnections"
-        >
+        <button v-if="item.type === 'Чарт' || item.type === 'Селектор'" class="btn-links" title="Связи" @click.stop="onEditConnections">
           <Link :size="16" />
         </button>
         <button class="btn-edit" @click.stop="onEdit"><Settings2 :size="16" /></button>
