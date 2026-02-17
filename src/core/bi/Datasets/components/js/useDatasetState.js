@@ -187,6 +187,11 @@ export function useDatasetState() {
       return false
     }
     
+    // Добавлены новые поля (например, с формулой) — считаем изменением
+    if (fields.value.length > origDatasetRef.value.fields.length) {
+      return true
+    }
+    
     // Нормализуем значения для сравнения
     const normalize = (val) => {
       if (val === null || val === undefined) return ''

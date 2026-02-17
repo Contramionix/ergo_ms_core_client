@@ -2,15 +2,15 @@
   <div class="split-pane vertical">
     <div class="Pane Panel vertical" :style="panelStyle">
       <div class="settings-sidebar">
-        <input v-model="search" class="form-control form-control-sm sidebar-search-input mb-2" placeholder="Поле" />
+        <input v-model="search" class="form-control form-control-sm sidebar-search-input mb-2" placeholder="Поле или параметр" />
         <ul class="fields-list">
-          <li v-for="fld in filteredFields" :key="fld.name" class="field-item">
-            <span class="col-icon" style="display: flex; align-items: center; justify-content: center;" :style="{ color: getTypeMeta(fld.type).color }">
-              <component :is="getTypeMeta(fld.type).icon" :size="15" />
+          <li v-for="item in filteredItems" :key="item.name" class="field-item" @click="onInsertItem(item.name)">
+            <span class="col-icon" style="display: flex; align-items: center; justify-content: center;" :style="{ color: getTypeMeta(item.type).color }">
+              <component :is="getTypeMeta(item.type).icon" :size="15" />
             </span>
-            <span class="col-name" style="margin-left: 10px;">{{ fld.name }}</span>
-            <span class="col-type-label" :style="{ color: getTypeMeta(fld.type).color }">
-              {{ getTypeMeta(fld.type).label }}
+            <span class="col-name" style="margin-left: 10px;">{{ item.name }}</span>
+            <span class="col-type-label" :style="{ color: getTypeMeta(item.type).color }">
+              {{ item.param ? 'Параметр' : getTypeMeta(item.type).label }}
             </span>
           </li>
         </ul>
@@ -20,31 +20,70 @@
     <span role="presentation" class="Resizer vertical" @mousedown.prevent="startResize"></span>
 
     <div class="Pane Pane2 vertical" :style="pane2Style">
-      <div class="settings-editor">
-        <div class="editor-placeholder">Редактор формул</div>
+      <div class="settings-editor" ref="editorContainerRef">
+        <CodeMirror
+          ref="codeMirrorRef"
+          :model-value="localExpression"
+          :lang="formulaLanguage"
+          :extensions="editorExtensions"
+          placeholder="Введите формулу, например: SUM([Поле]) / COUNT([Другое поле])"
+          class="formula-codemirror"
+          @update:model-value="onEditorChange"
+          @ready="onEditorReady"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, SquareFunction } from 'lucide-vue-next'
+import CodeMirror from 'vue-codemirror6'
+import { formulaLanguage } from './js/formulaLanguage.js'
+import { indentUnit } from '@codemirror/language'
 
 const search = ref('')
 
 const props = defineProps({
-  expression: String,
+  expression: { type: String, default: '' },
   fields: { type: Array, default: () => [] },
+  params: { type: Array, default: () => [] }
 })
 
-const filteredFields = computed(() =>
-  props.fields
-    .map(f => ({
-      ...f,
-      type: f.type || 'string'
-    }))
-    .filter(f => f.name.toLowerCase().includes(search.value.toLowerCase()))
+const emit = defineEmits(['update:expression'])
+
+const localExpression = ref(props.expression || '')
+const codeMirrorRef = ref(null)
+const editorContainerRef = ref(null)
+
+const editorExtensions = [indentUnit.of('  ')]
+
+const itemsList = computed(() => {
+  const fields = (props.fields || []).map(f => ({
+    name: f.name,
+    type: f.type || 'string',
+    param: false
+  }))
+  const params = (props.params || []).map(p => ({
+    name: typeof p === 'string' ? p : (p.name || p),
+    type: (typeof p === 'object' && p.type) ? p.type : 'string',
+    param: true
+  }))
+  const seen = new Set()
+  const out = []
+  for (const x of [...fields, ...params]) {
+    if (seen.has(x.name)) continue
+    seen.add(x.name)
+    out.push(x)
+  }
+  return out
+})
+
+const filteredItems = computed(() =>
+  itemsList.value.filter(item =>
+    item.name.toLowerCase().includes(search.value.toLowerCase())
+  )
 )
 
 const typeIconMap = {
@@ -67,6 +106,36 @@ function getTypeMeta(type) {
   return typeIconMap[type] || typeIconMap.default
 }
 
+function onEditorChange(value) {
+  localExpression.value = value ?? ''
+  emit('update:expression', localExpression.value)
+}
+
+function onEditorReady({ view }) {
+  if (view && props.expression !== undefined && props.expression !== null) {
+    const str = String(props.expression)
+    if (view.state.doc.toString() !== str) {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: str }
+      })
+    }
+  }
+}
+
+watch(() => props.expression, (val) => {
+  const s = val ?? ''
+  if (localExpression.value !== s) localExpression.value = s
+}, { immediate: true })
+
+function insertAtCursor(text) {
+  const editor = codeMirrorRef.value
+  if (editor?.replaceSelection) editor.replaceSelection(text)
+}
+
+function onInsertItem(name) {
+  insertAtCursor(`[${name}]`)
+}
+
 const panelWidth = ref(256)
 const minWidth = 150
 const maxWidth = 600
@@ -82,10 +151,7 @@ function startResize(e) {
 function onMouseMove(e) {
   if (!isResizing) return
   const delta = e.clientX - startX
-  panelWidth.value = Math.min(
-    maxWidth,
-    Math.max(minWidth, startWidth + delta)
-  )
+  panelWidth.value = Math.min(maxWidth, Math.max(minWidth, startWidth + delta))
 }
 function stopResize() {
   isResizing = false
@@ -108,6 +174,12 @@ const pane2Style = computed(() => ({
   minWidth: `calc(100% - ${maxWidth}px)`,
   maxWidth: `calc(100% - ${minWidth}px)`
 }))
+
+defineExpose({
+  insertAtCursor(text) {
+    insertAtCursor(typeof text === 'string' ? text : `[${text}]`)
+  }
+})
 </script>
 
 <style scoped lang="scss">
@@ -147,6 +219,10 @@ const pane2Style = computed(() => ({
   background: var(--color-primary-text);
 }
 
+.settings-sidebar {
+  padding: 0.5rem 1rem 0.5rem 0;
+}
+
 .settings-sidebar input.form-control.sidebar-search-input {
   background: var(--color-primary-background) !important;
   color: var(--color-primary-text) !important;
@@ -161,21 +237,32 @@ const pane2Style = computed(() => ({
   box-shadow: none !important;
 }
 
-.settings-sidebar {
-  padding: 0.5rem 1rem 0.5rem 0;
-}
-
 .settings-editor {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  min-height: 0;
   padding: 0.5rem;
   border-left: none;
 }
 
-.editor-placeholder {
-  color: var(--color-secondary-text);
+.settings-editor :deep(.vue-codemirror) {
+  height: 100%;
+  min-height: 120px;
+}
+
+.settings-editor :deep(.cm-editor) {
+  height: 100%;
+  min-height: 120px;
+  font-size: 14px;
+}
+
+.settings-editor :deep(.cm-scroller) {
+  font-family: ui-monospace, monospace;
+}
+
+.settings-editor :deep(.cm-content) {
+  padding: 8px;
 }
 
 .fields-list {

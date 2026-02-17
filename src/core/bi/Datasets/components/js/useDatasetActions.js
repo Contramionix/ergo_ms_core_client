@@ -1,4 +1,5 @@
 import { useRouter } from 'vue-router'
+import { nextTick } from 'vue'
 import datasetService from '@/core/bi/MainPage/Sidebar/components/js/datasetService'
 import connectionService from '@/core/bi/MainPage/Sidebar/components/js/connectionService'
 
@@ -77,8 +78,9 @@ export function useDatasetActions(state) {
           aggregation: f.aggregation,
           type: f.type || 'string',
           description: f.description || '',
-          source_column: f.source?.column,
+          source_column: f.source?.column ?? (f.expression ? (f.name || '') : undefined),
           source_table: source_table_id,
+          expression: (f.expression != null && String(f.expression).trim() !== '') ? String(f.expression).trim() : '',
         }
       })
   }
@@ -1072,15 +1074,61 @@ export function useDatasetActions(state) {
       }
       
       let resp = null
-      
-      // Для сохраненного датасета используем preview API, для черновика - draftPreview
+      const ITEMS_PER_PAGE = parseInt(import.meta.env.VITE_BI_PREVIEW_ITEMS_PER_PAGE || '20', 10)
+      const hasFormulaFields = state.fields.value.some(f => f.expression && f.name)
+
+      // Для сохраненного датасета с полями с формулами используем draftPreview,
+      // чтобы сервер рассчитал значения формул до сохранения
+      if (state.dataset.value?.id && hasFormulaFields) {
+        try {
+          const draftParams = {
+            connection_id: state.selectedConnection.value?.id,
+            mainTable: main,
+            joinedTables: joined,
+            limit: ITEMS_PER_PAGE,
+            offset: 0
+          }
+          draftParams.fields = state.fields.value.filter(f => f.expression).map(f => ({
+            name: f.name,
+            expression: f.expression,
+            type: f.type || 'string',
+            aggregation: f.aggregation || 'none'
+          }))
+          draftParams.include_only_fields = state.fields.value.map(f => f.name)
+          resp = await datasetService.draftPreview(draftParams)
+          const data = resp?.data || resp
+          if (data?.status === 'processing' && data?.task_id) {
+            const result = await waitForTaskResult(data.task_id)
+            if (result && (result.columns || result.rows)) {
+              const { columns, rows } = normalizeFormulaColumnsOrder(result.columns || [], result.rows || [])
+              state.previewCols.value = columns
+              state.previewRows.value = rows
+              preserveFormulaColumns()
+              await loadFields()
+            }
+          } else if (data && (data.columns || data.rows)) {
+            const { columns, rows } = normalizeFormulaColumnsOrder(data.columns || [], data.rows || [])
+            state.previewCols.value = columns
+            state.previewRows.value = rows
+            preserveFormulaColumns()
+            await loadFields()
+          }
+        } catch (error) {
+          console.error('Ошибка предпросмотра с формулами (draftPreview):', error)
+          if (!state.previewCols.value.length) {
+            state.previewCols.value = []
+            state.previewRows.value = []
+          }
+        }
+        state.isPreviewLoading.value = false
+        return
+      }
+
       if (state.dataset.value?.id) {
-        // Сохраненный датасет - загружаем только колонки (первая страница для определения структуры)
-        // Сами данные будут загружаться через DatasetTablePreview с серверной пагинацией
-        const ITEMS_PER_PAGE = parseInt(import.meta.env.VITE_BI_PREVIEW_ITEMS_PER_PAGE || '20', 10)
+        // Сохраненный датасет без формул - обычный preview API
         try {
           resp = await datasetService.preview(state.dataset.value.id, {
-            limit: ITEMS_PER_PAGE, // Загружаем только первую страницу для определения колонок
+            limit: ITEMS_PER_PAGE,
             offset: 0
           })
           
@@ -1095,6 +1143,7 @@ export function useDatasetActions(state) {
             if (result && (result.columns || result.rows)) {
               state.previewCols.value = result.columns || []
               state.previewRows.value = result.rows || []
+              preserveFormulaColumns()
               await loadFields()
             } else {
               // Не очищаем данные при ошибке, чтобы таблица не исчезла
@@ -1108,6 +1157,7 @@ export function useDatasetActions(state) {
           if (data && data.columns) {
             state.previewCols.value = data.columns || []
             state.previewRows.value = data.rows || []
+            preserveFormulaColumns()
             await loadFields()
           } else {
             // Не очищаем данные при ошибке, чтобы таблица не исчезла
@@ -1134,6 +1184,16 @@ export function useDatasetActions(state) {
           if (state.previewLimit.value !== null && state.previewLimit.value !== undefined) {
             draftParams.limit = state.previewLimit.value
           }
+          // Передаем поля с формулами, если они есть
+          const formulaFields = state.fields.value.filter(f => f.expression)
+          if (formulaFields.length > 0) {
+            draftParams.fields = formulaFields.map(f => ({
+              name: f.name,
+              expression: f.expression,
+              type: f.type || 'string',
+              aggregation: f.aggregation || 'none'
+            }))
+          }
           resp = await datasetService.draftPreview(draftParams)
           
           // API может вернуть данные напрямую или обернутые в data
@@ -1145,8 +1205,10 @@ export function useDatasetActions(state) {
             // Ожидаем результат асинхронной задачи
             const result = await waitForTaskResult(data.task_id)
             if (result && (result.columns || result.rows)) {
-              state.previewCols.value = result.columns || []
-              state.previewRows.value = result.rows || []
+              const { columns, rows } = normalizeFormulaColumnsOrder(result.columns || [], result.rows || [])
+              state.previewCols.value = columns
+              state.previewRows.value = rows
+              preserveFormulaColumns()
               await loadFields()
             } else {
               // Не очищаем данные при ошибке, чтобы таблица не исчезла
@@ -1159,8 +1221,10 @@ export function useDatasetActions(state) {
           }
           
           if (data && (data.columns || data.rows)) {
-            state.previewCols.value = data.columns || []
-            state.previewRows.value = data.rows || []
+            const { columns, rows } = normalizeFormulaColumnsOrder(data.columns || [], data.rows || [])
+            state.previewCols.value = columns
+            state.previewRows.value = rows
+            preserveFormulaColumns()
             await loadFields()
           } else {
             // Не очищаем данные при ошибке, чтобы таблица не исчезла
@@ -1185,6 +1249,10 @@ export function useDatasetActions(state) {
   
   async function loadFields() {
     if (state.previewCols.value.length && state.previewRows.value.length) {
+      // Сохраняем поля с формулами перед перезаписью
+      const existingFormulaFields = state.fields.value.filter(f => f.expression)
+      const formulaFieldsMap = new Map(existingFormulaFields.map(f => [f.name, f]))
+      
       const allDraftTables = [
         state.mainTable.value,
         ...state.relations.value.map(r => state.allTablesOfConnection.value.find(t => t.id === r.rightTableId)).filter(Boolean)
@@ -1204,6 +1272,11 @@ export function useDatasetActions(state) {
         )
 
         const fieldsList = state.previewCols.value.map((col, idx) => {
+          // Проверяем, есть ли поле с формулой для этой колонки
+          if (formulaFieldsMap.has(col)) {
+            return formulaFieldsMap.get(col)
+          }
+          
           let orig = state.origDatasetRef.value.fields.find(f => f.source_column === col || f.name === col)
           if (origFieldsMap.has(String(orig?.id))) orig = origFieldsMap.get(String(orig.id))
           const tableObj = col2Table[col] || state.mainTable.value
@@ -1217,13 +1290,19 @@ export function useDatasetActions(state) {
             type: orig?.type || colType,
             description: orig?.description || '',
             source: { column: col },
-            source_table: tableObj
+            source_table: tableObj,
+            expression: orig?.expression || null
           }
         })
 
         state.fields.value = fieldsList
       } else {
         const fieldsList = state.previewCols.value.map((col, idx) => {
+          // Проверяем, есть ли поле с формулой для этой колонки
+          if (formulaFieldsMap.has(col)) {
+            return formulaFieldsMap.get(col)
+          }
+          
           const tableObj = col2Table[col] || state.mainTable.value
           const columnValues = state.previewRows.value.map(row => row[idx])
           const colType = detectColumnType(columnValues)
@@ -1239,6 +1318,43 @@ export function useDatasetActions(state) {
         })
 
         state.fields.value = fieldsList
+      }
+    }
+  }
+  
+  function normalizeFormulaColumnsOrder(columns, rows) {
+    const formulaNames = state.fields.value.filter(f => f.expression && f.name).map(f => f.name)
+    if (!columns?.length || !formulaNames.length) return { columns: columns || [], rows: rows || [] }
+    const formulaSet = new Set(formulaNames)
+    const sourceCols = columns.filter(c => !formulaSet.has(c))
+    const formulaCols = formulaNames.filter(n => columns.includes(n))
+    const newOrder = [...sourceCols, ...formulaCols]
+    if (newOrder.length !== columns.length) return { columns, rows: rows || [] }
+    const nameToIdx = Object.fromEntries(columns.map((c, i) => [c, i]))
+    const indices = newOrder.map(c => nameToIdx[c])
+    const newRows = Array.isArray(rows) && rows.length
+      ? rows.map(row => Array.isArray(row) ? indices.map(i => row[i]) : newOrder.map(c => row[c]))
+      : rows
+    return { columns: newOrder, rows: newRows }
+  }
+
+  function preserveFormulaColumns() {
+    const formulaFields = state.fields.value.filter(f => f.expression && f.name)
+    const missingFormulaCols = formulaFields.filter(f => !state.previewCols.value.includes(f.name))
+    if (missingFormulaCols.length > 0) {
+      // Добавляем отсутствующие колонки с формулами
+      for (const field of missingFormulaCols) {
+        if (!state.previewCols.value.includes(field.name)) {
+          state.previewCols.value = [...state.previewCols.value, field.name]
+          // Расширяем строки с null для новой колонки
+          if (state.previewRows.value?.length > 0) {
+            state.previewRows.value = state.previewRows.value.map(row => {
+              if (Array.isArray(row)) return [...row, null]
+              if (row && typeof row === 'object') return { ...row, [field.name]: null }
+              return row
+            })
+          }
+        }
       }
     }
   }
@@ -1311,11 +1427,11 @@ export function useDatasetActions(state) {
 
     // Всегда актуализируем список полей из API, даже если переименований не было.
     // Это позволяет кнопке "Обновить поля" фактически перезагружать поля из бэкенда.
+    const formulaFieldsBeforeRefresh = state.fields.value.filter(f => f.expression && f.name)
     if (state.dataset.value && state.dataset.value.id) {
       const fieldsResp = await datasetService.listFields({ dataset: state.dataset.value.id })
       if (fieldsResp && Array.isArray(fieldsResp.data) && fieldsResp.data.length > 0) {
-        // Нормализуем поля как в syncFieldsFromDataset, чтобы у полей был source для отображения в UI.
-        state.fields.value = fieldsResp.data.map(f => ({
+        const fromApi = fieldsResp.data.map(f => ({
           id: f.id,
           name: f.name || f.source_column || '',
           aggregation: f.aggregation || 'none',
@@ -1325,6 +1441,9 @@ export function useDatasetActions(state) {
           source_table: f.source_table ?? null,
           expression: f.expression || null
         }))
+        const apiNames = new Set(fromApi.map(f => f.name))
+        const formulaNotInApi = formulaFieldsBeforeRefresh.filter(f => !apiNames.has(f.name))
+        state.fields.value = [...fromApi, ...formulaNotInApi]
       }
     }
     
@@ -1456,9 +1575,63 @@ export function useDatasetActions(state) {
   state.relations.value = state.relations.value.filter(rel => rel.rightTableId !== t.id)
 }
   
-  function onSourceSave(newField) {
-    state.fields.value = [...state.fields.value, newField]
+  async function onSourceSave(newField) {
+    // Устанавливаем временный тип данных для формулы, если тип 'expression'
+    const fieldToAdd = { ...newField }
+    if (fieldToAdd.type === 'expression' || !fieldToAdd.type) {
+      fieldToAdd.type = 'float' // Временный тип, будет обновлен после получения данных
+    }
+    if (!fieldToAdd.aggregation || fieldToAdd.aggregation === '') {
+      fieldToAdd.aggregation = 'none'
+    }
+    
+    const formulaFields = state.fields.value.filter(f => f.expression)
+    state.fields.value = [...state.fields.value, fieldToAdd]
     state.showModal.value = false
+
+    if (newField.expression && newField.name) {
+      try {
+        await loadPreview()
+        const currentFieldsWithoutFormulas = state.fields.value.filter(f => !f.expression)
+        const allFormulaFields = [...formulaFields, fieldToAdd]
+        state.fields.value = [...currentFieldsWithoutFormulas, ...allFormulaFields]
+        preserveFormulaColumns()
+
+        const fieldName = newField.name || newField.displayName
+        if (state.previewCols.value && state.previewRows.value && state.previewRows.value.length > 0) {
+          const colIndex = state.previewCols.value.findIndex(col => col === fieldName || col === newField.displayName)
+          if (colIndex >= 0) {
+            const values = state.previewRows.value.map((row) => {
+              if (Array.isArray(row)) return row[colIndex] ?? null
+              if (typeof row === 'object' && row !== null) return row[fieldName] ?? row[newField.displayName] ?? null
+              return null
+            }).filter(v => v !== null && v !== undefined)
+            const detectedType = values.length > 0 ? detectColumnType(values) : 'string'
+            const fieldIndex = state.fields.value.findIndex(f => f.name === fieldName && f.expression === newField.expression)
+            if (fieldIndex >= 0) {
+              state.fields.value = state.fields.value.map((f, idx) =>
+                idx === fieldIndex ? { ...f, type: detectedType } : f
+              )
+            }
+          } else {
+            if (fieldName && !state.previewCols.value.includes(fieldName)) {
+              state.previewCols.value = [...state.previewCols.value, fieldName]
+              if (state.previewRows.value?.length > 0) {
+                state.previewRows.value = state.previewRows.value.map(row => {
+                  if (Array.isArray(row)) return [...row, null]
+                  if (row && typeof row === 'object') return { ...row, [fieldName]: null }
+                  return row
+                })
+              }
+              await nextTick()
+            }
+          }
+        }
+        preserveFormulaColumns()
+      } catch (error) {
+        console.error('Error detecting field type from preview', error)
+      }
+    }
   }
   
   // Экспортируем все функции

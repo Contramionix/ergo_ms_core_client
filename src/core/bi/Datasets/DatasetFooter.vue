@@ -15,6 +15,7 @@
     <footer class="footer-content">
         <template v-if="datasetId || (previewRows && previewRows.length)">
           <DatasetTablePreview 
+            :key="previewTableKey"
             :cols="previewCols" 
             :rows="previewRows" 
             :fields="fields"
@@ -50,7 +51,7 @@
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount, watch, nextTick } from 'vue'
+import { ref, computed, onBeforeUnmount, watch, nextTick } from 'vue'
 import DatasetTablePreview from './components/DatasetTablePreview.vue'
 
 const props = defineProps({
@@ -64,6 +65,13 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['switch-to-sources'])
+
+// Ключ для перемонтирования таблицы при изменении набора колонок (например, добавление поля с формулой)
+const previewTableKey = computed(() => {
+  const cols = props.previewCols
+  if (!cols || !cols.length) return '0'
+  return `${cols.length}-${cols[cols.length - 1] ?? ''}`
+})
 
 // Константы
 const MIN_HEIGHT = 300

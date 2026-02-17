@@ -14,7 +14,7 @@
     <ConfirmDialog :show="showDeleteDialog" title="Подтверждение удаления" :message="deleteConfirmMessage" confirm-text="Да" cancel-text="Нет" variant="danger" @confirm="confirmDelete" @cancel="cancelDelete" @close="cancelDelete"/>
     <ChartSettingsFilterModal :visible="isFilterModalVisible" :field="filterModalField" :dataset-id="selectedDataset?.id ?? null" :initial-filter="filterModalInitialFilter" @update:visible="isFilterModalVisible = $event; if (!$event) filterModalField = null" @apply="onFilterModalApply"/>
     <ChartSettingsFieldModal :visible="fieldSettingsModalVisible" :field="fieldSettingsModalField" @update:visible="onFieldSettingsModalVisibleChange" @apply="onFieldSettingsApply"/>
-    <ChartSettingsFormulaModal :visible="formulaModalVisible" :field="formulaModalField" :cols="formulaModalCols" :rows="formulaModalRows" @update:visible="onFormulaModalVisibleChange" @apply="onFormulaApply"/>
+    <ChartSettingsFormulaModal :visible="formulaModalVisible" :field="formulaModalField" :cols="formulaModalCols" :rows="formulaModalRows" :params="displayedParameters" @update:visible="onFormulaModalVisibleChange" @apply="onFormulaApply"/>
     <ChartDisplaySettingsModal :visible="showChartDisplayModal" :chart-type="selectedChartType" :display-options="chartDisplayOptions" :available-series="navigatorAvailableSeries" @update:visible="showChartDisplayModal = $event" @apply="onChartDisplayOptionsApply"/>
     <ChartSectionSettingsModal :visible="sectionSettingsModalVisible" :setting-key="sectionSettingsModalSettingKey" :setting="sectionSettingsModalSetting" :chart-type="selectedChartType" :section-options="sectionOptionsForModal" :section-fields="sectionSettingsModalFields" @update:visible="sectionSettingsModalVisible = $event" @apply="onSectionSettingsApply"/>
     <ParamsAddModal ref="paramEditModalRef" modal-id="chartParamEditModal" :existing-names="paramEditExistingNames" @update="onParamEditUpdate"/>
@@ -648,14 +648,98 @@ function closeFormulaModal() {
     formulaModalFieldType.value = 'indicator'
 }
 
+function detectColumnType(values) {
+    const filtered = values.filter(v => v !== null && v !== undefined && v !== '')
+    if (!filtered.length) return 'string'
+    if (filtered.every(v => /^(\d{4}-\d{2}-\d{2})$/.test(v) || v instanceof Date)) return 'date'
+    if (filtered.every(v => /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?)$/.test(v))) return 'date&time'
+    if (filtered.every(v => v === 'true' || v === 'false' || typeof v === 'boolean')) return 'bool'
+    if (filtered.every(v => !isNaN(v) && Number.isInteger(+v))) return 'integer'
+    if (filtered.every(v => !isNaN(v) && !Number.isNaN(parseFloat(v)))) return 'float'
+    return 'string'
+}
+
 function updateDuplicateExpression(duplicatesRef, fieldId, expression) {
     duplicatesRef.value = (duplicatesRef.value || []).map((d) =>
         d.id === fieldId ? { ...d, expression } : d
     )
 }
 
-function onFormulaApply({ field, expression }) {
-    updateFieldInAllCategories(field, (f) => ({ ...f, expression }))
+async function onFormulaApply({ field, expression, name, type, aggregation }) {
+    console.log('onFormulaApply called', { field, expression, name, type, aggregation })
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartPage.vue:657',message:'onFormulaApply received',data:{field,expression,name,type,aggregation},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    const resolvedAggregation = (aggregation && aggregation !== '') ? aggregation : 'none'
+    
+    // Сначала обновляем поле с временным типом данных
+    const tempUpdateData = { 
+        expression,
+        type: 'float', // Временный тип, будет обновлен после получения данных
+        aggregation: resolvedAggregation
+    }
+    
+    if (name !== undefined && name !== null && name !== '') {
+        tempUpdateData.name = name
+        tempUpdateData.displayName = name
+    }
+    
+    console.log('tempUpdateData before update', tempUpdateData)
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartPage.vue:671',message:'onFormulaApply updating field with temp data',data:{tempUpdateData},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    
+    // Получаем имя поля для запроса к серверу
+    const fieldName = name || field?.name || field?.displayName || ''
+    
+    // Обновляем поле во всех категориях
+    updateFieldInAllCategories(field, (f) => ({ ...f, ...tempUpdateData }))
+    
+    // Запрашиваем данные с сервера для определения типа данных
+    if (selectedDataset.value?.id && fieldName) {
+        try {
+            // Ждем немного, чтобы поле успело обновиться в selectedFields
+            await new Promise(resolve => setTimeout(resolve, 100))
+            
+            await fetchDatasetRows(selectedDataset.value.id, selectedFields.value)
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartPage.vue:688',message:'fetchDatasetRows completed',data:{datasetRowsLength:datasetRows.value?.length,datasetRowsKeys:datasetRows.value?.[0] ? Object.keys(datasetRows.value[0]) : [],fieldName},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
+            
+            // Определяем тип данных на основе значений из datasetRows
+            if (datasetRows.value && Array.isArray(datasetRows.value) && datasetRows.value.length > 0) {
+                // Пробуем найти поле по разным вариантам имени
+                const firstRow = datasetRows.value[0]
+                const fieldKey = firstRow.hasOwnProperty(fieldName) ? fieldName :
+                                 firstRow.hasOwnProperty(field?.name) ? field?.name :
+                                 firstRow.hasOwnProperty(field?.displayName) ? field?.displayName :
+                                 Object.keys(firstRow).find(key => key.toLowerCase() === fieldName.toLowerCase()) || fieldName
+                
+                const values = datasetRows.value.map(row => row[fieldKey] ?? row[fieldName] ?? null).filter(v => v !== null && v !== undefined)
+                const detectedType = detectColumnType(values)
+                console.log('Detected type from datasetRows', { fieldName, fieldKey, values: values.slice(0, 5), detectedType, availableKeys: Object.keys(firstRow) })
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartPage.vue:694',message:'Type detected from datasetRows',data:{fieldName,fieldKey,detectedType,valuesSample:values.slice(0,5),availableKeys:Object.keys(firstRow)},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
+                
+                // Обновляем поле с правильным типом данных
+                updateFieldInAllCategories(field, (f) => {
+                    const updated = { ...f, type: detectedType }
+                    console.log('Field updated with detected type', { original: f, updated, 'updated.type': updated.type })
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartPage.vue:700',message:'Field updated with detected type',data:{updated,original:f,'updated.type':updated.type},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                    // #endregion
+                    return updated
+                })
+            }
+        } catch (error) {
+            console.error('Error fetching dataset rows for type detection', error)
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartPage.vue:705',message:'Error fetching dataset rows',data:{error:error.message},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
+        }
+    }
+    
     if (field?.isDuplicate && field?.id) {
         const type = formulaModalFieldType.value
         const refByType = { measure: measureDuplicates, parameter: parameterDuplicates, indicator: indicatorDuplicates }

@@ -1,5 +1,5 @@
 <template>
-  <div class="source-settings" :class="{ 'resizing-footer': isResizing }" :style="{ '--footer-height': showHelp ? helpHeight + 'px' : '0px' }">
+  <div ref="rootRef" class="source-settings">
     <div class="settings-main">
       <div class="settings-top d-flex align-items-center gap-3">
         <input v-model="local.name" class="form-control form-control-sm flex-grow-1" placeholder="Название поля" />
@@ -10,7 +10,13 @@
         <button class="btn btn-sm btn-outline-secondary ms-auto" v-if="activeTab === 'formula'" @click="showHelp = !showHelp">Справочник</button>
       </div>
       <div class="settings-body">
-        <SourceSettingsFormula v-if="activeTab === 'formula'" v-model:expression="expression" :fields="fieldsList"/>
+        <SourceSettingsFormula
+          v-if="activeTab === 'formula'"
+          ref="formulaRef"
+          v-model:expression="expression"
+          :fields="fieldsList"
+          :params="paramsList"
+        />
         <SourceSettingsField v-else v-model:search="search" :tables="tables" :selected-connection="selectedConnection" :field="field" @insert-field="insertField"/>
         <div class="modal-actions d-flex justify-content-end gap-2 mt-3" :class="{ 'no-footer': !showHelp || activeTab === 'field' }">
           <button class="btn btn-sm cancel-btn" @click="$emit('close')">Отменить</button>
@@ -18,7 +24,7 @@
         </div>
       </div>
     </div>
-    <div v-if="showHelp" class="settings-footer" @mousedown="startHelpResize" @dblclick="resetHelpHeight">
+    <div v-if="showHelp" class="settings-footer">
       <SourceSettingsHelp />
     </div>
   </div>
@@ -36,7 +42,8 @@ const props = defineProps({
   rows: { type: Array, default: () => [] },
   tables: { type: Array, default: () => [] },
   selectedConnection: { type: Object, default: null },
-  formulaOnly: { type: Boolean, default: false }
+  formulaOnly: { type: Boolean, default: false },
+  params: { type: Array, default: () => [] }
 })
 const emit = defineEmits(['close', 'create'])
 
@@ -54,6 +61,8 @@ const activeTab = ref(props.formulaOnly ? 'formula' : (isTableSource(props.field
 const expression = ref(props.field?.expression ?? '')
 const search = ref('')
 
+const formulaRef = ref(null)
+
 const fieldsList = computed(() => {
   if (!props.cols) return []
   if (!props.rows || !props.rows.length) {
@@ -68,32 +77,10 @@ const fieldsList = computed(() => {
   })
 })
 
-const showHelp = ref(activeTab.value !== 'field')
-const helpHeight = ref(200)
-let isResizing = false, startY = 0, startH = 0
+const paramsList = computed(() => props.params || [])
 
-function startHelpResize(e) {
-  if (e.offsetY <= 6) {
-    isResizing = true
-    startY = e.clientY
-    startH = helpHeight.value
-    document.addEventListener('mousemove', onHelpResize)
-    document.addEventListener('mouseup', stopHelpResize)
-  }
-}
-function onHelpResize(e) {
-  if (!isResizing) return
-  const delta = startY - e.clientY
-  helpHeight.value = Math.min(Math.max(startH + delta, 100), 400)
-}
-function stopHelpResize() {
-  isResizing = false
-  document.removeEventListener('mousemove', onHelpResize)
-  document.removeEventListener('mouseup', stopHelpResize)
-}
-function resetHelpHeight() {
-  helpHeight.value = 200
-}
+const rootRef = ref(null)
+const showHelp = ref(activeTab.value !== 'field')
 
 function detectColumnType(values) {
   const filtered = values.filter(v => v !== null && v !== undefined && v !== '')
@@ -113,6 +100,10 @@ watch(activeTab, tab => {
 
 watch(() => [props.field, props.formulaOnly], ([newField, formulaOnly]) => {
   if (newField?.expression !== undefined) expression.value = newField.expression ?? ''
+  // Обновляем local.value при изменении props.field
+  if (newField) {
+    local.value = { ...newField }
+  }
   if (formulaOnly) {
     activeTab.value = 'formula'
     return
@@ -122,25 +113,35 @@ watch(() => [props.field, props.formulaOnly], ([newField, formulaOnly]) => {
 }, { deep: true })
 
 function insertField(name) {
-  expression.value += name
+  if (activeTab.value === 'formula' && formulaRef.value?.insertAtCursor) {
+    formulaRef.value.insertAtCursor(`[${name}]`)
+  } else {
+    expression.value += name
+  }
 }
 
 function apply() {
-  emit('create', { ...local.value, expression, mode: activeTab.value })
+  const payload = { ...local.value, expression: expression.value, mode: activeTab.value }
+  if (activeTab.value === 'formula') {
+    if (!payload.type) payload.type = 'expression'
+    if (!payload.aggregation || payload.aggregation === '') payload.aggregation = 'none'
+  }
+  emit('create', payload)
 }
 </script>
 
 <style scoped lang="scss">
 .source-settings {
-  position: relative;
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
 .settings-main {
   flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: auto;
@@ -169,26 +170,11 @@ function apply() {
 }
 
 .settings-footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: var(--footer-height, 200px);
+  flex: 0 0 300px;
+  min-height: 0;
   background: var(--color-primary-background);
   overflow: auto;
   border-top: 1px solid var(--color-border);
-  z-index: 20;
-}
-
-.settings-footer::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 6px;
-  cursor: row-resize;
-  z-index: 10;
 }
 
 .tab-group {

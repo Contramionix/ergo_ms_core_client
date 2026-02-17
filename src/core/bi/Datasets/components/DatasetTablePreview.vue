@@ -168,9 +168,6 @@ watch(() => props.cols, async (newCols, oldCols) => {
 }, { deep: true, flush: 'post' })
 
 watch(() => [props.rows, props.cols], ([rows, cols], [oldRows, oldCols]) => {
-  if (props.datasetId) {
-    return
-  }
   if (rows === oldRows && cols === oldCols && isInitialized.value) {
     return
   }
@@ -179,6 +176,7 @@ watch(() => [props.rows, props.cols], ([rows, cols], [oldRows, oldCols]) => {
     allColumns.value = Array.isArray(cols) ? [...cols] : cols
     totalRowsCount.value = rows.length
     pagesCache.value.clear()
+    pagesCache.value.set(1, rows)
     currentPage.value = 1
     isInitialized.value = true
   } else if (rows && Array.isArray(rows) && rows.length === 0) {
@@ -190,9 +188,7 @@ watch(() => [props.rows, props.cols], ([rows, cols], [oldRows, oldCols]) => {
 }, { immediate: false, deep: true, flush: 'post' })
 
 watch(() => props.rows?.length, (newLength, oldLength) => {
-  if (props.datasetId) {
-    return
-  }
+  // Для сохранённого датасета тоже обновляем при изменении длины
   if (newLength === oldLength && isInitialized.value) {
     return
   }
@@ -202,6 +198,7 @@ watch(() => props.rows?.length, (newLength, oldLength) => {
       allColumns.value = [...props.cols]
       totalRowsCount.value = newLength
       pagesCache.value.clear()
+      pagesCache.value.set(1, props.rows)
       currentPage.value = 1
     }
   }
@@ -239,11 +236,16 @@ async function loadPage(page) {
     const response = await datasetService.preview(props.datasetId, params)
     
     if (response.success && response.data) {
-      const rows = response.data.rows || []
-      
+      let rows = response.data.rows || []
       const columns = response.data.columns || props.cols || []
+      const currentColCount = allColumns.value.length
       if (columns.length > 0) {
-        allColumns.value = columns
+        if (columns.length >= currentColCount) {
+          allColumns.value = columns
+        } else {
+          const padCount = currentColCount - columns.length
+          rows = rows.map(r => (Array.isArray(r) ? [...r, ...Array(padCount).fill(null)] : r))
+        }
       } else if (props.cols && props.cols.length > 0) {
         allColumns.value = props.cols
       }
@@ -326,6 +328,15 @@ async function loadInitialData() {
   totalRowsCount.value = 0
   if (props.cols && props.cols.length > 0) {
     allColumns.value = props.cols
+  }
+
+  if (props.rows?.length > 0 && props.cols?.length > 0) {
+    pagesCache.value.set(1, props.rows)
+    totalRowsCount.value = props.rows.length
+    hasMore.value = props.rows.length >= ITEMS_PER_PAGE
+    loadRequestInProgress.value = false
+    isLoading.value = false
+    return
   }
 
   try {
