@@ -1,8 +1,11 @@
 <template>
   <div ref="rootRef" class="source-settings">
     <div class="settings-main">
-      <div class="settings-top d-flex align-items-center gap-3">
-        <input v-model="local.name" class="form-control form-control-sm flex-grow-1" placeholder="Название поля" />
+      <div class="settings-top d-flex align-items-center gap-3 flex-wrap">
+        <div class="flex-grow-1 min-w-0" style="min-width: 120px;">
+          <input v-model="local.name" class="form-control form-control-sm w-100" :class="{ 'is-invalid': nameErrorReason }" placeholder="Название поля" />
+          <div v-if="nameErrorReason" class="invalid-feedback d-block small">{{ nameErrorReason }}</div>
+        </div>
         <div v-if="!formulaOnly" class="tab-group">
           <button class="tab-button" :class="{ active: activeTab === 'formula' }" @click="activeTab = 'formula'">Формула</button>
           <button class="tab-button" :class="{ active: activeTab === 'field' }" @click="activeTab = 'field'">Поле из источника</button>
@@ -10,7 +13,7 @@
         <button class="btn btn-sm btn-outline-secondary ms-auto" v-if="activeTab === 'formula'" @click="showHelp = !showHelp">Справочник</button>
       </div>
       <div class="settings-body">
-        <SourceSettingsFormula v-if="activeTab === 'formula'" ref="formulaRef" v-model:expression="expression" v-model:formula-valid="formulaValid" :fields="fieldsList" :params="paramsList"/>
+        <SourceSettingsFormula v-if="activeTab === 'formula'" ref="formulaRef" v-model:expression="expression" v-model:formula-valid="formulaValid" :fields="formulaFieldsList" :params="paramsList"/>
         <SourceSettingsField v-else v-model:search="search" :tables="tables" :selected-connection="selectedConnection" :field="field" @insert-field="insertField" @update:field-state="fieldStateFromChild = $event"/>
         <div class="modal-actions d-flex justify-content-end gap-2 mt-3" :class="{ 'no-footer': !showHelp || activeTab === 'field' }">
           <button type="button" class="btn btn-cancel" @click="$emit('close')">Отменить</button>
@@ -40,7 +43,8 @@ const props = defineProps({
   tables: { type: Array, default: () => [] },
   selectedConnection: { type: Object, default: null },
   formulaOnly: { type: Boolean, default: false },
-  params: { type: Array, default: () => [] }
+  params: { type: Array, default: () => [] },
+  datasetFields: { type: Array, default: () => [] }
 })
 const emit = defineEmits(['close', 'create'])
 
@@ -76,12 +80,46 @@ const fieldsList = computed(() => {
 
 const paramsList = computed(() => props.params || [])
 
+const formulaFieldsList = computed(() => {
+  const list = props.datasetFields || []
+  return list.map(f => ({
+    name: f.name ?? '',
+    type: f.type || 'string',
+    aggregation: (f.aggregation === '' || f.aggregation == null || f.aggregation === 'none') ? 'none' : String(f.aggregation),
+    param: false
+  }))
+})
+
 const rootRef = ref(null)
 const showHelp = ref(activeTab.value !== 'field')
 
 const isEditing = computed(() => !!props.field)
 
+const paramNamesSet = computed(() => {
+  const list = props.params || []
+  return new Set(
+    list.map(p => (typeof p === 'string' ? p : (p?.name ?? '')).toString().trim()).filter(Boolean)
+  )
+})
+
+const existingFieldNamesSet = computed(() => {
+  const list = props.datasetFields || []
+  const names = new Set(list.map(f => (f?.name ?? '').toString().trim()).filter(Boolean))
+  const currentName = (props.field?.name ?? '').toString().trim()
+  if (currentName) names.delete(currentName)
+  return names
+})
+
+const nameErrorReason = computed(() => {
+  const trimmed = (local.value?.name ?? '').toString().trim()
+  if (!trimmed) return ''
+  if (paramNamesSet.value.has(trimmed)) return 'Имя поля не должно совпадать с именем параметра'
+  if (existingFieldNamesSet.value.has(trimmed)) return 'Имя поля уже используется'
+  return ''
+})
+
 const canCreate = computed(() => {
+  if (nameErrorReason.value) return false
   const nameOk = ((local.value?.name ?? '') + '').trim().length > 0
   if (activeTab.value !== 'formula') return nameOk
   return nameOk && formulaValid.value
@@ -172,11 +210,13 @@ function insertField(name) {
 }
 
 function apply() {
-  const rawName = local.value?.name
-  const trimmedName = typeof rawName === 'string' ? rawName.trim() : ''
-  const isEmpty = !trimmedName
-  if (isEmpty) {
+  const trimmedName = (local.value?.name ?? '').toString().trim()
+  if (!trimmedName) {
     toast.warning('Укажите название поля')
+    return
+  }
+  if (nameErrorReason.value) {
+    toast.warning(nameErrorReason.value)
     return
   }
   const payload = { ...local.value, expression: expression.value, mode: activeTab.value }
@@ -216,6 +256,7 @@ function apply() {
   padding: 0 1rem 1rem 0;
   gap: .5rem;
   flex-shrink: 0;
+  align-items: flex-start;
 }
 
 .settings-body {
@@ -280,6 +321,12 @@ function apply() {
   border: 1px solid var(--color-border) !important;
   border-radius: 5px !important;
   max-width: 300px;
+
+  &.is-invalid {
+    border-width: 1px !important;
+    border-color: var(--bs-danger, #dc3545) !important;
+    box-shadow: none !important;
+  }
 }
 
 .modal-actions .btn {

@@ -4,14 +4,11 @@
       <div class="settings-sidebar">
         <input v-model="search" class="form-control form-control-sm sidebar-search-input mb-2" placeholder="Поле или параметр" />
         <ul class="fields-list">
-          <li v-for="item in filteredItemsWithMeta" :key="item.name" class="field-item" @click="onInsertItem(item.name)">
+          <li v-for="item in filteredItemsWithMeta" :key="item.itemKey" class="field-item" @click="onInsertItem(item.name)">
             <span class="col-icon" :style="{ color: item.meta.color }">
               <component :is="item.meta.icon" :size="15" />
             </span>
             <span class="col-name">{{ item.name }}</span>
-            <span class="col-type-label" :style="{ color: item.meta.color }">
-              {{ item.param ? 'Параметр' : item.meta.label }}
-            </span>
           </li>
         </ul>
       </div>
@@ -59,21 +56,22 @@ const editorExtensions = [lineNumbers(), indentUnit.of('  ')]
 
 const itemsList = computed(() => {
   const fields = (props.fields || []).map(f => ({
+    itemKey: `field:${f.name ?? ''}`,
     name: f.name,
     type: f.type || 'string',
     param: false,
     aggregation: f.aggregation
   }))
-  const params = (props.params || []).map(p => ({
-    name: typeof p === 'string' ? p : (p.name || p),
-    type: (typeof p === 'object' && p.type) ? p.type : 'string',
-    param: true
-  }))
-  const byName = new Map()
-  for (const x of [...fields, ...params]) {
-    if (!byName.has(x.name)) byName.set(x.name, x)
-  }
-  return [...byName.values()]
+  const params = (props.params || []).map(p => {
+    const name = typeof p === 'string' ? p : (p.name ?? p)
+    return {
+      itemKey: `param:${name}`,
+      name,
+      type: (typeof p === 'object' && p.type) ? p.type : 'string',
+      param: true
+    }
+  })
+  return [...fields, ...params]
 })
 
 const filteredItems = computed(() =>

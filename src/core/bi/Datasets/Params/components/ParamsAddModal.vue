@@ -12,11 +12,15 @@
                                 <li>Длина имени не должна превышать 36 символов.</li>
                                 <li>Имя не должно начинаться с символа нижнего подчёркивания: <code>_name</code>.</li>
                                 <li>Зарезервированные имена, которые нельзя использовать: <code>tab</code>, <code>state</code>, <code>mode</code>, <code>focus</code>, <code>grid</code>, <code>tz</code>, <code>from</code>, <code>to</code>.</li>
+                                <li>Имя не должно совпадать с именем поля датасета.</li>
                             </ul>
                         </HelpTooltip>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <input v-model="name" type="text" class="form-control" :class="{ 'is-invalid': attemptedSubmit && isNameInvalid }" placeholder="" />
+                        <input v-model="name" type="text" class="form-control" :class="{ 'is-invalid': attemptedSubmit && isNameInvalid }" placeholder="" :title="attemptedSubmit && isNameInvalid ? nameErrorReason : undefined" />
+                    </div>
+                    <div v-if="attemptedSubmit && isNameInvalid && nameErrorReason" class="invalid-feedback d-block">
+                        {{ nameErrorReason }}
                     </div>
                 </div>
 
@@ -139,6 +143,16 @@ const isNameInvalid = computed(() => {
     if (isNameReserved.value) return true
     if (isNameDuplicate.value) return true
     return false
+})
+
+const nameErrorReason = computed(() => {
+    if (!name.value?.trim()) return 'Укажите название параметра'
+    if (isNameTooLong.value) return 'Длина имени не должна превышать 36 символов'
+    if (isNameStartsWithUnderscore.value) return 'Имя не должно начинаться с символа подчёркивания'
+    if (isNamePatternInvalid.value) return 'Допускаются только латинские буквы, цифры, тире и подчёркивание'
+    if (isNameReserved.value) return 'Это имя зарезервировано'
+    if (isNameDuplicate.value) return 'Имя уже используется полем или параметром'
+    return ''
 })
 
 const isDefaultInvalid = computed(() => {

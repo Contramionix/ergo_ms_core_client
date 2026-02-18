@@ -21,7 +21,8 @@
     import BiGrid from '@/core/bi/components/bi_grid.vue'
 
     const props = defineProps({
-        datasetId: { type: [String, Number], default: null }
+        datasetId: { type: [String, Number], default: null },
+        fields: { type: Array, default: () => [] }
     })
 
     const rows = ref([])
@@ -86,7 +87,11 @@
         { key: 'sourceUsage', label: 'Использование в настройке источника', width: '35%' },
     ]
 
-    const existingNames = computed(() => rows.value.map(r => r.name))
+    const existingNames = computed(() => {
+        const paramNames = rows.value.map(r => r.name)
+        const fieldNames = (props.fields || []).map(f => f.name).filter(Boolean)
+        return [...paramNames, ...fieldNames]
+    })
 
     function handleAdd(payload){
         const exists = rows.value.some(r => r.name === payload.name)

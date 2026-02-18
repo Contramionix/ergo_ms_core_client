@@ -17,7 +17,7 @@
     <DatasetMainContent :active-tab="activeTab" :selected-connection="selectedConnection" :main-table="mainTable" :relations="relations" :all-tables-of-connection="allTablesOfConnection" :selected-tables="selectedTables" :fields="fields" :preview-cols="previewCols" :preview-rows="previewRows" :dataset="dataset" :is-preview-visible="isPreviewVisible" :connection-status="getConnectionStatus()" @edit-relation="onEditRelation" @remove-relation="removeRelationById" @open-table-link-modal="openTableLinkModal" @tables-loaded="handleTablesLoaded" @remove-table="handleRemoveTable" @edit-field="onEditField" @update:fields="onFieldsUpdate($event)" @update:selected-connection="selectedConnection = $event" @update:main-table="mainTable = $event" @update:active-tab="activeTab = $event" @resetAllRelations="handleResetAllRelations" @params-changed="paramsDirtyTick++"/>
     <DatasetFooter v-if="isPreviewVisible" :is-preview-visible="isPreviewVisible" :preview-rows="previewRows" :preview-cols="previewCols" :fields="fields" :dataset-id="currentDatasetId" :is-preview-loading="isPreviewLoading" :connection-status="getConnectionStatus()" @switch-to-sources="activeTab = 'sources'"/>
     <div class="dataset-modals">
-      <FieldSettingsModal :show="showModal" :selected-field="selectedField" :all-tables-of-connection="allTablesOfConnection" :selected-connection="selectedConnection" :preview-cols="previewCols" :preview-rows="previewRows" @close="showModal = false" @source-save="onSourceSave"/>
+      <FieldSettingsModal :show="showModal" :selected-field="selectedField" :all-tables-of-connection="allTablesOfConnection" :selected-connection="selectedConnection" :preview-cols="previewCols" :preview-rows="previewRows" :dataset-id="currentDatasetId" :fields="fields" :params="datasetParams" @close="showModal = false" @source-save="onSourceSave"/>
       <RelationModal :show="showTableLinkModal" :all-tables-of-connection="allTablesOfConnection" :used-right-table-ids="usedRightTableIds" :editing-relation="editingRelation" :main-table="mainTable" :current-dataset-id="currentDatasetId" :selected-connection="selectedConnection" @close="showTableLinkModal = false" @relation-apply="handleRelationApply"/>
       <NameDialogModal
         v-if="showDatasetDialog"
@@ -87,6 +87,20 @@ const computedIsDirty = computed(() => {
     if (editableDatasetName.value !== origName) return true
   }
   return false
+})
+
+const datasetParams = computed(() => {
+  void paramsDirtyTick.value
+  try {
+    const key = `bi:dataset:params:${datasetId.value ?? 'new'}`
+    const raw = sessionStorage.getItem(key)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed
+    }
+  } catch (_) {}
+  const fromDataset = dataset.value?.params
+  return Array.isArray(fromDataset) ? fromDataset : []
 })
 
 const {

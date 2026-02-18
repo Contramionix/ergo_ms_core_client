@@ -27,6 +27,7 @@ export const biEndpoints = {
         datasetAddRelation: id => `bi_analysis/bi_datasets/${id}/add-relation/`,
         datasetRemoveRelation: id => `bi_analysis/bi_datasets/${id}/remove-relation/`,
         datasetFieldValues: (datasetId, fieldId) => `bi_analysis/bi_datasets/${datasetId}/field-values/${fieldId}/`,
+        datasetFormulaContext: id => `bi_analysis/bi_datasets/${id}/formula-context/`,
         
         // Tables and Fields
         tables: 'bi_analysis/bi_datasets/tables/',
