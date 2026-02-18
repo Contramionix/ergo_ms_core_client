@@ -244,9 +244,12 @@ function adjustFontSize() {
     const iconWidth = props.hideChevron ? 0 : 22
     const available = parent.clientWidth - iconWidth - 8
     if (available <= 0) return
+    const trigger = rootEl.value?.querySelector('.select-trigger')
+    const containerFontSizePx = trigger ? (parseFloat(getComputedStyle(trigger).fontSize) || baseFontSize) : baseFontSize
+    const effectiveMinSize = Math.max(minFontSize, Math.round(containerFontSizePx))
     let size = baseFontSize
     el.style.whiteSpace = 'nowrap'
-    while (el.scrollWidth > available && size > minFontSize) {
+    while (el.scrollWidth > available && size > effectiveMinSize) {
         size -= 1
         el.style.fontSize = size + 'px'
     }

@@ -3,46 +3,20 @@
         <div class="body-table">
             <div class="table-row">
                 <div class="table-row-label">Источник</div>
-                <div class="dropdown-wrapper select-2">
-                    <button type="button" class="dropdown-toggle form-select form-select-sm table-row-select w-100" @click="onToggleMenu('table', $event)">
-                        {{ selectedTableLabel }}
-                    </button>
-                    <div v-if="isTableOpen" class="dropdown-menu show floating" :style="dropdownStyle">
-                        <div class="dropdown-search p-2">
-                            <input type="text" class="form-control form-control-sm" placeholder="Поиск таблицы..." v-model="tableFilter" autocomplete="off"/>
-                        </div>
-                        <ul class="dropdown-list">
-                            <li v-for="t in filteredTables" :key="t.id" class="dropdown-item" :class="{ active: isSelectedTable(t) }" @click="selectTable(t)">
-                                {{ tableLabel(t) }}
-                            </li>
-                            <li v-if="filteredTables.length === 0" class="dropdown-empty">Нет результатов</li>
-                        </ul>
-                    </div>
+                <div class="dropdown-wrapper select-2 type-select-wrap">
+                    <SelectBox :model-value="selectedTable?.id ?? null" :options="tables" value-key="id" label-key="name" :include-all-option="false" all-label="Выберите таблицу" :searchable="true" search-placeholder="Поиск таблицы..." :current-label-formatter="tableLabelFormatter" size="sm" @update:model-value="onTableChange"/>
                 </div>
             </div>
             <div class="table-row">
                 <div class="table-row-label">Поле источника</div>
-                <div class="dropdown-wrapper select-2">
-                    <button type="button" class="dropdown-toggle form-select form-select-sm table-row-select w-100" :disabled="!selectedTable" @click="onToggleMenu('column', $event)">
-                        {{ selectedColumnLabel }}
-                    </button>
-                    <div v-if="isColumnOpen" class="dropdown-menu show floating" :style="dropdownStyle">
-                        <div class="dropdown-search p-2">
-                            <input type="text" class="form-control form-control-sm" placeholder="Поиск по полям..." v-model="columnFilter" autocomplete="off"/>
-                        </div>
-                        <ul class="dropdown-list">
-                            <li v-for="col in filteredColumns" :key="col" class="dropdown-item" :class="{ active: isSelectedColumn(col) }" @click="selectColumn(col)">
-                                {{ col }}
-                            </li>
-                            <li v-if="filteredColumns.length === 0" class="dropdown-empty">Нет результатов</li>
-                        </ul>
-                    </div>
+                <div class="dropdown-wrapper select-2 type-select-wrap">
+                    <SelectBox v-model="selectedColumn" :options="columns" :include-all-option="false" all-label="Выберите поле" :searchable="true" search-placeholder="Поиск по полям..." size="sm" :disabled="!selectedTable"/>
                 </div>
             </div>
             <div class="table-row">
                 <div class="table-row-label">Тип поля</div>
                 <div class="dropdown-wrapper select-2 type-select-wrap">
-                    <SelectBox :modelValue="selectedType" @update:modelValue="val => selectedType = val" :options="typeOptionsAvailable" value-key="value" label-key="label" :include-all-option="false" all-label="Выберите тип" size="sm">
+                    <SelectBox :model-value="selectedType" @update:model-value="val => selectedType = val" :options="typeOptionsAvailable" value-key="value" label-key="label" :include-all-option="false" all-label="Выберите тип" size="sm">
                         <template #selected="{ option, label }">
                             <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
                                 <span class="d-flex align-items-center flex-shrink-0" :style="{ color: getFieldCategoryColor(fieldForCategory) }">
@@ -65,7 +39,7 @@
             <div class="table-row">
                 <div class="table-row-label">Агрегация</div>
                 <div class="dropdown-wrapper select-2 type-select-wrap">
-                    <SelectBox :modelValue="selectedAggregation" @update:modelValue="val => selectedAggregation = val" :options="aggregationOptionsWithNone" value-key="value" label-key="label" :include-all-option="false" all-label="Нет" size="sm" :disabled="!selectedType"/>
+                    <SelectBox :model-value="selectedAggregation || 'none'" @update:model-value="val => selectedAggregation = val" :options="aggregationOptions" value-key="value" label-key="label" :include-all-option="false" all-label="Нет" size="sm" :disabled="!selectedType"/>
                 </div>
             </div>
         </div>
@@ -73,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch } from 'vue'
 import SelectBox from '@/components/SelectBox.vue'
 import { fetchTableColumns } from './js/tableColumnsService'
 import { getTypeOptionsForField, getAggregationOptions } from '@/core/bi/Datasets/Fields/Source/js/DatasetPreviewFieldOptions.js'
@@ -85,178 +59,118 @@ const props = defineProps({
     field: { type: Object, default: null }
 })
 
-defineEmits(['update:search', 'insert-field'])
+const emit = defineEmits(['update:search', 'insert-field', 'update:field-state'])
 
-const isTableOpen = ref(false)
-const tableFilter = ref('')
+function emitFieldState() {
+    const t = selectedTable.value
+    const col = selectedColumn.value?.trim() || ''
+    emit('update:field-state', {
+        source_table: t ?? null,
+        source: col ? { column: col } : {},
+        type: selectedType.value || '',
+        aggregation: (selectedAggregation.value || 'none') === 'none' ? 'none' : selectedAggregation.value
+    })
+}
+
 const selectedTable = ref(null)
-const isColumnOpen = ref(false)
-const columnFilter = ref('')
 const columns = ref([])
 const selectedColumn = ref('')
 const selectedType = ref('')
 const selectedAggregation = ref('')
-const menuPosition = ref({ top: 0, left: 0, width: 0 })
 
 const fieldForCategory = computed(() => ({
   aggregation: selectedAggregation.value ?? props.field?.aggregation ?? 'none'
 }))
 
-function computeMenuPosition(evt) {
-    const target = evt?.currentTarget || evt?.target
-    if (!target || typeof target.getBoundingClientRect !== 'function') return
-    const rect = target.getBoundingClientRect()
-    menuPosition.value = {
-        top: Math.round(rect.bottom + 6),
-        left: Math.round(rect.left),
-        width: Math.round(rect.width)
-    }
-}
-
-function onToggleMenu(kind, evt) {
-    const nextState = { table: false, column: false }
-    computeMenuPosition(evt)
-    if (kind === 'table') nextState.table = !isTableOpen.value
-    if (kind === 'column') nextState.column = !isColumnOpen.value
-    isTableOpen.value = nextState.table
-    isColumnOpen.value = nextState.column
-}
-
-const dropdownStyle = computed(() => ({
-    position: 'fixed',
-    top: `${menuPosition.value.top}px`,
-    left: `${menuPosition.value.left}px`,
-    width: `${menuPosition.value.width}px`,
-    maxWidth: 'calc(100vw - 24px)'
-}))
-
 const connectionName = computed(() => props.selectedConnection?.name || 'Подключение')
 
-const isEditing = computed(() => !!props.field)
-
 function tableLabel(t) {
-    return t.name || ((t.schema && t.table) ? `${t.schema}.${t.table}` : (t.table || ''))
+    return t?.name || ((t?.schema && t?.table) ? `${t.schema}.${t.table}` : (t?.table || ''))
 }
 
-const filteredTables = computed(() => {
-    const s = tableFilter.value.trim().toLowerCase()
-    if (!s) return props.tables
-    return props.tables.filter(t => {
-        const lbl = tableLabel(t).toLowerCase()
-        return lbl.includes(s)
-    })
-})
+function tableLabelFormatter({ option }) {
+    if (!option) return ''
+    return `${connectionName.value}.${tableLabel(option)}`
+}
 
-const selectedTableLabel = computed(() => {
-    if (!selectedTable.value) {
-        return isEditing.value ? `${connectionName.value}.Выберите таблицу` : 'Выберите таблицу'
-    }
-    return `${connectionName.value}.${tableLabel(selectedTable.value)}`
-})
-
-const selectedColumnLabel = computed(() => {
-    if (!selectedTable.value) return 'Сначала выберите таблицу'
-    if (!selectedColumn.value) return 'Выберите поле'
-    return selectedColumn.value
-})
-
-const filteredColumns = computed(() => {
-    const s = columnFilter.value.trim().toLowerCase()
-    if (!s) return columns.value || []
-    return (columns.value || []).filter(col => String(col).toLowerCase().includes(s))
-})
-
-async function selectTable(t) {
+async function onTableChange(id) {
+    const t = props.tables.find(tbl => String(tbl.id) === String(id)) ?? null
     selectedTable.value = t
-    isTableOpen.value = false
     selectedColumn.value = ''
-    columns.value = await fetchTableColumns(t)
-}
-
-function isSelectedTable(t) {
-    return selectedTable.value && String(selectedTable.value.id) === String(t.id)
-}
-
-function selectColumn(col) {
-    selectedColumn.value = col
-    isColumnOpen.value = false
-}
-
-function isSelectedColumn(col) {
-    return selectedColumn.value === col
-}
-
-function onClickOutside(e) {
-    const root = e.target.closest('.dropdown-wrapper')
-    if (!root) {
-        isTableOpen.value = false
-        isColumnOpen.value = false
+    if (t) {
+        columns.value = await fetchTableColumns(t).catch(() => [])
+    } else {
+        columns.value = []
     }
 }
 
-onMounted(() => {
-    document.addEventListener('click', onClickOutside)
-})
-
-onBeforeUnmount(() => {
-    document.removeEventListener('click', onClickOutside)
-})
+function isFormulaField(field) {
+    if (!field) return false
+    const ex = field.expression
+    return ex != null && String(ex).trim() !== ''
+}
 
 function resolveSelectedFromField() {
     if (!props.field) return
-    const srcTbl = props.field.source_table
-    const src = props.field.source
-    const initialColumn = src && src.column ? String(src.column) : ''
     const initialType = props.field.type ? String(props.field.type) : ''
     const initialAggregation = props.field.aggregation ? String(props.field.aggregation) : ''
 
-    let found = null
-    if (srcTbl && typeof srcTbl === 'object' && srcTbl.id) {
-        found = props.tables.find(t => String(t.id) === String(srcTbl.id))
-    } else if (srcTbl) {
-        found = props.tables.find(t => String(t.id) === String(srcTbl))
-    }
-    if (!found && src && src.table) {
-        const target = String(src.table)
-        found = props.tables.find(t => tableLabel(t) === target || t.table === target)
-    }
-    if (found) {
-        selectedTable.value = found
-        fetchTableColumns(found).then(cols => {
-            columns.value = cols || []
-        }).catch(() => {
-            columns.value = []
-        })
-        if (initialColumn) {
-            selectedColumn.value = initialColumn
+    if (isFormulaField(props.field)) {
+        selectedTable.value = null
+        selectedColumn.value = ''
+        selectedType.value = ''
+        selectedAggregation.value = 'none'
+        columns.value = []
+    } else {
+        const srcTbl = props.field.source_table
+        const src = props.field.source
+        const initialColumn = src && src.column ? String(src.column) : ''
+        let found = null
+        if (srcTbl && typeof srcTbl === 'object' && srcTbl.id) {
+            found = props.tables.find(t => String(t.id) === String(srcTbl.id))
+        } else if (srcTbl) {
+            found = props.tables.find(t => String(t.id) === String(srcTbl))
+        }
+        if (!found && src && src.table) {
+            const target = String(src.table)
+            found = props.tables.find(t => tableLabel(t) === target || t.table === target)
+        }
+        if (found) {
+            selectedTable.value = found
+            fetchTableColumns(found).then(cols => {
+                columns.value = cols || []
+            }).catch(() => {
+                columns.value = []
+            })
+            if (initialColumn) {
+                selectedColumn.value = initialColumn
+            }
         }
     }
 
-    if (initialType) {
-        selectedType.value = initialType
+    if (!isFormulaField(props.field)) {
+        if (initialType) selectedType.value = initialType
+        selectedAggregation.value = initialAggregation || 'none'
     }
-
-    selectedAggregation.value = initialAggregation
 }
 
-const aggregationOptions = computed(() => getAggregationOptions(selectedType.value) || [])
-
-const aggregationOptionsWithNone = computed(() => [
-    { value: '', label: 'Нет' },
-    ...aggregationOptions.value
-])
+const aggregationOptions = computed(() => getAggregationOptions(selectedType.value))
 
 const typeOptionsAvailable = computed(() => getTypeOptionsForField(props.field || {}))
 
 watch(() => props.tables, resolveSelectedFromField, { deep: true })
 watch(() => props.field, resolveSelectedFromField, { deep: true, immediate: true })
 
-watch([selectedType], () => {
-    const values = new Set((aggregationOptions.value || []).map(o => o.value))
+watch(selectedType, () => {
+    const values = new Set(aggregationOptions.value.map(o => o.value))
     if (!values.has(selectedAggregation.value)) {
-        selectedAggregation.value = ''
+        selectedAggregation.value = 'none'
     }
 })
+
+watch([selectedTable, selectedColumn, selectedType, selectedAggregation], () => {
+    emitFieldState()
+}, { deep: true, immediate: true })
 </script>
 
 <style scoped lang="scss">
@@ -284,31 +198,6 @@ watch([selectedType], () => {
     font-size: 0.9rem;
 }
 
-.table-row-select {
-  background: transparent !important;
-  color: var(--color-primary-text) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: 5px !important;
-  padding: 0.25rem 0.5rem !important;
-  transition: background-color 0.2s ease, border-color 0.2s ease !important;
-  appearance: none !important;
-}
-
-.table-row-select:hover,
-.table-row-select:focus {
-  background-color: var(--color-hover-background) !important;
-  border-color: var(--color-border) !important;
-  outline: none !important;
-}
-
-.table-row-select::-ms-expand {
-  display: none !important;
-}
-
-.select-1{
-    max-width: 580px;
-}
-
 .select-2{
     max-width: 260px;
 }
@@ -323,6 +212,10 @@ watch([selectedType], () => {
     font-size: 0.875rem;
 }
 
+.type-select-wrap :deep(.value-text) {
+    font-size: 0.875rem !important;
+}
+
 .type-select-wrap :deep(.select-trigger:hover),
 .type-select-wrap :deep(.select-trigger:focus) {
     background-color: var(--color-hover-background) !important;
@@ -333,60 +226,5 @@ watch([selectedType], () => {
 .dropdown-wrapper {
   position: relative;
   width: 100%;
-}
-
-.dropdown-toggle.table-row-select {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  text-align: left;
-}
-
-.dropdown-toggle.table-row-select::after {
-  content: '';
-  display: inline-block;
-  margin-left: 8px;
-  border-top: .35em solid currentColor;
-  border-right: .35em solid transparent;
-  border-left: .35em solid transparent;
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  background: var(--color-primary-background);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px #0008;
-  z-index: 1000;
-}
-
-.dropdown-list {
-  list-style: none;
-  padding: 6px;
-  margin: 0;
-  max-height: 260px;
-  overflow-y: auto;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  padding: 6px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: var(--color-primary-text);
-}
-
-.dropdown-item:hover,
-.dropdown-item.active {
-  background-color: var(--color-hover-background);
-}
-
-.dropdown-empty {
-  padding: 8px;
-  color: var(--color-secondary-text);
 }
 </style>

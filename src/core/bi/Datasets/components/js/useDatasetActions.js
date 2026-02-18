@@ -1593,15 +1593,26 @@ export function useDatasetActions(state) {
 }
   
   async function onSourceSave(newField) {
-    // Устанавливаем временный тип данных для формулы, если тип 'expression'
     const fieldToAdd = { ...newField }
     if (fieldToAdd.type === 'expression' || !fieldToAdd.type) {
-      fieldToAdd.type = 'float' // Временный тип, будет обновлен после получения данных
+      fieldToAdd.type = 'float'
     }
     if (!fieldToAdd.aggregation || fieldToAdd.aggregation === '') {
       fieldToAdd.aggregation = 'none'
     }
-    
+
+    const fieldId = fieldToAdd.id != null ? fieldToAdd.id : undefined
+    if (fieldId !== undefined) {
+      const idx = state.fields.value.findIndex(f => f.id != null && String(f.id) === String(fieldId))
+      if (idx >= 0) {
+        state.fields.value = state.fields.value.map((f, i) =>
+          i === idx ? { ...f, ...fieldToAdd } : f
+        )
+        state.showModal.value = false
+        return
+      }
+    }
+
     const formulaFields = state.fields.value.filter(f => f.expression)
     state.fields.value = [...state.fields.value, fieldToAdd]
     state.showModal.value = false

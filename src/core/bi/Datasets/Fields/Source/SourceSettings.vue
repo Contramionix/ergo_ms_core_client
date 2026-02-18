@@ -11,10 +11,10 @@
       </div>
       <div class="settings-body">
         <SourceSettingsFormula v-if="activeTab === 'formula'" ref="formulaRef" v-model:expression="expression" v-model:formula-valid="formulaValid" :fields="fieldsList" :params="paramsList"/>
-        <SourceSettingsField v-else v-model:search="search" :tables="tables" :selected-connection="selectedConnection" :field="field" @insert-field="insertField"/>
+        <SourceSettingsField v-else v-model:search="search" :tables="tables" :selected-connection="selectedConnection" :field="field" @insert-field="insertField" @update:field-state="fieldStateFromChild = $event"/>
         <div class="modal-actions d-flex justify-content-end gap-2 mt-3" :class="{ 'no-footer': !showHelp || activeTab === 'field' }">
-          <button class="btn btn-sm cancel-btn" @click="$emit('close')">Отменить</button>
-          <button class="btn btn-sm btn-primary" :disabled="!canCreate" @click="apply">Создать</button>
+          <button type="button" class="btn btn-cancel" @click="$emit('close')">Отменить</button>
+          <button type="button" class="btn btn-accept" :disabled="!canApply" @click="apply">{{ acceptButtonLabel }}</button>
         </div>
       </div>
     </div>
@@ -58,6 +58,7 @@ const search = ref('')
 
 const formulaRef = ref(null)
 const formulaValid = ref(true)
+const fieldStateFromChild = ref(null)
 
 const fieldsList = computed(() => {
   if (!props.cols) return []
@@ -78,11 +79,58 @@ const paramsList = computed(() => props.params || [])
 const rootRef = ref(null)
 const showHelp = ref(activeTab.value !== 'field')
 
+const isEditing = computed(() => !!props.field)
+
 const canCreate = computed(() => {
   const nameOk = ((local.value?.name ?? '') + '').trim().length > 0
   if (activeTab.value !== 'formula') return nameOk
   return nameOk && formulaValid.value
 })
+
+function normAgg(v) {
+  return (v === '' || v == null || v === 'none') ? 'none' : String(v)
+}
+
+function normSourceTableId(fieldOrState) {
+  const st = fieldOrState?.source_table
+  if (st == null) return null
+  if (typeof st === 'object' && st !== null && 'id' in st) return String(st.id)
+  return String(st)
+}
+
+function normSourceColumn(fieldOrState) {
+  const src = fieldOrState?.source
+  return (src && src.column) ? String(src.column).trim() : ''
+}
+
+const hasChanges = computed(() => {
+  if (!isEditing.value) return true
+  const nameCur = (local.value?.name ?? '').toString().trim()
+  const nameOrig = (props.field?.name ?? '').toString().trim()
+  if (activeTab.value === 'formula') {
+    const exprCur = expression.value ?? ''
+    const exprOrig = props.field?.expression ?? ''
+    return nameCur !== nameOrig || exprCur !== exprOrig
+  }
+  if (activeTab.value === 'field') {
+    const s = fieldStateFromChild.value
+    if (!s) return nameCur !== nameOrig
+    const curTableId = s.source_table ? String(s.source_table?.id ?? s.source_table) : null
+    const curCol = normSourceColumn(s)
+    const curType = (s.type ?? '').toString()
+    const curAgg = normAgg(s.aggregation)
+    const origTableId = isFormulaField(props.field) ? null : normSourceTableId(props.field)
+    const origCol = isFormulaField(props.field) ? '' : normSourceColumn(props.field)
+    const origType = isFormulaField(props.field) ? '' : (props.field?.type ?? '').toString()
+    const origAgg = isFormulaField(props.field) ? 'none' : normAgg(props.field?.aggregation)
+    return nameCur !== nameOrig || curTableId !== origTableId || curCol !== origCol || curType !== origType || curAgg !== origAgg
+  }
+  return nameCur !== nameOrig
+})
+
+const canApply = computed(() => canCreate.value && (!isEditing.value || hasChanges.value))
+
+const acceptButtonLabel = computed(() => (isEditing.value ? 'Изменить' : 'Создать'))
 
 function detectColumnType(values) {
   const filtered = values.filter(v => v !== null && v !== undefined && v !== '')
@@ -136,6 +184,13 @@ function apply() {
     if (!payload.type) payload.type = 'expression'
     if (!payload.aggregation || payload.aggregation === '') payload.aggregation = 'none'
   }
+  if (activeTab.value === 'field' && fieldStateFromChild.value) {
+    const s = fieldStateFromChild.value
+    payload.source_table = s.source_table ?? undefined
+    payload.source = s.source?.column ? { column: s.source.column } : (payload.source || {})
+    payload.type = s.type || payload.type
+    payload.aggregation = normAgg(s.aggregation) === 'none' ? 'none' : (s.aggregation || 'none')
+  }
   emit('create', payload)
 }
 </script>
@@ -174,8 +229,10 @@ function apply() {
 .modal-actions {
   margin-top: auto;
   padding-bottom: 20px;
+
   &.no-footer {
-    padding-bottom: 40px;
+    margin-top: 1rem;
+    padding-bottom: 0;
   }
 }
 
@@ -190,7 +247,7 @@ function apply() {
 .tab-group {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--color-accent);
+  border: 1px solid #0b5ed7;
   border-radius: 6px;
   overflow: hidden;
   height: 2rem;
@@ -198,7 +255,7 @@ function apply() {
 
 .tab-button {
   background: transparent;
-  color: var(--color-accent);
+  color: #0b5ed7;
   border: none;
   padding: 0 1rem;
   font-size: 0.85rem;
@@ -207,16 +264,16 @@ function apply() {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, color 0.2s;
 }
 
 .tab-button.active {
-  background: var(--color-accent);
+  background: #0b5ed7;
   color: #fff;
 }
 
 .tab-button:not(.active):hover {
-  background: rgba(229, 57, 53, 0.2);
+  background: rgba(11, 94, 215, 0.15);
 }
 
 .settings-top input.form-control {
@@ -225,16 +282,35 @@ function apply() {
   max-width: 300px;
 }
 
-.cancel-btn {
-  color: var(--color-secondary-text);
-  border-color: var(--color-border);
-  background: transparent;
-  transition: background-color .2s ease, color .2s ease;
+.modal-actions .btn {
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
 }
 
-.cancel-btn:hover,
-.cancel-btn:focus {
+.modal-actions .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modal-actions .btn-cancel {
+  background-color: var(--color-primary-background);
   color: var(--color-primary-text);
-  background-color: var(--color-hover-background);
+}
+
+.modal-actions .btn-cancel:hover:not(:disabled) {
+  background-color: #f0f0f0;
+}
+
+.modal-actions .btn-accept {
+  background-color: #0b5ed7;
+  color: white;
+}
+
+.modal-actions .btn-accept:hover:not(:disabled) {
+  background-color: #0a4b9a;
 }
 </style>

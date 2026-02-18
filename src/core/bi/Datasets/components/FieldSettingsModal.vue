@@ -3,7 +3,7 @@
     <div v-if="show" class="modal-backdrop fade show" @click="$emit('close')"></div>
     <div v-if="show" class="dataset-modal-wrapper">
       <ModalCenter modal-id="datasetFieldSettingsModal" title="Настройка поля" :custom-class="'show d-block'" dialog-class="modal-xl modal-field-settings" @closemodal="$emit('close')">
-    <SourceSettings v-if="show" :field="selectedField" :tables="allTablesOfConnection" :selected-connection="selectedConnection" :cols="previewCols" :rows="previewRows" @close="$emit('close')" @create="$emit('sourceSave', $event)"/>
+        <SourceSettings v-if="show" :field="selectedField" :tables="allTablesOfConnection" :selected-connection="selectedConnection" :cols="previewCols" :rows="previewRows" @close="$emit('close')" @create="$emit('sourceSave', $event)"/>
       </ModalCenter>
     </div>
   </Teleport>
