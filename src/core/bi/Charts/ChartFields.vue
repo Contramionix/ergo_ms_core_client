@@ -83,6 +83,10 @@ import { ref, computed } from 'vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import { MEASURE_NAMES_FIELD, MEASURE_VALUES_FIELD, isVirtualMeasureField } from './js/measureVirtualFields.js'
 import { getFieldIcon, getFieldDisplayName } from './js/fieldIcons.js'
+import { MEASURE_COLOR, PARAMETER_ICON_COLOR } from '@/core/bi/Datasets/Fields/js/fieldTypeDisplay.js'
+
+const measureColor = MEASURE_COLOR
+const parameterColor = PARAMETER_ICON_COLOR
 
 const props = defineProps({
   fields: { type: Array, default: () => [] },
@@ -239,10 +243,10 @@ function onFieldItemMouseLeave(ev) {
   color: var(--color-accent);
 }
 .field-icon--measures {
-  color: #198754;
+  color: v-bind(measureColor);
 }
 .field-icon--parameters {
-  color: #6f42c1;
+  color: v-bind(parameterColor);
 }
 .field-name {
   font-weight: 500;
@@ -271,7 +275,7 @@ function onFieldItemMouseLeave(ev) {
 }
 .selected {
   background: var(--color-hover-background) !important;
-  border: 1.5px solid #198754;
+  border: 1.5px solid v-bind(measureColor);
   cursor: not-allowed;
 }
 </style>

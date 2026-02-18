@@ -4,13 +4,13 @@
       <div class="settings-sidebar">
         <input v-model="search" class="form-control form-control-sm sidebar-search-input mb-2" placeholder="Поле или параметр" />
         <ul class="fields-list">
-          <li v-for="item in filteredItems" :key="item.name" class="field-item" @click="onInsertItem(item.name)">
-            <span class="col-icon" style="display: flex; align-items: center; justify-content: center;" :style="{ color: getTypeMeta(item.type).color }">
-              <component :is="getTypeMeta(item.type).icon" :size="15" />
+          <li v-for="item in filteredItemsWithMeta" :key="item.name" class="field-item" @click="onInsertItem(item.name)">
+            <span class="col-icon" :style="{ color: item.meta.color }">
+              <component :is="item.meta.icon" :size="15" />
             </span>
-            <span class="col-name" style="margin-left: 10px;">{{ item.name }}</span>
-            <span class="col-type-label" :style="{ color: getTypeMeta(item.type).color }">
-              {{ item.param ? 'Параметр' : getTypeMeta(item.type).label }}
+            <span class="col-name">{{ item.name }}</span>
+            <span class="col-type-label" :style="{ color: item.meta.color }">
+              {{ item.param ? 'Параметр' : item.meta.label }}
             </span>
           </li>
         </ul>
@@ -20,17 +20,8 @@
     <span role="presentation" class="Resizer vertical" @mousedown.prevent="startResize"></span>
 
     <div class="Pane Pane2 vertical" :style="pane2Style">
-      <div class="settings-editor" ref="editorContainerRef">
-        <CodeMirror
-          ref="codeMirrorRef"
-          :model-value="localExpression"
-          :lang="formulaLanguage"
-          :extensions="editorExtensions"
-          placeholder="Введите формулу, например: SUM([Поле]) / COUNT([Другое поле])"
-          class="formula-codemirror"
-          @update:model-value="onEditorChange"
-          @ready="onEditorReady"
-        />
+      <div class="settings-editor">
+        <CodeMirror ref="codeMirrorRef" :model-value="localExpression" :lang="formulaLanguage" :extensions="editorExtensions" placeholder="Введите формулу, например: SUM([Поле]) / COUNT([Другое поле])" class="formula-codemirror" @update:model-value="onEditorChange" @ready="onEditorReady"/>
         <div v-if="validationResult.errors.length > 0" class="formula-validation-errors">
           <div class="formula-validation-title">Ошибки в формуле</div>
           <ul class="formula-validation-list">
@@ -44,10 +35,11 @@
 
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
-import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, SquareFunction } from 'lucide-vue-next'
 import CodeMirror from 'vue-codemirror6'
+import { getTypeDisplayMeta, getItemDisplayColor } from '../js/fieldTypeDisplay.js'
 import { formulaLanguage } from './js/formulaLanguage.js'
 import { validateFormula } from './js/formulaValidation.js'
+import { lineNumbers } from '@codemirror/view'
 import { indentUnit } from '@codemirror/language'
 
 const search = ref('')
@@ -62,35 +54,39 @@ const emit = defineEmits(['update:expression', 'update:formulaValid'])
 
 const localExpression = ref(props.expression || '')
 const codeMirrorRef = ref(null)
-const editorContainerRef = ref(null)
 
-const editorExtensions = [indentUnit.of('  ')]
+const editorExtensions = [lineNumbers(), indentUnit.of('  ')]
 
 const itemsList = computed(() => {
   const fields = (props.fields || []).map(f => ({
     name: f.name,
     type: f.type || 'string',
-    param: false
+    param: false,
+    aggregation: f.aggregation
   }))
   const params = (props.params || []).map(p => ({
     name: typeof p === 'string' ? p : (p.name || p),
     type: (typeof p === 'object' && p.type) ? p.type : 'string',
     param: true
   }))
-  const seen = new Set()
-  const out = []
+  const byName = new Map()
   for (const x of [...fields, ...params]) {
-    if (seen.has(x.name)) continue
-    seen.add(x.name)
-    out.push(x)
+    if (!byName.has(x.name)) byName.set(x.name, x)
   }
-  return out
+  return [...byName.values()]
 })
 
 const filteredItems = computed(() =>
   itemsList.value.filter(item =>
     item.name.toLowerCase().includes(search.value.toLowerCase())
   )
+)
+
+const filteredItemsWithMeta = computed(() =>
+  filteredItems.value.map(item => ({
+    ...item,
+    meta: { ...getTypeDisplayMeta(item.type), color: getItemDisplayColor(item) }
+  }))
 )
 
 const validationResult = computed(() => {
@@ -105,33 +101,13 @@ watch(validationResult, (v) => {
   emit('update:formulaValid', v.valid)
 }, { immediate: true })
 
-const typeIconMap = {
-  string: { icon: Type, color: '#0d6efd', label: '' },
-  integer: { icon: Hash, color: '#198754', label: '' },
-  float: { icon: Hash, color: '#198754', label: '' },
-  number: { icon: Hash, color: '#198754', label: '' },
-  date: { icon: Calendar, color: '#fd7e14', label: '' },
-  'date&time': { icon: Calendar, color: '#fd7e14', label: '' },
-  datetime: { icon: Calendar, color: '#fd7e14', label: '' },
-  bool: { icon: CheckCircle, color: '#20c997', label: '' },
-  boolean: { icon: CheckCircle, color: '#20c997', label: '' },
-  geopoint: { icon: MapPin, color: '#dc3545', label: '' },
-  geopolygon: { icon: Globe, color: '#6f42c1', label: '' },
-  expression: { icon: SquareFunction, color: '#6f42c1', label: 'fx' },
-  default: { icon: Type, color: 'var(--color-accent)', label: '' }
-}
-
-function getTypeMeta(type) {
-  return typeIconMap[type] || typeIconMap.default
-}
-
 function onEditorChange(value) {
   localExpression.value = value ?? ''
   emit('update:expression', localExpression.value)
 }
 
 function onEditorReady({ view }) {
-  if (view && props.expression !== undefined && props.expression !== null) {
+  if (view && props.expression != null) {
     const str = String(props.expression)
     if (view.state.doc.toString() !== str) {
       view.dispatch({
@@ -306,13 +282,20 @@ defineExpose({
   font-size: 15px;
   margin-bottom: 2px;
 
-  &:hover {
-    background: var(--color-hover-background);
-  }
-
+  &:hover,
   &:active {
     background: var(--color-hover-background);
   }
+}
+
+.field-item .col-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.field-item .col-name {
+  margin-left: 10px;
 }
 
 .field-item .lucide {

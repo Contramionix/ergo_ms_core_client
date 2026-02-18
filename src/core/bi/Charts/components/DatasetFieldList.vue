@@ -37,6 +37,10 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { CircleAlert, SquareFunction, MoreHorizontal } from 'lucide-vue-next'
 import { isVirtualMeasureField } from '../js/measureVirtualFields.js'
 import { getFieldIcon } from '../js/fieldIcons.js'
+import { MEASURE_COLOR, PARAMETER_ICON_COLOR } from '@/core/bi/Datasets/Fields/js/fieldTypeDisplay.js'
+
+const measureColor = MEASURE_COLOR
+const parameterColor = PARAMETER_ICON_COLOR
 
 const props = defineProps({
   dataset: Object,
@@ -187,11 +191,11 @@ onBeforeUnmount(() => {
 }
 
 .field-icon--measures {
-  color: #198754;
+  color: v-bind(measureColor);
 }
 
 .field-icon--parameters {
-  color: #6f42c1;
+  color: v-bind(parameterColor);
 }
 
 .field-name {
@@ -238,11 +242,11 @@ onBeforeUnmount(() => {
 }
 
 .field-item:has(.field-icon--measures) .action-btn:hover {
-  color: #198754;
+  color: v-bind(measureColor);
 }
 
 .field-item:has(.field-icon--parameters) .action-btn:hover {
-  color: #6f42c1;
+  color: v-bind(parameterColor);
 }
 
 .dropdown-wrap {

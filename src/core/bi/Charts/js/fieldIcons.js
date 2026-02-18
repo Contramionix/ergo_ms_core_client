@@ -1,22 +1,10 @@
-import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, BarChart2 } from 'lucide-vue-next'
+import { BarChart2 } from 'lucide-vue-next'
+import { getTypeDisplayMeta } from '@/core/bi/Datasets/Fields/js/fieldTypeDisplay.js'
 import { isVirtualMeasureField } from './measureVirtualFields.js'
-
-export const FIELD_TYPE_ICONS = {
-  string: Type,
-  integer: Hash,
-  float: Hash,
-  number: Hash,
-  date: Calendar,
-  'date&time': Calendar,
-  bool: CheckCircle,
-  boolean: CheckCircle,
-  geopoint: MapPin,
-  geopolygon: Globe,
-}
 
 export function getFieldIcon(f, virtualIcon = BarChart2) {
   if (isVirtualMeasureField(f)) return virtualIcon
-  return FIELD_TYPE_ICONS[f?.type] || Type
+  return getTypeDisplayMeta(f?.type).icon
 }
 
 export function getFieldDisplayName(f) {

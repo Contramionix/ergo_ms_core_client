@@ -1,4 +1,4 @@
-import { Type, Hash, Calendar, CheckCircle, MapPin, Globe } from 'lucide-vue-next'
+import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, SquareFunction } from 'lucide-vue-next'
 
 export const typeIcon = {
   string: Type,
@@ -7,21 +7,39 @@ export const typeIcon = {
   number: Hash,
   date: Calendar,
   'date&time': Calendar,
+  datetime: Calendar,
   bool: CheckCircle,
   boolean: CheckCircle,
   geopoint: MapPin,
   geopolygon: Globe,
+  expression: SquareFunction
 }
 
+const typeLabel = {
+  expression: 'fx'
+}
+
+export const INDICATOR_COLOR = '#dc3545'
+export const MEASURE_COLOR = '#198754'
 export const PARAMETER_ICON_COLOR = '#6f42c1'
 
 export function getFieldCategoryColor(field) {
   const aggregation = field?.aggregation
-  
   if (!aggregation || aggregation === 'none') {
-    return '#dc3545'
+    return INDICATOR_COLOR
   }
-  return '#198754'
+  return MEASURE_COLOR
+}
+
+export function getItemDisplayColor(item) {
+  if (item?.param) return PARAMETER_ICON_COLOR
+  return getFieldCategoryColor(item)
+}
+
+export function getTypeDisplayMeta(type) {
+  const icon = typeIcon[type] || Type
+  const label = typeLabel[type] ?? ''
+  return { icon, label }
 }
 
 export function isFieldMeasure(field) {
