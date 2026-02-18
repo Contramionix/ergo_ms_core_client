@@ -14,7 +14,7 @@
       @delete="onDeleteClick"
     />
     <DatasetToolbar v-model:active-tab="activeTab" :is-preview-loading="isPreviewLoading" :connection-status="getConnectionStatus()" @refresh-fields="refreshFields" @toggle-preview="togglePreview" @add-field="addField"/>
-    <DatasetMainContent :active-tab="activeTab" :selected-connection="selectedConnection" :main-table="mainTable" :relations="relations" :all-tables-of-connection="allTablesOfConnection" :selected-tables="selectedTables" :fields="fields" :preview-cols="previewCols" :preview-rows="previewRows" :dataset="dataset" :is-preview-visible="isPreviewVisible" :connection-status="getConnectionStatus()" @edit-relation="onEditRelation" @remove-relation="removeRelationById" @open-table-link-modal="openTableLinkModal" @tables-loaded="handleTablesLoaded" @remove-table="handleRemoveTable" @edit-field="onEditField" @update:fields="fields = $event" @update:selected-connection="selectedConnection = $event" @update:main-table="mainTable = $event" @update:active-tab="activeTab = $event" @resetAllRelations="handleResetAllRelations" @params-changed="paramsDirtyTick++"/>
+    <DatasetMainContent :active-tab="activeTab" :selected-connection="selectedConnection" :main-table="mainTable" :relations="relations" :all-tables-of-connection="allTablesOfConnection" :selected-tables="selectedTables" :fields="fields" :preview-cols="previewCols" :preview-rows="previewRows" :dataset="dataset" :is-preview-visible="isPreviewVisible" :connection-status="getConnectionStatus()" @edit-relation="onEditRelation" @remove-relation="removeRelationById" @open-table-link-modal="openTableLinkModal" @tables-loaded="handleTablesLoaded" @remove-table="handleRemoveTable" @edit-field="onEditField" @update:fields="onFieldsUpdate($event)" @update:selected-connection="selectedConnection = $event" @update:main-table="mainTable = $event" @update:active-tab="activeTab = $event" @resetAllRelations="handleResetAllRelations" @params-changed="paramsDirtyTick++"/>
     <DatasetFooter v-if="isPreviewVisible" :is-preview-visible="isPreviewVisible" :preview-rows="previewRows" :preview-cols="previewCols" :fields="fields" :dataset-id="currentDatasetId" :is-preview-loading="isPreviewLoading" :connection-status="getConnectionStatus()" @switch-to-sources="activeTab = 'sources'"/>
     <div class="dataset-modals">
       <FieldSettingsModal :show="showModal" :selected-field="selectedField" :all-tables-of-connection="allTablesOfConnection" :selected-connection="selectedConnection" :preview-cols="previewCols" :preview-rows="previewRows" @close="showModal = false" @source-save="onSourceSave"/>
@@ -133,6 +133,7 @@ const {
   buildAllTables,
   updateSelectedTables,
   loadPreview,
+  syncPreviewToFields,
   refreshFields,
   handleRelationApply,
   removeRelationById,
@@ -141,6 +142,11 @@ const {
   handleRemoveTable,
   onSourceSave
 } = actions
+
+function onFieldsUpdate(newFields) {
+  fields.value = newFields
+  syncPreviewToFields()
+}
 
 function clearDraftState() {
   mainTable.value = null

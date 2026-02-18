@@ -1386,6 +1386,23 @@ export function useDatasetActions(state) {
     
     return 'string'
   }
+
+  function syncPreviewToFields() {
+    const names = state.fields.value.map(f => f.name).filter(Boolean)
+    if (names.length === 0) {
+      state.previewCols.value = []
+      state.previewRows.value = []
+      return
+    }
+    const currentCols = state.previewCols.value
+    state.previewCols.value = names
+    state.previewRows.value = state.previewRows.value.map(row =>
+      names.map(n => {
+        const i = currentCols.indexOf(n)
+        return i >= 0 && Array.isArray(row) ? row[i] : null
+      })
+    )
+  }
   
   // Функции для работы с полями
   async function refreshFields() {
@@ -1650,6 +1667,7 @@ export function useDatasetActions(state) {
     sanitizeRelations,
     loadPreview,
     loadFields,
+    syncPreviewToFields,
     detectColumnType,
     refreshFields,
     handleRelationApply,
