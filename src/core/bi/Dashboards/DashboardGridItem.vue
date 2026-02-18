@@ -39,6 +39,7 @@
           :active-selector-index="item.activeSelectorIndex || 0"
           :auto-height="isItemAutoHeight || false"
           :selector-group-settings="item.selectorGroupSettings || {}"
+          :interaction-disabled="!viewMode"
           @selection-change="onSelectorSelectionChange"
           @content-resized="onSelectorResize"
           @apply-filters="onSelectorApplyFilters"

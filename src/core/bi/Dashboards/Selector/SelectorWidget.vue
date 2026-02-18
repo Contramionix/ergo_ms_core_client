@@ -1,5 +1,5 @@
 <template>
-  <div class="selector-widget" ref="selectorWidgetRef" :class="{ 'auto-height': effectiveAutoHeight }">
+  <div class="selector-widget" ref="selectorWidgetRef" :class="{ 'auto-height': effectiveAutoHeight, 'interaction-disabled': interactionDisabled }">
     <div class="selector-content">
       <SpinnerLoading v-if="!preview && isLoading" loading-text="Загрузка селектора..." />
       <div v-else-if="error" class="selector-error">
@@ -7,7 +7,7 @@
         <span>{{ error }}</span>
       </div>
 
-      <div v-else class="selector-render-container">
+      <div v-else class="selector-render-container" :class="{ 'interaction-disabled': interactionDisabled }">
         <div class="selector-flex-layout">
           <div
             v-for="selector in sortedSelectors"
@@ -40,8 +40,8 @@
         </div>
       </div>
       <div v-if="hasActions" class="selector-actions">
-        <button v-if="selectorGroupSettings?.applyButton" class="btn-apply" @click="applyFilters">Применить</button>
-        <button v-if="selectorGroupSettings?.clearButton" class="btn-clear" @click="clearFilters">Сбросить</button>
+        <button v-if="selectorGroupSettings?.applyButton" class="btn-apply" :disabled="interactionDisabled" @click="applyFilters">Применить</button>
+        <button v-if="selectorGroupSettings?.clearButton" class="btn-clear" :disabled="interactionDisabled" @click="clearFilters">Сбросить</button>
       </div>
     </div>
 
@@ -82,6 +82,10 @@ const props = defineProps({
     })
   },
   preview: {
+    type: Boolean,
+    default: false
+  },
+  interactionDisabled: {
     type: Boolean,
     default: false
   }
@@ -210,6 +214,7 @@ function getListOrCheckboxValue(selector) {
 }
 
 function handleCompactMultiSelectChange(selector, value) {
+  if (props.interactionDisabled) return;
   if (selector?.selectorType === 'list' && selector?.multipleSelection) {
     const arr = Array.isArray(value) ? value : [];
     setSelectedValues(selector, arr);
@@ -298,7 +303,7 @@ function cancelHideHint() {
 }
 
 function handleSelectionChange(selector, event) {
-  if (!selector || !event) return;
+  if (props.interactionDisabled || !selector || !event) return;
   
   const newValue = event.target.value;
   setSelectorValue(selector, newValue);
@@ -331,6 +336,7 @@ function handleMultiSelectionChange(selector, event) {
 }
 
 function handleInputChange(selector, event) {
+  if (props.interactionDisabled) return;
   const newValue = event.target.value;
   setSelectorValue(selector, newValue);
   
@@ -342,10 +348,12 @@ function handleInputChange(selector, event) {
 }
 
 function applyFilters() {
+  if (props.interactionDisabled) return;
   emit('apply-filters', { ...selectorValues.value });
 }
 
 function clearFilters() {
+  if (props.interactionDisabled) return;
   Object.keys(selectorValues.value).forEach(id => {
     const selector = props.selectorsList.find(s => s.id === parseInt(id));
     if (selector) {
@@ -556,6 +564,12 @@ defineExpose({
   width: 100%;
   container-type: inline-size;
   container-name: selector-container;
+
+  &.interaction-disabled {
+    pointer-events: none;
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
 }
 
 .selector-flex-layout {
@@ -889,6 +903,11 @@ defineExpose({
     cursor: pointer;
     transition: all 0.2s ease;
     border: 1px solid transparent;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
   }
   
   .btn-apply {
@@ -911,7 +930,7 @@ defineExpose({
     color: var(--color-text-secondary);
     border-color: var(--color-border);
     
-    &:hover {
+    &:hover:not(:disabled) {
       background: var(--color-hover-background);
       border-color: var(--color-primary);
       color: var(--color-text-primary);
