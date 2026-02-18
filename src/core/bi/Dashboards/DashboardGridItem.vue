@@ -44,6 +44,7 @@
           @content-resized="onSelectorResize"
           @apply-filters="onSelectorApplyFilters"
           @clear-filters="onSelectorClearFilters"
+          @field-not-found="onSelectorFieldNotFound"
         />
       </div>
 
@@ -131,7 +132,8 @@ const emit = defineEmits([
   'selector-selection-change',
   'selector-resize',
   'selector-apply-filters',
-  'selector-clear-filters'
+  'selector-clear-filters',
+  'selector-field-not-found'
 ])
 
 const isItemAutoHeight = computed(
@@ -277,6 +279,10 @@ const onSelectorApplyFilters = (event) => {
 
 const onSelectorClearFilters = (event) => {
   emit('selector-clear-filters', props.item, event)
+}
+
+const onSelectorFieldNotFound = (payload) => {
+  emit('selector-field-not-found', props.item, payload)
 }
 
 const onShowHint = (event) => {

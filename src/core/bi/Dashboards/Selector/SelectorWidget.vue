@@ -91,7 +91,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['selection-change', 'content-resized', 'apply-filters', 'clear-filters']);
+const emit = defineEmits(['selection-change', 'content-resized', 'apply-filters', 'clear-filters', 'field-not-found']);
 
 const isLoading = ref(false);
 const error = ref('');
@@ -165,7 +165,6 @@ async function loadSelectorOptions(selector) {
     selectorOptionsMap.value[selector.id] = [];
     return;
   }
-  
   try {
     const response = await datasetService.getFieldValues(selector.selectedDatasetId, selector.selectedField);
     
@@ -188,8 +187,13 @@ async function loadSelectorOptions(selector) {
     
     selectorOptionsMap.value[selector.id] = options;
   } catch (err) {
-    console.error('Ошибка загрузки опций селектора:', err);
+    const is404 = err?.response?.status === 404;
     selectorOptionsMap.value[selector.id] = [];
+    if (is404) {
+      emit('field-not-found', { selectorId: selector.id, datasetId: selector.selectedDatasetId, fieldId: selector.selectedField });
+    } else {
+      console.error('Ошибка загрузки опций селектора:', err);
+    }
   }
 }
 

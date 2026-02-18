@@ -62,6 +62,7 @@
         @selector-resize="handleSelectorResize"
         @selector-apply-filters="handleSelectorApplyFilters"
         @selector-clear-filters="handleSelectorClearFilters"
+        @selector-field-not-found="handleSelectorFieldNotFound"
       />
     </div>
 
@@ -419,6 +420,22 @@ const handleChartResize = (item, newHeight) => {
 }
 
 const handleSelectorSelectionChange = (item, selectionData) => {}
+
+const handleSelectorFieldNotFound = (item, payload) => {
+  if (item.type !== 'Селектор' || !payload?.selectorId) return
+  const idx = localItems.value.findIndex((i) => i.id === item.id)
+  if (idx < 0) return
+  const list = item.selectorsList || []
+  const nextList = list.map((s) =>
+    String(s.id) === String(payload.selectorId)
+      ? { ...s, selectedField: '' }
+      : { ...s }
+  )
+  const nextItems = [...localItems.value]
+  nextItems[idx] = { ...item, selectorsList: nextList }
+  localItems.value = nextItems
+  emit('update:items', localItems.value)
+}
 
 const handleSelectorResize = (item, newHeight) => {
   const isAutoHeight = item.autoHeight || item.selectorGroupSettings?.autoHeight;

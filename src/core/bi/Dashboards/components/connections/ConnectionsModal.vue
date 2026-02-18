@@ -3,7 +3,6 @@
   <ModalCenter v-if="visible" modal-id="dashboardConnectionsModal" title="Связи" custom-class="show d-block" dialog-class="modal-lg" @closemodal="close">
     <div class="connections-modal-body">
       <div class="connections-widget-select mb-3">
-        <label class="form-label">Основной виджет</label>
         <SelectBox class="connections-widget-select-box" :model-value="localMainItemId" :options="widgetSelectOptions" value-key="id" label-key="name" :include-all-option="false" all-label="Выберите виджет" size="sm" label="" :searchable="true" search-placeholder="Поиск по списку виджетов" @update:model-value="setMainWidgetById">
           <template #selected="{ label }">
             <span class="d-flex align-items-center gap-2 flex-grow-1 min-w-0 text-truncate">
@@ -22,10 +21,8 @@
 
       <div class="connections-search-and-tabs d-flex flex-wrap align-items-center gap-2 mb-3">
         <input v-model="searchQuery" type="text" class="form-control form-control-sm connections-search-input" placeholder="Поиск по списку виджетов"/>
-        <div class="connections-filter-tabs d-flex gap-1">
-          <button v-for="f in LINK_FILTERS" :key="f.value" type="button" class="btn btn-sm" :class="linkFilter === f.value ? 'btn-primary' : 'btn-outline-secondary'" @click="linkFilter = f.value">
-            {{ f.label }}
-          </button>
+        <div class="connections-filter-select">
+          <SelectBox v-model="linkFilter" :options="LINK_FILTERS" value-key="value" label-key="label" :multiple="true" size="sm" label="" :include-all-option="false" :full-width="false"/>
         </div>
       </div>
 
@@ -93,7 +90,7 @@ const LINK_FILTERS = [
 ]
 
 const searchQuery = ref('')
-const linkFilter = ref('incoming')
+const linkFilter = ref(['incoming'])
 const selectedRowKey = ref(null)
 const localMainItemId = ref(null)
 const localItems = ref([])
@@ -249,8 +246,11 @@ const FILTER_PREDICATES = {
 }
 
 const filteredPartnerRows = computed(() => {
-  const pred = FILTER_PREDICATES[linkFilter.value] ?? (() => true)
-  return allPartnerRows.value.filter(pred)
+  const selected = linkFilter.value
+  if (!Array.isArray(selected) || selected.length === 0) return allPartnerRows.value
+  return allPartnerRows.value.filter(row =>
+    selected.some(key => (FILTER_PREDICATES[key] ?? (() => true))(row))
+  )
 })
 
 function setMainWidgetById(id) {
@@ -324,7 +324,7 @@ watch(
       localItems.value = JSON.parse(JSON.stringify(props.items))
       localMainItemId.value = props.initialItem?.id ?? linkableWidgets.value[0]?.id ?? null
       searchQuery.value = ''
-      linkFilter.value = 'incoming'
+      linkFilter.value = ['incoming']
       selectedRowKey.value = null
     }
   },
@@ -362,10 +362,18 @@ watch(
   }
 }
 
-.connections-filter-tabs {
-  display: flex;
-  gap: 0.5rem;
+.connections-filter-select {
+  min-width: 140px;
+  max-width: 220px;
   flex-shrink: 0;
+}
+
+.connections-filter-select :deep(.select-trigger) {
+  min-height: 31.5px;
+  height: 31.5px;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  font-size: 0.875rem;
 }
 
 .connections-modal-actions {
