@@ -10,17 +10,11 @@
         <button class="btn btn-sm btn-outline-secondary ms-auto" v-if="activeTab === 'formula'" @click="showHelp = !showHelp">Справочник</button>
       </div>
       <div class="settings-body">
-        <SourceSettingsFormula
-          v-if="activeTab === 'formula'"
-          ref="formulaRef"
-          v-model:expression="expression"
-          :fields="fieldsList"
-          :params="paramsList"
-        />
+        <SourceSettingsFormula v-if="activeTab === 'formula'" ref="formulaRef" v-model:expression="expression" :fields="fieldsList" :params="paramsList"/>
         <SourceSettingsField v-else v-model:search="search" :tables="tables" :selected-connection="selectedConnection" :field="field" @insert-field="insertField"/>
         <div class="modal-actions d-flex justify-content-end gap-2 mt-3" :class="{ 'no-footer': !showHelp || activeTab === 'field' }">
           <button class="btn btn-sm cancel-btn" @click="$emit('close')">Отменить</button>
-          <button class="btn btn-sm btn-primary" @click="apply">Создать</button>
+          <button class="btn btn-sm btn-primary" :disabled="!canCreate" @click="apply">Создать</button>
         </div>
       </div>
     </div>
@@ -32,9 +26,12 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useToast } from 'vue-toastification'
 import SourceSettingsField from './SourceSettingsField.vue'
 import SourceSettingsFormula from './SourceSettingsFormula.vue'
 import SourceSettingsHelp from './SourceSettingsHelp.vue'
+
+const toast = useToast()
 
 const props = defineProps({
   field: Object,
@@ -82,6 +79,8 @@ const paramsList = computed(() => props.params || [])
 const rootRef = ref(null)
 const showHelp = ref(activeTab.value !== 'field')
 
+const canCreate = computed(() => ((local.value?.name ?? '') + '').trim().length > 0)
+
 function detectColumnType(values) {
   const filtered = values.filter(v => v !== null && v !== undefined && v !== '')
   if (!filtered.length) return 'string'
@@ -121,6 +120,13 @@ function insertField(name) {
 }
 
 function apply() {
+  const rawName = local.value?.name
+  const trimmedName = typeof rawName === 'string' ? rawName.trim() : ''
+  const isEmpty = !trimmedName
+  if (isEmpty) {
+    toast.warning('Укажите название поля')
+    return
+  }
   const payload = { ...local.value, expression: expression.value, mode: activeTab.value }
   if (activeTab.value === 'formula') {
     if (!payload.type) payload.type = 'expression'
