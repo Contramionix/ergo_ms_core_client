@@ -31,6 +31,12 @@
           @update:model-value="onEditorChange"
           @ready="onEditorReady"
         />
+        <div v-if="validationResult.errors.length > 0" class="formula-validation-errors">
+          <div class="formula-validation-title">Ошибки в формуле</div>
+          <ul class="formula-validation-list">
+            <li v-for="(err, idx) in validationResult.errors" :key="idx">{{ err.message }}</li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>
@@ -41,6 +47,7 @@ import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { Type, Hash, Calendar, CheckCircle, MapPin, Globe, SquareFunction } from 'lucide-vue-next'
 import CodeMirror from 'vue-codemirror6'
 import { formulaLanguage } from './js/formulaLanguage.js'
+import { validateFormula } from './js/formulaValidation.js'
 import { indentUnit } from '@codemirror/language'
 
 const search = ref('')
@@ -51,7 +58,7 @@ const props = defineProps({
   params: { type: Array, default: () => [] }
 })
 
-const emit = defineEmits(['update:expression'])
+const emit = defineEmits(['update:expression', 'update:formulaValid'])
 
 const localExpression = ref(props.expression || '')
 const codeMirrorRef = ref(null)
@@ -85,6 +92,18 @@ const filteredItems = computed(() =>
     item.name.toLowerCase().includes(search.value.toLowerCase())
   )
 )
+
+const validationResult = computed(() => {
+  const expr = localExpression.value ?? ''
+  if (typeof expr !== 'string' || expr.trim() === '') {
+    return { valid: true, errors: [] }
+  }
+  return validateFormula(expr, props.fields || [], props.params || [])
+})
+
+watch(validationResult, (v) => {
+  emit('update:formulaValid', v.valid)
+}, { immediate: true })
 
 const typeIconMap = {
   string: { icon: Type, color: '#0d6efd', label: '' },
@@ -178,6 +197,10 @@ const pane2Style = computed(() => ({
 defineExpose({
   insertAtCursor(text) {
     insertAtCursor(typeof text === 'string' ? text : `[${text}]`)
+  },
+  validationResult,
+  get isFormulaValid() {
+    return validationResult.value.valid
   }
 })
 </script>
@@ -294,5 +317,26 @@ defineExpose({
 
 .field-item .lucide {
   filter: drop-shadow(0 0 3px rgba(60, 200, 255, 0.27));
+}
+
+.formula-validation-errors {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-error-background, rgba(229, 57, 53, 0.08));
+  border: 1px solid var(--color-accent, #e53935);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.formula-validation-title {
+  font-weight: 600;
+  color: var(--color-accent, #e53935);
+  margin-bottom: 0.25rem;
+}
+
+.formula-validation-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--color-primary-text);
 }
 </style>

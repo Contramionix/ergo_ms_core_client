@@ -10,7 +10,7 @@
         <button class="btn btn-sm btn-outline-secondary ms-auto" v-if="activeTab === 'formula'" @click="showHelp = !showHelp">Справочник</button>
       </div>
       <div class="settings-body">
-        <SourceSettingsFormula v-if="activeTab === 'formula'" ref="formulaRef" v-model:expression="expression" :fields="fieldsList" :params="paramsList"/>
+        <SourceSettingsFormula v-if="activeTab === 'formula'" ref="formulaRef" v-model:expression="expression" v-model:formula-valid="formulaValid" :fields="fieldsList" :params="paramsList"/>
         <SourceSettingsField v-else v-model:search="search" :tables="tables" :selected-connection="selectedConnection" :field="field" @insert-field="insertField"/>
         <div class="modal-actions d-flex justify-content-end gap-2 mt-3" :class="{ 'no-footer': !showHelp || activeTab === 'field' }">
           <button class="btn btn-sm cancel-btn" @click="$emit('close')">Отменить</button>
@@ -59,6 +59,7 @@ const expression = ref(props.field?.expression ?? '')
 const search = ref('')
 
 const formulaRef = ref(null)
+const formulaValid = ref(true)
 
 const fieldsList = computed(() => {
   if (!props.cols) return []
@@ -79,7 +80,11 @@ const paramsList = computed(() => props.params || [])
 const rootRef = ref(null)
 const showHelp = ref(activeTab.value !== 'field')
 
-const canCreate = computed(() => ((local.value?.name ?? '') + '').trim().length > 0)
+const canCreate = computed(() => {
+  const nameOk = ((local.value?.name ?? '') + '').trim().length > 0
+  if (activeTab.value !== 'formula') return nameOk
+  return nameOk && formulaValid.value
+})
 
 function detectColumnType(values) {
   const filtered = values.filter(v => v !== null && v !== undefined && v !== '')
@@ -95,6 +100,7 @@ function detectColumnType(values) {
 watch(activeTab, tab => {
   if (tab === 'field') showHelp.value = false
   else showHelp.value = true
+  if (tab === 'formula') formulaValid.value = true
 })
 
 watch(() => [props.field, props.formulaOnly], ([newField, formulaOnly]) => {
