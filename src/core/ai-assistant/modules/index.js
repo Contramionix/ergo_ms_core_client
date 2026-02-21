@@ -8,7 +8,6 @@ import chatConfig from './chat/config.js'
 import biConfig from './bi/config.js'
 import codeConfig from './code/config.js'
 import docsConfig from './docs/config.js'
-import tpConfig from '../tp/config.js'
 
 /**
  * Реестр всех AI модулей
@@ -26,7 +25,6 @@ export const modules = [
   biConfig,
   codeConfig,
   docsConfig,
-  tpConfig,
 ]
 
 /**

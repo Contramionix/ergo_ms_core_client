@@ -122,19 +122,6 @@
             <span>Загрузить</span>
           </button>
           
-          <!-- Кнопка загрузки документов для модуля tp -->
-          <button 
-            v-if="activeModule === 'tp'" 
-            type="button"
-            class="action-btn action-btn--primary" 
-            :disabled="tpUploaderOpening"
-            @click.prevent="handleTPUploaderClick"
-            title="Загрузить документ техпроцесса"
-          >
-            <span v-if="tpUploaderOpening" class="spinner-border spinner-border-sm me-1" role="status"></span>
-            <Upload v-else :size="18" />
-            <span>Загрузить</span>
-          </button>
         </div>
       </header>
 
@@ -155,23 +142,6 @@
             :hide-header="true"
             :force-show-uploader="showDocsUploader"
             @session-updated="handleDocsSessionUpdated"
-          />
-        </div>
-      </template>
-
-      <!-- TP Module -->
-      <template v-if="activeModule === 'tp' && !currentModuleConfig?.comingSoon">
-        <div class="docs-module-wrapper">
-          <TPAssistantChat 
-            ref="tpAssistantChatRef"
-            :key="`tp-chat-${tpChatKey}`"
-            :is-visible="true" 
-            :hide-header="true"
-            :force-show-uploader="showTPUploader"
-            :session-id="currentChatSession?.id"
-            @session-updated="handleTPSessionUpdated"
-            @uploader-opened="tpUploaderOpening = false"
-            @uploader-closed="showTPUploader = false; tpUploaderOpening = false"
           />
         </div>
       </template>
@@ -529,7 +499,6 @@ import NeuralBackground from '../components/NeuralBackground.vue'
 import HubMessage from '../components/HubMessage.vue'
 import ChatTypeSelector from '../components/ChatTypeSelector.vue'
 import DocsAssistantChat from '../docs/DocsAssistantChat.vue'
-import TPAssistantChat from '../tp/TPAssistantChat.vue'
 import { ragClient } from '../rag/js/rag-client.js'
 import { biClient } from '../bi/js/bi-client.js'
 import { useToast } from 'vue-toastification'
@@ -630,21 +599,6 @@ const showDocsUploader = ref(false)
 const docsAssistantChatRef = ref(null)
 const docsChatKey = ref(0) // Ключ для принудительного пересоздания компонента
 
-// TP state
-const showTPUploader = ref(false)
-const tpUploaderOpening = ref(false)
-const tpAssistantChatRef = ref(null)
-const tpChatKey = ref(0) // Ключ для принудительного пересоздания компонента
-
-const handleTPUploaderClick = () => {
-  if (showTPUploader.value) {
-    showTPUploader.value = false
-    return
-  }
-  tpUploaderOpening.value = true
-  showTPUploader.value = true
-}
-
 // Chat type selector modal
 const showChatTypeSelector = ref(false)
 
@@ -739,8 +693,6 @@ const deleteChatSession = async (sessionId) => {
         currentChatSession.value = null
         if (activeModule.value === 'chat') {
           initChat()
-        } else if (activeModule.value === 'tp') {
-          tpChatKey.value++
         } else if (activeModule.value === 'docs') {
           docsChatKey.value++
         }
@@ -768,12 +720,7 @@ const loadChatSession = async (sessionId, moduleId = null) => {
       activeModule.value = sessionModule
     }
     
-    if (sessionModule === 'tp') {
-      await nextTick()
-      if (tpAssistantChatRef.value && typeof tpAssistantChatRef.value.loadSession === 'function') {
-        await tpAssistantChatRef.value.loadSession(sessionId)
-      }
-    } else if (sessionModule === 'bi') {
+    if (sessionModule === 'bi') {
       // Восстанавливаем файл и подключение из metadata сессии
       if (result.session.metadata && result.session.metadata.file_id) {
         const fileId = result.session.metadata.file_id
@@ -881,13 +828,6 @@ const handleChatTypeSelect = async (moduleId) => {
         nextTick(() => {
           if (docsAssistantChatRef.value && typeof docsAssistantChatRef.value.resetChat === 'function') {
             docsAssistantChatRef.value.resetChat()
-          }
-        })
-      } else if (moduleId === 'tp') {
-        tpChatKey.value++
-        nextTick(() => {
-          if (tpAssistantChatRef.value && typeof tpAssistantChatRef.value.resetChat === 'function') {
-            tpAssistantChatRef.value.resetChat()
           }
         })
       }
@@ -1309,16 +1249,6 @@ const handleDocsSessionUpdated = async () => {
   await loadChatSessions()
 }
 
-// Обработчик обновления сессии для модуля tp
-const handleTPSessionUpdated = async (sessionId) => {
-  // Устанавливаем текущую сессию для модуля tp
-  if (sessionId && activeModule.value === 'tp') {
-    currentChatSession.value = { id: sessionId, module: 'tp' }
-  }
-  // Обновляем список сессий после сохранения новой сессии
-  await loadChatSessions()
-}
-
 // Watch for module changes
 watch(activeModule, () => {
   loadChatSessions()
@@ -1331,10 +1261,6 @@ watch(activeModule, () => {
     // Сбрасываем состояние для модуля docs
     if (activeModule.value === 'docs') {
       showDocsUploader.value = false
-    }
-    // Сбрасываем состояние для модуля tp
-    if (activeModule.value === 'tp') {
-      showTPUploader.value = false
     }
   }
 })
