@@ -28,8 +28,11 @@ const sharedGlobs = {
   // Core компоненты (lazy loading)
   coreComponents: import.meta.glob('../../**/*.vue'),
   
-  // External модули - routes, endpoints, permission-rules, menu-configs
-  modulesRoutes: import.meta.glob('../../../../../modules/*/client/js/routes.js', { eager: true }),
+  // External модули - routes (в т.ч. вложенные, например client/edu-space-tasks/js/routes.js)
+  modulesRoutes: {
+    ...import.meta.glob('../../../../../modules/*/client/js/routes.js', { eager: true }),
+    ...import.meta.glob('../../../../../modules/*/client/**/js/routes.js', { eager: true })
+  },
   modulesEndpoints: import.meta.glob('../../../../../modules/*/client/js/endpoints.js', { eager: true }),
   modulesPermissionRules: import.meta.glob('../../../../../modules/*/client/js/permission-rules.js', { eager: true }),
   modulesMenuConfigs: import.meta.glob('../../../../../modules/*/client/js/menu-config.json', { eager: true, import: 'default' }),
