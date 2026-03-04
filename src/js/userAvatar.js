@@ -46,25 +46,29 @@ function extractAvatarUrl(user) {
   )
 }
 
+const pendingRequests = new Map()
+
 export async function getUserAvatar(userId) {
   if (!userId) return defaultAvatar
-  if (userAvatarCache.has(userId)) {
-    return userAvatarCache.get(userId)
-  }
-  try {
-    // Используем общий эндпоинт CMS, чтобы избежать 404 на /crm/users/
-    // Передаём идентификатор через params, иначе бек не получит id
-    const resp = await apiClient.get('/cms/get_user_name/', { params: { id: userId } })
-    const raw = resp?.data ?? resp?.results ?? resp
-    const user = extractUser(raw, userId)
-    const avatarUrl = extractAvatarUrl(user)
-    const result = avatarUrl ?? defaultAvatar
-    userAvatarCache.set(userId, result)
-    return result
-  } catch (e) {
-    userAvatarCache.set(userId, defaultAvatar)
-    return defaultAvatar
-  }
+  if (userAvatarCache.has(userId)) return userAvatarCache.get(userId)
+  if (pendingRequests.has(userId)) return pendingRequests.get(userId)
+
+  const promise = apiClient.get('/cms/get_user_name/', { id: userId })
+    .then(resp => {
+      const raw = resp?.data ?? resp?.results ?? resp
+      const user = extractUser(raw, userId)
+      const result = extractAvatarUrl(user) ?? defaultAvatar
+      userAvatarCache.set(userId, result)
+      return result
+    })
+    .catch(() => {
+      userAvatarCache.set(userId, defaultAvatar)
+      return defaultAvatar
+    })
+    .finally(() => pendingRequests.delete(userId))
+
+  pendingRequests.set(userId, promise)
+  return promise
 }
 
 export function getCachedUserAvatar(userId) {
