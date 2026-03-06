@@ -11,23 +11,19 @@ import fs from 'fs'
 // Получение абсолютного пути к файлу .env в корне проекта
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// Проверяем наличие опциональных сабмодулей по наличию Vue-файлов в client/
-function hasClientVueFiles(modulePath) {
-  if (!fs.existsSync(modulePath)) return false
-  const clientDir = path.join(modulePath, 'client')
-  if (!fs.existsSync(clientDir)) return false
-  const hasVue = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (entry.isDirectory()) { if (hasVue(path.join(dir, entry.name))) return true }
-      else if (entry.name.endsWith('.vue')) return true
-    }
-    return false
-  }
-  return hasVue(clientDir)
-}
-
-const biAnalysisExists = hasClientVueFiles(path.resolve(__dirname, '../../modules/bi_analysis'))
-const biAnalysisModernExists = hasClientVueFiles(path.resolve(__dirname, '../../modules/bi_analysis_modern'))
+// Алиасы для внешних сабмодулей: @/modules/<name> → <root>/modules/<name>
+// Создаются динамически для каждого существующего каталога в modules/.
+// Это позволяет файлам внутри сабмодулей импортировать друг друга через @/modules/...
+// не конфликтуя с @/modules/index.js и другими файлами core/client/src/modules/.
+const modulesRoot = path.resolve(__dirname, '../../modules')
+const externalModuleAliases = fs.existsSync(modulesRoot)
+  ? fs.readdirSync(modulesRoot, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => ({
+        find: `@/modules/${d.name}`,
+        replacement: path.join(modulesRoot, d.name),
+      }))
+  : []
 
 // Загружаем основной .env файл из корня проекта (/projects/ergo_ms/.env)
 const mainEnvPath = path.resolve(__dirname, '../../.env')
@@ -146,29 +142,40 @@ export default defineConfig({
   },
   // Подключение плагинов
   plugins: [
-    // Перенаправляет импорты из опциональных модулей на заглушку, если клиентская часть отсутствует
-    {
-      name: 'optional-module-stub',
-      resolveId(source) {
-        if (!biAnalysisExists && source.includes('/bi_analysis/') && !source.includes('/bi_analysis_modern/')) {
-          return path.resolve(__dirname, 'src/components/stubs/EmptyComponent.vue')
-        }
-        if (!biAnalysisModernExists && source.includes('/bi_analysis_modern/')) {
-          return path.resolve(__dirname, 'src/components/stubs/EmptyComponent.vue')
-        }
-      }
-    },
     vue(), // Подключение плагина Vue для Vite
     //vueDevTools(), // Подключение плагина Vue DevTools для Vite
+    {
+      // Заглушка для относительных импортов файлов из неинициализированных сабмодулей.
+      // Например: ../../../modules/bi_analysis/client/... из LayoutMenu.vue,
+      // когда сабмодуль bi_analysis не инициализирован и файлы отсутствуют.
+      // @/modules/... импорты обрабатываются через алиасы в resolve.alias.
+      name: 'stub-missing-module-files',
+      enforce: 'pre',
+      resolveId(source, importer) {
+        if (!source.startsWith('.') || !importer) return
+        const resolved = path.resolve(path.dirname(importer), source)
+        if (resolved.startsWith(modulesRoot) && !fs.existsSync(resolved)) {
+          return 'virtual:empty-vue-component'
+        }
+      },
+      load(id) {
+        if (id === 'virtual:empty-vue-component') {
+          return `import { defineComponent } from 'vue'; export default defineComponent({ render() {} })`
+        }
+      },
+    },
   ],
 
   // Настройка разрешения путей
   resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)), // Создание псевдонима '@' для пути './src'
-      '@/modules': fileURLToPath(new URL('../../modules', import.meta.url)), // Алиас для модулей из папки modules/
-      'vue': 'vue/dist/vue.esm-bundler.js',
-    },
+    alias: [
+      // Конкретные алиасы для каждого внешнего сабмодуля идут первыми,
+      // чтобы @/modules/bi_analysis_modern/... → modules/bi_analysis_modern/...
+      // а не core/client/src/modules/bi_analysis_modern/... через '@'.
+      ...externalModuleAliases,
+      { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
+      { find: 'vue', replacement: 'vue/dist/vue.esm-bundler.js' },
+    ],
     // Убеждаемся что Vite правильно обрабатывает расширения файлов
     extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue']
   },
