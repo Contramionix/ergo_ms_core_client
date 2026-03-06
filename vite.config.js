@@ -135,7 +135,6 @@ export default defineConfig({
   // Настройка разрешения путей
   resolve: {
     alias: {
-      '@/core/ai-assistant': fileURLToPath(new URL('../../modules/ai_assistant/client', import.meta.url)), // AI Assistant frontend submodule
       '@': fileURLToPath(new URL('./src', import.meta.url)), // Создание псевдонима '@' для пути './src'
       '@/modules': fileURLToPath(new URL('../../modules', import.meta.url)), // Алиас для модулей из папки modules/
       'vue': 'vue/dist/vue.esm-bundler.js',

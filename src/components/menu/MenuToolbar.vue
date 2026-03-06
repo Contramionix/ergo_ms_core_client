@@ -13,7 +13,7 @@
         <div class="tools__apps">
           <AppsMenu ref="appsMenuRef" @dropdown-toggle="(active) => setDropdownActive('apps', active)" />
         </div>
-        <div class="tools__assistant" @click="toggleAssistant">
+        <div v-if="isAssistantAvailable" class="tools__assistant" @click="toggleAssistant">
           <div
             class="header-btn assistant-btn"
             :class="{ active: isAssistantVisible }"
@@ -30,7 +30,7 @@
     </div>
 
     <component
-      v-if="currentModuleComponent && shouldShowFullInfo"
+      v-if="isAssistantAvailable && currentModuleComponent && shouldShowFullInfo"
       :is="currentModuleComponent"
       ref="assistantChat"
       :is-visible="isAssistantVisible"
@@ -49,6 +49,11 @@ import { computed, ref, onMounted, watch, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useToast } from 'vue-toastification'
+
+const _aiGlob = {
+  manager: import.meta.glob('@/modules/ai_assistant/client/core/AssistantModuleManager.js'),
+  service: import.meta.glob('@/modules/ai_assistant/client/js/assistantService.js'),
+}
 
 const toast = useToast()
 
@@ -116,13 +121,12 @@ const loadModuleForRoute = async (routePath) => {
   }
 }
 
-// Загрузка модуля при изменении роута
+// Загрузка модуля при смене роута (начальная загрузка — в onMounted)
 watch(
   () => route.path,
   async (newPath) => {
     await loadModuleForRoute(newPath)
-  },
-  { immediate: true }
+  }
 )
 
 // Управление чатом при сворачивании/развёртывании меню
@@ -207,9 +211,17 @@ const toggleAssistant = () => {
 // Регистрируем функции в глобальном сервисе
 onMounted(async () => {
   try {
+    const managerPath = Object.keys(_aiGlob.manager)[0]
+    const servicePath = Object.keys(_aiGlob.service)[0]
+
+    if (!managerPath || !servicePath) {
+      isAssistantAvailable.value = false
+      return
+    }
+
     const [managerModule, serviceModule] = await Promise.all([
-      import('@/core/ai-assistant/core/AssistantModuleManager.js'),
-      import('@/core/ai-assistant/js/assistantService.js'),
+      _aiGlob.manager[managerPath](),
+      _aiGlob.service[servicePath](),
     ])
     assistantModuleManager = managerModule.assistantModuleManager
     assistantService = serviceModule.assistantService
