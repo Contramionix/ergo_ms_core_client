@@ -92,6 +92,19 @@ export const cmsEndpoints = {
             accessLog: 'cms/adp/menu/access-log/',
             availableIcons: 'cms/adp/menu/available-icons/'
         }
+    },
+    themes: {
+        list: 'settings/themes/',
+        detail: (id) => `settings/themes/${id}/`,
+        create: 'settings/themes/',
+        update: (id) => `settings/themes/${id}/`,
+        delete: (id) => `settings/themes/${id}/`,
+        active: 'settings/themes/active/',
+        activate: (id) => `settings/themes/${id}/activate/`,
+        duplicate: (id) => `settings/themes/${id}/duplicate/`,
+        export: (id) => `settings/themes/${id}/export/`,
+        import: 'settings/themes/import/',
+        createSystemThemes: 'settings/themes/create-system-themes/',
     }
 };
 
