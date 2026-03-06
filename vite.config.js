@@ -11,6 +11,10 @@ import fs from 'fs'
 // Получение абсолютного пути к файлу .env в корне проекта
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Проверяем, инициализирован ли сабмодуль bi_analysis
+const biAnalysisPath = path.resolve(__dirname, '../../modules/bi_analysis')
+const biAnalysisExists = fs.existsSync(biAnalysisPath) && fs.readdirSync(biAnalysisPath).length > 0
+
 // Загружаем основной .env файл из корня проекта (/projects/ergo_ms/.env)
 const mainEnvPath = path.resolve(__dirname, '../../.env')
 if (fs.existsSync(mainEnvPath)) {
@@ -128,6 +132,15 @@ export default defineConfig({
   },
   // Подключение плагинов
   plugins: [
+    // Перенаправляет импорты из bi_analysis на заглушку, если сабмодуль не инициализирован
+    {
+      name: 'optional-module-stub',
+      resolveId(source) {
+        if (!biAnalysisExists && source.includes('/bi_analysis/')) {
+          return path.resolve(__dirname, 'src/components/stubs/EmptyComponent.vue')
+        }
+      }
+    },
     vue(), // Подключение плагина Vue для Vite
     //vueDevTools(), // Подключение плагина Vue DevTools для Vite
   ],
