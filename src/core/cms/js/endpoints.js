@@ -1,4 +1,9 @@
 export const cmsEndpoints = {
+    userAvatars: {
+        list: 'settings/user-avatars/',
+        create: 'settings/user-avatars/',
+        deleteCurrent: 'settings/user-avatars/current/',
+    },
     auth: {
         login: 'cms/adp/authorization/',
         validateRegistration: 'cms/adp/validate-registration/',

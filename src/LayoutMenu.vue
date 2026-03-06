@@ -22,20 +22,20 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
-import { isDatasetSidebarOpen, currentSidebarPage } from '@/core/bi/MainPage/Sidebar/components/js/useSidebarStore'
+import { isDatasetSidebarOpen, currentSidebarPage } from '@/js/useBISidebarStore.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import MenuList from '@/components/menu/MenuList.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 
-import { biAnalysisService } from '@/core/bi/js/biAnalysisService.js'
-import { biChartsService } from '@/core/bi/js/biChartsService.js'
+import { biAnalysisService } from '@/js/biAnalysisService.js'
+import { biChartsService } from '@/js/biChartsService.js'
 import { Menu as IconMenu } from 'lucide-vue-next'
 
 // Ленивая загрузка тяжёлых компонентов (загружаются только при необходимости)
-const StorageSidebar = defineAsyncComponent(() => import('@/core/bi/MainPage/Sidebar/StorageSidebar.vue'))
-const BIAnalysisModal = defineAsyncComponent(() => import('@/core/bi/components/BIAnalysisModal.vue'))
-const BIChartsModal = defineAsyncComponent(() => import('@/core/bi/components/BIChartsModal.vue'))
+const StorageSidebar = defineAsyncComponent(() => import('../../../modules/bi_analysis/client/MainPage/Sidebar/StorageSidebar.vue'))
+const BIAnalysisModal = defineAsyncComponent(() => import('../../../modules/bi_analysis/client/components/BIAnalysisModal.vue'))
+const BIChartsModal = defineAsyncComponent(() => import('../../../modules/bi_analysis/client/components/BIChartsModal.vue'))
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -138,16 +138,13 @@ onMounted(async () => {
   // Инициализируем пользователя при загрузке авторизованной области
   await userStore.initializeUser()
   
-  // Подписываемся на изменения состояния BI анализа (сохраняем функцию отписки)
   unsubscribeAnalysis = biAnalysisService.subscribe((isOpen) => {
-    isBIAnalysisModalVisible.value = isOpen
-  })
-  
-  // Подписываемся на изменения состояния BI графиков (сохраняем функцию отписки)
+      isBIAnalysisModalVisible.value = isOpen
+    })
   unsubscribeCharts = biChartsService.subscribe((isOpen, fileId) => {
-    isBIChartsModalVisible.value = isOpen
-    chartsModalFileId.value = fileId
-  })
+      isBIChartsModalVisible.value = isOpen
+      chartsModalFileId.value = fileId
+    })
 })
 
 onBeforeUnmount(() => {

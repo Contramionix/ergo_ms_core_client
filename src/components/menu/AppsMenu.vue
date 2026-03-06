@@ -3,9 +3,10 @@ import { Grid3x3, BarChart3 } from 'lucide-vue-next'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { moduleManager } from '@/modules/index.js'
-import { biAnalysisService } from '@/core/bi/js/biAnalysisService.js'
-import { biChartsService } from '@/core/bi/js/biChartsService.js'
 import { useDropdown } from '@/composables/useDropdown.js'
+
+import { biAnalysisService } from '@/js/biAnalysisService.js'
+import { biChartsService } from '@/js/biChartsService.js'
 
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
@@ -81,7 +82,7 @@ const goToApp = (app) => {
             const chartsStateData = JSON.parse(chartsState)
             // Если график был построен, открываем окно с графиком
             if (chartsStateData.hasChart && chartsStateData.selectedXField && chartsStateData.selectedYField) {
-              biChartsService.open(state.fileId)
+              biChartsService?.open(state.fileId)
               closeDropdown()
               return
             }
@@ -92,7 +93,7 @@ const goToApp = (app) => {
       }
     }
     // Если график не был построен, открываем обычное окно BI анализа
-    biAnalysisService.toggle()
+    biAnalysisService?.toggle()
   } else {
     router.push(app.route)
   }

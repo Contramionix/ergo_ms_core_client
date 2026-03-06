@@ -9,29 +9,18 @@ class BIChartsService {
     this.fileId = null
   }
 
-  /**
-   * Открывает модальное окно построения графиков
-   * @param {number} fileId - ID файла для построения графиков
-   */
   open(fileId) {
     this.fileId = fileId
     this.isOpen = true
     this.notifyListeners()
   }
 
-  /**
-   * Закрывает модальное окно построения графиков
-   */
   close() {
     this.isOpen = false
     this.fileId = null
     this.notifyListeners()
   }
 
-  /**
-   * Переключает состояние модального окна
-   * @param {number} fileId - ID файла для построения графиков
-   */
   toggle(fileId) {
     if (this.isOpen) {
       this.close()
@@ -40,11 +29,6 @@ class BIChartsService {
     }
   }
 
-  /**
-   * Регистрирует слушатель изменений состояния
-   * @param {Function} callback - функция обратного вызова
-   * @returns {Function} функция для отмены подписки
-   */
   subscribe(callback) {
     this.listeners.add(callback)
     return () => {
@@ -52,9 +36,6 @@ class BIChartsService {
     }
   }
 
-  /**
-   * Уведомляет всех слушателей об изменении состояния
-   */
   notifyListeners() {
     this.listeners.forEach(callback => {
       try {
@@ -66,7 +47,5 @@ class BIChartsService {
   }
 }
 
-// Создаем единственный экземпляр сервиса
 export const biChartsService = new BIChartsService()
 export default BIChartsService
-
