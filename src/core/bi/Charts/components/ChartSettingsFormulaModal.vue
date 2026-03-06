@@ -50,17 +50,11 @@ function close() {
 
 function handleCreate(payload) {
   console.log('handleCreate called', payload)
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartSettingsFormulaModal.vue:48',message:'handleCreate payload received',data:{payload,field:props.field},timestamp:Date.now(),runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   const expression = payload.expression?.value ?? payload.expression ?? ''
   const name = payload.name ?? payload.displayName ?? ''
   const type = payload.type ?? 'expression'
   const aggregation = payload.aggregation ?? 'none'
   console.log('handleCreate emitting apply', { field: props.field, expression, name, type, aggregation })
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartSettingsFormulaModal.vue:55',message:'handleCreate emitting apply',data:{expression,name,type,aggregation,field:props.field},timestamp:Date.now(),runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   emit('apply', { field: props.field, expression, name, type, aggregation })
   close()
 }

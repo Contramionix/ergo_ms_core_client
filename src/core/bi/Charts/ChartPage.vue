@@ -667,9 +667,6 @@ function updateDuplicateExpression(duplicatesRef, fieldId, expression) {
 
 async function onFormulaApply({ field, expression, name, type, aggregation }) {
     console.log('onFormulaApply called', { field, expression, name, type, aggregation })
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartPage.vue:657',message:'onFormulaApply received',data:{field,expression,name,type,aggregation},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     const resolvedAggregation = (aggregation && aggregation !== '') ? aggregation : 'none'
     
     // Сначала обновляем поле с временным типом данных
@@ -685,9 +682,6 @@ async function onFormulaApply({ field, expression, name, type, aggregation }) {
     }
     
     console.log('tempUpdateData before update', tempUpdateData)
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartPage.vue:671',message:'onFormulaApply updating field with temp data',data:{tempUpdateData},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     
     // Получаем имя поля для запроса к серверу
     const fieldName = name || field?.name || field?.displayName || ''
@@ -702,9 +696,6 @@ async function onFormulaApply({ field, expression, name, type, aggregation }) {
             await new Promise(resolve => setTimeout(resolve, 100))
             
             await fetchDatasetRows(selectedDataset.value.id, selectedFields.value)
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartPage.vue:688',message:'fetchDatasetRows completed',data:{datasetRowsLength:datasetRows.value?.length,datasetRowsKeys:datasetRows.value?.[0] ? Object.keys(datasetRows.value[0]) : [],fieldName},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
             
             // Определяем тип данных на основе значений из datasetRows
             if (datasetRows.value && Array.isArray(datasetRows.value) && datasetRows.value.length > 0) {
@@ -718,25 +709,16 @@ async function onFormulaApply({ field, expression, name, type, aggregation }) {
                 const values = datasetRows.value.map(row => row[fieldKey] ?? row[fieldName] ?? null).filter(v => v !== null && v !== undefined)
                 const detectedType = detectColumnType(values)
                 console.log('Detected type from datasetRows', { fieldName, fieldKey, values: values.slice(0, 5), detectedType, availableKeys: Object.keys(firstRow) })
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartPage.vue:694',message:'Type detected from datasetRows',data:{fieldName,fieldKey,detectedType,valuesSample:values.slice(0,5),availableKeys:Object.keys(firstRow)},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                // #endregion
                 
                 // Обновляем поле с правильным типом данных
                 updateFieldInAllCategories(field, (f) => {
                     const updated = { ...f, type: detectedType }
                     console.log('Field updated with detected type', { original: f, updated, 'updated.type': updated.type })
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartPage.vue:700',message:'Field updated with detected type',data:{updated,original:f,'updated.type':updated.type},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                    // #endregion
                     return updated
                 })
             }
         } catch (error) {
             console.error('Error fetching dataset rows for type detection', error)
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/a44aee1f-2951-4304-be5f-5636a639a7f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ChartPage.vue:705',message:'Error fetching dataset rows',data:{error:error.message},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
         }
     }
     
