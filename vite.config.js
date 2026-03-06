@@ -11,9 +11,23 @@ import fs from 'fs'
 // Получение абсолютного пути к файлу .env в корне проекта
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// Проверяем, инициализирован ли сабмодуль bi_analysis
-const biAnalysisPath = path.resolve(__dirname, '../../modules/bi_analysis')
-const biAnalysisExists = fs.existsSync(biAnalysisPath) && fs.readdirSync(biAnalysisPath).length > 0
+// Проверяем наличие опциональных сабмодулей по наличию Vue-файлов в client/
+function hasClientVueFiles(modulePath) {
+  if (!fs.existsSync(modulePath)) return false
+  const clientDir = path.join(modulePath, 'client')
+  if (!fs.existsSync(clientDir)) return false
+  const hasVue = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) { if (hasVue(path.join(dir, entry.name))) return true }
+      else if (entry.name.endsWith('.vue')) return true
+    }
+    return false
+  }
+  return hasVue(clientDir)
+}
+
+const biAnalysisExists = hasClientVueFiles(path.resolve(__dirname, '../../modules/bi_analysis'))
+const biAnalysisModernExists = hasClientVueFiles(path.resolve(__dirname, '../../modules/bi_analysis_modern'))
 
 // Загружаем основной .env файл из корня проекта (/projects/ergo_ms/.env)
 const mainEnvPath = path.resolve(__dirname, '../../.env')
@@ -132,11 +146,14 @@ export default defineConfig({
   },
   // Подключение плагинов
   plugins: [
-    // Перенаправляет импорты из bi_analysis на заглушку, если сабмодуль не инициализирован
+    // Перенаправляет импорты из опциональных модулей на заглушку, если клиентская часть отсутствует
     {
       name: 'optional-module-stub',
       resolveId(source) {
-        if (!biAnalysisExists && source.includes('/bi_analysis/')) {
+        if (!biAnalysisExists && source.includes('/bi_analysis/') && !source.includes('/bi_analysis_modern/')) {
+          return path.resolve(__dirname, 'src/components/stubs/EmptyComponent.vue')
+        }
+        if (!biAnalysisModernExists && source.includes('/bi_analysis_modern/')) {
           return path.resolve(__dirname, 'src/components/stubs/EmptyComponent.vue')
         }
       }
