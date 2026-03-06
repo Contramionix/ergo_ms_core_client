@@ -5,12 +5,25 @@ import tokenService from '@/core/cms/js/tokenService'
 /**
  * Класс для работы с API
  */
+function _resolveBaseUrl() {
+  if (import.meta.env.VITE_USE_RELATIVE_API === 'true') {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return window.location.origin + '/'
+    }
+    return ''
+  }
+  const host = import.meta.env.VITE_API_HOST || 'localhost'
+  const port = import.meta.env.VITE_API_PORT || '8000'
+  return `http://${host}:${port}/`
+}
+
 class ApiClient {
   constructor() {
-    this.baseUrl = `http://${import.meta.env.VITE_API_HOST || 'localhost'}:${import.meta.env.VITE_API_PORT || '8000'}/`
+    this.baseUrl = _resolveBaseUrl()
     this.apiPath = 'api/'
+    const fullBase = this.baseUrl ? `${this.baseUrl}${this.apiPath}` : `/${this.apiPath}`
     this.client = axios.create({
-      baseURL: `${this.baseUrl}${this.apiPath}`,
+      baseURL: fullBase,
       headers: {
         'Content-Type': 'application/json',
       },

@@ -161,6 +161,12 @@ export default defineConfig({
     port: parseInt(process.env.CLIENT_PORT, 10) || 8001, // Установка порта для сервера разработки
     host: process.env.CLIENT_HOST || 'localhost', // Установка хоста для сервера разработки
     https: false, // Отключение HTTPS для сервера разработки
+    proxy: {
+      '/api': {
+        target: `http://${process.env.API_HOST || 'localhost'}:${process.env.API_PORT || '8000'}`,
+        changeOrigin: true,
+      },
+    },
     fs: {
       // Разрешаем Vite обслуживать файлы из папки modules вне корня проекта
       allow: [
@@ -182,6 +188,7 @@ export default defineConfig({
     'import.meta.env.VITE_BI_PREVIEW_MAX_VALUES_ROWS': JSON.stringify(process.env.BI_PREVIEW_MAX_VALUES_ROWS || '1000000000'),
     'import.meta.env.VITE_BI_PREVIEW_MAX_VISIBLE_ROWS': JSON.stringify(process.env.VITE_BI_PREVIEW_MAX_VISIBLE_ROWS || '1000000000'),
     'import.meta.env.VITE_BI_PREVIEW_ITEMS_PER_PAGE': JSON.stringify(process.env.VITE_BI_PREVIEW_ITEMS_PER_PAGE || '20'),
+    'import.meta.env.VITE_USE_RELATIVE_API': JSON.stringify(process.env.VITE_USE_RELATIVE_API || ''),
   },
 
   // Оптимизация сборки
