@@ -45,11 +45,16 @@ import { Bot } from 'lucide-vue-next'
 import UserMenu from '@/components/header/UserMenu.vue'
 import AppsMenu from '@/components/menu/AppsMenu.vue'
 import SettingsMenu from '@/components/menu/SettingsMenu.vue'
-import { assistantModuleManager } from '@/core/ai-assistant/core/AssistantModuleManager.js'
-import { assistantService } from '@/core/ai-assistant/js/assistantService.js'
-import { computed, ref, onMounted, watch, shallowRef, nextTick } from 'vue'
+import { computed, ref, onMounted, watch, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { useToast } from 'vue-toastification'
+
+const toast = useToast()
+
+let assistantModuleManager = null
+let assistantService = null
+const isAssistantAvailable = ref(false)
 
 const props = defineProps({
   isCollapsed: {
@@ -88,6 +93,8 @@ const resetModuleState = () => {
 
 // Загрузка модуля для текущего роута
 const loadModuleForRoute = async (routePath) => {
+  if (!assistantModuleManager) return
+
   try {
     const module = await assistantModuleManager.loadModuleForRoute(routePath)
     if (module) {
@@ -189,18 +196,35 @@ const getFullUserName = () => getUserName(false)
 const userFullName = computed(() => getUserName(true))
 
 const toggleAssistant = () => {
+  if (!isAssistantAvailable.value) {
+    toast.warning('Модуль нейропомощника не загружен в систему')
+    return
+  }
   isAssistantVisible.value = !isAssistantVisible.value
 }
 
 
 // Регистрируем функции в глобальном сервисе
 onMounted(async () => {
-  await loadModuleForRoute(route.path)
-  
-  assistantService.registerOpenChat(() => {
-    isAssistantVisible.value = true
-  })
-  assistantService.registerAnalyzeChart(handleChartAnalysis)
+  try {
+    const [managerModule, serviceModule] = await Promise.all([
+      import('@/core/ai-assistant/core/AssistantModuleManager.js'),
+      import('@/core/ai-assistant/js/assistantService.js'),
+    ])
+    assistantModuleManager = managerModule.assistantModuleManager
+    assistantService = serviceModule.assistantService
+    isAssistantAvailable.value = true
+
+    await loadModuleForRoute(route.path)
+
+    assistantService.registerOpenChat(() => {
+      isAssistantVisible.value = true
+    })
+    assistantService.registerAnalyzeChart(handleChartAnalysis)
+  } catch {
+    isAssistantAvailable.value = false
+    console.warn('AI Assistant: модуль нейропомощника не загружен в систему')
+  }
 })
 
 // Счетчик для уникальных ID streaming сообщений
