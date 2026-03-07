@@ -284,7 +284,10 @@ export default defineConfig({
             })
 
             build.onLoad({ filter: /.*/, namespace: 'stub-missing' }, () => {
-              return { contents: 'export default {}', loader: 'js' }
+              return {
+                contents: 'module.exports = new Proxy({}, { get: function(_, k) { return k === "__esModule" ? true : function(){} } })',
+                loader: 'js'
+              }
             })
           },
         },
