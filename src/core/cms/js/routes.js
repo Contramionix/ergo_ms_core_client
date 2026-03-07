@@ -112,14 +112,6 @@ export default {
       "requiresAuth": true
     }
   },
-  "FileManager": {
-    "path": "/filemanager",
-    "component": "@/core/cms/filemanager/FileManager.vue",
-    "meta": {
-      "title": "Файлы",
-      "requiresAuth": true
-    }
-  },
   "AccessDenied": {
     "path": "/access-denied",
     "component": "@/components/AccessDenied.vue",
