@@ -170,7 +170,10 @@ export function previewTheme(theme) {
  * Получить текущий режим темы
  */
 export function getCurrentThemeMode() {
-  const stored = localStorage.getItem('theme') || 'auto'
+  const stored = localStorage.getItem('theme')
+  if (!stored) {
+    return 'light'
+  }
   if (stored === 'auto') {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   }
