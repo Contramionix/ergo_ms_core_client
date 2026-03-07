@@ -145,21 +145,36 @@ export default defineConfig({
     vue(), // Подключение плагина Vue для Vite
     //vueDevTools(), // Подключение плагина Vue DevTools для Vite
     {
-      // Заглушка для относительных импортов файлов из неинициализированных сабмодулей.
-      // Например: ../../../modules/bi_analysis/client/... из LayoutMenu.vue,
-      // когда сабмодуль bi_analysis не инициализирован и файлы отсутствуют.
-      // @/modules/... импорты обрабатываются через алиасы в resolve.alias.
+      // Заглушка для импортов файлов из неинициализированных/частичных сабмодулей.
+      //
+      // Обрабатывает три случая:
+      //  1. ../../../modules/<mod>/...  — относительный путь к несуществующему файлу в modules/
+      //  2. @/core/<mod>/...           — алиасный путь к файлу core-сабмодуля (напр. ai-assistant),
+      //                                  который ещё не развёрнут в core/client/src/core/
+      //
+      // Виртуальный ID имеет \0-префикс (стандарт Rollup/esbuild) — благодаря этому
+      // esbuild dep-scan не пытается читать его как файл с диска.
       name: 'stub-missing-module-files',
       enforce: 'pre',
-      resolveId(source, importer) {
-        if (!source.startsWith('.') || !importer) return
-        const resolved = path.resolve(path.dirname(importer), source)
-        if (resolved.startsWith(modulesRoot) && !fs.existsSync(resolved)) {
-          return 'virtual:empty-vue-component'
+      resolveId(source) {
+        const srcRoot = path.resolve(__dirname, 'src')
+
+        // @/core/... → файл в core/client/src/core/, но отсутствует.
+        // Типичный случай: сабмодуль (ai_assistant и т.п.) не развёрнут в core.
+        // Импорты из modules/ через относительные пути обрабатываются через
+        // /* @vite-ignore */ в местах использования (например LayoutMenu.vue).
+        if (source.startsWith('@/core/')) {
+          const filePath = source.slice(2) // убираем '@'
+          const resolved = path.join(srcRoot, filePath)
+          const exts = ['', '.js', '.vue', '.ts', '.json']
+          const exists = exts.some(ext => fs.existsSync(resolved + ext))
+          if (!exists) {
+            return '\0virtual:empty-vue-component'
+          }
         }
       },
       load(id) {
-        if (id === 'virtual:empty-vue-component') {
+        if (id === '\0virtual:empty-vue-component') {
           return `import { defineComponent } from 'vue'; export default defineComponent({ render() {} })`
         }
       },
@@ -215,6 +230,7 @@ export default defineConfig({
     },
   },
 
+
   // Экспорт переменных окружения в клиентский код
   define: {
     'import.meta.env.VITE_API_HOST': JSON.stringify(process.env.API_HOST),
@@ -228,9 +244,8 @@ export default defineConfig({
     'import.meta.env.VITE_USE_RELATIVE_API': JSON.stringify(process.env.VITE_USE_RELATIVE_API || ''),
   },
 
-  // Оптимизация сборки
+  // Оптимизация зависимостей
   optimizeDeps: {
-    // Исключаем динамически загружаемые модули из предварительной оптимизации
     exclude: ['@vite-ignore', 'vue3-apexcharts'],
     include: [
       'vue',
@@ -242,5 +257,38 @@ export default defineConfig({
       'epubjs',
       'pdfjs-dist',
     ],
+    esbuildOptions: {
+      // esbuild-плагин для фазы dep-scan: стаббирует импорты файлов,
+      // которые отсутствуют в core/client/src/ (несинициализированные сабмодули).
+      // Vite-плагины (resolveId) в эту фазу не применяются, поэтому нужен отдельный плагин.
+      plugins: [
+        {
+          name: 'esbuild-stub-missing-core-imports',
+          setup(build) {
+            const srcRoot = path.resolve(__dirname, 'src')
+            const exts = ['', '.js', '.vue', '.ts', '.json']
+
+            // Перехватываем @/core/... импорты к несуществующим файлам
+            build.onResolve({ filter: /^@\/core\// }, (args) => {
+              const filePath = args.path.slice(2) // '@' → ''
+              const resolved = path.join(srcRoot, filePath)
+              const exists = exts.some(ext => fs.existsSync(resolved + ext))
+              if (!exists) {
+                return { path: args.path, namespace: 'stub-missing' }
+              }
+            })
+
+            // Перехватываем виртуальный модуль-заглушку (на случай если esbuild его видит)
+            build.onResolve({ filter: /virtual:empty-vue-component/ }, (args) => {
+              return { path: args.path, namespace: 'stub-missing' }
+            })
+
+            build.onLoad({ filter: /.*/, namespace: 'stub-missing' }, () => {
+              return { contents: 'export default {}', loader: 'js' }
+            })
+          },
+        },
+      ],
+    },
   },
 })

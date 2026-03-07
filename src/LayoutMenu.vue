@@ -20,29 +20,23 @@
 -->
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { ref, shallowRef, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { isDatasetSidebarOpen, currentSidebarPage } from '@/js/useBISidebarStore.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import MenuList from '@/components/menu/MenuList.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
 import { accessDeniedState } from './js/accessDeniedState'
-
-import { biAnalysisService } from '@/js/biAnalysisService.js'
-import { biChartsService } from '@/js/biChartsService.js'
 import { Menu as IconMenu } from 'lucide-vue-next'
 
-// Ленивая загрузка тяжёлых компонентов (загружаются только при необходимости)
-const StorageSidebar = defineAsyncComponent(() => import('../../../modules/bi_analysis/client/MainPage/Sidebar/StorageSidebar.vue'))
-const BIAnalysisModal = defineAsyncComponent(() => import('../../../modules/bi_analysis/client/components/BIAnalysisModal.vue'))
-const BIChartsModal = defineAsyncComponent(() => import('../../../modules/bi_analysis/client/components/BIChartsModal.vue'))
+// LayoutPlugin регистрирует весь BI layout-слой (StorageSidebar и др.) только если модуль установлен.
+// import.meta.glob возвращает {} без ошибок когда файл отсутствует.
+const _biLayoutGlob = import.meta.glob('../../../modules/bi_analysis/client/LayoutPlugin.vue')
+const biLayoutPlugin = shallowRef(null)
 
 const userStore = useUserStore()
 const route = useRoute()
 
-// Хранилище для отписок от сервисов
-let unsubscribeAnalysis = null
-let unsubscribeCharts = null
 let resizeTimeout = null
 
 // Ключ для RouterView - позволяет не пересоздавать компонент при переключении между вкладками
@@ -69,9 +63,6 @@ const isMenuToggledManually = ref(false)
 const isOverlayVisible = ref(false)
 const isMenuCollapsed = ref(false)
 const menuWidth = ref(260)
-const isBIAnalysisModalVisible = ref(false)
-const isBIChartsModalVisible = ref(false)
-const chartsModalFileId = ref(null)
 
 // Полноэкранный режим (без меню и ограничений контейнера)
 const isFullPage = computed(() => route.meta?.fullPage === true)
@@ -121,11 +112,6 @@ function openSidebar(pageName) {
   isDatasetSidebarOpen.value = true
 }
 
-function closeSidebar() {
-  isDatasetSidebarOpen.value = false
-  currentSidebarPage.value = ''
-}
-
 function onHamburgerClick() {
   toggleMenu(!isMenuVisible.value)
 }
@@ -137,31 +123,16 @@ onMounted(async () => {
   
   // Инициализируем пользователя при загрузке авторизованной области
   await userStore.initializeUser()
-  
-  unsubscribeAnalysis = biAnalysisService.subscribe((isOpen) => {
-      isBIAnalysisModalVisible.value = isOpen
-    })
-  unsubscribeCharts = biChartsService.subscribe((isOpen, fileId) => {
-      isBIChartsModalVisible.value = isOpen
-      chartsModalFileId.value = fileId
-    })
+
+  // Загружаем BI layout-компонент если модуль установлен
+  const key = Object.keys(_biLayoutGlob)[0]
+  if (key) biLayoutPlugin.value = (await _biLayoutGlob[key]()).default
 })
 
 onBeforeUnmount(() => {
-  // Очищаем resize listener
   window.removeEventListener('resize', updateMenuVisibility)
-  
-  // Очищаем debounce timeout
   if (resizeTimeout) {
     clearTimeout(resizeTimeout)
-  }
-  
-  // Отписываемся от сервисов (предотвращаем утечку памяти)
-  if (unsubscribeAnalysis) {
-    unsubscribeAnalysis()
-  }
-  if (unsubscribeCharts) {
-    unsubscribeCharts()
   }
 })
 </script>
@@ -220,21 +191,11 @@ onBeforeUnmount(() => {
   </div>
 
   <div @click="closeMenu" class="layout-overlay" :class="{ active: isOverlayVisible }" />
-  <StorageSidebar 
-    :isDatasetSidebarOpen="isDatasetSidebarOpen" 
-    :currentPage="currentSidebarPage" 
+  <component
+    v-if="biLayoutPlugin"
+    :is="biLayoutPlugin"
     :isMenuCollapsed="isMenuCollapsed"
     :menuWidth="menuWidth"
-    @close="closeSidebar"
-  />
-  <BIAnalysisModal 
-    :show="isBIAnalysisModalVisible"
-    @close="() => biAnalysisService.close()"
-  />
-  <BIChartsModal 
-    :show="isBIChartsModalVisible"
-    :file-id="chartsModalFileId"
-    @close="() => biChartsService.close()"
   />
 </template>
 
