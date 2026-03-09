@@ -64,6 +64,7 @@ const props = defineProps({
     dropdownAnchorRef: { type: Object, default: null },
     searchable: { type: Boolean, default: false },
     searchPlaceholder: { type: String, default: 'Поиск...' },
+    searchByFirstLetters: { type: Boolean, default: false },
     multiple: { type: Boolean, default: false },
 })
 
@@ -87,11 +88,28 @@ const normalizedOptions = computed(() => {
     return result
 })
 
+function matchesFirstLetters(label, query) {
+    const words = (label || '').split(/[\s\-]+/).filter(Boolean)
+    const q = query.toLowerCase()
+    let wordIdx = 0
+    let charIdx = 0
+    while (charIdx < q.length && wordIdx < words.length) {
+        const firstChar = words[wordIdx].charAt(0).toLowerCase()
+        if (firstChar === q.charAt(charIdx)) charIdx++
+        wordIdx++
+    }
+    return charIdx === q.length
+}
+
 const searchQuery = ref('')
 const filteredOptions = computed(() => {
     if (!props.searchable || !searchQuery.value.trim()) return normalizedOptions.value
-    const q = searchQuery.value.trim().toLowerCase()
-    return normalizedOptions.value.filter(opt => (opt.label ?? '').toLowerCase().includes(q))
+    const q = searchQuery.value.trim()
+    if (props.searchByFirstLetters) {
+        return normalizedOptions.value.filter(opt => matchesFirstLetters(opt.label, q))
+    }
+    const qLower = q.toLowerCase()
+    return normalizedOptions.value.filter(opt => (opt.label ?? '').toLowerCase().includes(qLower))
 })
 
 const isOpen = ref(false)
