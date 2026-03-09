@@ -22,7 +22,7 @@
                         autocomplete="off"
                     />
                     <ul class="dropdown-menu-list">
-                        <li v-if="includeAllOption && !multiple">
+                        <li v-if="includeAllOption && !multiple && !hasActiveSearch">
                             <a class="dropdown-item" :class="{ active: isSelected(null) }" href="#" @click.prevent="choose(null)">{{ allLabel }}</a>
                         </li>
                         <li v-for="opt in filteredOptions" :key="opt.key">
@@ -102,13 +102,18 @@ function matchesFirstLetters(label, query) {
 }
 
 const searchQuery = ref('')
+const hasActiveSearch = computed(() => props.searchable && searchQuery.value.trim().length > 0)
 const filteredOptions = computed(() => {
     if (!props.searchable || !searchQuery.value.trim()) return normalizedOptions.value
     const q = searchQuery.value.trim()
-    if (props.searchByFirstLetters) {
-        return normalizedOptions.value.filter(opt => matchesFirstLetters(opt.label, q))
-    }
     const qLower = q.toLowerCase()
+    if (props.searchByFirstLetters) {
+        return normalizedOptions.value.filter(opt => {
+            const label = opt.label ?? ''
+            const labelLower = label.toLowerCase()
+            return matchesFirstLetters(label, q) || labelLower.includes(qLower)
+        })
+    }
     return normalizedOptions.value.filter(opt => (opt.label ?? '').toLowerCase().includes(qLower))
 })
 
