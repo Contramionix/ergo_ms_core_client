@@ -270,13 +270,14 @@ function adjustFontSize() {
     const trigger = rootEl.value?.querySelector('.select-trigger')
     const containerFontSizePx = trigger ? (parseFloat(getComputedStyle(trigger).fontSize) || baseFontSize) : baseFontSize
     const effectiveMinSize = Math.max(minFontSize, Math.round(containerFontSizePx))
-    let size = baseFontSize
+    let size = Math.round(containerFontSizePx)
+    el.style.fontSize = size + 'px'
     el.style.whiteSpace = 'nowrap'
     while (el.scrollWidth > available && size > effectiveMinSize) {
         size -= 1
         el.style.fontSize = size + 'px'
     }
-    currentFontSize.value = el.style.fontSize || '1rem'
+    currentFontSize.value = el.style.fontSize
 }
 const onResize = () => {
     adjustFontSize()
