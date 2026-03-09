@@ -4,7 +4,6 @@ import { endpoints } from '@/js/api/endpoints'
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { ChevronLeft, Cog, Minus } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
-import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useToast } from 'vue-toastification'
 
@@ -260,30 +259,32 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <div class="side-header__shadow" style="display: block"></div>
-    <PerfectScrollbar :tag="'ul'" :options="{ suppressScrollX: true, wheelPropagation: false }" class="side-menu__list p-3" :class="{ short: !isHovering }">
-      <li v-for="(section, index) in menuSections" :key="index">
-        <div v-if="shouldShowSeparator(index)" class="side-menu__divider side-divider py-3">
-          <div class="side-divider__icon"><Minus :size="20" /></div>
-          <div class="side-divider__name text-smooth-animation" :class="{ hidden: !isHovering }">
-            {{ getSeparator(index) }}
+    <div class="side-menu__scroll">
+      <ul class="side-menu__list p-3" :class="{ short: !isHovering }">
+        <li v-for="(section, index) in menuSections" :key="index">
+          <div v-if="shouldShowSeparator(index)" class="side-menu__divider side-divider py-3">
+            <div class="side-divider__icon"><Minus :size="20" /></div>
+            <div class="side-divider__name text-smooth-animation" :class="{ hidden: !isHovering }">
+              {{ getSeparator(index) }}
+            </div>
           </div>
-        </div>
-        
-        <MenuGroup
-          :is-hovering="isHovering"
-          :is-collapsed="!isCollapsed"
-          :is-open="openGroupRouteName === section.routeName"
-          :data="section"
-          :current-page="props.currentPage"
-          :nested-open-states="nestedOpenStates"
-          @toggle="toggleGroup(section.routeName)"
-          @action="handleAction"
-          @navigate="handleNavigate"
-          @reset-page="resetCurrentPage"
-          @toggle-nested="toggleNestedGroup"
-        />
-      </li>
-    </PerfectScrollbar>
+          
+          <MenuGroup
+            :is-hovering="isHovering"
+            :is-collapsed="!isCollapsed"
+            :is-open="openGroupRouteName === section.routeName"
+            :data="section"
+            :current-page="props.currentPage"
+            :nested-open-states="nestedOpenStates"
+            @toggle="toggleGroup(section.routeName)"
+            @action="handleAction"
+            @navigate="handleNavigate"
+            @reset-page="resetCurrentPage"
+            @toggle-nested="toggleNestedGroup"
+          />
+        </li>
+      </ul>
+    </div>
     <MenuToolbar 
       :is-collapsed="isCollapsed" 
       :is-hovering="isHovering" 
@@ -296,6 +297,8 @@ onBeforeUnmount(() => {
 // Меню
 .side-menu {
   position: fixed;
+  display: flex;
+  flex-direction: column;
   inline-size: var(--menu-width, 260px);
   padding: $padding-external;
   height: 100dvh;
@@ -313,6 +316,53 @@ onBeforeUnmount(() => {
 
   &.hovering {
     width: var(--menu-width, 260px);
+  }
+}
+
+// Область прокрутки списка меню
+.side-menu__scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 48, 62, 0.4) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(34, 48, 62, 0.4);
+    border-radius: 10rem;
+
+    &:hover {
+      background: rgba(34, 48, 62, 0.6);
+    }
+
+    &:active {
+      background: rgba(34, 48, 62, 0.7);
+    }
+  }
+}
+
+[data-bs-theme='dark'] .side-menu__scroll {
+  scrollbar-color: rgba(255, 255, 255, 0.44) transparent;
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.44);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    &:active {
+      background: rgba(255, 255, 255, 0.7);
+    }
   }
 }
 
@@ -391,11 +441,10 @@ onBeforeUnmount(() => {
 .side-menu__list {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
   list-style: none;
   padding: 0;
   margin: 0;
-  overflow-x: hidden;
+  min-height: min-content;
 
   &.short {
     overflow: hidden;
@@ -415,14 +464,5 @@ onBeforeUnmount(() => {
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-}
-
-// Принудительно скрываем горизонтальный скролл
-.ps {
-  overflow-x: hidden !important;
-}
-.ps__rail-x,
-.ps__thumb-x {
-  display: none !important;
 }
 </style>
