@@ -22,13 +22,17 @@
                         autocomplete="off"
                     />
                     <ul class="dropdown-menu-list">
-                        <li v-if="includeAllOption && !multiple && !hasActiveSearch">
-                            <a class="dropdown-item" :class="{ active: isSelected(null) }" href="#" @click.prevent="choose(null)">{{ allLabel }}</a>
+                        <li v-if="includeAllOption && !hasActiveSearch">
+                            <a class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" @click.prevent="choose(null)">{{ allLabel }}</a>
                         </li>
                         <li v-for="opt in filteredOptions" :key="opt.key">
                             <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" @click.prevent="choose(opt.value)">
                                 <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)">
-                                    {{ opt.label }}
+                                    <div v-if="multiple && showCheckboxesWhenMultiple" class="d-flex align-items-center">
+                                        <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input me-2" @change="() => {}" />
+                                        <span>{{ opt.label }}</span>
+                                    </div>
+                                    <span v-else>{{ opt.label }}</span>
                                 </slot>
                             </a>
                         </li>
@@ -66,6 +70,8 @@ const props = defineProps({
     searchPlaceholder: { type: String, default: 'Поиск...' },
     searchByFirstLetters: { type: Boolean, default: false },
     multiple: { type: Boolean, default: false },
+    showCheckboxesWhenMultiple: { type: Boolean, default: false },
+    multipleLabelFormat: { type: String, default: 'list', validator: (v) => ['count', 'list'].includes(v) },
 })
 
 const emit = defineEmits(['update:modelValue', 'change', 'blur'])
@@ -179,6 +185,11 @@ function coerce(val) {
 
 function choose(value) {
     if (props.multiple && Array.isArray(props.modelValue)) {
+        if (value === null || value === undefined) {
+            emit('update:modelValue', [])
+            emit('change', [])
+            return
+        }
         const v = coerce(value)
         const arr = [...props.modelValue]
         const idx = arr.findIndex((item) => valuesAreEqual(item, v))
@@ -197,6 +208,14 @@ function choose(value) {
 const rawCurrentLabel = computed(() => {
     if (props.multiple && Array.isArray(props.modelValue)) {
         if (!props.modelValue.length) return props.allLabel
+        if (props.multipleLabelFormat === 'count' && props.modelValue.length > 1) {
+            return `${props.modelValue.length} выбрано`
+        }
+        if (props.multipleLabelFormat === 'count' && props.modelValue.length === 1) {
+            const val = props.modelValue[0]
+            const found = normalizedOptions.value.find((o) => valuesAreEqual(o.value, val))
+            return found ? found.label : String(val)
+        }
         const labels = props.modelValue.map((val) => {
             const found = normalizedOptions.value.find((o) => valuesAreEqual(o.value, val))
             return found ? found.label : String(val)
@@ -426,5 +445,10 @@ watch(() => props.modelValue, async () => {
 }
 .icon-center {
     width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+}
+
+.form-check-input {
+    margin-top: 0.25rem;
+    cursor: pointer;
 }
 </style>
