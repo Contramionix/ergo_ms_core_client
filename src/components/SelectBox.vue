@@ -305,10 +305,19 @@ watch(() => props.modelValue, async () => {
 .select-trigger {
     background-color: var(--color-primary-background);
     border: 1px solid var(--bs-border-color, #dee2e6);
+    color: var(--color-primary-text);
+    text-shadow: none;
+    box-shadow: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     min-height: 38px;
     white-space: nowrap;
     text-align: left;
     display: inline-flex;
+}
+
+.select-trigger :deep(svg) {
+    filter: none;
 }
 .select-trigger-slot {
     min-width: 0;
