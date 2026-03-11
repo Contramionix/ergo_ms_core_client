@@ -195,8 +195,15 @@ export const useUserStore = defineStore('userStore', () => {
       }
     } catch (error) {
       console.error('Ошибка загрузки аватара:', error)
-      // Оставляем дефолтный аватар
     }
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && user.value) {
+        loadAvatar()
+      }
+    })
   }
 
   // Обновление профиля

@@ -9,7 +9,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import DefaultAvatar from './DefaultAvatar.vue'
-import { getUserAvatar } from '@/js/userAvatar'
+import { getUserAvatar, invalidateUserAvatar } from '@/js/userAvatar'
 
 const userStore = useUserStore()
 
@@ -133,9 +133,25 @@ watch(
   }
 )
 
-const onImageError = () => {
+async function onImageError() {
   imageError.value = true
   loadedAvatarUrl.value = null
+  if (props.avatarUrl !== undefined || props.customAvatarUrl !== undefined) return
+  if (isCurrentUser.value) {
+    await userStore.loadAvatar()
+    imageError.value = false
+    return
+  }
+  if (normalizedUserId.value !== null) {
+    invalidateUserAvatar(normalizedUserId.value)
+    try {
+      const fresh = await getUserAvatar(normalizedUserId.value)
+      loadedAvatarUrl.value = fresh || null
+      imageError.value = false
+    } catch {
+      // оставляем imageError true, покажется DefaultAvatar
+    }
+  }
 }
 </script>
 

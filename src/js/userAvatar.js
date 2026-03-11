@@ -4,6 +4,23 @@ import { apiClient } from '@/js/api/manager'
 const userAvatarCache = new Map()
 export const defaultAvatar = null
 
+function getExpiresMeta(url) {
+  try {
+    if (!url) return { expires: null, secondsLeft: null, hasSignature: false }
+    const parsed = new URL(url, window.location.origin)
+    const expiresRaw = parsed.searchParams.get('expires')
+    const expires = expiresRaw ? Number(expiresRaw) : null
+    const nowSec = Math.floor(Date.now() / 1000)
+    return {
+      expires: Number.isFinite(expires) ? expires : null,
+      secondsLeft: Number.isFinite(expires) ? (expires - nowSec) : null,
+      hasSignature: Boolean(parsed.searchParams.get('signature')),
+    }
+  } catch {
+    return { expires: null, secondsLeft: null, hasSignature: false }
+  }
+}
+
 function extractUser(raw, userId) {
   if (!raw) return null
 
@@ -48,9 +65,20 @@ function extractAvatarUrl(user) {
 
 const pendingRequests = new Map()
 
+const SIGNED_URL_MIN_SECONDS_LEFT = 60
+
 export async function getUserAvatar(userId) {
   if (!userId) return defaultAvatar
-  if (userAvatarCache.has(userId)) return userAvatarCache.get(userId)
+  if (userAvatarCache.has(userId)) {
+    const cachedUrl = userAvatarCache.get(userId)
+    const cachedMeta = getExpiresMeta(cachedUrl)
+    const isExpiredOrExpiring = cachedMeta.hasSignature && cachedMeta.secondsLeft !== null && cachedMeta.secondsLeft < SIGNED_URL_MIN_SECONDS_LEFT
+    if (isExpiredOrExpiring) {
+      userAvatarCache.delete(userId)
+    } else {
+      return cachedUrl
+    }
+  }
   if (pendingRequests.has(userId)) return pendingRequests.get(userId)
 
   const promise = apiClient.get('/cms/get_user_name/', { id: userId })
@@ -77,6 +105,10 @@ export function getCachedUserAvatar(userId) {
 
 export function clearUserAvatarCache() {
   userAvatarCache.clear()
+}
+
+export function invalidateUserAvatar(userId) {
+  if (userId != null) userAvatarCache.delete(Number(userId))
 }
 
 
