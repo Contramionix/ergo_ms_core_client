@@ -23,6 +23,9 @@ const isCheckingAccess = ref(true)
 const skipWelcomeEmails = ref(false)
 const logsContainer = ref(null)  // Для автопрокрутки
 
+const STORAGE_KEY_TASK_ID = 'cms_import_users_task_id'
+const savedTaskId = ref(null)
+
 // Для очистки polling при unmount
 let pollTimeoutId = null
 let importTimeoutId = null
@@ -39,6 +42,13 @@ const progressPercent = computed(() => {
   return Math.min(100, Math.max(0, importProgress.value))
 })
 
+const clearStorageTaskId = () => {
+  try {
+    sessionStorage.removeItem(STORAGE_KEY_TASK_ID)
+  } catch (_) {}
+  savedTaskId.value = null
+}
+
 onMounted(async () => {
   try {
     const accessData = await CheckAccessToAdminPanel()
@@ -48,6 +58,10 @@ onMounted(async () => {
       return
     }
     hasAdminAccess.value = true
+    try {
+      const stored = sessionStorage.getItem(STORAGE_KEY_TASK_ID)
+      if (stored) savedTaskId.value = stored
+    } catch (_) {}
   } catch (error) {
     console.error('Ошибка проверки прав доступа:', error)
     toast.error('Ошибка проверки прав доступа')
@@ -159,6 +173,118 @@ const removeFile = () => {
   }
 }
 
+const POLL_TIMEOUT_MS = 1800000
+
+function runPolling(taskId) {
+  let lastLogIndex = 0
+
+  const pollTaskStatus = async () => {
+    if (!isImporting.value) return
+
+    try {
+      const statusResponse = await apiClient.get(
+        cmsEndpoints.cms.importUsersTaskStatus(taskId),
+        { params: { last_log_index: lastLogIndex } }
+      )
+      const taskStatus = statusResponse.data
+
+      if (taskStatus.state === 'PROGRESS') {
+        currentStats.value = {
+          total: taskStatus.total || 0,
+          processed: taskStatus.current || 0,
+          created: taskStatus.created || 0,
+          skipped: taskStatus.skipped || 0
+        }
+        importProgress.value = taskStatus.progress || 0
+        importStatus.value = `Обработка: ${taskStatus.current}/${taskStatus.total}`
+
+        if (taskStatus.new_logs && taskStatus.new_logs.length > 0) {
+          const uniqueNewLogs = filterDuplicateLogs(taskStatus.new_logs)
+          if (uniqueNewLogs.length > 0) {
+            importLogs.value.push(...uniqueNewLogs)
+            lastLogIndex += taskStatus.new_logs.length
+            scrollLogsToBottom()
+          }
+        }
+
+        const progress = taskStatus.progress || 0
+        pollTimeoutId = setTimeout(pollTaskStatus, getAdaptivePollInterval(progress))
+      } else if (taskStatus.state === 'SUCCESS') {
+        const result = taskStatus.result || {}
+        currentStats.value = {
+          total: result.total || 0,
+          processed: result.total || 0,
+          created: result.created || 0,
+          skipped: result.skipped || 0
+        }
+        importProgress.value = 100
+        importStatus.value = 'Импорт завершён!'
+        importResults.value = {
+          success: result.success !== false,
+          created: result.created || 0,
+          skipped: result.skipped || 0,
+          total: result.total || 0,
+          errors: result.errors || []
+        }
+        if (result.logs && result.logs.length > 0) {
+          const uniqueNewLogs = filterDuplicateLogs(result.logs)
+          if (uniqueNewLogs.length > 0) {
+            importLogs.value.push(...uniqueNewLogs)
+            scrollLogsToBottom()
+          }
+        }
+        if (result.created > 0) {
+          toast.success(`Импортировано ${result.created} пользователей`)
+        } else {
+          toast.info('Новых пользователей не создано')
+        }
+        clearStorageTaskId()
+        stopPolling()
+        isImporting.value = false
+      } else if (taskStatus.state === 'FAILURE') {
+        importProgress.value = 100
+        importStatus.value = 'Ошибка импорта'
+        importResults.value = {
+          success: false,
+          created: 0,
+          skipped: 0,
+          total: 0,
+          errors: [taskStatus.error || 'Произошла ошибка при импорте']
+        }
+        toast.error(taskStatus.error || 'Ошибка при импорте пользователей')
+        clearStorageTaskId()
+        stopPolling()
+        isImporting.value = false
+      } else {
+        pollTimeoutId = setTimeout(pollTaskStatus, 500)
+      }
+    } catch (pollError) {
+      console.error('Ошибка при получении статуса задачи:', pollError)
+      pollTimeoutId = setTimeout(pollTaskStatus, 1000)
+    }
+  }
+
+  pollTimeoutId = setTimeout(pollTaskStatus, 300)
+  importTimeoutId = setTimeout(() => {
+    if (isImporting.value) {
+      stopPolling()
+      isImporting.value = false
+      toast.warning(
+        'Импорт ещё выполняется. Вы можете уйти со страницы и вернуться позже — нажмите «Продолжить отслеживание», чтобы снова увидеть прогресс.'
+      )
+    }
+  }, POLL_TIMEOUT_MS)
+}
+
+const resumeImport = () => {
+  const taskId = savedTaskId.value
+  if (!taskId) return
+  isImporting.value = true
+  resetImportState()
+  importStatus.value = 'Восстановление отслеживания...'
+  runPolling(taskId)
+}
+
 const startImport = async () => {
   if (!selectedFile.value) {
     toast.warning('Выберите файл для импорта')
@@ -182,123 +308,13 @@ const startImport = async () => {
     }
     
     const taskId = response.data.task_id
+    try {
+      sessionStorage.setItem(STORAGE_KEY_TASK_ID, taskId)
+    } catch (_) {}
+    savedTaskId.value = taskId
     importStatus.value = 'Обработка файла...'
     
-    // Адаптивный polling с накоплением логов
-    let lastLogIndex = 0  // Индекс последнего полученного лога
-    
-    const pollTaskStatus = async () => {
-      if (!isImporting.value) return
-      
-      try {
-        // Передаём индекс последнего лога для получения новых
-        const statusResponse = await apiClient.get(
-          cmsEndpoints.cms.importUsersTaskStatus(taskId),
-          { params: { last_log_index: lastLogIndex } }
-        )
-        const taskStatus = statusResponse.data
-        
-        if (taskStatus.state === 'PROGRESS') {
-          currentStats.value = {
-            total: taskStatus.total || 0,
-            processed: taskStatus.current || 0,
-            created: taskStatus.created || 0,
-            skipped: taskStatus.skipped || 0
-          }
-          importProgress.value = taskStatus.progress || 0
-          importStatus.value = `Обработка: ${taskStatus.current}/${taskStatus.total}`
-          
-          // Добавляем новые логи (массив)
-          if (taskStatus.new_logs && taskStatus.new_logs.length > 0) {
-            const uniqueNewLogs = filterDuplicateLogs(taskStatus.new_logs)
-            
-            if (uniqueNewLogs.length > 0) {
-              importLogs.value.push(...uniqueNewLogs)
-              lastLogIndex += taskStatus.new_logs.length
-              scrollLogsToBottom()
-            }
-          }
-          
-          // Адаптивный интервал polling
-          const progress = taskStatus.progress || 0
-          pollTimeoutId = setTimeout(pollTaskStatus, getAdaptivePollInterval(progress))
-        } else if (taskStatus.state === 'SUCCESS') {
-          // Обновляем финальные данные
-          const result = taskStatus.result || {}
-          currentStats.value = {
-            total: result.total || 0,
-            processed: result.total || 0,
-            created: result.created || 0,
-            skipped: result.skipped || 0
-          }
-          
-          importProgress.value = 100
-          importStatus.value = 'Импорт завершён!'
-          
-          importResults.value = {
-            success: result.success !== false,
-            created: result.created || 0,
-            skipped: result.skipped || 0,
-            total: result.total || 0,
-            errors: result.errors || []
-          }
-          
-          // Добавляем оставшиеся логи из финального результата (без дубликатов)
-          if (result.logs && result.logs.length > 0) {
-            const uniqueNewLogs = filterDuplicateLogs(result.logs)
-            
-            if (uniqueNewLogs.length > 0) {
-              importLogs.value.push(...uniqueNewLogs)
-              scrollLogsToBottom()
-            }
-          }
-          
-          if (result.created > 0) {
-            toast.success(`Импортировано ${result.created} пользователей`)
-          } else {
-            toast.info('Новых пользователей не создано')
-          }
-          
-          stopPolling()
-          isImporting.value = false
-        } else if (taskStatus.state === 'FAILURE') {
-          stopPolling()
-          
-          importProgress.value = 100
-          importStatus.value = 'Ошибка импорта'
-          
-          importResults.value = {
-            success: false,
-            created: 0,
-            skipped: 0,
-            total: 0,
-            errors: [taskStatus.error || 'Произошла ошибка при импорте']
-          }
-          
-          toast.error(taskStatus.error || 'Ошибка при импорте пользователей')
-          isImporting.value = false
-        } else {
-          // PENDING или другое состояние - продолжаем polling
-          pollTimeoutId = setTimeout(pollTaskStatus, 500)
-        }
-      } catch (pollError) {
-        console.error('Ошибка при получении статуса задачи:', pollError)
-        // При ошибке продолжаем polling
-        pollTimeoutId = setTimeout(pollTaskStatus, 1000)
-      }
-    }
-    
-    // Запускаем polling
-    pollTimeoutId = setTimeout(pollTaskStatus, 300)
-    
-    // Таймаут на случай зависания (10 минут)
-    importTimeoutId = setTimeout(() => {
-      if (isImporting.value) {
-        stopPolling()
-        isImporting.value = false
-        toast.error('Превышено время ожидания импорта')
-      }
-    }, 600000)
+    runPolling(taskId)
     
   } catch (error) {
     importProgress.value = 100
@@ -358,7 +374,11 @@ const getLogClass = (level) => {
         <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" @click="goBack">
           <ArrowLeft :size="18" class="flex-shrink-0" /><span>К панели пользователей</span>
         </button>
-      </div>  
+      </div>
+      <div v-if="savedTaskId && !isImporting && !importResults" class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+        <span>Есть незавершённый импорт. Вы можете продолжить отслеживание.</span>
+        <button type="button" class="btn btn-warning btn-sm" @click="resumeImport">Продолжить отслеживание</button>
+      </div>
       <h5 class="mb-3">Импорт пользователей</h5>
       <div class="alert alert-info mb-4">
         <strong>Требования к файлу:</strong>
