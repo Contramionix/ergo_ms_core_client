@@ -110,13 +110,15 @@ function combinedOrderEquals(a, b) {
   return a.every((entry, i) => entry.type === b[i].type && entry.id === b[i].id)
 }
 
-const currentCombinedOrder = computed(() =>
-  buildCombinedOrder(visibleMenuItems.value, visibleSeparators.value)
-)
+const currentCombinedOrderForUnsaved = computed(() => {
+  const roots = itemToDelete.value ? menuItems.value : visibleMenuItems.value
+  const seps = separatorToDelete.value ? separators.value : visibleSeparators.value
+  return buildCombinedOrder(roots, seps)
+})
 
 const hasUnsavedChanges = computed(() =>
   initialCombinedOrder.value.length > 0 &&
-  !combinedOrderEquals(initialCombinedOrder.value, currentCombinedOrder.value)
+  !combinedOrderEquals(initialCombinedOrder.value, currentCombinedOrderForUnsaved.value)
 )
 
 function syncInitialCombinedOrder() {
