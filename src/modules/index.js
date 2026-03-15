@@ -126,6 +126,37 @@ export async function getRouteConfig(routeName) {
 }
 
 /**
+ * Получает опции маршрутов для выбора (ядро + модули, включая вложенные)
+ * @returns {Promise<Array<{ id: string, name: string }>>}
+ */
+export async function getAvailableRouteOptions() {
+  await moduleManager.getStatistics()
+
+  const byId = new Map()
+
+  const coreRoutes = coreRoutesManager.getAllCoreRoutes()
+  coreRoutes.forEach(route => {
+    if (route.name) {
+      byId.set(route.name, {
+        id: route.name,
+        name: route.meta?.title || route.name
+      })
+    }
+  })
+
+  const routeManager = moduleManager.routes
+  const moduleNames = routeManager.getAllRouteNamesIncludingNested()
+  moduleNames.forEach(name => {
+    if (byId.has(name)) return
+    const config = routeManager.getRouteConfig(name)
+    const title = config?.meta?.title || name
+    byId.set(name, { id: name, name: title })
+  })
+
+  return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/**
  * Получает эндпоинт по имени
  * @param {string} endpointName - имя эндпоинта
  * @returns {Promise<string|null>}

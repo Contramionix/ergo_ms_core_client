@@ -3,33 +3,29 @@
     <form @submit.prevent="handleSubmit">
       <div class="mb-3">
         <label class="form-label">Название <span class="text-danger">*</span></label>
-        <input v-model="form.name" type="text" class="form-control" required placeholder="Название пункта меню"/>
+        <input v-model="form.name" type="text" class="form-control" required placeholder="Название пункта меню" style="background-color: var(--var-primary-background)"/>
       </div>
 
       <div class="mb-3">
         <label class="form-label">Тип элемента <span class="text-danger">*</span></label>
-        <select v-model="form.item_type" class="form-select" required>
-          <option value="route">Маршрут Vue</option>
-          <option value="offcanvas">Боковая панель</option>
-          <option value="external">Внешняя ссылка</option>
-        </select>
+        <SelectBox :model-value="form.item_type" :options="itemTypeOptions" value-key="id" label-key="name" :include-all-option="false" @update:model-value="v => form.item_type = v"/>
       </div>
 
       <div v-if="form.item_type === 'route'" class="mb-3">
         <label class="form-label">Имя маршрута Vue</label>
-        <input v-model="form.route_name" type="text" class="form-control" placeholder="Например: User, Settings, BI"/>
-        <div class="form-text">Имя маршрута из Vue Router (routeName). Оставьте пустым для папки без перехода на страницу.</div>
+        <SelectBox v-if="!useManualRouteInput" :model-value="form.route_name || null" :options="routeOptions" value-key="id" label-key="name" :include-all-option="true" all-label="Пусто (вкладка без перехода на страницу)" searchable search-placeholder="Поиск маршрута..." @update:model-value="v => form.route_name = v ?? ''"/>
+        <input v-else v-model="form.route_name" type="text" class="form-control" placeholder="Например: User, AdminPanel, MenuPanel" style="background-color: var(--var-primary-background)"/>
+        <div class="form-text" v-if="!useManualRouteInput">Названия маршрутов на кириллице прописаны в файлах <code>routes.js</code> в каждом модуле в атрибуте <code>meta.title</code>.</div>
+        <div class="form-text" v-else>Введите техническое имя маршрута (ключ из <code>routes.js</code>). Пусто — вкладка без перехода.</div>
+        <div class="form-check mt-2">
+          <input v-model="useManualRouteInput" type="checkbox" class="form-check-input" id="useManualRouteInput"/>
+          <label class="form-check-label" for="useManualRouteInput">Ввести имя маршрута вручную</label>
+        </div>
       </div>
 
       <div v-if="form.item_type === 'offcanvas'" class="mb-3">
         <label class="form-label">Страница боковой панели <span class="text-danger">*</span></label>
-        <select v-model="form.page" class="form-select" required>
-          <option value="">Выберите страницу</option>
-          <option value="datasets">Датасеты</option>
-          <option value="connections">Подключения</option>
-          <option value="charts">Графики</option>
-          <option value="dashboards">Дашборды</option>
-        </select>
+        <SelectBox :model-value="form.page || null" :options="offcanvasPageOptions" value-key="id" label-key="name" :include-all-option="true" all-label="Выберите страницу" @update:model-value="v => form.page = v ?? ''"/>
       </div>
 
       <div v-if="form.item_type === 'external'" class="mb-3">
@@ -58,11 +54,7 @@
 
       <div class="mb-3">
         <label class="form-label">Родительский элемент</label>
-        <select v-model="form.parent" class="form-select">
-          <option v-for="option in filteredParentOptions" :key="option.id" :value="option.id">
-            {{ option.name }}
-          </option>
-        </select>
+        <SelectBox :model-value="form.parent" :options="filteredParentOptions" value-key="id" label-key="name" :include-all-option="false" all-label="-- Нет (корневой элемент) --" @update:model-value="v => form.parent = v"/>
       </div>
 
       <div class="mb-3">
@@ -111,14 +103,28 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, shallowRef } from 'vue'
+import { ref, computed, watch, shallowRef, onMounted } from 'vue'
 import * as LucideIcons from 'lucide-vue-next'
+import { getAvailableRouteOptions } from '@/modules/index.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SelectBox from '@/components/SelectBox.vue'
 
 const LUCIDE_ICON_NAMES = Object.keys(LucideIcons)
   .filter(key => key !== 'default' && !key.endsWith('Icon') && /^[A-Z]/.test(key) && (typeof LucideIcons[key] === 'function' || (typeof LucideIcons[key] === 'object' && LucideIcons[key] !== null)))
   .sort()
+
+const itemTypeOptions = [
+  { id: 'route', name: 'Маршрут Vue' },
+  { id: 'offcanvas', name: 'Боковая панель' },
+  { id: 'external', name: 'Внешняя ссылка' }
+]
+
+const offcanvasPageOptions = [
+  { id: 'datasets', name: 'Датасеты' },
+  { id: 'connections', name: 'Подключения' },
+  { id: 'charts', name: 'Графики' },
+  { id: 'dashboards', name: 'Дашборды' }
+]
 
 const props = defineProps({
   item: {
@@ -140,6 +146,13 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['save', 'close'])
+
+const routeOptions = ref([])
+const useManualRouteInput = ref(false)
+
+onMounted(() => {
+  getAvailableRouteOptions().then(opts => { routeOptions.value = opts })
+})
 
 const isEditing = computed(() => !!props.item?.id)
 

@@ -219,6 +219,23 @@ export class RouteManager extends ModuleLoader {
   }
 
   /**
+   * Получает имена всех роутов, включая вложенные (children)
+   * @returns {Array<string>}
+   */
+  getAllRouteNamesIncludingNested() {
+    const names = new Set()
+    this.routes.forEach((config, name) => {
+      names.add(name)
+      if (config.children && Array.isArray(config.children)) {
+        config.children.forEach(child => {
+          if (child.name) names.add(child.name)
+        })
+      }
+    })
+    return Array.from(names)
+  }
+
+  /**
    * Фильтрует роуты по условию
    * @param {Function} predicate - функция-предикат
    * @returns {Array}
