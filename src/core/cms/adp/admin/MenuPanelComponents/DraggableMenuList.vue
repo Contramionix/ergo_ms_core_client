@@ -1,81 +1,34 @@
 <template>
-  <div class="draggable-menu-list">
-    <SlickList 
-      v-model:list="combinedList" 
-      axis="y" 
-      lockAxis="y"
-      :useDragHandle="true"
-      @sort-start="onSortStart"
-      @sort-end="onSortEnd"
-      class="slick-list"
-    >
-      <SlickItem 
-        v-for="(item, index) in combinedList" 
-        :key="item._uniqueKey"
-        :index="index"
-        :class="item._type === 'separator' ? 'slick-item-separator' : 'slick-item'"
-      >
-        <!-- Разделитель -->
-        <div 
-          v-if="item._type === 'separator'"
-          class="separator-row-inline"
-          :class="{ 'separator-row-inline--inactive': !item.is_active }"
-        >
+  <div class="draggable-menu-list" :class="{ 'draggable-menu-list--dragging': isDragging }">
+    <SlickList v-model:list="combinedList" axis="y" lockAxis="y" :useDragHandle="true" @sort-start="onSortStart" @sort-end="onSortEnd" class="slick-list">
+      <SlickItem v-for="(item, index) in combinedList" :key="item._uniqueKey" :index="index" :class="item._type === 'separator' ? 'slick-item-separator' : 'slick-item'">
+        <div v-if="item._type === 'separator'" class="separator-row-inline" :class="{ 'separator-row-inline--inactive': !item.is_active }">
           <div v-handle class="separator-row-inline__handle">
             <GripVertical :size="14" class="text-muted" />
           </div>
           <div class="separator-row-inline__line"></div>
-          <span 
-            class="separator-row-inline__label"
-            @click.stop="$emit('edit-separator', getOriginalSeparator(item))"
-          >
-            <Minus :size="14" />
-            {{ item.name }}
+          <span class="separator-row-inline__label" @click.stop="$emit('edit-separator', getOriginalSeparator(item))">
+            <Minus :size="14" />{{ item.name }}
           </span>
           <div class="separator-row-inline__line"></div>
           
-          <!-- Действия -->
           <div class="separator-row-inline__actions-wrapper">
             <div class="separator-row-inline__actions">
-            <button
-              class="separator-row-inline__visibility-btn"
-              :class="{ 'separator-row-inline__visibility-btn--hidden': !item.is_active }"
-              @click.stop="$emit('toggle-visibility-separator', getOriginalSeparator(item))"
-              :title="item.is_active ? 'Скрыть разделитель' : 'Показать разделитель'"
-            >
+            <button class="separator-row-inline__visibility-btn" :class="{ 'separator-row-inline__visibility-btn--hidden': !item.is_active }" @click.stop="$emit('toggle-visibility-separator', getOriginalSeparator(item))" :title="item.is_active ? 'Скрыть разделитель' : 'Показать разделитель'">
               <Eye v-if="item.is_active" :size="20" />
               <EyeOff v-else :size="20" />
             </button>
-            <button 
-              class="separator-row-inline__action-btn separator-row-inline__action-btn--edit"
-              @click.stop="$emit('edit-separator', getOriginalSeparator(item))"
-              title="Редактировать"
-            >
+            <button  class="separator-row-inline__action-btn separator-row-inline__action-btn--edit" @click.stop="$emit('edit-separator', getOriginalSeparator(item))" title="Редактировать">
               <Settings :size="20" class="separator-row-inline__settings-icon" />
             </button>
-            <button 
-              class="separator-row-inline__action-btn separator-row-inline__action-btn--delete"
-              @click.stop="$emit('delete-separator', getOriginalSeparator(item))"
-              title="Удалить"
-            >
+            <button class="separator-row-inline__action-btn separator-row-inline__action-btn--delete" @click.stop="$emit('delete-separator', getOriginalSeparator(item))" title="Удалить">
               <Trash :size="20" />
             </button>
             </div>
           </div>
         </div>
         
-        <!-- Элемент меню -->
-        <DraggableMenuRow
-          v-else
-          :item="item"
-          :level="0"
-          :index="index"
-          :expand-all-groups="expandAllGroups"
-          @edit="$emit('edit', $event)"
-          @delete="$emit('delete', $event)"
-          @reorder-children="handleChildrenReorder"
-          @toggle-visibility="$emit('toggle-visibility', $event)"
-        />
+        <DraggableMenuRow v-else :item="item" :level="0" :index="index" :expand-all-groups="expandAllGroups" @edit="$emit('edit', $event)" @delete="$emit('delete', $event)" @reorder-children="handleChildrenReorder" @toggle-visibility="$emit('toggle-visibility', $event)"/>
       </SlickItem>
     </SlickList>
   </div>
@@ -104,17 +57,12 @@ const props = defineProps({
 
 const emit = defineEmits(['edit', 'delete', 'reorder', 'reorder-separators', 'toggle-visibility', 'edit-separator', 'delete-separator', 'toggle-visibility-separator'])
 
-// Флаг для предотвращения сброса при перетаскивании
 const isDragging = ref(false)
-
-// Объединённый список для drag & drop
 const combinedList = ref([])
 
-// Создание объединённого списка из элементов и разделителей
 function buildCombinedList(items, separators) {
   const result = []
   
-  // Преобразуем элементы меню
   const menuItems = items.map(item => ({
     ...item,
     _type: 'menu_item',
@@ -122,7 +70,6 @@ function buildCombinedList(items, separators) {
     _sortOrder: item.order
   }))
   
-  // Преобразуем разделители (все, включая неактивные)
   const sepItems = separators
     .map(sep => ({
       ...sep,
@@ -131,14 +78,11 @@ function buildCombinedList(items, separators) {
       _sortOrder: sep.before_order
     }))
   
-  // Объединяем и сортируем
   result.push(...menuItems, ...sepItems)
   result.sort((a, b) => {
-    // Сначала сортируем по order
     if (a._sortOrder !== b._sortOrder) {
       return a._sortOrder - b._sortOrder
     }
-    // При равных order - разделители идут ПЕРЕД элементами меню
     if (a._type === 'separator' && b._type !== 'separator') return -1
     if (a._type !== 'separator' && b._type === 'separator') return 1
     return 0
@@ -147,7 +91,6 @@ function buildCombinedList(items, separators) {
   return result
 }
 
-// Инициализация и синхронизация
 watch(
   [() => props.items, () => props.separators],
   ([newItems, newSeparators]) => {
@@ -158,7 +101,6 @@ watch(
   { immediate: true, deep: true }
 )
 
-// Получить оригинальный разделитель для редактирования
 function getOriginalSeparator(item) {
   return props.separators.find(sep => sep.id === item.id)
 }
@@ -172,7 +114,6 @@ function onSortEnd() {
     const reorderedMenuItems = []
     const reorderedSeparators = []
     
-    // Пересчитываем order для всех элементов
     combinedList.value.forEach((item, index) => {
       const newOrder = index * 10
       
@@ -189,7 +130,6 @@ function onSortEnd() {
       }
     })
     
-    // Эмитим события для сохранения
     if (reorderedMenuItems.length > 0) {
       emit('reorder', reorderedMenuItems)
     }
@@ -209,6 +149,10 @@ function handleChildrenReorder(data) {
 <style lang="scss" scoped>
 .draggable-menu-list {
   width: 100%;
+
+  &.draggable-menu-list--dragging {
+    user-select: none;
+  }
 }
 
 .slick-list {
@@ -382,7 +326,6 @@ function handleChildrenReorder(data) {
   &--inactive {
     position: relative;
     
-    // Затемнение только содержимого, не кнопок
     .separator-row-inline__handle svg,
     .separator-row-inline__line,
     .separator-row-inline__label {
@@ -399,12 +342,10 @@ function handleChildrenReorder(data) {
       background: linear-gradient(90deg, transparent, var(--color-secondary-text) 20%, var(--color-secondary-text) 80%, transparent);
     }
     
-    // Убираем margin у скрытых кнопок
     .separator-row-inline__action-btn {
       margin: 0 !important;
     }
     
-    // Кнопки полностью яркие и видные
     .separator-row-inline__visibility-btn,
     .separator-row-inline__action-btn {
       opacity: 1 !important;
@@ -421,7 +362,6 @@ function handleChildrenReorder(data) {
       opacity: 1 !important;
     }
     
-    // При hover на неактивном элементе восстанавливаем gap, когда кнопки видны
     &:hover {
       .separator-row-inline__actions {
         gap: 0.25rem;
@@ -449,4 +389,3 @@ function handleChildrenReorder(data) {
   transform: rotate(0deg);
 }
 </style>
-
