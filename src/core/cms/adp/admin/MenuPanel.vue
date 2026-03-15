@@ -450,6 +450,7 @@ async function saveItem(itemData) {
     }
     closeItemModal()
     await loadMenuItems()
+    syncInitialCombinedOrder()
     clearMenuCache()
     window.dispatchEvent(new CustomEvent('menu-updated'))
   } catch (error) {
@@ -464,12 +465,13 @@ function confirmDeleteItem(item) {
 
 async function executeDeleteItem() {
   if (!itemToDelete.value) return
-  
+
   isDeletingItem.value = true
   try {
     await deleteMenuItem(itemToDelete.value.id)
     toast.success('Элемент меню удалён')
     await loadMenuItems()
+    syncInitialCombinedOrder()
     clearMenuCache()
     window.dispatchEvent(new CustomEvent('menu-updated'))
     cancelDeleteItem()
@@ -552,6 +554,7 @@ async function saveSeparator(separatorData) {
     }
     closeSeparatorModal()
     await loadSeparators()
+    syncInitialCombinedOrder()
     clearMenuCache()
     window.dispatchEvent(new CustomEvent('menu-updated'))
   } catch (error) {
@@ -572,6 +575,7 @@ async function executeDeleteSeparator() {
     await deleteMenuSeparator(separatorToDelete.value.id)
     toast.success('Разделитель удалён')
     await loadSeparators()
+    syncInitialCombinedOrder()
     clearMenuCache()
     window.dispatchEvent(new CustomEvent('menu-updated'))
     cancelDeleteSeparator()
