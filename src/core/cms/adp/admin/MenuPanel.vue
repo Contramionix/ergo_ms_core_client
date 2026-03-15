@@ -92,22 +92,60 @@ const pendingSeparatorReorder = ref([])
 
 const initialCombinedOrder = ref([])
 
+function findInTree(items, itemId) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (item.id === itemId) return { item, items, index: i }
+    if (item.children?.length) {
+      const found = findInTree(item.children, itemId)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+function sortTreeByOrder(items) {
+  items.sort((a, b) => a.order - b.order)
+  items.forEach(item => {
+    if (item.children?.length) sortTreeByOrder(item.children)
+  })
+}
+
+function notifyMenuUpdated() {
+  clearMenuCache()
+  window.dispatchEvent(new CustomEvent('menu-updated'))
+}
+
 function buildCombinedOrder(rootItems, sepList) {
-  const menuEntries = rootItems.map(item => ({ type: 'menu_item', id: item.id, _sortOrder: item.order }))
-  const sepEntries = sepList.map(sep => ({ type: 'separator', id: sep.id, _sortOrder: sep.before_order }))
+  function flattenMenuItems(items, parentId = null) {
+    const result = []
+    for (const item of items) {
+      result.push({ type: 'menu_item', id: item.id, parentId, _sortOrder: item.order })
+      if (item.children && item.children.length > 0) {
+        result.push(...flattenMenuItems(item.children, item.id))
+      }
+    }
+    return result
+  }
+  
+  const menuEntries = flattenMenuItems(rootItems)
+  const sepEntries = sepList.map(sep => ({ type: 'separator', id: sep.id, parentId: null, _sortOrder: sep.before_order }))
   const combined = [...menuEntries, ...sepEntries]
   combined.sort((a, b) => {
+    if (a.parentId !== b.parentId) {
+      return (a.parentId || 0) - (b.parentId || 0)
+    }
     if (a._sortOrder !== b._sortOrder) return a._sortOrder - b._sortOrder
     if (a.type === 'separator' && b.type !== 'separator') return -1
     if (a.type !== 'separator' && b.type === 'separator') return 1
     return 0
   })
-  return combined.map(({ type, id }) => ({ type, id }))
+  return combined.map(({ type, id, parentId }) => ({ type, id, parentId }))
 }
 
 function combinedOrderEquals(a, b) {
   if (a.length !== b.length) return false
-  return a.every((entry, i) => entry.type === b[i].type && entry.id === b[i].id)
+  return a.every((entry, i) => entry.type === b[i].type && entry.id === b[i].id && entry.parentId === b[i].parentId)
 }
 
 const currentCombinedOrderForUnsaved = computed(() => {
@@ -148,27 +186,10 @@ const visibleSeparators = computed(() => {
 })
 
 const visibleMenuItems = computed(() => {
-  if (!itemToDelete.value) {
-    return menuItems.value
-  }
-  
-  function removeItemFromTree(items, itemId) {
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].id === itemId) {
-        items.splice(i, 1)
-        return true
-      }
-      if (items[i].children && items[i].children.length > 0) {
-        if (removeItemFromTree(items[i].children, itemId)) {
-          return true
-        }
-      }
-    }
-    return false
-  }
-  
+  if (!itemToDelete.value) return menuItems.value
   const treeCopy = JSON.parse(JSON.stringify(menuItems.value))
-  removeItemFromTree(treeCopy, itemToDelete.value.id)
+  const found = findInTree(treeCopy, itemToDelete.value.id)
+  if (found) found.items.splice(found.index, 1)
   return treeCopy
 })
 
@@ -225,20 +246,7 @@ function buildTree(items) {
       roots.push(map[item.id])
     }
   })
-  
-  const sortByOrder = (a, b) => a.order - b.order
-  roots.sort(sortByOrder)
-  
-  function sortChildren(items) {
-    items.sort(sortByOrder)
-    items.forEach(item => {
-      if (item.children && item.children.length > 0) {
-        sortChildren(item.children)
-      }
-    })
-  }
-  
-  sortChildren(roots)
+  sortTreeByOrder(roots)
   return roots
 }
 
@@ -274,60 +282,27 @@ async function loadRoleGroups() {
 
 function handleMenuReorder(reorderedItems) {
   pendingMenuReorder.value = [...pendingMenuReorder.value, ...reorderedItems]
-  
   nextTick(() => {
     const parentMap = new Map(reorderedItems.map(item => [item.id, item.parent_id]).filter(([, parentId]) => parentId !== undefined))
-    
-    function findItemInTree(items, itemId) {
-      for (const item of items) {
-        if (item.id === itemId) return { item, parent: null, items }
-        if (item.children && item.children.length > 0) {
-          const found = findItemInTree(item.children, itemId)
-          if (found) return found
-        }
-      }
-      return null
-    }
-    
     for (const reorderedItem of reorderedItems) {
-      const found = findItemInTree(menuItems.value, reorderedItem.id)
-      if (found) {
-        found.item.order = reorderedItem.order
-        
-        if (parentMap.has(reorderedItem.id)) {
-          const newParentId = parentMap.get(reorderedItem.id)
-          
-          const oldIndex = found.items.findIndex(i => i.id === reorderedItem.id)
-          if (oldIndex !== -1) {
-            found.items.splice(oldIndex, 1)
-          }
-          
-          if (newParentId === null) {
-            menuItems.value.push(found.item)
-          } else {
-            const newParentFound = findItemInTree(menuItems.value, newParentId)
-            if (newParentFound) {
-              if (!newParentFound.item.children) {
-                newParentFound.item.children = []
-              }
-              newParentFound.item.children.push(found.item)
-            }
-          }
+      const found = findInTree(menuItems.value, reorderedItem.id)
+      if (!found) continue
+      found.item.order = reorderedItem.order
+      if (!parentMap.has(reorderedItem.id)) continue
+      const newParentId = parentMap.get(reorderedItem.id)
+      found.items.splice(found.index, 1)
+      if (newParentId === null) {
+        menuItems.value.push(found.item)
+      } else {
+        const newParentFound = findInTree(menuItems.value, newParentId)
+        if (newParentFound) {
+          if (!newParentFound.item.children) newParentFound.item.children = []
+          newParentFound.item.children.push(found.item)
         }
       }
     }
-    
-    function sortItems(items) {
-      items.sort((a, b) => a.order - b.order)
-      items.forEach(item => {
-        if (item.children && item.children.length > 0) {
-          sortItems(item.children)
-        }
-      })
-    }
-    
-    sortItems(menuItems.value)
-          })
+    sortTreeByOrder(menuItems.value)
+  })
 }
 
 function handleSeparatorReorderFromList(reorderedSeparators) {
@@ -346,8 +321,6 @@ async function saveAllChanges() {
   isSaving.value = true
   
   try {
-    const hasSeparatorChanges = pendingSeparatorReorder.value.length > 0
-    
     if (pendingMenuReorder.value.length > 0) {
       const menuOrderMap = new Map()
       const menuParentMap = new Map()
@@ -361,35 +334,17 @@ async function saveAllChanges() {
       const allItemsToSave = []
       
       function collectItems(items, parentId = null) {
-        items.forEach((item, index) => {
-          let finalParentId = null
-          if (menuParentMap.has(item.id)) {
-            finalParentId = menuParentMap.get(item.id)
-          } else {
-            finalParentId = parentId
-          }
-          
-          let order
-          if (hasSeparatorChanges && menuOrderMap.has(item.id)) {
-            order = menuOrderMap.get(item.id)
-          } else {
-            order = index * 10
-          }
-          
+        items.forEach((item) => {
           allItemsToSave.push({
             id: item.id,
-            order: order,
-            parent_id: finalParentId
+            order: menuOrderMap.get(item.id) ?? item.order,
+            parent_id: menuParentMap.get(item.id) ?? parentId
           })
-          
-          if (item.children && item.children.length > 0) {
-            collectItems(item.children, item.id)
-          }
+          if (item.children?.length) collectItems(item.children, item.id)
         })
       }
       
       collectItems(menuItems.value)
-      
       await reorderMenuItems(allItemsToSave)
     }
     
@@ -403,10 +358,7 @@ async function saveAllChanges() {
     pendingSeparatorReorder.value = []
     
     toast.success('Порядок элементов сохранён')
-    clearMenuCache()
-    
-    window.dispatchEvent(new CustomEvent('menu-updated'))
-    
+    notifyMenuUpdated()
     await Promise.all([
       loadMenuItems(),
       loadSeparators()
@@ -453,8 +405,7 @@ async function saveItem(itemData) {
     closeItemModal()
     await loadMenuItems()
     syncInitialCombinedOrder()
-    clearMenuCache()
-    window.dispatchEvent(new CustomEvent('menu-updated'))
+    notifyMenuUpdated()
   } catch (error) {
     toast.error('Ошибка сохранения: ' + error.message)
   }
@@ -474,8 +425,7 @@ async function executeDeleteItem() {
     toast.success('Элемент меню удалён')
     await loadMenuItems()
     syncInitialCombinedOrder()
-    clearMenuCache()
-    window.dispatchEvent(new CustomEvent('menu-updated'))
+    notifyMenuUpdated()
     cancelDeleteItem()
   } catch (error) {
     toast.error('Ошибка удаления: ' + error.message)
@@ -492,23 +442,9 @@ function cancelDeleteItem() {
 async function handleToggleVisibility(data) {
   try {
     await updateMenuItem(data.id, { is_active: data.is_active })
-    function updateItemInTree(items, itemId, isActive) {
-      for (const item of items) {
-        if (item.id === itemId) {
-          item.is_active = isActive
-          return true
-        }
-        if (item.children && item.children.length > 0) {
-          if (updateItemInTree(item.children, itemId, isActive)) {
-            return true
-          }
-        }
-      }
-      return false
-    }
-    updateItemInTree(menuItems.value, data.id, data.is_active)
-    clearMenuCache()
-    window.dispatchEvent(new CustomEvent('menu-updated'))
+    const found = findInTree(menuItems.value, data.id)
+    if (found) found.item.is_active = data.is_active
+    notifyMenuUpdated()
   } catch (error) {
     toast.error('Ошибка обновления видимости: ' + error.message)
     await loadMenuItems()
@@ -519,11 +455,8 @@ async function handleToggleSeparatorVisibility(separator) {
   try {
     await updateMenuSeparator(separator.id, { is_active: !separator.is_active })
     const sep = separators.value.find(s => s.id === separator.id)
-    if (sep) {
-      sep.is_active = !separator.is_active
-    }
-    clearMenuCache()
-    window.dispatchEvent(new CustomEvent('menu-updated'))
+    if (sep) sep.is_active = !separator.is_active
+    notifyMenuUpdated()
   } catch (error) {
     toast.error('Ошибка обновления видимости разделителя: ' + error.message)
     await loadSeparators()
@@ -557,8 +490,7 @@ async function saveSeparator(separatorData) {
     closeSeparatorModal()
     await loadSeparators()
     syncInitialCombinedOrder()
-    clearMenuCache()
-    window.dispatchEvent(new CustomEvent('menu-updated'))
+    notifyMenuUpdated()
   } catch (error) {
     toast.error('Ошибка сохранения: ' + error.message)
   }
@@ -578,8 +510,7 @@ async function executeDeleteSeparator() {
     toast.success('Разделитель удалён')
     await loadSeparators()
     syncInitialCombinedOrder()
-    clearMenuCache()
-    window.dispatchEvent(new CustomEvent('menu-updated'))
+    notifyMenuUpdated()
     cancelDeleteSeparator()
   } catch (error) {
     toast.error('Ошибка удаления: ' + error.message)

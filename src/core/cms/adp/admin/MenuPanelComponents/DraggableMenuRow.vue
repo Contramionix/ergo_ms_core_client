@@ -1,5 +1,5 @@
 <template>
-  <div class="menu-row-wrapper" :class="{ 'menu-row-wrapper--nested': level > 0 }">
+  <div class="menu-row-wrapper" :class="{ 'menu-row-wrapper--nested': level > 0, 'menu-row-wrapper--dragging': isDragging }">
     <!-- Основной элемент -->
     <div 
       class="menu-row" 
@@ -104,6 +104,8 @@
             @delete="$emit('delete', $event)"
             @reorder-children="$emit('reorder-children', $event)"
             @toggle-visibility="$emit('toggle-visibility', $event)"
+            @child-drag-start="$emit('child-drag-start')"
+            @child-drag-end="$emit('child-drag-end')"
           />
         </SlickItem>
       </SlickList>
@@ -143,7 +145,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['edit', 'delete', 'reorder-children', 'toggle-visibility'])
+const emit = defineEmits(['edit', 'delete', 'reorder-children', 'toggle-visibility', 'child-drag-start', 'child-drag-end'])
 
 // Флаг для предотвращения сброса при перетаскивании
 const isDragging = ref(false)
@@ -219,14 +221,12 @@ function toggleExpand() {
   }
 }
 
-// Начало перетаскивания
 function onSortStart() {
   isDragging.value = true
+  emit('child-drag-start')
 }
 
-// Обработка изменения порядка детей
 function onChildrenReorder() {
-  // Ждём пока vue-slicksort обновит массив через v-model:list
   nextTick(() => {
     const reorderedItems = localChildren.value.map((child, index) => ({
       id: child.id,
@@ -235,6 +235,7 @@ function onChildrenReorder() {
     }))
     
     emit('reorder-children', reorderedItems)
+    emit('child-drag-end')
     isDragging.value = false
   })
 }
@@ -251,9 +252,13 @@ function toggleVisibility() {
 <style lang="scss" scoped>
 .menu-row-wrapper {
   width: 100%;
-  
+
   &--nested {
     padding-left: 2rem;
+  }
+
+  &--dragging {
+    user-select: none;
   }
 }
 
@@ -285,6 +290,7 @@ function toggleVisibility() {
     padding: 0.25rem;
     display: flex;
     align-items: center;
+    user-select: none;
     
     &:active {
       cursor: grabbing;

@@ -1,5 +1,5 @@
 <template>
-  <div class="draggable-menu-list" :class="{ 'draggable-menu-list--dragging': isDragging }">
+  <div class="draggable-menu-list" :class="{ 'draggable-menu-list--dragging': isDragging || isChildDragging, 'draggable-menu-list--child-dragging': isChildDragging }">
     <SlickList v-model:list="combinedList" axis="y" lockAxis="y" :useDragHandle="true" @sort-start="onSortStart" @sort-end="onSortEnd" class="slick-list">
       <SlickItem v-for="(item, index) in combinedList" :key="item._uniqueKey" :index="index" :class="item._type === 'separator' ? 'slick-item-separator' : 'slick-item'">
         <div v-if="item._type === 'separator'" class="separator-row-inline" :class="{ 'separator-row-inline--inactive': !item.is_active }">
@@ -28,7 +28,7 @@
           </div>
         </div>
         
-        <DraggableMenuRow v-else :item="item" :level="0" :index="index" :expand-all-groups="expandAllGroups" @edit="$emit('edit', $event)" @delete="$emit('delete', $event)" @reorder-children="handleChildrenReorder" @toggle-visibility="$emit('toggle-visibility', $event)"/>
+        <DraggableMenuRow v-else :item="item" :level="0" :index="index" :expand-all-groups="expandAllGroups" @edit="$emit('edit', $event)" @delete="$emit('delete', $event)" @reorder-children="$emit('reorder', $event)" @toggle-visibility="$emit('toggle-visibility', $event)" @child-drag-start="onChildDragStart" @child-drag-end="onChildDragEnd"/>
       </SlickItem>
     </SlickList>
   </div>
@@ -58,6 +58,7 @@ const props = defineProps({
 const emit = defineEmits(['edit', 'delete', 'reorder', 'reorder-separators', 'toggle-visibility', 'edit-separator', 'delete-separator', 'toggle-visibility-separator'])
 
 const isDragging = ref(false)
+const isChildDragging = ref(false)
 const combinedList = ref([])
 
 function buildCombinedList(items, separators) {
@@ -141,8 +142,12 @@ function onSortEnd() {
   })
 }
 
-function handleChildrenReorder(data) {
-  emit('reorder', data)
+function onChildDragStart() {
+  isChildDragging.value = true
+}
+
+function onChildDragEnd() {
+  isChildDragging.value = false
 }
 </script>
 
@@ -152,6 +157,14 @@ function handleChildrenReorder(data) {
 
   &.draggable-menu-list--dragging {
     user-select: none;
+  }
+
+  &.draggable-menu-list--child-dragging {
+    > .slick-list > .slick-item,
+    > .slick-list > .slick-item-separator {
+      transform: none !important;
+      transition: none !important;
+    }
   }
 }
 
@@ -204,6 +217,7 @@ function handleChildrenReorder(data) {
     display: flex;
     align-items: center;
     margin-right: 0.25rem;
+    user-select: none;
     
     &:active {
       cursor: grabbing;
