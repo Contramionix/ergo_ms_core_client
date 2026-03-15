@@ -100,8 +100,8 @@ function transformMenuItem(item) {
     
     // Проходим по дочерним элементам в исходном порядке
     item.children.forEach(child => {
-      // Группы - элементы с item_type === 'group' или имеющие собственных детей
-      if (child.item_type === 'group' || (child.children && child.children.length > 0)) {
+      // Вложенные группы — элементы, имеющие собственных детей
+      if (child.children && child.children.length > 0) {
         children.push(transformMenuItem(child))
       } else {
         // Простые элементы - всё остальное (routes, offcanvas, external без детей)

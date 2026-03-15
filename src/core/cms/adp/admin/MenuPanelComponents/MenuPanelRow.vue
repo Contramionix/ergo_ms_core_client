@@ -95,23 +95,21 @@ watch(() => props.item.icon, (iconName) => {
 // Метки типов элементов
 const itemTypeLabels = {
   route: 'Маршрут',
-  group: 'Группа',
   offcanvas: 'Боковая панель',
   external: 'Внешняя ссылка'
 }
 
 const itemTypeLabel = computed(() => {
-  return itemTypeLabels[props.item.item_type] || props.item.item_type
+  return itemTypeLabels[props.item.item_type] || (props.item.item_type === 'group' ? 'Маршрут' : props.item.item_type)
 })
 
 const itemTypeBadgeClass = computed(() => {
   const classes = {
     route: 'bg-primary',
-    group: 'bg-info',
     offcanvas: 'bg-warning text-dark',
     external: 'bg-secondary'
   }
-  return classes[props.item.item_type] || 'bg-light text-dark'
+  return classes[props.item.item_type] || (props.item.item_type === 'group' ? 'bg-primary' : 'bg-light text-dark')
 })
 </script>
 

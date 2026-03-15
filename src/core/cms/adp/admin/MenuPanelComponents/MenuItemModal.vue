@@ -10,18 +10,15 @@
         <label class="form-label">Тип элемента <span class="text-danger">*</span></label>
         <select v-model="form.item_type" class="form-select" required>
           <option value="route">Маршрут Vue</option>
-          <option value="group">Группа</option>
           <option value="offcanvas">Боковая панель</option>
           <option value="external">Внешняя ссылка</option>
         </select>
       </div>
 
-      <div v-if="form.item_type === 'route' || form.item_type === 'group'" class="mb-3">
-        <label class="form-label">Имя маршрута Vue
-          <span v-if="form.item_type === 'route'" class="text-danger">*</span>
-        </label>
-        <input v-model="form.route_name" type="text" class="form-control" :required="form.item_type === 'route'" placeholder="Например: User, Settings, BI"/>
-        <div class="form-text">Имя маршрута из Vue Router (routeName)</div>
+      <div v-if="form.item_type === 'route'" class="mb-3">
+        <label class="form-label">Имя маршрута Vue</label>
+        <input v-model="form.route_name" type="text" class="form-control" placeholder="Например: User, Settings, BI"/>
+        <div class="form-text">Имя маршрута из Vue Router (routeName). Оставьте пустым для папки без перехода на страницу.</div>
       </div>
 
       <div v-if="form.item_type === 'offcanvas'" class="mb-3">
@@ -163,7 +160,7 @@ watch(() => props.item, (newItem) => {
       name: newItem.name || '',
       route_name: newItem.route_name || '',
       icon: newItem.icon || '',
-      item_type: newItem.item_type || 'route',
+      item_type: (newItem.item_type === 'group' ? 'route' : newItem.item_type) || 'route',
       page: newItem.page || '',
       external_url: newItem.external_url || '',
       parent: newItem.parent || null,
@@ -208,10 +205,6 @@ watch(() => form.value.icon, (iconName) => {
 
 const isFormValid = computed(() => {
   if (!form.value.name) return false
-  
-  if (form.value.item_type === 'route' && !form.value.route_name) {
-    return false
-  }
   
   if (form.value.item_type === 'offcanvas' && !form.value.page) {
     return false
