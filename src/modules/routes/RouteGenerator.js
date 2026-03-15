@@ -202,7 +202,8 @@ export class RouteGenerator {
   }
 
   /**
-   * Генерирует все роуты из routes.js файлов модулей
+   * Генерирует все роуты из routes.js файлов модулей.
+   * Catch-all (NotFound) переносится в конец, иначе перехватывает все пути до модульных роутов.
    * @param {Array} coreRoutes - базовые роуты системы
    * @returns {Array}
    */
@@ -210,9 +211,15 @@ export class RouteGenerator {
     const createdRouteNames = this.getCreatedRouteNames(coreRoutes)
     const missingRoutes = this.generateMissingRoutes(createdRouteNames)
 
+    const catchAllPaths = [':pathMatch(.*)', ':pathMatch(.*)*', ':pathMatch(.*)*?']
+    const isCatchAll = (r) => r.path && catchAllPaths.some(p => r.path.includes(p))
+    const catchAllRoutes = (coreRoutes || []).filter(isCatchAll)
+    const coreRest = (coreRoutes || []).filter(r => !isCatchAll(r))
+
     return [
-      ...coreRoutes,
-      ...missingRoutes
+      ...coreRest,
+      ...missingRoutes,
+      ...catchAllRoutes
     ]
   }
 
