@@ -39,17 +39,21 @@
 
       <div class="mb-3">
         <label class="form-label">Иконка</label>
-        <div class="input-group">
-          <input v-model="form.icon" type="text" class="form-control" placeholder="Название иконки Lucide" list="iconsList"/>
-          <span class="input-group-text">
-            <component v-if="iconComponent" :is="iconComponent" :size="20"/>
-            <HelpCircle v-else :size="20" class="text-muted" />
-          </span>
-        </div>
-        <datalist id="iconsList">
-          <option v-for="icon in availableIcons" :key="icon" :value="icon" />
-        </datalist>
-        <div class="form-text">Иконки из библиотеки Lucide (например: CircleUserRound, Settings)</div>
+        <SelectBox :model-value="form.icon || null" :options="LUCIDE_ICON_NAMES" searchable search-placeholder="Поиск иконки..." :include-all-option="true" all-label="Не выбрана" :virtualized="true" :item-height="36" :overscan="8" @update:model-value="v => form.icon = v ?? ''">
+          <template #option="{ value, label }">
+            <span class="d-inline-flex align-items-center gap-2">
+              <component v-if="LucideIcons[value]" :is="LucideIcons[value]" :size="18"/>
+              <span>{{ label }}</span>
+            </span>
+          </template>
+          <template #selected="{ label }">
+            <span class="d-inline-flex align-items-center gap-2">
+              <component v-if="iconComponent" :is="iconComponent" :size="20"/>
+              <span>{{ label }}</span>
+            </span>
+          </template>
+        </SelectBox>
+        <div class="form-text">Иконки из библиотеки <a href="https://lucide.dev/icons/" target="_blank" rel="noopener noreferrer" class="text-decoration-none">Lucide</a></div>
       </div>
 
       <div class="mb-3">
@@ -108,9 +112,13 @@
 
 <script setup>
 import { ref, computed, watch, shallowRef } from 'vue'
-import { HelpCircle } from 'lucide-vue-next'
 import * as LucideIcons from 'lucide-vue-next'
 import ModalCenter from '@/components/ModalCenter.vue'
+import SelectBox from '@/components/SelectBox.vue'
+
+const LUCIDE_ICON_NAMES = Object.keys(LucideIcons)
+  .filter(key => key !== 'default' && !key.endsWith('Icon') && /^[A-Z]/.test(key) && (typeof LucideIcons[key] === 'function' || (typeof LucideIcons[key] === 'object' && LucideIcons[key] !== null)))
+  .sort()
 
 const props = defineProps({
   item: {
@@ -126,10 +134,6 @@ const props = defineProps({
     default: () => []
   },
   roleGroups: {
-    type: Array,
-    default: () => []
-  },
-  availableIcons: {
     type: Array,
     default: () => []
   }

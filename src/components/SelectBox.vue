@@ -21,22 +21,46 @@
                         :placeholder="searchPlaceholder"
                         autocomplete="off"
                     />
-                    <ul class="dropdown-menu-list">
-                        <li v-if="includeAllOption && !hasActiveSearch">
-                            <a class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" @click.prevent="choose(null)">{{ allLabel }}</a>
-                        </li>
-                        <li v-for="opt in filteredOptions" :key="opt.key">
-                            <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" @click.prevent="choose(opt.value)">
-                                <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)">
-                                    <div v-if="multiple && showCheckboxesWhenMultiple" class="d-flex align-items-center">
-                                        <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input me-2" @change="() => {}" />
-                                        <span>{{ opt.label }}</span>
+                    <template v-if="!virtualized">
+                        <ul class="dropdown-menu-list">
+                            <li v-if="includeAllOption && !hasActiveSearch">
+                                <a class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" @click.prevent="choose(null)">{{ allLabel }}</a>
+                            </li>
+                            <li v-for="opt in filteredOptions" :key="opt.key">
+                                <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" @click.prevent="choose(opt.value)">
+                                    <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)">
+                                        <div v-if="multiple && showCheckboxesWhenMultiple" class="d-flex align-items-center">
+                                            <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input me-2" @change="() => {}" />
+                                            <span>{{ opt.label }}</span>
+                                        </div>
+                                        <span v-else>{{ opt.label }}</span>
+                                    </slot>
+                                </a>
+                            </li>
+                        </ul>
+                    </template>
+                    <template v-else>
+                        <div class="dropdown-menu-list-virtual-wrap">
+                            <div ref="listContainerRef" class="dropdown-menu-list virtual-list-container" @scroll="onListScroll">
+                                <div class="virtual-list-spacer" :style="{ height: totalHeight + 'px', position: 'relative' }">
+                                    <div class="virtual-list-inner" :style="{ position: 'absolute', top: 0, left: 0, right: 0, transform: 'translateY(' + virtualOffsetY + 'px)' }">
+                                        <template v-for="opt in visibleOptions" :key="opt.key">
+                                            <a v-if="opt.key === '__all__'" class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" :style="{ minHeight: itemHeight + 'px' }" @click.prevent="choose(null)">{{ opt.label }}</a>
+                                            <a v-else class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" :style="{ minHeight: itemHeight + 'px' }" @click.prevent="choose(opt.value)">
+                                                <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)">
+                                                    <div v-if="multiple && showCheckboxesWhenMultiple" class="d-flex align-items-center">
+                                                        <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input me-2" @change="() => {}" />
+                                                        <span>{{ opt.label }}</span>
+                                                    </div>
+                                                    <span v-else>{{ opt.label }}</span>
+                                                </slot>
+                                            </a>
+                                        </template>
                                     </div>
-                                    <span v-else>{{ opt.label }}</span>
-                                </slot>
-                            </a>
-                        </li>
-                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </teleport>
         </div>
@@ -72,6 +96,9 @@ const props = defineProps({
     multiple: { type: Boolean, default: false },
     showCheckboxesWhenMultiple: { type: Boolean, default: false },
     multipleLabelFormat: { type: String, default: 'list', validator: (v) => ['count', 'list'].includes(v) },
+    virtualized: { type: Boolean, default: false },
+    itemHeight: { type: Number, default: 36 },
+    overscan: { type: Number, default: 6 },
 })
 
 const emit = defineEmits(['update:modelValue', 'change', 'blur'])
@@ -166,6 +193,16 @@ function toggle() {
         }
         if (props.searchable) {
             nextTick(() => searchInputEl.value?.focus())
+        }
+        if (props.virtualized) {
+            startIndex.value = 0
+            endIndex.value = 0
+            nextTick(() => {
+                if (listContainerRef.value) {
+                    listContainerRef.value.scrollTop = 0
+                    updateVisibleRange()
+                }
+            })
         }
     }
 }
@@ -272,6 +309,47 @@ function handleClickOutside(e) {
 const rootEl = ref(null)
 const menuEl = ref(null)
 const valueTextEl = ref(null)
+const listContainerRef = ref(null)
+const listScrollTop = ref(0)
+const listViewportHeight = ref(260)
+const startIndex = ref(0)
+const endIndex = ref(0)
+
+const effectiveOptionsForVirtual = computed(() => {
+    if (!props.virtualized) return []
+    const list = filteredOptions.value
+    if (props.includeAllOption && !hasActiveSearch.value) {
+        return [{ key: '__all__', value: null, label: props.allLabel, raw: null }, ...list]
+    }
+    return list
+})
+
+const totalHeight = computed(() => (props.virtualized ? effectiveOptionsForVirtual.value.length * props.itemHeight : 0))
+const visibleOptions = computed(() => {
+    if (!props.virtualized) return filteredOptions.value
+    const list = effectiveOptionsForVirtual.value
+    const start = Math.max(0, startIndex.value)
+    const end = Math.min(list.length, endIndex.value)
+    return list.slice(start, end)
+})
+const virtualOffsetY = computed(() => (props.virtualized ? startIndex.value * props.itemHeight : 0))
+
+function updateVisibleRange() {
+    if (!props.virtualized || !listContainerRef.value) return
+    const el = listContainerRef.value
+    listViewportHeight.value = el.clientHeight
+    const scrollTop = el.scrollTop
+    listScrollTop.value = scrollTop
+    const count = effectiveOptionsForVirtual.value.length
+    const start = Math.max(0, Math.floor(scrollTop / props.itemHeight) - props.overscan)
+    const end = Math.min(count, Math.ceil((scrollTop + el.clientHeight) / props.itemHeight) + props.overscan)
+    startIndex.value = start
+    endIndex.value = end
+}
+
+function onListScroll() {
+    updateVisibleRange()
+}
 const currentFontSize = ref('1rem')
 const baseFontSize = 16
 const minFontSize = 12
@@ -317,6 +395,19 @@ onBeforeUnmount(() => {
 watch(() => props.modelValue, async () => {
     await nextTick()
     adjustFontSize()
+})
+
+watch([() => (props.virtualized ? effectiveOptionsForVirtual.value.length : filteredOptions.value.length), isOpen], () => {
+    if (props.virtualized && isOpen.value) {
+        nextTick(updateVisibleRange)
+    }
+})
+
+watch(searchQuery, () => {
+    if (props.virtualized && isOpen.value && listContainerRef.value) {
+        listContainerRef.value.scrollTop = 0
+        nextTick(updateVisibleRange)
+    }
 })
 </script>
 
@@ -392,6 +483,28 @@ watch(() => props.modelValue, async () => {
     max-height: 260px;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+.dropdown-menu-list-virtual-wrap {
+    display: flex;
+    flex-direction: column;
+    max-height: 260px;
+    overflow: hidden;
+}
+
+.dropdown-menu-list.virtual-list-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.virtual-list-spacer {
+    pointer-events: none;
+}
+
+.virtual-list-inner {
+    pointer-events: auto;
 }
 
 .fixed-menu {

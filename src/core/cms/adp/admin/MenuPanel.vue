@@ -29,7 +29,7 @@
       </div>
     </div>
 
-    <MenuItemModal v-if="showItemModal" :item="currentItem" :parent-options="parentOptions" :roles="roles" :role-groups="roleGroups" :available-icons="availableIcons" @save="saveItem" @close="closeItemModal"/>
+    <MenuItemModal v-if="showItemModal" :item="currentItem" :parent-options="parentOptions" :roles="roles" :role-groups="roleGroups" @save="saveItem" @close="closeItemModal"/>
     
     <MenuSeparatorModal v-if="showSeparatorModal" :separator="currentSeparator" @save="saveSeparator" @close="closeSeparatorModal"/>
     
@@ -60,7 +60,6 @@ import {
   createMenuSeparator,
   updateMenuSeparator,
   deleteMenuSeparator,
-  getAvailableIcons,
   clearMenuCache,
   reorderMenuItems
 } from '@/core/cms/js/menuService.js'
@@ -81,7 +80,6 @@ const menuItems = ref([])
 const separators = ref([])
 const roles = ref([])
 const roleGroups = ref([])
-const availableIcons = ref([])
 
 const showDeleteSeparatorToast = ref(false)
 const separatorToDelete = ref(null)
@@ -269,14 +267,6 @@ async function loadRoleGroups() {
     }
   } catch (error) {
     console.error('Ошибка загрузки ролевых групп:', error)
-  }
-}
-
-async function loadIcons() {
-  try {
-    availableIcons.value = await getAvailableIcons()
-  } catch (error) {
-    console.error('Ошибка загрузки иконок:', error)
   }
 }
 
@@ -618,8 +608,7 @@ onMounted(async () => {
     loadMenuItems(),
     loadSeparators(),
     loadRoles(),
-    loadRoleGroups(),
-    loadIcons()
+    loadRoleGroups()
   ])
   syncInitialCombinedOrder()
   window.addEventListener('beforeunload', onBeforeUnload)
