@@ -30,7 +30,7 @@
 
       <div v-if="form.item_type === 'external'" class="mb-3">
         <label class="form-label">URL <span class="text-danger">*</span></label>
-        <input v-model="form.external_url" type="url" class="form-control" required placeholder="https://example.com"/>
+        <input v-model="form.external_url" type="url" class="form-control" style="background-color: var(--var-primary-background)" required placeholder="https://ergoms.com"/>
       </div>
 
       <div class="mb-3">
