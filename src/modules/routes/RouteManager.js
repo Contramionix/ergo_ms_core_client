@@ -177,9 +177,18 @@ export class RouteManager extends ModuleLoader {
       }
     }
 
-    // Обрабатываем дочерние роуты
+    // Обрабатываем дочерние роуты (поддержка и массива, и объекта { name: config })
+    let childrenArray = null
     if (routeConfig.children && Array.isArray(routeConfig.children)) {
-      route.children = routeConfig.children.map(childConfig => {
+      childrenArray = routeConfig.children
+    } else if (routeConfig.children && typeof routeConfig.children === 'object') {
+      childrenArray = Object.entries(routeConfig.children).map(([childName, childConfig]) => ({
+        name: childName,
+        ...childConfig
+      }))
+    }
+    if (childrenArray && childrenArray.length > 0) {
+      route.children = childrenArray.map(childConfig => {
         const childRoute = {
           path: childConfig.path,
           name: childConfig.name,
