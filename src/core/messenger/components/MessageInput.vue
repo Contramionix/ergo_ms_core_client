@@ -12,7 +12,7 @@
 
     <div v-if="editingMessage && keptAttachments.length > 0" class="msng-input__edit-attachments">
       <div v-for="att in keptAttachments" :key="att.id" class="msng-input__edit-att">
-        <img v-if="isImageAtt(att.mime_type)" :src="att.file_url" class="msng-input__edit-att-thumb" :alt="att.original_filename"/>
+        <img v-if="isImageAtt(att.mime_type) && getSafeHref(att.file_url)" :src="getSafeHref(att.file_url)" class="msng-input__edit-att-thumb" :alt="att.original_filename"/>
         <div v-else class="msng-input__edit-att-icon">
           <FileText :size="20" />
         </div>
@@ -62,6 +62,7 @@
 <script setup>
 import { ref, watch, nextTick, computed } from 'vue'
 import { Paperclip, Smile, SendHorizonal, Pencil, X, Check, FileText, CornerDownLeft } from 'lucide-vue-next'
+import { getSafeHref } from '@/js/utils/urlUtils.js'
 import AttachmentPreview from './AttachmentPreview.vue'
 import EmojiPicker from './EmojiPicker.vue'
 

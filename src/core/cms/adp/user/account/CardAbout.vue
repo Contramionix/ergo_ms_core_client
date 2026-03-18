@@ -8,6 +8,7 @@ import {
 import { useProfile } from '@/core/cms/js/profileService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { displayPhone } from '@/js/utils/phoneUtils.js'
+import { getSafeHref } from '@/js/utils/urlUtils.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 import AvatarCropModal from '@/components/AvatarCropModal.vue'
 
@@ -161,6 +162,9 @@ const displayData = computed(() => {
     memberSince: formatDate(profileData.value.dateJoined)
   }
 })
+
+// Безопасный URL веб-сайта для href (только http/https), иначе null — защита от XSS
+const safeWebsiteHref = computed(() => getSafeHref(profileData.value?.website))
 
 // Вспомогательная функция для нормализации пустых строк
 const normalizeEmptyString = (value) => {
@@ -474,7 +478,7 @@ onMounted(() => {
               <label class="form-label text-muted small">Веб-сайт</label>
               <div v-if="!editing" class="fw-medium d-flex align-items-center">
                 <Link :size="16" class="text-muted me-2" />
-                <a v-if="displayData.website !== 'Не указан'" :href="displayData.website" target="_blank"
+                <a v-if="safeWebsiteHref" :href="safeWebsiteHref" target="_blank" rel="noopener noreferrer"
                   class="text-decoration-none">
                   {{ displayData.website }}
                 </a>

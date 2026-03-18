@@ -16,13 +16,19 @@
         <p v-if="message.text" class="msng-bubble__text">{{ message.text }}</p>
 
         <div v-if="hasAttachments" class="msng-bubble__attachments">
-          <a v-for="att in message.attachments" :key="att.id" :href="att.file_url" target="_blank" class="msng-bubble__attachment">
-            <img v-if="isImage(att.mime_type)" :src="att.file_url" :alt="att.original_filename" class="msng-bubble__attachment-img"/>
+          <template v-for="att in message.attachments" :key="att.id">
+            <a v-if="getSafeHref(att.file_url)" :href="getSafeHref(att.file_url)" target="_blank" rel="noopener noreferrer" class="msng-bubble__attachment">
+              <img v-if="isImage(att.mime_type)" :src="getSafeHref(att.file_url)" :alt="att.original_filename" class="msng-bubble__attachment-img"/>
+              <span v-else class="msng-bubble__attachment-file">
+                <Paperclip :size="14" class="msng-bubble__attachment-icon" />
+                {{ att.original_filename }}
+              </span>
+            </a>
             <span v-else class="msng-bubble__attachment-file">
               <Paperclip :size="14" class="msng-bubble__attachment-icon" />
               {{ att.original_filename }}
             </span>
-          </a>
+          </template>
         </div>
 
         <span class="msng-bubble__time">
@@ -58,6 +64,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Paperclip, Pencil, Trash2, Reply } from 'lucide-vue-next'
+import { getSafeHref } from '@/js/utils/urlUtils.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
