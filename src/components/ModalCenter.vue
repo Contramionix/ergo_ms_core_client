@@ -29,7 +29,7 @@ const emit = defineEmits(['closemodal'])
             class="btn-close"
             data-bs-dismiss="modal"
             aria-label="Закрыть"
-            v-on:click="emit('closemodal')"
+            v-on:click.stop="emit('closemodal')"
           ></button>
         </div>
         <div class="modal-body">
