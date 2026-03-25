@@ -17,6 +17,7 @@ import { IconManager } from './icons/IconManager.js'
 import { SeparatorManager } from './menu/SeparatorManager.js'
 import { RouteGenerator } from './routes/RouteGenerator.js'
 import { PermissionRulesManager } from './permissions/PermissionRulesManager.js'
+import { PermissionSectionsManager } from './permissions/PermissionSectionsManager.js'
 
 export class ModuleManager {
   constructor(config = {}) {
@@ -29,6 +30,7 @@ export class ModuleManager {
       separators: { byOrderIndex: config.menuOrder?.separators || {} }
     })
     this.permissionRulesManager = new PermissionRulesManager()
+    this.permissionSectionsManager = new PermissionSectionsManager()
     this.routeGenerator = null
 
     this.config = config
@@ -47,7 +49,8 @@ export class ModuleManager {
     await Promise.all([
       this.routeManager.initialize(),
       this.endpointManager.initialize(),
-      this.permissionRulesManager.initialize()
+      this.permissionRulesManager.initialize(),
+      this.permissionSectionsManager.initialize()
     ])
 
     // Создаем генератор роутов
@@ -113,6 +116,25 @@ export class ModuleManager {
   async getPermissionRules() {
     await this.ensureInitialized()
     return this.permissionRulesManager.getAllRules()
+  }
+
+  /**
+   * Получает все секции прав модулей
+   * @returns {Array}
+   */
+  async getPermissionSections() {
+    await this.ensureInitialized()
+    return this.permissionSectionsManager.getAllSections()
+  }
+
+  /**
+   * Формирует начальное состояние прав из всех секций
+   * @param {Array} [sections] - секции (по умолчанию все обнаруженные)
+   * @returns {Object}
+   */
+  async buildInitialPermissionState(sections) {
+    await this.ensureInitialized()
+    return this.permissionSectionsManager.buildInitialPermissionState(sections)
   }
 
   /**
@@ -196,7 +218,8 @@ export class ModuleManager {
       endpoints: this.endpointManager.getStatistics(),
       icons: this.iconManager.getStatistics(),
       separators: this.separatorManager.getStatistics(),
-      permissionRules: this.permissionRulesManager.getStatistics()
+      permissionRules: this.permissionRulesManager.getStatistics(),
+      permissionSections: this.permissionSectionsManager.getStatistics()
     }
   }
 
@@ -236,6 +259,7 @@ export class ModuleManager {
     this.menuManager.clearCache()
     this.endpointManager.clearCache()
     this.permissionRulesManager.clearCache()
+    this.permissionSectionsManager.clearCache()
   }
 
   /**
@@ -272,6 +296,10 @@ export class ModuleManager {
 
   get permissionRules() {
     return this.permissionRulesManager
+  }
+
+  get permissionSections() {
+    return this.permissionSectionsManager
   }
 }
 

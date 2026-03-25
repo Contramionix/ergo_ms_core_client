@@ -23,6 +23,7 @@ const sharedGlobs = {
   coreRoutes: import.meta.glob('../../core/**/js/routes.js', { eager: true }),
   coreEndpoints: import.meta.glob('../../core/**/js/endpoints.js', { eager: true }),
   corePermissionRules: import.meta.glob('../../core/**/js/permission-rules.js', { eager: true }),
+  corePermissionSections: import.meta.glob('../../core/**/js/permission-sections.js', { eager: true }),
   coreMenuConfigs: import.meta.glob('../../core/**/js/menu-config.json', { eager: true, import: 'default' }),
   
   // Core компоненты (lazy loading)
@@ -35,6 +36,10 @@ const sharedGlobs = {
   },
   modulesEndpoints: import.meta.glob('../../../../../modules/*/client/js/endpoints.js', { eager: true }),
   modulesPermissionRules: import.meta.glob('../../../../../modules/*/client/js/permission-rules.js', { eager: true }),
+  modulesPermissionSections: {
+    ...import.meta.glob('../../../../../modules/*/client/js/permission-sections.js', { eager: true }),
+    ...import.meta.glob('../../../../../modules/*/client/**/js/permission-sections.js', { eager: true })
+  },
   modulesMenuConfigs: import.meta.glob('../../../../../modules/*/client/js/menu-config.json', { eager: true, import: 'default' }),
   
   // External компоненты (lazy loading)
@@ -59,6 +64,7 @@ export class ModuleLoader {
       'js/routes.js': ['coreRoutes', 'modulesRoutes'],
       'js/endpoints.js': ['coreEndpoints', 'modulesEndpoints'],
       'js/permission-rules.js': ['corePermissionRules', 'modulesPermissionRules'],
+      'js/permission-sections.js': ['corePermissionSections', 'modulesPermissionSections'],
       'js/menu-config.json': ['coreMenuConfigs', 'modulesMenuConfigs'],
       'components': ['coreComponents', 'modulesComponents']
     }
@@ -124,7 +130,7 @@ export class ModuleLoader {
     
     // Для eager модулей (routes.js, endpoints.js, menu-config.json) они уже загружены
     // Проверяем паттерн, чтобы определить, нужны ли промисы
-    const isEagerPattern = ['js/routes.js', 'js/endpoints.js', 'js/menu-config.json', 'js/permission-rules.js'].includes(pattern)
+    const isEagerPattern = ['js/routes.js', 'js/endpoints.js', 'js/menu-config.json', 'js/permission-rules.js', 'js/permission-sections.js'].includes(pattern)
     
     if (isEagerPattern) {
       // Для eager-модулей они уже загружены, просто извлекаем данные синхронно

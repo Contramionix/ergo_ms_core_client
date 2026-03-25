@@ -49,6 +49,23 @@ export async function getPermissionRules() {
 }
 
 /**
+ * Получает все секции прав модулей
+ * @returns {Promise<Array>}
+ */
+export async function getPermissionSections() {
+  return await moduleManager.getPermissionSections()
+}
+
+/**
+ * Формирует начальное состояние прав из всех секций
+ * @param {Array} [sections]
+ * @returns {Promise<Object>}
+ */
+export async function buildInitialPermissionState(sections) {
+  return await moduleManager.buildInitialPermissionState(sections)
+}
+
+/**
  * Получает иконку по имени
  * @param {string} iconName - имя иконки
  * @returns {Object|null}
@@ -183,6 +200,7 @@ export { RouteGenerator } from './routes/RouteGenerator.js'
 export { CoreRoutesManager } from './routes/CoreRoutesManager.js'
 export { ModuleLoader } from './core/ModuleLoader.js'
 export { PermissionRulesManager } from './permissions/PermissionRulesManager.js'
+export { PermissionSectionsManager } from './permissions/PermissionSectionsManager.js'
 
 // Экспортируем moduleManager как default
 export default moduleManager
