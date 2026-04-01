@@ -12,6 +12,10 @@ const props = defineProps({
   color: {
     type: String,
     default: 'primary'
+  },
+  variant: {
+    type: String,
+    default: 'default' // default | button
   }
 })
 
@@ -33,7 +37,10 @@ const ringStyle = computed(() => {
 </script>
 
 <template>
-  <div class="spinner-loading">
+  <div
+    class="spinner-loading"
+    :class="[`spinner-loading--variant-${props.variant}`]"
+  >
     <div
       class="spinner-loading__ring"
       :class="ringClass"
@@ -54,6 +61,15 @@ const ringStyle = computed(() => {
   align-items: center;
   justify-content: center;
   gap: 1rem;
+}
+
+.spinner-loading--variant-button {
+  gap: 0;
+}
+
+.spinner-loading--variant-button .spinner-loading__ring {
+  width: 40px;
+  height: 40px;
 }
 
 .spinner-loading__ring {
