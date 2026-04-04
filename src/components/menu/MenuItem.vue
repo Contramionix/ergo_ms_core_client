@@ -18,9 +18,10 @@
 
 <script setup>
 import { ChevronRight, Dot } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { iconMapping } from '@/config/icons-mapping.js'
+import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -33,6 +34,9 @@ const props = defineProps({
 const router = useRouter()
 const route = useRoute()
 const emit = defineEmits(['navigate', 'toggle-group'])
+
+const injectedIconSizes = inject(MENU_ICON_SIZES_KEY, null)
+const iconSizes = computed(() => injectedIconSizes?.value ?? getDefaultMenuIconSizes())
 
 // Уникальный идентификатор для группы (соответствует логике в MenuList.vue)
 const groupId = computed(() => {
@@ -187,15 +191,15 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
       }" :style="{ paddingLeft: paddingLeft }" @click="handleClick">
       <div class="menu-item__label">
         <div class="menu-item__icon icon-flex">
-          <component v-if="itemIcon" :is="itemIcon" :size="20" />
-          <Dot v-else :size="20" />
+          <component v-if="itemIcon" :is="itemIcon" :size="iconSizes.item" />
+          <Dot v-else :size="iconSizes.item" />
         </div>
         <div v-if="isHovering" class="menu-item__name text-smooth-animation" :title="item.name || item.title">
           {{ item.name || item.title }}
         </div>
       </div>
       <div v-if="isGroup && isHovering" class="menu-item__chevron icon-flex">
-        <ChevronRight :size="16" :class="{ rotated: isOpen }" />
+        <ChevronRight :size="iconSizes.chevronNested" :class="{ rotated: isOpen }" />
       </div>
     </div>
     <ul v-if="isGroup" class="menu-item__children" :class="{ 'is-open': isOpen }">
@@ -247,9 +251,10 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
 
 .menu-item__name {
   white-space: nowrap;
-  overflow: visible;
-  text-overflow: unset;
+  overflow: hidden;
+  text-overflow: ellipsis;
   flex: 1;
+  min-width: 0;
 }
 
 .menu-item__chevron svg {

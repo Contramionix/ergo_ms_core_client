@@ -1,7 +1,7 @@
 <script setup>
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
-import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { onMounted, onBeforeUnmount, provide, ref, watch } from 'vue'
 import { ChevronLeft, Cog, Minus } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
@@ -20,6 +20,7 @@ import MenuToolbar from '@/components/menu/MenuToolbar.vue'
 
 import { useMenuWidth } from './composables/useMenuWidth'
 import { useMenuNavigation } from './composables/useMenuNavigation'
+import { useMenuIconSizes, MENU_ICON_SIZES_KEY } from './composables/useMenuIconSizes'
 
 const props = defineProps({
   isVisible: Boolean,
@@ -52,6 +53,9 @@ const {
   initializeMenuWidth,
   setupWidthTracking
 } = useMenuWidth()
+
+const { menuIconSizes } = useMenuIconSizes()
+provide(MENU_ICON_SIZES_KEY, menuIconSizes)
 
 // Helper функция для вызова updateMenuWidth с текущими параметрами
 const updateWidth = () => {
@@ -245,7 +249,7 @@ onBeforeUnmount(() => {
   >
     <div class="side-menu__header side-header">
       <RouterLink to="/" class="side-menu__logo">
-        <div class="side-header__icon">
+        <div class="side-header__icon" aria-hidden="true">
           <Cog :size="32" />
         </div>
         <div class="side-header__title text-smooth-animation" :class="{ hidden: !isHovering }">
@@ -254,16 +258,21 @@ onBeforeUnmount(() => {
       </RouterLink>
       <div class="side-menu__toggle">
         <button @click="toggleMenu" class="btn btn-primary">
-          <ChevronLeft :class="{ rotated: isCollapsed }" :size="20" class="menu-group__chevron" />
+          <ChevronLeft
+            :class="{ rotated: isCollapsed }"
+            :size="menuIconSizes.toggle"
+            class="menu-group__chevron"
+          />
         </button>
       </div>
     </div>
     <div class="side-header__shadow" style="display: block"></div>
-    <div class="side-menu__scroll">
-      <ul class="side-menu__list p-3" :class="{ short: !isHovering }">
+    <div class="side-menu__body">
+      <div class="side-menu__scroll">
+        <ul class="side-menu__list p-2" :class="{ short: !isHovering }">
         <li v-for="(section, index) in menuSections" :key="index">
-          <div v-if="shouldShowSeparator(index)" class="side-menu__divider side-divider py-3">
-            <div class="side-divider__icon"><Minus :size="20" /></div>
+          <div v-if="shouldShowSeparator(index)" class="side-menu__divider side-divider py-2">
+            <div class="side-divider__icon"><Minus :size="menuIconSizes.divider" /></div>
             <div class="side-divider__name text-smooth-animation" :class="{ hidden: !isHovering }">
               {{ getSeparator(index) }}
             </div>
@@ -283,18 +292,34 @@ onBeforeUnmount(() => {
             @toggle-nested="toggleNestedGroup"
           />
         </li>
-      </ul>
+        </ul>
+      </div>
+      <MenuToolbar
+        :is-collapsed="isCollapsed"
+        :is-hovering="isHovering"
+        @dropdown-state-change="setToolbarDropdownActive"
+      />
     </div>
-    <MenuToolbar 
-      :is-collapsed="isCollapsed" 
-      :is-hovering="isHovering" 
-      @dropdown-state-change="setToolbarDropdownActive"
-    />
   </aside>
 </template>
 
 <style lang="scss" scoped>
 // Меню
+.side-menu__logo {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  min-width: 0;
+}
+
+.side-menu__body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.875rem;
+}
+
 .side-menu {
   position: fixed;
   display: flex;
@@ -389,11 +414,15 @@ onBeforeUnmount(() => {
   transition: background $transition;
 }
 
-// Иконка логотипа
+// Иконка логотипа (фиксированный размер, не от компактного font-size тела меню)
 .side-header__icon {
+  flex-shrink: 0;
   width: 32px;
   height: 32px;
   color: var(--color-primary-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 // Заголовок
@@ -457,12 +486,22 @@ onBeforeUnmount(() => {
   padding: $padding-internal $padding-external;
   overflow: hidden;
 
+  &__icon {
+    flex-shrink: 0;
+  }
+
   &__name,
   &__icon {
     user-select: none;
     color: var(--color-secondary-text);
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+
+  &__name {
+    overflow: hidden;
+    flex: 1;
+    min-width: 0;
   }
 }
 </style>

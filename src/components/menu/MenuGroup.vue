@@ -33,10 +33,11 @@
 
 <script setup>
 import { ChevronRight, Dot } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import MenuItem from './MenuItem.vue'
 import { iconMapping } from '@/config/icons-mapping.js'
+import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
 
 const props = defineProps({
   data: { type: Object, required: true },
@@ -47,6 +48,8 @@ const props = defineProps({
   nestedOpenStates: { type: Object, default: () => ({}) },
 })
 
+const injectedIconSizes = inject(MENU_ICON_SIZES_KEY, null)
+const iconSizes = computed(() => injectedIconSizes?.value ?? getDefaultMenuIconSizes())
 
 // Иконка группы: поддерживаем как прямой компонент, так и строковый ключ из конфигурации
 const groupIcon = computed(() => {
@@ -242,15 +245,19 @@ function routeClick(event) {
     <div class="side-title nav-btn" :class="{ 'side-title--active': isCurrentGroupPage }" @click="routeClick($event)">
       <div class="side-title__label">
         <div class="side-icon icon-flex">
-          <component v-if="groupIcon" :is="groupIcon" :size="20" />
-          <Dot v-else :size="20" />
+          <component v-if="groupIcon" :is="groupIcon" :size="iconSizes.item" />
+          <Dot v-else :size="iconSizes.item" />
         </div>
-        <div class="side-title__name text-smooth-animation" :class="{ hidden: !isHovering }">
+        <div
+          class="side-title__name text-smooth-animation"
+          :class="{ hidden: !isHovering }"
+          :title="data.title"
+        >
           {{ data.title }}
         </div>
       </div>
       <div v-if="isHovering && hasMenuItems" class="nav-icon icon-flex">
-        <ChevronRight :size="20" :class="{ rotated: isOpen }" />
+        <ChevronRight :size="iconSizes.chevronGroup" :class="{ rotated: isOpen }" />
       </div>
     </div>
 
@@ -321,6 +328,14 @@ function routeClick(event) {
 
 .side-title__name {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.side-icon {
+  flex-shrink: 0;
 }
 
 .side-subtitle__name {

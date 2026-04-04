@@ -57,7 +57,7 @@ const routeViewKey = computed(() => {
   return route.path
 })
 
-const leftPadding = ref('300px') // Увеличиваем начальное значение для адаптивной ширины
+const leftPadding = ref('320px')
 const isMenuVisible = ref(window.innerWidth >= 1200)
 const isMenuToggledManually = ref(false)
 const isOverlayVisible = ref(false)

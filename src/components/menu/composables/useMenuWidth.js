@@ -1,21 +1,32 @@
 import { ref } from 'vue'
 
+const MENU_ITEM_MEASURE_FONT = '14px system-ui, -apple-system, sans-serif'
+const SITE_BRAND_MEASURE_FONT = 'bold 22px system-ui, -apple-system, sans-serif'
+const VIEWPORT_WIDTH_CAP_FRACTION = 0.26
+const MENU_WIDTH_ABSOLUTE_MAX = 280
+
+function effectiveMaxMenuWidth() {
+  if (typeof window === 'undefined') return MENU_WIDTH_ABSOLUTE_MAX
+  return Math.min(
+    MENU_WIDTH_ABSOLUTE_MAX,
+    Math.floor(window.innerWidth * VIEWPORT_WIDTH_CAP_FRACTION)
+  )
+}
+
 /**
  * Composable для управления шириной меню
  */
 export function useMenuWidth() {
   const menuWidth = ref(260)
-  const minMenuWidth = 260
-  const maxMenuWidth = Infinity
+  const minMenuWidth = 240
+  const maxMenuWidth = MENU_WIDTH_ABSOLUTE_MAX
   let widthUpdateTimeout = null
 
-  // Фиксированная ширина блока имени в тулбаре (единый размер меню с активной/неактивной вкладкой)
   const getMinNameWidthForToolbar = (context) => {
-    context.font = '14px system-ui, -apple-system, sans-serif'
+    context.font = MENU_ITEM_MEASURE_FONT
     return context.measureText('Имя Фамилия').width
   }
 
-  // Функция для расчета ширины тулбара
   const calculateToolbarWidth = (userStore) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
       return 0
@@ -25,7 +36,7 @@ export function useMenuWidth() {
       const canvas = document.createElement('canvas')
       const context = canvas.getContext('2d')
 
-      let toolbarWidth = 40 // Аватар
+      let toolbarWidth = 40
 
       if (userStore.user) {
         const nameWidth = getMinNameWidthForToolbar(context)
@@ -36,11 +47,11 @@ export function useMenuWidth() {
         toolbarWidth += 60
       }
 
-      toolbarWidth += 15 // Отступ
-      toolbarWidth += 32 * 3 // 3 кнопки
-      toolbarWidth += 2 * 2 // Промежутки
-      toolbarWidth += 40 // Padding
-      toolbarWidth += 20 // Запас
+      toolbarWidth += 15
+      toolbarWidth += 32 * 3
+      toolbarWidth += 2 * 2
+      toolbarWidth += 40
+      toolbarWidth += 20
 
       return toolbarWidth
     } catch {
@@ -48,7 +59,6 @@ export function useMenuWidth() {
     }
   }
 
-  // Функция для расчета оптимальной ширины меню
   const calculateOptimalWidth = (menuSections, siteName, userStore, getSeparator, shouldShowSeparator) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
       return minMenuWidth
@@ -56,53 +66,51 @@ export function useMenuWidth() {
 
     const canvas = document.createElement('canvas')
     const context = canvas.getContext('2d')
-    context.font = '14px system-ui, -apple-system, sans-serif'
 
     let maxWidth = 0
 
-    // Проверяем ширину названия сайта
-    const siteNameWidth = context.measureText(siteName || 'ERGO MS').width + 80
+    context.font = SITE_BRAND_MEASURE_FONT
+    const siteNameWidth = context.measureText(siteName || 'ERGO MS').width + 100
     maxWidth = Math.max(maxWidth, siteNameWidth)
 
-    // Проверяем все секции меню
+    context.font = MENU_ITEM_MEASURE_FONT
+
     if (menuSections && Array.isArray(menuSections)) {
       menuSections.forEach(section => {
         if (!section || !section.title) return
 
-        const titleWidth = context.measureText(section.title).width + 100
+        const titleWidth = context.measureText(section.title).width + 72
         maxWidth = Math.max(maxWidth, titleWidth)
 
         if (section.list && Array.isArray(section.list)) {
           section.list.forEach(item => {
             if (!item || !item.name) return
-            const itemWidth = context.measureText(item.name).width + 120
+            const itemWidth = context.measureText(item.name).width + 64
             maxWidth = Math.max(maxWidth, itemWidth)
           })
         }
       })
 
-      // Проверяем разделители
       for (let i = 0; i < menuSections.length; i++) {
         if (shouldShowSeparator(i)) {
           const separatorText = getSeparator(i)
           if (separatorText) {
-            const separatorWidth = context.measureText(separatorText).width + 80
+            const separatorWidth = context.measureText(separatorText).width + 56
             maxWidth = Math.max(maxWidth, separatorWidth)
           }
         }
       }
     }
 
-    // Учитываем ширину тулбара
     const toolbarWidth = calculateToolbarWidth(userStore)
     maxWidth = Math.max(maxWidth, toolbarWidth)
 
-    maxWidth += 10 // Запас
+    maxWidth += 8
 
-    return Math.max(maxWidth, minMenuWidth)
+    const capped = Math.min(maxWidth, effectiveMaxMenuWidth())
+    return Math.max(capped, minMenuWidth)
   }
 
-  // Обновление ширины с дебаунсом
   const updateMenuWidth = (menuSections, siteName, userStore, getSeparator, shouldShowSeparator, emit, isCollapsed) => {
     if (typeof window !== 'undefined') {
       if (widthUpdateTimeout) {
@@ -122,7 +130,6 @@ export function useMenuWidth() {
     }
   }
 
-  // Первоначальная установка ширины
   const initializeMenuWidth = (menuSections, siteName, userStore, getSeparator, shouldShowSeparator, emit, isCollapsed) => {
     if (typeof window !== 'undefined') {
       const newWidth = calculateOptimalWidth(menuSections, siteName, userStore, getSeparator, shouldShowSeparator)
@@ -141,7 +148,6 @@ export function useMenuWidth() {
     }
   }
 
-  // Настройка отслеживания изменений
   const setupWidthTracking = (callback) => {
     if (typeof window === 'undefined') return
 
