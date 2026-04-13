@@ -85,7 +85,7 @@ const props = defineProps({
     disabled: { type: Boolean, default: false },
     clearable: { type: Boolean, default: false },
     includeAllOption: { type: Boolean, default: true },
-    allLabel: { type: String, default: 'Все' },
+    allLabel: { type: String, default: 'Не выбрана' },
     valueKey: { type: String, default: 'id' },
     labelKey: { type: String, default: 'name' },
     size: { type: String, default: 'md' },
