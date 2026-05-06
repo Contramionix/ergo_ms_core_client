@@ -10,16 +10,11 @@
         </div>
       </div>
       <div class="tools-buttons" v-if="shouldShowFullInfo">
-        <div class="tools__apps">
-          <AppsMenu ref="appsMenuRef" @dropdown-toggle="(active) => setDropdownActive('apps', active)" />
+        <div class="tools__notifications">
+          <SidebarNotifications ref="notificationsMenuRef" @dropdown-toggle="(active) => setDropdownActive('notifications', active)"/>
         </div>
         <div v-if="isAssistantAvailable" class="tools__assistant" @click="toggleAssistant">
-          <div
-            class="header-btn assistant-btn"
-            :class="{ active: isAssistantVisible }"
-            v-tooltip
-            title="AI Ассистент"
-          >
+          <div class="header-btn assistant-btn" :class="{ active: isAssistantVisible }" v-tooltip title="AI Ассистент">
             <Bot :size="20" />
           </div>
         </div>
@@ -29,21 +24,14 @@
       </div>
     </div>
 
-    <component
-      v-if="isAssistantAvailable && currentModuleComponent && shouldShowFullInfo"
-      :is="currentModuleComponent"
-      ref="assistantChat"
-      :is-visible="isAssistantVisible"
-      @bi-query="handleBIQuery"
-      @chat-message="handleChatMessage"
-    />
+    <component v-if="isAssistantAvailable && currentModuleComponent && shouldShowFullInfo" :is="currentModuleComponent" ref="assistantChat" :is-visible="isAssistantVisible" @bi-query="handleBIQuery" @chat-message="handleChatMessage"/>
   </div>
 </template>
 
 <script setup>
 import { Bot } from 'lucide-vue-next'
 import UserMenu from '@/components/header/UserMenu.vue'
-import AppsMenu from '@/components/menu/AppsMenu.vue'
+import SidebarNotifications from '@/components/menu/SidebarNotifications.vue'
 import SettingsMenu from '@/components/menu/SettingsMenu.vue'
 import { computed, ref, onMounted, watch, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
@@ -83,7 +71,7 @@ const currentModuleComponent = shallowRef(null)
 const currentModuleClient = ref(null)
 const currentModuleConfig = ref(null)
 const userMenuRef = ref(null)
-const appsMenuRef = ref(null)
+const notificationsMenuRef = ref(null)
 const settingsMenuRef = ref(null)
 
 // Состояние для отслеживания активных выпадающих элементов
@@ -155,7 +143,7 @@ const setDropdownActive = (dropdownId, active) => {
     // Закрываем другие выпадающие меню ПЕРЕД открытием нового (синхронно)
     const allMenus = [
       { id: 'userMenu', ref: userMenuRef },
-      { id: 'apps', ref: appsMenuRef },
+      { id: 'notifications', ref: notificationsMenuRef },
       { id: 'settings', ref: settingsMenuRef }
     ]
     

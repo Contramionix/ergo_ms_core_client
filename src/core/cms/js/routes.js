@@ -14,6 +14,15 @@ export default {
         "meta": {
           "requiresAuth": true
         }
+      },
+      {
+        "path": "notifications",
+        "name": "UserNotifications",
+        "component": "@/core/cms/adp/user/notifications/ParentLayout.vue",
+        "meta": {
+          "title": "Уведомления",
+          "requiresAuth": true
+        }
       }
     ]
   },
