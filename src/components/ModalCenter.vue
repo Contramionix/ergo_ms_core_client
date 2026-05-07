@@ -1,12 +1,27 @@
 <script setup>
-defineProps({
-  modalId: { type: String, required: true, default: 'centralModal' },
-  customClass: { type: String, required: false, default: '' },
-  title: { type: String, required: true },
-  showFooter: { type: Boolean, required: false, default: false },
-  dialogClass: { type: String, required: false, default: '' },
+import { computed } from 'vue'
+
+const props = defineProps({
+  modalId: { type: String, default: 'centralModal' },
+  customClass: { type: String, default: '' },
+  title: { type: String, default: '' },
+  showTitle: { type: Boolean, default: true },
+  modalAriaLabel: { type: String, default: '' },
+  showFooter: { type: Boolean, default: false },
+  dialogClass: { type: String, default: '' },
+  bodyClass: { type: String, default: '' },
 })
+
 const emit = defineEmits(['closemodal'])
+
+const rootAriaLabelledby = computed(() =>
+  props.showTitle ? 'centralModalLabel' : undefined,
+)
+
+const rootAriaLabel = computed(() => {
+  if (props.showTitle) return undefined
+  return props.modalAriaLabel || undefined
+})
 </script>
 
 <template>
@@ -15,12 +30,13 @@ const emit = defineEmits(['closemodal'])
     :class="customClass"
     :id="modalId"
     tabindex="-1"
-    aria-labelledby="centralModalLabel"
+    :aria-labelledby="rootAriaLabelledby"
+    :aria-label="rootAriaLabel"
     aria-hidden="true"
   >
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" :class="dialogClass">
       <div class="modal-content">
-        <div class="modal-header">
+        <div v-if="showTitle" class="modal-header">
           <h1 class="modal-title fs-5 d-flex align-items-center gap-2" id="centralModalLabel">
             <slot name="title">{{ title }}</slot>
           </h1>
@@ -32,7 +48,17 @@ const emit = defineEmits(['closemodal'])
             v-on:click.stop="emit('closemodal')"
           ></button>
         </div>
-        <div class="modal-body">
+
+        <button
+          v-else
+          type="button"
+          class="modal-content__floating-close btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Закрыть"
+          v-on:click.stop="emit('closemodal')"
+        ></button>
+
+        <div class="modal-body" :class="bodyClass">
           <slot></slot>
         </div>
         <div v-if="showFooter" class="modal-footer">
@@ -59,6 +85,7 @@ const emit = defineEmits(['closemodal'])
 }
 
 .modal-content {
+  position: relative;
   display: flex;
   flex-direction: column;
   max-height: 100%;
@@ -66,6 +93,17 @@ const emit = defineEmits(['closemodal'])
   background-color: var(--color-primary-background);
   border: none;
   border-radius: $radius-usual;
+}
+
+.modal-content__floating-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+
+  &:focus {
+    box-shadow: none;
+  }
 }
 
 .modal-body {

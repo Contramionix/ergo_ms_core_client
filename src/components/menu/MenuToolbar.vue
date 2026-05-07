@@ -11,7 +11,16 @@
       </div>
       <div class="tools-buttons" v-if="shouldShowFullInfo">
         <div class="tools__notifications">
-          <SidebarNotifications ref="notificationsMenuRef" @dropdown-toggle="(active) => setDropdownActive('notifications', active)"/>
+          <SidebarNotifications
+            v-if="actionButton === 'notifications'"
+            ref="notificationsMenuRef"
+            @dropdown-toggle="(active) => setDropdownActive('notifications', active)"
+          />
+          <AppsMenu
+            v-else
+            ref="appsMenuRef"
+            @dropdown-toggle="(active) => setDropdownActive('apps', active)"
+          />
         </div>
         <div v-if="isAssistantAvailable" class="tools__assistant" @click="toggleAssistant">
           <div class="header-btn assistant-btn" :class="{ active: isAssistantVisible }" v-tooltip title="AI Ассистент">
@@ -19,10 +28,16 @@
           </div>
         </div>
         <div class="tools__settings">
-          <SettingsMenu ref="settingsMenuRef" @dropdown-toggle="(active) => setDropdownActive('settings', active)" />
+          <SettingsMenu
+            ref="settingsMenuRef"
+            @dropdown-toggle="(active) => setDropdownActive('settings', active)"
+            @open-user-settings="showUserSettingsModal = true"
+          />
         </div>
       </div>
     </div>
+
+    <UserSettingsModal :show="showUserSettingsModal" @close="showUserSettingsModal = false" />
 
     <component v-if="isAssistantAvailable && currentModuleComponent && shouldShowFullInfo" :is="currentModuleComponent" ref="assistantChat" :is-visible="isAssistantVisible" @bi-query="handleBIQuery" @chat-message="handleChatMessage"/>
   </div>
@@ -32,10 +47,13 @@
 import { Bot } from 'lucide-vue-next'
 import UserMenu from '@/components/header/UserMenu.vue'
 import SidebarNotifications from '@/components/menu/SidebarNotifications.vue'
+import AppsMenu from '@/components/menu/AppsMenu.vue'
 import SettingsMenu from '@/components/menu/SettingsMenu.vue'
+import UserSettingsModal from '@/core/cms/adp/user/account/component/UserSettingsModal.vue'
 import { computed, ref, onMounted, watch, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { useUiSettings, initUserSettings } from '@/core/cms/js/uiSettings.js'
 import { useToast } from 'vue-toastification'
 
 const _aiGlob = {
@@ -72,7 +90,17 @@ const currentModuleClient = ref(null)
 const currentModuleConfig = ref(null)
 const userMenuRef = ref(null)
 const notificationsMenuRef = ref(null)
+const appsMenuRef = ref(null)
 const settingsMenuRef = ref(null)
+const showUserSettingsModal = ref(false)
+
+const { actionButton } = useUiSettings()
+
+watch(
+  () => userStore.user?.id,
+  (userId) => initUserSettings(userId ?? null),
+  { immediate: true },
+)
 
 // Состояние для отслеживания активных выпадающих элементов
 const activeDropdowns = ref(new Set())
@@ -144,6 +172,7 @@ const setDropdownActive = (dropdownId, active) => {
     const allMenus = [
       { id: 'userMenu', ref: userMenuRef },
       { id: 'notifications', ref: notificationsMenuRef },
+      { id: 'apps', ref: appsMenuRef },
       { id: 'settings', ref: settingsMenuRef }
     ]
     
