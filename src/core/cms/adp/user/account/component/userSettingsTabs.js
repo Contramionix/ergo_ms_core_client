@@ -1,7 +1,8 @@
 import { markRaw } from 'vue'
-import { Bell, Monitor, User } from 'lucide-vue-next'
+import { Bell, Monitor, Shield, User } from 'lucide-vue-next'
 import NotificationsPanel from './settings-panels/NotificationsPanel.vue'
 import ProfilePanel from './settings-panels/ProfilePanel.vue'
+import SecurityPanel from './settings-panels/SecurityPanel.vue'
 import SystemPanel from './settings-panels/SystemPanel.vue'
 
 export const TAB_SECTIONS = [
@@ -9,6 +10,7 @@ export const TAB_SECTIONS = [
     title: 'Настройки пользователя',
     items: [
       { id: 'profile', label: 'Профиль', icon: User, component: markRaw(ProfilePanel) },
+      { id: 'security', label: 'Безопасность', icon: Shield, component: markRaw(SecurityPanel) },
       { id: 'notifications', label: 'Уведомления', icon: Bell, component: markRaw(NotificationsPanel) },
     ],
   },
