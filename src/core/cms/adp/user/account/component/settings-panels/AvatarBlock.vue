@@ -4,6 +4,7 @@ import { useToast } from 'vue-toastification'
 import { Upload, Trash2 } from 'lucide-vue-next'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import AvatarCropModal from '@/components/AvatarCropModal.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 
 const props = defineProps({
@@ -19,6 +20,8 @@ const fileInputRef = ref(null)
 const avatarRef = ref(null)
 const avatarLoading = ref(false)
 const avatarPreviewUrl = ref('')
+const showCropModal = ref(false)
+const cropImageSrc = ref(null)
 
 const avatarExplicitUrl = computed(() => avatarPreviewUrl.value || undefined)
 const avatarTitle = computed(() => userStore.displayName || userStore.fullName || 'Пользователь')
@@ -34,13 +37,20 @@ const cleanupAvatarPreview = () => {
   }
 }
 
+const cleanupCropImage = () => {
+  if (cropImageSrc.value) {
+    URL.revokeObjectURL(cropImageSrc.value)
+    cropImageSrc.value = null
+  }
+}
+
 const triggerAvatarUpload = () => {
   if (avatarLoading.value || props.saving) return
   fileInputRef.value?.click()
   avatarRef.value?.blur()
 }
 
-const handleAvatarFileChange = async (event) => {
+const handleAvatarFileChange = (event) => {
   const [file] = event.target.files || []
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
@@ -57,19 +67,33 @@ const handleAvatarFileChange = async (event) => {
   }
 
   cleanupAvatarPreview()
-  avatarPreviewUrl.value = URL.createObjectURL(file)
-  avatarLoading.value = true
+  cleanupCropImage()
+  cropImageSrc.value = URL.createObjectURL(file)
+  showCropModal.value = true
+}
 
+const handleCropConfirm = async (croppedFile) => {
+  showCropModal.value = false
+  avatarLoading.value = true
   try {
-    await userStore.updateAvatar(file)
+    await userStore.updateAvatar(croppedFile)
   } finally {
     avatarLoading.value = false
-    cleanupAvatarPreview()
+    cleanupCropImage()
   }
+}
+
+const handleCropCancel = () => {
+  showCropModal.value = false
+  cleanupCropImage()
 }
 
 const handleAvatarRemove = async () => {
   if (avatarLoading.value || props.saving) return
+  if (showCropModal.value || cropImageSrc.value) {
+    handleCropCancel()
+    return
+  }
   if (avatarPreviewUrl.value) {
     cleanupAvatarPreview()
     return
@@ -84,6 +108,7 @@ const handleAvatarRemove = async () => {
 
 onBeforeUnmount(() => {
   cleanupAvatarPreview()
+  cleanupCropImage()
 })
 </script>
 
@@ -125,6 +150,13 @@ onBeforeUnmount(() => {
     <p class="avatar-block__hint">
       Рекомендуемый размер: 200×200 пикселей. Форматы PNG, JPG, GIF и WEBP до {{ MAX_AVATAR_SIZE_MB }} МБ.
     </p>
+    <AvatarCropModal
+      :show="showCropModal"
+      :image-src="cropImageSrc"
+      @confirm="handleCropConfirm"
+      @cancel="handleCropCancel"
+      @close="handleCropCancel"
+    />
   </div>
 </template>
 
