@@ -9,7 +9,7 @@ import AvatarBlock from './AvatarBlock.vue'
 
 const toast = useToast()
 const userStore = useUserStore()
-const { updateProfile, formatProfileData, validateProfileData } = useProfile()
+const { updateProfile, validateProfileData } = useProfile()
 
 const loading = ref(true)
 const savingMain = ref(false)
@@ -98,10 +98,13 @@ const saveSection = async (fields, savingRef, successMessage) => {
       fields.map((field) => [field, formData.value[field]?.trim() || '']),
     )
 
-    const response = await updateProfile(dataToSend)
-    profileData.value = formatProfileData(response)
-    formData.value = initializeFormData(profileData.value)
-    await userStore.loadProfile()
+    await updateProfile(dataToSend)
+    await userStore.loadProfile(true)
+
+    if (userStore.profile) {
+      profileData.value = userStore.profile
+      formData.value = initializeFormData(userStore.profile)
+    }
 
     toast.success(successMessage)
   } catch (error) {

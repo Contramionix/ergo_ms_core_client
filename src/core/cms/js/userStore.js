@@ -156,14 +156,14 @@ export const useUserStore = defineStore('userStore', () => {
   }
 
   // Загрузка полного профиля пользователя
-  const loadProfile = async () => {
+  const loadProfile = async (force = false) => {
     // Если профиль уже загружается, ждем завершения
     if (loadProfilePromise) {
       return await loadProfilePromise
     }
     
     // Если профиль уже загружен, не делаем повторный запрос
-    if (profile.value) {
+    if (profile.value && !force) {
       return profile.value
     }
 
@@ -210,11 +210,10 @@ export const useUserStore = defineStore('userStore', () => {
   const updateProfile = async (profileData) => {
     try {
       isLoading.value = true
-      const updatedProfile = await profileService.updateProfile(profileData)
-      profile.value = profileService.formatProfileData(updatedProfile)
-      updateUserData(updatedProfile)
+      await profileService.updateProfile(profileData)
+      await loadProfile(true)
       toast.success('Профиль успешно обновлен')
-      return updatedProfile
+      return profile.value
 
     } catch (error) {
       console.error('Ошибка обновления профиля:', error)
@@ -298,7 +297,7 @@ export const useUserStore = defineStore('userStore', () => {
     try {
       isLoading.value = true
       await Promise.all([
-        loadProfile(),
+        loadProfile(true),
         loadAvatar()
       ])
       return true
