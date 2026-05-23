@@ -26,13 +26,6 @@ export default {
       }
     ]
   },
-  "SecuritySettings": {
-    "path": "/user/security",
-    "component": "@/core/cms/adp/settings/security/ParentLayout.vue",
-    "meta": {
-      "requiresAuth": true
-    }
-  },
   "Settings": {
     "path": "/settings",
     "component": "@/core/cms/adp/settings/ParentLayout.vue",

@@ -24,28 +24,6 @@ export const profileService = {
     }
   },
 
-  // Получить настройки безопасности
-  async getSecuritySettings() {
-    try {
-      const response = await apiClient.get(endpoints.auth.securitySettings)
-      return response.data
-    } catch (error) {
-      console.error('Ошибка получения настроек безопасности:', error)
-      throw error
-    }
-  },
-
-  // Обновить настройки безопасности
-  async updateSecuritySettings(securityData) {
-    try {
-      const response = await apiClient.put(endpoints.auth.securitySettings, securityData)
-      return response.data
-    } catch (error) {
-      console.error('Ошибка обновления настроек безопасности:', error)
-      throw error
-    }
-  },
-
   // Смена пароля
   async changePassword(passwordData) {
     try {
@@ -283,8 +261,6 @@ export function useProfile() {
     profileService,
     getProfile: () => profileService.getProfile(),
     updateProfile: (data) => profileService.updateProfile(data),
-    getSecuritySettings: () => profileService.getSecuritySettings(),
-    updateSecuritySettings: (data) => profileService.updateSecuritySettings(data),
     changePassword: (data) => profileService.changePassword(data),
     getDevices: () => profileService.getDevices(),
     deleteDevice: (id) => profileService.deleteDevice(id),

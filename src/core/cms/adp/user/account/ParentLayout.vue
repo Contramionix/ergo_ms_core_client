@@ -1,12 +1,12 @@
 <script setup>
-import CardAbout from '@/core/cms/adp/user/account/CardAbout.vue'
+import SettingsMovedNotice from '@/core/cms/adp/user/account/component/SettingsMovedNotice.vue'
 </script>
 
 <template>
-  <div class="container-fluid p-0"> <!-- Убираем отступы по краям -->
-    <div class="row no-gutters"> <!-- Убираем промежутки между колонками -->
-      <div class="col-12"> <!-- Занимаем всю ширину -->
-        <CardAbout class="full-page-card"/> <!-- Добавляем класс для стилей -->
+  <div class="container-fluid p-0">
+    <div class="row no-gutters">
+      <div class="col-12">
+        <SettingsMovedNotice class="full-page-card"/>
       </div>
     </div>
   </div>
@@ -14,6 +14,6 @@ import CardAbout from '@/core/cms/adp/user/account/CardAbout.vue'
 
 <style scoped lang="scss">
 .full-page-card {
-  width: 100%; /* Занимаем всю ширину */
+  width: 100%;
 }
 </style>
