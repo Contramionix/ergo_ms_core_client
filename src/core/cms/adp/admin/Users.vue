@@ -24,6 +24,8 @@ const loadUsers = async () => {
     user: user.full_name || user.username,
     username: user.username,
     email: user.email,
+    first_name: user.first_name || null,
+    last_name: user.last_name || null,
     date_joined: user.date_joined || null,
     role: user.role,
     role_groups: user.role_groups,
@@ -164,7 +166,7 @@ const getItemKey = (item) => item.user_id
     <DataTable :items="filteredRows" :columns="columns" :items-per-page="rowsPerPage" :current-page="currentPage" :get-item-key="getItemKey" :enable-pagination="true" @update:current-page="currentPage = $event">
       <template #cell-user="{ item }">
         <div class="d-flex align-items-center gap-3">
-          <UserAvatar :user-id="item.user_id" :custom-avatar-url="item.avatar_url" :title="item.user" :size="32"/>
+          <UserAvatar :user-id="item.user_id" :custom-avatar-url="item.avatar_url" :title="item.user" :size="32" :first-name="item.first_name" :last-name="item.last_name" />
           <div class="d-flex flex-column">
             <span class="fw-semibold">{{ item.user }}</span>
             <small class="text-muted">{{ item.username }} · {{ item.email }}</small>
