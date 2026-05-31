@@ -1,6 +1,6 @@
 <script setup>
-import { AlertTriangle, Check, X } from 'lucide-vue-next'
-import { watch, onMounted, onUnmounted } from 'vue'
+import { AlertTriangle } from 'lucide-vue-next'
+import { ref, computed, watch, onUnmounted } from 'vue'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -9,12 +9,47 @@ const props = defineProps({
   confirmText: { type: String, default: 'Удалить' },
   cancelText: { type: String, default: 'Отмена' },
   variant: { type: String, default: 'danger', validator: (value) => ['danger', 'warning', 'primary'].includes(value) },
-  loading: { type: Boolean, default: false }
+  loading: { type: Boolean, default: false },
+  confirmCountdownSeconds: { type: Number, default: 0 }
 })
 
 const emit = defineEmits(['confirm', 'cancel', 'close'])
 
-// Управление прокруткой страницы
+const countdown = ref(0)
+let countdownTimer = null
+
+const confirmButtonText = computed(() => {
+  if (countdown.value > 0) {
+    return `${props.confirmText} (${countdown.value})`
+  }
+  return props.confirmText
+})
+
+const isConfirmDisabled = computed(() => props.loading || countdown.value > 0)
+
+const clearCountdown = () => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+  countdown.value = 0
+}
+
+const startCountdown = () => {
+  clearCountdown()
+  if (props.confirmCountdownSeconds <= 0) return
+
+  countdown.value = props.confirmCountdownSeconds
+  countdownTimer = setInterval(() => {
+    if (countdown.value > 0) {
+      countdown.value -= 1
+    } else {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
+  }, 1000)
+}
+
 const disableBodyScroll = () => { 
   document.body.style.overflow = 'hidden' 
 }
@@ -23,22 +58,23 @@ const enableBodyScroll = () => {
   document.body.style.overflow = '' 
 }
 
-// Отслеживаем изменения show и управляем прокруткой
 watch(() => props.show, (isOpen) => {
   if (isOpen) {
     disableBodyScroll()
+    startCountdown()
   } else {
     enableBodyScroll()
+    clearCountdown()
   }
 })
 
-// Очищаем при размонтировании
 onUnmounted(() => {
   enableBodyScroll()
+  clearCountdown()
 })
 
 function handleConfirm() {
-  if (!props.loading) {
+  if (!isConfirmDisabled.value) {
     emit('confirm')
   }
 }
@@ -58,29 +94,15 @@ function handleClose() {
 </script>
 
 <template>
-  <div 
-    v-if="show && message" 
-    class="modal fade show d-block" 
-    tabindex="-1"
-    style="background-color: rgba(0, 0, 0, 0.5); z-index: 9999;"
-  >
+  <div  v-if="show && message" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5); z-index: 9999;">
     <div class="modal-dialog modal-dialog-centered" style="z-index: 10000;">
       <div class="modal-content">
         <div class="modal-header border-0 pb-0">
           <div class="d-flex align-items-center gap-2">
-            <AlertTriangle 
-              v-if="variant === 'danger' || variant === 'warning'" 
-              :size="24" 
-              :class="variant === 'danger' ? 'text-danger' : 'text-warning'" 
-            />
+            <AlertTriangle v-if="variant === 'danger' || variant === 'warning'"  :size="24"  :class="variant === 'danger' ? 'text-danger' : 'text-warning'" />
             <h5 class="modal-title mb-0">{{ title }}</h5>
           </div>
-          <button 
-            type="button" 
-            class="btn-close" 
-            @click="handleClose"
-            :disabled="loading"
-          ></button>
+          <button type="button" class="btn-close" @click="handleClose" :disabled="loading"></button>
         </div>
         
         <div class="modal-body pt-2">
@@ -88,26 +110,12 @@ function handleClose() {
         </div>
         
         <div class="modal-footer border-0 pt-2">
-          <button 
-            type="button" 
-            class="btn btn-secondary" 
-            @click="handleCancel"
-            :disabled="loading"
-          >
+          <button type="button" class="btn btn-secondary" @click="handleCancel" :disabled="loading">
             {{ cancelText }}
           </button>
-          <button 
-            type="button" 
-            :class="`btn btn-${variant === 'primary' ? 'primary' : 'danger'}`"
-            @click="handleConfirm"
-            :disabled="loading"
-          >
-            <span 
-              v-if="loading" 
-              class="spinner-border spinner-border-sm me-2" 
-              role="status"
-            ></span>
-            {{ confirmText }}
+          <button type="button" :class="`btn btn-${variant === 'primary' ? 'primary' : 'danger'}`" @click="handleConfirm" :disabled="isConfirmDisabled">
+            <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
+            {{ confirmButtonText }}
           </button>
         </div>
       </div>

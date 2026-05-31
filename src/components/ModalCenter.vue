@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount } from 'vue'
+import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
 
 const SIZE_CLASS_MAP = {
   sm: 'modal-sm',
@@ -32,6 +32,12 @@ const props = defineProps({
     validator: (v) => ['dim', 'blur', 'both'].includes(v),
   },
   backdropBlur: { type: Number, default: 4 },
+  standalone: { type: Boolean, default: false },
+  visible: { type: Boolean, default: false },
+  closeOnBackdrop: { type: Boolean, default: true },
+  closeOnEsc: { type: Boolean, default: true },
+  lockBodyScroll: { type: Boolean, default: true },
+  zIndex: { type: [Number, String], default: null },
 })
 
 const emit = defineEmits(['close', 'closemodal'])
@@ -57,16 +63,57 @@ const dialogComputedClass = computed(() => {
   return classes
 })
 
+const standaloneRootStyle = computed(() => {
+  if (props.zIndex == null || props.zIndex === '') return undefined
+  const value = props.zIndex
+  return {
+    '--bs-modal-zindex': value,
+    zIndex: value,
+  }
+})
+
 const handleClose = () => {
   emit('close')
   emit('closemodal')
 }
 
+const onBackdropClick = () => {
+  if (props.standalone && props.closeOnBackdrop) {
+    handleClose()
+  }
+}
+
+const onKeydown = (e) => {
+  if (e.key !== 'Escape') return
+  if (!props.standalone || !props.closeOnEsc || !props.visible) return
+  handleClose()
+}
+
+const setBodyScrollLocked = (locked) => {
+  if (!props.lockBodyScroll) return
+  document.body.style.overflow = locked ? 'hidden' : ''
+}
+
+watch(
+  () => props.standalone && props.visible,
+  (open) => {
+    if (!props.standalone) return
+    if (open) {
+      setBodyScrollLocked(true)
+      document.addEventListener('keydown', onKeydown)
+    } else {
+      setBodyScrollLocked(false)
+      document.removeEventListener('keydown', onKeydown)
+    }
+  },
+  { immediate: true },
+)
+
 let applyBackdropStyle = null
 let resetBackdropStyle = null
 
 onMounted(() => {
-  if (props.backdropEffect === 'dim') return
+  if (props.standalone || props.backdropEffect === 'dim') return
 
   const el = document.getElementById(props.modalId)
   if (!el) return
@@ -92,6 +139,10 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown)
+  if (props.standalone) {
+    setBodyScrollLocked(false)
+  }
   if (!applyBackdropStyle) return
   const el = document.getElementById(props.modalId)
   if (!el) return
@@ -101,7 +152,59 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="modal fade" :class="customClass" :id="modalId" tabindex="-1" :aria-labelledby="rootAriaLabelledby" :aria-label="rootAriaLabel" aria-hidden="true" :data-bs-backdrop="backdrop" :data-bs-keyboard="keyboard">
+  <Teleport v-if="standalone" to="body">
+    <div
+      v-if="visible"
+      :id="modalId"
+      class="modal fade show d-block mc-standalone"
+      :class="customClass"
+      tabindex="-1"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="rootAriaLabelledby"
+      :aria-label="rootAriaLabel"
+      :style="standaloneRootStyle"
+      @mousedown.self="onBackdropClick"
+    >
+      <div class="modal-dialog mc-standalone__dialog" :class="dialogComputedClass" @mousedown.stop>
+        <div class="modal-content">
+          <div v-if="showTitle" class="modal-header">
+            <h1 class="modal-title fs-5 d-flex align-items-center gap-2" :id="titleId">
+              <slot name="title">{{ title }}</slot>
+            </h1>
+            <button type="button" class="btn-close" aria-label="Закрыть" @click.stop="handleClose"></button>
+          </div>
+          <button
+            v-else
+            type="button"
+            class="modal-content__floating-close btn-close"
+            aria-label="Закрыть"
+            @click.stop="handleClose"
+          ></button>
+          <div class="modal-body" :class="bodyClass">
+            <slot></slot>
+          </div>
+
+          <div v-if="$slots.footer" class="modal-footer">
+            <slot name="footer" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <div
+    v-else-if="!standalone"
+    class="modal fade"
+    :class="customClass"
+    :id="modalId"
+    tabindex="-1"
+    :aria-labelledby="rootAriaLabelledby"
+    :aria-label="rootAriaLabel"
+    aria-hidden="true"
+    :data-bs-backdrop="backdrop"
+    :data-bs-keyboard="keyboard"
+  >
     <div class="modal-dialog" :class="dialogComputedClass">
       <div class="modal-content">
         <div v-if="showTitle" class="modal-header">
@@ -124,6 +227,25 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" scoped>
+.mc-standalone {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: var(--bs-modal-zindex);
+  background-color: rgba(0, 0, 0, var(--bs-backdrop-opacity, 0.5));
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.mc-standalone__dialog {
+  position: relative !important;
+  z-index: 1 !important;
+  margin: 1.75rem auto;
+  pointer-events: auto;
+}
+
 .modal-dialog {
   max-height: 90vh;
 }
