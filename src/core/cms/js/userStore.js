@@ -56,6 +56,26 @@ export const useUserStore = defineStore('userStore', () => {
     return name
   })
 
+  const menuUserName = computed(() => {
+    if (!user.value) return 'Гость'
+
+    if (user.value.initials_name?.trim()) {
+      return user.value.initials_name
+    }
+    if (user.value.full_name?.trim()) {
+      return user.value.full_name
+    }
+    return fullName.value
+  })
+
+  const menuUserNameTruncated = computed(() => {
+    const name = menuUserName.value
+    if (name.length > 30) {
+      return `${name.substring(0, 30)}...`
+    }
+    return name
+  })
+
   const userEmail = computed(() => user.value?.email || 'email не указан')
   const userRole = computed(() => profile.value?.role || 'Пользователь')
   const hasCustomAvatar = computed(() => !!avatarUrl.value)
@@ -139,7 +159,7 @@ export const useUserStore = defineStore('userStore', () => {
       const userData = response?.data || response
       
       if (userData && userData.username && !userData.adp_profile && !userData.first_name) {
-        user.value = userData
+        updateUserData(userData)
         return
       }
       
@@ -173,6 +193,9 @@ export const useUserStore = defineStore('userStore', () => {
         const profileData = await profileService.getProfile()
         profile.value = profileService.formatProfileData(profileData)
         updateUserData(profileData)
+        if (force) {
+          await loadMenuData()
+        }
         return profile.value
       } catch (error) {
         console.error('Ошибка загрузки профиля:', error)
@@ -321,6 +344,8 @@ export const useUserStore = defineStore('userStore', () => {
     isAuthenticated,
     fullName,
     displayName,
+    menuUserName,
+    menuUserNameTruncated,
     userEmail,
     userRole,
     hasCustomAvatar,

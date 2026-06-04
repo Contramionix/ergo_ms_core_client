@@ -6,7 +6,7 @@
           <UserMenu ref="userMenuRef" @dropdown-toggle="(active) => setDropdownActive('userMenu', active)" />
         </div>
         <div class="tools__user__name" v-if="shouldShowFullInfo">
-          <div class="user__fullname" :title="getFullUserName()">{{ userFullName }}</div>
+          <div class="user__fullname" :title="userStore.menuUserName">{{ userStore.menuUserNameTruncated }}</div>
         </div>
       </div>
       <div class="tools-buttons" v-if="shouldShowFullInfo">
@@ -90,28 +90,6 @@ const setDropdownActive = (dropdownId, active) => {
 
   emit('dropdown-state-change', activeDropdowns.value.size > 0)
 }
-
-const getUserName = (truncate = false) => {
-  if (!userStore.user) return 'Гость'
-
-  let name = ''
-  if (userStore.user.initials_name?.trim()) {
-    name = userStore.user.initials_name
-  } else if (userStore.user.full_name?.trim()) {
-    name = userStore.user.full_name
-  } else {
-    name = userStore.user.username || 'Гость'
-  }
-
-  if (truncate && name.length > 30) {
-    return name.substring(0, 30) + '...'
-  }
-  return name
-}
-
-const getFullUserName = () => getUserName(false)
-
-const userFullName = computed(() => getUserName(true))
 </script>
 
 <style scoped lang="scss">

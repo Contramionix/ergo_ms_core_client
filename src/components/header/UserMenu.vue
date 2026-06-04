@@ -13,27 +13,10 @@ const userStore = useUserStore()
 const emit = defineEmits(['dropdown-toggle'])
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 
-// Состояние для отображения вкладки "Организация"
 const canShowOrganizationTab = ref(false)
 
-// Вычисляем имя пользователя напрямую из userStore.user
-const userName = computed(() => {
-  if (!userStore.user) return 'Гость'
-  
-  if (userStore.user.initials_name && userStore.user.initials_name.trim()) {
-    return userStore.user.initials_name
-  }
-  
-  // Используем full_name как fallback
-  if (userStore.user.full_name && userStore.user.full_name.trim()) {
-    return userStore.user.full_name
-  }
-  
-  // Используем username как последний fallback
-  return userStore.user.username || 'Гость'
-})
+const userName = computed(() => userStore.menuUserName)
 
-// Вычисляем email пользователя
 const userEmail = computed(() => {
   return userStore.user?.email || 'email не указан'
 })
@@ -75,7 +58,6 @@ const menuItems = computed(() => {
  * 2. Пользователь имеет права на настройки организации (org_settings или org_manage)
  */
 const checkOrganizationTabVisibility = async () => {
-  // Проверяем наличие активной организации в JWT токене
   const hasActiveOrg = tokenService.hasActiveOrganization()
   
   if (!hasActiveOrg) {
@@ -83,55 +65,43 @@ const checkOrganizationTabVisibility = async () => {
     return
   }
   
-  // Проверяем права на управление/просмотр настроек организации
-  // Используем константы прав модуля organizations
   const hasOrgPermissions = await hasAnyModulePermission('organizations', [
-    'org_settings',  // Право на просмотр настроек
-    'org_manage'     // Право на управление организацией
+    'org_settings',
+    'org_manage'
   ])
   
   canShowOrganizationTab.value = hasOrgPermissions
 }
 
-// Экспортируем метод для внешнего вызова
 defineExpose({
   closeDropdown
 })
 
-// Централизованный выход из аккаунта
 const handleLogout = async () => {
   try {
-    // Очищаем токены и связанные с ними данные через auth-сервис
     await authLogout()
   } catch (error) {
     console.error('Ошибка при logout через auth сервис:', error)
   }
 
   try {
-    // Дополнительно очищаем токены API-клиента (на случай разных сценариев выхода)
     apiClient.logout()
   } catch (error) {
     console.error('Ошибка при logout через apiClient:', error)
   }
 
-  // Сбрасываем состояние пользователя и выполняем редирект на /login
   userStore.logout()
-
   closeDropdown()
 }
 
-// Инициализируем пользователя при загрузке компонента
 onMounted(async () => {
   if (!userStore.isInitialized) {
     await userStore.initializeUser()
   }
 
-  // Проверяем, нужно ли показывать вкладку "Организация"
   await checkOrganizationTabVisibility()
 })
 
-// Обновляем состояние при каждом открытии dropdown
-// (на случай, если пользователь вошёл/вышел из организации)
 watch(isOpen, async (newValue) => {
   if (newValue) {
     await checkOrganizationTabVisibility()
@@ -163,26 +133,13 @@ watch(isOpen, async (newValue) => {
         </div>
       </li>
       <li v-for="(item, index) in menuItems" :key="item.id">
-        <button
-          v-if="item.link?.name === 'logout'"
-          type="button"
-          class="dropdown-item header-dropdown-item w-100 text-start"
-          :style="{ transitionDelay: `${(index + 1) * 50}ms` }"
-          @click="handleLogout"
-        >
+        <button v-if="item.link?.name === 'logout'" type="button" class="dropdown-item header-dropdown-item w-100 text-start" :style="{ transitionDelay: `${(index + 1) * 50}ms` }" @click="handleLogout">
           <span class="icon-flex">
             <component :is="item.icon" :size="22" />
           </span>
           <span>{{ item.title }}</span>
         </button>
-        <RouterLink
-          v-else
-          :to="item.link"
-          class="dropdown-item header-dropdown-item"
-          active-class="active"
-          :style="{ transitionDelay: `${(index + 1) * 50}ms` }"
-          @click="closeDropdown"
-        >
+        <RouterLink v-else :to="item.link" class="dropdown-item header-dropdown-item" active-class="active" :style="{ transitionDelay: `${(index + 1) * 50}ms` }" @click="closeDropdown">
           <span class="icon-flex">
             <component :is="item.icon" :size="22" />
           </span>
@@ -246,7 +203,6 @@ watch(isOpen, async (newValue) => {
 </style>
 
 <style lang="scss">
-// Анимация для left-выравнивания UserMenu (глобальные стили для Transition)
 .user-dropdown-menu.dropdown-left-enter-active,
 .user-dropdown-menu.dropdown-left-leave-active {
   transition: opacity 0.2s ease, transform 0.2s ease;
