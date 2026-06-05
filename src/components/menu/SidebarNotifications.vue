@@ -1,32 +1,73 @@
 <script setup>
-import { Bell, Check, CheckCheck } from 'lucide-vue-next'
-import { onMounted } from 'vue'
+import { Bell, CheckCheck } from 'lucide-vue-next'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
 import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
 import { moduleManager } from '@/modules/index.js'
 
+const HOVER_READ_DELAY_MS = 1000
+
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 
 const {
-  items,
+  sidebarItems,
   unreadCount,
-  loading,
+  sidebarLoading,
   hasUnread,
   ensureInitialized,
-  loadInitial,
+  loadSidebar,
   markRead,
   markAllRead,
 } = useNotificationsInbox()
+
+const hoverReadTimers = new Map()
 
 defineExpose({ closeDropdown })
 
 onMounted(() => {
   ensureInitialized()
 })
+
+onUnmounted(() => {
+  clearAllHoverTimers()
+})
+
+watch(isOpen, (open) => {
+  if (!open) clearAllHoverTimers()
+})
+
+function clearAllHoverTimers() {
+  hoverReadTimers.forEach((timerId) => clearTimeout(timerId))
+  hoverReadTimers.clear()
+}
+
+function clearHoverTimer(id) {
+  const timerId = hoverReadTimers.get(id)
+  if (timerId !== undefined) {
+    clearTimeout(timerId)
+    hoverReadTimers.delete(id)
+  }
+}
+
+function onItemHoverStart(item) {
+  if (item.is_read) return
+  clearHoverTimer(item.id)
+  hoverReadTimers.set(
+    item.id,
+    setTimeout(() => {
+      hoverReadTimers.delete(item.id)
+      markRead(item.id)
+    }, HOVER_READ_DELAY_MS),
+  )
+}
+
+function onItemHoverEnd(item) {
+  clearHoverTimer(item.id)
+}
 
 const formatBadge = (count) => (count > 99 ? '99+' : String(count))
 
@@ -42,6 +83,13 @@ function formatDate(value) {
       minute: '2-digit',
     })
   } catch { return '' }
+}
+
+function readAtTooltip(item) {
+  if (item.is_read && item.read_at) {
+    return `Прочитано: ${formatDate(item.read_at)}`
+  }
+  return 'Не прочитано'
 }
 
 function levelClass(level) {
@@ -80,7 +128,7 @@ async function activate(notification) {
 function handleToggle() {
   toggleDropdown()
   if (isOpen.value) {
-    loadInitial()
+    loadSidebar()
   }
 }
 
@@ -109,15 +157,15 @@ function goToFullList() {
           </button>
         </div>
 
-        <div v-if="loading && items.length === 0" class="notifications-dropdown__state">
+        <div v-if="sidebarLoading && sidebarItems.length === 0" class="notifications-dropdown__state">
           Загрузка...
         </div>
-        <div v-else-if="items.length === 0" class="notifications-dropdown__state text-muted">
+        <div v-else-if="sidebarItems.length === 0" class="notifications-dropdown__state text-muted">
           Пока нет уведомлений
         </div>
 
         <ul v-else class="notifications-list">
-          <li v-for="item in items" :key="item.id" class="notifications-item" :class="[levelClass(item.level), { 'is-unread': !item.is_read }]" @click="activate(item)">
+          <li v-for="item in sidebarItems" :key="item.id" class="notifications-item" :class="[levelClass(item.level), { 'is-unread': !item.is_read }]" @click="activate(item)" @mouseenter="onItemHoverStart(item)" @mouseleave="onItemHoverEnd(item)">
             <div class="notifications-item__icon" :class="levelClass(item.level)">
               <component :is="iconFor(item)" :size="18" />
             </div>
@@ -128,12 +176,9 @@ function goToFullList() {
                 <span v-if="item.source_module" class="notifications-item__source">
                   {{ item.source_module }}
                 </span>
-                <span class="notifications-item__date">{{ formatDate(item.created_at) }}</span>
+                <span class="notifications-item__date" v-tooltip :title="readAtTooltip(item)">{{ formatDate(item.created_at) }}</span>
               </div>
             </div>
-            <button v-if="!item.is_read" type="button" class="notifications-item__mark" title="Отметить прочитанным" @click.stop="markRead(item.id)">
-              <Check :size="14" />
-            </button>
           </li>
         </ul>
       </div>
@@ -359,18 +404,6 @@ function goToFullList() {
   text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.04em;
-}
-
-.notifications-item__mark {
-  flex: 0 0 auto;
-  border: none;
-  background: transparent;
-  color: var(--bs-primary, #0d6efd);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-
-  &:hover { background-color: var(--color-hover-background); }
 }
 </style>
 

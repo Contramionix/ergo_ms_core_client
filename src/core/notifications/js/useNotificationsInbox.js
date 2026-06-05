@@ -4,10 +4,13 @@ import { notificationsApi } from './notifications-api'
 
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000]
 const MAX_RECONNECT_ATTEMPTS = 10
+const SIDEBAR_WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
 const items = ref([])
+const sidebarItems = ref([])
 const unreadCount = ref(0)
 const loading = ref(false)
+const sidebarLoading = ref(false)
 const connected = ref(false)
 
 let socket = null
@@ -15,6 +18,22 @@ let reconnectTimer = null
 let reconnectAttempt = 0
 let intentionalClose = false
 let initialized = false
+
+export function matchesSidebarFilter(notification) {
+  if (!notification?.is_read) return true
+  const refDate = notification.read_at || notification.created_at
+  if (!refDate) return false
+  return Date.now() - new Date(refDate).getTime() <= SIDEBAR_WEEK_MS
+}
+
+function applyReadState(notification, readAt) {
+  notification.is_read = true
+  notification.read_at = readAt
+}
+
+function findNotification(id) {
+  return items.value.find((n) => n.id === id) || sidebarItems.value.find((n) => n.id === id)
+}
 
 function buildWsUrl() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -44,14 +63,31 @@ async function loadInitial() {
   }
 }
 
+async function loadSidebar() {
+  if (sidebarLoading.value) return
+  sidebarLoading.value = true
+  try {
+    const listResp = await notificationsApi.list({ page_size: 50, inbox: 'sidebar' })
+    const list = listResp?.data?.results ?? listResp?.data ?? []
+    sidebarItems.value = Array.isArray(list) ? list : []
+  } catch {
+    sidebarItems.value = []
+  } finally {
+    sidebarLoading.value = false
+  }
+}
+
 async function markRead(id) {
-  const target = items.value.find((n) => n.id === id)
+  const target = findNotification(id)
   if (!target || target.is_read) return
   try {
     const resp = await notificationsApi.markRead(id)
     if (resp?.success) {
-      target.is_read = true
-      target.read_at = new Date().toISOString()
+      const readAt = new Date().toISOString()
+      const inItems = items.value.find((n) => n.id === id)
+      const inSidebar = sidebarItems.value.find((n) => n.id === id)
+      if (inItems) applyReadState(inItems, readAt)
+      if (inSidebar) applyReadState(inSidebar, readAt)
       if (typeof resp.data?.unread_count === 'number') {
         unreadCount.value = resp.data.unread_count
       } else if (unreadCount.value > 0) {
@@ -66,12 +102,13 @@ async function markAllRead() {
     const resp = await notificationsApi.markAllRead()
     if (resp?.success) {
       const now = new Date().toISOString()
-      items.value.forEach((n) => {
-        if (!n.is_read) {
-          n.is_read = true
-          n.read_at = now
-        }
-      })
+      const markList = (list) => {
+        list.forEach((n) => {
+          if (!n.is_read) applyReadState(n, now)
+        })
+      }
+      markList(items.value)
+      markList(sidebarItems.value)
       unreadCount.value = 0
     }
   } catch { /* игнор */ }
@@ -82,10 +119,15 @@ function handleSocketMessage(event) {
   try { data = JSON.parse(event.data) } catch { return }
 
   if (data.type === 'notification_new' && data.notification) {
-    const exists = items.value.find((n) => n.id === data.notification.id)
-    if (!exists) {
-      items.value.unshift(data.notification)
-      if (!data.notification.is_read) unreadCount.value += 1
+    const { notification } = data
+    const existsInItems = items.value.find((n) => n.id === notification.id)
+    if (!existsInItems) {
+      items.value.unshift(notification)
+      if (!notification.is_read) unreadCount.value += 1
+    }
+    const existsInSidebar = sidebarItems.value.find((n) => n.id === notification.id)
+    if (!existsInSidebar && matchesSidebarFilter(notification)) {
+      sidebarItems.value.unshift(notification)
     }
   }
 }
@@ -148,6 +190,7 @@ async function ensureInitialized() {
 function reset() {
   disconnect()
   items.value = []
+  sidebarItems.value = []
   unreadCount.value = 0
   initialized = false
 }
@@ -155,12 +198,15 @@ function reset() {
 export function useNotificationsInbox() {
   return {
     items,
+    sidebarItems,
     unreadCount,
     loading,
+    sidebarLoading,
     connected,
     hasUnread: computed(() => unreadCount.value > 0),
     ensureInitialized,
     loadInitial,
+    loadSidebar,
     markRead,
     markAllRead,
     disconnect,
