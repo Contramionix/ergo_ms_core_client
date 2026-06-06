@@ -6,6 +6,7 @@ import { useDropdown } from '@/composables/useDropdown.js'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
 import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
 import { moduleManager } from '@/modules/index.js'
+import { formatDateTime } from '@/js/utils/timeUtils.js'
 
 const HOVER_READ_DELAY_MS = 1000
 
@@ -71,23 +72,15 @@ function onItemHoverEnd(item) {
 
 const formatBadge = (count) => (count > 99 ? '99+' : String(count))
 
-function formatDate(value) {
+function formatNotificationDate(value) {
   if (!value) return ''
-  try {
-    const d = new Date(value)
-    return d.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch { return '' }
+  const formatted = formatDateTime(value)
+  return formatted === '—' ? '' : formatted
 }
 
 function readAtTooltip(item) {
   if (item.is_read && item.read_at) {
-    return `Прочитано: ${formatDate(item.read_at)}`
+    return `Прочитано: ${formatNotificationDate(item.read_at)}`
   }
   return 'Не прочитано'
 }
@@ -176,7 +169,7 @@ function goToFullList() {
                 <span v-if="item.source_module" class="notifications-item__source">
                   {{ item.source_module }}
                 </span>
-                <span class="notifications-item__date" v-tooltip :title="readAtTooltip(item)">{{ formatDate(item.created_at) }}</span>
+                <span class="notifications-item__date" v-tooltip :title="readAtTooltip(item)">{{ formatNotificationDate(item.created_at) }}</span>
               </div>
             </div>
           </li>

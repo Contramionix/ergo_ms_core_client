@@ -5,6 +5,7 @@ import { Bell, BellOff, Check, CheckCheck, ExternalLink, RefreshCw } from 'lucid
 import { moduleManager } from '@/modules/index.js'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
 import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
+import { formatDateTime } from '@/js/utils/timeUtils.js'
 
 const router = useRouter()
 
@@ -55,18 +56,10 @@ function iconFor(item) {
   return icon || Bell
 }
 
-function formatDate(value) {
+function formatNotificationDate(value) {
   if (!value) return ''
-  try {
-    const d = new Date(value)
-    return d.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch { return '' }
+  const formatted = formatDateTime(value)
+  return formatted === '—' ? '' : formatted
 }
 
 function hasTarget(item) {
@@ -158,7 +151,7 @@ onMounted(() => {
           <div class="notifications-item__content">
             <div class="d-flex align-items-start justify-content-between gap-2">
               <div class="notifications-item__title">{{ item.title }}</div>
-              <span class="notifications-item__date text-muted">{{ formatDate(item.created_at) }}</span>
+              <span class="notifications-item__date text-muted">{{ formatNotificationDate(item.created_at) }}</span>
             </div>
             <div v-if="item.body" class="notifications-item__body">{{ item.body }}</div>
             <div class="notifications-item__meta">
