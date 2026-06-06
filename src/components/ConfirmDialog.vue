@@ -10,7 +10,16 @@ const props = defineProps({
   cancelText: { type: String, default: 'Отмена' },
   variant: { type: String, default: 'danger', validator: (value) => ['danger', 'warning', 'primary'].includes(value) },
   loading: { type: Boolean, default: false },
-  confirmCountdownSeconds: { type: Number, default: 0 }
+  confirmCountdownSeconds: { type: Number, default: 0 },
+  zIndex: { type: [Number, String], default: null },
+})
+
+const rootStyle = computed(() => {
+  if (props.zIndex == null || props.zIndex === '') return undefined
+  return {
+    '--bs-modal-zindex': props.zIndex,
+    zIndex: props.zIndex,
+  }
 })
 
 const emit = defineEmits(['confirm', 'cancel', 'close'])
@@ -94,56 +103,73 @@ function handleClose() {
 </script>
 
 <template>
-  <div  v-if="show && message" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5); z-index: 9999;">
-    <div class="modal-dialog modal-dialog-centered" style="z-index: 10000;">
-      <div class="modal-content">
-        <div class="modal-header border-0 pb-0">
-          <div class="d-flex align-items-center gap-2">
-            <AlertTriangle v-if="variant === 'danger' || variant === 'warning'"  :size="24"  :class="variant === 'danger' ? 'text-danger' : 'text-warning'" />
-            <h5 class="modal-title mb-0">{{ title }}</h5>
+  <Teleport to="body">
+    <div
+      v-if="show && message"
+      class="modal fade show d-block cd-standalone"
+      tabindex="-1"
+      role="dialog"
+      aria-modal="true"
+      :style="rootStyle"
+    >
+      <div class="modal-dialog modal-dialog-centered cd-standalone__dialog">
+        <div class="modal-content">
+          <div class="modal-header border-0 pb-0">
+            <div class="d-flex align-items-center gap-2">
+              <AlertTriangle v-if="variant === 'danger' || variant === 'warning'" :size="24" :class="variant === 'danger' ? 'text-danger' : 'text-warning'" />
+              <h5 class="modal-title mb-0">{{ title }}</h5>
+            </div>
+            <button type="button" class="btn-close" @click="handleClose" :disabled="loading"></button>
           </div>
-          <button type="button" class="btn-close" @click="handleClose" :disabled="loading"></button>
-        </div>
-        
-        <div class="modal-body pt-2">
-          <p class="mb-0" style="white-space: pre-line;">{{ message }}</p>
-        </div>
-        
-        <div class="modal-footer border-0 pt-2">
-          <button type="button" class="btn btn-secondary" @click="handleCancel" :disabled="loading">
-            {{ cancelText }}
-          </button>
-          <button type="button" :class="`btn btn-${variant === 'primary' ? 'primary' : 'danger'}`" @click="handleConfirm" :disabled="isConfirmDisabled">
-            <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
-            {{ confirmButtonText }}
-          </button>
+
+          <div class="modal-body pt-2">
+            <p class="mb-0 cd-standalone__message">{{ message }}</p>
+          </div>
+
+          <div class="modal-footer border-0 pt-2">
+            <button type="button" class="btn btn-secondary" @click="handleCancel" :disabled="loading">
+              {{ cancelText }}
+            </button>
+            <button type="button" :class="`btn btn-${variant === 'primary' ? 'primary' : 'danger'}`" @click="handleConfirm" :disabled="isConfirmDisabled">
+              <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
+              {{ confirmButtonText }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <style scoped>
-.modal {
+.cd-standalone {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  z-index: 9999 !important;
+  z-index: var(--bs-modal-zindex, 1100);
+  background-color: rgba(0, 0, 0, var(--bs-backdrop-opacity, 0.5));
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
-.modal-dialog {
-  z-index: 10000 !important;
+.cd-standalone__dialog {
   position: relative !important;
+  z-index: 1 !important;
+  margin: 1.75rem auto;
+  pointer-events: auto;
 }
 
 .modal-content {
   border: none;
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  z-index: 10001 !important;
   position: relative !important;
+}
+
+.cd-standalone__message {
+  white-space: pre-line;
 }
 
 .modal-header, .modal-footer {
