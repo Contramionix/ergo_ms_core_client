@@ -254,7 +254,6 @@ export default defineConfig({
       'axios',
       'bootstrap',
       'exceljs',
-      'epubjs',
       'pdfjs-dist',
     ],
     esbuildOptions: {
