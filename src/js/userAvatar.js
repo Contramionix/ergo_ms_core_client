@@ -43,11 +43,41 @@ function normalizeInfo(raw) {
   return {
     userId: id,
     username: raw.username || '',
-    firstName: raw.first_name || '',
-    lastName: raw.last_name || '',
-    middleName: raw.middle_name || '',
-    fullName: raw.full_name || '',
-    avatarUrl: raw.avatar_url || null,
+    firstName: raw.first_name || raw.firstName || '',
+    lastName: raw.last_name || raw.lastName || '',
+    middleName: raw.middle_name || raw.middleName || '',
+    fullName: raw.full_name || raw.fullName || '',
+    avatarUrl: raw.avatar_url ?? raw.avatarUrl ?? null,
+  }
+}
+
+/**
+ * Разбирает ФИО формата «Фамилия Имя [Отчество]» для UserAvatar без запроса public-info.
+ */
+export function parseFullNameParts(fullName) {
+  const parts = (fullName || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) {
+    return { firstName: '', lastName: '' }
+  }
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: parts[0] }
+  }
+  return {
+    firstName: parts[1] || parts[0],
+    lastName: parts[0],
+  }
+}
+
+/**
+ * Прогревает кеш публичных данных из уже загруженных списков (members, candidates).
+ */
+export function seedUserPublicInfoCache(entries) {
+  if (!Array.isArray(entries)) return
+  for (const entry of entries) {
+    const info = normalizeInfo(entry)
+    if (info) {
+      userInfoCache.set(info.userId, info)
+    }
   }
 }
 

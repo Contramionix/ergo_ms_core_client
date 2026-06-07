@@ -39,7 +39,7 @@
           >
             <div class="d-flex align-items-center gap-3 p-3">
               <div class="avatar-wrapper">
-                <UserAvatar :userId="user.id" :size="48" :title="user.full_name || user.username" :avatar-url="user.avatar_url" />
+                <UserAvatar :userId="user.id" :size="48" :title="user.full_name || user.username" :avatar-url="user.avatar_url" :first-name="user.first_name" :last-name="user.last_name" />
                 <div v-if="isSelected(user.id) || isAssigned(user.id)" class="check-badge" :class="{ 'check-badge-assigned': isAssigned(user.id) && !isSelected(user.id) }">
                   <Check :size="12" stroke-width="3" />
                 </div>
@@ -76,6 +76,7 @@ import UserAvatar from '@/components/UserAvatar.vue'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 import { useToast } from 'vue-toastification'
+import { parseFullNameParts, seedUserPublicInfoCache } from '@/js/userAvatar'
 
 const props = defineProps({
   show: {
@@ -209,6 +210,30 @@ const filteredUsers = computed(() => {
   return filtered
 })
 
+function normalizeModalUser(raw) {
+  const fullName = raw.full_name || raw.fullName || ''
+  const fallbackName = fullName || raw.username || ''
+  const { firstName, lastName } = parseFullNameParts(fallbackName)
+
+  return {
+    id: raw.id,
+    username: raw.username || '',
+    full_name: fallbackName,
+    first_name: firstName,
+    last_name: lastName,
+    position: raw.position || '',
+    role_group_name: raw.role_group_name || '',
+    avatar_url: raw.avatar_url ?? null,
+    department_name: raw.department_name || null,
+  }
+}
+
+function applyLoadedUsers(list) {
+  const normalized = (Array.isArray(list) ? list : []).map(normalizeModalUser)
+  users.value = normalized
+  seedUserPublicInfoCache(normalized)
+}
+
 /**
  * Загружает кандидатов-экспертов (режим 'experts')
  */
@@ -251,7 +276,7 @@ async function loadOrganizationMembers() {
     return true
   })
   
-  return filteredMembers.map(member => ({
+  return filteredMembers.map((member) => ({
     id: member.user?.id || member.id,
     username: member.user?.username || member.username || '',
     full_name: member.user?.full_name || member.full_name || '',
@@ -270,12 +295,12 @@ async function loadCandidates() {
   }
   try {
     isLoading.value = true
-    
-    if (props.mode === 'members') {
-      users.value = await loadOrganizationMembers()
-    } else {
-      users.value = await loadExpertCandidates()
-    }
+
+    const list = props.mode === 'members'
+      ? await loadOrganizationMembers()
+      : await loadExpertCandidates()
+
+    applyLoadedUsers(list)
   } catch (e) {
     console.error('Ошибка загрузки пользователей:', e)
     const msg = e.response?.data?.error || 'Ошибка загрузки пользователей'
@@ -346,7 +371,7 @@ watch(() => props.show, (newVal) => {
   if (newVal) {
     loadCandidates()
   }
-})
+}, { immediate: true })
 
 watch(activeTab, () => {
   if (props.show) {
