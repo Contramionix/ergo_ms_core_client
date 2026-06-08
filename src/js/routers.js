@@ -89,6 +89,22 @@ async function checkRouteAccess(to) {
         accessDeniedState.message = rule.message
         return { allowed: false, redirect: 'AccessDenied' }
       }
+
+      if (
+        Array.isArray(rule.denyIfHasAnyPermission) &&
+        rule.denyIfHasAnyPermission.length > 0
+      ) {
+        const isDenied = await hasAnyModulePermission(
+          rule.module,
+          rule.denyIfHasAnyPermission,
+        )
+        if (isDenied) {
+          accessDeniedState.active = true
+          accessDeniedState.title = rule.denyTitle || rule.title
+          accessDeniedState.message = rule.denyMessage || rule.message
+          return { allowed: false, redirect: 'AccessDenied' }
+        }
+      }
       // Если правило сработало и права есть, продолжаем проверку других правил
     }
   }
