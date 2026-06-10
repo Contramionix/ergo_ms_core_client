@@ -1,8 +1,12 @@
 <script setup>
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted, provide } from 'vue'
 import ModalCenter from '@/components/ModalCenter.vue'
 import UserSettingsNav from './UserSettingsNav.vue'
 import { TAB_SECTIONS } from './userSettingsTabs.js'
+import {
+  NOTIFICATION_NAV_KEY,
+  createNotificationNavController,
+} from '@/core/notifications/js/useNotificationSettingsNav.js'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -10,6 +14,13 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close'])
+
+const panelWrapRef = ref(null)
+const notificationNav = createNotificationNavController(panelWrapRef)
+provide(NOTIFICATION_NAV_KEY, notificationNav)
+
+const notificationSections = computed(() => notificationNav.sections.value)
+const notificationActiveAnchorId = computed(() => notificationNav.activeAnchorId.value)
 
 function tabById(tabId) {
   for (const section of TAB_SECTIONS) {
@@ -45,16 +56,28 @@ watch(
         : TAB_SECTIONS[0].items[0].id
     } else {
       enableBodyScroll()
+      notificationNav.teardownObserver()
     }
   },
 )
 
+watch(activeTabId, (tabId) => {
+  if (tabId !== 'notifications') {
+    notificationNav.teardownObserver()
+  }
+})
+
 onUnmounted(() => {
   enableBodyScroll()
+  notificationNav.teardownObserver()
 })
 
 function selectTab(id) {
   activeTabId.value = id
+}
+
+function handleNotificationNavigate(anchorId) {
+  notificationNav.scrollToAnchor(anchorId)
 }
 
 function handleClose() {
@@ -70,8 +93,8 @@ function handleClose() {
     <Transition name="usm-dialog" appear>
       <ModalCenter v-if="show" modal-id="userSettingsModal" :show-title="false" modal-aria-label="Настройки пользователя" :show-footer="false" custom-class="show d-block user-settings-modal-root" dialog-class="modal-xl" body-class="p-0 user-settings-modal-body" @closemodal="handleClose">
         <div class="user-settings-modal__layout">
-          <UserSettingsNav :sections="TAB_SECTIONS" :active-tab-id="activeTabId" @select="selectTab" />
-          <div class="user-settings-modal__panel-wrap">
+          <UserSettingsNav :sections="TAB_SECTIONS" :active-tab-id="activeTabId" :notification-sections="notificationSections" :notification-active-anchor-id="notificationActiveAnchorId" @select="selectTab" @notification-navigate="handleNotificationNavigate"/>
+          <div ref="panelWrapRef" class="user-settings-modal__panel-wrap">
             <component :is="activePanel" />
           </div>
         </div>
@@ -142,7 +165,6 @@ function handleClose() {
   opacity: 0;
 }
 
-// Диалог: fade + лёгкий scale
 .usm-dialog-enter-active {
   transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.2, 0.64, 1);
 }

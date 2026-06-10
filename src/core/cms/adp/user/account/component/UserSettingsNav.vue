@@ -1,24 +1,196 @@
 <script setup>
-defineProps({
+import { inject, ref, watch } from 'vue'
+import { ChevronDown, ChevronUp } from 'lucide-vue-next'
+import {
+  NOTIFICATION_NAV_KEY,
+  anchorIdCategory,
+  anchorIdGlobal,
+} from '@/core/notifications/js/useNotificationSettingsNav.js'
+
+const NOTIFICATIONS_TAB_ID = 'notifications'
+
+const props = defineProps({
   sections: { type: Array, required: true },
   activeTabId: { type: String, required: true },
+  notificationSections: { type: Array, default: () => [] },
+  notificationActiveAnchorId: { type: String, default: '' },
 })
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'notification-navigate'])
+
+const notificationNav = inject(NOTIFICATION_NAV_KEY, null)
+const isNotificationsExpanded = ref(false)
+
+function isNotificationsTab(tabId) {
+  return tabId === NOTIFICATIONS_TAB_ID
+}
+
+function isModuleExpanded(module) {
+  return notificationNav?.isModuleExpanded(module) ?? false
+}
+
+function toggleNotificationsExpand() {
+  isNotificationsExpanded.value = !isNotificationsExpanded.value
+}
+
+function toggleModuleExpand(module) {
+  notificationNav?.toggleModuleExpanded(module)
+}
+
+function handleTabClick(tab) {
+  if (isNotificationsTab(tab.id)) {
+    emit('select', tab.id)
+    if (!isNotificationsExpanded.value) {
+      isNotificationsExpanded.value = true
+    } else {
+      toggleNotificationsExpand()
+    }
+    return
+  }
+  emit('select', tab.id)
+}
+
+function handleGlobalNavClick() {
+  emit('select', NOTIFICATIONS_TAB_ID)
+  emit('notification-navigate', anchorIdGlobal())
+}
+
+function handleCategoryNavClick(module, category) {
+  emit('select', NOTIFICATIONS_TAB_ID)
+  emit('notification-navigate', anchorIdCategory(module, category))
+}
+
+function handleModuleHeaderClick(module) {
+  emit('select', NOTIFICATIONS_TAB_ID)
+  toggleModuleExpand(module)
+}
+
+function syncExpandFromAnchor(anchorId) {
+  if (!anchorId) return
+  if (props.activeTabId === NOTIFICATIONS_TAB_ID) {
+    isNotificationsExpanded.value = true
+  }
+  if (anchorId === anchorIdGlobal()) return
+  for (const section of props.notificationSections) {
+    const moduleAnchor = `notif-module-${section.module}`
+    if (anchorId === moduleAnchor || anchorId.startsWith(`notif-${section.module}-`)) {
+      notificationNav?.expandModule(section.module)
+    }
+  }
+}
+
+watch(
+  () => props.activeTabId,
+  (tabId) => {
+    if (tabId === NOTIFICATIONS_TAB_ID) {
+      isNotificationsExpanded.value = true
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.notificationActiveAnchorId,
+  (anchorId) => syncExpandFromAnchor(anchorId),
+  { immediate: true },
+)
 </script>
 
 <template>
   <nav class="user-settings-modal__nav" aria-label="Разделы настроек">
-    <div v-for="(section, sectionIndex) in sections" :key="section.title ?? sectionIndex" class="user-settings-modal__nav-section">
+    <div
+      v-for="(section, sectionIndex) in sections"
+      :key="section.title ?? sectionIndex"
+      class="user-settings-modal__nav-section"
+    >
       <h3 class="user-settings-modal__nav-section-title">{{ section.title }}</h3>
       <ul class="user-settings-modal__nav-list list-unstyled mb-0">
-        <li v-for="tab in section.items" :key="tab.id">
-          <button type="button" class="user-settings-modal__nav-item" :class="{ 'user-settings-modal__nav-item--active': activeTabId === tab.id }" @click="emit('select', tab.id)">
+        <li v-for="tab in section.items" :key="tab.id" class="user-settings-modal__nav-item-wrap">
+          <button
+            type="button"
+            class="user-settings-modal__nav-item"
+            :class="{
+              'user-settings-modal__nav-item--active': activeTabId === tab.id,
+              'user-settings-modal__nav-item--expandable': isNotificationsTab(tab.id),
+            }"
+            @click="handleTabClick(tab)"
+          >
             <span class="user-settings-modal__nav-icon" aria-hidden="true">
               <component :is="tab.icon" :size="18" />
             </span>
-            <span>{{ tab.label }}</span>
+            <span class="user-settings-modal__nav-label">{{ tab.label }}</span>
+            <ChevronDown
+              v-if="isNotificationsTab(tab.id)"
+              :size="16"
+              class="user-settings-modal__nav-chevron"
+              :class="{ 'user-settings-modal__nav-chevron--rotated': isNotificationsExpanded && activeTabId === tab.id }"
+            />
           </button>
+
+          <Transition name="nav-sublist">
+            <ul
+              v-if="isNotificationsTab(tab.id) && isNotificationsExpanded && activeTabId === tab.id"
+              class="user-settings-modal__nav-sublist list-unstyled mb-0"
+            >
+              <li>
+                <button
+                  type="button"
+                  class="user-settings-modal__nav-sublink"
+                  :class="{ 'user-settings-modal__nav-sublink--active': notificationActiveAnchorId === anchorIdGlobal() }"
+                  @click="handleGlobalNavClick"
+                >
+                  Каналы доставки
+                </button>
+              </li>
+              <li
+                v-for="moduleSection in notificationSections"
+                :key="moduleSection.module"
+                class="user-settings-modal__nav-module-wrap"
+              >
+                <button
+                  type="button"
+                  class="user-settings-modal__nav-sublink user-settings-modal__nav-sublink--module"
+                  :class="{ 'user-settings-modal__nav-sublink--expanded': isModuleExpanded(moduleSection.module) }"
+                  :aria-expanded="isModuleExpanded(moduleSection.module)"
+                  @click="handleModuleHeaderClick(moduleSection.module)"
+                >
+                  <span>{{ moduleSection.module_label }}</span>
+                  <ChevronUp
+                    v-if="isModuleExpanded(moduleSection.module)"
+                    :size="14"
+                    class="user-settings-modal__nav-chevron user-settings-modal__nav-chevron--sm"
+                    aria-hidden="true"
+                  />
+                  <ChevronDown
+                    v-else
+                    :size="14"
+                    class="user-settings-modal__nav-chevron user-settings-modal__nav-chevron--sm"
+                    aria-hidden="true"
+                  />
+                </button>
+                <Transition name="nav-sublist">
+                  <ul
+                    v-if="isModuleExpanded(moduleSection.module)"
+                    class="user-settings-modal__nav-sublist user-settings-modal__nav-sublist--nested list-unstyled mb-0"
+                  >
+                    <li v-for="category in moduleSection.categories" :key="category.category">
+                      <button
+                        type="button"
+                        class="user-settings-modal__nav-sublink user-settings-modal__nav-sublink--nested"
+                        :class="{
+                          'user-settings-modal__nav-sublink--active':
+                            notificationActiveAnchorId === anchorIdCategory(moduleSection.module, category.category),
+                        }"
+                        @click="handleCategoryNavClick(moduleSection.module, category.category)"
+                      >
+                        {{ category.category_label }}
+                      </button>
+                    </li>
+                  </ul>
+                </Transition>
+              </li>
+            </ul>
+          </Transition>
         </li>
       </ul>
     </div>
@@ -69,6 +241,10 @@ const emit = defineEmits(['select'])
   padding: 0 0.5rem;
 }
 
+.user-settings-modal__nav-item-wrap {
+  margin-bottom: 0.125rem;
+}
+
 .user-settings-modal__nav-item {
   display: flex;
   align-items: center;
@@ -76,7 +252,6 @@ const emit = defineEmits(['select'])
   width: 100%;
   text-align: left;
   padding: 0.5rem 0.75rem;
-  margin-bottom: 0.125rem;
   border: none;
   border-radius: $radius-usual;
   background: transparent;
@@ -93,11 +268,96 @@ const emit = defineEmits(['select'])
     background-color: var(--color-hover-background);
     font-weight: 600;
   }
+
+  &--expandable {
+    justify-content: space-between;
+  }
+}
+
+.user-settings-modal__nav-label {
+  flex: 1;
+  min-width: 0;
 }
 
 .user-settings-modal__nav-icon {
   display: inline-flex;
   flex-shrink: 0;
   opacity: 0.9;
+}
+
+.user-settings-modal__nav-chevron {
+  flex-shrink: 0;
+  color: var(--color-secondary-text);
+  transition: transform 0.2s ease;
+
+  &--sm {
+    margin-left: auto;
+  }
+
+  &--rotated {
+    transform: rotate(180deg);
+  }
+}
+
+.user-settings-modal__nav-sublist {
+  margin: 0.125rem 0 0.25rem 0.75rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--color-hover-background);
+  overflow: hidden;
+
+  &--nested {
+    margin-left: 0.5rem;
+    margin-top: 0.125rem;
+  }
+}
+
+.user-settings-modal__nav-sublink {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.375rem 0.625rem;
+  margin-bottom: 0.0625rem;
+  border: none;
+  border-radius: $radius-usual;
+  background: transparent;
+  color: var(--color-secondary-text);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background-color: var(--color-hover-background);
+    color: var(--color-primary-text);
+  }
+
+  &--active {
+    background-color: var(--color-hover-background);
+    color: var(--color-primary-text);
+    font-weight: 600;
+  }
+
+  &--module {
+    font-weight: 500;
+    color: var(--color-primary-text);
+  }
+
+  &--nested {
+    font-size: 0.75rem;
+    padding-left: 0.75rem;
+  }
+}
+
+.nav-sublist-enter-active,
+.nav-sublist-leave-active {
+  transition: opacity 0.15s ease, max-height 0.2s ease;
+  max-height: 480px;
+}
+
+.nav-sublist-enter-from,
+.nav-sublist-leave-to {
+  opacity: 0;
+  max-height: 0;
 }
 </style>
