@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue'
+import { useToast } from 'vue-toastification'
 import tokenService from '@/core/cms/js/tokenService'
 import { notificationsApi } from './notifications-api'
 
@@ -114,6 +115,21 @@ async function markAllRead() {
   } catch { /* игнор */ }
 }
 
+const TOAST_METHOD_BY_LEVEL = {
+  info: 'info',
+  success: 'success',
+  warning: 'warning',
+  error: 'error',
+}
+
+function showIncomingToast(notification) {
+  try {
+    const toast = useToast()
+    const method = TOAST_METHOD_BY_LEVEL[notification.level] || 'info'
+    toast[method](notification.title, { timeout: 6000 })
+  } catch { /* toast — best effort, инбокс уже обновлён */ }
+}
+
 function handleSocketMessage(event) {
   let data
   try { data = JSON.parse(event.data) } catch { return }
@@ -124,6 +140,7 @@ function handleSocketMessage(event) {
     if (!existsInItems) {
       items.value.unshift(notification)
       if (!notification.is_read) unreadCount.value += 1
+      showIncomingToast(notification)
     }
     const existsInSidebar = sidebarItems.value.find((n) => n.id === notification.id)
     if (!existsInSidebar && matchesSidebarFilter(notification)) {

@@ -1,6 +1,6 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Bell, BellOff, Check, CheckCheck, ExternalLink, RefreshCw } from 'lucide-vue-next'
 import { moduleManager } from '@/modules/index.js'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
@@ -8,6 +8,10 @@ import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolv
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 
 const router = useRouter()
+const route = useRoute()
+
+const HIGHLIGHT_DURATION_MS = 4000
+const highlightedId = ref(null)
 
 const {
   items,
@@ -85,9 +89,36 @@ function refresh() {
   loadInitial()
 }
 
-onMounted(() => {
-  ensureInitialized()
-  loadInitial()
+async function handleOpenQueryParam() {
+  const openId = Number(route.query.open)
+  if (!openId) return
+
+  // Убираем параметр сразу, чтобы поведение не повторялось при обновлении
+  const { open: _open, ...restQuery } = route.query
+  router.replace({ query: restQuery })
+
+  const target = items.value.find((n) => n.id === openId)
+  if (!target) return
+
+  highlightedId.value = openId
+  await markRead(openId)
+
+  await nextTick()
+  document
+    .querySelector(`[data-notification-id="${openId}"]`)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+  setTimeout(() => {
+    if (highlightedId.value === openId) highlightedId.value = null
+  }, HIGHLIGHT_DURATION_MS)
+}
+
+onMounted(async () => {
+  // ensureInitialized сам вызывает loadInitial при первом запуске;
+  // ждём его, иначе повторный loadInitial вернётся мгновенно из-за guard по loading
+  await ensureInitialized()
+  await loadInitial()
+  await handleOpenQueryParam()
 })
 </script>
 
@@ -144,7 +175,7 @@ onMounted(() => {
       </div>
 
       <ul v-else class="notifications-list">
-        <li v-for="item in filteredItems" :key="item.id" class="notifications-item" :class="[levelClass(item.level), { 'is-unread': !item.is_read, 'is-clickable': hasTarget(item) }]" @click="hasTarget(item) && activate(item)">
+        <li v-for="item in filteredItems" :key="item.id" :data-notification-id="item.id" class="notifications-item" :class="[levelClass(item.level), { 'is-unread': !item.is_read, 'is-clickable': hasTarget(item), 'is-highlighted': item.id === highlightedId }]" @click="hasTarget(item) && activate(item)">
           <div class="notifications-item__icon" :class="levelClass(item.level)">
             <component :is="iconFor(item)" :size="20" />
           </div>
@@ -232,6 +263,21 @@ onMounted(() => {
   &.level--warning { border-left: 3px solid var(--bs-warning, #ffc107); }
   &.level--error   { border-left: 3px solid var(--bs-danger, #dc3545); }
   &.level--info    { border-left: 3px solid var(--bs-info, #0dcaf0); }
+
+  &.is-highlighted {
+    border-color: var(--bs-primary, #0d6efd);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+    animation: highlight-fade 4s ease forwards;
+  }
+}
+
+@keyframes highlight-fade {
+  0%, 60% {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0);
+  }
 }
 
 .notifications-item__icon {

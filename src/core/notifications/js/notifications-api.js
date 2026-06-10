@@ -19,4 +19,12 @@ export const notificationsApi = {
   markAllRead() {
     return apiClient.post(ep.markAllRead, {})
   },
+
+  getPreferences() {
+    return apiClient.get(ep.preferences)
+  },
+
+  patchPreferences(payload) {
+    return apiClient.patch(ep.preferences, payload)
+  },
 }
