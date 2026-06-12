@@ -294,8 +294,35 @@ export const CheckAccess = {
         return response;
     },
 
-    async GetAdminUsers() {
-        const response = await apiClient.get(endpoints.cms.adminUsers, {}, true);
+    async GetAdminUsers(params = {}) {
+        const response = await apiClient.get(endpoints.cms.adminUsers, params, true);
+        return response;
+    },
+
+    async GetAdminUser(userId) {
+        const response = await apiClient.get(endpoints.cms.adminUserDetail(userId), {}, true);
+        return response;
+    },
+
+    async UpdateAdminUser(userId, data) {
+        const response = await apiClient.put(endpoints.cms.adminUserDetail(userId), data, true);
+        return response;
+    },
+
+    async UploadAdminUserAvatar(userId, file) {
+        const formData = new FormData();
+        formData.append('image', file);
+        const response = await apiClient.upload(endpoints.cms.adminUserAvatar(userId), formData, true);
+        return response;
+    },
+
+    async DeleteAdminUserAvatar(userId) {
+        const response = await apiClient.delete(endpoints.cms.adminUserAvatar(userId), {}, true);
+        return response;
+    },
+
+    async ResetAdminUserPassword(userId, data = {}) {
+        const response = await apiClient.post(endpoints.cms.adminUserResetPassword(userId), data, true);
         return response;
     },
 

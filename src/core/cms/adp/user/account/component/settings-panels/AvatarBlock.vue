@@ -9,7 +9,16 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 
 const props = defineProps({
   saving: { type: Boolean, default: false },
+  userId: { type: Number, default: null },
+  avatarUrl: { type: String, default: null },
+  displayName: { type: String, default: '' },
+  firstName: { type: String, default: '' },
+  lastName: { type: String, default: '' },
+  onUpload: { type: Function, default: null },
+  onRemove: { type: Function, default: null },
 })
+
+const emit = defineEmits(['avatar-updated'])
 
 const MAX_AVATAR_SIZE_MB = 5
 
@@ -23,12 +32,30 @@ const avatarPreviewUrl = ref('')
 const showCropModal = ref(false)
 const cropImageSrc = ref(null)
 
-const avatarExplicitUrl = computed(() => avatarPreviewUrl.value || undefined)
-const avatarTitle = computed(() => userStore.displayName || userStore.fullName || 'Пользователь')
+const isAdminMode = computed(() => props.userId != null)
+
+const avatarExplicitUrl = computed(() => {
+  if (avatarPreviewUrl.value) return avatarPreviewUrl.value
+  if (isAdminMode.value) return props.avatarUrl || undefined
+  return undefined
+})
+
+const avatarTitle = computed(() => {
+  if (props.displayName) return props.displayName
+  if (isAdminMode.value) return 'Пользователь'
+  return userStore.displayName || userStore.fullName || 'Пользователь'
+})
+
+const hasRemoteAvatar = computed(() => {
+  if (isAdminMode.value) return !!props.avatarUrl
+  return userStore.hasCustomAvatar
+})
+
 const uploadAvatarLabel = computed(() =>
-  userStore.hasCustomAvatar || avatarPreviewUrl.value ? 'Заменить' : 'Загрузить',
+  hasRemoteAvatar.value || avatarPreviewUrl.value ? 'Заменить' : 'Загрузить',
 )
-const showAvatarRemove = computed(() => userStore.hasCustomAvatar || !!avatarPreviewUrl.value)
+
+const showAvatarRemove = computed(() => hasRemoteAvatar.value || !!avatarPreviewUrl.value)
 
 const cleanupAvatarPreview = () => {
   if (avatarPreviewUrl.value) {
@@ -76,7 +103,21 @@ const handleCropConfirm = async (croppedFile) => {
   showCropModal.value = false
   avatarLoading.value = true
   try {
-    await userStore.updateAvatar(croppedFile)
+    if (isAdminMode.value && props.onUpload) {
+      const result = await props.onUpload(croppedFile)
+      if (result?.avatar_url) {
+        avatarPreviewUrl.value = result.avatar_url
+      }
+      emit('avatar-updated', result)
+      toast.success('Аватар успешно обновлён')
+    } else {
+      await userStore.updateAvatar(croppedFile)
+    }
+  } catch (error) {
+    console.error('Ошибка обновления аватара:', error)
+    if (isAdminMode.value) {
+      toast.error('Ошибка загрузки аватара')
+    }
   } finally {
     avatarLoading.value = false
     cleanupCropImage()
@@ -100,7 +141,19 @@ const handleAvatarRemove = async () => {
   }
   avatarLoading.value = true
   try {
-    await userStore.resetAvatar()
+    if (isAdminMode.value && props.onRemove) {
+      await props.onRemove()
+      cleanupAvatarPreview()
+      emit('avatar-updated', { avatar_url: null })
+      toast.success('Аватар сброшен')
+    } else {
+      await userStore.resetAvatar()
+    }
+  } catch (error) {
+    console.error('Ошибка сброса аватара:', error)
+    if (isAdminMode.value) {
+      toast.error('Ошибка сброса аватара')
+    }
   } finally {
     avatarLoading.value = false
   }
@@ -117,7 +170,14 @@ onBeforeUnmount(() => {
     <p class="avatar-block__label">Фотография профиля</p>
     <div class="avatar-section">
       <div ref="avatarRef" class="avatar-preview" tabindex="0" :class="{ 'avatar-preview--loading': avatarLoading }">
-        <UserAvatar :size="200" :avatar-url="avatarExplicitUrl" :title="avatarTitle" />
+        <UserAvatar
+          :size="200"
+          :user-id="isAdminMode ? userId : null"
+          :avatar-url="avatarExplicitUrl"
+          :first-name="isAdminMode ? firstName : null"
+          :last-name="isAdminMode ? lastName : null"
+          :title="avatarTitle"
+        />
         <div v-if="avatarLoading" class="avatar-preview__overlay avatar-preview__overlay--busy">
           <SpinnerLoading color="primary" variant="button" />
         </div>

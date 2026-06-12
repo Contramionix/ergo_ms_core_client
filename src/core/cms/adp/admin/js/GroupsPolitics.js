@@ -275,10 +275,20 @@ export const AssignRoleToUser = async (payload) => {
     return response.data;
 }
 
-export const GetAdminUsers = async () => {
-    const response = await CheckAccess.GetAdminUsers();
-    return response.data.users;
+export const GetAdminUsers = async (params = {}) => {
+    const response = await CheckAccess.GetAdminUsers(params);
+    return response.data;
 }
+
+export {
+    fetchAdminUser,
+    updateAdminUser,
+    uploadAdminUserAvatar,
+    deleteAdminUserAvatar,
+    mapAdminUserToFormData,
+    validateAdminProfileData,
+    resetAdminUserPassword,
+} from './adminUserService.js'
 
 export const GetModulePermissions = async (roleGroupId = null) => {
     const response = await CheckAccess.GetModulePermissions(roleGroupId);

@@ -5,30 +5,15 @@
         <thead class="data-table-header">
           <tr>
             <th v-if="showNumberColumn" style="width: 50px;">№</th>
-            <th
-              v-for="column in columns"
-              :key="column.key"
-              :class="column.headerClass"
-              :style="column.headerStyle"
-            >
+            <th v-for="column in columns" :key="column.key" :class="column.headerClass" :style="column.headerStyle">
               {{ column.label }}
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr
-            v-for="(item, idx) in displayItems"
-            :key="getItemKey(item, idx)"
-            :class="getRowClass(item, idx)"
-            @click="handleRowClick(item, idx)"
-          >
+          <tr v-for="(item, idx) in displayItems" :key="getItemKey(item, idx)" :class="getRowClass(item, idx)" @click="handleRowClick(item, idx)">
             <td v-if="showNumberColumn" class="text-muted">{{ displayNumberOffset + idx + 1 }}</td>
-            <td
-              v-for="column in columns"
-              :key="column.key"
-              :class="column.cellClass"
-              :style="column.cellStyle"
-            >
+            <td v-for="column in columns" :key="column.key" :class="column.cellClass" :style="column.cellStyle">
               <slot :name="`cell-${column.key}`" :item="item" :index="idx" :column="column">
                 {{ getCellValue(item, column) }}
               </slot>
@@ -166,6 +151,9 @@ const totalPages = computed(() => {
 
 const displayItems = computed(() => {
   if (!props.enablePagination) {
+    return props.items
+  }
+  if (props.totalItems !== null) {
     return props.items
   }
   const start = (props.currentPage - 1) * props.itemsPerPage

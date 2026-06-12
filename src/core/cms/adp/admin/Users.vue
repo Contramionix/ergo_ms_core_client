@@ -1,49 +1,69 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { Loader2, Settings, Upload } from 'lucide-vue-next'
+import { Settings, Upload } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
-import ModalCenter from '@/components/ModalCenter.vue'
-import ChangeUserRoleForm from '@/core/cms/adp/admin/UsersComponent/SubmitUserChanges.vue'
+import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import AdminUserSettingsModal from '@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { GetAdminUsers, GetRoles, GetRoleGroupOptions, CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
 const router = useRouter()
 const toast = useToast()
 const rows = ref([])
+const totalUsers = ref(0)
 const roles = ref([])
 const roleGroups = ref([])
 const hasAdminAccess = ref(false)
 const isCheckingAccess = ref(true)
+const isLoadingUsers = ref(false)
+const showUserSettings = ref(false)
+const selectedUserId = ref(null)
+
+const rowsPerPage = ref(12)
+const searchQuery = ref('')
+const currentPage = ref(1)
+
+let searchDebounceTimer = null
+
+const mapUserToRow = (user) => ({
+  user_id: user.user_id,
+  user: user.full_name || user.username,
+  username: user.username,
+  email: user.email,
+  first_name: user.first_name || null,
+  last_name: user.last_name || null,
+  date_joined: user.date_joined || null,
+  role: user.role,
+  role_groups: user.role_groups,
+  avatar_url: user.avatar_url || null,
+})
 
 const loadUsers = async () => {
-  const users = await GetAdminUsers()
-  rows.value = users.map(user => ({
-    user_id: user.user_id,
-    user: user.full_name || user.username,
-    username: user.username,
-    email: user.email,
-    first_name: user.first_name || null,
-    last_name: user.last_name || null,
-    date_joined: user.date_joined || null,
-    role: user.role,
-    role_groups: user.role_groups,
-    avatar_url: user.avatar_url || null
-  }))
+  isLoadingUsers.value = true
+  try {
+    const data = await GetAdminUsers({
+      page: currentPage.value,
+      page_size: rowsPerPage.value,
+      search: searchQuery.value.trim() || undefined,
+    })
+    rows.value = (data.users || []).map(mapUserToRow)
+    totalUsers.value = data.total ?? rows.value.length
+    if (data.page) {
+      currentPage.value = data.page
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки пользователей:', error)
+    toast.error('Не удалось загрузить список пользователей')
+  } finally {
+    isLoadingUsers.value = false
+  }
 }
 
 const loadRefs = async () => {
   roles.value = await GetRoles()
   roleGroups.value = await GetRoleGroupOptions()
-}
-
-const updateUserAssignments = async () => {
-  try {
-    await loadUsers()
-  } catch (error) {
-    console.error('Error fetching users:', error)
-  }
 }
 
 onMounted(async () => {
@@ -67,70 +87,62 @@ onMounted(async () => {
   }
 })
 
-const rowsPerPage = ref(12)
-
-const searchQuery = ref('')
-const handleSearchQuery = query => (searchQuery.value = query)
-
-const currentPage = ref(1)
-
-const filteredRows = computed(() => {
-  if (!searchQuery.value) {
-    return rows.value
-  }
-  const query = searchQuery.value.toLowerCase()
-  return rows.value.filter(row =>
-    row.user.toLowerCase().includes(query) ||
-    row.username.toLowerCase().includes(query) ||
-    row.email.toLowerCase().includes(query)
-  )
-})
-
-const columns = [
-  { 
-    key: 'user', 
-    label: 'Пользователь'
-  },
-  { 
-    key: 'date_joined', 
-    label: 'Дата регистрации',
-    headerStyle: { textAlign: 'center' },
-    cellStyle: { textAlign: 'center' }
-  },
-  { 
-    key: 'role', 
-    label: 'Роль',
-    headerStyle: { textAlign: 'center' },
-    cellStyle: { textAlign: 'center' }
-  },
-  { 
-    key: 'role_groups', 
-    label: 'Группы',
-    headerStyle: { textAlign: 'center' },
-    cellStyle: { textAlign: 'center' }
-  },
-  { 
-    key: 'actions', 
-    label: '',
-    headerStyle: { textAlign: 'right' },
-    cellStyle: { textAlign: 'right' }
-  }
-]
-
-const rowSelected = ref({
-  user_id: 0,
-  user: '',
-  username: '',
-  role: null,
-  role_groups: []
-})
-
-const changeRow = row => {
-  rowSelected.value = { ...row }
+const handlePageChange = (page) => {
+  currentPage.value = page
+  loadUsers()
 }
 
-const refreshAssignments = async () => {
-  await updateUserAssignments()
+const handleSearchQuery = (query) => {
+  searchQuery.value = query
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+  searchDebounceTimer = setTimeout(() => {
+    if (currentPage.value !== 1) {
+      currentPage.value = 1
+    }
+    loadUsers()
+  }, 300)
+}
+
+const columns = [
+  {
+    key: 'user',
+    label: 'Пользователь',
+  },
+  {
+    key: 'date_joined',
+    label: 'Дата регистрации',
+    headerStyle: { textAlign: 'center' },
+    cellStyle: { textAlign: 'center' },
+  },
+  {
+    key: 'role',
+    label: 'Роль',
+    headerStyle: { textAlign: 'center' },
+    cellStyle: { textAlign: 'center' },
+  },
+  {
+    key: 'role_groups',
+    label: 'Группы',
+    headerStyle: { textAlign: 'center' },
+    cellStyle: { textAlign: 'center' },
+  },
+  {
+    key: 'actions',
+    label: '',
+    headerStyle: { textAlign: 'right' },
+    cellStyle: { textAlign: 'right' },
+  },
+]
+
+const openUserSettings = (item) => {
+  selectedUserId.value = item.user_id
+  showUserSettings.value = true
+}
+
+const handleUserSaved = async () => {
+  await loadUsers()
 }
 
 const goToImport = () => {
@@ -142,9 +154,9 @@ const getItemKey = (item) => item.user_id
 
 <template>
   <div v-if="isCheckingAccess" class="d-flex justify-content-center align-items-center" style="min-height: 400px;">
-    <Loader2 :size="48" class="text-primary spinner" />
+    <SpinnerLoading color="primary" />
   </div>
-  
+
   <div v-else-if="hasAdminAccess" class="card">
     <div class="mb-1">
       <div class="row align-items-center gap-3 gap-sm-0">
@@ -163,7 +175,11 @@ const getItemKey = (item) => item.user_id
       </div>
     </div>
 
-    <DataTable :items="filteredRows" :columns="columns" :items-per-page="rowsPerPage" :current-page="currentPage" :get-item-key="getItemKey" :enable-pagination="true" @update:current-page="currentPage = $event">
+    <div v-if="isLoadingUsers" class="d-flex justify-content-center align-items-center py-5">
+      <SpinnerLoading color="primary" />
+    </div>
+
+    <DataTable v-else :items="rows" :columns="columns" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalUsers" :get-item-key="getItemKey" :enable-pagination="true" @update:current-page="handlePageChange">
       <template #cell-user="{ item }">
         <div class="d-flex align-items-center gap-3">
           <UserAvatar :user-id="item.user_id" :custom-avatar-url="item.avatar_url" :title="item.user" :size="32" :first-name="item.first_name" :last-name="item.last_name" />
@@ -193,31 +209,24 @@ const getItemKey = (item) => item.user_id
 
       <template #cell-actions="{ item }">
         <div class="d-flex justify-content-end">
-          <button class="btn btn-sm btn-settings user-action-btn" data-bs-toggle="modal" data-bs-target="#userRoleEdit" @click="changeRow(item)">
+          <button type="button" class="btn btn-sm btn-settings user-action-btn" @click="openUserSettings(item)">
             <Settings size="18" />
           </button>
         </div>
       </template>
     </DataTable>
 
-    <ModalCenter title="Назначение роли пользователю" modal-id="userRoleEdit">
-      <ChangeUserRoleForm :row="rowSelected" :roles="roles" :role-groups="roleGroups" @change-user-groups-and-permissions="refreshAssignments"/>
-    </ModalCenter>
+    <AdminUserSettingsModal v-model:show="showUserSettings" :user-id="selectedUserId" :roles="roles" :role-groups="roleGroups" @saved="handleUserSaved"/>
   </div>
 </template>
 
-
 <style scoped lang="scss">
-.spinner {
-  animation: spin 1s linear infinite;
-}
-
 :deep(.table tbody tr) {
   .user-action-btn {
     opacity: 0;
     transition: opacity 0.2s ease;
   }
-  
+
   &:hover .user-action-btn {
     opacity: 1;
   }
@@ -226,15 +235,6 @@ const getItemKey = (item) => item.user_id
 .btn-settings {
   &:hover {
     background-color: var(--color-hover-background);
-  }
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
   }
 }
 </style>
