@@ -1,147 +1,31 @@
-import Cookies from 'js-cookie'
-import { apiClient } from '@/js/api/manager'
-import { endpoints } from '@/js/api/endpoints'
-
-function decodePayload(token) {
-  try {
-    const base64 = token.split('.')[1]
-    const json = atob(base64.replace(/-/g, '+').replace(/_/g, '/'))
-    return JSON.parse(json)
-  } catch {
-    return null
-  }
-}
-
-function getExpiryDate(token) {
-  const payload = decodePayload(token)
-  if (!payload || !payload.exp) return null
-  return new Date(payload.exp * 1000)
-}
-
-function isExpired(token, skewSeconds = 0) {
-  const payload = decodePayload(token)
-  if (!payload || !payload.exp) return true
-  const nowSec = Math.floor(Date.now() / 1000)
-  return nowSec >= (payload.exp - skewSeconds)
-}
-
-function setCookieByExp(name, token) {
-  const expDate = getExpiryDate(token)
-  if (expDate) {
-    Cookies.set(name, token, { expires: expDate })
-  } else {
-    // fallback: сессионная cookie
-    Cookies.set(name, token)
-  }
-}
-
-let refreshInProgress = null
+import { performTokenRefresh } from '@/core/cms/js/tokenRefresh.js'
+import {
+  clearTokens,
+  getAccess,
+  getAccessExp,
+  getDepartmentId,
+  getOrganizationId,
+  getPayload,
+  getRefresh,
+  getUserId,
+  hasActiveOrganization,
+  setTokens,
+  shouldRefresh,
+} from '@/core/cms/js/tokenStorage.js'
 
 export const tokenService = {
-  getAccess() {
-    return Cookies.get('token') || null
-  },
-  getRefresh() {
-    return Cookies.get('refresh') || null
-  },
-  getAccessExp() {
-    const t = this.getAccess()
-    const p = t ? decodePayload(t) : null
-    return p?.exp ? p.exp * 1000 : 0
-  },
-  setTokens(access, refresh) {
-    if (access) setCookieByExp('token', access)
-    if (refresh) setCookieByExp('refresh', refresh)
-  },
-  clear() {
-    Cookies.remove('token')
-    Cookies.remove('refresh')
-    
-    // Очищаем старый localStorage для обратной совместимости при миграции
-    try {
-      const STORAGE_KEY = 'crm_active_organization'
-      localStorage.removeItem(STORAGE_KEY)
-    } catch (error) {
-      // Игнорируем ошибки очистки localStorage
-    }
-  },
-  async tryRefresh() {
-    if (refreshInProgress) return refreshInProgress
-    const refresh = this.getRefresh()
-    if (!refresh || isExpired(refresh, 0)) {
-      return Promise.reject(new Error('Refresh token missing or expired'))
-    }
-    refreshInProgress = (async () => {
-      try {
-        const resp = await apiClient.post(endpoints.auth.refresh, { refresh }, false)
-        if (resp?.success && resp?.data?.access) {
-          const newAccess = resp.data.access
-          this.setTokens(newAccess, refresh)
-          return newAccess
-        }
-        throw new Error('Refresh failed')
-      } finally {
-        refreshInProgress = null
-      }
-    })()
-    return refreshInProgress
-  },
-  shouldRefresh(thresholdSeconds = 120) {
-    const access = this.getAccess()
-    if (!access) return false
-    const payload = decodePayload(access)
-    if (!payload?.exp) return false
-    const nowSec = Math.floor(Date.now() / 1000)
-    return payload.exp - nowSec <= thresholdSeconds
-  },
-  getUserId() {
-    const access = this.getAccess()
-    if (!access) return null
-    const payload = decodePayload(access)
-    return payload?.user_id ? String(payload.user_id) : null
-  },
-  
-  /**
-   * Получает organization_id из текущего JWT токена
-   * @returns {number|null} - ID организации или null
-   */
-  getOrganizationId() {
-    const access = this.getAccess()
-    if (!access) return null
-    const payload = decodePayload(access)
-    return payload?.organization_id ?? null
-  },
-  
-  /**
-   * Получает department_id из текущего JWT токена
-   * @returns {number|null} - ID подразделения или null
-   */
-  getDepartmentId() {
-    const access = this.getAccess()
-    if (!access) return null
-    const payload = decodePayload(access)
-    return payload?.department_id ?? null
-  },
-  
-  /**
-   * Проверяет, есть ли активная сессия организации
-   * @returns {boolean}
-   */
-  hasActiveOrganization() {
-    return this.getOrganizationId() !== null
-  },
-  
-  /**
-   * Получает полный payload токена
-   * @returns {object|null}
-   */
-  getPayload() {
-    const access = this.getAccess()
-    if (!access) return null
-    return decodePayload(access)
-  }
+  getAccess,
+  getRefresh,
+  getAccessExp,
+  setTokens,
+  clear: clearTokens,
+  tryRefresh: performTokenRefresh,
+  shouldRefresh,
+  getUserId,
+  getOrganizationId,
+  getDepartmentId,
+  hasActiveOrganization,
+  getPayload,
 }
 
 export default tokenService
-
-

@@ -4,6 +4,11 @@ import { Eye, EyeOff, CheckCircle, Shield } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 import ModalCenter from '@/components/ModalCenter.vue'
 import { useProfile } from '@/core/cms/js/profileService.js'
+import {
+  passwordPolicy,
+  validatePasswordValue,
+  getPasswordRequirementHints,
+} from '@/js/passwordPolicy.js'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -67,17 +72,19 @@ const currentPasswordIcon = computed(() => (isCurrentPasswordVisible.value ? Eye
 const newPasswordIcon = computed(() => (isNewPasswordVisible.value ? Eye : EyeOff))
 const confirmPasswordIcon = computed(() => (isConfirmPasswordVisible.value ? Eye : EyeOff))
 
+const passwordRequirementHints = getPasswordRequirementHints()
+
 const passwordStrength = computed(() => {
   const password = form.value.newPassword
   if (!password) return { score: 0, label: '', color: '' }
 
   let score = 0
-  if (password.length >= 8) score += 1
-  if (password.length >= 12) score += 1
-  if (/[a-z]/.test(password)) score += 1
-  if (/[A-Z]/.test(password)) score += 1
-  if (/[0-9]/.test(password)) score += 1
-  if (/[^A-Za-z0-9]/.test(password)) score += 1
+  if (password.length >= passwordPolicy.minLength) score += 1
+  if (password.length >= passwordPolicy.minLength + 4) score += 1
+  if (!passwordPolicy.requireLowercase || /[a-z]/.test(password)) score += 1
+  if (!passwordPolicy.requireUppercase || /[A-Z]/.test(password)) score += 1
+  if (!passwordPolicy.requireDigit || /[0-9]/.test(password)) score += 1
+  if (!passwordPolicy.requireSpecial || /[^A-Za-z0-9]/.test(password)) score += 1
 
   const strengthMap = {
     0: { label: '', color: '' },
@@ -109,14 +116,9 @@ const validateForm = () => {
     isValid = false
   }
 
-  if (form.value.newPassword.length < 8) {
-    errors.value.newPassword = 'Пароль должен содержать минимум 8 символов'
-    isValid = false
-  } else if (!/[a-z]/.test(form.value.newPassword)) {
-    errors.value.newPassword = 'Пароль должен содержать хотя бы одну букву в нижнем регистре'
-    isValid = false
-  } else if (!/[0-9]/.test(form.value.newPassword)) {
-    errors.value.newPassword = 'Пароль должен содержать хотя бы одну цифру'
+  const passwordComplexityError = validatePasswordValue(form.value.newPassword)
+  if (passwordComplexityError) {
+    errors.value.newPassword = passwordComplexityError
     isValid = false
   }
 
@@ -329,9 +331,7 @@ const submitForm = async (event) => {
               Требования к паролю
             </h6>
             <ul class="mb-0 ps-3">
-              <li>Минимум 8 символов</li>
-              <li>Хотя бы одна строчная буква</li>
-              <li>Хотя бы одна цифра</li>
+              <li v-for="hint in passwordRequirementHints" :key="hint">{{ hint }}</li>
             </ul>
           </div>
 

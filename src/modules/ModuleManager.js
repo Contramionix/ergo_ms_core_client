@@ -66,10 +66,8 @@ export class ModuleManager {
     // Интеграции регистрируются ПОСЛЕ остальных менеджеров.
     // Это важно, чтобы избежать циклического deadlock-а, когда endpoints.js
     // имеет top-level await на getEndpoints(), а integrations.js модулей
-    // транзитивно импортируют tokenService -> endpoints.js. К моменту
-    // initializeIntegrations остальные менеджеры уже доступны, а
-    // integrations.js загружается лениво (см. ModuleLoader.js), без
-    // static-импортов tokenService/apiClient во избежание цикла.
+    // транзитивно импортируют tokenService -> endpoints.js. tokenService
+    // больше не тянет apiClient/endpoints; integrations.js загружается лениво.
     await this.integrationsManager.initialize()
 
     this.initialized = true

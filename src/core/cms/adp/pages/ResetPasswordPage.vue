@@ -3,6 +3,7 @@ import { reactive, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import PasswordInput from '@/core/cms/adp/components/PasswordInput.vue'
 import { validateFieldValue, validateFieldsOnEquality } from '@/js/validation'
+import { validatePasswordValue } from '@/js/passwordPolicy.js'
 import { resetPassword } from '@/core/cms/adp/js/auth-index'
 
 const router = useRouter()
@@ -38,9 +39,11 @@ const validateForm = () => {
   errors.password = validateFieldValue(form.password, 'Новый пароль')
   errors.passwordConfirm = validateFieldValue(form.passwordConfirm, 'Подтверждение пароля')
   
-  // Проверяем минимальную длину пароля
-  if (!errors.password && form.password.length < 8) {
-    errors.password = 'Пароль должен быть не менее 8 символов'
+  if (!errors.password) {
+    const passwordComplexityError = validatePasswordValue(form.password)
+    if (passwordComplexityError) {
+      errors.password = passwordComplexityError
+    }
   }
   
   // Проверяем совпадение паролей

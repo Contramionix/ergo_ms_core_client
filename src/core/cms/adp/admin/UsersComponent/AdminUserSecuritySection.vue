@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useToast } from 'vue-toastification'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { resetAdminUserPassword } from '@/core/cms/adp/admin/js/adminUserService.js'
+import { validatePasswordValue } from '@/js/passwordPolicy.js'
 
 const props = defineProps({
   userId: { type: Number, default: null },
@@ -32,12 +33,11 @@ const validateManualPassword = () => {
 
   if (!value) {
     passwordError.value = 'Введите новый пароль'
-  } else if (value.length < 8) {
-    passwordError.value = 'Пароль должен содержать минимум 8 символов'
-  } else if (!/[a-z]/.test(value)) {
-    passwordError.value = 'Пароль должен содержать хотя бы одну строчную букву'
-  } else if (!/\d/.test(value)) {
-    passwordError.value = 'Пароль должен содержать хотя бы одну цифру'
+  } else {
+    const complexityError = validatePasswordValue(value)
+    if (complexityError) {
+      passwordError.value = complexityError
+    }
   }
 
   return !passwordError.value

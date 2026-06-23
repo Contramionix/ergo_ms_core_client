@@ -1,3 +1,5 @@
+import { validatePasswordValue } from '@/js/passwordPolicy.js'
+
 export const validateFieldValue = (value, name) => {
     let error = null;
 
@@ -181,26 +183,13 @@ export const validateRegistrationForm = (name, login, email, password, passwordC
         errors.email = validateFieldWithRegex(email, emailRegex, 'Введите корректный email.');
     }
 
-    const minPasswordLength = 8;
-
-    // Валидация длины пароля
+    // Валидация сложности пароля
     if (errors.password === null) {
-        errors.password = validateFieldValueOnLength(
-            password, 
-            minPasswordLength, 
-            Comparison.LESS, 
-            'Пароль должен быть не менее 8 символов.'
-        );
+        errors.password = validatePasswordValue(password)
     }
 
-    // Валидация длины подтверждения пароля
     if (errors.passwordConfirm === null) {
-        errors.passwordConfirm = validateFieldValueOnLength(
-            passwordConfirm, 
-            minPasswordLength, 
-            Comparison.LESS, 
-            'Пароль должен быть не менее 8 символов.'
-        );
+        errors.passwordConfirm = validatePasswordValue(passwordConfirm)
     }
 
     // Валидация совпадения паролей
