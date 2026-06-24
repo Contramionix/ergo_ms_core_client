@@ -309,6 +309,11 @@ export const CheckAccess = {
         return response;
     },
 
+    async DeleteAdminUser(userId) {
+        const response = await apiClient.delete(endpoints.cms.adminUserDetail(userId), {}, true);
+        return response;
+    },
+
     async UploadAdminUserAvatar(userId, file) {
         const formData = new FormData();
         formData.append('image', file);

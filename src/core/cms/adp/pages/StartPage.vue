@@ -20,27 +20,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchRegistrationSettings } from '@/core/cms/adp/js/auth-index'
+import { useRegistrationSettings } from '@/core/cms/adp/js/useRegistrationSettings.js'
 
 const message = 'Авторизуйтесь в системе'
-const showRegisterLink = ref(true)
+const { showRegisterLink } = useRegistrationSettings()
 
 const router = useRouter()
 
 const navigateToLogin = () => {
   router.push({ name: 'Login' })
 }
-
-onMounted(async () => {
-  try {
-    const settings = await fetchRegistrationSettings()
-    showRegisterLink.value = settings.mode === 'open'
-  } catch {
-    showRegisterLink.value = true
-  }
-})
 </script>
 
 <style lang="scss" scoped>

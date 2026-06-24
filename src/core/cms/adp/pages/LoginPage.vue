@@ -1,13 +1,14 @@
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { authorization, fetchRegistrationSettings } from '@/core/cms/adp/js/auth-index'
+import { authorization } from '@/core/cms/adp/js/auth-index'
 import { validateLoginForm } from '@/js/validation'
 import { authGuard } from '@/core/cms/js/authGuard'
+import { useRegistrationSettings } from '@/core/cms/adp/js/useRegistrationSettings.js'
 
 const router = useRouter()
 const isLoading = ref(false)
-const showRegisterLink = ref(true)
+const { showRegisterLink } = useRegistrationSettings()
 
 const form = reactive({
   login: '',
@@ -105,15 +106,6 @@ const submitForm = async () => {
     isLoading.value = false
   }
 }
-
-onMounted(async () => {
-  try {
-    const settings = await fetchRegistrationSettings()
-    showRegisterLink.value = settings.mode === 'open'
-  } catch {
-    showRegisterLink.value = true
-  }
-})
 </script>
 
 <template>

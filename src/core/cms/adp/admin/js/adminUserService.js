@@ -31,6 +31,10 @@ export async function updateAdminUser(userId, data) {
   return response.data
 }
 
+export async function deleteAdminUser(userId) {
+  await CheckAccess.DeleteAdminUser(userId)
+}
+
 export async function uploadAdminUserAvatar(userId, file) {
   const response = await CheckAccess.UploadAdminUserAvatar(userId, file)
   invalidateUserAvatar(userId)

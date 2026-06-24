@@ -146,6 +146,10 @@ const handleUserSaved = async () => {
   await loadUsers()
 }
 
+const handleUserDeleted = async () => {
+  await loadUsers()
+}
+
 const goToImport = () => {
   router.push({ name: 'ImportUsersPanel' })
 }
@@ -230,7 +234,7 @@ const getItemKey = (item) => item.user_id
       </template>
     </DataTable>
 
-    <AdminUserSettingsModal v-model:show="showUserSettings" :user-id="selectedUserId" :roles="roles" :role-groups="roleGroups" @saved="handleUserSaved"/>
+    <AdminUserSettingsModal v-model:show="showUserSettings" :user-id="selectedUserId" :roles="roles" :role-groups="roleGroups" @saved="handleUserSaved" @deleted="handleUserDeleted"/>
   </div>
 </template>
 

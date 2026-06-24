@@ -1,5 +1,6 @@
 import router from '@/js/routers.js'
 import { authGuard } from '@/core/cms/js/authGuard.js' // Подключаем защиту аутентификации
+import { preloadRegistrationSettings } from '@/core/cms/adp/js/registrationSettings.js'
 
 // Подключаем систему логирования (автоматически переопределяет console)
 import '@/js/utils/logger.js'
@@ -50,6 +51,8 @@ app.use(Toast, {
 app.use(setupCalendar, {
   color: 'red',
 })
+
+await preloadRegistrationSettings()
 
 app.mount('#app')
 

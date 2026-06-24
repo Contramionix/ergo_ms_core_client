@@ -3,11 +3,14 @@ import { ref, computed, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AvatarBlock from '@/core/cms/adp/user/account/component/settings-panels/AvatarBlock.vue'
 import AdminUserSecuritySection from '@/core/cms/adp/admin/UsersComponent/AdminUserSecuritySection.vue'
+import { useUserStore } from '@/core/cms/js/userStore.js'
 import {
   fetchAdminUser,
   updateAdminUser,
+  deleteAdminUser,
   uploadAdminUserAvatar,
   deleteAdminUserAvatar,
   mapAdminUserToFormData,
@@ -22,9 +25,10 @@ const props = defineProps({
   roleGroups: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['update:show', 'saved'])
+const emit = defineEmits(['update:show', 'saved', 'deleted'])
 
 const toast = useToast()
+const userStore = useUserStore()
 const BIO_MAX_LENGTH = 500
 const PROFILE_FIELDS = [
   'email',
@@ -39,6 +43,8 @@ const PROFILE_FIELDS = [
 
 const loading = ref(false)
 const saving = ref(false)
+const deleting = ref(false)
+const showDeleteConfirm = ref(false)
 const errors = ref({})
 const formData = ref({})
 const avatarUrl = ref(null)
@@ -60,6 +66,16 @@ const modalTitle = computed(() =>
   username.value ? `Настройки пользователя: ${username.value}` : 'Настройки пользователя',
 )
 
+const isCurrentUser = computed(() => props.userId != null && props.userId === userStore.user?.id)
+
+const deleteConfirmMessage = computed(() => {
+  const label = username.value || 'этого пользователя'
+  return (
+    `Удалить ${label}?\n\n` +
+    'Учётная запись и связанные данные будут удалены без возможности восстановления.'
+  )
+})
+
 const resetState = () => {
   formData.value = {}
   avatarUrl.value = null
@@ -68,6 +84,7 @@ const resetState = () => {
   username.value = ''
   passwordResetMode.value = 'system'
   errors.value = {}
+  showDeleteConfirm.value = false
 }
 
 const loadUser = async () => {
@@ -158,6 +175,36 @@ const handleSave = async () => {
     }
   } finally {
     saving.value = false
+  }
+}
+
+const requestDelete = () => {
+  if (!props.userId || isCurrentUser.value) return
+  showDeleteConfirm.value = true
+}
+
+const closeDeleteConfirm = () => {
+  if (!deleting.value) {
+    showDeleteConfirm.value = false
+  }
+}
+
+const confirmDelete = async () => {
+  if (!props.userId || deleting.value || isCurrentUser.value) return
+
+  deleting.value = true
+  try {
+    await deleteAdminUser(props.userId)
+    toast.success('Пользователь удалён')
+    showDeleteConfirm.value = false
+    emit('deleted')
+    handleClose()
+  } catch (error) {
+    console.error('Ошибка удаления пользователя:', error)
+    const message = error.response?.data?.error || 'Не удалось удалить пользователя'
+    toast.error(message)
+  } finally {
+    deleting.value = false
   }
 }
 </script>
@@ -269,16 +316,56 @@ const handleSave = async () => {
       </div>
 
       <AdminUserSecuritySection :user-id="userId" :username="username" :password-reset-mode="passwordResetMode"/>
+
+      <h2 class="admin-user-modal__section-title admin-user-modal__section-title--danger">Опасная зона</h2>
+      <div class="profile-card profile-card--danger">
+        <div class="profile-card__row profile-card__row--last">
+          <div class="profile-card__label-block">
+            <span class="profile-card__label">Удаление</span>
+            <span class="profile-card__hint">
+              Удаление учётной записи необратимо. Все сессии пользователя будут завершены.
+            </span>
+          </div>
+          <div class="profile-card__control profile-card__control--actions">
+            <button
+              type="button"
+              class="btn btn-sm btn-danger"
+              :disabled="saving || deleting || isCurrentUser"
+              @click="requestDelete"
+            >
+              <span v-if="deleting">Удаление...</span>
+              <span v-else>Удалить пользователя</span>
+            </button>
+            <small v-if="isCurrentUser" class="text-muted profile-card__inline-warning">
+              Нельзя удалить собственную учётную запись.
+            </small>
+          </div>
+        </div>
+      </div>
     </template>
 
     <template #footer>
-      <button type="button" class="btn btn-secondary" :disabled="saving" @click="handleClose">Отмена</button>
-      <button type="button" class="btn btn-primary" :disabled="saving || loading" @click="handleSave">
+      <button type="button" class="btn btn-secondary" :disabled="saving || deleting" @click="handleClose">Отмена</button>
+      <button type="button" class="btn btn-primary" :disabled="saving || loading || deleting" @click="handleSave">
         <span v-if="saving">Сохранение...</span>
         <span v-else>Сохранить</span>
       </button>
     </template>
   </ModalCenter>
+
+  <ConfirmDialog
+    :show="showDeleteConfirm"
+    title="Удаление пользователя"
+    :message="deleteConfirmMessage"
+    confirm-text="Удалить"
+    cancel-text="Отмена"
+    variant="danger"
+    :loading="deleting"
+    :z-index="1100"
+    @confirm="confirmDelete"
+    @cancel="closeDeleteConfirm"
+    @close="closeDeleteConfirm"
+  />
 </template>
 
 <style scoped lang="scss">
@@ -294,6 +381,14 @@ const handleSave = async () => {
   font-weight: 600;
   color: var(--color-primary-text);
   margin: 1.25rem 0 0.75rem;
+}
+
+.admin-user-modal__section-title--danger {
+  color: var(--bs-danger, #dc3545);
+}
+
+.profile-card--danger {
+  border-color: rgba(var(--bs-danger-rgb, 220, 53, 69), 0.35);
 }
 
 .profile-card {
@@ -335,6 +430,54 @@ const handleSave = async () => {
 .profile-card__control {
   flex: 1 1 60%;
   min-width: 0;
+}
+
+.profile-card__label-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 0 0 auto;
+  min-width: 6.5rem;
+  max-width: 40%;
+  padding-top: 0.35rem;
+
+  @media (max-width: 575.98px) {
+    max-width: none;
+    padding-top: 0;
+  }
+}
+
+.profile-card__hint {
+  font-size: 0.75rem;
+  color: var(--color-secondary-text);
+  opacity: 0.85;
+  line-height: 1.35;
+}
+
+.profile-card__control--actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.375rem;
+  flex: 0 0 auto;
+  width: auto;
+  padding-top: 0.35rem;
+
+  @media (max-width: 575.98px) {
+    align-items: stretch;
+    padding-top: 0;
+  }
+}
+
+.profile-card__inline-warning {
+  display: block;
+  font-size: 0.75rem;
+  margin-top: 0.375rem;
+  text-align: right;
+
+  @media (max-width: 575.98px) {
+    text-align: left;
+  }
 }
 
 .profile-card__input {

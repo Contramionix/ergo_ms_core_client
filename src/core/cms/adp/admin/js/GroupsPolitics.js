@@ -283,6 +283,7 @@ export const GetAdminUsers = async (params = {}) => {
 export {
     fetchAdminUser,
     updateAdminUser,
+    deleteAdminUser,
     uploadAdminUserAvatar,
     deleteAdminUserAvatar,
     mapAdminUserToFormData,
