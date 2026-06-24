@@ -23,7 +23,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll, getPermissionRules } from '@/modules/index.js'
-import { checkRouteAdpAccess, hasAnyModulePermission } from '@/core/cms/adp/js/accessControl'
+import { checkRouteAdpAccess, hasAnyModulePermission, checkGlobalAdminAccess } from '@/core/cms/adp/js/accessControl'
 import { accessDeniedState } from './accessDeniedState'
 
 let organizationGuard = null
@@ -74,6 +74,17 @@ async function getCachedPermissionRules() {
 async function checkRouteAccess(to) {
   // Загружаем правила динамически (с кешированием)
   const MODULE_PERMISSION_RULES = await getCachedPermissionRules()
+
+  // 0) Глобальный администратор (настройки сайта, админ-панель)
+  if (to.meta?.requiresGlobalAdmin) {
+    const isGlobalAdmin = await checkGlobalAdminAccess()
+    if (!isGlobalAdmin) {
+      accessDeniedState.active = true
+      accessDeniedState.title = 'Доступ запрещён'
+      accessDeniedState.message = 'Требуются права администратора.'
+      return { allowed: false, redirect: 'AccessDenied' }
+    }
+  }
 
   // 1) Проверка разрешений модулей по правилам
   for (let i = 0; i < MODULE_PERMISSION_RULES.length; i++) {

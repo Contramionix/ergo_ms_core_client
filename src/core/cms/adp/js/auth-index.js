@@ -29,6 +29,16 @@ export const registration = async (...args) => {
     return authService.registration(...args);
 };
 
+export const fetchRegistrationSettings = async (...args) => {
+    const { fetchRegistrationSettings: fetchSettings } = await import('@/core/cms/adp/js/registrationSettings');
+    return fetchSettings(...args);
+};
+
+export const validateInvitationToken = async (...args) => {
+    const { validateInvitationToken: validateToken } = await import('@/core/cms/adp/js/registrationSettings');
+    return validateToken(...args);
+};
+
 export const checkToken = async (...args) => {
     const { authService } = await import('@/core/cms/adp/js/auth');
     return authService.checkToken(...args);

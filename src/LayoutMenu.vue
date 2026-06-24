@@ -151,7 +151,7 @@ onBeforeUnmount(() => {
         <IconMenu :size="24" />
       </button>
       <RouterLink to="/" class="mobile-header__brand text-decoration-none">
-        <span class="fw-semibold">ERGO&nbsp;MS</span>
+        <span class="fw-semibold">ERGOMS</span>
       </RouterLink>
     </div>
   </Teleport>

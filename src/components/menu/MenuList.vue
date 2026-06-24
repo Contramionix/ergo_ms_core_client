@@ -211,10 +211,10 @@ onMounted(async () => {
   try {
     const res = await apiClient.get(endpoints.settings.siteName)
     if (res.success) {
-      siteName.value = res.data?.site_name || 'ERGO MS'
+      siteName.value = res.data?.site_name || 'ERGOMS'
     }
   } catch {
-    siteName.value = 'ERGO MS'
+    siteName.value = 'ERGOMS'
   }
 
   // Рассчитываем оптимальную ширину

@@ -29,6 +29,12 @@ export async function getPermissionsSnapshot() {
   return ensurePermissionsSnapshot()
 }
 
+export async function checkGlobalAdminAccess() {
+  const { CheckAccessToAdminPanel } = await import('@/core/cms/adp/admin/js/GroupsPolitics')
+  const access = await CheckAccessToAdminPanel()
+  return Boolean(access?.access_to_panel)
+}
+
 export async function checkRouteAdpAccess(path) {
   const permissionsSnapshot = await ensurePermissionsSnapshot()
 

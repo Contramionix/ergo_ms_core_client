@@ -1,12 +1,13 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { authorization } from '@/core/cms/adp/js/auth-index'
+import { authorization, fetchRegistrationSettings } from '@/core/cms/adp/js/auth-index'
 import { validateLoginForm } from '@/js/validation'
 import { authGuard } from '@/core/cms/js/authGuard'
 
 const router = useRouter()
 const isLoading = ref(false)
+const showRegisterLink = ref(true)
 
 const form = reactive({
   login: '',
@@ -104,6 +105,15 @@ const submitForm = async () => {
     isLoading.value = false
   }
 }
+
+onMounted(async () => {
+  try {
+    const settings = await fetchRegistrationSettings()
+    showRegisterLink.value = settings.mode === 'open'
+  } catch {
+    showRegisterLink.value = true
+  }
+})
 </script>
 
 <template>
@@ -195,7 +205,7 @@ const submitForm = async () => {
           </button>
 
           <!-- Ссылка на регистрацию -->
-          <div class="text-center">
+          <div v-if="showRegisterLink" class="text-center">
             <span class="text-muted">Нет аккаунта? </span>
             <RouterLink :to="{ name: 'Register' }" class="text-decoration-none text-primary fw-semibold">
               Зарегистрироваться

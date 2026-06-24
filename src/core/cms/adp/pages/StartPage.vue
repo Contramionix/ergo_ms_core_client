@@ -8,7 +8,7 @@
         <button type="submit" class="btn btn-primary w-100" @click="navigateToLogin">
           Авторизация
         </button>
-        <div class="mt-3 text-center no-select">
+        <div v-if="showRegisterLink" class="mt-3 text-center no-select">
           Нет аккаунта?
           <RouterLink :to="{ name: 'Register' }" class="text-decoration-none">
             Зарегистрироваться
@@ -20,15 +20,27 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { fetchRegistrationSettings } from '@/core/cms/adp/js/auth-index'
 
 const message = 'Авторизуйтесь в системе'
+const showRegisterLink = ref(true)
 
 const router = useRouter()
 
 const navigateToLogin = () => {
   router.push({ name: 'Login' })
 }
+
+onMounted(async () => {
+  try {
+    const settings = await fetchRegistrationSettings()
+    showRegisterLink.value = settings.mode === 'open'
+  } catch {
+    showRegisterLink.value = true
+  }
+})
 </script>
 
 <style lang="scss" scoped>

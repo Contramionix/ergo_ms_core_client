@@ -70,7 +70,7 @@ export function useMenuWidth() {
     let maxWidth = 0
 
     context.font = SITE_BRAND_MEASURE_FONT
-    const siteNameWidth = context.measureText(siteName || 'ERGO MS').width + 100
+    const siteNameWidth = context.measureText(siteName || 'ERGOMS').width + 100
     maxWidth = Math.max(maxWidth, siteNameWidth)
 
     context.font = MENU_ITEM_MEASURE_FONT

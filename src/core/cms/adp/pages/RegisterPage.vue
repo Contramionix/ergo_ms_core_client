@@ -1,12 +1,21 @@
 <script setup>
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { registration, validateRegistration } from '@/core/cms/adp/js/auth-index'
+import { reactive, ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { registration, fetchRegistrationSettings, validateInvitationToken } from '@/core/cms/adp/js/auth-index'
 import { validateRegistrationForm } from '@/js/validation'
 
 const router = useRouter()
+const route = useRoute()
 const isLoading = ref(false)
 const isSuccess = ref(false)
+const isBootstrapping = ref(true)
+const registrationSettings = ref({
+  mode: 'open',
+  registration_enabled: true,
+  invitation_required: false,
+})
+const invitationToken = ref('')
+const invitationStatus = ref(null)
 
 const form = reactive({
   firstName: '',
@@ -31,7 +40,58 @@ const errors = reactive({
   general: null,
 })
 
+const registrationClosed = computed(() => !registrationSettings.value.registration_enabled)
+const invitationRequired = computed(() => registrationSettings.value.invitation_required)
+const invitationValid = computed(() => invitationStatus.value?.valid === true)
+const emailLocked = computed(() => invitationRequired.value && invitationValid.value)
 
+const pageTitle = computed(() => {
+  if (isSuccess.value) return 'Регистрация завершена!'
+  if (registrationClosed.value) return 'Регистрация недоступна'
+  if (invitationRequired.value && !invitationValid.value) return 'Нужно приглашение'
+  return 'Регистрация'
+})
+
+const pageDescription = computed(() => {
+  if (isSuccess.value) {
+    return 'Ваш аккаунт успешно создан. Перенаправляем на страницу входа...'
+  }
+  if (registrationClosed.value) {
+    return 'Регистрация новых пользователей отключена администратором.'
+  }
+  if (invitationRequired.value && !invitationValid.value) {
+    return 'Для регистрации перейдите по ссылке из письма-приглашения.'
+  }
+  if (invitationRequired.value && invitationValid.value) {
+    return `Регистрация по приглашению для ${invitationStatus.value.email}`
+  }
+  return 'Создайте новый аккаунт'
+})
+
+const canShowForm = computed(() => {
+  return !isSuccess.value
+    && !registrationClosed.value
+    && (!invitationRequired.value || invitationValid.value)
+})
+
+onMounted(async () => {
+  try {
+    registrationSettings.value = await fetchRegistrationSettings()
+    invitationToken.value = (route.query.invite || '').toString().trim()
+
+    if (registrationSettings.value.invitation_required && invitationToken.value) {
+      invitationStatus.value = await validateInvitationToken(invitationToken.value)
+      if (invitationStatus.value?.valid && invitationStatus.value.email) {
+        form.email = invitationStatus.value.email
+      }
+    }
+  } catch (error) {
+    console.error('Registration bootstrap error:', error)
+    errors.general = 'Не удалось загрузить настройки регистрации'
+  } finally {
+    isBootstrapping.value = false
+  }
+})
 
 const validateForm = () => {
   // Валидация обязательных полей
@@ -83,7 +143,8 @@ const submitForm = async () => {
       form.middleName,
       form.login,
       form.email,
-      form.password
+      form.password,
+      invitationToken.value,
     )
 
     if (registrationResult.success) {
@@ -172,6 +233,12 @@ const handleServerErrors = (serverErrors) => {
       : serverErrors.password
   }
 
+  if (serverErrors.invitation_token) {
+    errors.general = Array.isArray(serverErrors.invitation_token)
+      ? serverErrors.invitation_token[0]
+      : serverErrors.invitation_token
+  }
+
   if (serverErrors.message || serverErrors.detail) {
     errors.general = serverErrors.message || serverErrors.detail
   }
@@ -192,42 +259,57 @@ const showSuccessMessage = () => {
   <div class="d-flex justify-content-center align-items-center min-vh-100 py-4">
     <div class="card shadow-sm border-0" style="width: 500px">
       <div class="card-body p-5">
-        <div class="text-center mb-4">
-          <div class="mb-3">
-            <i :class="isSuccess ? 'bi bi-check-circle-fill text-success' : 'bi bi-person-plus text-primary'" 
-               style="font-size: 3rem;"></i>
-          </div>
-          <h2 class="fw-bold text-primary mb-2">
-            {{ isSuccess ? 'Регистрация завершена!' : 'Регистрация' }}
-          </h2>
-          <p class="text-muted">
-            {{ isSuccess 
-              ? 'Ваш аккаунт успешно создан. Перенаправляем на страницу входа...' 
-              : 'Создайте новый аккаунт' 
-            }}
-          </p>
-        </div>
-
-        <!-- Сообщение об успешной регистрации -->
-        <div v-if="isSuccess" class="text-center">
-          <div class="alert alert-success" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i>
-            Регистрация прошла успешно! Теперь вы можете войти в систему.
-          </div>
-          
+        <div v-if="isBootstrapping" class="text-center py-4">
           <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Загрузка...</span>
           </div>
-          <p class="text-muted mt-2">Перенаправление на страницу входа...</p>
         </div>
 
-        <!-- Общая ошибка -->
-        <div v-if="errors.general && !isSuccess" class="alert alert-danger" role="alert">
-          <i class="bi bi-exclamation-triangle-fill me-2"></i>
-          {{ errors.general }}
-        </div>
+        <template v-else>
+          <div class="text-center mb-4">
+            <div class="mb-3">
+              <i :class="isSuccess ? 'bi bi-check-circle-fill text-success' : 'bi bi-person-plus text-primary'"
+                 style="font-size: 3rem;"></i>
+            </div>
+            <h2 class="fw-bold text-primary mb-2">{{ pageTitle }}</h2>
+            <p class="text-muted">{{ pageDescription }}</p>
+          </div>
 
-        <form v-if="!isSuccess" @submit.prevent="submitForm" novalidate>
+          <div v-if="registrationClosed" class="text-center">
+            <RouterLink :to="{ name: 'Login' }" class="btn btn-primary">
+              Перейти ко входу
+            </RouterLink>
+          </div>
+
+          <div v-else-if="invitationRequired && !invitationValid" class="text-center">
+            <div class="alert alert-info" role="alert">
+              Обратитесь к администратору системы, чтобы получить ссылку-приглашение.
+            </div>
+            <RouterLink :to="{ name: 'Login' }" class="btn btn-outline-primary">
+              Войти
+            </RouterLink>
+          </div>
+
+          <!-- Сообщение об успешной регистрации -->
+          <div v-else-if="isSuccess" class="text-center">
+            <div class="alert alert-success" role="alert">
+              <i class="bi bi-check-circle-fill me-2"></i>
+              Регистрация прошла успешно! Теперь вы можете войти в систему.
+            </div>
+
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <p class="text-muted mt-2">Перенаправление на страницу входа...</p>
+          </div>
+
+          <!-- Общая ошибка -->
+          <div v-if="errors.general && canShowForm" class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            {{ errors.general }}
+          </div>
+
+          <form v-if="canShowForm" @submit.prevent="submitForm" novalidate>
           <!-- Фамилия -->
           <div class="form-floating mb-3" v-auto-animate>
             <input
@@ -317,7 +399,8 @@ const showSuccessMessage = () => {
               :class="{ 'is-invalid': errors.email }"
               v-model="form.email"
               placeholder="email@example.com"
-              :disabled="isLoading"
+              :disabled="isLoading || emailLocked"
+              :readonly="emailLocked"
               autocomplete="email"
             />
             <label for="email">
@@ -408,7 +491,8 @@ const showSuccessMessage = () => {
               Войти
             </RouterLink>
           </div>
-        </form>
+          </form>
+        </template>
       </div>
     </div>
   </div>

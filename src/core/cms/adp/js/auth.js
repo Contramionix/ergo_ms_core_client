@@ -46,14 +46,15 @@ export const authService = {
         }, false);
     },
     
-    async registration(firstName, lastName, middleName, username, email, password) {
+    async registration(firstName, lastName, middleName, username, email, password, invitationToken = '') {
         return await apiClient.post(endpoints.auth.registration, {
             first_name: firstName,
             last_name: lastName || '',
             middle_name: middleName || '',
             username,
             email,
-            password
+            password,
+            invitation_token: invitationToken || '',
         }, false);
     },
     

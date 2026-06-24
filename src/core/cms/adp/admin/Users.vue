@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { Settings, Upload } from 'lucide-vue-next'
+import { Settings, Upload, MailPlus } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import AdminUserSettingsModal from '@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue'
@@ -149,6 +149,10 @@ const goToImport = () => {
   router.push({ name: 'ImportUsersPanel' })
 }
 
+const goToInvitations = () => {
+  router.push({ name: 'InvitationsPanel' })
+}
+
 const getItemKey = (item) => item.user_id
 </script>
 
@@ -167,6 +171,10 @@ const getItemKey = (item) => item.user_id
           <label class="mb-0">
             <input type="search" class="form-control" placeholder="Поиск..." @input="handleSearchQuery($event.target.value)"/>
           </label>
+          <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToInvitations">
+            <MailPlus :size="18" class="flex-shrink-0" />
+            <span>Приглашения</span>
+          </button>
           <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToImport">
             <Upload :size="18" class="flex-shrink-0" />
             <span>Импорт пользователей</span>

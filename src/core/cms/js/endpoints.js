@@ -11,6 +11,8 @@ export const cmsEndpoints = {
         verifyCode: 'cms/adp/verify-code/',
         resetPassword: 'cms/adp/reset-password/',
         registration: 'cms/adp/registration/',
+        registrationSettings: 'cms/adp/registration-settings/',
+        validateInvitation: 'cms/adp/invitations/validate/',
         protected: 'cms/adp/protected/',
         changePassword: 'cms/adp/change-password/',
         devices: 'cms/adp/devices/',
@@ -81,6 +83,9 @@ export const cmsEndpoints = {
         adminUserResetPassword: (userId) => `cms/adp/admin-users/${userId}/reset-password/`,
         importUsers: 'cms/adp/import-users/',
         importUsersTaskStatus: (taskId) => `cms/adp/import-users/status/${taskId}/`,
+        invitations: 'cms/adp/invitations/',
+        invitationDetail: (id) => `cms/adp/invitations/${id}/`,
+        invitationResend: (id) => `cms/adp/invitations/${id}/resend/`,
         myPermissions: 'cms/adp/my-permissions/',
         checkURLAccess: 'cms/adp/check-url-access/',
         

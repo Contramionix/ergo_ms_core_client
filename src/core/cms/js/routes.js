@@ -31,7 +31,8 @@ export default {
     "component": "@/core/cms/adp/settings/ParentLayout.vue",
     "redirect": "SiteSettings",
     "meta": {
-      "requiresAuth": true
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
     }
   },
   "AdminPanel": {
@@ -40,7 +41,8 @@ export default {
     "redirect": "UsersPanel",
     "meta": {
       "title": "Админ-панель",
-      "requiresAuth": true
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
     }
   },
   "UsersPanel": {
@@ -48,7 +50,8 @@ export default {
     "component": "@/core/cms/adp/admin/Users.vue",
     "meta": {
       "title": "Панель пользователей",
-      "requiresAuth": true
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
     }
   },
   "ImportUsersPanel": {
@@ -56,7 +59,17 @@ export default {
     "component": "@/core/cms/adp/admin/ImportUsers.vue",
     "meta": {
       "title": "Импорт пользователей",
-      "requiresAuth": true
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
+    }
+  },
+  "InvitationsPanel": {
+    "path": "/admin-panel/invitations",
+    "component": "@/core/cms/adp/admin/Invitations.vue",
+    "meta": {
+      "title": "Приглашения на регистрацию",
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
     }
   },
   "CategoriesPanel": {
@@ -64,7 +77,8 @@ export default {
     "component": "@/core/cms/adp/admin/Categories.vue",
     "meta": {
       "title": "Панель ролей",
-      "requiresAuth": true
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
     }
   },
   "GroupsPanel": {
@@ -72,7 +86,8 @@ export default {
     "component": "@/core/cms/adp/admin/Groups.vue",
     "meta": {
       "title": "Панель ролевых групп",
-      "requiresAuth": true
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
     }
   },
   "PermissionsPanel": {
@@ -80,7 +95,8 @@ export default {
     "component": "@/core/cms/adp/admin/Permissions.vue",
     "meta": {
       "title": "Политики и модульные права",
-      "requiresAuth": true
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
     }
   },
   "ModulePagePermissionsPanel": {
@@ -88,7 +104,8 @@ export default {
     "component": "@/core/cms/adp/admin/ModulePagePermissions.vue",
     "meta": {
       "title": "Права по страницам модулей",
-      "requiresAuth": true
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
     }
   },
   "LiminationPanel": {
@@ -96,7 +113,8 @@ export default {
     "component": "@/core/cms/adp/admin/limitationSettings.vue",
     "meta": {
       "title": "Панель Ограничений",
-      "requiresAuth": true
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
     }
   },
   "MenuPanel": {
@@ -104,14 +122,16 @@ export default {
     "component": "@/core/cms/adp/admin/MenuPanel.vue",
     "meta": {
       "title": "Управление меню",
-      "requiresAuth": true
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
     }
   },
   "SiteSettings": {
     "path": "/settings/site-settings",
     "component": "@/core/cms/adp/settings/siteSettings/ParentLayout.vue",
     "meta": {
-      "requiresAuth": true
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
     }
   },
   "AccessDenied": {
