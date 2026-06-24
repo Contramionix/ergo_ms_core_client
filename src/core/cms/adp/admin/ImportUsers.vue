@@ -2,12 +2,11 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { ArrowLeft, Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-vue-next'
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-vue-next'
 import { apiClient } from '@/js/api/manager'
 import { cmsEndpoints } from '@/core/cms/js/endpoints'
 import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
-
 const router = useRouter()
 const toast = useToast()
 
@@ -365,16 +364,17 @@ const getLogClass = (level) => {
 </script>
 
 <template>
-  <div v-if="isCheckingAccess" class="d-flex justify-content-center align-items-center" style="min-height: 400px;">
-    <SpinnerLoading color="primary" />
-  </div>
-  <div v-else-if="hasAdminAccess" class="card">
-    <div class="card-body">
-      <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
-        <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" @click="goBack">
-          <ArrowLeft :size="18" class="flex-shrink-0" /><span>К панели пользователей</span>
-        </button>
-      </div>
+  <div v-if="isCheckingAccess" class="d-flex justify-content-center align-items-center loading-container">
+      <SpinnerLoading color="primary" />
+    </div>
+    <div v-else-if="hasAdminAccess" class="card">
+      <div class="card-body">
+        <nav class="breadcrumb-nav mb-4" aria-label="breadcrumb">
+          <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="#" @click.prevent="goBack">Пользователи</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Импорт</li>
+          </ol>
+        </nav>
       <div v-if="savedTaskId && !isImporting && !importResults" class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
         <span>Есть незавершённый импорт. Вы можете продолжить отслеживание.</span>
         <button type="button" class="btn btn-warning btn-sm" @click="resumeImport">Продолжить отслеживание</button>
@@ -489,27 +489,50 @@ const getLogClass = (level) => {
           </div>
         </div>
       </div>
+      </div>
     </div>
-  </div>
 </template>
 
 <style scoped lang="scss">
+.loading-container {
+  min-height: 400px;
+}
+
+.breadcrumb-nav {
+  .breadcrumb {
+    font-size: 0.875rem;
+  }
+
+  .breadcrumb-item a {
+    color: var(--color-accent);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .breadcrumb-item.active {
+    color: var(--color-secondary-text);
+  }
+}
+
 .upload-zone {
-  border: 2px dashed #dee2e6;
+  border: 2px dashed var(--color-border);
   border-radius: 8px;
   padding: 2rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  
+
   &:hover {
-    border-color: #0d6efd;
-    background-color: rgba(13, 110, 253, 0.05);
+    border-color: var(--color-accent);
+    background-color: var(--color-hover-background);
   }
-  
+
   &.has-file {
     border-style: solid;
-    border-color: #198754;
+    border-color: var(--bs-success, #198754);
     background-color: rgba(25, 135, 84, 0.05);
     cursor: default;
   }
@@ -532,36 +555,36 @@ const getLogClass = (level) => {
   .logs-container {
     max-height: 400px;
     overflow-y: auto;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     padding: 1rem;
-    background-color: #f8f9fa;
+    background-color: var(--color-secondary-background);
   }
-  
+
   .log-entry {
     padding: 0.25rem 0;
     font-size: 0.875rem;
     font-family: monospace;
-    
+
     &:not(:last-child) {
-      border-bottom: 1px solid #e9ecef;
+      border-bottom: 1px solid var(--color-border);
     }
   }
-  
+
   .log-message {
     word-break: break-word;
   }
 }
 
 .stats-card {
-  background-color: #f8f9fa;
+  background-color: var(--color-secondary-background);
   transition: all 0.2s ease;
-  
+
   .stats-value {
     font-size: 1.25rem;
     line-height: 1.2;
   }
-  
+
   .stats-label {
     font-size: 0.75rem;
   }
@@ -571,7 +594,7 @@ const getLogClass = (level) => {
   .upload-zone {
     padding: 1.5rem;
   }
-  
+
   .stats-card .stats-value {
     font-size: 1rem;
   }

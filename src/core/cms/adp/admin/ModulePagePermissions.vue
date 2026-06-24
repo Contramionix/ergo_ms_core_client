@@ -124,7 +124,6 @@ const getGroupAccessState = groupId => {
 
 const getRoleAccessState = roleId => {
   if (adminRoleIds.value.has(roleId)) {
-    // Системные администраторы всегда имеют доступ к странице
     return 'allow'
   }
 
@@ -147,7 +146,6 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
   }
 
   const current = pageAccessByRoleGroup.value[roleGroup.id] || null
-
   const pageLabel = selectedPage.value.label || selectedPage.value.path
   const defaultName = `Доступ к странице ${pageLabel} для группы ${roleGroup.name}`
 
@@ -155,12 +153,10 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
     isSavingAccess.value = true
 
     if (state === 'inherit') {
-      // Убираем явную политику, возвращаемся к унаследованному поведению
       if (current?.id) {
         await DeletePolicy(current.id)
       }
     } else if (state === 'allow') {
-      // Разрешить доступ
       if (current) {
         await UpdatePolicy(current.id, {
           name: current.name || defaultName,
@@ -185,7 +181,6 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
         })
       }
     } else if (state === 'deny') {
-      // Явно запретить доступ
       if (current) {
         await UpdatePolicy(current.id, {
           name: current.name || defaultName,
@@ -228,7 +223,6 @@ const setPageAccessStateForRole = async (role, state) => {
   }
 
   if (adminRoleIds.value.has(role.id)) {
-    // Для системных администраторов управление доступом через UI запрещено
     return
   }
 
@@ -237,7 +231,6 @@ const setPageAccessStateForRole = async (role, state) => {
   }
 
   const current = pageAccessByRole.value[role.id] || null
-
   const pageLabel = selectedPage.value.label || selectedPage.value.path
   const defaultName = `Доступ к странице ${pageLabel} для роли ${role.name}`
 
@@ -331,12 +324,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="container-fluid mt-4">
+  <div>
     <div class="row">
       <div class="col-12 mb-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
         <div>
-          <h2 class="h3 mb-1">Модули и страницы</h2>
-          <p class="text-muted mb-0">
+          <h2 class="admin-section-title">Модули и страницы</h2>
+          <p class="admin-section-subtitle">
             Выберите модуль и страницу слева, чтобы настроить политики доступа и модульные права для неё.
           </p>
         </div>
@@ -361,7 +354,6 @@ onMounted(async () => {
     </div>
 
     <div class="row g-3">
-      <!-- Левая колонка: модули и страницы -->
       <div class="col-12 col-lg-4">
         <div class="card h-100 module-page-permissions__sidebar-card">
           <div class="card-header">
@@ -436,7 +428,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Правая колонка: простой доступ к странице -->
       <div class="col-12 col-lg-8">
         <div class="d-flex flex-column gap-3">
           <div class="card">
@@ -566,6 +557,19 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
+.admin-section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-primary-text);
+  margin-bottom: 0.25rem;
+}
+
+.admin-section-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-secondary-text);
+  margin-bottom: 0;
+}
+
 .module-page-permissions__sidebar-card {
   max-height: 70vh;
   overflow-y: auto;
@@ -590,8 +594,8 @@ onMounted(async () => {
   height: 1.5rem;
   padding: 0;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  background-color: #e9ecef;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-secondary-background);
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
@@ -600,19 +604,19 @@ onMounted(async () => {
   width: 1.25rem;
   height: 1.25rem;
   border-radius: 999px;
-  background-color: #dc3545;
+  background-color: var(--bs-danger);
   box-shadow: 0 0 3px rgba(0, 0, 0, 0.25);
   transform: translateX(0.125rem);
   transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .permission-toggle-switch--on {
-  border-color: #198754;
+  border-color: var(--bs-success);
   background-color: rgba(25, 135, 84, 0.25);
 }
 
 .permission-toggle-switch--on .permission-toggle-switch__thumb {
-  background-color: #198754;
+  background-color: var(--bs-success);
   transform: translateX(1.375rem);
 }
 
@@ -622,11 +626,11 @@ onMounted(async () => {
 }
 
 .permission-warning__icon {
-  color: #ffc107;
+  color: var(--bs-warning);
 }
 
 .permission-warning__text {
-  color: var(--color-primary-text, #212529);
+  color: var(--color-primary-text);
 }
 
 .text-monospace {
@@ -640,5 +644,3 @@ onMounted(async () => {
   }
 }
 </style>
-
-

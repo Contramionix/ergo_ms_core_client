@@ -7,6 +7,7 @@ import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import AdminUserSettingsModal from '@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { formatDateShort } from '@/js/utils/timeUtils.js'
 import { GetAdminUsers, GetRoles, GetRoleGroupOptions, CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
 const router = useRouter()
@@ -157,31 +158,36 @@ const getItemKey = (item) => item.user_id
 </script>
 
 <template>
-  <div v-if="isCheckingAccess" class="d-flex justify-content-center align-items-center" style="min-height: 400px;">
-    <SpinnerLoading color="primary" />
-  </div>
+  <div v-if="isCheckingAccess" class="d-flex justify-content-center align-items-center loading-container">
+      <SpinnerLoading color="primary" />
+    </div>
 
-  <div v-else-if="hasAdminAccess" class="card">
-    <div class="mb-1">
-      <div class="row align-items-center gap-3 gap-sm-0">
-        <div class="col-12 col-sm-auto">
-          <h4 class="mb-0">Список пользователей</h4>
-        </div>
-        <div class="col-12 col-sm d-flex flex-wrap align-items-center justify-content-center justify-content-sm-end gap-3">
-          <label class="mb-0">
-            <input type="search" class="form-control" placeholder="Поиск..." @input="handleSearchQuery($event.target.value)"/>
-          </label>
-          <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToInvitations">
-            <MailPlus :size="18" class="flex-shrink-0" />
-            <span>Приглашения</span>
-          </button>
-          <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToImport">
-            <Upload :size="18" class="flex-shrink-0" />
-            <span>Импорт пользователей</span>
-          </button>
+    <div v-else-if="hasAdminAccess" class="card">
+      <div class="admin-section-header">
+        <h2>Пользователи</h2>
+        <p class="text-muted">Управление учётными записями, ролями и группами пользователей системы</p>
+      </div>
+
+      <div class="mb-1">
+        <div class="row align-items-center gap-3 gap-sm-0">
+          <div class="col-12 col-sm-auto">
+            <h4 class="mb-0">Список пользователей</h4>
+          </div>
+          <div class="col-12 col-sm d-flex flex-wrap align-items-center justify-content-center justify-content-sm-end gap-3">
+            <label class="mb-0">
+              <input type="search" class="form-control" placeholder="Поиск..." @input="handleSearchQuery($event.target.value)"/>
+            </label>
+            <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToInvitations">
+              <MailPlus :size="18" class="flex-shrink-0" />
+              <span>Приглашения</span>
+            </button>
+            <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToImport">
+              <Upload :size="18" class="flex-shrink-0" />
+              <span>Импорт пользователей</span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
     <div v-if="isLoadingUsers" class="d-flex justify-content-center align-items-center py-5">
       <SpinnerLoading color="primary" />
@@ -199,7 +205,7 @@ const getItemKey = (item) => item.user_id
       </template>
 
       <template #cell-date_joined="{ item }">
-        {{ item.date_joined ? new Date(item.date_joined).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—' }}
+        {{ item.date_joined ? formatDateShort(item.date_joined) : '—' }}
       </template>
 
       <template #cell-role="{ item }">
@@ -229,6 +235,28 @@ const getItemKey = (item) => item.user_id
 </template>
 
 <style scoped lang="scss">
+.loading-container {
+  min-height: 400px;
+}
+
+.admin-section-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+
+  h2 {
+    margin-bottom: 0.25rem;
+    color: var(--color-primary-text);
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  p {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+  }
+}
+
 :deep(.table tbody tr) {
   .user-action-btn {
     opacity: 0;

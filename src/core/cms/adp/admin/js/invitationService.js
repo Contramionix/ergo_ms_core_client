@@ -19,3 +19,13 @@ export async function resendInvitation(invitationId) {
   const response = await apiClient.post(cmsEndpoints.cms.invitationResend(invitationId), {}, true)
   return response.data
 }
+
+export async function bulkCreateInvitations(payload) {
+  const response = await apiClient.post(cmsEndpoints.cms.invitationsBulk, payload, true)
+  return response.data
+}
+
+export async function bulkSendInvitations(payload) {
+  const response = await apiClient.post(cmsEndpoints.cms.invitationsBulkSend, payload, true)
+  return response.data
+}

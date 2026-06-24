@@ -1,7 +1,9 @@
 <script setup>
 import ModalCenter from '@/components/ModalCenter.vue'
 import SubmitForm from '@/core/cms/adp/admin/PermissionsComponents/SubmitPermissionAdd.vue'
+import { Plus } from 'lucide-vue-next'
 import { ref } from 'vue'
+
 const props = defineProps({
   roles: { type: Array, required: true },
   roleGroups: { type: Array, required: true }
@@ -9,45 +11,38 @@ const props = defineProps({
 
 const emit = defineEmits(['updatePermissions'])
 const AddPermissionRef = ref(null)
-const updatePermissions =  () => {
-     emit('updatePermissions')
+
+const updatePermissions = () => {
+  emit('updatePermissions')
 }
 
-const closemodal = ()=>{
+const closemodal = () => {
   AddPermissionRef.value.close()
 }
 </script>
 
 <template>
-  <div class="row align-items-center gap-3 gap-sm-0">
-    <div class="col-12 col-sm-2">
-      <select class="form-select" @change="$emit('changeRowsPerPage', +$event.target.value)">
-        <option value="5" selected>5</option>
-        <option value="10">10</option>
-        <option value="20">20</option>
-        <option value="30">30</option>
-      </select>
-    </div>
-    <div class="col-12 col-sm-10 d-inline-flex justify-content-center justify-content-sm-end gap-3">
-      <label
-        ><input
-          type="search"
-          class="form-control"
-          placeholder="Поиск..."
-          @input="$emit('searchRowData', $event.target.value)"
-      /></label>
-      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#roleAdd">
-        Добавить политику
-      </button>
-      <ModalCenter title="Добавить новую политику" modalId="roleAdd" @closemodal = "closemodal()">
-        <SubmitForm
-          :roles="props.roles"
-          :roleGroups="props.roleGroups"
-          @addPermission="updatePermissions"
-          ref="AddPermissionRef"
-        />
-      </ModalCenter>
-    </div>
+  <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+    <label class="flex-grow-1" style="max-width: 280px;">
+      <input
+        type="search"
+        class="form-control"
+        placeholder="Поиск..."
+        @input="$emit('searchRowData', $event.target.value)"
+      />
+    </label>
+    <button class="btn btn-primary d-inline-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#roleAdd">
+      <Plus :size="16" />
+      Добавить политику
+    </button>
+    <ModalCenter title="Добавить новую политику" modalId="roleAdd" @closemodal="closemodal()">
+      <SubmitForm
+        :roles="props.roles"
+        :roleGroups="props.roleGroups"
+        @addPermission="updatePermissions"
+        ref="AddPermissionRef"
+      />
+    </ModalCenter>
   </div>
 </template>
 

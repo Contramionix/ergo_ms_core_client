@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { Trash2 } from 'lucide-vue-next'
 import {
   GetModulePermissions,
   CreateModulePermission,
@@ -89,11 +90,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="card">
-    <div class="card-header d-flex flex-column flex-md-row gap-3 align-items-md-center justify-content-between">
+  <div class="module-permission-manager">
+    <div class="module-permission-manager__header">
       <div>
         <h5 class="mb-0">Права модулей</h5>
-        <small class="text-muted">Управление доступом к функционалу модулей по ролевым группам</small>
+        <small class="text-secondary-custom">Управление доступом к функционалу модулей по ролевым группам</small>
       </div>
       <select class="form-select w-auto" v-model="selectedRoleGroup">
         <option value="">Все группы</option>
@@ -102,72 +103,77 @@ onMounted(async () => {
         </option>
       </select>
     </div>
-    <div class="card-body">
-      <form class="row g-3 mb-4" @submit.prevent="submitForm">
-        <div class="col-md-3">
-          <label class="form-label">Модуль</label>
-          <input
-            type="text"
-            class="form-control"
-            v-model="form.module_name"
-            :class="{ 'is-invalid': showErrors.module_name }"
-            placeholder="Например, cms"
-          />
-          <div v-if="showErrors.module_name" class="invalid-feedback">Укажите модуль</div>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Ключ разрешения</label>
-          <input
-            type="text"
-            class="form-control"
-            v-model="form.permission_key"
-            :class="{ 'is-invalid': showErrors.permission_key }"
-            placeholder="view_dashboard"
-          />
-          <div v-if="showErrors.permission_key" class="invalid-feedback">Укажите ключ</div>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Название</label>
-          <input
-            type="text"
-            class="form-control"
-            v-model="form.permission_name"
-            :class="{ 'is-invalid': showErrors.permission_name }"
-            placeholder="Просмотр панели"
-          />
-          <div v-if="showErrors.permission_name" class="invalid-feedback">Укажите название</div>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Ролевая группа</label>
-          <select
-            class="form-select"
-            v-model="form.role_group"
-            :class="{ 'is-invalid': showErrors.role_group }"
-          >
-            <option value="">Выберите группу</option>
-            <option v-for="group in roleGroups" :key="group.id" :value="group.id">
-              {{ group.name }}
-            </option>
-          </select>
-          <div v-if="showErrors.role_group" class="invalid-feedback">Выберите ролевую группу</div>
-        </div>
-        <div class="col-md-8">
-          <label class="form-label">Описание</label>
-          <input type="text" class="form-control" v-model="form.description" placeholder="Опционально" />
-        </div>
-        <div class="col-md-2 d-flex align-items-center">
-          <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="grantedSwitch" v-model="form.is_granted" />
-            <label class="form-check-label" for="grantedSwitch">Разрешено</label>
+
+    <div class="module-permission-manager__body">
+      <form class="module-permission-manager__form" @submit.prevent="submitForm">
+        <div class="row g-2">
+          <div class="col-md-3">
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              v-model="form.module_name"
+              :class="{ 'is-invalid': showErrors.module_name }"
+              placeholder="Модуль"
+            />
+            <div v-if="showErrors.module_name" class="invalid-feedback">Укажите модуль</div>
+          </div>
+          <div class="col-md-3">
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              v-model="form.permission_key"
+              :class="{ 'is-invalid': showErrors.permission_key }"
+              placeholder="Ключ (view_dashboard)"
+            />
+            <div v-if="showErrors.permission_key" class="invalid-feedback">Укажите ключ</div>
+          </div>
+          <div class="col-md-3">
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              v-model="form.permission_name"
+              :class="{ 'is-invalid': showErrors.permission_name }"
+              placeholder="Название"
+            />
+            <div v-if="showErrors.permission_name" class="invalid-feedback">Укажите название</div>
+          </div>
+          <div class="col-md-3">
+            <select
+              class="form-select form-select-sm"
+              v-model="form.role_group"
+              :class="{ 'is-invalid': showErrors.role_group }"
+            >
+              <option value="">Группа</option>
+              <option v-for="group in roleGroups" :key="group.id" :value="group.id">
+                {{ group.name }}
+              </option>
+            </select>
+            <div v-if="showErrors.role_group" class="invalid-feedback">Выберите группу</div>
           </div>
         </div>
-        <div class="col-md-2 d-flex align-items-center justify-content-end">
-          <button type="submit" class="btn btn-primary w-100">Сохранить</button>
+        <div class="row g-2 mt-1">
+          <div class="col-md-6">
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              v-model="form.description"
+              placeholder="Описание (опционально)"
+            />
+          </div>
+          <div class="col-md-3 d-flex align-items-center">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="grantedSwitch" v-model="form.is_granted" />
+              <label class="form-check-label small" for="grantedSwitch">Разрешено</label>
+            </div>
+          </div>
+          <div class="col-md-3 d-flex align-items-center justify-content-end">
+            <button type="submit" class="btn btn-primary btn-sm w-100">Сохранить</button>
+          </div>
         </div>
       </form>
 
-      <div class="table-responsive">
-        <table class="table table-striped align-middle">
+      <div class="table-responsive mt-3">
+        <table class="module-permission-table">
           <thead>
             <tr>
               <th>Модуль</th>
@@ -181,24 +187,24 @@ onMounted(async () => {
           </thead>
           <tbody>
             <tr v-for="permission in filteredPermissions" :key="permission.id">
-              <td>{{ permission.module_name }}</td>
-              <td>{{ permission.permission_key }}</td>
+              <td class="fw-medium">{{ permission.module_name }}</td>
+              <td class="text-monospace">{{ permission.permission_key }}</td>
               <td>{{ permission.permission_name }}</td>
               <td>{{ permission.role_group_name }}</td>
-              <td>{{ permission.description || '—' }}</td>
+              <td class="text-secondary-custom">{{ permission.description || '—' }}</td>
               <td>
-                <span :class="permission.is_granted ? 'badge bg-success-subtle text-success' : 'badge bg-secondary'">
+                <span :class="permission.is_granted ? 'badge bg-success-subtle text-success' : 'badge bg-danger-subtle text-danger'">
                   {{ permission.is_granted ? 'Разрешено' : 'Запрещено' }}
                 </span>
               </td>
               <td class="text-end">
-                <button class="btn btn-sm btn-outline-danger" @click="deletePermission(permission.id)">
-                  Удалить
+                <button class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(permission.id)" title="Удалить">
+                  <Trash2 :size="14" />
                 </button>
               </td>
             </tr>
             <tr v-if="filteredPermissions.length === 0">
-              <td colspan="7" class="text-center text-muted">Нет настроенных прав для выбранного фильтра</td>
+              <td colspan="7" class="text-center text-muted py-4">Нет настроенных прав для выбранного фильтра</td>
             </tr>
           </tbody>
         </table>
@@ -207,3 +213,79 @@ onMounted(async () => {
   </div>
 </template>
 
+<style scoped lang="scss">
+.module-permission-manager {
+  background-color: var(--color-primary-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+.module-permission-manager__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.module-permission-manager__body {
+  padding: 1.25rem;
+}
+
+.module-permission-manager__form {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.module-permission-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-secondary-text);
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+    color: var(--color-primary-text);
+    font-size: 0.875rem;
+  }
+
+  tbody tr {
+    transition: background-color 0.15s ease;
+
+    &:hover {
+      background-color: var(--color-hover-background);
+    }
+  }
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+}
+
+.text-secondary-custom {
+  color: var(--color-secondary-text);
+}
+
+.text-monospace {
+  font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: 0.8125rem;
+}
+</style>

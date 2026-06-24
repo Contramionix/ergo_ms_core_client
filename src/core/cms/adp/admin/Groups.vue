@@ -38,23 +38,59 @@ const handleSearchQuery = query => (searchQuery.value = query)
 </script>
 
 <template>
-  <div class="card">
-    <div class="mb-3">
+  <div class="groups-page">
+    <div class="page-header">
+      <h1 class="page-title">Ролевые группы</h1>
+      <p class="page-subtitle">Управление группами ролей для организации доступа</p>
+    </div>
+
+    <div class="content-card">
       <GroupTableHeader
         @changeRowsPerPage="handleChangeRows"
         @searchRowData="handleSearchQuery"
         @updateGroups="updateGroups"
       />
-    </div>
 
-    <GroupTable
-      :rows="rows"
-      :headers="['Название группы', 'Родительская роль', 'Описание', 'Активна', 'Действия']"
-      :rowsPerPage="rowsPerPage"
-      :searchQuery="searchQuery"
-      @updateGroups="updateGroups"
-    />
+      <GroupTable
+        :rows="rows"
+        :headers="['Название группы', 'Родительская роль', 'Описание', 'Активна', 'Действия']"
+        :rowsPerPage="rowsPerPage"
+        :searchQuery="searchQuery"
+        @updateGroups="updateGroups"
+      />
+    </div>
   </div>
 </template>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+.groups-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.page-header {
+  .page-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-primary-text);
+    margin-bottom: 0.25rem;
+  }
+
+  .page-subtitle {
+    font-size: 0.875rem;
+    color: var(--color-secondary-text);
+    margin: 0;
+  }
+}
+
+.content-card {
+  background: var(--color-primary-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+</style>

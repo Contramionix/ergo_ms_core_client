@@ -3,22 +3,25 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import {
-  ArrowLeft,
   MailPlus,
   Copy,
-  RotateCcw,
+  Mail,
   Ban,
   AlertCircle,
+  FileSpreadsheet,
+  ArrowLeft,
 } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import {
   fetchInvitations,
-  createInvitation,
   revokeInvitation,
   resendInvitation,
 } from '@/core/cms/adp/admin/js/invitationService'
+import InvitationCreateModal from '@/core/cms/adp/admin/InvitationsComponents/InvitationCreateModal.vue'
+import InvitationBulkModal from '@/core/cms/adp/admin/InvitationsComponents/InvitationBulkModal.vue'
 
 const router = useRouter()
 const toast = useToast()
@@ -34,13 +37,7 @@ const rowsPerPage = ref(12)
 const searchQuery = ref('')
 
 const showCreateModal = ref(false)
-const isCreating = ref(false)
-const createForm = ref({
-  email: '',
-  note: '',
-  send_email: true,
-})
-const createError = ref('')
+const showBulkModal = ref(false)
 
 const invitationModeEnabled = computed(() => registrationMode.value === 'invitation')
 
@@ -65,32 +62,14 @@ const columns = [
   { key: 'status', label: 'Статус', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
   { key: 'invited_by_name', label: 'Пригласил' },
   { key: 'expires_at', label: 'Действует до', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
-  { key: 'actions', label: '', headerStyle: { textAlign: 'right' }, cellStyle: { textAlign: 'right' } },
+  { key: 'actions', label: 'Действия', headerStyle: { textAlign: 'right' }, cellStyle: { textAlign: 'right' } },
 ]
 
 const getItemKey = (item) => item.id
 
-const formatDateTime = (value) => {
+const formatDateTimeValue = (value) => {
   if (!value) return '—'
-  return new Date(value).toLocaleString('ru-RU')
-}
-
-const extractApiError = (error, fallback = 'Не удалось выполнить операцию') => {
-  const data = error?.response?.data
-  if (!data) {
-    return fallback
-  }
-  if (typeof data.error === 'string') {
-    return data.error
-  }
-  if (typeof data.detail === 'string') {
-    return data.detail
-  }
-  const firstFieldError = Object.values(data).find((value) => Array.isArray(value) && value.length)
-  if (firstFieldError) {
-    return String(firstFieldError[0])
-  }
-  return fallback
+  return formatDateTime(value)
 }
 
 const loadInvitations = async () => {
@@ -153,46 +132,33 @@ const handleSearchQuery = (query) => {
 }
 
 const openCreateModal = () => {
-  createForm.value = { email: '', note: '', send_email: true }
-  createError.value = ''
   showCreateModal.value = true
 }
 
-const closeCreateModal = () => {
-  showCreateModal.value = false
+const openBulkModal = () => {
+  showBulkModal.value = true
 }
 
-const submitCreate = async () => {
-  createError.value = ''
-  if (!createForm.value.email.trim()) {
-    createError.value = 'Укажите email'
-    return
+const handleInvitationCreated = ({ sendEmail, emailWarning }) => {
+  if (emailWarning) {
+    toast.warning(`Приглашение создано, но письмо не отправлено: ${emailWarning}`)
+  } else if (sendEmail) {
+    toast.success('Приглашение создано и отправлено на email')
+  } else {
+    toast.success('Приглашение создано, ссылка скопирована в буфер обмена')
   }
+  loadInvitations()
+}
 
-  isCreating.value = true
-  try {
-    const result = await createInvitation({
-      email: createForm.value.email.trim(),
-      note: createForm.value.note.trim(),
-      send_email: createForm.value.send_email,
-    })
-    if (result.email_warning) {
-      toast.warning(`Приглашение создано, но письмо не отправлено: ${result.email_warning}`)
-    } else if (createForm.value.send_email) {
-      toast.success('Приглашение создано и отправлено на email')
-    } else {
-      toast.success('Приглашение создано')
-    }
-    closeCreateModal()
-    await loadInvitations()
-  } catch (error) {
-    createError.value = extractApiError(error, 'Не удалось создать приглашение')
-  } finally {
-    isCreating.value = false
-  }
+const handleBulkCompleted = () => {
+  toast.success('Список приглашений обновлён')
+  loadInvitations()
 }
 
 const copyInviteLink = async (item) => {
+  if (item.status === 'revoked') {
+    return
+  }
   try {
     await navigator.clipboard.writeText(item.invite_url)
     toast.success('Ссылка скопирована')
@@ -204,9 +170,9 @@ const copyInviteLink = async (item) => {
 const handleResend = async (item) => {
   try {
     await resendInvitation(item.id)
-    toast.success('Приглашение отправлено повторно')
+    toast.success('Письмо с приглашением отправлено')
   } catch (error) {
-    toast.error(error.response?.data?.error || 'Не удалось отправить приглашение')
+    toast.error(error.response?.data?.error || 'Не удалось отправить письмо')
   }
 }
 
@@ -226,17 +192,19 @@ const goBack = () => {
 </script>
 
 <template>
-  <div v-if="isCheckingAccess" class="d-flex justify-content-center align-items-center" style="min-height: 400px;">
-    <SpinnerLoading color="primary" />
-  </div>
-
-  <div v-else-if="hasAdminAccess" class="card">
-    <div class="mb-3">
-      <button type="button" class="btn btn-link px-0 text-decoration-none" @click="goBack">
-        <ArrowLeft :size="16" class="me-1" style="vertical-align: -2px;" />
-        К списку пользователей
-      </button>
+  <div v-if="isCheckingAccess" class="d-flex justify-content-center align-items-center loading-container">
+      <SpinnerLoading color="primary" />
     </div>
+
+    <div v-else-if="hasAdminAccess" class="card">
+      <button
+        type="button"
+        class="btn btn-link back-to-users px-0 mb-3 d-inline-flex align-items-center gap-2"
+        @click="goBack"
+      >
+        <ArrowLeft :size="18" />
+        <span>К пользователям</span>
+      </button>
 
     <div v-if="!invitationModeEnabled" class="alert alert-warning d-flex align-items-start gap-2">
       <AlertCircle :size="18" class="flex-shrink-0 mt-1" />
@@ -249,9 +217,11 @@ const goBack = () => {
     <div class="row align-items-center gap-3 gap-sm-0 mb-3">
       <div class="col-12 col-sm-auto">
         <h4 class="mb-1">Приглашения на регистрацию</h4>
-        <p class="text-muted mb-0 small">Отправляйте ссылки новым пользователям для регистрации в системе.</p>
+        <p class="text-muted mb-0 small">
+          Создавайте ссылки вручную или загружайте список email из Excel для массовой рассылки.
+        </p>
       </div>
-      <div class="col-12 col-sm d-flex flex-wrap align-items-center justify-content-center justify-content-sm-end gap-3">
+      <div class="col-12 col-sm d-flex flex-wrap align-items-center justify-content-center justify-content-sm-end gap-2">
         <label class="mb-0">
           <input
             type="search"
@@ -262,12 +232,21 @@ const goBack = () => {
         </label>
         <button
           type="button"
+          class="btn btn-outline-primary d-inline-flex align-items-center gap-2"
+          :disabled="!invitationModeEnabled"
+          @click="openBulkModal"
+        >
+          <FileSpreadsheet :size="18" />
+          <span>Загрузить из Excel</span>
+        </button>
+        <button
+          type="button"
           class="btn btn-primary d-inline-flex align-items-center gap-2"
           :disabled="!invitationModeEnabled"
           @click="openCreateModal"
         >
           <MailPlus :size="18" />
-          <span>Создать приглашение</span>
+          <span>Одно приглашение</span>
         </button>
       </div>
     </div>
@@ -294,104 +273,132 @@ const goBack = () => {
       </template>
 
       <template #cell-expires_at="{ item }">
-        {{ formatDateTime(item.expires_at) }}
+        {{ formatDateTimeValue(item.expires_at) }}
       </template>
 
       <template #cell-actions="{ item }">
-        <div class="d-inline-flex gap-2">
+        <div class="d-inline-flex flex-wrap justify-content-end gap-2 invitation-actions">
           <button
             type="button"
-            class="btn btn-sm btn-outline-secondary"
-            title="Копировать ссылку"
+            class="btn btn-sm invitation-btn invitation-btn--copy d-inline-flex align-items-center gap-1"
+            :disabled="item.status === 'revoked'"
+            :title="item.status === 'revoked' ? 'Ссылка недоступна: приглашение отозвано' : 'Скопировать ссылку на регистрацию'"
             @click="copyInviteLink(item)"
           >
-            <Copy :size="16" />
+            <Copy :size="14" />
+            <span class="d-none d-xl-inline">Ссылка</span>
           </button>
           <button
             v-if="item.status === 'pending'"
             type="button"
-            class="btn btn-sm btn-outline-primary"
-            title="Отправить повторно"
+            class="btn btn-sm invitation-btn invitation-btn--mail d-inline-flex align-items-center gap-1"
+            title="Отправить письмо с приглашением"
             @click="handleResend(item)"
           >
-            <RotateCcw :size="16" />
+            <Mail :size="14" />
+            <span class="d-none d-xl-inline">Письмо</span>
           </button>
           <button
             v-if="item.status === 'pending'"
             type="button"
-            class="btn btn-sm btn-outline-danger"
-            title="Отозвать"
+            class="btn btn-sm invitation-btn invitation-btn--revoke d-inline-flex align-items-center gap-1"
+            title="Отозвать приглашение"
             @click="handleRevoke(item)"
           >
-            <Ban :size="16" />
+            <Ban :size="14" />
+            <span class="d-none d-xl-inline">Отозвать</span>
           </button>
         </div>
       </template>
     </DataTable>
 
-    <div
-      v-if="showCreateModal"
-      class="modal fade show d-block"
-      tabindex="-1"
-      style="background: rgba(0,0,0,0.5);"
-      @click.self="closeCreateModal"
-    >
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Новое приглашение</h5>
-            <button type="button" class="btn-close" @click="closeCreateModal" />
-          </div>
-          <div class="modal-body">
-            <div v-if="createError" class="alert alert-danger">{{ createError }}</div>
+    <InvitationCreateModal
+      :visible="showCreateModal"
+      :disabled="!invitationModeEnabled"
+      @close="showCreateModal = false"
+      @created="handleInvitationCreated"
+    />
 
-            <div class="mb-3">
-              <label class="form-label" for="invite-email">Email</label>
-              <input
-                id="invite-email"
-                v-model="createForm.email"
-                type="email"
-                class="form-control"
-                placeholder="user@example.com"
-                :disabled="isCreating"
-              />
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label" for="invite-note">Примечание (необязательно)</label>
-              <input
-                id="invite-note"
-                v-model="createForm.note"
-                type="text"
-                class="form-control"
-                placeholder="Например: отдел аналитики"
-                :disabled="isCreating"
-              />
-            </div>
-
-            <div class="form-check">
-              <input
-                id="invite-send-email"
-                v-model="createForm.send_email"
-                class="form-check-input"
-                type="checkbox"
-                :disabled="isCreating"
-              />
-              <label class="form-check-label" for="invite-send-email">
-                Отправить ссылку на email
-              </label>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" :disabled="isCreating" @click="closeCreateModal">
-              Отмена
-            </button>
-            <button type="button" class="btn btn-primary" :disabled="isCreating" @click="submitCreate">
-              {{ isCreating ? 'Создание...' : 'Создать' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <InvitationBulkModal
+      :visible="showBulkModal"
+      :disabled="!invitationModeEnabled"
+      @close="showBulkModal = false"
+      @completed="handleBulkCompleted"
+    />
   </div>
 </template>
+
+<style scoped lang="scss">
+.loading-container {
+  min-height: 400px;
+}
+
+.back-to-users {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    color: var(--color-accent);
+    opacity: 0.85;
+  }
+}
+
+@media (max-width: 1199px) {
+  .invitation-actions :deep(.btn-sm) {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+.invitation-btn {
+  font-weight: 500;
+  border-width: 1px;
+  border-style: solid;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+  &--copy {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+    background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+
+    &:hover:not(:disabled) {
+      color: #fff;
+      background-color: var(--color-accent);
+      border-color: var(--color-accent);
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      color: var(--color-secondary-text);
+      border-color: var(--color-border);
+      background-color: var(--color-secondary-background);
+    }
+  }
+
+  &--mail {
+    color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    background-color: color-mix(in srgb, var(--bs-primary) 12%, transparent);
+
+    &:hover {
+      color: #fff;
+      background-color: var(--bs-primary);
+      border-color: var(--bs-primary);
+    }
+  }
+
+  &--revoke {
+    color: var(--bs-danger);
+    border-color: var(--bs-danger);
+    background-color: color-mix(in srgb, var(--bs-danger) 12%, transparent);
+
+    &:hover {
+      color: #fff;
+      background-color: var(--bs-danger);
+      border-color: var(--bs-danger);
+    }
+  }
+}
+</style>

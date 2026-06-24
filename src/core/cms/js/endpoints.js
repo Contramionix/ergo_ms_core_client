@@ -84,6 +84,8 @@ export const cmsEndpoints = {
         importUsers: 'cms/adp/import-users/',
         importUsersTaskStatus: (taskId) => `cms/adp/import-users/status/${taskId}/`,
         invitations: 'cms/adp/invitations/',
+        invitationsBulk: 'cms/adp/invitations/bulk/',
+        invitationsBulkSend: 'cms/adp/invitations/bulk/send/',
         invitationDetail: (id) => `cms/adp/invitations/${id}/`,
         invitationResend: (id) => `cms/adp/invitations/${id}/resend/`,
         myPermissions: 'cms/adp/my-permissions/',

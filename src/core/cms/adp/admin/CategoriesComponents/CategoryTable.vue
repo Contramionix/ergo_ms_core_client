@@ -48,6 +48,10 @@ const paginatedRows = computed(() => {
   return filteredRows.value.slice(start, end)
 })
 
+const totalPages = computed(() => {
+  return Math.ceil(filteredRows.value.length / props.rowsPerPage)
+})
+
 const changeCategory = () => {
   emit('updateCategories')
 }
@@ -59,56 +63,211 @@ const deleteRole = async (roleId) => {
 </script>
 
 <template>
-  <div class="table-responsive">
-    <table class="table table-hover">
-      <thead>
-        <tr>
-          <th v-for="(header, index) in headers" :key="index" scope="col" class="fw-bold">
-            {{ header }}
-          </th>
-        </tr>
-      </thead>
-      <tbody class="table-group-divider">
-        <tr v-for="row in paginatedRows" :key="row.id">
-          <td>{{ row.name }}</td>
-          <td>{{ row.description || '—' }}</td>
-          <td>
-            <span
-              :class="row.is_system ? 'badge bg-secondary' : 'badge bg-success-subtle text-success'"
-            >
-              {{ row.is_system ? 'Да' : 'Нет' }}
-            </span>
-          </td>
-          <td>
-            <div class="d-flex align-items-center flex-wrap gap-2">
-              <button
-                class="btn btn-sm d-flex align-items-center justify-content-center"
-                data-bs-toggle="modal"
-                data-bs-target="#roleEdit"
-                @click="changingRow(row)"
-                type="button"
-                aria-label="Изменить роль"
-              >
-                <Settings size="16" />
-              </button>
-              <button
-                class="btn btn-sm d-flex align-items-center justify-content-center"
-                :disabled="row.is_system"
-                @click="deleteRole(row.id)"
-                type="button"
-                aria-label="Удалить роль"
-              >
-                <Trash2 size="16" />
-              </button>
-              <ModalCenter title="Редактировать роль" modalId="roleEdit">
-                <ChangeCategoryForm @changeCategory="changeCategory()" :row="rowSelected" />
-              </ModalCenter>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="category-table">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th v-for="(header, index) in headers" :key="index" scope="col">
+              {{ header }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in paginatedRows" :key="row.id" class="table-row">
+            <td>
+              <span class="cell-text">{{ row.name }}</span>
+            </td>
+            <td>
+              <span class="cell-muted">{{ row.description || '—' }}</span>
+            </td>
+            <td>
+              <span :class="['status-badge', row.is_system ? 'badge-system' : 'badge-regular']">
+                {{ row.is_system ? 'Системная' : 'Пользовательская' }}
+              </span>
+            </td>
+            <td>
+              <div class="actions-cell">
+                <button
+                  class="btn-action btn-action--edit"
+                  data-bs-toggle="modal"
+                  data-bs-target="#roleEdit"
+                  @click="changingRow(row)"
+                  type="button"
+                  aria-label="Изменить роль"
+                >
+                  <Settings :size="15" />
+                </button>
+                <button
+                  class="btn-action btn-action--delete"
+                  :disabled="row.is_system"
+                  @click="deleteRole(row.id)"
+                  type="button"
+                  aria-label="Удалить роль"
+                >
+                  <Trash2 :size="15" />
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div v-if="paginatedRows.length === 0" class="empty-state">
+      <p class="empty-state__text">Роли не найдены</p>
+    </div>
+
+    <div v-if="totalPages > 1" class="pagination-wrapper">
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        :disabled="currentPage <= 1"
+        @click="currentPage--"
+      >
+        Назад
+      </button>
+      <span class="pagination-info">{{ currentPage }} / {{ totalPages }}</span>
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        :disabled="currentPage >= totalPages"
+        @click="currentPage++"
+      >
+        Далее
+      </button>
+    </div>
+
+    <ModalCenter title="Редактировать роль" modalId="roleEdit">
+      <ChangeCategoryForm @changeCategory="changeCategory()" :row="rowSelected" />
+    </ModalCenter>
   </div>
 </template>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+.category-table {
+  .table {
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+
+    thead th {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--color-secondary-text);
+      border-bottom: 1px solid var(--color-border);
+      padding: 0.75rem 1rem;
+      white-space: nowrap;
+    }
+
+    tbody .table-row {
+      transition: background-color 0.15s ease;
+
+      &:hover {
+        background-color: var(--color-hover-background);
+      }
+
+      td {
+        padding: 0.75rem 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--color-border);
+        font-size: 0.875rem;
+      }
+    }
+  }
+}
+
+.cell-text {
+  color: var(--color-primary-text);
+  font-weight: 500;
+}
+
+.cell-muted {
+  color: var(--color-secondary-text);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+
+  &.badge-system {
+    background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
+    color: var(--bs-primary, #0d6efd);
+  }
+
+  &.badge-regular {
+    background-color: rgba(var(--bs-success-rgb, 25, 135, 84), 0.1);
+    color: var(--bs-success, #198754);
+  }
+}
+
+.actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.375rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  color: var(--color-secondary-text);
+
+  &:hover {
+    background-color: var(--color-hover-background);
+    color: var(--color-primary-text);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    &:hover {
+      background: transparent;
+      color: var(--color-secondary-text);
+    }
+  }
+
+  &--delete:hover:not(:disabled) {
+    color: var(--bs-danger, #dc3545);
+    background-color: rgba(var(--bs-danger-rgb, 220, 53, 69), 0.08);
+  }
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+
+  &__text {
+    color: var(--color-secondary-text);
+    font-size: 0.875rem;
+    margin: 0;
+  }
+}
+
+.pagination-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.pagination-info {
+  font-size: 0.8125rem;
+  color: var(--color-secondary-text);
+}
+</style>

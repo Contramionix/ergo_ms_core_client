@@ -56,31 +56,60 @@ const handleSearchQuery = query => (searchQuery.value = query)
 
 <template>
   <div class="d-flex flex-column gap-4">
-    <div class="card">
-      <div class="mb-3">
-        <PermissionTableHeader
+    <div>
+      <h2 class="admin-section-title">Политики доступа</h2>
+      <p class="admin-section-subtitle">Управление URL-политиками и модульными правами системы</p>
+    </div>
+
+    <section>
+      <h5 class="admin-section-heading mb-3">URL-политики</h5>
+      <div class="card">
+        <div class="mb-3">
+          <PermissionTableHeader
+            :roles="roles"
+            :roleGroups="roleGroups"
+            @changeRowsPerPage="handleChangeRows"
+            @searchRowData="handleSearchQuery"
+            @updatePermissions="updatePermissions"
+          />
+        </div>
+
+        <PermissionTable 
+          :rows="rows"
           :roles="roles"
           :roleGroups="roleGroups"
-          @changeRowsPerPage="handleChangeRows"
-          @searchRowData="handleSearchQuery"
+          :headers="['Название','Тип политики', 'Действие', 'Ресурс', 'Цель', 'Шаблон', 'Приоритет', 'Действия']"
+          :rowsPerPage="rowsPerPage"
+          :searchQuery="searchQuery"  
           @updatePermissions="updatePermissions"
         />
       </div>
+    </section>
 
-      <PermissionTable 
-        :rows="rows"
-        :roles="roles"
-        :roleGroups="roleGroups"
-        :headers="['Название','Тип политики', 'Действие', 'Ресурс', 'Цель', 'Шаблон', 'Приоритет', 'Действия']"
-        :rowsPerPage="rowsPerPage"
-        :searchQuery="searchQuery"  
-        @updatePermissions="updatePermissions"
-      />
-    </div>
-
-    <ModulePermissionManager :role-groups="roleGroups" />
+    <section>
+      <h5 class="admin-section-heading mb-3">Модульные права</h5>
+      <ModulePermissionManager :role-groups="roleGroups" />
+    </section>
   </div>
 </template>
 
+<style scoped lang="scss">
+.admin-section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-primary-text);
+  margin-bottom: 0.25rem;
+}
 
-<style scoped lang="scss"></style>
+.admin-section-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-secondary-text);
+  margin-bottom: 0;
+}
+
+.admin-section-heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary-text);
+}
+</style>

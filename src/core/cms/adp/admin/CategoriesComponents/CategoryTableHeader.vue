@@ -1,44 +1,77 @@
 <script setup>
 import ModalCenter from '@/components/ModalCenter.vue'
 import SubmitForm from '@/core/cms/adp/admin/CategoriesComponents/SubmitCategory.vue'
+import { Plus } from 'lucide-vue-next'
 import { ref } from 'vue'
+
 const AddCategoryRef = ref(null)
 const emit = defineEmits(['updateCategories'])
-const updateCategories =  () => {
-     emit('updateCategories')
+
+const updateCategories = () => {
+  emit('updateCategories')
 }
 
-const closemodal=()=>{
+const closemodal = () => {
   AddCategoryRef.value.close()
 }
 </script>
 
 <template>
-  <div class="row align-items-center gap-3 gap-sm-0">
-    <div class="col-12 col-sm-2">
-      <select class="form-select" @change="$emit('changeRowsPerPage', +$event.target.value)">
-        <option value="5" selected>5</option>
-        <option value="10">10</option>
-        <option value="20">20</option>
-        <option value="30">30</option>
-      </select>
+  <div class="table-header">
+    <div class="search-wrapper">
+      <input
+        type="search"
+        class="form-control search-input"
+        placeholder="Поиск по ролям..."
+        @input="$emit('searchRowData', $event.target.value)"
+      />
     </div>
-    <div class="col-12 col-sm-10 d-inline-flex justify-content-center justify-content-sm-end gap-3">
-      <label
-        ><input
-          type="search"
-          class="form-control"
-          placeholder="Поиск..."
-          @input="$emit('searchRowData', $event.target.value)"
-      /></label>
-      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#roleAdd">
-        Добавить роль
+    <div class="actions-wrapper">
+      <button class="btn btn-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#roleAdd">
+        <Plus :size="16" />
+        <span>Добавить роль</span>
       </button>
-      <ModalCenter title="Добавить новую роль" modalId="roleAdd" @closemodal = "closemodal()">
+      <ModalCenter title="Добавить новую роль" modalId="roleAdd" @closemodal="closemodal()">
         <SubmitForm @addCategory="updateCategories" ref="AddCategoryRef" />
       </ModalCenter>
     </div>
   </div>
 </template>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.search-wrapper {
+  flex: 0 1 280px;
+  min-width: 180px;
+
+  .search-input {
+    border: 1px solid var(--color-border);
+    background: var(--color-secondary-background);
+    color: var(--color-primary-text);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+
+    &:focus {
+      border-color: var(--color-primary-text);
+      box-shadow: none;
+    }
+
+    &::placeholder {
+      color: var(--color-secondary-text);
+    }
+  }
+}
+
+.actions-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+</style>
