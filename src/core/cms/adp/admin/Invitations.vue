@@ -20,6 +20,7 @@ import {
   revokeInvitation,
   resendInvitation,
 } from '@/core/cms/adp/admin/js/invitationService'
+import { copyTextToClipboard } from '@/js/utils/clipboard.js'
 import InvitationCreateModal from '@/core/cms/adp/admin/InvitationsComponents/InvitationCreateModal.vue'
 import InvitationBulkModal from '@/core/cms/adp/admin/InvitationsComponents/InvitationBulkModal.vue'
 
@@ -159,11 +160,32 @@ const copyInviteLink = async (item) => {
   if (item.status === 'revoked') {
     return
   }
+
+  const inviteUrl = item.invite_url?.trim()
+  if (!inviteUrl) {
+    toast.error('Ссылка приглашения недоступна')
+    return
+  }
+
   try {
-    await navigator.clipboard.writeText(item.invite_url)
+    await copyTextToClipboard(inviteUrl)
     toast.success('Ссылка скопирована')
   } catch {
     toast.error('Не удалось скопировать ссылку')
+  }
+}
+
+const copyEmail = async (email) => {
+  const normalizedEmail = email?.trim()
+  if (!normalizedEmail) {
+    return
+  }
+
+  try {
+    await copyTextToClipboard(normalizedEmail)
+    toast.success('Email скопирован')
+  } catch {
+    toast.error('Не удалось скопировать email')
   }
 }
 
@@ -266,6 +288,20 @@ const goBack = () => {
       :enable-pagination="true"
       @update:current-page="handlePageChange"
     >
+      <template #cell-email="{ item }">
+        <div class="d-flex align-items-center gap-2 invitation-email-cell">
+          <span class="invitation-email-text">{{ item.email }}</span>
+          <button
+            type="button"
+            class="btn btn-sm btn-link p-0 invitation-email-copy"
+            title="Скопировать email"
+            @click.stop="copyEmail(item.email)"
+          >
+            <Copy :size="14" />
+          </button>
+        </div>
+      </template>
+
       <template #cell-status="{ item }">
         <span class="badge" :class="statusClass[item.status] || 'text-bg-secondary'">
           {{ statusLabels[item.status] || item.status }}
@@ -283,7 +319,7 @@ const goBack = () => {
             class="btn btn-sm invitation-btn invitation-btn--copy d-inline-flex align-items-center gap-1"
             :disabled="item.status === 'revoked'"
             :title="item.status === 'revoked' ? 'Ссылка недоступна: приглашение отозвано' : 'Скопировать ссылку на регистрацию'"
-            @click="copyInviteLink(item)"
+            @click.stop="copyInviteLink(item)"
           >
             <Copy :size="14" />
             <span class="d-none d-xl-inline">Ссылка</span>
@@ -293,7 +329,7 @@ const goBack = () => {
             type="button"
             class="btn btn-sm invitation-btn invitation-btn--mail d-inline-flex align-items-center gap-1"
             title="Отправить письмо с приглашением"
-            @click="handleResend(item)"
+            @click.stop="handleResend(item)"
           >
             <Mail :size="14" />
             <span class="d-none d-xl-inline">Письмо</span>
@@ -303,7 +339,7 @@ const goBack = () => {
             type="button"
             class="btn btn-sm invitation-btn invitation-btn--revoke d-inline-flex align-items-center gap-1"
             title="Отозвать приглашение"
-            @click="handleRevoke(item)"
+            @click.stop="handleRevoke(item)"
           >
             <Ban :size="14" />
             <span class="d-none d-xl-inline">Отозвать</span>
@@ -337,6 +373,27 @@ const goBack = () => {
   color: var(--color-accent);
   text-decoration: none;
   font-weight: 500;
+
+  &:hover {
+    color: var(--color-accent);
+    opacity: 0.85;
+  }
+}
+
+.invitation-email-cell {
+  min-width: 0;
+}
+
+.invitation-email-text {
+  user-select: text;
+  cursor: text;
+  word-break: break-all;
+}
+
+.invitation-email-copy {
+  flex-shrink: 0;
+  color: var(--color-accent);
+  line-height: 1;
 
   &:hover {
     color: var(--color-accent);

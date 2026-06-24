@@ -19,6 +19,8 @@ import {
   bulkCreateInvitations,
   bulkSendInvitations,
 } from '@/core/cms/adp/admin/js/invitationService'
+import { copyTextToClipboard } from '@/js/utils/clipboard.js'
+import { useSafeModalBackdrop } from '@/js/utils/useSafeModalBackdrop.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -67,6 +69,8 @@ const close = () => {
     emit('completed')
   }
 }
+
+const { onBackdropMouseDown, onBackdropClick } = useSafeModalBackdrop(close)
 
 const triggerFileInput = () => {
   if (!isParsing.value && !isCreating.value && !isSending.value) {
@@ -202,11 +206,17 @@ const sendEmails = async () => {
 }
 
 const copyInviteLink = async (inviteUrl) => {
+  const normalizedUrl = inviteUrl?.trim()
+  if (!normalizedUrl) {
+    toast.error('Ссылка приглашения недоступна')
+    return
+  }
+
   try {
-    await navigator.clipboard.writeText(inviteUrl)
+    await copyTextToClipboard(normalizedUrl)
     toast.success('Ссылка скопирована')
   } catch {
-    parseError.value = 'Не удалось скопировать ссылку'
+    toast.error('Не удалось скопировать ссылку')
   }
 }
 
@@ -233,9 +243,10 @@ const previewStatusClass = {
     class="modal fade show d-block"
     tabindex="-1"
     style="background: rgba(0,0,0,0.5);"
-    @click.self="close"
+    @mousedown.self="onBackdropMouseDown"
+    @click.self="onBackdropClick"
   >
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" @mousedown.stop>
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Массовая рассылка приглашений</h5>
@@ -320,7 +331,9 @@ const previewStatusClass = {
                 </thead>
                 <tbody>
                   <tr v-for="item in emailPreview" :key="`${item.email}-${item.row}`">
-                    <td>{{ item.email }}</td>
+                    <td class="invitation-email-cell">
+                      <span class="invitation-email-text">{{ item.email }}</span>
+                    </td>
                     <td>
                       <span class="badge" :class="previewStatusClass[item.status] || 'text-bg-secondary'">
                         {{ item.statusLabel }}
@@ -349,7 +362,7 @@ const previewStatusClass = {
                       <button
                         type="button"
                         class="btn btn-sm invitation-btn invitation-btn--copy d-inline-flex align-items-center gap-1"
-                        @click="copyInviteLink(item.invite_url)"
+                        @click.stop="copyInviteLink(item.invite_url)"
                       >
                         <Copy :size="14" />
                         <span>Копировать ссылку</span>
@@ -448,6 +461,15 @@ const previewStatusClass = {
   max-height: 240px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
+}
+
+.invitation-email-cell {
+  user-select: text;
+}
+
+.invitation-email-text {
+  cursor: text;
+  word-break: break-all;
 }
 
 .invitation-btn {

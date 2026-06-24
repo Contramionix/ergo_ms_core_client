@@ -2,6 +2,8 @@
 import { ref } from 'vue'
 import { Copy, Mail } from 'lucide-vue-next'
 import { createInvitation } from '@/core/cms/adp/admin/js/invitationService'
+import { copyTextToClipboard } from '@/js/utils/clipboard.js'
+import { useSafeModalBackdrop } from '@/js/utils/useSafeModalBackdrop.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -25,6 +27,8 @@ const close = () => {
   resetForm()
   emit('close')
 }
+
+const { onBackdropMouseDown, onBackdropClick } = useSafeModalBackdrop(close)
 
 const extractApiError = (apiError, fallback = 'Не удалось выполнить операцию') => {
   const data = apiError?.response?.data
@@ -67,9 +71,9 @@ const submit = async (sendEmail) => {
 
     if (!sendEmail && result.invite_url) {
       try {
-        await navigator.clipboard.writeText(result.invite_url)
+        await copyTextToClipboard(result.invite_url)
       } catch {
-        // ссылка показана в модалке
+        // ссылка создана, но буфер обмена недоступен
       }
     }
 
@@ -88,9 +92,10 @@ const submit = async (sendEmail) => {
     class="modal fade show d-block"
     tabindex="-1"
     style="background: rgba(0,0,0,0.5);"
-    @click.self="close"
+    @mousedown.self="onBackdropMouseDown"
+    @click.self="onBackdropClick"
   >
-    <div class="modal-dialog">
+    <div class="modal-dialog" @mousedown.stop>
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Новое приглашение</h5>
