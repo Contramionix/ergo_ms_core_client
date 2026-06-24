@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import {
@@ -10,15 +10,18 @@ import {
   AlertCircle,
   FileSpreadsheet,
   ArrowLeft,
+  Trash2,
 } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import {
   fetchInvitations,
   revokeInvitation,
   resendInvitation,
+  clearInvitations,
 } from '@/core/cms/adp/admin/js/invitationService'
 import { copyTextToClipboard } from '@/js/utils/clipboard.js'
 import InvitationCreateModal from '@/core/cms/adp/admin/InvitationsComponents/InvitationCreateModal.vue'
@@ -32,6 +35,8 @@ const isCheckingAccess = ref(true)
 const isLoading = ref(false)
 const rows = ref([])
 const totalItems = ref(0)
+const totalAll = ref(0)
+const inactiveCount = ref(0)
 const registrationMode = ref('open')
 const currentPage = ref(1)
 const rowsPerPage = ref(12)
@@ -40,7 +45,32 @@ const searchQuery = ref('')
 const showCreateModal = ref(false)
 const showBulkModal = ref(false)
 
+const confirmDialog = reactive({
+  show: false,
+  title: 'Очистка приглашений',
+  message: '',
+  confirmText: 'Удалить',
+  variant: 'danger',
+  loading: false,
+  scope: 'inactive',
+})
+
 const invitationModeEnabled = computed(() => registrationMode.value === 'invitation')
+const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / rowsPerPage.value)))
+const listSummary = computed(() => {
+  if (!totalItems.value) {
+    return 'Нет приглашений'
+  }
+
+  const parts = [`Всего: ${totalItems.value}`]
+  if (totalPages.value > 1) {
+    parts.push(`страница ${currentPage.value} из ${totalPages.value}`)
+  }
+  if (inactiveCount.value > 0) {
+    parts.push(`неактивных: ${inactiveCount.value}`)
+  }
+  return parts.join(' · ')
+})
 
 const statusLabels = {
   pending: 'Ожидает',
@@ -83,6 +113,8 @@ const loadInvitations = async () => {
     })
     rows.value = data.invitations || []
     totalItems.value = data.total ?? rows.value.length
+    totalAll.value = data.total_all ?? totalItems.value
+    inactiveCount.value = data.inactive_count ?? 0
     registrationMode.value = data.registration_mode || 'open'
     if (data.page) {
       currentPage.value = data.page
@@ -211,6 +243,44 @@ const handleRevoke = async (item) => {
 const goBack = () => {
   router.push({ name: 'UsersPanel' })
 }
+
+const closeConfirmDialog = () => {
+  if (!confirmDialog.loading) {
+    confirmDialog.show = false
+  }
+}
+
+const openClearConfirm = (scope) => {
+  confirmDialog.scope = scope
+  confirmDialog.confirmText = scope === 'all' ? 'Удалить все' : 'Удалить неактивные'
+  confirmDialog.message = scope === 'all'
+    ? `Будут безвозвратно удалены все приглашения (${totalAll.value}).\n\nОжидающие ссылки перестанут работать.`
+    : `Будут удалены использованные, истёкшие и отозванные приглашения (${inactiveCount.value}).\n\nОжидающие приглашения останутся.`
+  confirmDialog.show = true
+}
+
+const handleClearConfirm = async () => {
+  if (confirmDialog.loading) {
+    return
+  }
+
+  confirmDialog.loading = true
+  try {
+    const result = await clearInvitations(confirmDialog.scope)
+    if (result.deleted > 0) {
+      toast.success(`Удалено приглашений: ${result.deleted}`)
+    } else {
+      toast.info(result.message || 'Нет приглашений для удаления')
+    }
+    confirmDialog.show = false
+    currentPage.value = 1
+    await loadInvitations()
+  } catch (error) {
+    toast.error(error.response?.data?.error || 'Не удалось очистить приглашения')
+  } finally {
+    confirmDialog.loading = false
+  }
+}
 </script>
 
 <template>
@@ -242,6 +312,9 @@ const goBack = () => {
         <p class="text-muted mb-0 small">
           Создавайте ссылки вручную или загружайте список email из Excel для массовой рассылки.
         </p>
+        <p v-if="!isLoading && invitationModeEnabled" class="text-muted mb-0 small invitations-summary">
+          {{ listSummary }} · {{ rowsPerPage }} на странице
+        </p>
       </div>
       <div class="col-12 col-sm d-flex flex-wrap align-items-center justify-content-center justify-content-sm-end gap-2">
         <label class="mb-0">
@@ -252,6 +325,26 @@ const goBack = () => {
             @input="handleSearchQuery($event.target.value)"
           />
         </label>
+        <button
+          type="button"
+          class="btn btn-outline-danger d-inline-flex align-items-center gap-2"
+          :disabled="!invitationModeEnabled || isLoading || inactiveCount === 0"
+          title="Удалить использованные, истёкшие и отозванные приглашения"
+          @click="openClearConfirm('inactive')"
+        >
+          <Trash2 :size="18" />
+          <span class="d-none d-md-inline">Очистить неактивные</span>
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
+          :disabled="!invitationModeEnabled || isLoading || totalAll === 0"
+          title="Удалить все приглашения, включая ожидающие"
+          @click="openClearConfirm('all')"
+        >
+          <Trash2 :size="18" />
+          <span class="d-none d-lg-inline">Очистить все</span>
+        </button>
         <button
           type="button"
           class="btn btn-outline-primary d-inline-flex align-items-center gap-2"
@@ -361,6 +454,19 @@ const goBack = () => {
       @close="showBulkModal = false"
       @completed="handleBulkCompleted"
     />
+
+    <ConfirmDialog
+      :show="confirmDialog.show"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :confirm-text="confirmDialog.confirmText"
+      cancel-text="Отмена"
+      :variant="confirmDialog.variant"
+      :loading="confirmDialog.loading"
+      @confirm="handleClearConfirm"
+      @cancel="closeConfirmDialog"
+      @close="closeConfirmDialog"
+    />
   </div>
 </template>
 
@@ -378,6 +484,10 @@ const goBack = () => {
     color: var(--color-accent);
     opacity: 0.85;
   }
+}
+
+.invitations-summary {
+  margin-top: 0.25rem;
 }
 
 .invitation-email-cell {

@@ -86,6 +86,7 @@ export const cmsEndpoints = {
         invitations: 'cms/adp/invitations/',
         invitationsBulk: 'cms/adp/invitations/bulk/',
         invitationsBulkSend: 'cms/adp/invitations/bulk/send/',
+        invitationsClear: 'cms/adp/invitations/clear/',
         invitationDetail: (id) => `cms/adp/invitations/${id}/`,
         invitationResend: (id) => `cms/adp/invitations/${id}/resend/`,
         myPermissions: 'cms/adp/my-permissions/',

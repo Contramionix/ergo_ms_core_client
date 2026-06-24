@@ -29,3 +29,8 @@ export async function bulkSendInvitations(payload) {
   const response = await apiClient.post(cmsEndpoints.cms.invitationsBulkSend, payload, true)
   return response.data
 }
+
+export async function clearInvitations(scope = 'inactive') {
+  const response = await apiClient.post(cmsEndpoints.cms.invitationsClear, { scope }, true)
+  return response.data
+}
