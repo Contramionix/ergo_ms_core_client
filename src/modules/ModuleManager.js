@@ -37,6 +37,7 @@ export class ModuleManager {
 
     this.config = config
     this.initialized = false
+    this._initPromise = null
   }
 
   /**
@@ -60,15 +61,11 @@ export class ModuleManager {
       this.routeManager
     )
 
-    // Инициализируем сепараторы
     this.initializeSeparators()
 
-    // Интеграции регистрируются ПОСЛЕ остальных менеджеров.
-    // Это важно, чтобы избежать циклического deadlock-а, когда endpoints.js
-    // имеет top-level await на getEndpoints(), а integrations.js модулей
-    // транзитивно импортируют tokenService -> endpoints.js. tokenService
-    // больше не тянет apiClient/endpoints; integrations.js загружается лениво.
-    await this.integrationsManager.initialize()
+    // Интеграции не блокируют старт приложения: файлы регистрируют bridge
+    // синхронно при загрузке chunk; await нужен только для статистики/отладки.
+    void this.integrationsManager.initialize()
 
     this.initialized = true
   }
@@ -271,15 +268,21 @@ export class ModuleManager {
     this.permissionRulesManager.clearCache()
     this.permissionSectionsManager.clearCache()
     this.integrationsManager.clearCache()
+    this.initialized = false
+    this._initPromise = null
   }
 
   /**
    * Обеспечивает инициализацию
    */
   async ensureInitialized() {
-    if (!this.initialized) {
-      await this.initialize()
+    if (this.initialized) {
+      return
     }
+    if (!this._initPromise) {
+      this._initPromise = this.initialize()
+    }
+    await this._initPromise
   }
 
   /**

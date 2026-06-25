@@ -8,6 +8,10 @@ import { defineConfig } from 'vite' // Импорт функции для опр
 import dotenv from 'dotenv'
 import path from 'path'
 import fs from 'fs'
+import { createRequire } from 'node:module'
+
+const require = createRequire(import.meta.url)
+const { applyNginxViteEnv } = require('../deployment/nginx/nginx-env.cjs')
 
 // Получение абсолютного пути к файлу .env в корне проекта
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -33,6 +37,8 @@ if (fs.existsSync(mainEnvPath)) {
 } else {
   console.warn('⚠️  Файл .env не найден в корне проекта:', mainEnvPath)
 }
+
+const runtimeEnv = applyNginxViteEnv(process.env)
 
 
 // Определение конфигурации Vite
@@ -135,7 +141,7 @@ export default defineConfig({
     https: false, // Отключение HTTPS для сервера разработки
     proxy: {
       '/api': {
-        target: `http://${process.env.API_HOST || 'localhost'}:${process.env.API_PORT || '8000'}`,
+        target: `http://${runtimeEnv.API_HOST || '127.0.0.1'}:${runtimeEnv.API_PORT || '8000'}`,
         changeOrigin: true,
       },
     },
@@ -153,11 +159,17 @@ export default defineConfig({
 
   // Экспорт переменных окружения в клиентский код
   define: {
-    'import.meta.env.VITE_API_HOST': JSON.stringify(process.env.API_HOST),
-    'import.meta.env.VITE_API_PORT': JSON.stringify(process.env.API_PORT),
-    'import.meta.env.VITE_DEFAULT_THEME': JSON.stringify(process.env.VITE_DEFAULT_THEME || 'light'),
-    'import.meta.env.VITE_LOG_LEVEL': JSON.stringify(process.env.VITE_LOG_LEVEL || (process.env.CLIENT_DEPLOY_TYPE === 'production' ? 'critical' : 'debug')),
-    'import.meta.env.VITE_USE_RELATIVE_API': JSON.stringify(process.env.VITE_USE_RELATIVE_API || ''),
+    'import.meta.env.VITE_API_HOST': JSON.stringify(runtimeEnv.API_HOST),
+    'import.meta.env.VITE_API_PORT': JSON.stringify(runtimeEnv.API_PORT),
+    'import.meta.env.VITE_DEFAULT_THEME': JSON.stringify(runtimeEnv.VITE_DEFAULT_THEME || 'light'),
+    'import.meta.env.VITE_LOG_LEVEL': JSON.stringify(
+      runtimeEnv.VITE_LOG_LEVEL
+        || (runtimeEnv.CLIENT_DEPLOY_TYPE === 'production' ? 'critical' : 'debug'),
+    ),
+    'import.meta.env.VITE_USE_RELATIVE_API': JSON.stringify(
+      runtimeEnv.VITE_USE_RELATIVE_API
+        || (runtimeEnv.NGINX_ENABLED === 'true' ? 'true' : ''),
+    ),
     'import.meta.env.VITE_PASSWORD_MIN_LENGTH': JSON.stringify(process.env.API_PASSWORD_MIN_LENGTH || '8'),
     'import.meta.env.VITE_PASSWORD_MAX_LENGTH': JSON.stringify(process.env.API_PASSWORD_MAX_LENGTH || '128'),
     'import.meta.env.VITE_PASSWORD_REQUIRE_LOWERCASE': JSON.stringify(process.env.API_PASSWORD_REQUIRE_LOWERCASE || 'true'),

@@ -1,5 +1,5 @@
 import { CheckAccess } from '../../../js/cms';
-import router from '../../../../../js/routers';
+import { router } from '../../../../../js/routers.js';
 import Cookies from 'js-cookie';
 export const checkAccessToPage = async (path) => {
     if(Cookies.get('token')!= null){

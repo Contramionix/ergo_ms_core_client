@@ -1,7 +1,7 @@
 import { apiClient } from '@/js/api/manager'
-import { endpoints } from '@/js/api/endpoints'
+import { notificationsEndpoints } from '@/core/notifications/js/endpoints.js'
 
-const ep = endpoints.notifications
+const ep = notificationsEndpoints.notifications
 
 export const notificationsApi = {
   list(params = {}) {

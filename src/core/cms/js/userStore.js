@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useToast } from 'vue-toastification'
 import { apiClient } from '@/js/api/manager.js'
-import { endpoints } from '@/js/api/endpoints.js'
+import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import { profileService } from '@/core/cms/js/profileService.js'
 import Cookies from 'js-cookie'
 

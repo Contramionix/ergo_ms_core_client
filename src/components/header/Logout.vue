@@ -2,9 +2,11 @@
 </template>
 <script setup>
 import { onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { logout } from '@/core/cms/adp/js/auth-index';
 import { authGuard } from '@/core/cms/js/authGuard';
-import router from '@/js/routers';
+
+const router = useRouter();
 
 onMounted(async () => {
     // Останавливаем проверку токена перед выходом

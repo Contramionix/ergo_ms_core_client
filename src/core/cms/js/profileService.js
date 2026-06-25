@@ -1,5 +1,5 @@
 import { apiClient } from '../../../js/api/manager'
-import { endpoints } from '../../../js/api/endpoints'
+import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 
 export const profileService = {
   // Получить полный профиль пользователя

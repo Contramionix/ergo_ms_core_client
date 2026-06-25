@@ -1,8 +1,7 @@
-import router from '@/js/routers.js'
-import { authGuard } from '@/core/cms/js/authGuard.js' // Подключаем защиту аутентификации
+import { initRouter } from '@/js/routers.js'
+import { authGuard } from '@/core/cms/js/authGuard.js'
 import { preloadRegistrationSettings } from '@/core/cms/adp/js/registrationSettings.js'
 
-// Подключаем систему логирования (автоматически переопределяет console)
 import '@/js/utils/logger.js'
 
 import 'bootstrap/dist/css/bootstrap.min.css'
@@ -22,13 +21,13 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
 import App from '@/App.vue'
+import { initEndpoints } from '@/js/api/endpoints.js'
 
 const app = createApp(App)
 const pinia = createPinia()
 
 app.directive('tooltip', {
   mounted(el) {
-    // Используем глобальный объект Bootstrap из bundle
     if (window.bootstrap && window.bootstrap.Tooltip) {
       new window.bootstrap.Tooltip(el, { trigger: 'hover' })
     }
@@ -36,7 +35,7 @@ app.directive('tooltip', {
 })
 
 app.use(pinia)
-app.use(router)
+
 app.use(PerfectScrollbarPlugin)
 app.use(autoAnimatePlugin)
 app.use(Slicksort)
@@ -52,11 +51,15 @@ app.use(setupCalendar, {
   color: 'red',
 })
 
+await initEndpoints()
+
+const router = await initRouter()
+app.use(router)
+
 await preloadRegistrationSettings()
 
 app.mount('#app')
 
-// Запускаем проверку токена после полной инициализации приложения
 if (authGuard.isAuthenticated()) {
   authGuard.startTokenValidation()
 }
