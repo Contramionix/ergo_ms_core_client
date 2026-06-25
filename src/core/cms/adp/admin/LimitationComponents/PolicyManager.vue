@@ -224,6 +224,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import { CreatePolicy, GetPolicies, UpdatePolicy } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   pages: { type: Array, required: true },
@@ -292,7 +293,7 @@ async function refreshPolicies() {
     emit('update:policies', response || [])
     toast.success('Политики обновлены')
   } catch (error) {
-    console.error('Ошибка загрузки политик', error)
+    logError('Ошибка загрузки политик', error)
     toast.error('Не удалось обновить политики')
   } finally {
     policyLoading.value = false
@@ -375,7 +376,7 @@ async function handlePolicySubmit() {
     await refreshPolicies()
     resetPolicyForm()
   } catch (error) {
-    console.error('Ошибка сохранения политики', error)
+    logError('Ошибка сохранения политики', error)
     toast.error('Не удалось сохранить политику')
   } finally {
     policySaving.value = false

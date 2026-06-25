@@ -3,6 +3,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { Briefcase, Calendar, MapPin } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { logError } from '@/js/utils/logError.js'
 
 const userStore = useUserStore()
 
@@ -67,7 +68,7 @@ async function fetchProfile() {
       profileData.value = userStore.profile
     }
   } catch (error) {
-    console.error('Ошибка загрузки профиля:', error)
+    logError('Ошибка загрузки профиля:', error)
     if (userStore.profile) {
       profileData.value = userStore.profile
     }

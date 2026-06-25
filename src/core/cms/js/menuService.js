@@ -7,6 +7,7 @@
 
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
+import { logError } from '@/js/utils/logError.js'
 
 // Кеш меню
 let menuCache = null
@@ -36,10 +37,10 @@ export async function getUserMenu(forceRefresh = false) {
       return response.data
     }
     
-    console.error('Ошибка загрузки меню:', response.error)
+    logError('Ошибка загрузки меню:', response.error)
     return { menu_items: [], separators: [] }
   } catch (error) {
-    console.error('Ошибка загрузки меню:', error)
+    logError('Ошибка загрузки меню:', error)
     return { menu_items: [], separators: [] }
   }
 }

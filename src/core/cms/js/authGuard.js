@@ -1,6 +1,7 @@
 import Cookies from 'js-cookie'
 import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { logError } from '@/js/utils/logError.js'
 
 /**
  * Утилита для управления аутентификацией и автоматического logout
@@ -84,7 +85,7 @@ export class AuthGuard {
       const isValid = await authService.checkToken()
       if (!isValid) this.forceLogout()
     } catch (error) {
-      console.error('Ошибка при проверке токена:', error)
+      logError('Ошибка при проверке токена:', error)
       // При ошибке проверки также выполняем logout
       this.forceLogout()
     } finally {

@@ -9,6 +9,7 @@
  */
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
+import { logWarn } from '@/js/utils/logError.js'
 
 export class PermissionSectionsManager extends ModuleLoader {
   constructor() {
@@ -40,7 +41,7 @@ export class PermissionSectionsManager extends ModuleLoader {
 
       items.forEach((section) => {
         if (!this.validateSection(section)) {
-          console.warn(`[PermissionSectionsManager] Невалидная секция в ${path}:`, section)
+          logWarn(`[PermissionSectionsManager] Невалидная секция в ${path}`)
           return
         }
 

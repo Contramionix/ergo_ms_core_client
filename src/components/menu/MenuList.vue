@@ -21,7 +21,9 @@ import MenuToolbar from '@/components/menu/MenuToolbar.vue'
 import { useMenuWidth } from './composables/useMenuWidth'
 import { useMenuNavigation } from './composables/useMenuNavigation'
 import { useMenuIconSizes, MENU_ICON_SIZES_KEY } from './composables/useMenuIconSizes'
+import { safeNavigateByName } from './composables/safeMenuNavigate.js'
 import { openOffcanvasSidebar } from '@/js/useOffcanvasSidebarStore.js'
+import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   isVisible: Boolean,
@@ -143,12 +145,12 @@ const handleNavigate = (item) => {
   }
 
   if (item.routeName) {
-    router.push({ name: item.routeName })
+    safeNavigateByName(router, item.routeName)
     return
   }
 
   if (item.path) {
-    router.push({ name: item.path })
+    safeNavigateByName(router, item.path)
   }
 }
 
@@ -192,7 +194,7 @@ const loadMenu = async (forceRefresh = false) => {
   } catch (error) {
     resetMenu()
     toast.error('Не удалось загрузить меню. Попробуйте обновить страницу.')
-    console.error('Ошибка загрузки меню:', error)
+    logError('Ошибка загрузки меню:', error)
   }
 }
 

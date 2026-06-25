@@ -11,6 +11,8 @@
  * что объединяет все запросы в один пакет при инициализации приложения.
  */
 
+import { getDisabledModulesSync } from './disabledModules.js'
+
 // Глобальный кеш для результатов loadAllModulesAsync
 const asyncModulesCache = new Map()
 
@@ -96,7 +98,25 @@ export class ModuleLoader {
       }
     })
 
-    return result
+    return this._filterDisabledModules(result)
+  }
+
+  /**
+   * Фильтрует результаты glob, исключая отключённые модули
+   * @param {Object} globResult - объект { path: module }
+   * @returns {Object} - отфильтрованный объект
+   */
+  _filterDisabledModules(globResult) {
+    const disabled = getDisabledModulesSync()
+    if (!disabled.size) return globResult
+
+    const filtered = {}
+    for (const [path, value] of Object.entries(globResult)) {
+      const moduleName = this.extractModuleName(path, this.isExternalModule(path))
+      if (moduleName && disabled.has(moduleName)) continue
+      filtered[path] = value
+    }
+    return filtered
   }
 
   /**

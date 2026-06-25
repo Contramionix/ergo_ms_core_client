@@ -3,6 +3,7 @@ import { ref, watch, onUnmounted, onMounted, computed } from 'vue'
 import { useToast } from 'vue-toastification'
 import { RotateCw, RotateCcw, Check } from 'lucide-vue-next'
 import ImageCropper from './ImageCropper.vue'
+import { logError } from '@/js/utils/logError.js'
 
 const toast = useToast()
 
@@ -115,7 +116,7 @@ async function handleConfirm() {
       throw new Error('Не удалось обрезать изображение')
     }
   } catch (error) {
-    console.error('Ошибка при кадрировании:', error)
+    logError('Ошибка при кадрировании:', error)
     toast.error('Ошибка при кадрировании изображения')
   } finally {
     loading.value = false

@@ -7,6 +7,7 @@
  */
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
+import { logError, logWarn } from '@/js/utils/logError.js'
 
 // Создаем один экземпляр ModuleLoader для доступа к общим глобам
 const sharedLoader = new ModuleLoader()
@@ -41,7 +42,7 @@ export class CoreRoutesManager {
     const loader = this.componentsMap[searchPath]
 
     if (!loader) {
-      console.warn(`Компонент не найден: ${componentPath}`)
+      logWarn(`Компонент не найден: ${componentPath}`)
     }
 
     return loader || null
@@ -59,7 +60,7 @@ export class CoreRoutesManager {
       return loader
     }
 
-    console.error(`Не удалось преобразовать путь: ${componentPath}`)
+    logError('Не удалось преобразовать путь', componentPath)
     return () => Promise.reject(new Error(`Component not found: ${componentPath}`))
   }
 
@@ -88,7 +89,7 @@ export class CoreRoutesManager {
         this.transformRoute(route)
       )
     } catch (error) {
-      console.error('Ошибка загрузки core роутов:', error)
+      logError('Ошибка загрузки core роутов:', error)
       return []
     }
   }
@@ -103,7 +104,7 @@ export class CoreRoutesManager {
         this.transformRoute(route)
       )
     } catch (error) {
-      console.error('Ошибка загрузки auth роутов:', error)
+      logError('Ошибка загрузки auth роутов:', error)
       return []
     }
   }

@@ -75,6 +75,7 @@
 import { ref, computed } from 'vue'
 import { Plus, Save, Edit, Trash, X } from 'lucide-vue-next'
 import axios from 'axios'
+import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   tableName: {
@@ -100,7 +101,7 @@ const loadTableData = async () => {
     tableData.value = response.data.rows
     originalData.value = JSON.parse(JSON.stringify(response.data.rows))
   } catch (error) {
-    console.error('Error loading table data:', error)
+    logError('Error loading table data:', error)
   } finally {
     isLoading.value = false
   }
@@ -150,7 +151,7 @@ const deleteRow = async (index) => {
       tableData.value.splice(index, 1)
       originalData.value = JSON.parse(JSON.stringify(tableData.value))
     } catch (error) {
-      console.error('Error deleting row:', error)
+      logError('Error deleting row:', error)
     }
   }
 }
@@ -174,7 +175,7 @@ const saveChanges = async () => {
 
     await loadTableData() // Перезагружаем данные
   } catch (error) {
-    console.error('Error saving changes:', error)
+    logError('Error saving changes:', error)
   } finally {
     isLoading.value = false
     editingRow.value = null

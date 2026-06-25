@@ -1,4 +1,5 @@
 <script setup>
+import { logError } from '@/js/utils/logError.js'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
@@ -55,7 +56,7 @@ const loadUsers = async () => {
       currentPage.value = data.page
     }
   } catch (error) {
-    console.error('Ошибка загрузки пользователей:', error)
+    logError('Ошибка загрузки пользователей:', error)
     toast.error('Не удалось загрузить список пользователей')
   } finally {
     isLoadingUsers.value = false
@@ -78,7 +79,7 @@ onMounted(async () => {
     hasAdminAccess.value = true
     await Promise.all([loadRefs(), loadUsers()])
   } catch (error) {
-    console.error('Ошибка проверки прав доступа или загрузки данных:', error)
+    logError('Ошибка проверки прав доступа или загрузки данных:', error)
     if (!hasAdminAccess.value) {
       toast.error('Ошибка проверки прав доступа')
       router.push({ name: 'AccessDenied' })

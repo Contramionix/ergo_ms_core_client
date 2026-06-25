@@ -4,6 +4,7 @@ import { useToast } from 'vue-toastification'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { resetAdminUserPassword } from '@/core/cms/adp/admin/js/adminUserService.js'
 import { validatePasswordValue } from '@/js/passwordPolicy.js'
+import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   userId: { type: Number, default: null },
@@ -63,7 +64,7 @@ const confirmSystemReset = async () => {
     toast.success('Пароль сброшен')
     showResetConfirm.value = false
   } catch (error) {
-    console.error('Ошибка сброса пароля:', error)
+    logError('Ошибка сброса пароля:', error)
     const message = error.response?.data?.error || 'Не удалось сбросить пароль'
     toast.error(message)
   } finally {
@@ -84,7 +85,7 @@ const handleManualSet = async () => {
     toast.success(result.message || 'Пароль установлен')
     newPassword.value = ''
   } catch (error) {
-    console.error('Ошибка установки пароля:', error)
+    logError('Ошибка установки пароля:', error)
     const data = error.response?.data
     if (data) {
       passwordError.value = data.new_password || data.confirm_password || ''

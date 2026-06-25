@@ -77,6 +77,7 @@ import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 import { useToast } from 'vue-toastification'
 import { parseFullNameParts, seedUserPublicInfoCache } from '@/js/userAvatar'
+import { logError, logWarn } from '@/js/utils/logError.js'
 
 const props = defineProps({
   show: {
@@ -289,7 +290,7 @@ async function loadOrganizationMembers() {
 
 async function loadCandidates() {
   if (!props.organizationId) {
-    console.warn('AddMemberModal: organizationId не передан')
+    logWarn('AddMemberModal: organizationId не передан')
     users.value = []
     return
   }
@@ -302,7 +303,7 @@ async function loadCandidates() {
 
     applyLoadedUsers(list)
   } catch (e) {
-    console.error('Ошибка загрузки пользователей:', e)
+    logError('Ошибка загрузки пользователей:', e)
     const msg = e.response?.data?.error || 'Ошибка загрузки пользователей'
     toast.error(msg)
     users.value = []

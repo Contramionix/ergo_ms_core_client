@@ -2,6 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import { CreateRoleGroup, GetRoles, UpdateRoleGroup } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { logError } from '@/js/utils/logError.js'
 
 const emit = defineEmits(['addGroup', 'changeGroup'])
 
@@ -45,7 +46,7 @@ const loadRoles = async () => {
     roles.value = response
   } catch (error) {
     toast.error('Не удалось загрузить список ролей')
-    console.error('GetRoles error:', error)
+    logError('GetRoles error:', error)
   }
 }
 
@@ -126,7 +127,7 @@ const submitForm = async () => {
       : 'Не удалось создать ролевую группу'
     const message = responseData?.error || responseData?.detail || defaultMessage
     toast.error(message)
-    console.error('SubmitRoleGroup error:', error)
+    logError('SubmitRoleGroup error:', error)
   } finally {
     isSubmitting.value = false
   }

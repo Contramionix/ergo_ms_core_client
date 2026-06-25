@@ -3,6 +3,7 @@ import { reactive, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { verifyConfirmationCode, sendConfirmationCode } from '@/core/cms/adp/js/auth-index'
 import { validateFieldValue } from '@/js/validation'
+import { logError } from '@/js/utils/logError.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -60,7 +61,7 @@ const submitForm = async () => {
       }
     }
   } catch (error) {
-    console.error('Verify email error:', error)
+    logError('Verify email error:', error)
     
     if (error.response) {
       if (error.response.status === 400) {
@@ -109,7 +110,7 @@ const resendCode = async () => {
       errors.general = 'Не удалось отправить код повторно'
     }
   } catch (error) {
-    console.error('Resend code error:', error)
+    logError('Resend code error:', error)
     errors.general = 'Ошибка отправки кода'
   } finally {
     isResending.value = false

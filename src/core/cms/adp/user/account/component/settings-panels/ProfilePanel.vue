@@ -6,6 +6,7 @@ import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import AvatarBlock from './AvatarBlock.vue'
+import { logError } from '@/js/utils/logError.js'
 
 const toast = useToast()
 const userStore = useUserStore()
@@ -74,7 +75,7 @@ const fetchProfile = async () => {
 
     await userStore.loadAvatar()
   } catch (error) {
-    console.error('Ошибка загрузки профиля:', error)
+    logError('Ошибка загрузки профиля:', error)
     toast.error('Ошибка загрузки данных профиля')
     profileData.value = null
   } finally {
@@ -108,7 +109,7 @@ const saveSection = async (fields, savingRef, successMessage) => {
 
     toast.success(successMessage)
   } catch (error) {
-    console.error('Ошибка сохранения профиля:', error)
+    logError('Ошибка сохранения профиля:', error)
 
     if (error.response?.data) {
       errors.value = error.response.data

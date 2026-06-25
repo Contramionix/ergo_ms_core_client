@@ -8,6 +8,7 @@
  */
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
+import { logError, logWarn } from '@/js/utils/logError.js'
 
 export class PermissionRulesManager extends ModuleLoader {
   constructor() {
@@ -46,7 +47,7 @@ export class PermissionRulesManager extends ModuleLoader {
               _modulePath: path
             })
           } else {
-            console.warn(`[PermissionRulesManager] Невалидное правило в ${path}:`, rule)
+            logWarn(`[PermissionRulesManager] Невалидное правило в ${path}`)
           }
         })
       } else {
@@ -108,7 +109,7 @@ export class PermissionRulesManager extends ModuleLoader {
       try {
         return rule.match(to)
       } catch (error) {
-        console.error(`Ошибка при проверке правила:`, error)
+        logError(`Ошибка при проверке правила:`, error)
         return false
       }
     }) || null
@@ -124,7 +125,7 @@ export class PermissionRulesManager extends ModuleLoader {
       try {
         return rule.match(to)
       } catch (error) {
-        console.error(`Ошибка при проверке правила:`, error)
+        logError(`Ошибка при проверке правила:`, error)
         return false
       }
     })

@@ -22,6 +22,7 @@ export const cmsEndpoints = {
         securitySettings: 'cms/adp/security-settings/',
     },
     cms: {
+        disabledModules: 'cms/disabled-modules/',
         checkAccessToPage: 'cms/check_access_to_page/',
         checkAccessToComponent: 'cms/check_access_to_component/',
         checkAccessToAdminPanel: 'cms/check_access_to_admin_panel/',

@@ -5,6 +5,7 @@
  * Bootstrap переменные НЕ переопределяются по умолчанию
  */
 
+import { logError, logWarn } from '@/js/utils/logError.js'
 import { 
   THEME_SCSS_COLORS,
   COLOR_DESCRIPTIONS,
@@ -59,7 +60,7 @@ export function getDefaultThemeConfig() {
  */
 export function applyTheme(theme, saveToStorage = true) {
   if (!theme) {
-    console.warn('Тема не передана')
+    logWarn('Тема не передана')
     return
   }
 
@@ -219,7 +220,7 @@ export function saveThemeToLocalStorage(theme) {
   try {
     localStorage.setItem('activeTheme', JSON.stringify(theme))
   } catch (e) {
-    console.error('Ошибка сохранения темы:', e)
+    logError('Ошибка сохранения темы:', e)
   }
 }
 
@@ -233,7 +234,7 @@ export function loadThemeFromLocalStorage() {
       return JSON.parse(stored)
     }
   } catch (e) {
-    console.error('Ошибка загрузки темы:', e)
+    logError('Ошибка загрузки темы:', e)
   }
   return null
 }

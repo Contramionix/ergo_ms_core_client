@@ -17,6 +17,7 @@ import {
   validateAdminProfileData,
 } from '@/core/cms/adp/admin/js/adminUserService.js'
 import { AssignRoleToUser } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -101,7 +102,7 @@ const loadUser = async () => {
     selectedGroupIds.value = data.role_groups?.map((group) => group.id) || []
     passwordResetMode.value = data.password_reset_mode || 'system'
   } catch (error) {
-    console.error('Ошибка загрузки пользователя:', error)
+    logError('Ошибка загрузки пользователя:', error)
     toast.error('Не удалось загрузить данные пользователя')
     handleClose()
   } finally {
@@ -167,7 +168,7 @@ const handleSave = async () => {
     emit('saved')
     handleClose()
   } catch (error) {
-    console.error('Ошибка сохранения пользователя:', error)
+    logError('Ошибка сохранения пользователя:', error)
     if (error.response?.data) {
       errors.value = error.response.data
     } else {
@@ -200,7 +201,7 @@ const confirmDelete = async () => {
     emit('deleted')
     handleClose()
   } catch (error) {
-    console.error('Ошибка удаления пользователя:', error)
+    logError('Ошибка удаления пользователя:', error)
     const message = error.response?.data?.error || 'Не удалось удалить пользователя'
     toast.error(message)
   } finally {

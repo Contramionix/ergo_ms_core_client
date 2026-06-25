@@ -283,6 +283,22 @@ export class ModuleManager {
   }
 
   /**
+   * Подгружает список disabled-модулей с API (silent, не блокирует запуск при ошибке).
+   * Вызывать после успешной аутентификации для синхронизации с сервером.
+   * @param {Object} apiClient - инстанс axios/api manager
+   */
+  async refreshDisabledModules(apiClient) {
+    try {
+      const { fetchDisabledModules } = await import('./core/disabledModules.js')
+      if (apiClient) {
+        await fetchDisabledModules(apiClient)
+      }
+    } catch {
+      // Если API недоступен — используется значение из VITE_DISABLED_MODULES
+    }
+  }
+
+  /**
    * Получает доступ к отдельным менеджерам
    */
   get routes() {

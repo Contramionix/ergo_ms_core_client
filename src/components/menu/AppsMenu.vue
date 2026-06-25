@@ -4,6 +4,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { moduleManager } from '@/modules/index.js'
 import { useDropdown } from '@/composables/useDropdown.js'
+import { logError } from '@/js/utils/logError.js'
 
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
@@ -21,7 +22,7 @@ const loadApps = async () => {
 
     apps.value = []
   } catch (error) {
-    console.error('Ошибка загрузки приложений:', error)
+    logError('Ошибка загрузки приложений:', error)
     apps.value = []
   } finally {
     isLoading.value = false

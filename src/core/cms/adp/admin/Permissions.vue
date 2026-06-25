@@ -1,4 +1,5 @@
 <script setup>
+import { logError } from '@/js/utils/logError.js'
 import PermissionTableHeader from '@/core/cms/adp/admin/PermissionsComponents/PermissionTableHeader.vue'
 import PermissionTable from '@/core/cms/adp/admin/PermissionsComponents/PermissionTable.vue'
 import ModulePermissionManager from '@/core/cms/adp/admin/PermissionsComponents/ModulePermissionManager.vue'
@@ -30,7 +31,7 @@ const updatePermissions = async () => {
   try {
     await loadPolicies()
   } catch (error) {
-    console.error('Error fetching policies:', error)
+    logError('Error fetching policies:', error)
   }
 }
 
@@ -43,7 +44,7 @@ onMounted(async () => {
   try {
     await Promise.all([loadRefs(), loadPolicies()])
   } catch (error) {
-    console.error('Error initializing permissions data:', error)
+    logError('Error initializing permissions data:', error)
   }
 })
 

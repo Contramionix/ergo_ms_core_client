@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { Droplet } from 'lucide-vue-next'
+import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   label: {
@@ -65,7 +66,7 @@ const openEyeDropper = async () => {
   } catch (e) {
     // Пользователь отменил выбор
     if (e.name !== 'AbortError') {
-      console.error('Ошибка EyeDropper:', e)
+      logError('Ошибка EyeDropper:', e)
     }
   }
 }

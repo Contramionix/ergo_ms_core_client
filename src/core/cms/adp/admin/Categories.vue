@@ -1,4 +1,5 @@
 <script setup>
+import { logError } from '@/js/utils/logError.js'
 import CategoryTableHeader from '@/core/cms/adp/admin/CategoriesComponents/CategoryTableHeader.vue'
 import CategoryTable from '@/core/cms/adp/admin/CategoriesComponents/CategoryTable.vue'
 import { GetRoles } from '@/core/cms/adp/admin/js/GroupsPolitics'
@@ -22,7 +23,7 @@ onMounted(async () => {
   try {
     await loadRoles()
   } catch (error) {
-    console.error('Error fetching roles:', error)
+    logError('Error fetching roles:', error)
   }
 })
 
@@ -36,7 +37,7 @@ const updateCategories = async () => {
   try {
     await loadRoles()
   } catch (error) {
-    console.error('Error updating roles:', error)
+    logError('Error updating roles:', error)
   }
 }
 </script>

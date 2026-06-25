@@ -1,4 +1,5 @@
 <script setup>
+import { logError } from '@/js/utils/logError.js'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
@@ -62,7 +63,7 @@ onMounted(async () => {
       if (stored) savedTaskId.value = stored
     } catch (_) {}
   } catch (error) {
-    console.error('Ошибка проверки прав доступа:', error)
+    logError('Ошибка проверки прав доступа:', error)
     toast.error('Ошибка проверки прав доступа')
     router.push({ name: 'AccessDenied' })
   } finally {
@@ -258,7 +259,7 @@ function runPolling(taskId) {
         pollTimeoutId = setTimeout(pollTaskStatus, 500)
       }
     } catch (pollError) {
-      console.error('Ошибка при получении статуса задачи:', pollError)
+      logError('Ошибка при получении статуса задачи:', pollError)
       pollTimeoutId = setTimeout(pollTaskStatus, 1000)
     }
   }

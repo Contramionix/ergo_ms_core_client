@@ -35,6 +35,7 @@ import MenuItem from './MenuItem.vue'
 import { iconMapping } from '@/config/icons-mapping.js'
 import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
 import { isMenuItemActive } from './composables/isMenuItemActive.js'
+import { canNavigateToRoute, safeNavigateByName } from './composables/safeMenuNavigate.js'
 
 const props = defineProps({
   data: { type: Object, required: true },
@@ -106,12 +107,11 @@ const isCurrentGroupPage = computed(() => {
   
   // Проверяем, является ли текущий роут дочерним роутом для группы
   if (props.data.routeName && route.name && route.name.startsWith(props.data.routeName) && route.name !== props.data.routeName) {
-    try {
-      const parentRoute = router.resolve({ name: props.data.routeName })
-      if (parentRoute && parentRoute.path && route.path.startsWith(parentRoute.path)) {
-        return true
-      }
-    } catch (e) {
+    if (!canNavigateToRoute(router, props.data.routeName)) {
+      return false
+    }
+    const parentRoute = router.resolve({ name: props.data.routeName })
+    if (parentRoute?.path && route.path.startsWith(parentRoute.path)) {
       return true
     }
   }
@@ -180,12 +180,12 @@ function routeClick(event) {
       
       // Переходим на основную страницу только если пользователь НЕ находится в пределах этой группы
       if (!isCurrentGroupPage.value) {
-        router.push({ name: props.data.routeName })
+        safeNavigateByName(router, props.data.routeName)
       }
     }
   } else {
     // Если подменю нет - просто переходим на страницу
-    router.push({ name: props.data.routeName })
+    safeNavigateByName(router, props.data.routeName)
   }
 }
 </script>

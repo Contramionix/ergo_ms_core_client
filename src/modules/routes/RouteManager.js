@@ -6,6 +6,7 @@
  */
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
+import { logError } from '@/js/utils/logError.js'
 
 export class RouteManager extends ModuleLoader {
   constructor() {
@@ -109,7 +110,7 @@ export class RouteManager extends ModuleLoader {
       return loader
     }
 
-    console.error(`Не удалось создать lazy import для: ${componentPath}`)
+    logError('Не удалось создать lazy import для', componentPath)
     return () => Promise.reject(new Error(`Component not found: ${componentPath}`))
   }
 

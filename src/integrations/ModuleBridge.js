@@ -1,3 +1,4 @@
+import { logError, logWarn } from '@/js/utils/logError.js'
 /**
  * MODULE BRIDGE (frontend) — единый механизм межмодульного взаимодействия.
  *
@@ -62,7 +63,7 @@ class ModuleBridge {
       throw new TypeError(`[ModuleBridge] handler for '${name}' must be a function`)
     }
     if (this._handlers.has(name) && !override) {
-      console.warn(`[ModuleBridge] operation '${name}' is already provided; ignored`)
+      logWarn(`[ModuleBridge] operation '${name}' is already provided; ignored`)
       return
     }
     this._handlers.set(name, handler)
@@ -81,7 +82,7 @@ class ModuleBridge {
     try {
       return handler(...actualArgs)
     } catch (error) {
-      console.error(`[ModuleBridge] error calling '${name}':`, error)
+      logError(`[ModuleBridge] error calling '${name}':`, error)
       return defaultValue ?? null
     }
   }
@@ -162,7 +163,7 @@ class ModuleBridge {
       try {
         results.push(handler(payload))
       } catch (error) {
-        console.error(`[ModuleBridge] subscriber for '${event}' raised:`, error)
+        logError(`[ModuleBridge] subscriber for '${event}' raised:`, error)
         results.push(undefined)
       }
     }
@@ -181,7 +182,7 @@ class ModuleBridge {
           return result
         }
       } catch (error) {
-        console.error(`[ModuleBridge] subscriber for '${event}' raised:`, error)
+        logError(`[ModuleBridge] subscriber for '${event}' raised:`, error)
       }
     }
     return null

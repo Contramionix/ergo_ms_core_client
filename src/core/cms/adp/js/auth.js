@@ -2,6 +2,7 @@ import { apiClient } from '../../../../js/api/manager';
 import { endpoints } from '../../../../js/api/endpoints';
 import Cookies from 'js-cookie';
 import tokenService from '@/core/cms/js/tokenService'
+import { logError } from '@/js/utils/logError.js'
 
 export const authService = {
     async login(username, password, rememberMe = false) {
@@ -85,7 +86,7 @@ export const authService = {
             const STORAGE_KEY = 'crm_active_organization'
             localStorage.removeItem(STORAGE_KEY)
         } catch (error) {
-            console.error('Ошибка очистки активной организации при выходе:', error)
+            logError('Ошибка очистки активной организации при выходе:', error)
         }
     }
 };  

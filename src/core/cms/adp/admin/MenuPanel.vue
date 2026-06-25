@@ -40,6 +40,7 @@
 </template>
 
 <script setup>
+import { logError } from '@/js/utils/logError.js'
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { LayersPlus, SeparatorHorizontal, Settings } from 'lucide-vue-next'
@@ -224,7 +225,7 @@ async function loadMenuItems() {
     const items = await getMenuItems({ includeInactive: true })
     menuItems.value = buildTree(items)
   } catch (error) {
-    console.error('[MenuPanel] Load error:', error)
+    logError('[MenuPanel] Load error:', error)
     toast.error('Ошибка загрузки элементов меню: ' + error.message)
   } finally {
     isLoading.value = false
@@ -265,7 +266,7 @@ async function loadRoles() {
       roles.value = response.data
     }
   } catch (error) {
-    console.error('Ошибка загрузки ролей:', error)
+    logError('Ошибка загрузки ролей:', error)
   }
 }
 
@@ -276,7 +277,7 @@ async function loadRoleGroups() {
       roleGroups.value = response.data
     }
   } catch (error) {
-    console.error('Ошибка загрузки ролевых групп:', error)
+    logError('Ошибка загрузки ролевых групп:', error)
   }
 }
 
@@ -365,7 +366,7 @@ async function saveAllChanges() {
     ])
     syncInitialCombinedOrder()
   } catch (error) {
-    console.error('[MenuPanel] Save error:', error)
+    logError('[MenuPanel] Save error:', error)
     toast.error('Ошибка сохранения порядка: ' + error.message)
   } finally {
     isSaving.value = false

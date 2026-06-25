@@ -8,10 +8,10 @@
  * - info: console.info
  * - warn: console.warn
  * - error: console.error
- * - critical: критические ошибки (всегда логируются)
+ * - critical: только console.error (production по умолчанию)
  * - silent: отключить все логи
  * 
- * В production по умолчанию работает только уровень 'critical' (только console.error)
+ * В production по умолчанию работает уровень 'critical' (только console.error)
  * В development работают все уровни
  */
 
@@ -50,6 +50,12 @@ class ConsoleLogger {
    * Проверка, нужно ли логировать сообщение
    */
   shouldLog(level) {
+    if (this.currentLevel === LOG_LEVELS.silent) {
+      return false
+    }
+    if (this.currentLevel === LOG_LEVELS.critical) {
+      return level === 'error'
+    }
     return LOG_LEVELS[level] >= this.currentLevel
   }
 

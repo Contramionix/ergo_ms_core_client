@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { CheckAccess } from '@/core/cms/js/cms'
+import { logError } from '@/js/utils/logError.js'
 
 // Глобальное состояние, общее для всех компонентов
 const isInitialized = ref(false)
@@ -24,7 +25,7 @@ const loadMyPermissions = async () => {
     isInitialized.value = true
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.error('Ошибка загрузки пользовательских политик доступа', e)
+    logError('Ошибка загрузки пользовательских политик доступа', e)
     error.value = 'Не удалось загрузить политики доступа пользователя'
   } finally {
     isLoading.value = false
@@ -47,7 +48,7 @@ const checkUrlAccess = async (url, action = 'view') => {
     return allowed
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.error('Ошибка проверки доступа по URL', e)
+    logError('Ошибка проверки доступа по URL', e)
     urlAccessCache[key] = false
     return false
   }

@@ -22,6 +22,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { iconMapping } from '@/config/icons-mapping.js'
 import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
 import { isMenuItemActive } from './composables/isMenuItemActive.js'
+import { safeNavigateByName } from './composables/safeMenuNavigate.js'
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -106,12 +107,12 @@ const handleClick = (event) => {
     
     // Если группа закрыта и есть маршрут, переходим на него
     if (!isOpen.value && props.item.routeName) {
-      router.push({ name: props.item.routeName })
+      safeNavigateByName(router, props.item.routeName)
     }
   } else if (props.item.isOffcanvas || props.item.page) {
     emit('navigate', props.item)
   } else if (props.item.routeName) {
-    router.push({ name: props.item.routeName })
+    safeNavigateByName(router, props.item.routeName)
   }
 }
 

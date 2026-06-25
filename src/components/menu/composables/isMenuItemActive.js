@@ -1,4 +1,5 @@
 import { currentOffcanvasSidebarPage, isOffcanvasSidebarOpen } from '@/js/useOffcanvasSidebarStore.js'
+import { canNavigateToRoute } from './safeMenuNavigate.js'
 
 export function isMenuItemActive(item, { route, router }) {
   if (item.routeName) {
@@ -6,13 +7,14 @@ export function isMenuItemActive(item, { route, router }) {
       return true
     }
 
-    if (route.name && route.name.startsWith(item.routeName) && route.name !== item.routeName) {
-      try {
-        const parentRoute = router.resolve({ name: item.routeName })
-        if (parentRoute?.path && route.path.startsWith(parentRoute.path)) {
-          return true
-        }
-      } catch {
+    if (
+      route.name
+      && route.name.startsWith(item.routeName)
+      && route.name !== item.routeName
+      && canNavigateToRoute(router, item.routeName)
+    ) {
+      const parentRoute = router.resolve({ name: item.routeName })
+      if (parentRoute?.path && route.path.startsWith(parentRoute.path)) {
         return true
       }
     }

@@ -1,4 +1,5 @@
 <script setup>
+import { logError } from '@/js/utils/logError.js'
 import { computed, onMounted, ref } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
 import { useModulePagePermissions } from './js/useModulePagePermissions'
@@ -105,7 +106,7 @@ const handleSyncRoutes = async () => {
     toast.success('Маршруты модулей синхронизированы')
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Ошибка синхронизации маршрутов модулей', error)
+    logError('Ошибка синхронизации маршрутов модулей', error)
     toast.error('Не удалось синхронизировать маршруты. Попробуйте позже.')
   } finally {
     isSyncing.value = false
@@ -210,7 +211,7 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
     toast.success('Доступ к странице обновлён')
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Ошибка изменения доступа к странице', error)
+    logError('Ошибка изменения доступа к странице', error)
     toast.error('Не удалось изменить доступ. Попробуйте позже.')
   } finally {
     isSavingAccess.value = false
@@ -295,7 +296,7 @@ const setPageAccessStateForRole = async (role, state) => {
     toast.success('Доступ к странице обновлён')
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Ошибка изменения доступа к странице по роли', error)
+    logError('Ошибка изменения доступа к странице по роли', error)
     toast.error('Не удалось изменить доступ. Попробуйте позже.')
   } finally {
     isSavingAccess.value = false

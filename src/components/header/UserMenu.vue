@@ -8,6 +8,7 @@ import { logout as authLogout } from '@/core/cms/adp/js/auth-index'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { tokenService } from '@/core/cms/js/tokenService.js'
 import { hasAnyModulePermission } from '@/core/cms/adp/js/accessControl.js'
+import { logError } from '@/js/utils/logError.js'
 
 const userStore = useUserStore()
 const emit = defineEmits(['dropdown-toggle'])
@@ -81,13 +82,13 @@ const handleLogout = async () => {
   try {
     await authLogout()
   } catch (error) {
-    console.error('Ошибка при logout через auth сервис:', error)
+    logError('Ошибка при logout через auth сервис:', error)
   }
 
   try {
     apiClient.logout()
   } catch (error) {
-    console.error('Ошибка при logout через apiClient:', error)
+    logError('Ошибка при logout через apiClient:', error)
   }
 
   userStore.logout()

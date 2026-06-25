@@ -6,6 +6,7 @@ import SelectBox from '@/components/SelectBox.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import ChangePasswordModal from './ChangePasswordModal.vue'
+import { logError } from '@/js/utils/logError.js'
 
 const PROFILE_VISIBILITY_OPTIONS = [
   { id: 'public', name: 'Публичный' },
@@ -101,7 +102,7 @@ const fetchDevices = async () => {
     const response = await getDevices()
     devices.value = response.map((d) => formatDeviceData(d))
   } catch (e) {
-    console.error(e)
+    logError('Не удалось загрузить сессии', e)
     toast.error('Не удалось загрузить сессии')
   } finally {
     loading.value = false
@@ -120,7 +121,7 @@ const handleRevoke = async (id) => {
       currentPage.value = maxPage
     }
   } catch (e) {
-    console.error(e)
+    logError('Не удалось отозвать сессию', e)
     toast.error('Не удалось отозвать сессию')
   } finally {
     deletingDeviceId.value = null

@@ -1,5 +1,6 @@
 import { apiClient } from '../../../../js/api/manager'
 import { endpoints } from '../../../../js/api/endpoints'
+import { logError } from '@/js/utils/logError.js'
 
 export const authService = {
   // Получить информацию о текущем пользователе
@@ -8,7 +9,7 @@ export const authService = {
       const response = await apiClient.get(endpoints.lms.myProfile)
       return response.data
     } catch (error) {
-      console.error('Ошибка получения данных пользователя:', error)
+      logError('Ошибка получения данных пользователя:', error)
       throw error
     }
   },
@@ -19,7 +20,7 @@ export const authService = {
       const response = await apiClient.get(endpoints.lms.userRoles)
       return response.data
     } catch (error) {
-      console.error('Ошибка получения ролей пользователя:', error)
+      logError('Ошибка получения ролей пользователя:', error)
       // Fallback на демо данные
       return [{ role: 'student', is_active: true, created_at: new Date() }]
     }
@@ -31,7 +32,7 @@ export const authService = {
       const response = await apiClient.post(endpoints.lms.switchRole, { role: roleName })
       return response.data
     } catch (error) {
-      console.error('Ошибка переключения роли:', error)
+      logError('Ошибка переключения роли:', error)
       throw error
     }
   },
@@ -42,7 +43,7 @@ export const authService = {
       const roles = await this.getUserRoles()
       return roles.some(role => role.role === roleName && role.is_active)
     } catch (error) {
-      console.error('Ошибка проверки роли:', error)
+      logError('Ошибка проверки роли:', error)
       return false
     }
   },
@@ -77,7 +78,7 @@ export const authService = {
       const activeRoles = roles.filter(role => role.is_active)
       return activeRoles.length > 0 ? activeRoles[0].role : 'student'
     } catch (error) {
-      console.error('Ошибка получения основной роли:', error)
+      logError('Ошибка получения основной роли:', error)
       return 'student'
     }
   },

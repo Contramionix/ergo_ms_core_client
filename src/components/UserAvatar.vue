@@ -10,6 +10,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import DefaultAvatar from './DefaultAvatar.vue'
 import { getUserPublicInfo, getCachedUserPublicInfo, invalidateUserPublicInfo, } from '@/js/userAvatar'
+import { logError } from '@/js/utils/logError.js'
 
 const userStore = useUserStore()
 
@@ -116,7 +117,7 @@ async function loadUserInfo() {
   try {
     loadedPublicInfo.value = await getUserPublicInfo(id)
   } catch (error) {
-    console.error(`Ошибка загрузки публичных данных пользователя ${id}:`, error)
+    logError(`Ошибка загрузки публичных данных пользователя ${id}:`, error)
     loadedPublicInfo.value = null
   }
 }

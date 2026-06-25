@@ -1,4 +1,5 @@
 <script setup>
+import { logError } from '@/js/utils/logError.js'
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
@@ -120,7 +121,7 @@ const loadInvitations = async () => {
       currentPage.value = data.page
     }
   } catch (error) {
-    console.error('Ошибка загрузки приглашений:', error)
+    logError('Ошибка загрузки приглашений:', error)
     toast.error('Не удалось загрузить список приглашений')
   } finally {
     isLoading.value = false
@@ -138,7 +139,7 @@ onMounted(async () => {
     hasAdminAccess.value = true
     await loadInvitations()
   } catch (error) {
-    console.error('Ошибка проверки прав доступа:', error)
+    logError('Ошибка проверки прав доступа:', error)
     toast.error('Ошибка проверки прав доступа')
     router.push({ name: 'AccessDenied' })
   } finally {

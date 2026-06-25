@@ -1,5 +1,6 @@
 import { apiClient } from '../../../js/api/manager'
 import { endpoints } from '../../../js/api/endpoints'
+import { logError } from '@/js/utils/logError.js'
 
 export const profileService = {
   // Получить полный профиль пользователя
@@ -8,7 +9,7 @@ export const profileService = {
       const response = await apiClient.get(endpoints.auth.profile)
       return response.data
     } catch (error) {
-      console.error('Ошибка получения профиля:', error)
+      logError('Ошибка получения профиля:', error)
       throw error
     }
   },
@@ -19,7 +20,7 @@ export const profileService = {
       const response = await apiClient.put(endpoints.auth.profile, profileData)
       return response.data
     } catch (error) {
-      console.error('Ошибка обновления профиля:', error)
+      logError('Ошибка обновления профиля:', error)
       throw error
     }
   },
@@ -30,7 +31,7 @@ export const profileService = {
       const response = await apiClient.post(endpoints.auth.changePassword, passwordData)
       return response.data
     } catch (error) {
-      console.error('Ошибка смены пароля:', error)
+      logError('Ошибка смены пароля:', error)
       throw error
     }
   },
@@ -41,7 +42,7 @@ export const profileService = {
       const response = await apiClient.get(endpoints.auth.devices)
       return response.data
     } catch (error) {
-      console.error('Ошибка получения списка устройств:', error)
+      logError('Ошибка получения списка устройств:', error)
       throw error
     }
   },
@@ -52,7 +53,7 @@ export const profileService = {
       const response = await apiClient.delete(endpoints.auth.deleteDevice(deviceId))
       return response.data
     } catch (error) {
-      console.error('Ошибка удаления устройства:', error)
+      logError('Ошибка удаления устройства:', error)
       throw error
     }
   },
@@ -63,7 +64,7 @@ export const profileService = {
       const response = await apiClient.post(endpoints.auth.login, credentials, false)
       return response.data
     } catch (error) {
-      console.error('Ошибка авторизации:', error)
+      logError('Ошибка авторизации:', error)
       throw error
     }
   },
@@ -74,7 +75,7 @@ export const profileService = {
       const response = await apiClient.post(endpoints.auth.validateRegistration, userData, false)
       return response.data
     } catch (error) {
-      console.error('Ошибка валидации регистрации:', error)
+      logError('Ошибка валидации регистрации:', error)
       throw error
     }
   },
@@ -85,7 +86,7 @@ export const profileService = {
       const response = await apiClient.post(endpoints.auth.registration, userData, false)
       return response.data
     } catch (error) {
-      console.error('Ошибка регистрации:', error)
+      logError('Ошибка регистрации:', error)
       throw error
     }
   },
@@ -96,7 +97,7 @@ export const profileService = {
       const response = await apiClient.post(endpoints.auth.sendCode, { email })
       return response.data
     } catch (error) {
-      console.error('Ошибка отправки кода подтверждения:', error)
+      logError('Ошибка отправки кода подтверждения:', error)
       throw error
     }
   },
@@ -107,7 +108,7 @@ export const profileService = {
       const response = await apiClient.post(endpoints.auth.verifyCode, { email, code })
       return response.data
     } catch (error) {
-      console.error('Ошибка проверки кода подтверждения:', error)
+      logError('Ошибка проверки кода подтверждения:', error)
       throw error
     }
   },

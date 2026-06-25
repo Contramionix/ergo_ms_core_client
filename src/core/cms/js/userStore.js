@@ -4,6 +4,7 @@ import { useToast } from 'vue-toastification'
 import { apiClient } from '@/js/api/manager.js'
 import { endpoints } from '@/js/api/endpoints.js'
 import { profileService } from '@/core/cms/js/profileService.js'
+import { logError, logWarn } from '@/js/utils/logError.js'
 import Cookies from 'js-cookie'
 
 export const useUserStore = defineStore('userStore', () => {
@@ -131,7 +132,7 @@ export const useUserStore = defineStore('userStore', () => {
         return true
 
       } catch (error) {
-        console.error('Ошибка инициализации пользователя:', error)
+        logError('Ошибка инициализации пользователя:', error)
         resetUserState()
         return false
       } finally {
@@ -148,7 +149,7 @@ export const useUserStore = defineStore('userStore', () => {
     try {
       // Проверяем, что endpoint существует
       if (!endpoints?.auth?.menu) {
-        console.warn('Endpoint menu не найден, загружаем полный профиль')
+        logWarn('Endpoint menu не найден, загружаем полный профиль')
         // Fallback: загружаем полный профиль, если menu endpoint недоступен
         await loadProfile()
         return
@@ -166,11 +167,11 @@ export const useUserStore = defineStore('userStore', () => {
       console.warn('Menu endpoint вернул полные данные вместо легковесных, используем fallback')
       await loadProfile()
     } catch (error) {
-      console.error('Ошибка загрузки данных меню:', error)
+      logError('Ошибка загрузки данных меню:', error)
       try {
         await loadProfile()
       } catch (profileError) {
-        console.error('Ошибка загрузки профиля:', profileError)
+        logError('Ошибка загрузки профиля:', profileError)
       }
     }
   }
@@ -198,7 +199,7 @@ export const useUserStore = defineStore('userStore', () => {
         }
         return profile.value
       } catch (error) {
-        console.error('Ошибка загрузки профиля:', error)
+        logError('Ошибка загрузки профиля:', error)
         // Не показываем ошибку пользователю, профиль может быть пустым
         return null
       } finally {
@@ -217,7 +218,7 @@ export const useUserStore = defineStore('userStore', () => {
         avatarUrl.value = response.data[0].image
       }
     } catch (error) {
-      console.error('Ошибка загрузки аватара:', error)
+      logError('Ошибка загрузки аватара:', error)
     }
   }
 
@@ -239,7 +240,7 @@ export const useUserStore = defineStore('userStore', () => {
       return profile.value
 
     } catch (error) {
-      console.error('Ошибка обновления профиля:', error)
+      logError('Ошибка обновления профиля:', error)
       toast.error('Ошибка обновления профиля')
       throw error
     } finally {
@@ -268,7 +269,7 @@ export const useUserStore = defineStore('userStore', () => {
       return true
 
     } catch (error) {
-      console.error('Ошибка обновления аватара:', error)
+      logError('Ошибка обновления аватара:', error)
       toast.error('Ошибка загрузки аватара')
       return false
     }
@@ -283,7 +284,7 @@ export const useUserStore = defineStore('userStore', () => {
       return true
 
     } catch (error) {
-      console.error('Ошибка сброса аватара:', error)
+      logError('Ошибка сброса аватара:', error)
       toast.error('Ошибка сброса аватара')
       return false
     }
@@ -302,7 +303,7 @@ export const useUserStore = defineStore('userStore', () => {
       const STORAGE_KEY = 'crm_active_organization'
       localStorage.removeItem(STORAGE_KEY)
     } catch (error) {
-      console.error('Ошибка очистки активной организации при выходе:', error)
+      logError('Ошибка очистки активной организации при выходе:', error)
     }
     
     // Перенаправляем на страницу входа
@@ -325,7 +326,7 @@ export const useUserStore = defineStore('userStore', () => {
       ])
       return true
     } catch (error) {
-      console.error('Ошибка обновления данных:', error)
+      logError('Ошибка обновления данных:', error)
       return false
     } finally {
       isLoading.value = false

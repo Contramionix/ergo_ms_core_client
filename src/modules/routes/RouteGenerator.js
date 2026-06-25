@@ -4,6 +4,8 @@
  * Класс для генерации роутов Vue Router из routes.js файлов модулей
  */
 
+import { logError } from '@/js/utils/logError.js'
+
 export class RouteGenerator {
   constructor(routeManager) {
     this.routeManager = routeManager
@@ -193,7 +195,7 @@ export class RouteGenerator {
           const route = this.routeManager.createRoute(routeName, routeConfig)
           missingRoutes.push(route)
         } catch (error) {
-          console.warn(`Не удалось создать роут ${routeName}:`, error)
+          logError(`Не удалось создать роут ${routeName}`, error)
         }
       }
     })

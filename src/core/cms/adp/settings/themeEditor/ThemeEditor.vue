@@ -9,6 +9,7 @@ import ColorPicker from './ColorPicker.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
+import { logError } from '@/js/utils/logError.js'
 import { 
   getDefaultColors, 
   getColorDescriptions,
@@ -79,7 +80,7 @@ const loadThemes = async () => {
       }
     }
   } catch (e) {
-    console.error('Ошибка загрузки тем:', e)
+    logError('Ошибка загрузки тем:', e)
     toast.error('Ошибка загрузки списка тем')
   } finally {
     loading.value = false
@@ -95,7 +96,7 @@ const createSystemThemes = async () => {
       themes.value = res.data || []
     }
   } catch (e) {
-    console.error('Ошибка создания системных тем:', e)
+    logError('Ошибка создания системных тем:', e)
   }
 }
 
@@ -110,7 +111,7 @@ const resetSystemThemes = async () => {
       toast.error(res.message || 'Ошибка сброса тем')
     }
   } catch (e) {
-    console.error('Ошибка сброса тем:', e)
+    logError('Ошибка сброса тем:', e)
     toast.error('Ошибка сброса системных тем')
   }
 }

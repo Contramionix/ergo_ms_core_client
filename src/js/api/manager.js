@@ -2,6 +2,7 @@ import axios from 'axios'
 
 import tokenService from '@/core/cms/js/tokenService'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
+import { logError, logWarn, sanitizeError } from '@/js/utils/logError.js'
 
 /**
  * Класс для работы с API
@@ -210,7 +211,7 @@ class ApiClient {
       }
       config.headers.Authorization = `Bearer ${token}`
     } else {
-      console.warn('Токен не найден в cookies')
+      logWarn('Токен не найден в cookies')
     }
     return config
   }
@@ -282,24 +283,14 @@ class ApiClient {
    * Обработка ошибок
    */
   handleError(error) {
-    // Извлекаем сообщение об ошибке из разных возможных мест
-    const errorMessage = 
-      error.response?.data?.error ||
-      error.response?.data?.message ||
-      error.response?.data?.detail ||
-      (typeof error.response?.data === 'string' ? error.response.data : null) ||
-      error.message ||
-      'Ошибка сервера'
+    const { status, message } = sanitizeError(error)
 
-    const status = error.response?.status
-    const statusText = error.response?.statusText
-
-    console.error(`API Error [${status || 'undefined'}${statusText ? ' ' + statusText : ''}]:`, errorMessage)
+    logError('API Error', error)
 
     return {
       success: false,
-      message: errorMessage,
-      status: status,
+      message,
+      status,
       errors: error.response?.data
     }
   }

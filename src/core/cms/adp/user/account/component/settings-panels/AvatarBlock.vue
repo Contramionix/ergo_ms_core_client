@@ -6,6 +6,7 @@ import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import AvatarCropModal from '@/components/AvatarCropModal.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   saving: { type: Boolean, default: false },
@@ -114,7 +115,7 @@ const handleCropConfirm = async (croppedFile) => {
       await userStore.updateAvatar(croppedFile)
     }
   } catch (error) {
-    console.error('Ошибка обновления аватара:', error)
+    logError('Ошибка обновления аватара:', error)
     if (isAdminMode.value) {
       toast.error('Ошибка загрузки аватара')
     }
@@ -150,7 +151,7 @@ const handleAvatarRemove = async () => {
       await userStore.resetAvatar()
     }
   } catch (error) {
-    console.error('Ошибка сброса аватара:', error)
+    logError('Ошибка сброса аватара:', error)
     if (isAdminMode.value) {
       toast.error('Ошибка сброса аватара')
     }

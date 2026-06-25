@@ -1,4 +1,5 @@
 <script setup>
+import { logError } from '@/js/utils/logError.js'
 import GroupTableHeader from '@/core/cms/adp/admin/GroupsComponent/GroupsTableHeader.vue'
 import GroupTable from '@/core/cms/adp/admin/GroupsComponent/GroupsTable.vue'
 import { GetRoleGroups } from '@/core/cms/adp/admin/js/GroupsPolitics'
@@ -22,7 +23,7 @@ const updateGroups = async () => {
   try {
     await loadGroups()
   } catch (error) {
-    console.error('Error updating groups:', error)
+    logError('Error updating groups:', error)
   }
 }
 

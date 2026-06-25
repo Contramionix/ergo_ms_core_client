@@ -1,4 +1,5 @@
 import { CheckAccess } from '@/core/cms/js/cms'
+import { logError } from '@/js/utils/logError.js'
 
 const PERMISSIONS_CACHE_TTL = 60 * 1000
 let cachedPermissionsSnapshot = null
@@ -18,7 +19,7 @@ async function ensurePermissionsSnapshot() {
     cachedPermissionsSnapshot = response?.data || response
     permissionsSnapshotFetchedAt = now
   } catch (error) {
-    console.error('[ensurePermissionsSnapshot] Ошибка загрузки snapshot:', error)
+    logError('[ensurePermissionsSnapshot] Ошибка загрузки snapshot:', error)
     cachedPermissionsSnapshot = null
   }
 

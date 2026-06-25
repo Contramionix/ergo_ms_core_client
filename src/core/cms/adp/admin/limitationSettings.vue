@@ -67,6 +67,7 @@
 </template>
 
 <script setup>
+import { logError } from '@/js/utils/logError.js'
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -134,7 +135,7 @@ async function initializeData() {
       selectedPagePath.value = pages.value[0].path
     }
   } catch (error) {
-    console.error('Ошибка инициализации ограничений', error)
+    logError('Ошибка инициализации ограничений', error)
     toast.error('Не удалось загрузить данные ограничений. Попробуйте позже.')
   }
 }
@@ -213,7 +214,7 @@ async function handleConfirmDialog() {
     confirmDialog.loading = true
     await confirmDialog.action()
   } catch (error) {
-    console.error('Ошибка выполнения подтвержденного действия', error)
+    logError('Ошибка выполнения подтвержденного действия', error)
     toast.error('Не удалось выполнить действие')
   } finally {
     confirmDialog.loading = false

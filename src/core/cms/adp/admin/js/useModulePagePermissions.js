@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { useToast } from 'vue-toastification'
 import { GetPages, GetPolicies, GetRoles, GetRoleGroups } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { logError } from '@/js/utils/logError.js'
 
 const ROOT_SUBMODULE_KEY = '__root__'
 const ROOT_SUBMODULE_TITLE = 'Общее'
@@ -261,7 +262,7 @@ export function useModulePagePermissions() {
         }
       }
     } catch (error) {
-      console.error('Ошибка загрузки данных прав по страницам модулей', error)
+      logError('Ошибка загрузки данных прав по страницам модулей', error)
       errorMessage.value = 'Не удалось загрузить список модулей и политик. Попробуйте позже.'
       toast.error('Не удалось загрузить данные прав. Попробуйте позже.')
     } finally {

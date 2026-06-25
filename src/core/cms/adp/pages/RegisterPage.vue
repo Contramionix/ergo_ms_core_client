@@ -3,6 +3,7 @@ import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { registration, fetchRegistrationSettings, validateInvitationToken } from '@/core/cms/adp/js/auth-index'
 import { validateRegistrationForm } from '@/js/validation'
+import { logError } from '@/js/utils/logError.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -86,7 +87,7 @@ onMounted(async () => {
       }
     }
   } catch (error) {
-    console.error('Registration bootstrap error:', error)
+    logError('Registration bootstrap error:', error)
     errors.general = 'Не удалось загрузить настройки регистрации'
   } finally {
     isBootstrapping.value = false
@@ -159,7 +160,7 @@ const submitForm = async () => {
       handleServerErrors(registrationResult.errors)
     }
   } catch (error) {
-    console.error('Registration error:', error)
+    logError('Registration error:', error)
     
     if (error.response) {
       if (error.response.status === 400) {
