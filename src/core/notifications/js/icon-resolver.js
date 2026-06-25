@@ -13,8 +13,6 @@
 
 export const SOURCE_ICON_MAP = {
   lms: 'BookOpen',
-  bi: 'BarChart3',
-  bi_analysis: 'BarChart3',
   messenger: 'MessageSquare',
   cms: 'Settings',
   organizations: 'Building2',

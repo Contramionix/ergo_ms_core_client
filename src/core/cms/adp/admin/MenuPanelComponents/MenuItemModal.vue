@@ -24,8 +24,8 @@
       </div>
 
       <div v-if="form.item_type === 'offcanvas'" class="mb-3">
-        <label class="form-label">Страница боковой панели <span class="text-danger">*</span></label>
-        <SelectBox :model-value="form.page || null" :options="offcanvasPageOptions" value-key="id" label-key="name" :include-all-option="true" all-label="Выберите страницу" @update:model-value="v => form.page = v ?? ''"/>
+        <label class="form-label">Идентификатор страницы <span class="text-danger">*</span></label>
+        <input v-model="form.page" type="text" class="form-control" required placeholder="Например: datasets" style="background-color: var(--var-primary-background)"/>
       </div>
 
       <div v-if="form.item_type === 'external'" class="mb-3">
@@ -117,13 +117,6 @@ const itemTypeOptions = [
   { id: 'route', name: 'Маршрут Vue' },
   { id: 'offcanvas', name: 'Боковая панель' },
   { id: 'external', name: 'Внешняя ссылка' }
-]
-
-const offcanvasPageOptions = [
-  { id: 'datasets', name: 'Датасеты' },
-  { id: 'connections', name: 'Подключения' },
-  { id: 'charts', name: 'Графики' },
-  { id: 'dashboards', name: 'Дашборды' }
 ]
 
 const props = defineProps({

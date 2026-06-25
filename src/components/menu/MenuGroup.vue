@@ -9,9 +9,7 @@
   - Отображение основного пункта меню с иконкой и названием
   - Сворачивание/разворачивание списка подразделов с анимацией
   - Поддержка многоуровневой вложенности через компонент MenuItem
-  - Поддержка двух типов подразделов:
-    * Обычные Vue маршруты (RouterLink навигация)
-    * BI offcanvas вкладки (emit событие для открытия боковой панели)
+  - Поддержка обычных Vue маршрутов (RouterLink навигация)
   - Адаптивное скрытие/показ элементов в зависимости от hover состояния
   - Активное состояние для текущей страницы/раздела
   - Плавные анимации появления подразделов с задержкой
@@ -21,13 +19,11 @@
   - isOpen: состояние открытости группы
   - isCollapsed: состояние сворачивания родительского меню
   - isHovering: состояние наведения на свернутое меню
-  - currentPage: текущая активная страница для подсветки
   - nestedOpenStates: объект с состояниями открытости вложенных групп
   
   События:
   - toggle: переключение состояния группы
-  - navigate: навигация для offcanvas вкладок
-  - reset-page: сброс текущей страницы
+  - navigate: навигация для вложенных элементов без routeName
   - toggle-nested: переключение состояния вложенной группы
 -->
 
@@ -44,7 +40,6 @@ const props = defineProps({
   isOpen: { type: Boolean, required: true },
   isCollapsed: { type: Boolean, required: true },
   isHovering: { type: Boolean, required: true },
-  currentPage: { type: String, required: true },
   nestedOpenStates: { type: Object, default: () => ({}) },
 })
 
@@ -99,7 +94,7 @@ const hasMenuItems = computed(() => {
 
 const router = useRouter()
 const route = useRoute()
-const emit = defineEmits(['toggle', 'action', 'navigate', 'reset-page', 'toggle-nested'])
+const emit = defineEmits(['toggle', 'navigate', 'toggle-nested'])
 
 // Проверяем, находится ли пользователь на странице группы или её подстраницах
 const isCurrentGroupPage = computed(() => {
@@ -122,78 +117,51 @@ const isCurrentGroupPage = computed(() => {
   
   // Проверяем подстраницы через рекурсивную функцию
   if (menuItems.value.length > 0) {
-    return checkChildrenActiveRecursive(menuItems.value, props.currentPage, route.name)
+    return checkChildrenActiveRecursive(menuItems.value, route.name)
   }
   
   return false
 })
 
-// Общая функция для проверки активности элемента (такая же как в MenuItem.vue)
-const checkItemActive = (item, currentPage, currentRoute) => {
-  // Для элементов с routeName
-  if (item.routeName) {
-    if (currentRoute === item.routeName) {
-      return true
-    }
-    
-    if (currentRoute && currentRoute.startsWith(item.routeName) && currentRoute !== item.routeName) {
-      try {
-        const parentRoute = router.resolve({ name: item.routeName })
-        if (parentRoute?.path && route.path.startsWith(parentRoute.path)) {
-          return true
-        }
-      } catch (e) {
-        return true
-      }
-    }
+const checkItemActive = (item, currentRoute) => {
+  if (!item.routeName) {
+    return false
   }
-  
-  // Для BI offcanvas страниц
-  if (item.isOffcanvas && item.page === currentPage) {
-    if (route.name === 'BI' || route.path.startsWith('/bi')) {
-      return true
-    }
-  }
-  
-  // Для BI элементов с подвкладками (проверяем по префиксу с разделителем)
-  if (item.page && currentPage && item.page.length > 2) {
-    const itemPage = item.page.toLowerCase()
-    const currentPageLower = currentPage.toLowerCase()
-    
-    if (currentPageLower.startsWith(itemPage + '-') ||
-        currentPageLower.startsWith(itemPage + '_') ||
-        currentPageLower.startsWith(itemPage + '.')) {
-      return true
-    }
-  }
-  
-  // Для BI элементов с page без isOffcanvas флага
-  if (item.page && !item.isOffcanvas && item.page === currentPage) {
+
+  if (currentRoute === item.routeName) {
     return true
   }
-  
+
+  if (currentRoute && currentRoute.startsWith(item.routeName) && currentRoute !== item.routeName) {
+    try {
+      const parentRoute = router.resolve({ name: item.routeName })
+      if (parentRoute?.path && route.path.startsWith(parentRoute.path)) {
+        return true
+      }
+    } catch (e) {
+      return true
+    }
+  }
+
   return false
 }
 
-// Рекурсивная функция для проверки активности всех дочерних элементов
-const checkChildrenActiveRecursive = (children, currentPage, currentRoute) => {
+const checkChildrenActiveRecursive = (children, currentRoute) => {
   if (!children || children.length === 0) return false
-  
+
   return children.some(item => {
-    // Используем общую функцию проверки активности
-    if (checkItemActive(item, currentPage, currentRoute)) {
+    if (checkItemActive(item, currentRoute)) {
       return true
     }
-    
-    // Рекурсивно проверяем дочерние элементы (учитываем и children, и list)
+
     const nestedChildren = [
       ...(item.list || []),
       ...(item.children || [])
     ]
     if (nestedChildren.length > 0) {
-      return checkChildrenActiveRecursive(nestedChildren, currentPage, currentRoute)
+      return checkChildrenActiveRecursive(nestedChildren, currentRoute)
     }
-    
+
     return false
   })
 }
@@ -268,7 +236,6 @@ function routeClick(event) {
         :item="item"
         :level="0"
         :isHovering="isHovering"
-        :currentPage="currentPage"
         :openStates="nestedOpenStates"
         :style="{ transitionDelay: `${index * 50}ms` }"
         @navigate="handleNestedNavigate"

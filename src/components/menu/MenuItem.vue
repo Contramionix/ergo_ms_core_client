@@ -2,17 +2,16 @@
   КОМПОНЕНТ ЭЛЕМЕНТА МЕНЮ
   
   Рекурсивный компонент для отображения элементов меню с поддержкой неограниченной вложенности.
-  Поддерживает обычные Vue маршруты, BI offcanvas вкладки и группировку элементов.
+  Поддерживает обычные Vue маршруты и группировку элементов.
   
   Props:
   - item: объект элемента меню
   - level: уровень вложенности (для отступов)
   - isHovering: состояние наведения на свернутое меню
-  - currentPage: текущая активная страница для подсветки
   - openStates: объект с состояниями открытости групп
   
   События:
-  - navigate: навигация для offcanvas вкладок  
+  - navigate: навигация для вложенных элементов без routeName
   - toggle-group: переключение состояния группы
 -->
 
@@ -27,7 +26,6 @@ const props = defineProps({
   item: { type: Object, required: true },
   level: { type: Number, default: 0 },
   isHovering: { type: Boolean, required: true },
-  currentPage: { type: String, required: true },
   openStates: { type: Object, required: true }
 })
 
@@ -63,84 +61,54 @@ const isOpen = computed(() => {
 
 // Проверка активности текущего элемента (используем общую логику из checkChildrenActiveRecursive)
 const isActive = computed(() => {
-  return checkItemActive(props.item, props.currentPage, route.name)
+  return checkItemActive(props.item, route.name)
 })
 
-// Общая функция для проверки активности элемента (используется и для рекурсивной проверки)
-const checkItemActive = (item, currentPage, currentRoute) => {
-  // Для элементов с routeName
-  if (item.routeName) {
-    // Точное совпадение
-    if (currentRoute === item.routeName) {
-      return true
-    }
-    
-    // Проверяем, является ли текущий роут дочерним роутом
-    if (currentRoute && currentRoute.startsWith(item.routeName) && currentRoute !== item.routeName) {
-      try {
-        const parentRoute = router.resolve({ name: item.routeName })
-        if (parentRoute?.path && route.path.startsWith(parentRoute.path)) {
-          return true
-        }
-      } catch (e) {
-        return true
-      }
-    }
+const checkItemActive = (item, currentRoute) => {
+  if (!item.routeName) {
+    return false
   }
-  
-  // Для BI offcanvas страниц
-  if (item.isOffcanvas && item.page === currentPage) {
-    if (route.name === 'BI' || route.path.startsWith('/bi')) {
-      return true
-    }
-  }
-  
-  // Для BI элементов с подвкладками (проверяем по префиксу с разделителем)
-  if (item.page && currentPage && item.page.length > 2) {
-    const itemPage = item.page.toLowerCase()
-    const currentPageLower = currentPage.toLowerCase()
-    
-    if (currentPageLower.startsWith(itemPage + '-') ||
-        currentPageLower.startsWith(itemPage + '_') ||
-        currentPageLower.startsWith(itemPage + '.')) {
-      return true
-    }
-  }
-  
-  // Для BI элементов с page без isOffcanvas флага
-  if (item.page && !item.isOffcanvas && item.page === currentPage) {
+
+  if (currentRoute === item.routeName) {
     return true
   }
-  
+
+  if (currentRoute && currentRoute.startsWith(item.routeName) && currentRoute !== item.routeName) {
+    try {
+      const parentRoute = router.resolve({ name: item.routeName })
+      if (parentRoute?.path && route.path.startsWith(parentRoute.path)) {
+        return true
+      }
+    } catch (e) {
+      return true
+    }
+  }
+
   return false
 }
 
-// Проверка, активна ли группа (есть ли активные дочерние элементы) - рекурсивная
 const isGroupActive = computed(() => {
   if (!isGroup.value) return false
-  
-  return checkChildrenActiveRecursive(allChildren.value, props.currentPage, route.name)
+
+  return checkChildrenActiveRecursive(allChildren.value, route.name)
 })
 
-// Рекурсивная функция для проверки активности всех дочерних элементов
-const checkChildrenActiveRecursive = (children, currentPage, currentRoute) => {
+const checkChildrenActiveRecursive = (children, currentRoute) => {
   if (!children || children.length === 0) return false
-  
+
   return children.some(child => {
-    // Используем общую функцию проверки активности
-    if (checkItemActive(child, currentPage, currentRoute)) {
+    if (checkItemActive(child, currentRoute)) {
       return true
     }
-    
-    // Рекурсивно проверяем дочерние элементы (учитываем и children, и list)
+
     const nestedChildren = [
       ...(child.list || []),
       ...(child.children || [])
     ]
     if (nestedChildren.length > 0) {
-      return checkChildrenActiveRecursive(nestedChildren, currentPage, currentRoute)
+      return checkChildrenActiveRecursive(nestedChildren, currentRoute)
     }
-    
+
     return false
   })
 }
@@ -164,12 +132,10 @@ const handleClick = (event) => {
     if (!isOpen.value && props.item.routeName) {
       router.push({ name: props.item.routeName })
     }
-  } else if (props.item.isOffcanvas || props.item.page) {
-    // BI offcanvas элемент
-    emit('navigate', props.item)
   } else if (props.item.routeName) {
-    // Обычная Vue страница
     router.push({ name: props.item.routeName })
+  } else {
+    emit('navigate', props.item)
   }
 }
 
@@ -209,7 +175,6 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
         :item="child"
         :level="level + 1"
         :isHovering="isHovering"
-        :currentPage="currentPage"
         :openStates="openStates"
         :style="{ transitionDelay: `${index * 30}ms` }"
         @navigate="$emit('navigate', $event)"

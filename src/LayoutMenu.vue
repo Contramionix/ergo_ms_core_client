@@ -8,7 +8,6 @@
   - Адаптивное боковое меню с возможностью сворачивания/разворачивания
   - Автоматическое скрытие меню на мобильных устройствах (<1200px)
   - Overlay для закрытия меню на мобильных устройствах
-  - Боковая панель (offcanvas) для BI модуля с поддержкой датасетов, подключений и чартов
   - Динамическое изменение отступов основного контента в зависимости от состояния меню
   - Интеграция с системой маршрутизации Vue Router
   
@@ -20,19 +19,13 @@
 -->
 
 <script setup>
-import { ref, shallowRef, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { isDatasetSidebarOpen, currentSidebarPage } from '@/js/useBISidebarStore.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import MenuList from '@/components/menu/MenuList.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 import { Menu as IconMenu } from 'lucide-vue-next'
-
-// LayoutPlugin регистрирует весь BI layout-слой (StorageSidebar и др.) только если модуль установлен.
-// import.meta.glob возвращает {} без ошибок когда файл отсутствует.
-const _biLayoutGlob = import.meta.glob('../../../modules/bi_analysis/client/LayoutPlugin.vue')
-const biLayoutPlugin = shallowRef(null)
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -41,28 +34,12 @@ let resizeTimeout = null
 
 // Ключ для RouterView - позволяет не пересоздавать компонент при переключении между вкладками
 // Модули могут указать meta.cacheGroup для группировки роутов под одним ключом
-const routeViewKey = computed(() => {
-  if (route.meta?.cacheGroup) {
-    return route.meta.cacheGroup
-  }
-  // Страницы датасета с вкладками: /bi/datasets/:id/:tab — один ключ на датасет, без пересоздания при смене вкладки
-  const datasetMatch = route.path.match(/^\/bi\/datasets\/(\d+)(?:\/|$)/)
-  if (datasetMatch) {
-    return `/bi/datasets/${datasetMatch[1]}`
-  }
-  const newDatasetMatch = route.path.match(/^\/bi\/datasets\/new(?:\/|$)/)
-  if (newDatasetMatch) {
-    return '/bi/datasets/new'
-  }
-  return route.path
-})
+const routeViewKey = computed(() => route.meta?.cacheGroup || route.path)
 
 const leftPadding = ref('320px')
 const isMenuVisible = ref(window.innerWidth >= 1200)
 const isMenuToggledManually = ref(false)
 const isOverlayVisible = ref(false)
-const isMenuCollapsed = ref(false)
-const menuWidth = ref(260)
 
 // Полноэкранный режим (без меню и ограничений контейнера)
 const isFullPage = computed(() => route.meta?.fullPage === true)
@@ -102,31 +79,14 @@ function leftToggle(val) {
   leftPadding.value = val
 }
 
-function handleMenuStateChange(collapsed, width) {
-  isMenuCollapsed.value = collapsed
-  menuWidth.value = width
-}
-
-function openSidebar(pageName) {
-  currentSidebarPage.value = pageName
-  isDatasetSidebarOpen.value = true
-}
-
 function onHamburgerClick() {
   toggleMenu(!isMenuVisible.value)
 }
 
 onMounted(async () => {
-  // Инициализируем сразу без debounce
   updateMenuVisibilityImmediate()
   window.addEventListener('resize', updateMenuVisibility)
-  
-  // Инициализируем пользователя при загрузке авторизованной области
   await userStore.initializeUser()
-
-  // Загружаем BI layout-компонент если модуль установлен
-  const key = Object.keys(_biLayoutGlob)[0]
-  if (key) biLayoutPlugin.value = (await _biLayoutGlob[key]()).default
 })
 
 onBeforeUnmount(() => {
@@ -138,7 +98,6 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- Мобильный хедер (скрывается для полноэкранных страниц) -->
   <Teleport to="body">
     <div v-if="!isFullPage" class="mobile-header d-xl-none">
       <button
@@ -156,18 +115,12 @@ onBeforeUnmount(() => {
     </div>
   </Teleport>
   <div class="layout-container" :class="{ 'layout-container--full-page': isFullPage }">
-    <!-- Боковое меню (скрывается для полноэкранных страниц) -->
     <MenuList
       v-if="!isFullPage"
-      :current-page="currentSidebarPage"
       @left-padding="leftToggle"
       :is-visible="isMenuVisible"
-      @open-sidebar="openSidebar"
-      @reset-page="() => currentSidebarPage = ''"
-      @menu-state-change="handleMenuStateChange"
     />
     <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage }">
-      <!-- Полноэкранный режим для страниц с meta.fullPage: true -->
       <template v-if="route.meta?.fullPage">
         <AccessDenied
           v-if="accessDeniedState.active"
@@ -177,7 +130,6 @@ onBeforeUnmount(() => {
         />
         <RouterView v-else :key="routeViewKey" />
       </template>
-      <!-- Стандартный режим с контейнером и отступами -->
       <div v-else class="py-4 container-xxl">
         <AccessDenied
           v-if="accessDeniedState.active"
@@ -191,12 +143,6 @@ onBeforeUnmount(() => {
   </div>
 
   <div @click="closeMenu" class="layout-overlay" :class="{ active: isOverlayVisible }" />
-  <component
-    v-if="biLayoutPlugin"
-    :is="biLayoutPlugin"
-    :isMenuCollapsed="isMenuCollapsed"
-    :menuWidth="menuWidth"
-  />
 </template>
 
 <style scoped lang="scss">
@@ -231,14 +177,12 @@ onBeforeUnmount(() => {
   padding-inline-start: v-bind(leftPadding);
   transition: padding-inline-start 0.3s ease;
 
-  // Полноэкранный режим - без паддингов
   &--full-page {
     padding-inline-start: 0 !important;
     height: 100dvh;
   }
 }
 
-// Полноэкранный контейнер
 .layout-container--full-page {
   height: 100dvh;
   overflow: hidden;
@@ -265,7 +209,6 @@ onBeforeUnmount(() => {
     overflow: auto;
     overscroll-behavior: contain;
 
-    // Полноэкранный режим на мобильных - без верхнего отступа
     &--full-page {
       height: 100dvh;
     }

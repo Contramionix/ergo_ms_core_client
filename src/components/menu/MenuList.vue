@@ -24,10 +24,9 @@ import { useMenuIconSizes, MENU_ICON_SIZES_KEY } from './composables/useMenuIcon
 
 const props = defineProps({
   isVisible: Boolean,
-  currentPage: String
 })
 
-const emit = defineEmits(['left-padding', 'open-datasets', 'open-sidebar', 'reset-page', 'menu-state-change'])
+const emit = defineEmits(['left-padding', 'menu-state-change'])
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -130,29 +129,22 @@ const setToolbarDropdownActive = (active) => {
   }
 }
 
-// Обработчики действий
-const handleAction = (action) => {
-  if (action === 'openDatasetSidebar') {
-    emit('open-datasets')
-  }
-}
-
 const handleNavigate = (item) => {
-  // Проверяем, является ли элемент внешней ссылкой
   const externalUrl = item.externalUrl || item.external_url
   if (item.item_type === 'external' && externalUrl) {
     window.open(externalUrl, '_blank', 'noopener,noreferrer')
     return
   }
-  
-  if (['datasets', 'connections', 'charts', 'dashboards'].includes(item.page)) {
-    emit('open-sidebar', item.page)
-  } else if (item.path) {
+
+  if (item.routeName) {
+    router.push({ name: item.routeName })
+    return
+  }
+
+  if (item.path) {
     router.push({ name: item.path })
   }
 }
-
-const resetCurrentPage = () => emit('reset-page')
 
 // Следим за изменениями в меню
 watch(menuSections, updateWidth, { deep: true })
@@ -283,12 +275,9 @@ onBeforeUnmount(() => {
             :is-collapsed="!isCollapsed"
             :is-open="openGroupRouteName === section.routeName"
             :data="section"
-            :current-page="props.currentPage"
             :nested-open-states="nestedOpenStates"
             @toggle="toggleGroup(section.routeName)"
-            @action="handleAction"
             @navigate="handleNavigate"
-            @reset-page="resetCurrentPage"
             @toggle-nested="toggleNestedGroup"
           />
         </li>

@@ -1,12 +1,9 @@
 <script setup>
-import { Grid3x3, BarChart3 } from 'lucide-vue-next'
+import { Grid3x3 } from 'lucide-vue-next'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { moduleManager } from '@/modules/index.js'
 import { useDropdown } from '@/composables/useDropdown.js'
-
-import { biAnalysisService } from '@/js/biAnalysisService.js'
-import { biChartsService } from '@/js/biChartsService.js'
 
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
@@ -14,90 +11,31 @@ const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 const apps = ref([])
 const isLoading = ref(true)
 
-// Загрузка списка приложений
 const loadApps = async () => {
   try {
     isLoading.value = true
-    
-    // Инициализируем moduleManager если нужно
+
     if (!moduleManager.initialized) {
       await moduleManager.initialize()
     }
-    
-    // Получаем IconManager для получения иконок
-    const iconManager = moduleManager.icons
-    
-    // Создаем BI приложение вручную
-    let IconComponent = iconManager.getIcon('ChartSpline') || iconManager.getIcon('BarChart3')
-    if (!IconComponent) {
-      IconComponent = BarChart3
-    }
-    
-    const biApp = {
-      name: 'BI',
-      title: 'BI',
-      icon: IconComponent,
-      iconName: 'ChartSpline',
-      route: { name: 'BI' },
-      isBI: true
-    }
-    
-    // Оставляем только BI
-    apps.value = [biApp]
+
+    apps.value = []
   } catch (error) {
     console.error('Ошибка загрузки приложений:', error)
-    // Добавляем BI как fallback с иконкой
-    apps.value = [
-      {
-        name: 'BI',
-        title: 'BI',
-        icon: BarChart3,
-        iconName: 'BarChart3',
-        route: { name: 'BI' },
-        isBI: true
-      }
-    ]
+    apps.value = []
   } finally {
     isLoading.value = false
   }
 }
 
-// Экспортируем метод для внешнего вызова
 defineExpose({
-  closeDropdown
+  closeDropdown,
 })
 
 const goToApp = (app) => {
-  // Если это BI, проверяем, был ли построен график
-  if (app.isBI) {
-    // Проверяем сохраненное состояние BI анализа
-    const savedState = localStorage.getItem('biAnalysisModalState')
-    if (savedState) {
-      try {
-        const state = JSON.parse(savedState)
-        // Если есть выбранный файл, проверяем, был ли построен график
-        if (state.fileId) {
-          const chartsState = localStorage.getItem(`biChartsModalState_${state.fileId}`)
-          if (chartsState) {
-            const chartsStateData = JSON.parse(chartsState)
-            // Если график был построен, открываем окно с графиком
-            if (chartsStateData.hasChart && chartsStateData.selectedXField && chartsStateData.selectedYField) {
-              biChartsService?.open(state.fileId)
-              closeDropdown()
-              return
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Ошибка проверки состояния графика:', e)
-      }
-    }
-    // Если график не был построен, открываем обычное окно BI анализа
-    biAnalysisService?.toggle()
-  } else {
+  if (app.route) {
     router.push(app.route)
   }
-  
   closeDropdown()
 }
 
@@ -236,17 +174,10 @@ onMounted(async () => {
   word-break: break-word;
   line-height: 1.2;
   font-weight: 500;
-  
-  // Для BI делаем жирнее и цветным
-  &.apps-menu__title--bi {
-    font-weight: 700;
-    color: var(--bs-primary, #0d6efd);
-  }
 }
 </style>
 
 <style lang="scss">
-// Анимация появления/исчезновения меню AppsMenu (глобальные стили для Transition)
 .apps-dropdown-menu.dropdown-enter-active,
 .apps-dropdown-menu.dropdown-leave-active {
   transition: opacity 0.2s ease, transform 0.2s ease;

@@ -70,7 +70,7 @@ export default defineConfig({
         // @/core/... → файл в core/client/src/core/, но отсутствует.
         // Типичный случай: сабмодуль (ai_assistant и т.п.) не развёрнут в core.
         // Импорты из modules/ через относительные пути обрабатываются через
-        // /* @vite-ignore */ в местах использования (например LayoutMenu.vue).
+        // /* @vite-ignore */ в местах использования.
         if (source.startsWith('@/core/')) {
           const filePath = source.slice(2) // убираем '@'
           const resolved = path.join(srcRoot, filePath)
@@ -93,8 +93,7 @@ export default defineConfig({
   resolve: {
     alias: [
       // Конкретные алиасы для каждого внешнего сабмодуля идут первыми,
-      // чтобы @/modules/bi_analysis_modern/... → modules/bi_analysis_modern/...
-      // а не core/client/src/modules/bi_analysis_modern/... через '@'.
+      // чтобы @/modules/<name>/... → modules/<name>/..., а не core/client/src/modules/... через '@'.
       ...externalModuleAliases,
       { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
       { find: 'vue', replacement: 'vue/dist/vue.esm-bundler.js' },
@@ -145,10 +144,6 @@ export default defineConfig({
     'import.meta.env.VITE_API_PORT': JSON.stringify(process.env.API_PORT),
     'import.meta.env.VITE_DEFAULT_THEME': JSON.stringify(process.env.VITE_DEFAULT_THEME || 'light'),
     'import.meta.env.VITE_LOG_LEVEL': JSON.stringify(process.env.VITE_LOG_LEVEL || (process.env.CLIENT_DEPLOY_TYPE === 'production' ? 'critical' : 'debug')),
-    'import.meta.env.VITE_BI_PREVIEW_ROWS_LIMIT': JSON.stringify(process.env.VITE_BI_PREVIEW_ROWS_LIMIT || '1000000000'),
-    'import.meta.env.VITE_BI_PREVIEW_MAX_VALUES_ROWS': JSON.stringify(process.env.BI_PREVIEW_MAX_VALUES_ROWS || '1000000000'),
-    'import.meta.env.VITE_BI_PREVIEW_MAX_VISIBLE_ROWS': JSON.stringify(process.env.VITE_BI_PREVIEW_MAX_VISIBLE_ROWS || '1000000000'),
-    'import.meta.env.VITE_BI_PREVIEW_ITEMS_PER_PAGE': JSON.stringify(process.env.VITE_BI_PREVIEW_ITEMS_PER_PAGE || '20'),
     'import.meta.env.VITE_USE_RELATIVE_API': JSON.stringify(process.env.VITE_USE_RELATIVE_API || ''),
     'import.meta.env.VITE_PASSWORD_MIN_LENGTH': JSON.stringify(process.env.API_PASSWORD_MIN_LENGTH || '8'),
     'import.meta.env.VITE_PASSWORD_MAX_LENGTH': JSON.stringify(process.env.API_PASSWORD_MAX_LENGTH || '128'),
