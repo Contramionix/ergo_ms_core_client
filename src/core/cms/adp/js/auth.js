@@ -29,8 +29,12 @@ export const authService = {
         }, false);
     },
     
-    async sendConfirmationCode(email) {
-        return await apiClient.post(endpoints.auth.sendCode, { email }, false);
+    async sendConfirmationCode(email, purpose = '') {
+        const payload = { email }
+        if (purpose) {
+            payload.purpose = purpose
+        }
+        return await apiClient.post(endpoints.auth.sendCode, payload, false);
     },
     
     async verifyConfirmationCode(email, code) {

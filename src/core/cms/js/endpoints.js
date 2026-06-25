@@ -12,6 +12,7 @@ export const cmsEndpoints = {
         resetPassword: 'cms/adp/reset-password/',
         registration: 'cms/adp/registration/',
         registrationSettings: 'cms/adp/registration-settings/',
+        passwordResetSettings: 'cms/adp/password-reset-settings/',
         validateInvitation: 'cms/adp/invitations/validate/',
         protected: 'cms/adp/protected/',
         changePassword: 'cms/adp/change-password/',

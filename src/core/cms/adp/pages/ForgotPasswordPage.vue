@@ -1,12 +1,14 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { sendConfirmationCode } from '@/core/cms/adp/js/auth-index'
+import { sendConfirmationCode, fetchPasswordResetSettings } from '@/core/cms/adp/js/auth-index'
 import { validateFieldValue, validateFieldWithRegex, emailRegex } from '@/js/validation'
 
 const router = useRouter()
 const isLoading = ref(false)
 const isSuccess = ref(false)
+const isBootstrapping = ref(true)
+const passwordResetSettings = ref({ password_reset_enabled: true })
 
 const form = reactive({
   email: '',
@@ -17,67 +19,104 @@ const errors = reactive({
   general: null,
 })
 
+const passwordResetDisabled = computed(
+  () => passwordResetSettings.value.password_reset_enabled === false,
+)
+
+const pageTitle = computed(() => (
+  passwordResetDisabled.value ? 'Восстановление недоступно' : 'Восстановление пароля'
+))
+
+const pageDescription = computed(() => {
+  if (isSuccess.value) {
+    return 'Код восстановления отправлен на ваш email'
+  }
+  if (passwordResetDisabled.value) {
+    return 'Самостоятельное восстановление пароля отключено администратором.'
+  }
+  return 'Введите email для получения кода восстановления'
+})
+
+const resolveEmailSendError = (error) => {
+  const { message } = sanitizeError(error)
+  return message || 'Не удалось отправить письмо с кодом восстановления'
+}
+
 const validateForm = () => {
   errors.email = validateFieldValue(form.email, 'Email')
-  
+
   if (!errors.email) {
     errors.email = validateFieldWithRegex(form.email, emailRegex, 'Введите корректный email')
   }
-  
+
   errors.general = null
   return !errors.email
 }
 
+onMounted(async () => {
+  try {
+    passwordResetSettings.value = await fetchPasswordResetSettings()
+  } finally {
+    isBootstrapping.value = false
+  }
+})
+
 const submitForm = async () => {
-  if (!validateForm()) {
+  if (passwordResetDisabled.value || !validateForm()) {
     return
   }
 
   isLoading.value = true
   errors.general = null
-  
+
   try {
-    const result = await sendConfirmationCode(form.email)
+    const result = await sendConfirmationCode(form.email, 'password_reset')
 
     if (result.success) {
       isSuccess.value = true
-      // Перенаправляем на страницу сброса пароля через 2 секунды
       setTimeout(() => {
-        router.push({ 
-          name: 'ResetPassword', 
-          query: { email: form.email } 
+        router.push({
+          name: 'ResetPassword',
+          query: { email: form.email },
         })
       }, 2000)
     } else {
-      if (result.errors && result.errors.email) {
-        errors.email = Array.isArray(result.errors.email) 
-          ? result.errors.email[0] 
-          : result.errors.email
-      } else if (result.message) {
-        errors.general = result.message
+      const apiErrors = result.errors
+      if (apiErrors?.email) {
+        errors.email = Array.isArray(apiErrors.email)
+          ? apiErrors.email[0]
+          : apiErrors.email
       } else {
-        errors.general = 'Не удалось отправить код восстановления'
+        errors.general = result.message
+          || apiErrors?.detail
+          || apiErrors?.error
+          || 'Не удалось отправить письмо с кодом восстановления'
       }
     }
   } catch (error) {
     logError('Forgot password error:', error)
-    
+
+    if (error.response?.status === 403) {
+      errors.general = resolveEmailSendError(error)
+      return
+    }
+
     if (error.response) {
       if (error.response.status === 404) {
         errors.email = 'Пользователь с таким email не найден'
       } else if (error.response.status === 400) {
         const errorData = error.response.data
-        if (errorData && errorData.email) {
-          errors.email = Array.isArray(errorData.email) 
-            ? errorData.email[0] 
+        if (errorData?.email) {
+          errors.email = Array.isArray(errorData.email)
+            ? errorData.email[0]
             : errorData.email
         } else {
-          errors.general = 'Проверьте правильность введенного email'
+          errors.general = resolveEmailSendError(error)
         }
       } else if (error.response.status >= 500) {
-        errors.general = 'Ошибка сервера. Попробуйте позже'
+        errors.general = resolveEmailSendError(error)
       } else {
-        errors.general = 'Ошибка отправки кода восстановления'
+        errors.general = resolveEmailSendError(error)
       }
     } else if (error.request) {
       errors.general = 'Нет соединения с сервером'
@@ -98,83 +137,98 @@ const goToLogin = () => {
   <div class="d-flex justify-content-center align-items-center min-vh-100 bg-light">
     <div class="card shadow-sm border-0" style="width: 500px">
       <div class="card-body p-5">
-        <div class="text-center mb-4">
-          <div class="mb-3">
-            <i class="bi bi-key-fill text-primary" style="font-size: 3rem;"></i>
+        <div v-if="isBootstrapping" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Загрузка...</span>
           </div>
-          <h2 class="fw-bold text-primary mb-2">Восстановление пароля</h2>
-          <p class="text-muted">
-            {{ isSuccess 
-              ? 'Код восстановления отправлен на ваш email' 
-              : 'Введите email для получения кода восстановления' 
-            }}
-          </p>
         </div>
 
-        <div v-if="isSuccess" class="text-center">
-          <div class="alert alert-success" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i>
-            Код восстановления отправлен на <strong>{{ form.email }}</strong>
-          </div>
-          
-          <p class="text-muted mb-4">
-            Проверьте свою почту и следуйте инструкциям для восстановления пароля.
-            Если письмо не пришло, проверьте папку "Спам".
-          </p>
-
-          <button @click="goToLogin" class="btn btn-outline-primary">
-            <i class="bi bi-arrow-left me-2"></i>
-            Вернуться к входу
-          </button>
-        </div>
-
-        <form v-else @submit.prevent="submitForm" novalidate>
-          <!-- Общая ошибка -->
-          <div v-if="errors.general" class="alert alert-danger" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            {{ errors.general }}
-          </div>
-
-          <!-- Поле email -->
-          <div class="form-floating mb-4" v-auto-animate>
-            <input
-              type="email"
-              id="email"
-              class="form-control"
-              :class="{ 'is-invalid': errors.email }"
-              v-model="form.email"
-              placeholder="email@example.com"
-              :disabled="isLoading"
-              autocomplete="email"
-            />
-            <label for="email">
-              <i class="bi bi-envelope me-2"></i>Email
-            </label>
-            <div v-if="errors.email" class="invalid-feedback">
-              {{ errors.email }}
+        <template v-else>
+          <div class="text-center mb-4">
+            <div class="mb-3">
+              <i
+                :class="passwordResetDisabled
+                  ? 'bi bi-shield-lock text-muted'
+                  : 'bi bi-key-fill text-primary'"
+                style="font-size: 3rem;"
+              ></i>
             </div>
+            <h2 class="fw-bold text-primary mb-2">{{ pageTitle }}</h2>
+            <p class="text-muted">{{ pageDescription }}</p>
           </div>
 
-          <!-- Кнопка отправки -->
-          <button type="submit" class="btn btn-primary w-100 py-3 mb-3" :disabled="isLoading">
-            <span
-              v-if="isLoading"
-              class="spinner-border spinner-border-sm me-2"
-              role="status"
-              aria-hidden="true"
-            ></span>
-            <i v-else class="bi bi-envelope-arrow-up me-2"></i>
-            {{ isLoading ? 'Отправка...' : 'Отправить код восстановления' }}
-          </button>
-
-          <!-- Ссылка на вход -->
-          <div class="text-center">
-            <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary">
+          <div v-if="passwordResetDisabled" class="text-center">
+            <div class="alert alert-warning" role="alert">
+              <i class="bi bi-info-circle-fill me-2"></i>
+              Обратитесь к администратору системы для восстановления доступа.
+            </div>
+            <button type="button" class="btn btn-outline-primary" @click="goToLogin">
               <i class="bi bi-arrow-left me-2"></i>
               Вернуться к входу
-            </RouterLink>
+            </button>
           </div>
-        </form>
+
+          <div v-else-if="isSuccess" class="text-center">
+            <div class="alert alert-success" role="alert">
+              <i class="bi bi-check-circle-fill me-2"></i>
+              Код восстановления отправлен на <strong>{{ form.email }}</strong>
+            </div>
+
+            <p class="text-muted mb-4">
+              Проверьте свою почту и следуйте инструкциям для восстановления пароля.
+              Если письмо не пришло, проверьте папку «Спам».
+            </p>
+
+            <button type="button" class="btn btn-outline-primary" @click="goToLogin">
+              <i class="bi bi-arrow-left me-2"></i>
+              Вернуться к входу
+            </button>
+          </div>
+
+          <form v-else @submit.prevent="submitForm" novalidate>
+            <div v-if="errors.general" class="alert alert-danger" role="alert">
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>
+              {{ errors.general }}
+            </div>
+
+            <div class="form-floating mb-4" v-auto-animate>
+              <input
+                type="email"
+                id="email"
+                class="form-control"
+                :class="{ 'is-invalid': errors.email }"
+                v-model="form.email"
+                placeholder="email@example.com"
+                :disabled="isLoading"
+                autocomplete="email"
+              />
+              <label for="email">
+                <i class="bi bi-envelope me-2"></i>Email
+              </label>
+              <div v-if="errors.email" class="invalid-feedback">
+                {{ errors.email }}
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-3 mb-3" :disabled="isLoading">
+              <span
+                v-if="isLoading"
+                class="spinner-border spinner-border-sm me-2"
+                role="status"
+                aria-hidden="true"
+              ></span>
+              <i v-else class="bi bi-envelope-arrow-up me-2"></i>
+              {{ isLoading ? 'Отправка...' : 'Отправить код восстановления' }}
+            </button>
+
+            <div class="text-center">
+              <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary">
+                <i class="bi bi-arrow-left me-2"></i>
+                Вернуться к входу
+              </RouterLink>
+            </div>
+          </form>
+        </template>
       </div>
     </div>
   </div>
@@ -209,9 +263,9 @@ const goToLogin = () => {
     width: 95% !important;
     margin: 1rem;
   }
-  
+
   .card-body {
     padding: 2rem 1.5rem !important;
   }
 }
-</style> 
+</style>

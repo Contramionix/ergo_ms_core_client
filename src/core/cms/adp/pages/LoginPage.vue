@@ -5,10 +5,12 @@ import { authorization } from '@/core/cms/adp/js/auth-index'
 import { validateLoginForm } from '@/js/validation'
 import { authGuard } from '@/core/cms/js/authGuard'
 import { useRegistrationSettings } from '@/core/cms/adp/js/useRegistrationSettings.js'
+import { usePasswordResetSettings } from '@/core/cms/adp/js/usePasswordResetSettings.js'
 
 const router = useRouter()
 const isLoading = ref(false)
 const { showRegisterLink } = useRegistrationSettings()
+const { showForgotPasswordLink } = usePasswordResetSettings()
 
 const form = reactive({
   login: '',
@@ -179,7 +181,11 @@ const submitForm = async () => {
               </label>
             </div>
 
-            <RouterLink :to="{ name: 'ForgotPassword' }" class="text-decoration-none text-primary">
+            <RouterLink
+              v-if="showForgotPasswordLink"
+              :to="{ name: 'ForgotPassword' }"
+              class="text-decoration-none text-primary"
+            >
               Забыли пароль?
             </RouterLink>
           </div>

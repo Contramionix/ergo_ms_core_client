@@ -1,6 +1,7 @@
 import { initRouter } from '@/js/routers.js'
 import { authGuard } from '@/core/cms/js/authGuard.js'
 import { preloadRegistrationSettings } from '@/core/cms/adp/js/registrationSettings.js'
+import { preloadPasswordResetSettings } from '@/core/cms/adp/js/passwordResetSettings.js'
 
 import '@/js/utils/logger.js'
 
@@ -56,7 +57,10 @@ await initEndpoints()
 const router = await initRouter()
 app.use(router)
 
-await preloadRegistrationSettings()
+await Promise.all([
+  preloadRegistrationSettings(),
+  preloadPasswordResetSettings(),
+])
 
 app.mount('#app')
 

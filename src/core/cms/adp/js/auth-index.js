@@ -39,6 +39,11 @@ export const validateInvitationToken = async (...args) => {
     return validateToken(...args);
 };
 
+export const fetchPasswordResetSettings = async (...args) => {
+    const { fetchPasswordResetSettings: fetchSettings } = await import('@/core/cms/adp/js/passwordResetSettings');
+    return fetchSettings(...args);
+};
+
 export const checkToken = async (...args) => {
     const { authService } = await import('@/core/cms/adp/js/auth');
     return authService.checkToken(...args);
