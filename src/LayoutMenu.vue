@@ -19,13 +19,17 @@
 -->
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, shallowRef, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
+import { currentOffcanvasSidebarPage } from '@/js/useOffcanvasSidebarStore.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import MenuList from '@/components/menu/MenuList.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 import { Menu as IconMenu } from 'lucide-vue-next'
+
+const layoutPluginGlob = import.meta.glob('../../../modules/*/client/LayoutPlugin.vue')
+const layoutPlugins = shallowRef([])
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -34,12 +38,19 @@ let resizeTimeout = null
 
 // Ключ для RouterView - позволяет не пересоздавать компонент при переключении между вкладками
 // Модули могут указать meta.cacheGroup для группировки роутов под одним ключом
-const routeViewKey = computed(() => route.meta?.cacheGroup || route.path)
+const routeViewKey = computed(() => {
+  if (route.meta?.cacheGroup) {
+    return route.meta.cacheGroup
+  }
+  return route.path
+})
 
 const leftPadding = ref('320px')
 const isMenuVisible = ref(window.innerWidth >= 1200)
 const isMenuToggledManually = ref(false)
 const isOverlayVisible = ref(false)
+const isMenuCollapsed = ref(false)
+const menuWidth = ref(260)
 
 // Полноэкранный режим (без меню и ограничений контейнера)
 const isFullPage = computed(() => route.meta?.fullPage === true)
@@ -79,6 +90,11 @@ function leftToggle(val) {
   leftPadding.value = val
 }
 
+function handleMenuStateChange(collapsed, width) {
+  isMenuCollapsed.value = collapsed
+  menuWidth.value = width
+}
+
 function onHamburgerClick() {
   toggleMenu(!isMenuVisible.value)
 }
@@ -87,6 +103,13 @@ onMounted(async () => {
   updateMenuVisibilityImmediate()
   window.addEventListener('resize', updateMenuVisibility)
   await userStore.initializeUser()
+
+  const plugins = []
+  for (const loadPlugin of Object.values(layoutPluginGlob)) {
+    const module = await loadPlugin()
+    plugins.push(module.default)
+  }
+  layoutPlugins.value = plugins
 })
 
 onBeforeUnmount(() => {
@@ -119,6 +142,8 @@ onBeforeUnmount(() => {
       v-if="!isFullPage"
       @left-padding="leftToggle"
       :is-visible="isMenuVisible"
+      @menu-state-change="handleMenuStateChange"
+      @reset-offcanvas-page="() => { currentOffcanvasSidebarPage.value = '' }"
     />
     <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage }">
       <template v-if="route.meta?.fullPage">
@@ -143,6 +168,13 @@ onBeforeUnmount(() => {
   </div>
 
   <div @click="closeMenu" class="layout-overlay" :class="{ active: isOverlayVisible }" />
+  <component
+    v-for="(plugin, index) in layoutPlugins"
+    :key="index"
+    :is="plugin"
+    :isMenuCollapsed="isMenuCollapsed"
+    :menuWidth="menuWidth"
+  />
 </template>
 
 <style scoped lang="scss">

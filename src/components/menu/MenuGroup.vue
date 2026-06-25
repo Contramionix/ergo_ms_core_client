@@ -34,6 +34,7 @@ import { useRouter, useRoute } from 'vue-router'
 import MenuItem from './MenuItem.vue'
 import { iconMapping } from '@/config/icons-mapping.js'
 import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
+import { isMenuItemActive } from './composables/isMenuItemActive.js'
 
 const props = defineProps({
   data: { type: Object, required: true },
@@ -94,7 +95,7 @@ const hasMenuItems = computed(() => {
 
 const router = useRouter()
 const route = useRoute()
-const emit = defineEmits(['toggle', 'navigate', 'toggle-nested'])
+const emit = defineEmits(['toggle', 'navigate', 'toggle-nested', 'reset-offcanvas-page'])
 
 // Проверяем, находится ли пользователь на странице группы или её подстраницах
 const isCurrentGroupPage = computed(() => {
@@ -117,49 +118,26 @@ const isCurrentGroupPage = computed(() => {
   
   // Проверяем подстраницы через рекурсивную функцию
   if (menuItems.value.length > 0) {
-    return checkChildrenActiveRecursive(menuItems.value, route.name)
+    return checkChildrenActiveRecursive(menuItems.value)
   }
-  
+
   return false
 })
 
-const checkItemActive = (item, currentRoute) => {
-  if (!item.routeName) {
-    return false
-  }
-
-  if (currentRoute === item.routeName) {
-    return true
-  }
-
-  if (currentRoute && currentRoute.startsWith(item.routeName) && currentRoute !== item.routeName) {
-    try {
-      const parentRoute = router.resolve({ name: item.routeName })
-      if (parentRoute?.path && route.path.startsWith(parentRoute.path)) {
-        return true
-      }
-    } catch (e) {
-      return true
-    }
-  }
-
-  return false
-}
-
-const checkChildrenActiveRecursive = (children, currentRoute) => {
+const checkChildrenActiveRecursive = (children) => {
   if (!children || children.length === 0) return false
 
-  return children.some(item => {
-    if (checkItemActive(item, currentRoute)) {
+  return children.some((item) => {
+    if (isMenuItemActive(item, { route, router })) {
       return true
     }
 
     const nestedChildren = [
       ...(item.list || []),
-      ...(item.children || [])
+      ...(item.children || []),
     ]
     if (nestedChildren.length > 0) {
-      return checkChildrenActiveRecursive(nestedChildren, currentRoute)
+      return checkChildrenActiveRecursive(nestedChildren)
     }
 
     return false
@@ -174,6 +152,10 @@ function handleToggleNested(groupId) {
 // Обработчик навигации для вложенных элементов
 function handleNestedNavigate(item) {
   emit('navigate', item)
+}
+
+function handleResetOffcanvasPage() {
+  emit('reset-offcanvas-page')
 }
 
 function routeClick(event) {
@@ -239,6 +221,7 @@ function routeClick(event) {
         :openStates="nestedOpenStates"
         :style="{ transitionDelay: `${index * 50}ms` }"
         @navigate="handleNestedNavigate"
+        @reset-offcanvas-page="handleResetOffcanvasPage"
         @toggle-group="handleToggleNested"
       />
     </ul>

@@ -21,6 +21,7 @@ import { computed, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { iconMapping } from '@/config/icons-mapping.js'
 import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
+import { isMenuItemActive } from './composables/isMenuItemActive.js'
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -31,7 +32,7 @@ const props = defineProps({
 
 const router = useRouter()
 const route = useRoute()
-const emit = defineEmits(['navigate', 'toggle-group'])
+const emit = defineEmits(['navigate', 'toggle-group', 'reset-offcanvas-page'])
 
 const injectedIconSizes = inject(MENU_ICON_SIZES_KEY, null)
 const iconSizes = computed(() => injectedIconSizes?.value ?? getDefaultMenuIconSizes())
@@ -60,53 +61,28 @@ const isOpen = computed(() => {
 })
 
 // Проверка активности текущего элемента (используем общую логику из checkChildrenActiveRecursive)
-const isActive = computed(() => {
-  return checkItemActive(props.item, route.name)
-})
-
-const checkItemActive = (item, currentRoute) => {
-  if (!item.routeName) {
-    return false
-  }
-
-  if (currentRoute === item.routeName) {
-    return true
-  }
-
-  if (currentRoute && currentRoute.startsWith(item.routeName) && currentRoute !== item.routeName) {
-    try {
-      const parentRoute = router.resolve({ name: item.routeName })
-      if (parentRoute?.path && route.path.startsWith(parentRoute.path)) {
-        return true
-      }
-    } catch (e) {
-      return true
-    }
-  }
-
-  return false
-}
+const isActive = computed(() => isMenuItemActive(props.item, { route, router }))
 
 const isGroupActive = computed(() => {
   if (!isGroup.value) return false
 
-  return checkChildrenActiveRecursive(allChildren.value, route.name)
+  return checkChildrenActiveRecursive(allChildren.value)
 })
 
-const checkChildrenActiveRecursive = (children, currentRoute) => {
+const checkChildrenActiveRecursive = (children) => {
   if (!children || children.length === 0) return false
 
-  return children.some(child => {
-    if (checkItemActive(child, currentRoute)) {
+  return children.some((child) => {
+    if (isMenuItemActive(child, { route, router })) {
       return true
     }
 
     const nestedChildren = [
       ...(child.list || []),
-      ...(child.children || [])
+      ...(child.children || []),
     ]
     if (nestedChildren.length > 0) {
-      return checkChildrenActiveRecursive(nestedChildren, currentRoute)
+      return checkChildrenActiveRecursive(nestedChildren)
     }
 
     return false
@@ -132,10 +108,10 @@ const handleClick = (event) => {
     if (!isOpen.value && props.item.routeName) {
       router.push({ name: props.item.routeName })
     }
+  } else if (props.item.isOffcanvas || props.item.page) {
+    emit('navigate', props.item)
   } else if (props.item.routeName) {
     router.push({ name: props.item.routeName })
-  } else {
-    emit('navigate', props.item)
   }
 }
 
@@ -178,6 +154,7 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
         :openStates="openStates"
         :style="{ transitionDelay: `${index * 30}ms` }"
         @navigate="$emit('navigate', $event)"
+        @reset-offcanvas-page="$emit('reset-offcanvas-page')"
         @toggle-group="$emit('toggle-group', $event)"
       />
     </ul>

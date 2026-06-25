@@ -21,12 +21,13 @@ import MenuToolbar from '@/components/menu/MenuToolbar.vue'
 import { useMenuWidth } from './composables/useMenuWidth'
 import { useMenuNavigation } from './composables/useMenuNavigation'
 import { useMenuIconSizes, MENU_ICON_SIZES_KEY } from './composables/useMenuIconSizes'
+import { openOffcanvasSidebar } from '@/js/useOffcanvasSidebarStore.js'
 
 const props = defineProps({
   isVisible: Boolean,
 })
 
-const emit = defineEmits(['left-padding', 'menu-state-change'])
+const emit = defineEmits(['left-padding', 'menu-state-change', 'reset-offcanvas-page'])
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -136,6 +137,11 @@ const handleNavigate = (item) => {
     return
   }
 
+  if (item.isOffcanvas && item.page) {
+    openOffcanvasSidebar(item.page)
+    return
+  }
+
   if (item.routeName) {
     router.push({ name: item.routeName })
     return
@@ -145,6 +151,8 @@ const handleNavigate = (item) => {
     router.push({ name: item.path })
   }
 }
+
+const resetOffcanvasPage = () => emit('reset-offcanvas-page')
 
 // Следим за изменениями в меню
 watch(menuSections, updateWidth, { deep: true })
@@ -278,6 +286,7 @@ onBeforeUnmount(() => {
             :nested-open-states="nestedOpenStates"
             @toggle="toggleGroup(section.routeName)"
             @navigate="handleNavigate"
+            @reset-offcanvas-page="resetOffcanvasPage"
             @toggle-nested="toggleNestedGroup"
           />
         </li>
