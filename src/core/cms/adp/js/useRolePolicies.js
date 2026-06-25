@@ -1,6 +1,5 @@
 import { ref } from 'vue'
 import { CheckAccess } from '@/core/cms/js/cms'
-import { logError } from '@/js/utils/logError.js'
 
 // Глобальное состояние, общее для всех компонентов
 const isInitialized = ref(false)

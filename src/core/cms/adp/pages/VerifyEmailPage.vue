@@ -3,7 +3,6 @@ import { reactive, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { verifyConfirmationCode, sendConfirmationCode } from '@/core/cms/adp/js/auth-index'
 import { validateFieldValue } from '@/js/validation'
-import { logError } from '@/js/utils/logError.js'
 
 const router = useRouter()
 const route = useRoute()

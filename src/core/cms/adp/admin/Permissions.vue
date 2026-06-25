@@ -1,5 +1,4 @@
 <script setup>
-import { logError } from '@/js/utils/logError.js'
 import PermissionTableHeader from '@/core/cms/adp/admin/PermissionsComponents/PermissionTableHeader.vue'
 import PermissionTable from '@/core/cms/adp/admin/PermissionsComponents/PermissionTable.vue'
 import ModulePermissionManager from '@/core/cms/adp/admin/PermissionsComponents/ModulePermissionManager.vue'

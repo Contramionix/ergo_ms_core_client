@@ -6,7 +6,6 @@ import SelectBox from '@/components/SelectBox.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import ChangePasswordModal from './ChangePasswordModal.vue'
-import { logError } from '@/js/utils/logError.js'
 
 const PROFILE_VISIBILITY_OPTIONS = [
   { id: 'public', name: 'Публичный' },

@@ -1,7 +1,6 @@
 import Cookies from 'js-cookie'
 import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { logError } from '@/js/utils/logError.js'
 
 /**
  * Утилита для управления аутентификацией и автоматического logout

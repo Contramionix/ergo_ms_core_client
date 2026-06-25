@@ -8,7 +8,6 @@ import { logout as authLogout } from '@/core/cms/adp/js/auth-index'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { tokenService } from '@/core/cms/js/tokenService.js'
 import { hasAnyModulePermission } from '@/core/cms/adp/js/accessControl.js'
-import { logError } from '@/js/utils/logError.js'
 
 const userStore = useUserStore()
 const emit = defineEmits(['dropdown-toggle'])

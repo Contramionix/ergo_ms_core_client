@@ -1,5 +1,4 @@
 import { CheckAccess } from '@/core/cms/js/cms'
-import { logError } from '@/js/utils/logError.js'
 
 const PERMISSIONS_CACHE_TTL = 60 * 1000
 let cachedPermissionsSnapshot = null

@@ -1,4 +1,3 @@
-import { logError, logWarn } from '@/js/utils/logError.js'
 /**
  * MODULE BRIDGE (frontend) — единый механизм межмодульного взаимодействия.
  *

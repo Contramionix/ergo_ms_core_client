@@ -1,5 +1,4 @@
 <script setup>
-import { logError } from '@/js/utils/logError.js'
 import CategoryTableHeader from '@/core/cms/adp/admin/CategoriesComponents/CategoryTableHeader.vue'
 import CategoryTable from '@/core/cms/adp/admin/CategoriesComponents/CategoryTable.vue'
 import { GetRoles } from '@/core/cms/adp/admin/js/GroupsPolitics'

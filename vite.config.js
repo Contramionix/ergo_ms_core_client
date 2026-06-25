@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from 'node:url' // Импорт функций для работы с URL и путями
 
 import vue from '@vitejs/plugin-vue' // Импорт плагина Vue для Vite
+import AutoImport from 'unplugin-auto-import/vite'
 import { defineConfig } from 'vite' // Импорт функции для определения конфигурации Vite
 // import vueDevTools from 'vite-plugin-vue-devtools' // Импорт плагина Vue DevTools для Vite
 
@@ -51,6 +52,18 @@ export default defineConfig({
   // Подключение плагинов
   plugins: [
     vue(), // Подключение плагина Vue для Vite
+    AutoImport({
+      imports: [
+        {
+          '@/js/utils/logError.js': ['logError', 'logWarn', 'sanitizeError'],
+        },
+      ],
+      dts: 'src/auto-imports.d.ts',
+      eslintrc: {
+        enabled: true,
+        filepath: './.eslintrc-auto-import.json',
+      },
+    }),
     //vueDevTools(), // Подключение плагина Vue DevTools для Vite
     {
       // Заглушка для импортов файлов из неинициализированных/частичных сабмодулей.

@@ -77,7 +77,6 @@ import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 import { useToast } from 'vue-toastification'
 import { parseFullNameParts, seedUserPublicInfoCache } from '@/js/userAvatar'
-import { logError, logWarn } from '@/js/utils/logError.js'
 
 const props = defineProps({
   show: {

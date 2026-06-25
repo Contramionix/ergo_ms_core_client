@@ -17,7 +17,6 @@ import {
   validateAdminProfileData,
 } from '@/core/cms/adp/admin/js/adminUserService.js'
 import { AssignRoleToUser } from '@/core/cms/adp/admin/js/GroupsPolitics'
-import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   show: { type: Boolean, default: false },

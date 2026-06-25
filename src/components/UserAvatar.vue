@@ -10,7 +10,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import DefaultAvatar from './DefaultAvatar.vue'
 import { getUserPublicInfo, getCachedUserPublicInfo, invalidateUserPublicInfo, } from '@/js/userAvatar'
-import { logError } from '@/js/utils/logError.js'
 
 const userStore = useUserStore()
 

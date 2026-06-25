@@ -6,7 +6,6 @@ import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import AvatarCropModal from '@/components/AvatarCropModal.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   saving: { type: Boolean, default: false },

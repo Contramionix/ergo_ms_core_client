@@ -75,7 +75,6 @@
 import { ref, computed } from 'vue'
 import { Plus, Save, Edit, Trash, X } from 'lucide-vue-next'
 import axios from 'axios'
-import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   tableName: {

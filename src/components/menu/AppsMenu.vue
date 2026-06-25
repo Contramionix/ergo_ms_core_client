@@ -4,7 +4,6 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { moduleManager } from '@/modules/index.js'
 import { useDropdown } from '@/composables/useDropdown.js'
-import { logError } from '@/js/utils/logError.js'
 
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()

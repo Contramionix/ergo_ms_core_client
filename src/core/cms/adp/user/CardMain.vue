@@ -3,7 +3,6 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { Briefcase, Calendar, MapPin } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore'
 import UserAvatar from '@/components/UserAvatar.vue'
-import { logError } from '@/js/utils/logError.js'
 
 const userStore = useUserStore()
 

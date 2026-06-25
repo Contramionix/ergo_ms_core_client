@@ -4,7 +4,6 @@
  * Класс для генерации роутов Vue Router из routes.js файлов модулей
  */
 
-import { logError } from '@/js/utils/logError.js'
 
 export class RouteGenerator {
   constructor(routeManager) {

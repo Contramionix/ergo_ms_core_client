@@ -2,7 +2,6 @@ import { apiClient } from '../../../../js/api/manager';
 import { endpoints } from '../../../../js/api/endpoints';
 import Cookies from 'js-cookie';
 import tokenService from '@/core/cms/js/tokenService'
-import { logError } from '@/js/utils/logError.js'
 
 export const authService = {
     async login(username, password, rememberMe = false) {

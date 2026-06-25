@@ -4,7 +4,6 @@ import { useToast } from 'vue-toastification'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { resetAdminUserPassword } from '@/core/cms/adp/admin/js/adminUserService.js'
 import { validatePasswordValue } from '@/js/passwordPolicy.js'
-import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   userId: { type: Number, default: null },

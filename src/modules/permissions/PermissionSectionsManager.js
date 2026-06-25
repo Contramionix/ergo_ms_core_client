@@ -9,7 +9,6 @@
  */
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
-import { logWarn } from '@/js/utils/logError.js'
 
 export class PermissionSectionsManager extends ModuleLoader {
   constructor() {

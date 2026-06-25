@@ -2,7 +2,6 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import { CreateRoleGroup, GetRoles, UpdateRoleGroup } from '@/core/cms/adp/admin/js/GroupsPolitics'
-import { logError } from '@/js/utils/logError.js'
 
 const emit = defineEmits(['addGroup', 'changeGroup'])
 

@@ -7,7 +7,6 @@
  */
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
-import { logError, logWarn } from '@/js/utils/logError.js'
 
 // Создаем один экземпляр ModuleLoader для доступа к общим глобам
 const sharedLoader = new ModuleLoader()

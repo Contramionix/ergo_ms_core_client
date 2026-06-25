@@ -40,7 +40,6 @@
 </template>
 
 <script setup>
-import { logError } from '@/js/utils/logError.js'
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { LayersPlus, SeparatorHorizontal, Settings } from 'lucide-vue-next'

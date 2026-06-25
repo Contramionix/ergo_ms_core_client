@@ -1,0 +1,7 @@
+{
+  "globals": {
+    "logError": true,
+    "logWarn": true,
+    "sanitizeError": true
+  }
+}

@@ -67,7 +67,6 @@
 </template>
 
 <script setup>
-import { logError } from '@/js/utils/logError.js'
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'

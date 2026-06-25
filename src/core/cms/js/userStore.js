@@ -4,7 +4,6 @@ import { useToast } from 'vue-toastification'
 import { apiClient } from '@/js/api/manager.js'
 import { endpoints } from '@/js/api/endpoints.js'
 import { profileService } from '@/core/cms/js/profileService.js'
-import { logError, logWarn } from '@/js/utils/logError.js'
 import Cookies from 'js-cookie'
 
 export const useUserStore = defineStore('userStore', () => {

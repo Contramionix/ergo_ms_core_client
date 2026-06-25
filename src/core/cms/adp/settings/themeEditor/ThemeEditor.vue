@@ -9,7 +9,6 @@ import ColorPicker from './ColorPicker.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
-import { logError } from '@/js/utils/logError.js'
 import { 
   getDefaultColors, 
   getColorDescriptions,

@@ -1,5 +1,4 @@
 <script setup>
-import { logError } from '@/js/utils/logError.js'
 import { computed, onMounted, ref } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
 import { useModulePagePermissions } from './js/useModulePagePermissions'

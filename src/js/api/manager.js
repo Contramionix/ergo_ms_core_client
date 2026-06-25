@@ -2,7 +2,6 @@ import axios from 'axios'
 
 import tokenService from '@/core/cms/js/tokenService'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
-import { logError, logWarn, sanitizeError } from '@/js/utils/logError.js'
 
 /**
  * Класс для работы с API

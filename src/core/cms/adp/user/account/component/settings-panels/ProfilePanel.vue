@@ -6,7 +6,6 @@ import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import AvatarBlock from './AvatarBlock.vue'
-import { logError } from '@/js/utils/logError.js'
 
 const toast = useToast()
 const userStore = useUserStore()

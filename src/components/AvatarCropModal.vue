@@ -3,7 +3,6 @@ import { ref, watch, onUnmounted, onMounted, computed } from 'vue'
 import { useToast } from 'vue-toastification'
 import { RotateCw, RotateCcw, Check } from 'lucide-vue-next'
 import ImageCropper from './ImageCropper.vue'
-import { logError } from '@/js/utils/logError.js'
 
 const toast = useToast()
 

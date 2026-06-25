@@ -8,7 +8,6 @@
  */
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
-import { logError, logWarn } from '@/js/utils/logError.js'
 
 export class PermissionRulesManager extends ModuleLoader {
   constructor() {

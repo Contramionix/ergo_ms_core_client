@@ -6,7 +6,6 @@
  */
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
-import { logError } from '@/js/utils/logError.js'
 
 export class RouteManager extends ModuleLoader {
   constructor() {

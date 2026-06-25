@@ -1,5 +1,4 @@
 <script setup>
-import { logError } from '@/js/utils/logError.js'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'

@@ -5,7 +5,6 @@ import { authorization } from '@/core/cms/adp/js/auth-index'
 import { validateLoginForm } from '@/js/validation'
 import { authGuard } from '@/core/cms/js/authGuard'
 import { useRegistrationSettings } from '@/core/cms/adp/js/useRegistrationSettings.js'
-import { logError } from '@/js/utils/logError.js'
 
 const router = useRouter()
 const isLoading = ref(false)

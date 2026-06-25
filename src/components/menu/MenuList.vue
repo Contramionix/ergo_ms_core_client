@@ -23,7 +23,6 @@ import { useMenuNavigation } from './composables/useMenuNavigation'
 import { useMenuIconSizes, MENU_ICON_SIZES_KEY } from './composables/useMenuIconSizes'
 import { safeNavigateByName } from './composables/safeMenuNavigate.js'
 import { openOffcanvasSidebar } from '@/js/useOffcanvasSidebarStore.js'
-import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   isVisible: Boolean,

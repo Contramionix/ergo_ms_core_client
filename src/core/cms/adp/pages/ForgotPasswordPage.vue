@@ -3,7 +3,6 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { sendConfirmationCode } from '@/core/cms/adp/js/auth-index'
 import { validateFieldValue, validateFieldWithRegex, emailRegex } from '@/js/validation'
-import { logError } from '@/js/utils/logError.js'
 
 const router = useRouter()
 const isLoading = ref(false)

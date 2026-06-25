@@ -1,6 +1,5 @@
 import { apiClient } from '../../../../js/api/manager'
 import { endpoints } from '../../../../js/api/endpoints'
-import { logError } from '@/js/utils/logError.js'
 
 export const authService = {
   // Получить информацию о текущем пользователе

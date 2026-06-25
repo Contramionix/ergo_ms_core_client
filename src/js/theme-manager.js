@@ -5,7 +5,6 @@
  * Bootstrap переменные НЕ переопределяются по умолчанию
  */
 
-import { logError, logWarn } from '@/js/utils/logError.js'
 import { 
   THEME_SCSS_COLORS,
   COLOR_DESCRIPTIONS,
