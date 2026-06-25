@@ -1,5 +1,6 @@
 import { ref, watch, markRaw } from 'vue'
 import { Sun, Moon, LaptopMinimal, Bell, Grid3x3, Languages } from 'lucide-vue-next'
+import { getUserId, registerUiSettingsReset } from './tokenStorage.js'
 
 export const THEME_OPTIONS = [
   { id: 'light', name: 'Светлая', icon: markRaw(Sun) },
@@ -19,23 +20,32 @@ export const LANGUAGE_OPTIONS = [
 const THEME_BASE_KEY = 'theme'
 const ACTION_BUTTON_BASE_KEY = 'actionButton'
 const LANGUAGE_BASE_KEY = 'language'
-const LAST_USER_KEY = '_uiLastUserId'
+const LEGACY_LAST_USER_KEY = '_uiLastUserId'
 
-let _userId = null
+const DEFAULT_THEME = 'auto'
+const DEFAULT_ACTION_BUTTON = 'notifications'
+const DEFAULT_LANGUAGE = 'ru'
+
+let _userId = getUserId()
 
 const userKey = (base) => (_userId ? `${base}_${_userId}` : base)
 
-// Читаем ID последнего вошедшего пользователя, сохранённый при предыдущей сессии.
-// Это позволяет загрузить user-специфичные настройки синхронно до первого рендера,
-// не дожидаясь асинхронной инициализации userStore.
-const _lastUserId = localStorage.getItem(LAST_USER_KEY)
-const _read = (base) =>
-  (_lastUserId ? localStorage.getItem(`${base}_${_lastUserId}`) : null)
-    ?? localStorage.getItem(base)
+const _read = (base) => {
+  if (_userId) {
+    return localStorage.getItem(`${base}_${_userId}`) ?? localStorage.getItem(base)
+  }
+  return localStorage.getItem(base)
+}
 
-const theme = ref(_read(THEME_BASE_KEY) || 'auto')
-const actionButton = ref(_read(ACTION_BUTTON_BASE_KEY) || 'notifications')
-const language = ref(_read(LANGUAGE_BASE_KEY) || 'ru')
+try {
+  localStorage.removeItem(LEGACY_LAST_USER_KEY)
+} catch {
+  // ignore
+}
+
+const theme = ref(_read(THEME_BASE_KEY) || DEFAULT_THEME)
+const actionButton = ref(_read(ACTION_BUTTON_BASE_KEY) || DEFAULT_ACTION_BUTTON)
+const language = ref(_read(LANGUAGE_BASE_KEY) || DEFAULT_LANGUAGE)
 
 const applyThemeToDom = (value) => {
   const resolved =
@@ -60,19 +70,30 @@ watch(language, (val) => {
   localStorage.setItem(userKey(LANGUAGE_BASE_KEY), val)
 })
 
+export function resetUserSettings() {
+  _userId = null
+  theme.value = DEFAULT_THEME
+  actionButton.value = DEFAULT_ACTION_BUTTON
+  language.value = DEFAULT_LANGUAGE
+  applyThemeToDom(DEFAULT_THEME)
+}
+
+registerUiSettingsReset(resetUserSettings)
+
 /**
  * Вызывается при входе/выходе пользователя.
- * Обновляет кэшированный ID и загружает личные настройки пользователя.
+ * Загружает личные настройки пользователя после инициализации userStore.
  */
 export function initUserSettings(userId) {
-  if (userId === _userId) return
-  _userId = userId
+  const normalizedId = userId != null ? String(userId) : null
 
-  if (userId) {
-    localStorage.setItem(LAST_USER_KEY, String(userId))
-  } else {
-    localStorage.removeItem(LAST_USER_KEY)
+  if (!normalizedId) {
+    resetUserSettings()
+    return
   }
+
+  if (normalizedId === _userId) return
+  _userId = normalizedId
 
   const savedTheme = localStorage.getItem(userKey(THEME_BASE_KEY))
   if (savedTheme) {
@@ -80,11 +101,8 @@ export function initUserSettings(userId) {
     applyThemeToDom(savedTheme)
   }
 
-  const savedActionButton = localStorage.getItem(userKey(ACTION_BUTTON_BASE_KEY))
-  actionButton.value = savedActionButton || 'notifications'
-
-  const savedLanguage = localStorage.getItem(userKey(LANGUAGE_BASE_KEY))
-  language.value = savedLanguage || 'ru'
+  actionButton.value = localStorage.getItem(userKey(ACTION_BUTTON_BASE_KEY)) || DEFAULT_ACTION_BUTTON
+  language.value = localStorage.getItem(userKey(LANGUAGE_BASE_KEY)) || DEFAULT_LANGUAGE
 
   localStorage.removeItem(ACTION_BUTTON_BASE_KEY)
   localStorage.removeItem(LANGUAGE_BASE_KEY)

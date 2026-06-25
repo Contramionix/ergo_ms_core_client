@@ -1,4 +1,5 @@
 import { ref, onUnmounted } from 'vue'
+import { buildWebSocketUrl } from '@/js/api/baseUrl.js'
 
 const RECONNECT_DELAYS = [1000, 2000, 4000]
 const MAX_RECONNECT_ATTEMPTS = 3
@@ -14,10 +15,7 @@ export function useWebSocket() {
   let intentionalClose = false
 
   function buildWsUrl(contentType, objectId) {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = import.meta.env?.VITE_API_HOST ?? window.location.hostname
-    const port = import.meta.env?.VITE_API_PORT ?? (window.location.port || (protocol === 'wss:' ? '443' : '80'))
-    return `${protocol}//${host}:${port}/ws/messenger/${contentType}/${objectId}/`
+    return buildWebSocketUrl(`/ws/messenger/${contentType}/${objectId}/`)
   }
 
   function connect(contentType, objectId, onMessage) {

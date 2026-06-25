@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { useToast } from 'vue-toastification'
 import tokenService from '@/core/cms/js/tokenService'
+import { buildWebSocketUrl } from '@/js/api/baseUrl.js'
 import { notificationsApi } from './notifications-api'
 
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000]
@@ -37,12 +38,9 @@ function findNotification(id) {
 }
 
 function buildWsUrl() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const host = import.meta.env?.VITE_API_HOST ?? window.location.hostname
-  const port = import.meta.env?.VITE_API_PORT ?? (window.location.port || (protocol === 'wss:' ? '443' : '80'))
   const token = tokenService.getAccess()
   const query = token ? `?token=${encodeURIComponent(token)}` : ''
-  return `${protocol}//${host}:${port}/ws/notifications/${query}`
+  return buildWebSocketUrl(`/ws/notifications/${query}`)
 }
 
 async function loadInitial() {

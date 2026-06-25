@@ -51,15 +51,24 @@ export function setTokens(access, refresh) {
   if (refresh) setCookieByExp('refresh', refresh)
 }
 
+let _uiSettingsReset = null
+
+export function registerUiSettingsReset(callback) {
+  _uiSettingsReset = callback
+}
+
 export function clearTokens() {
   Cookies.remove('token')
   Cookies.remove('refresh')
 
   try {
     localStorage.removeItem('crm_active_organization')
+    localStorage.removeItem('_uiLastUserId')
   } catch {
     // ignore
   }
+
+  _uiSettingsReset?.()
 }
 
 export function shouldRefresh(thresholdSeconds = 120) {
