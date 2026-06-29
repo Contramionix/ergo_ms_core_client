@@ -25,7 +25,10 @@ class MediaApiClient {
     if (allowedTypes) body.allowed_types = allowedTypes
 
     const response = await apiClient.post(UPLOAD_TOKEN_ENDPOINT, body)
-    return response
+    if (!response.success) {
+      throw new Error(response.message || 'Не удалось получить upload-токен')
+    }
+    return response.data
   }
 
   /**
