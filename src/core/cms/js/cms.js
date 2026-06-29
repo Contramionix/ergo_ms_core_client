@@ -1,4 +1,5 @@
 import { apiClient } from '../../../js/api/manager';
+import { mediaApiClient } from '@/js/api/media-api-client.js';
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js';
 
 export const CheckAccess = {
@@ -315,9 +316,16 @@ export const CheckAccess = {
     },
 
     async UploadAdminUserAvatar(userId, file) {
-        const formData = new FormData();
-        formData.append('image', file);
-        const response = await apiClient.upload(endpoints.cms.adminUserAvatar(userId), formData, true);
+        const uploadResult = await mediaApiClient.upload(file, {
+            targetDir: 'avatars/',
+            allowedTypes: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
+            maxSize: 5 * 1024 * 1024,
+        });
+        const response = await apiClient.post(
+            endpoints.cms.adminUserAvatar(userId),
+            { image_path: uploadResult.path },
+            true,
+        );
         return response;
     },
 

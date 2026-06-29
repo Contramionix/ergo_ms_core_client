@@ -1,4 +1,5 @@
 import { apiClient } from '@/js/api/manager'
+import { mediaApiClient } from '@/js/api/media-api-client.js'
 
 const BASE_URL = '/messenger'
 
@@ -32,11 +33,15 @@ export const messengerApi = {
     return apiClient.delete(`${BASE_URL}/attachments/${attachmentId}/`)
   },
 
-  uploadAttachment(messageId, file) {
-    const formData = new FormData()
-    formData.append('message', messageId)
-    formData.append('file', file)
-    return apiClient.upload(`${BASE_URL}/attachments/`, formData)
+  async uploadAttachment(messageId, file) {
+    const uploadResult = await mediaApiClient.upload(file, {
+      targetDir: 'messenger/attachments',
+      maxSize: 25 * 1024 * 1024,
+    })
+    return apiClient.post(`${BASE_URL}/attachments/`, {
+      message: messageId,
+      file_path: uploadResult.path,
+    })
   },
 
   sendMessageWithAttachments(contentType, objectId, text, files, replyToId = null) {

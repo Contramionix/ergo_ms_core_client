@@ -1,25 +1,11 @@
 import { CheckAccess } from '@/core/cms/js/cms'
-import { profileService } from '@/core/cms/js/profileService.js'
 import { invalidateUserAvatar } from '@/js/userAvatar.js'
+import {
+  mapUserProfileToFormData,
+  validateUserProfileData,
+} from '@/core/cms/adp/js/userProfileForm.js'
 
-const normalizeEmptyString = (value) => (value === ' ' ? '' : (value || ''))
-
-export function mapAdminUserToFormData(userData) {
-  if (!userData) return {}
-
-  const profile = userData.adp_profile || {}
-
-  return {
-    first_name: normalizeEmptyString(userData.first_name),
-    last_name: normalizeEmptyString(userData.last_name),
-    middle_name: normalizeEmptyString(userData.middle_name),
-    email: userData.email || '',
-    website: profile.website || '',
-    bio: profile.bio || '',
-    country: profile.country || '',
-    city: profile.city || '',
-  }
-}
+export const mapAdminUserToFormData = mapUserProfileToFormData
 
 export async function fetchAdminUser(userId) {
   const response = await CheckAccess.GetAdminUser(userId)
@@ -47,7 +33,7 @@ export async function deleteAdminUserAvatar(userId) {
 }
 
 export function validateAdminProfileData(data) {
-  return profileService.validateProfileData(data)
+  return validateUserProfileData(data)
 }
 
 export async function resetAdminUserPassword(userId, payload = {}) {

@@ -1,11 +1,11 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
-import { Globe, Monitor } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 import SelectBox from '@/components/SelectBox.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import ChangePasswordModal from './ChangePasswordModal.vue'
+import SessionCard from './SessionCard.vue'
 
 const PROFILE_VISIBILITY_OPTIONS = [
   { id: 'public', name: 'Публичный' },
@@ -25,53 +25,6 @@ const loading = ref(true)
 const devices = ref([])
 const deletingDeviceId = ref(null)
 const currentPage = ref(1)
-
-function formatRelativeTime(isoString) { // TODO: переделать на локализацию
-  if (!isoString) return '—'
-  const date = new Date(isoString)
-  if (Number.isNaN(date.getTime())) return '—'
-
-  const now = new Date()
-  const diff = now - date
-
-  if (diff < 60000) return 'только что'
-  if (diff < 3600000) {
-    const minutes = Math.floor(diff / 60000)
-    return `${minutes} мин. назад`
-  }
-  if (diff < 86400000) {
-    const hours = Math.floor(diff / 3600000)
-    return `${hours} ч. назад`
-  }
-  const days = Math.floor(diff / 86400000)
-  if (days < 7) {
-    return `${days} дн. назад`
-  }
-  if (days < 30) {
-    const weeks = Math.floor(days / 7)
-    return `${weeks} нед. назад`
-  }
-  if (days < 365) {
-    const months = Math.floor(days / 30)
-    return `${months} мес. назад`
-  }
-  const years = Math.floor(days / 365)
-  return `${years} г. назад`
-}
-
-function sessionDisplay(device) {
-  const type = device.deviceType
-  if (type === 'desktop' || type === 'laptop') {
-    return {
-      icon: Monitor,
-      label: 'Десктопное приложение',
-    }
-  }
-  return {
-    icon: Globe,
-    label: 'Веб',
-  }
-}
 
 const rowsForPage = computed(() => {
   const start = (currentPage.value - 1) * PAGE_SIZE
@@ -99,9 +52,9 @@ const fetchDevices = async () => {
   try {
     loading.value = true
     const response = await getDevices()
-    devices.value = response.map((d) => formatDeviceData(d))
-  } catch (e) {
-    logError('Не удалось загрузить сессии', e)
+    devices.value = response.map((device) => formatDeviceData(device))
+  } catch (error) {
+    logError('Не удалось загрузить сессии', error)
     toast.error('Не удалось загрузить сессии')
   } finally {
     loading.value = false
@@ -110,18 +63,26 @@ const fetchDevices = async () => {
 
 const handleRevoke = async (id) => {
   if (deletingDeviceId.value != null) return
+
+  const target = devices.value.find((device) => device.id === id)
+  if (target?.isCurrent) {
+    toast.warning('Нельзя завершить текущую сессию')
+    return
+  }
+
   try {
     deletingDeviceId.value = id
     await deleteDevice(id)
-    devices.value = devices.value.filter((d) => d.id !== id)
+    devices.value = devices.value.filter((device) => device.id !== id)
     toast.success('Сессия отозвана')
     const maxPage = Math.max(1, Math.ceil(devices.value.length / PAGE_SIZE) || 1)
     if (currentPage.value > maxPage) {
       currentPage.value = maxPage
     }
-  } catch (e) {
-    logError('Не удалось отозвать сессию', e)
-    toast.error('Не удалось отозвать сессию')
+  } catch (error) {
+    logError('Не удалось отозвать сессию', error)
+    const message = error.response?.data?.error || 'Не удалось отозвать сессию'
+    toast.error(message)
   } finally {
     deletingDeviceId.value = null
   }
@@ -180,38 +141,18 @@ onMounted(() => {
         <SpinnerLoading color="primary" />
       </div>
       <template v-else>
-        <div class="sessions__table-wrap">
-          <table class="sessions__table" aria-label="Активные сессии">
-            <thead>
-              <tr>
-                <th scope="col" class="sessions__th sessions__th--device">Устройство</th>
-                <th scope="col" class="sessions__th sessions__th--created">Создана</th>
-                <th scope="col" class="sessions__th sessions__th--action" />
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="device in rowsForPage" :key="device.id" class="sessions__tr">
-                <td class="sessions__td sessions__td--device">
-                  <span class="sessions__device">
-                    <component :is="sessionDisplay(device).icon" :size="18" class="sessions__device-icon" aria-hidden="true"/>
-                    <span class="sessions__device-label">{{ sessionDisplay(device).label }}</span>
-                  </span>
-                </td>
-                <td class="sessions__td sessions__td--created">
-                  {{ formatRelativeTime(device.createdAt) }}
-                </td>
-                <td class="sessions__td sessions__td--action">
-                  <button type="button" class="btn sessions__revoke" :disabled="deletingDeviceId === device.id" @click="handleRevoke(device.id)">
-                    {{ deletingDeviceId === device.id ? '...' : 'Отозвать' }}
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div v-if="paginationTotal === 0" class="sessions__empty text-muted small py-3 px-2">
+          Нет активных сессий
         </div>
 
-        <div v-if="!loading && paginationTotal === 0" class="sessions__empty text-muted small py-3 px-2">
-          Нет активных сессий
+        <div v-else class="sessions__list">
+          <SessionCard
+            v-for="device in rowsForPage"
+            :key="device.id"
+            :device="device"
+            :revoking="deletingDeviceId === device.id"
+            @revoke="handleRevoke"
+          />
         </div>
 
         <div v-if="paginationTotal > 0" class="sessions__footer">
@@ -232,7 +173,7 @@ onMounted(() => {
     </div>
 
     <p class="sessions__disclaimer text-muted small mt-2 mb-0">
-      Отзыв сессии может занять до 10 минут.
+      Отображаются только активные сессии. Отзыв завершает вход на выбранном устройстве сразу.
     </p>
 
     <ChangePasswordModal :show="showPasswordModal" @close="showPasswordModal = false" />
@@ -363,88 +304,9 @@ onMounted(() => {
   min-height: 120px;
 }
 
-.sessions__table-wrap {
-  overflow-x: auto;
-}
-
-.sessions__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-.sessions__th {
-  font-weight: 500;
-  font-size: 0.75rem;
-  color: var(--color-secondary-text);
-  text-align: left;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.sessions__th--created {
-  text-align: center;
-}
-
-.sessions__th--action {
-  width: 6.5rem;
-}
-
-.sessions__tr {
-  &:not(:last-child) .sessions__td {
-    border-bottom: 1px solid var(--color-border);
-  }
-}
-
-.sessions__td {
-  padding: 0.75rem 1rem;
-  vertical-align: middle;
-  color: var(--color-primary-text);
-}
-
-.sessions__td--created {
-  text-align: center;
-  color: var(--color-secondary-text);
-  font-size: 0.8125rem;
-}
-
-.sessions__td--action {
-  text-align: right;
-}
-
-.sessions__device {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.sessions__device-icon {
-  flex-shrink: 0;
-  opacity: 0.88;
-}
-
-.sessions__device-label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sessions__revoke {
-  font-size: 0.8125rem;
-  padding: 0.25rem 0.625rem;
-  border-radius: 0.375rem;
-  border: 1px solid var(--color-border);
-  background: var(--color-primary-background);
-  color: var(--color-primary-text);
-
-  &:hover:not(:disabled) {
-    background: var(--color-hover-background);
-  }
-
-  &:disabled {
-    opacity: 0.65;
-  }
+.sessions__list {
+  display: flex;
+  flex-direction: column;
 }
 
 .sessions__footer {

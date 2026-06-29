@@ -5,6 +5,7 @@ import ModalCenter from '@/components/ModalCenter.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AvatarBlock from '@/core/cms/adp/user/account/component/settings-panels/AvatarBlock.vue'
+import UserProfileFields from '@/core/cms/adp/user/account/component/settings-panels/UserProfileFields.vue'
 import AdminUserSecuritySection from '@/core/cms/adp/admin/UsersComponent/AdminUserSecuritySection.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import {
@@ -16,6 +17,11 @@ import {
   mapAdminUserToFormData,
   validateAdminProfileData,
 } from '@/core/cms/adp/admin/js/adminUserService.js'
+import {
+  USER_PROFILE_ALL_FIELDS,
+  buildUserProfilePayload,
+  applyProfileApiErrors,
+} from '@/core/cms/adp/js/userProfileForm.js'
 import { AssignRoleToUser } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
 const props = defineProps({
@@ -29,17 +35,7 @@ const emit = defineEmits(['update:show', 'saved', 'deleted'])
 
 const toast = useToast()
 const userStore = useUserStore()
-const BIO_MAX_LENGTH = 500
-const PROFILE_FIELDS = [
-  'email',
-  'first_name',
-  'last_name',
-  'middle_name',
-  'website',
-  'country',
-  'city',
-  'bio',
-]
+const PROFILE_FIELDS = USER_PROFILE_ALL_FIELDS
 
 const loading = ref(false)
 const saving = ref(false)
@@ -52,8 +48,6 @@ const selectedRoleId = ref('')
 const selectedGroupIds = ref([])
 const username = ref('')
 const passwordResetMode = ref('system')
-
-const bioCharCount = computed(() => (formData.value.bio || '').length)
 
 const displayName = computed(() => {
   const parts = [formData.value.last_name, formData.value.first_name, formData.value.middle_name]
@@ -137,10 +131,7 @@ const handleAvatarRemove = async () => {
 }
 
 const handleSave = async () => {
-  if (!props.userId || !selectedRoleId.value) {
-    toast.error('Выберите роль пользователя')
-    return
-  }
+  if (!props.userId) return
 
   saving.value = true
   errors.value = {}
@@ -152,25 +143,23 @@ const handleSave = async () => {
       return
     }
 
-    const dataToSend = Object.fromEntries(
-      PROFILE_FIELDS.map((field) => [field, formData.value[field]?.trim?.() ?? formData.value[field] ?? '']),
-    )
-
+    const dataToSend = buildUserProfilePayload(formData.value, PROFILE_FIELDS)
     await updateAdminUser(props.userId, dataToSend)
-    await AssignRoleToUser({
-      user_id: props.userId,
-      role_id: selectedRoleId.value,
-      role_group_ids: selectedGroupIds.value,
-    })
+
+    if (selectedRoleId.value) {
+      await AssignRoleToUser({
+        user_id: props.userId,
+        role_id: selectedRoleId.value,
+        role_group_ids: selectedGroupIds.value,
+      })
+    }
 
     toast.success('Настройки пользователя сохранены')
     emit('saved')
     handleClose()
   } catch (error) {
     logError('Ошибка сохранения пользователя:', error)
-    if (error.response?.data) {
-      errors.value = error.response.data
-    } else {
+    if (!applyProfileApiErrors(error, errors)) {
       toast.error('Не удалось сохранить настройки пользователя')
     }
   } finally {
@@ -220,72 +209,12 @@ const confirmDelete = async () => {
 
       <h2 class="admin-user-modal__section-title">Профиль</h2>
       <div class="profile-card">
-        <div class="profile-card__row">
-          <label class="profile-card__label" for="admin-user-email">Email</label>
-          <div class="profile-card__control">
-            <input id="admin-user-email" v-model="formData.email" type="email" class="form-control form-control-sm profile-card__input" :class="{ 'is-invalid': errors.email }" autocomplete="email" placeholder="email@example.com"/>
-            <div v-if="errors.email" class="invalid-feedback d-block">{{ errors.email }}</div>
-          </div>
-        </div>
-
-        <div class="profile-card__row">
-          <label class="profile-card__label" for="admin-user-last-name">Фамилия</label>
-          <div class="profile-card__control">
-            <input id="admin-user-last-name" v-model="formData.last_name" type="text" class="form-control form-control-sm profile-card__input" :class="{ 'is-invalid': errors.last_name }" autocomplete="family-name"/>
-            <div v-if="errors.last_name" class="invalid-feedback d-block">{{ errors.last_name }}</div>
-          </div>
-        </div>
-
-        <div class="profile-card__row">
-          <label class="profile-card__label" for="admin-user-first-name">Имя</label>
-          <div class="profile-card__control">
-            <input id="admin-user-first-name" v-model="formData.first_name" type="text" class="form-control form-control-sm profile-card__input" :class="{ 'is-invalid': errors.first_name }" autocomplete="given-name"/>
-            <div v-if="errors.first_name" class="invalid-feedback d-block">{{ errors.first_name }}</div>
-          </div>
-        </div>
-
-        <div class="profile-card__row">
-          <label class="profile-card__label" for="admin-user-middle-name">Отчество</label>
-          <div class="profile-card__control">
-            <input id="admin-user-middle-name" v-model="formData.middle_name" type="text" class="form-control form-control-sm profile-card__input" :class="{ 'is-invalid': errors.middle_name }" autocomplete="additional-name"/>
-            <div v-if="errors.middle_name" class="invalid-feedback d-block">{{ errors.middle_name }}</div>
-          </div>
-        </div>
-
-        <div class="profile-card__row">
-          <label class="profile-card__label" for="admin-user-website">Веб-сайт</label>
-          <div class="profile-card__control">
-            <input id="admin-user-website" v-model="formData.website" type="url" class="form-control form-control-sm profile-card__input" :class="{ 'is-invalid': errors.website }" autocomplete="url"/>
-            <div v-if="errors.website" class="invalid-feedback d-block">{{ errors.website }}</div>
-          </div>
-        </div>
-
-        <div class="profile-card__row">
-          <label class="profile-card__label" for="admin-user-country">Страна</label>
-          <div class="profile-card__control">
-            <input id="admin-user-country" v-model="formData.country" type="text" class="form-control form-control-sm profile-card__input" :class="{ 'is-invalid': errors.country }" autocomplete="country-name"/>
-            <div v-if="errors.country" class="invalid-feedback d-block">{{ errors.country }}</div>
-          </div>
-        </div>
-
-        <div class="profile-card__row">
-          <label class="profile-card__label" for="admin-user-city">Город</label>
-          <div class="profile-card__control">
-            <input id="admin-user-city" v-model="formData.city" type="text" class="form-control form-control-sm profile-card__input" :class="{ 'is-invalid': errors.city }" autocomplete="address-level2"/>
-            <div v-if="errors.city" class="invalid-feedback d-block">{{ errors.city }}</div>
-          </div>
-        </div>
-
-        <div class="profile-card__row profile-card__row--last">
-          <label class="profile-card__label" for="admin-user-bio">О себе</label>
-          <div class="profile-card__control">
-            <textarea id="admin-user-bio" v-model="formData.bio" rows="4" :maxlength="BIO_MAX_LENGTH" class="form-control form-control-sm profile-card__input profile-card__textarea" :class="{ 'is-invalid': errors.bio }"/>
-            <div class="profile-card__char-counter" :class="{ 'profile-card__char-counter--limit': bioCharCount >= BIO_MAX_LENGTH }">
-              {{ bioCharCount }}/{{ BIO_MAX_LENGTH }}
-            </div>
-            <div v-if="errors.bio" class="invalid-feedback d-block">{{ errors.bio }}</div>
-          </div>
-        </div>
+        <UserProfileFields
+          :fields="PROFILE_FIELDS"
+          :form-data="formData"
+          :errors="errors"
+          id-prefix="admin-user"
+        />
       </div>
 
       <h2 class="admin-user-modal__section-title">Роль и группы</h2>
@@ -293,12 +222,13 @@ const confirmDelete = async () => {
         <div class="profile-card__row">
           <label class="profile-card__label" for="admin-user-role">Роль</label>
           <div class="profile-card__control">
-            <select id="admin-user-role" v-model="selectedRoleId" class="form-select form-select-sm" required>
-              <option value="" disabled>Выберите роль</option>
+            <select id="admin-user-role" v-model="selectedRoleId" class="form-select form-select-sm">
+              <option value="">Без роли</option>
               <option v-for="role in roles" :key="role.id" :value="role.id">
                 {{ role.name }} ({{ role.role_type_display }})
               </option>
             </select>
+            <small class="text-muted">Роль можно назначить позже. Профиль сохраняется независимо от роли.</small>
           </div>
         </div>
 

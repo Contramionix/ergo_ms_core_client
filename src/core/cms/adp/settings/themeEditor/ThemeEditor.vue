@@ -8,6 +8,7 @@ import {
 import ColorPicker from './ColorPicker.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { apiClient } from '@/js/api/manager'
+import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { endpoints } from '@/js/api/endpoints'
 import { 
   getDefaultColors, 
@@ -401,10 +402,14 @@ const handleFileImport = async (event) => {
   if (!file) return
   
   try {
-    const formData = new FormData()
-    formData.append('file', file)
-    
-    const res = await apiClient.uploadFile(endpoints.themes.import, formData)
+    const uploadResult = await mediaApiClient.upload(file, {
+      targetDir: 'imports/themes',
+      allowedTypes: ['json'],
+    })
+
+    const res = await apiClient.post(endpoints.themes.import, {
+      file_path: uploadResult.path,
+    })
     
     if (res.success) {
       toast.success('Тема импортирована')

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-vue-next'
 import { apiClient } from '@/js/api/manager'
+import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { cmsEndpoints } from '@/core/cms/js/endpoints'
 import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
@@ -295,12 +296,15 @@ const startImport = async () => {
   importStatus.value = 'Запуск импорта...'
   
   try {
-    const formData = new FormData()
-    formData.append('file', selectedFile.value)
-    formData.append('skip_welcome_emails', skipWelcomeEmails.value.toString())
-    
-    // Запускаем Celery задачу
-    const response = await apiClient.post(cmsEndpoints.cms.importUsers, formData)
+    const uploadResult = await mediaApiClient.upload(selectedFile.value, {
+      targetDir: 'imports/users',
+      allowedTypes: ['xlsx', 'xls', 'csv'],
+    })
+
+    const response = await apiClient.post(cmsEndpoints.cms.importUsers, {
+      file_path: uploadResult.path,
+      skip_welcome_emails: skipWelcomeEmails.value,
+    })
     
     if (!response.data || !response.data.task_id) {
       throw new Error('Не получен task_id от сервера')

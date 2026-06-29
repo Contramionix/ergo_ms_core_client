@@ -1,5 +1,6 @@
 import { apiClient } from '../../../js/api/manager'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
+import { formatDateTime, getRelativeTime } from '@/js/utils/timeUtils.js'
 
 export const profileService = {
   // Получить полный профиль пользователя
@@ -156,21 +157,33 @@ export const profileService = {
   formatDeviceData(device) {
     if (!device) return null
 
+    const location = device.location || ''
+    const browser = device.browser || 'Неизвестно'
+    const os = device.os || 'Неизвестно'
+    const deviceTypeDisplay = device.device_type_display || device.device_name || 'Устройство'
+
     return {
       id: device.id,
       deviceType: device.device_type,
+      deviceTypeDisplay,
       deviceName: device.device_name,
+      browser,
+      os,
       ipAddress: device.ip_address,
-      city: device.city || 'Неизвестно',
-      country: device.country || 'Неизвестно',
+      city: device.city || '',
+      country: device.country || '',
+      location,
       isActive: device.is_active,
+      isCurrent: Boolean(device.is_current),
       lastActivity: device.last_activity,
       createdAt: device.created_at,
-      
-      // Вспомогательные поля для UI
       deviceIcon: this.getDeviceIcon(device.device_type),
-      isCurrentDevice: device.is_active, // можно дополнительно проверить по IP
-      formattedLastActivity: this.formatLastActivity(device.last_activity)
+      formattedLastActivity: getRelativeTime(device.last_activity) || '—',
+      formattedCreatedAt: formatDateTime(device.created_at) || '—',
+      subtitle: [deviceTypeDisplay, browser, os !== 'Неизвестно' ? os : null]
+        .filter(Boolean)
+        .join(' · '),
+      locationLine: location || null,
     }
   },
 
@@ -185,45 +198,6 @@ export const profileService = {
     return iconMap[deviceType] || 'Monitor'
   },
 
-  // Форматировать время последней активности
-  formatLastActivity(lastActivity) {
-    if (!lastActivity) return 'Никогда'
-    
-    const date = new Date(lastActivity)
-    const now = new Date()
-    const diff = now - date
-    
-    // Менее минуты
-    if (diff < 60000) {
-      return 'Сейчас'
-    }
-    
-    // Менее часа
-    if (diff < 3600000) {
-      const minutes = Math.floor(diff / 60000)
-      return `${minutes} мин. назад`
-    }
-    
-    // Менее дня
-    if (diff < 86400000) {
-      const hours = Math.floor(diff / 3600000)
-      return `${hours} ч. назад`
-    }
-    
-    // Более дня
-    const days = Math.floor(diff / 86400000)
-    if (days < 7) {
-      return `${days} дн. назад`
-    }
-    
-    // Форматированная дата
-    return date.toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
-  },
-
   // Валидация данных профиля
   validateProfileData(profileData) {
     const errors = {}
@@ -234,7 +208,7 @@ export const profileService = {
     }
 
     // Проверка телефона
-    if (profileData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(profileData.phone.replace(/\s/g, ''))) {
+    if (profileData.phone && !/^[\+]?[\d\s().-]{7,20}$/.test(String(profileData.phone).replace(/\s/g, ''))) {
       errors.phone = 'Некорректный формат телефона'
     }
 
