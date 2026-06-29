@@ -7,7 +7,7 @@ import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import AdminUserSettingsModal from '@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
-import { formatDateShort } from '@/js/utils/timeUtils.js'
+import { formatDateShort, formatDateTime } from '@/js/utils/timeUtils.js'
 import { GetAdminUsers, GetRoles, GetRoleGroupOptions, CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
 const router = useRouter()
@@ -36,6 +36,7 @@ const mapUserToRow = (user) => ({
   first_name: user.first_name || null,
   last_name: user.last_name || null,
   date_joined: user.date_joined || null,
+  last_login: user.last_login || null,
   role: user.role,
   role_groups: user.role_groups,
   avatar_url: user.avatar_url || null,
@@ -114,6 +115,12 @@ const columns = [
   {
     key: 'date_joined',
     label: 'Дата регистрации',
+    headerStyle: { textAlign: 'center' },
+    cellStyle: { textAlign: 'center' },
+  },
+  {
+    key: 'last_login',
+    label: 'Последняя активность',
     headerStyle: { textAlign: 'center' },
     cellStyle: { textAlign: 'center' },
   },
@@ -210,6 +217,10 @@ const getItemKey = (item) => item.user_id
 
       <template #cell-date_joined="{ item }">
         {{ item.date_joined ? formatDateShort(item.date_joined) : '—' }}
+      </template>
+
+      <template #cell-last_login="{ item }">
+        {{ item.last_login ? formatDateTime(item.last_login) : '—' }}
       </template>
 
       <template #cell-role="{ item }">
