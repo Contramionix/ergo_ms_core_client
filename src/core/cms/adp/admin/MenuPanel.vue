@@ -9,12 +9,12 @@
     </div>
 
     <div class="menu-panel__actions d-flex gap-3 mb-4 flex-wrap">
-      <button class="btn" @click="showAddModal"><LayersPlus :size="18" class="me-2" style="vertical-align: middle;" />Добавить элемент</button>
-      <button class="btn" @click="showAddSeparatorModal"><SeparatorHorizontal :size="18" class="me-2" style="vertical-align: middle;" />Добавить разделитель</button>
+      <button class="btn" :disabled="isSaving" @click="showAddModal"><LayersPlus :size="18" class="me-2" style="vertical-align: middle;" />Добавить элемент</button>
+      <button class="btn" :disabled="isSaving" @click="showAddSeparatorModal"><SeparatorHorizontal :size="18" class="me-2" style="vertical-align: middle;" />Добавить разделитель</button>
     </div>
 
     <UnsavedChangesToast :visible="hasUnsavedChanges" :saving="isSaving" title="Есть несохранённые изменения порядка" description="Сохраните или отмените изменения порядка элементов." cancel-label="Отменить" @save="saveAllChanges" @cancel="cancelChanges"/>
-    <UnsavedChangesToast :visible="showDeleteSeparatorToast" :saving="isDeletingSeparator" title="Удаление разделителя" description="Вы уверены, что хотите удалить этот разделитель?" cancel-label="Отмена" save-label="Удалить" saving-label="Удаление..." @save="executeDeleteSeparator" @cancel="cancelDeleteSeparator"/>  
+    <UnsavedChangesToast :visible="showDeleteSeparatorToast" :saving="isDeletingSeparator" :title="deleteSeparatorToastTitle" :description="deleteSeparatorToastDescription" cancel-label="Отмена" save-label="Удалить" saving-label="Удаление..." @save="executeDeleteSeparators" @cancel="cancelDeleteSeparators"/>  
     <UnsavedChangesToast :visible="showDeleteItemToast" :saving="isDeletingItem" title="Удаление элемента меню" description="Вы уверены, что хотите удалить этот элемент? Это также удалит все дочерние элементы." cancel-label="Отмена" save-label="Удалить" saving-label="Удаление..." @save="executeDeleteItem" @cancel="cancelDeleteItem"/>
 
     <div class="menu-panel__items">
@@ -81,8 +81,23 @@ const separators = ref([])
 const roles = ref([])
 const roleGroups = ref([])
 
-const showDeleteSeparatorToast = ref(false)
-const separatorToDelete = ref(null)
+const separatorsToDelete = ref([])
+
+const separatorsToDeleteIds = computed(() => new Set(separatorsToDelete.value.map(sep => sep.id)))
+
+const showDeleteSeparatorToast = computed(() => separatorsToDelete.value.length > 0)
+
+const deleteSeparatorToastTitle = computed(() =>
+  separatorsToDelete.value.length === 1 ? 'Удаление разделителя' : 'Удаление разделителей'
+)
+
+const deleteSeparatorToastDescription = computed(() => {
+  const count = separatorsToDelete.value.length
+  if (count === 1) {
+    return 'Вы уверены, что хотите удалить этот разделитель?'
+  }
+  return `Вы уверены, что хотите удалить ${count} разделителей?`
+})
 
 const showDeleteItemToast = ref(false)
 const itemToDelete = ref(null)
@@ -150,7 +165,7 @@ function combinedOrderEquals(a, b) {
 
 const currentCombinedOrderForUnsaved = computed(() => {
   const roots = itemToDelete.value ? menuItems.value : visibleMenuItems.value
-  const seps = separatorToDelete.value ? separators.value : visibleSeparators.value
+  const seps = separatorsToDelete.value.length > 0 ? separators.value : visibleSeparators.value
   return buildCombinedOrder(roots, seps)
 })
 
@@ -178,12 +193,9 @@ onBeforeRouteLeave((to, from, next) => {
   }
 })
 
-const visibleSeparators = computed(() => {
-  if (!separatorToDelete.value) {
-    return separators.value
-  }
-  return separators.value.filter(sep => sep.id !== separatorToDelete.value.id)
-})
+const visibleSeparators = computed(() =>
+  separators.value.filter(sep => !separatorsToDeleteIds.value.has(sep.id))
+)
 
 const visibleMenuItems = computed(() => {
   if (!itemToDelete.value) return menuItems.value
@@ -317,39 +329,59 @@ function handleSeparatorReorderFromList(reorderedSeparators) {
   separators.value.sort((a, b) => a.before_order - b.before_order)
 }
 
+function hasPendingOrderChanges() {
+  return hasUnsavedChanges.value
+    || pendingMenuReorder.value.length > 0
+    || pendingSeparatorReorder.value.length > 0
+}
+
+function collectAllMenuItemsForSave() {
+  const menuOrderMap = new Map()
+  const menuParentMap = new Map()
+  for (const item of pendingMenuReorder.value) {
+    menuOrderMap.set(item.id, item.order)
+    if (item.parent_id !== undefined) {
+      menuParentMap.set(item.id, item.parent_id)
+    }
+  }
+
+  const allItemsToSave = []
+
+  function collectItems(items, parentId = null) {
+    items.forEach((item) => {
+      allItemsToSave.push({
+        id: item.id,
+        order: menuOrderMap.get(item.id) ?? item.order,
+        parent_id: menuParentMap.get(item.id) ?? parentId
+      })
+      if (item.children?.length) collectItems(item.children, item.id)
+    })
+  }
+
+  collectItems(menuItems.value)
+  return allItemsToSave
+}
+
+function getSeparatorsToSave() {
+  if (pendingSeparatorReorder.value.length > 0) {
+    return pendingSeparatorReorder.value
+  }
+  return separators.value.map(sep => ({ id: sep.id, before_order: sep.before_order }))
+}
+
 async function saveAllChanges() {
   isSaving.value = true
   
   try {
-    if (pendingMenuReorder.value.length > 0) {
-      const menuOrderMap = new Map()
-      const menuParentMap = new Map()
-      for (const item of pendingMenuReorder.value) {
-        menuOrderMap.set(item.id, item.order)
-        if (item.parent_id !== undefined) {
-          menuParentMap.set(item.id, item.parent_id)
-        }
-      }
-      
-      const allItemsToSave = []
-      
-      function collectItems(items, parentId = null) {
-        items.forEach((item) => {
-          allItemsToSave.push({
-            id: item.id,
-            order: menuOrderMap.get(item.id) ?? item.order,
-            parent_id: menuParentMap.get(item.id) ?? parentId
-          })
-          if (item.children?.length) collectItems(item.children, item.id)
-        })
-      }
-      
-      collectItems(menuItems.value)
-      await reorderMenuItems(allItemsToSave)
+    const shouldSaveMenu = pendingMenuReorder.value.length > 0 || hasUnsavedChanges.value
+    const shouldSaveSep = pendingSeparatorReorder.value.length > 0 || hasUnsavedChanges.value
+
+    if (shouldSaveMenu) {
+      await reorderMenuItems(collectAllMenuItemsForSave())
     }
     
-    if (pendingSeparatorReorder.value.length > 0) {
-      for (const sep of pendingSeparatorReorder.value) {
+    if (shouldSaveSep) {
+      for (const sep of getSeparatorsToSave()) {
         await updateMenuSeparator(sep.id, { before_order: sep.before_order })
       }
     }
@@ -383,7 +415,16 @@ async function cancelChanges() {
   toast.info('Изменения порядка отменены')
 }
 
-function showAddModal() {
+async function ensureChangesSaved() {
+  await nextTick()
+  if (!hasPendingOrderChanges()) return true
+  await saveAllChanges()
+  await nextTick()
+  return !hasPendingOrderChanges()
+}
+
+async function showAddModal() {
+  if (!(await ensureChangesSaved())) return
   currentItem.value = null
   showItemModal.value = true
 }
@@ -468,7 +509,8 @@ function closeItemModal() {
   currentItem.value = null
 }
 
-function showAddSeparatorModal() {
+async function showAddSeparatorModal() {
+  if (!(await ensureChangesSaved())) return
   currentSeparator.value = null
   showSeparatorModal.value = true
 }
@@ -497,31 +539,38 @@ async function saveSeparator(separatorData) {
 }
 
 function confirmDeleteSeparator(separator) {
-  separatorToDelete.value = separator
-  showDeleteSeparatorToast.value = true
+  if (separatorsToDeleteIds.value.has(separator.id)) return
+  separatorsToDelete.value.push(separator)
 }
 
-async function executeDeleteSeparator() {
-  if (!separatorToDelete.value) return
-  
+async function executeDeleteSeparators() {
+  const queue = [...separatorsToDelete.value]
+  if (!queue.length) return
+
   isDeletingSeparator.value = true
   try {
-    await deleteMenuSeparator(separatorToDelete.value.id)
-    toast.success('Разделитель удалён')
+    for (const sep of queue) {
+      await deleteMenuSeparator(sep.id)
+    }
+    toast.success(
+      queue.length === 1
+        ? 'Разделитель удалён'
+        : `Удалено разделителей: ${queue.length}`
+    )
     await loadSeparators()
     syncInitialCombinedOrder()
     notifyMenuUpdated()
-    cancelDeleteSeparator()
+    cancelDeleteSeparators()
   } catch (error) {
     toast.error('Ошибка удаления: ' + error.message)
+    await loadSeparators()
   } finally {
     isDeletingSeparator.value = false
   }
 }
 
-function cancelDeleteSeparator() {
-  showDeleteSeparatorToast.value = false
-  separatorToDelete.value = null
+function cancelDeleteSeparators() {
+  separatorsToDelete.value = []
 }
 
 function closeSeparatorModal() {
