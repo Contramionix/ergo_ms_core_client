@@ -1,7 +1,12 @@
 import { ref, watch, markRaw } from 'vue'
 import { Sun, Moon, LaptopMinimal, Bell, Grid3x3, Languages } from 'lucide-vue-next'
-import { getUserId, registerUiSettingsReset } from './tokenStorage.js'
-
+import { getSessionUserId, registerUiSettingsReset } from './tokenStorage.js'
+import {
+  applyBootstrapThemeMode,
+  loadThemeFromLocalStorage,
+  resolveThemeMode,
+  writeThemePreference,
+} from '@/js/theme-manager.js'
 export const THEME_OPTIONS = [
   { id: 'light', name: 'Светлая', icon: markRaw(Sun) },
   { id: 'dark', name: 'Тёмная', icon: markRaw(Moon) },
@@ -20,92 +25,59 @@ export const LANGUAGE_OPTIONS = [
 const THEME_BASE_KEY = 'theme'
 const ACTION_BUTTON_BASE_KEY = 'actionButton'
 const LANGUAGE_BASE_KEY = 'language'
-const LEGACY_LAST_USER_KEY = '_uiLastUserId'
 
 const DEFAULT_THEME = 'auto'
 const DEFAULT_ACTION_BUTTON = 'notifications'
 const DEFAULT_LANGUAGE = 'ru'
 
-let _userId = getUserId()
-
-const userKey = (base) => (_userId ? `${base}_${_userId}` : base)
-
-const _read = (base) => {
-  if (_userId) {
-    return localStorage.getItem(`${base}_${_userId}`) ?? localStorage.getItem(base)
-  }
-  return localStorage.getItem(base)
-}
-
-try {
-  localStorage.removeItem(LEGACY_LAST_USER_KEY)
-} catch {
-  // ignore
-}
-
-const theme = ref(_read(THEME_BASE_KEY) || DEFAULT_THEME)
-const actionButton = ref(_read(ACTION_BUTTON_BASE_KEY) || DEFAULT_ACTION_BUTTON)
-const language = ref(_read(LANGUAGE_BASE_KEY) || DEFAULT_LANGUAGE)
+const theme = ref(localStorage.getItem(THEME_BASE_KEY) || DEFAULT_THEME)
+const actionButton = ref(localStorage.getItem(ACTION_BUTTON_BASE_KEY) || DEFAULT_ACTION_BUTTON)
+const language = ref(localStorage.getItem(LANGUAGE_BASE_KEY) || DEFAULT_LANGUAGE)
 
 const applyThemeToDom = (value) => {
-  const resolved =
-    value === 'auto'
-      ? window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light'
-      : value
-  document.documentElement.setAttribute('data-bs-theme', resolved)
+  const savedTheme = loadThemeFromLocalStorage()
+  const hasCustomTheme =
+    savedTheme?.colors && Object.keys(savedTheme.colors).some((key) => savedTheme.colors[key])
+
+  if (hasCustomTheme) {
+    document.documentElement.setAttribute('data-bs-theme', resolveThemeMode(value))
+    return
+  }
+
+  applyBootstrapThemeMode(value)
 }
 
-watch(theme, (val) => {
-  localStorage.setItem(userKey(THEME_BASE_KEY), val)
-  applyThemeToDom(val)
-})
+watch(
+  theme,
+  (val) => {
+    writeThemePreference(val)
+    applyThemeToDom(val)
+  },
+  { immediate: true },
+)
 
 watch(actionButton, (val) => {
-  localStorage.setItem(userKey(ACTION_BUTTON_BASE_KEY), val)
+  localStorage.setItem(ACTION_BUTTON_BASE_KEY, val)
 })
 
 watch(language, (val) => {
-  localStorage.setItem(userKey(LANGUAGE_BASE_KEY), val)
+  localStorage.setItem(LANGUAGE_BASE_KEY, val)
 })
 
 export function resetUserSettings() {
-  _userId = null
-  theme.value = DEFAULT_THEME
   actionButton.value = DEFAULT_ACTION_BUTTON
   language.value = DEFAULT_LANGUAGE
-  applyThemeToDom(DEFAULT_THEME)
 }
 
 registerUiSettingsReset(resetUserSettings)
 
 /**
  * Вызывается при входе/выходе пользователя.
- * Загружает личные настройки пользователя после инициализации userStore.
  */
 export function initUserSettings(userId) {
-  const normalizedId = userId != null ? String(userId) : null
-
-  if (!normalizedId) {
-    resetUserSettings()
-    return
-  }
-
-  if (normalizedId === _userId) return
-  _userId = normalizedId
-
-  const savedTheme = localStorage.getItem(userKey(THEME_BASE_KEY))
-  if (savedTheme) {
-    theme.value = savedTheme
-    applyThemeToDom(savedTheme)
-  }
-
-  actionButton.value = localStorage.getItem(userKey(ACTION_BUTTON_BASE_KEY)) || DEFAULT_ACTION_BUTTON
-  language.value = localStorage.getItem(userKey(LANGUAGE_BASE_KEY)) || DEFAULT_LANGUAGE
-
-  localStorage.removeItem(ACTION_BUTTON_BASE_KEY)
-  localStorage.removeItem(LANGUAGE_BASE_KEY)
+  if (userId != null) return
+  if (getSessionUserId()) return
+  resetUserSettings()
 }
 
 export function useUiSettings() {

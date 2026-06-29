@@ -7,7 +7,12 @@
  * Интегрирован с theme-manager.js для поддержки кастомных тем.
  */
 
-import { loadThemeFromLocalStorage, applyTheme, resetToInitialTheme } from './theme-manager.js'
+import {
+  loadThemeFromLocalStorage,
+  applyTheme,
+  resolveThemeMode,
+  readThemePreference,
+} from './theme-manager.js'
 
 ;(() => {
   'use strict'
@@ -15,18 +20,7 @@ import { loadThemeFromLocalStorage, applyTheme, resetToInitialTheme } from './th
   const getStoredTheme = () => localStorage.getItem('theme')
   const setStoredTheme = (theme) => localStorage.setItem('theme', theme)
 
-  const getPreferredTheme = () => {
-    const storedTheme = getStoredTheme()
-    if (storedTheme) {
-      return storedTheme
-    }
-
-    // Берём значение по умолчанию из env (VITE_DEFAULT_THEME), иначе 'light'
-    const envDefault = (import.meta?.env?.VITE_DEFAULT_THEME || 'light').toString().toLowerCase()
-    const allowed = ['light', 'dark', 'auto']
-    const fallback = 'light'
-    return allowed.includes(envDefault) ? envDefault : fallback
-  }
+  const getPreferredTheme = () => readThemePreference()
 
   /**
    * Устанавливает тему с учетом кастомных настроек
@@ -42,11 +36,7 @@ import { loadThemeFromLocalStorage, applyTheme, resetToInitialTheme } from './th
     }
     
     // Иначе используем стандартную логику
-    let actualMode = themeMode
-    
-    if (themeMode === 'auto') {
-      actualMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
+    const actualMode = resolveThemeMode(themeMode)
     
     // Устанавливаем атрибут Bootstrap
     document.documentElement.setAttribute('data-bs-theme', actualMode)
