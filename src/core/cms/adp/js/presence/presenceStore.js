@@ -12,6 +12,35 @@ const state = reactive({
 })
 
 const pendingBatches = new Map()
+const fetchQueue = new Set()
+let flushTimer = null
+const FLUSH_DELAY_MS = 16
+
+function flushFetchQueue() {
+  flushTimer = null
+  if (!fetchQueue.size) {
+    return
+  }
+
+  const ids = [...fetchQueue]
+  fetchQueue.clear()
+  void fetchBatch(ids)
+}
+
+export function enqueueFetch(userId) {
+  const id = normalizeUserId(userId)
+  if (!id || hasStatus(Number(id))) {
+    return
+  }
+
+  fetchQueue.add(Number(id))
+
+  if (flushTimer) {
+    return
+  }
+
+  flushTimer = setTimeout(flushFetchQueue, FLUSH_DELAY_MS)
+}
 
 function normalizeEntry(raw) {
   return {
@@ -116,6 +145,12 @@ export function seedFromUsers(users) {
 }
 
 export function resetPresenceStore() {
+  if (flushTimer) {
+    clearTimeout(flushTimer)
+    flushTimer = null
+  }
+  fetchQueue.clear()
+
   for (const key of Object.keys(state.entries)) {
     delete state.entries[key]
   }
@@ -128,6 +163,7 @@ export const presenceStore = {
   getStatus,
   hasStatus,
   fetchBatch,
+  enqueueFetch,
   seedFromUsers,
   reset: resetPresenceStore,
 }

@@ -1,6 +1,6 @@
 import { computed, ref, toValue, watch } from 'vue'
 
-import { fetchBatch, getStatus, hasStatus, presenceStore } from './presenceStore.js'
+import { enqueueFetch, getStatus, hasStatus, presenceStore } from './presenceStore.js'
 
 /**
  * Composable для отображения онлайн-статуса пользователя.
@@ -16,27 +16,32 @@ export function usePresenceStatus(userIdSource) {
   })
 
   const status = computed(() => getStatus(userId.value))
+  const isKnown = computed(() => userId.value != null && hasStatus(userId.value))
 
   watch(
     userId,
-    async (id) => {
+    (id) => {
       if (id == null || hasStatus(id)) {
+        isLoading.value = false
         return
       }
 
       isLoading.value = true
-      try {
-        await fetchBatch([id])
-      } finally {
-        isLoading.value = false
-      }
+      enqueueFetch(id)
     },
     { immediate: true },
   )
 
+  watch(isKnown, (known) => {
+    if (known) {
+      isLoading.value = false
+    }
+  })
+
   return {
     isOnline: computed(() => status.value.isOnline),
     lastSeen: computed(() => status.value.lastSeen),
+    isKnown,
     isLoading,
     presenceStore,
   }

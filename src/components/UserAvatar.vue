@@ -1,7 +1,17 @@
 <template>
-  <div class="user-avatar" :class="{ 'user-avatar--clickable': clickable }" :style="avatarStyle" :title="title">
-    <img v-if="hasCustomAvatar" :src="displayAvatarUrl" :alt="title" class="user-avatar-image" @error="onImageError" />
-    <DefaultAvatar v-else :size="size" :clickable="clickable" :title="title" :first-name="effectiveFirstName" :last-name="effectiveLastName"/>
+  <div class="user-avatar-wrap" :style="avatarStyle">
+    <div class="user-avatar" :class="{ 'user-avatar--clickable': clickable }" :title="title">
+      <img v-if="hasCustomAvatar" :src="displayAvatarUrl" :alt="title" class="user-avatar-image" @error="onImageError" />
+      <DefaultAvatar v-else :size="size" :clickable="clickable" :title="title" :first-name="effectiveFirstName" :last-name="effectiveLastName"/>
+    </div>
+    <PresenceIndicator
+      v-if="showOnlineStatus"
+      :visible="isKnown"
+      :is-online="isOnline"
+      :last-seen="lastSeen"
+      :show-tooltip="showPresenceTooltip"
+      :size="size"
+    />
   </div>
 </template>
 
@@ -9,6 +19,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import DefaultAvatar from './DefaultAvatar.vue'
+import PresenceIndicator from '@/core/cms/adp/components/PresenceIndicator.vue'
+import { usePresenceStatus } from '@/core/cms/adp/js/presence/usePresenceStatus.js'
 import { getUserPublicInfo, getCachedUserPublicInfo, invalidateUserPublicInfo, } from '@/js/userAvatar'
 
 const userStore = useUserStore()
@@ -45,7 +57,15 @@ const props = defineProps({
   lastName: {
     type: [String, null],
     default: null
-  }
+  },
+  showOnlineStatus: {
+    type: Boolean,
+    default: false
+  },
+  showPresenceTooltip: {
+    type: Boolean,
+    default: false
+  },
 })
 
 const loadedPublicInfo = ref(null)
@@ -67,6 +87,25 @@ const isCurrentUser = computed(() => {
   const storeUserId = Number(userStore.user?.id)
   return Number.isFinite(storeUserId) && storeUserId === normalizedUserId.value
 })
+
+const presenceUserId = computed(() => {
+  if (!props.showOnlineStatus) {
+    return null
+  }
+
+  if (normalizedUserId.value !== null) {
+    return normalizedUserId.value
+  }
+
+  if (isCurrentUser.value) {
+    const storeUserId = Number(userStore.user?.id)
+    return Number.isFinite(storeUserId) ? storeUserId : null
+  }
+
+  return null
+})
+
+const { isOnline, lastSeen, isKnown } = usePresenceStatus(presenceUserId)
 
 const effectiveFirstName = computed(() => {
   if (props.firstName) return props.firstName
@@ -164,15 +203,21 @@ async function onImageError() {
 </script>
 
 <style scoped lang="scss">
+.user-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .user-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   overflow: hidden;
   transition: all 0.2s ease;
   user-select: none;
-  flex-shrink: 0;
   
   &--clickable {
     cursor: pointer;
