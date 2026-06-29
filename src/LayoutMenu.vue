@@ -23,6 +23,7 @@ import { ref, computed, shallowRef, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { currentOffcanvasSidebarPage } from '@/js/useOffcanvasSidebarStore.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { ensurePresenceConnected } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import MenuList from '@/components/menu/MenuList.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
 import { accessDeniedState } from './js/accessDeniedState'
@@ -103,6 +104,9 @@ onMounted(async () => {
   updateMenuVisibilityImmediate()
   window.addEventListener('resize', updateMenuVisibility)
   await userStore.initializeUser()
+  if (userStore.isAuthenticated) {
+    ensurePresenceConnected()
+  }
 
   const plugins = []
   for (const loadPlugin of Object.values(layoutPluginGlob)) {

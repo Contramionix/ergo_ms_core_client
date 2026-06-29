@@ -5,6 +5,8 @@ import { apiClient } from '@/js/api/manager.js'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import { profileService } from '@/core/cms/js/profileService.js'
+import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
+import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
 import Cookies from 'js-cookie'
 
 export const useUserStore = defineStore('userStore', () => {
@@ -295,6 +297,8 @@ export const useUserStore = defineStore('userStore', () => {
 
   // Выход из системы
   const logout = () => {
+    resetPresenceConnection()
+    resetPresenceStore()
     resetUserState()
     isInitialized.value = false
     

@@ -2,6 +2,8 @@ import { apiClient } from '../../../../js/api/manager';
 import { endpoints } from '../../../../js/api/endpoints';
 import Cookies from 'js-cookie';
 import tokenService from '@/core/cms/js/tokenService'
+import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
+import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
 
 export const authService = {
     async login(username, password, rememberMe = false) {
@@ -82,6 +84,8 @@ export const authService = {
     },
     
     logout() {
+        resetPresenceConnection()
+        resetPresenceStore()
         tokenService.clear()
         
         // Очищаем активную организацию при выходе

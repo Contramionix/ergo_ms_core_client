@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { Settings, Upload, MailPlus } from 'lucide-vue-next'
@@ -9,9 +9,12 @@ import AdminUserSettingsModal from '@/core/cms/adp/admin/UsersComponent/AdminUse
 import UserAvatar from '@/components/UserAvatar.vue'
 import { formatDateShort, formatDateTime } from '@/js/utils/timeUtils.js'
 import { GetAdminUsers, GetRoles, GetRoleGroupOptions, CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { presenceStore, seedFromUsers } from '@/core/cms/adp/js/presence/presenceStore.js'
+import { useAdminPresenceFeed } from '@/core/cms/adp/admin/js/useAdminPresenceFeed.js'
 
 const router = useRouter()
 const toast = useToast()
+const { connect: connectAdminPresenceFeed, disconnect: disconnectAdminPresenceFeed } = useAdminPresenceFeed()
 const rows = ref([])
 const totalUsers = ref(0)
 const roles = ref([])
@@ -28,6 +31,24 @@ const currentPage = ref(1)
 
 let searchDebounceTimer = null
 
+watch(
+  () => presenceStore.state.entries,
+  (entries) => {
+    rows.value = rows.value.map((row) => {
+      const status = entries[String(row.user_id)]
+      if (!status) {
+        return row
+      }
+      return {
+        ...row,
+        is_online: status.isOnline,
+        last_seen: status.lastSeen,
+      }
+    })
+  },
+  { deep: true },
+)
+
 const mapUserToRow = (user) => ({
   user_id: user.user_id,
   user: user.full_name || user.username,
@@ -36,7 +57,8 @@ const mapUserToRow = (user) => ({
   first_name: user.first_name || null,
   last_name: user.last_name || null,
   date_joined: user.date_joined || null,
-  last_login: user.last_login || null,
+  is_online: Boolean(user.is_online),
+  last_seen: user.last_seen || null,
   role: user.role,
   role_groups: user.role_groups,
   avatar_url: user.avatar_url || null,
@@ -51,6 +73,7 @@ const loadUsers = async () => {
       search: searchQuery.value.trim() || undefined,
     })
     rows.value = (data.users || []).map(mapUserToRow)
+    seedFromUsers(data.users || [])
     totalUsers.value = data.total ?? rows.value.length
     if (data.page) {
       currentPage.value = data.page
@@ -78,6 +101,7 @@ onMounted(async () => {
     }
     hasAdminAccess.value = true
     await Promise.all([loadRefs(), loadUsers()])
+    connectAdminPresenceFeed()
   } catch (error) {
     logError('Ошибка проверки прав доступа или загрузки данных:', error)
     if (!hasAdminAccess.value) {
@@ -87,6 +111,10 @@ onMounted(async () => {
   } finally {
     isCheckingAccess.value = false
   }
+})
+
+onUnmounted(() => {
+  disconnectAdminPresenceFeed()
 })
 
 const handlePageChange = (page) => {
@@ -119,7 +147,7 @@ const columns = [
     cellStyle: { textAlign: 'center' },
   },
   {
-    key: 'last_login',
+    key: 'last_activity',
     label: 'Последняя активность',
     headerStyle: { textAlign: 'center' },
     cellStyle: { textAlign: 'center' },
@@ -219,8 +247,10 @@ const getItemKey = (item) => item.user_id
         {{ item.date_joined ? formatDateShort(item.date_joined) : '—' }}
       </template>
 
-      <template #cell-last_login="{ item }">
-        {{ item.last_login ? formatDateTime(item.last_login) : '—' }}
+      <template #cell-last_activity="{ item }">
+        <span v-if="item.is_online" class="presence-online">В сети</span>
+        <span v-else-if="item.last_seen">{{ formatDateTime(item.last_seen) }}</span>
+        <span v-else class="text-muted">—</span>
       </template>
 
       <template #cell-role="{ item }">
@@ -286,6 +316,22 @@ const getItemKey = (item) => item.user_id
 .btn-settings {
   &:hover {
     background-color: var(--color-hover-background);
+  }
+}
+
+.presence-online {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--bs-success, #198754);
+  font-weight: 500;
+
+  &::before {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background-color: currentColor;
   }
 }
 </style>
