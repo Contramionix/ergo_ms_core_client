@@ -63,7 +63,6 @@ export function clearTokens() {
 
   try {
     localStorage.removeItem('crm_active_organization')
-    localStorage.removeItem('_uiLastUserId')
   } catch {
     // ignore
   }
@@ -85,6 +84,12 @@ export function getUserId() {
   if (!access) return null
   const payload = decodePayload(access)
   return payload?.user_id ? String(payload.user_id) : null
+}
+
+export function getSessionUserId() {
+  const access = getAccess()
+  if (!access || isExpired(access)) return null
+  return getUserId()
 }
 
 export function getOrganizationId() {

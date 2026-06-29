@@ -13,6 +13,63 @@ import {
   getBootstrapByCategories as getBootstrapCategories
 } from './bootstrap-variables.js'
 
+const THEME_STORAGE_KEY = 'theme'
+
+export const THEME_MODES = ['light', 'dark', 'auto']
+
+/**
+ * Прочитать предпочтение темы из глобального ключа theme
+ * @returns {'light'|'dark'|'auto'}
+ */
+export function readThemePreference() {
+  const stored = localStorage.getItem(THEME_STORAGE_KEY)
+  if (stored && THEME_MODES.includes(stored)) {
+    return stored
+  }
+
+  const envDefault = (import.meta?.env?.VITE_DEFAULT_THEME || '').toString().toLowerCase()
+  if (envDefault && THEME_MODES.includes(envDefault)) {
+    return envDefault
+  }
+
+  return 'auto'
+}
+
+/**
+ * Сохранить предпочтение темы в глобальный ключ theme
+ * @param {'light'|'dark'|'auto'} mode
+ */
+export function writeThemePreference(mode) {
+  if (!THEME_MODES.includes(mode)) return
+  localStorage.setItem(THEME_STORAGE_KEY, mode)
+}
+
+/**
+ * Разрешить режим auto в light/dark по системным настройкам
+ * @param {'light'|'dark'|'auto'} mode
+ * @returns {'light'|'dark'}
+ */
+export function resolveThemeMode(mode) {
+  if (mode === 'auto') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+  return mode
+}
+
+/**
+ * Применить Bootstrap-тему к документу (без кастомных цветов редактора)
+ * @param {'light'|'dark'|'auto'} mode
+ */
+export function applyBootstrapThemeMode(mode) {
+  const resolved = resolveThemeMode(mode)
+  document.documentElement.setAttribute('data-bs-theme', resolved)
+
+  const styleElement = document.getElementById('custom-theme-styles')
+  if (styleElement) {
+    styleElement.textContent = ''
+  }
+}
+
 // Маппинг переменных (--color-*)
 const COLOR_VAR_MAP = {
   headerBackground: '--color-header-background',
@@ -172,7 +229,7 @@ export function previewTheme(theme) {
 export function getCurrentThemeMode() {
   const stored = localStorage.getItem('theme')
   if (!stored) {
-    return 'light'
+    return resolveThemeMode('auto')
   }
   if (stored === 'auto') {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
