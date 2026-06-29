@@ -6,6 +6,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll, getPermissionRules } from '@/modules/index.js'
 import { checkRouteAdpAccess, hasAnyModulePermission, checkGlobalAdminAccess } from '@/core/cms/adp/js/accessControl'
+import tokenService from '@/core/cms/js/tokenService'
 import { accessDeniedState } from './accessDeniedState'
 
 const organizationGuardModules = import.meta.glob(
@@ -77,6 +78,10 @@ async function checkRouteAccess(to) {
     const ruleMatches = rule.match(to)
 
     if (ruleMatches) {
+      if (rule.skipWithoutOrganization && !tokenService.getOrganizationId()) {
+        continue
+      }
+
       const hasAccess = await hasAnyModulePermission(rule.module, rule.permissions)
 
       if (!hasAccess) {
