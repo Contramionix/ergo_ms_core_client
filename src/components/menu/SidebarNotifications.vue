@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
 import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
+import NotificationActions from '@/core/notifications/components/NotificationActions.vue'
 import { moduleManager } from '@/modules/index.js'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 
@@ -101,6 +102,9 @@ function iconFor(item) {
 }
 
 async function activate(notification) {
+  if (notification?.actions_state === 'pending' && Array.isArray(notification?.actions) && notification.actions.length) {
+    return
+  }
   await markRead(notification.id)
 
   if (notification.route?.name) {
@@ -165,6 +169,7 @@ function goToFullList() {
             <div class="notifications-item__content">
               <div class="notifications-item__title">{{ item.title }}</div>
               <div v-if="item.body" class="notifications-item__body">{{ item.body }}</div>
+              <NotificationActions :notification="item" compact @click.stop />
               <div class="notifications-item__meta">
                 <span v-if="item.source_module" class="notifications-item__source">
                   {{ item.source_module }}

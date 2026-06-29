@@ -5,6 +5,7 @@ import { Bell, BellOff, Check, CheckCheck, ExternalLink, RefreshCw } from 'lucid
 import { moduleManager } from '@/modules/index.js'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
 import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
+import NotificationActions from '@/core/notifications/components/NotificationActions.vue'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 
 const router = useRouter()
@@ -67,6 +68,9 @@ function formatNotificationDate(value) {
 }
 
 function hasTarget(item) {
+  if (item?.actions_state === 'pending' && Array.isArray(item?.actions) && item.actions.length) {
+    return false
+  }
   return Boolean(item?.route?.name) || Boolean(item?.link_url)
 }
 
@@ -185,6 +189,7 @@ onMounted(async () => {
               <span class="notifications-item__date text-muted">{{ formatNotificationDate(item.created_at) }}</span>
             </div>
             <div v-if="item.body" class="notifications-item__body">{{ item.body }}</div>
+            <NotificationActions :notification="item" />
             <div class="notifications-item__meta">
               <span v-if="item.source_module" class="notifications-item__source">{{ item.source_module }}</span>
               <span v-if="item.event_key" class="notifications-item__event">{{ item.event_key }}</span>

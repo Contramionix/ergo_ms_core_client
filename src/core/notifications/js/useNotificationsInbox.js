@@ -76,6 +76,35 @@ async function loadSidebar() {
   }
 }
 
+function applyNotificationUpdate(notification) {
+  if (!notification?.id) return
+  const inItems = items.value.find((n) => n.id === notification.id)
+  const inSidebar = sidebarItems.value.find((n) => n.id === notification.id)
+  if (inItems) Object.assign(inItems, notification)
+  if (inSidebar) Object.assign(inSidebar, notification)
+}
+
+async function executeAction(id, actionId) {
+  try {
+    const resp = await notificationsApi.executeAction(id, actionId)
+    const data = resp?.data ?? resp
+    if (data?.success && data.notification) {
+      applyNotificationUpdate(data.notification)
+      if (typeof data.unread_count === 'number') {
+        unreadCount.value = data.unread_count
+      }
+    }
+    return data
+  } catch (e) {
+    logError('executeAction:', e)
+    return { success: false }
+  }
+}
+
+export async function executeNotificationAction(id, actionId) {
+  return executeAction(id, actionId)
+}
+
 async function markRead(id) {
   const target = findNotification(id)
   if (!target || target.is_read) return
@@ -224,6 +253,7 @@ export function useNotificationsInbox() {
     loadSidebar,
     markRead,
     markAllRead,
+    executeAction,
     disconnect,
     reset,
   }

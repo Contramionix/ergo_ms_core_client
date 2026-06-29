@@ -20,6 +20,10 @@ export const notificationsApi = {
     return apiClient.post(ep.markAllRead, {})
   },
 
+  executeAction(id, actionId) {
+    return apiClient.post(ep.executeAction(id), { action_id: actionId })
+  },
+
   getPreferences() {
     return apiClient.get(ep.preferences)
   },
