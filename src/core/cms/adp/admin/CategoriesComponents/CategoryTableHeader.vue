@@ -1,18 +1,13 @@
 <script setup>
-import ModalCenter from '@/components/ModalCenter.vue'
 import SubmitForm from '@/core/cms/adp/admin/CategoriesComponents/SubmitCategory.vue'
 import { Plus } from 'lucide-vue-next'
 import { ref } from 'vue'
 
-const AddCategoryRef = ref(null)
+const showAddModal = ref(false)
 const emit = defineEmits(['updateCategories'])
 
 const updateCategories = () => {
   emit('updateCategories')
-}
-
-const closemodal = () => {
-  AddCategoryRef.value.close()
 }
 </script>
 
@@ -27,13 +22,11 @@ const closemodal = () => {
       />
     </div>
     <div class="actions-wrapper">
-      <button class="btn btn-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#roleAdd">
+      <button class="btn btn-primary d-flex align-items-center gap-2" type="button" @click="showAddModal = true">
         <Plus :size="16" />
         <span>Добавить роль</span>
       </button>
-      <ModalCenter title="Добавить новую роль" modalId="roleAdd" @closemodal="closemodal()">
-        <SubmitForm @addCategory="updateCategories" ref="AddCategoryRef" />
-      </ModalCenter>
+      <SubmitForm v-model:visible="showAddModal" modal-id="roleAdd" @add-category="updateCategories" />
     </div>
   </div>
 </template>

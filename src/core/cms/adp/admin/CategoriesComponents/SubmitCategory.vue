@@ -1,14 +1,33 @@
 <script setup>
 import { ref, computed } from 'vue'
+import ModalCenter from '@/components/ModalCenter.vue'
 import { CreateRole } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
-const emit = defineEmits(['addCategory'])
+const props = defineProps({
+  visible: { type: Boolean, default: false },
+  modalId: { type: String, default: 'roleAdd' },
+})
+
+const emit = defineEmits(['update:visible', 'addCategory'])
 
 const name = ref('')
 const description = ref('')
-
+const isSubmitting = ref(false)
 const showErrorName = ref(false)
 const DEFAULT_ROLE_TYPE = 'user'
+
+const formId = computed(() => `${props.modalId}-form`)
+
+const resetForm = () => {
+  name.value = ''
+  description.value = ''
+  showErrorName.value = false
+}
+
+const closeModal = () => {
+  resetForm()
+  emit('update:visible', false)
+}
 
 const submitForm = async () => {
   showErrorName.value = !name.value.trim()
@@ -17,59 +36,45 @@ const submitForm = async () => {
     return
   }
 
-  await CreateRole({
-    name: name.value.trim(),
-    role_type: DEFAULT_ROLE_TYPE,
-    description: description.value || ''
-  })
+  try {
+    isSubmitting.value = true
+    await CreateRole({
+      name: name.value.trim(),
+      role_type: DEFAULT_ROLE_TYPE,
+      description: description.value || '',
+    })
 
-  emit('addCategory')
-  name.value = ''
-  description.value = ''
+    emit('addCategory')
+    resetForm()
+    emit('update:visible', false)
+  } finally {
+    isSubmitting.value = false
+  }
 }
-
-const canDismiss = computed(() => name.value.trim() !== '')
-
-const close = () => {
-  name.value = ''
-  description.value = ''
-}
-
-defineExpose({ close })
 </script>
 
 <template>
-  <form @submit.prevent="submitForm" novalidate>
-    <div class="form-floating mb-3" v-auto-animate>
-      <input
-        type="text"
-        id="nameInput"
-        class="form-control"
-        v-model="name"
-        :class="{ 'is-invalid': showErrorName }"
-        placeholder="Введите название роли"
-      />
-      <label for="nameInput">Введите название роли</label>
-      <div v-if="showErrorName" class="invalid-feedback">Название обязательно для заполнения.</div>
-    </div>
+  <ModalCenter :modal-id="modalId" standalone :visible="visible" title="Добавить новую роль" size="md" scrollable @closemodal="closeModal">
+    <form :id="formId" @submit.prevent="submitForm" novalidate>
+      <div class="form-floating mb-3" v-auto-animate>
+        <input type="text" id="nameInput" class="form-control" v-model="name" :class="{ 'is-invalid': showErrorName }" placeholder="Введите название роли"/>
+        <label for="nameInput">Введите название роли</label>
+        <div v-if="showErrorName" class="invalid-feedback">Название обязательно для заполнения.</div>
+      </div>
 
-    <div class="form-floating mb-3" v-auto-animate>
-      <textarea
-        id="descriptionInput"
-        class="form-control"
-        style="height: 100px"
-        v-model="description"
-        placeholder="Описание роли"
-      ></textarea>
-      <label for="descriptionInput">Описание роли</label>
-    </div>
+      <div class="form-floating mb-3" v-auto-animate>
+        <textarea id="descriptionInput" class="form-control" style="height: 100px" v-model="description" placeholder="Описание роли"></textarea>
+        <label for="descriptionInput">Описание роли</label>
+      </div>
+    </form>
 
-    <div class="mt-3 text-end">
-      <button type="submit" class="btn btn-primary" :data-bs-dismiss="canDismiss ? 'modal' : ''">
-        Добавить
+    <template #footer>
+      <button type="button" class="btn btn-secondary" :disabled="isSubmitting" @click="closeModal">
+        Отмена
       </button>
-    </div>
-  </form>
+      <button type="submit" :form="formId" class="btn btn-primary" :disabled="isSubmitting">
+        {{ isSubmitting ? 'Сохранение...' : 'Добавить' }}
+      </button>
+    </template>
+  </ModalCenter>
 </template>
-
-<style scoped lang="scss"></style>

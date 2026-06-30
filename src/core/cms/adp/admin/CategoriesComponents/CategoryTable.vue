@@ -1,7 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { Settings, Trash2 } from 'lucide-vue-next'
-import ModalCenter from '@/components/ModalCenter.vue'
 import ChangeCategoryForm from '@/core/cms/adp/admin/CategoriesComponents/SubmitCategoryChange.vue'
 import { DeleteRole } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
@@ -52,8 +51,15 @@ const totalPages = computed(() => {
   return Math.ceil(filteredRows.value.length / props.rowsPerPage)
 })
 
+const showEditModal = ref(false)
+
 const changeCategory = () => {
   emit('updateCategories')
+}
+
+const openEditModal = row => {
+  changingRow(row)
+  showEditModal.value = true
 }
 
 const deleteRole = async (roleId) => {
@@ -90,9 +96,7 @@ const deleteRole = async (roleId) => {
               <div class="actions-cell">
                 <button
                   class="btn-action btn-action--edit"
-                  data-bs-toggle="modal"
-                  data-bs-target="#roleEdit"
-                  @click="changingRow(row)"
+                  @click="openEditModal(row)"
                   type="button"
                   aria-label="Изменить роль"
                 >
@@ -136,9 +140,12 @@ const deleteRole = async (roleId) => {
       </button>
     </div>
 
-    <ModalCenter title="Редактировать роль" modalId="roleEdit">
-      <ChangeCategoryForm @changeCategory="changeCategory()" :row="rowSelected" />
-    </ModalCenter>
+    <ChangeCategoryForm
+      v-model:visible="showEditModal"
+      modal-id="roleEdit"
+      :row="rowSelected"
+      @change-category="changeCategory()"
+    />
   </div>
 </template>
 

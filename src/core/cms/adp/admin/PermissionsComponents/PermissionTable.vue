@@ -1,7 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { Pencil, Trash2 } from 'lucide-vue-next'
-import ModalCenter from '@/components/ModalCenter.vue'
 import ChangePermissionForm from '@/core/cms/adp/admin/PermissionsComponents/SubmitPermissionChange.vue'
 import { DeletePolicy } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
@@ -17,9 +16,15 @@ const props = defineProps({
 const emit = defineEmits(['updatePermissions'])
 const data = ref(props.rows)
 const rowSelected = ref({})
+const showEditModal = ref(false)
 
 const changingRow = row => {
   rowSelected.value = { ...row }
+}
+
+const openEditModal = row => {
+  changingRow(row)
+  showEditModal.value = true
 }
 
 watch(
@@ -91,30 +96,12 @@ const getActionBadgeClass = action => {
           <td>{{ row.priority }}</td>
           <td>
             <div class="d-flex align-items-center gap-2">
-              <button
-                class="btn btn-sm btn-icon btn-outline-primary"
-                data-bs-toggle="modal"
-                data-bs-target="#policyEdit"
-                @click="changingRow(row)"
-                title="Изменить"
-              >
+              <button class="btn btn-sm btn-icon btn-outline-primary" @click="openEditModal(row)" title="Изменить">
                 <Pencil :size="14" />
               </button>
-              <button
-                class="btn btn-sm btn-icon btn-outline-danger"
-                @click="deletePermission(row.id)"
-                title="Удалить"
-              >
+              <button class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(row.id)" title="Удалить">
                 <Trash2 :size="14" />
               </button>
-              <ModalCenter title="Редактировать политику" modalId="policyEdit">
-                <ChangePermissionForm
-                  :row="rowSelected"
-                  :roles="roles"
-                  :roleGroups="roleGroups"
-                  @changePermission="changePermission()"
-                />
-              </ModalCenter>
             </div>
           </td>
         </tr>
@@ -126,6 +113,8 @@ const getActionBadgeClass = action => {
       </tbody>
     </table>
   </div>
+
+  <ChangePermissionForm v-model:visible="showEditModal" modal-id="policyEdit" :row="rowSelected" :roles="roles" :role-groups="roleGroups" @change-permission="changePermission()"/>
 </template>
 
 <style scoped lang="scss">
