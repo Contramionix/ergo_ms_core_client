@@ -63,6 +63,15 @@ export default {
       "requiresGlobalAdmin": true
     }
   },
+  "OnlineUsersPanel": {
+    "path": "/admin-panel/users/online",
+    "component": "@/core/cms/adp/admin/OnlineUsers.vue",
+    "meta": {
+      "title": "Пользователи онлайн",
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
+    }
+  },
   "InvitationsPanel": {
     "path": "/admin-panel/invitations",
     "component": "@/core/cms/adp/admin/Invitations.vue",

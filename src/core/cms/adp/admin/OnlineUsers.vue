@@ -2,12 +2,12 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { Settings, Upload, MailPlus, Radio } from 'lucide-vue-next'
+import { Settings, Users } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import AdminUserSettingsModal from '@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
-import { formatDateShort, formatDateTime } from '@/js/utils/timeUtils.js'
+import { formatDateShort } from '@/js/utils/timeUtils.js'
 import { GetAdminUsers, GetRoles, GetRoleGroupOptions, CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import { presenceStore, seedFromUsers } from '@/core/cms/adp/js/presence/presenceStore.js'
 import { useAdminPresenceFeed } from '@/core/cms/adp/admin/js/useAdminPresenceFeed.js'
@@ -30,24 +30,7 @@ const searchQuery = ref('')
 const currentPage = ref(1)
 
 let searchDebounceTimer = null
-
-watch(
-  () => presenceStore.state.entries,
-  (entries) => {
-    rows.value = rows.value.map((row) => {
-      const status = entries[String(row.user_id)]
-      if (!status) {
-        return row
-      }
-      return {
-        ...row,
-        is_online: status.isOnline,
-        last_seen: status.lastSeen,
-      }
-    })
-  },
-  { deep: true },
-)
+let presenceReloadTimer = null
 
 const mapUserToRow = (user) => ({
   user_id: user.user_id,
@@ -68,6 +51,7 @@ const loadUsers = async () => {
   isLoadingUsers.value = true
   try {
     const data = await GetAdminUsers({
+      online_only: true,
       page: currentPage.value,
       page_size: rowsPerPage.value,
       search: searchQuery.value.trim() || undefined,
@@ -79,12 +63,57 @@ const loadUsers = async () => {
       currentPage.value = data.page
     }
   } catch (error) {
-    logError('Ошибка загрузки пользователей:', error)
-    toast.error('Не удалось загрузить список пользователей')
+    logError('Ошибка загрузки пользователей онлайн:', error)
+    toast.error('Не удалось загрузить список пользователей онлайн')
   } finally {
     isLoadingUsers.value = false
   }
 }
+
+const schedulePresenceReload = () => {
+  if (presenceReloadTimer) {
+    clearTimeout(presenceReloadTimer)
+  }
+  presenceReloadTimer = setTimeout(() => {
+    loadUsers()
+  }, 500)
+}
+
+watch(
+  () => presenceStore.state.entries,
+  (entries) => {
+    const prevCount = rows.value.length
+    rows.value = rows.value
+      .filter((row) => {
+        const status = entries[String(row.user_id)]
+        return status ? status.isOnline : row.is_online
+      })
+      .map((row) => {
+        const status = entries[String(row.user_id)]
+        if (!status) {
+          return row
+        }
+        return {
+          ...row,
+          is_online: status.isOnline,
+          last_seen: status.lastSeen,
+        }
+      })
+
+    if (rows.value.length !== prevCount) {
+      totalUsers.value = Math.max(0, totalUsers.value - (prevCount - rows.value.length))
+    }
+
+    const rowIds = new Set(rows.value.map((row) => row.user_id))
+    const hasNewOnline = Object.entries(entries).some(
+      ([id, status]) => status?.isOnline && !rowIds.has(Number(id)),
+    )
+    if (hasNewOnline) {
+      schedulePresenceReload()
+    }
+  },
+  { deep: true },
+)
 
 const loadRefs = async () => {
   roles.value = await GetRoles()
@@ -115,6 +144,12 @@ onMounted(async () => {
 
 onUnmounted(() => {
   disconnectAdminPresenceFeed()
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+  if (presenceReloadTimer) {
+    clearTimeout(presenceReloadTimer)
+  }
 })
 
 const handlePageChange = (page) => {
@@ -143,12 +178,6 @@ const columns = [
   {
     key: 'date_joined',
     label: 'Дата регистрации',
-    headerStyle: { textAlign: 'center' },
-    cellStyle: { textAlign: 'center' },
-  },
-  {
-    key: 'last_activity',
-    label: 'Последняя активность',
     headerStyle: { textAlign: 'center' },
     cellStyle: { textAlign: 'center' },
   },
@@ -185,16 +214,8 @@ const handleUserDeleted = async () => {
   await loadUsers()
 }
 
-const goToImport = () => {
-  router.push({ name: 'ImportUsersPanel' })
-}
-
-const goToInvitations = () => {
-  router.push({ name: 'InvitationsPanel' })
-}
-
-const goToOnline = () => {
-  router.push({ name: 'OnlineUsersPanel' })
+const goToAllUsers = () => {
+  router.push({ name: 'UsersPanel' })
 }
 
 const getItemKey = (item) => item.user_id
@@ -207,30 +228,22 @@ const getItemKey = (item) => item.user_id
 
     <div v-else-if="hasAdminAccess" class="card">
       <div class="admin-section-header">
-        <h2>Пользователи</h2>
-        <p class="text-muted">Управление учётными записями, ролями и группами пользователей системы</p>
+        <h2>Пользователи онлайн</h2>
+        <p class="text-muted">Список пользователей с активным подключением к системе</p>
       </div>
 
       <div class="mb-1">
         <div class="row align-items-center gap-3 gap-sm-0">
           <div class="col-12 col-sm-auto">
-            <h4 class="mb-0">Список пользователей</h4>
+            <h4 class="mb-0">Список пользователей онлайн</h4>
           </div>
           <div class="col-12 col-sm d-flex flex-wrap align-items-center justify-content-center justify-content-sm-end gap-3">
             <label class="mb-0">
               <input type="search" class="form-control" placeholder="Поиск..." @input="handleSearchQuery($event.target.value)"/>
             </label>
-            <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToOnline">
-              <Radio :size="18" class="flex-shrink-0" />
-              <span>Онлайн</span>
-            </button>
-            <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToInvitations">
-              <MailPlus :size="18" class="flex-shrink-0" />
-              <span>Приглашения</span>
-            </button>
-            <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToImport">
-              <Upload :size="18" class="flex-shrink-0" />
-              <span>Импорт пользователей</span>
+            <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToAllUsers">
+              <Users :size="18" class="flex-shrink-0" />
+              <span>Все пользователи</span>
             </button>
           </div>
         </div>
@@ -243,7 +256,7 @@ const getItemKey = (item) => item.user_id
     <DataTable v-else :items="rows" :columns="columns" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalUsers" :get-item-key="getItemKey" :enable-pagination="true" @update:current-page="handlePageChange">
       <template #cell-user="{ item }">
         <div class="d-flex align-items-center gap-3">
-          <UserAvatar :user-id="item.user_id" :custom-avatar-url="item.avatar_url" :title="item.user" :size="32" :first-name="item.first_name" :last-name="item.last_name" show-online-status show-presence-tooltip />
+          <UserAvatar :user-id="item.user_id" :custom-avatar-url="item.avatar_url" :title="item.user" :size="40" :first-name="item.first_name" :last-name="item.last_name" show-online-status show-presence-tooltip />
           <div class="d-flex flex-column">
             <span class="fw-semibold">{{ item.user }}</span>
             <small class="text-muted">{{ item.username }} · {{ item.email }}</small>
@@ -253,12 +266,6 @@ const getItemKey = (item) => item.user_id
 
       <template #cell-date_joined="{ item }">
         {{ item.date_joined ? formatDateShort(item.date_joined) : '—' }}
-      </template>
-
-      <template #cell-last_activity="{ item }">
-        <span v-if="item.is_online" class="presence-online">В сети</span>
-        <span v-else-if="item.last_seen">{{ formatDateTime(item.last_seen) }}</span>
-        <span v-else class="text-muted">—</span>
       </template>
 
       <template #cell-role="{ item }">
@@ -324,22 +331,6 @@ const getItemKey = (item) => item.user_id
 .btn-settings {
   &:hover {
     background-color: var(--color-hover-background);
-  }
-}
-
-.presence-online {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  color: var(--bs-success, #198754);
-  font-weight: 500;
-
-  &::before {
-    content: '';
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 50%;
-    background-color: currentColor;
   }
 }
 </style>

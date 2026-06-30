@@ -43,12 +43,29 @@ const groupId = computed(() => {
   return `${props.item.routeName || props.item.page || props.item.name}_${props.level}`
 })
 
-// Объединяем children и list в один массив для отображения
+// Объединяем children и list в один массив для отображения, сохраняя порядок по order
 const allChildren = computed(() => {
-  return [
-    ...(props.item.list || []),
-    ...(props.item.children || [])
-  ]
+  const allItems = []
+
+  if (props.item.list) {
+    props.item.list.forEach((item) => {
+      allItems.push({ ...item, isList: true })
+    })
+  }
+
+  if (props.item.children) {
+    props.item.children.forEach((item) => {
+      allItems.push({ ...item, isList: false })
+    })
+  }
+
+  allItems.sort((a, b) => {
+    const orderA = a.order !== undefined ? a.order : (a.isList ? 999999 : 0)
+    const orderB = b.order !== undefined ? b.order : (b.isList ? 999999 : 0)
+    return orderA - orderB
+  })
+
+  return allItems
 })
 
 // Проверка, является ли элемент группой (имеет дочерние элементы)
