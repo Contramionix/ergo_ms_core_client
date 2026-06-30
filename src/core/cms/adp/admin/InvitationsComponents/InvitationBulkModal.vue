@@ -260,7 +260,7 @@ const previewStatusClass = {
             </p>
             <button
               type="button"
-              class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2"
+              class="btn btn-primary d-inline-flex align-items-center gap-2"
               :disabled="disabled || isCreating || isSending"
               @click="handleDownloadTemplate"
             >
@@ -297,11 +297,12 @@ const previewStatusClass = {
                 </div>
                 <button
                   type="button"
-                  class="btn btn-outline-danger btn-sm"
+                  class="btn-action btn-action--delete"
+                  aria-label="Удалить файл"
                   :disabled="isParsing || isCreating || isSending"
                   @click.stop="removeFile"
                 >
-                  <XCircle :size="16" />
+                  <XCircle :size="15" />
                 </button>
               </div>
             </template>
@@ -361,11 +362,12 @@ const previewStatusClass = {
                     <td>
                       <button
                         type="button"
-                        class="btn btn-sm invitation-btn invitation-btn--copy d-inline-flex align-items-center gap-1"
+                        class="btn-action"
+                        title="Копировать ссылку"
+                        aria-label="Копировать ссылку"
                         @click.stop="copyInviteLink(item.invite_url)"
                       >
-                        <Copy :size="14" />
-                        <span>Копировать ссылку</span>
+                        <Copy :size="15" />
                       </button>
                     </td>
                   </tr>
@@ -397,7 +399,7 @@ const previewStatusClass = {
         <div class="modal-footer flex-wrap gap-2">
           <button
             type="button"
-            class="btn invitation-modal-btn invitation-modal-btn--cancel"
+            class="btn btn-secondary"
             :disabled="isCreating || isSending"
             @click="close"
           >
@@ -407,7 +409,7 @@ const previewStatusClass = {
           <button
             v-if="canCreate"
             type="button"
-            class="btn invitation-modal-btn invitation-modal-btn--copy"
+            class="btn btn-primary"
             :disabled="disabled || isCreating || isParsing"
             @click="createInvitations"
           >
@@ -431,6 +433,8 @@ const previewStatusClass = {
 </template>
 
 <style scoped lang="scss">
+@import '../admin-page.scss';
+
 .upload-zone {
   border: 2px dashed #dee2e6;
   border-radius: 8px;
@@ -470,55 +474,5 @@ const previewStatusClass = {
 .invitation-email-text {
   cursor: text;
   word-break: break-all;
-}
-
-.invitation-btn {
-  font-weight: 500;
-  border-width: 1px;
-  border-style: solid;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-
-  &--copy {
-    color: var(--color-accent);
-    border-color: var(--color-accent);
-    background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-
-    &:hover:not(:disabled) {
-      color: #fff;
-      background-color: var(--color-accent);
-      border-color: var(--color-accent);
-    }
-  }
-}
-
-.invitation-modal-btn {
-  font-weight: 500;
-  border-width: 1px;
-  border-style: solid;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-
-  &--cancel {
-    color: var(--color-primary-text);
-    border-color: var(--color-border);
-    background-color: var(--color-secondary-background);
-
-    &:hover:not(:disabled) {
-      background-color: var(--color-hover-background);
-      border-color: var(--color-primary-text);
-      color: var(--color-primary-text);
-    }
-  }
-
-  &--copy {
-    color: var(--color-accent);
-    border-color: var(--color-accent);
-    background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-
-    &:hover:not(:disabled) {
-      color: #fff;
-      background-color: var(--color-accent);
-      border-color: var(--color-accent);
-    }
-  }
 }
 </style>

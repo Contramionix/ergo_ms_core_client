@@ -362,18 +362,18 @@ export async function getAvailableIcons() {
 }
 
 /**
- * Синхронизирует пункты меню из routes.js модулей
+ * Восстанавливает пункты меню из populate-функций миграций (restore_menu)
  * @returns {Promise<Object>}
  */
-export async function syncMenusFromModules() {
-  const response = await apiClient.post(endpoints.cms.menu.sync, {})
+export async function restoreMenuFromMigrations() {
+  const response = await apiClient.post(endpoints.cms.menu.restore, {})
 
   if (response.success) {
     clearMenuCache()
     return response.data
   }
 
-  throw new Error(response.error || response.message || 'Ошибка синхронизации меню')
+  throw new Error(response.error || response.message || 'Ошибка восстановления меню')
 }
 
 /**

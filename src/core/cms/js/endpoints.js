@@ -107,7 +107,7 @@ export const cmsEndpoints = {
             separatorDetail: (id) => `cms/adp/menu/separators/${id}/`,
             accessLog: 'cms/adp/menu/access-log/',
             availableIcons: 'cms/adp/menu/available-icons/',
-            sync: 'cms/adp/menu/sync/',
+            restore: 'cms/adp/menu/restore/',
         }
     },
     themes: {

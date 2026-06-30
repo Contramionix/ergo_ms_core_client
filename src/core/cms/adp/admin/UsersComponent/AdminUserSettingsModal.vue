@@ -249,9 +249,9 @@ const confirmDelete = async () => {
 
       <h2 class="admin-user-modal__section-title admin-user-modal__section-title--danger">Опасная зона</h2>
       <div class="profile-card profile-card--danger">
-        <div class="profile-card__row profile-card__row--last">
+        <div class="profile-card__row profile-card__row--danger profile-card__row--last">
           <div class="profile-card__label-block">
-            <span class="profile-card__label">Удаление</span>
+            <span class="profile-card__label">Удалить пользователя</span>
             <span class="profile-card__hint">
               Удаление учётной записи необратимо. Все сессии пользователя будут завершены.
             </span>
@@ -264,7 +264,7 @@ const confirmDelete = async () => {
               @click="requestDelete"
             >
               <span v-if="deleting">Удаление...</span>
-              <span v-else>Удалить пользователя</span>
+              <span v-else>Удалить</span>
             </button>
             <small v-if="isCurrentUser" class="text-muted profile-card__inline-warning">
               Нельзя удалить собственную учётную запись.
@@ -348,6 +348,34 @@ const confirmDelete = async () => {
   border-bottom: none;
 }
 
+.profile-card__row--danger {
+  align-items: center;
+  padding-block: 0.875rem;
+
+  .profile-card__label-block {
+    padding-top: 0;
+    justify-content: center;
+
+    .profile-card__label {
+      color: var(--color-primary-text);
+      font-weight: 600;
+    }
+  }
+
+  .profile-card__control--actions {
+    padding-top: 0;
+    justify-content: center;
+  }
+
+  .profile-card__inline-warning {
+    margin-top: 0;
+  }
+
+  @media (max-width: 575.98px) {
+    align-items: stretch;
+  }
+}
+
 .profile-card__label {
   flex: 0 0 auto;
   min-width: 6.5rem;
@@ -370,6 +398,10 @@ const confirmDelete = async () => {
   min-width: 6.5rem;
   max-width: 40%;
   padding-top: 0.35rem;
+
+  .profile-card__label {
+    padding-top: 0;
+  }
 
   @media (max-width: 575.98px) {
     max-width: none;

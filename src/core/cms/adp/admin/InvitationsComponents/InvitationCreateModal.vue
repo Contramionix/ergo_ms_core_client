@@ -133,12 +133,12 @@ const submit = async (sendEmail) => {
           </div>
         </div>
         <div class="modal-footer flex-wrap gap-2">
-          <button type="button" class="btn invitation-modal-btn invitation-modal-btn--cancel" :disabled="isSubmitting" @click="close">
+          <button type="button" class="btn btn-secondary" :disabled="isSubmitting" @click="close">
             Отмена
           </button>
           <button
             type="button"
-            class="btn invitation-modal-btn invitation-modal-btn--copy d-inline-flex align-items-center gap-2"
+            class="btn btn-primary d-inline-flex align-items-center gap-2"
             :disabled="isSubmitting || disabled"
             @click="submit(false)"
           >
@@ -159,36 +159,3 @@ const submit = async (sendEmail) => {
     </div>
   </div>
 </template>
-
-<style scoped lang="scss">
-.invitation-modal-btn {
-  font-weight: 500;
-  border-width: 1px;
-  border-style: solid;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-
-  &--cancel {
-    color: var(--color-primary-text);
-    border-color: var(--color-border);
-    background-color: var(--color-secondary-background);
-
-    &:hover:not(:disabled) {
-      background-color: var(--color-hover-background);
-      border-color: var(--color-primary-text);
-      color: var(--color-primary-text);
-    }
-  }
-
-  &--copy {
-    color: var(--color-accent);
-    border-color: var(--color-accent);
-    background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-
-    &:hover:not(:disabled) {
-      color: #fff;
-      background-color: var(--color-accent);
-      border-color: var(--color-accent);
-    }
-  }
-}
-</style>

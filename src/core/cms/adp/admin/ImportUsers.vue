@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-vue-next'
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2, ArrowLeft } from 'lucide-vue-next'
 import { apiClient } from '@/js/api/manager'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { cmsEndpoints } from '@/core/cms/js/endpoints'
@@ -371,20 +371,30 @@ const getLogClass = (level) => {
   <div v-if="isCheckingAccess" class="d-flex justify-content-center align-items-center loading-container">
       <SpinnerLoading color="primary" />
     </div>
-    <div v-else-if="hasAdminAccess" class="card">
-      <div class="card-body">
-        <nav class="breadcrumb-nav mb-4" aria-label="breadcrumb">
-          <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="#" @click.prevent="goBack">Пользователи</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Импорт</li>
-          </ol>
-        </nav>
-      <div v-if="savedTaskId && !isImporting && !importResults" class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
-        <span>Есть незавершённый импорт. Вы можете продолжить отслеживание.</span>
-        <button type="button" class="btn btn-warning btn-sm" @click="resumeImport">Продолжить отслеживание</button>
+    <div v-else-if="hasAdminAccess" class="admin-page">
+      <div class="page-header">
+        <h1 class="page-title">Импорт пользователей</h1>
+        <p class="page-subtitle">Загрузка учётных записей из файла Excel или CSV</p>
       </div>
-      <h5 class="mb-3">Импорт пользователей</h5>
-      <div class="alert alert-info mb-4">
+
+      <div class="content-card">
+        <button
+          type="button"
+          class="btn btn-primary d-inline-flex align-items-center gap-2 align-self-start"
+          @click="goBack"
+        >
+          <ArrowLeft :size="16" />
+          <span>К пользователям</span>
+        </button>
+
+      <div v-if="savedTaskId && !isImporting && !importResults" class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 mb-0">
+        <span>Есть незавершённый импорт. Вы можете продолжить отслеживание.</span>
+        <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2" @click="resumeImport">
+          Продолжить отслеживание
+        </button>
+      </div>
+
+      <div class="alert alert-info mb-0">
         <strong>Требования к файлу:</strong>
         <ul class="mb-0 mt-2">
           <li>Формат: Excel (.xlsx, .xls) или CSV (.csv)</li>
@@ -408,7 +418,14 @@ const getLogClass = (level) => {
               <p class="mb-0 fw-medium">{{ selectedFile.name }}</p>
               <p class="mb-0 text-muted small">{{ formatFileSize(selectedFile.size) }}</p>
             </div>
-            <button type="button" class="btn btn-outline-danger btn-sm" @click.stop="removeFile"><XCircle :size="18" /></button>
+            <button
+              type="button"
+              class="btn-action btn-action--delete"
+              aria-label="Удалить файл"
+              @click.stop="removeFile"
+            >
+              <XCircle :size="15" />
+            </button>
           </div>
         </template>
       </div>
@@ -421,8 +438,8 @@ const getLogClass = (level) => {
         </div>
         
         <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2" :disabled="!selectedFile || isImporting" @click="startImport">
-          <Loader2 v-if="isImporting" :size="18" class="spinner" />
-          <Upload v-else :size="18" />
+          <Loader2 v-if="isImporting" :size="16" class="spinner" />
+          <Upload v-else :size="16" />
           <span>{{ isImporting ? 'Импортирование...' : 'Начать импорт' }}</span>
         </button>
       </div>
@@ -498,27 +515,10 @@ const getLogClass = (level) => {
 </template>
 
 <style scoped lang="scss">
+@import './admin-page.scss';
+
 .loading-container {
   min-height: 400px;
-}
-
-.breadcrumb-nav {
-  .breadcrumb {
-    font-size: 0.875rem;
-  }
-
-  .breadcrumb-item a {
-    color: var(--color-accent);
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-
-  .breadcrumb-item.active {
-    color: var(--color-secondary-text);
-  }
 }
 
 .upload-zone {

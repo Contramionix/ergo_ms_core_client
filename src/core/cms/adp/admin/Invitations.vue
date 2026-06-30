@@ -288,79 +288,80 @@ const handleClearConfirm = async () => {
       <SpinnerLoading color="primary" />
     </div>
 
-    <div v-else-if="hasAdminAccess" class="card">
-      <button
-        type="button"
-        class="btn btn-link back-to-users px-0 mb-3 d-inline-flex align-items-center gap-2"
-        @click="goBack"
-      >
-        <ArrowLeft :size="18" />
-        <span>К пользователям</span>
-      </button>
+    <div v-else-if="hasAdminAccess" class="admin-page">
+      <div class="page-header">
+        <h1 class="page-title">Приглашения</h1>
+        <p class="page-subtitle">Создавайте ссылки вручную или загружайте список email из Excel для массовой рассылки</p>
+      </div>
 
-    <div v-if="!invitationModeEnabled" class="alert alert-warning d-flex align-items-start gap-2">
+      <div class="content-card">
+        <button
+          type="button"
+          class="btn btn-primary d-inline-flex align-items-center gap-2 align-self-start"
+          @click="goBack"
+        >
+          <ArrowLeft :size="16" />
+          <span>К пользователям</span>
+        </button>
+
+    <div v-if="!invitationModeEnabled" class="alert alert-warning d-flex align-items-start gap-2 mb-0">
       <AlertCircle :size="18" class="flex-shrink-0 mt-1" />
       <div>
         Режим регистрации по приглашениям не включён.
-        Установите <code>API_REGISTRATION_MODE=invitation</code> в <code>.env</code> и перезапустите API.
+        Измените настройки сервера.
       </div>
     </div>
 
-    <div class="row align-items-center gap-3 gap-sm-0 mb-3">
-      <div class="col-12 col-sm-auto">
-        <h4 class="mb-1">Приглашения на регистрацию</h4>
-        <p class="text-muted mb-0 small">
-          Создавайте ссылки вручную или загружайте список email из Excel для массовой рассылки.
-        </p>
-        <p v-if="!isLoading && invitationModeEnabled" class="text-muted mb-0 small invitations-summary">
-          {{ listSummary }} · {{ rowsPerPage }} на странице
-        </p>
+    <p v-if="!isLoading && invitationModeEnabled" class="text-muted mb-0 small invitations-summary">
+      {{ listSummary }} · {{ rowsPerPage }} на странице
+    </p>
+
+    <div class="table-header">
+      <div class="search-wrapper">
+        <input
+          type="search"
+          class="form-control search-input"
+          placeholder="Поиск по email..."
+          @input="handleSearchQuery($event.target.value)"
+        />
       </div>
-      <div class="col-12 col-sm d-flex flex-wrap align-items-center justify-content-center justify-content-sm-end gap-2">
-        <label class="mb-0">
-          <input
-            type="search"
-            class="form-control"
-            placeholder="Поиск по email..."
-            @input="handleSearchQuery($event.target.value)"
-          />
-        </label>
+      <div class="actions-wrapper">
         <button
           type="button"
-          class="btn btn-outline-danger d-inline-flex align-items-center gap-2"
+          class="btn btn-primary d-flex align-items-center gap-2"
           :disabled="!invitationModeEnabled || isLoading || inactiveCount === 0"
           title="Удалить использованные, истёкшие и отозванные приглашения"
           @click="openClearConfirm('inactive')"
         >
-          <Trash2 :size="18" />
-          <span class="d-none d-md-inline">Очистить неактивные</span>
+          <Trash2 :size="16" />
+          <span>Очистить неактивные</span>
         </button>
         <button
           type="button"
-          class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
+          class="btn btn-primary d-flex align-items-center gap-2"
           :disabled="!invitationModeEnabled || isLoading || totalAll === 0"
           title="Удалить все приглашения, включая ожидающие"
           @click="openClearConfirm('all')"
         >
-          <Trash2 :size="18" />
-          <span class="d-none d-lg-inline">Очистить все</span>
+          <Trash2 :size="16" />
+          <span>Очистить все</span>
         </button>
         <button
           type="button"
-          class="btn btn-outline-primary d-inline-flex align-items-center gap-2"
+          class="btn btn-primary d-flex align-items-center gap-2"
           :disabled="!invitationModeEnabled"
           @click="openBulkModal"
         >
-          <FileSpreadsheet :size="18" />
+          <FileSpreadsheet :size="16" />
           <span>Загрузить из Excel</span>
         </button>
         <button
           type="button"
-          class="btn btn-primary d-inline-flex align-items-center gap-2"
+          class="btn btn-primary d-flex align-items-center gap-2"
           :disabled="!invitationModeEnabled"
           @click="openCreateModal"
         >
-          <MailPlus :size="18" />
+          <MailPlus :size="16" />
           <span>Одно приглашение</span>
         </button>
       </div>
@@ -386,11 +387,12 @@ const handleClearConfirm = async () => {
           <span class="invitation-email-text">{{ item.email }}</span>
           <button
             type="button"
-            class="btn btn-sm btn-link p-0 invitation-email-copy"
+            class="btn-action"
             title="Скопировать email"
+            aria-label="Скопировать email"
             @click.stop="copyEmail(item.email)"
           >
-            <Copy :size="14" />
+            <Copy :size="15" />
           </button>
         </div>
       </template>
@@ -406,36 +408,36 @@ const handleClearConfirm = async () => {
       </template>
 
       <template #cell-actions="{ item }">
-        <div class="d-inline-flex flex-wrap justify-content-end gap-2 invitation-actions">
+        <div class="actions-cell">
           <button
             type="button"
-            class="btn btn-sm invitation-btn invitation-btn--copy d-inline-flex align-items-center gap-1"
+            class="btn-action"
             :disabled="item.status === 'revoked'"
             :title="item.status === 'revoked' ? 'Ссылка недоступна: приглашение отозвано' : 'Скопировать ссылку на регистрацию'"
+            aria-label="Скопировать ссылку"
             @click.stop="copyInviteLink(item)"
           >
-            <Copy :size="14" />
-            <span class="d-none d-xl-inline">Ссылка</span>
+            <Copy :size="15" />
           </button>
           <button
             v-if="item.status === 'pending'"
             type="button"
-            class="btn btn-sm invitation-btn invitation-btn--mail d-inline-flex align-items-center gap-1"
+            class="btn-action"
             title="Отправить письмо с приглашением"
+            aria-label="Отправить письмо"
             @click.stop="handleResend(item)"
           >
-            <Mail :size="14" />
-            <span class="d-none d-xl-inline">Письмо</span>
+            <Mail :size="15" />
           </button>
           <button
             v-if="item.status === 'pending'"
             type="button"
-            class="btn btn-sm invitation-btn invitation-btn--revoke d-inline-flex align-items-center gap-1"
+            class="btn-action btn-action--delete"
             title="Отозвать приглашение"
+            aria-label="Отозвать приглашение"
             @click.stop="handleRevoke(item)"
           >
-            <Ban :size="14" />
-            <span class="d-none d-xl-inline">Отозвать</span>
+            <Ban :size="15" />
           </button>
         </div>
       </template>
@@ -467,27 +469,19 @@ const handleClearConfirm = async () => {
       @cancel="closeConfirmDialog"
       @close="closeConfirmDialog"
     />
+      </div>
   </div>
 </template>
 
 <style scoped lang="scss">
+@import './admin-page.scss';
+
 .loading-container {
   min-height: 400px;
 }
 
-.back-to-users {
-  color: var(--color-accent);
-  text-decoration: none;
-  font-weight: 500;
-
-  &:hover {
-    color: var(--color-accent);
-    opacity: 0.85;
-  }
-}
-
 .invitations-summary {
-  margin-top: 0.25rem;
+  margin-top: 0;
 }
 
 .invitation-email-cell {
@@ -498,74 +492,5 @@ const handleClearConfirm = async () => {
   user-select: text;
   cursor: text;
   word-break: break-all;
-}
-
-.invitation-email-copy {
-  flex-shrink: 0;
-  color: var(--color-accent);
-  line-height: 1;
-
-  &:hover {
-    color: var(--color-accent);
-    opacity: 0.85;
-  }
-}
-
-@media (max-width: 1199px) {
-  .invitation-actions :deep(.btn-sm) {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-  }
-}
-
-.invitation-btn {
-  font-weight: 500;
-  border-width: 1px;
-  border-style: solid;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-
-  &--copy {
-    color: var(--color-accent);
-    border-color: var(--color-accent);
-    background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-
-    &:hover:not(:disabled) {
-      color: #fff;
-      background-color: var(--color-accent);
-      border-color: var(--color-accent);
-    }
-
-    &:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-      color: var(--color-secondary-text);
-      border-color: var(--color-border);
-      background-color: var(--color-secondary-background);
-    }
-  }
-
-  &--mail {
-    color: var(--bs-primary);
-    border-color: var(--bs-primary);
-    background-color: color-mix(in srgb, var(--bs-primary) 12%, transparent);
-
-    &:hover {
-      color: #fff;
-      background-color: var(--bs-primary);
-      border-color: var(--bs-primary);
-    }
-  }
-
-  &--revoke {
-    color: var(--bs-danger);
-    border-color: var(--bs-danger);
-    background-color: color-mix(in srgb, var(--bs-danger) 12%, transparent);
-
-    &:hover {
-      color: #fff;
-      background-color: var(--bs-danger);
-      border-color: var(--bs-danger);
-    }
-  }
 }
 </style>

@@ -9,11 +9,11 @@
     </div>
 
     <div class="menu-panel__actions d-flex gap-3 mb-4 flex-wrap">
-      <button class="btn" :disabled="isSaving || isSyncing" @click="showAddModal"><LayersPlus :size="18" class="me-2" style="vertical-align: middle;" />Добавить элемент</button>
-      <button class="btn" :disabled="isSaving || isSyncing" @click="showAddSeparatorModal"><SeparatorHorizontal :size="18" class="me-2" style="vertical-align: middle;" />Добавить разделитель</button>
-      <button class="btn btn-outline-secondary" :disabled="isSaving || isSyncing" @click="handleSyncMenus">
-        <span v-if="isSyncing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-        {{ isSyncing ? 'Синхронизация...' : 'Синхронизировать с модулями' }}
+      <button class="btn" :disabled="isSaving || isRestoring" @click="showAddModal"><LayersPlus :size="18" class="me-2" style="vertical-align: middle;" />Добавить элемент</button>
+      <button class="btn" :disabled="isSaving || isRestoring" @click="showAddSeparatorModal"><SeparatorHorizontal :size="18" class="me-2" style="vertical-align: middle;" />Добавить разделитель</button>
+      <button class="btn btn-outline-secondary" :disabled="isSaving || isRestoring" @click="handleRestoreMenu">
+        <span v-if="isRestoring" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+        {{ isRestoring ? 'Восстановление...' : 'Восстановить из миграций' }}
       </button>
     </div>
 
@@ -26,9 +26,9 @@
         <SpinnerLoading loading-text="Загрузка..." color="primary" />
       </div>
       <div v-else-if="menuItems.length === 0" class="alert alert-info d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-        <span>Элементы меню не найдены. Синхронизируйте пункты из routes.js модулей.</span>
-        <button class="btn btn-primary" :disabled="isSyncing" @click="handleSyncMenus">
-          {{ isSyncing ? 'Синхронизация...' : 'Синхронизировать с модулями' }}
+        <span>Элементы меню не найдены. Восстановите пункты из миграций ядра и модулей.</span>
+        <button class="btn btn-primary" :disabled="isRestoring" @click="handleRestoreMenu">
+          {{ isRestoring ? 'Восстановление...' : 'Восстановить из миграций' }}
         </button>
       </div>
       <div v-else>
@@ -69,7 +69,7 @@ import {
   deleteMenuSeparator,
   clearMenuCache,
   reorderMenuItems,
-  syncMenusFromModules
+  restoreMenuFromMigrations
 } from '@/core/cms/js/menuService.js'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
@@ -82,7 +82,7 @@ const expandAllGroups = ref(false)
 
 const isLoading = ref(false)
 const isSaving = ref(false)
-const isSyncing = ref(false)
+const isRestoring = ref(false)
 const isDeletingSeparator = ref(false)
 const isDeletingItem = ref(false)
 const menuItems = ref([])
@@ -252,22 +252,22 @@ async function loadMenuItems() {
   }
 }
 
-async function handleSyncMenus() {
-  if (isSyncing.value) {
+async function handleRestoreMenu() {
+  if (isRestoring.value) {
     return
   }
 
-  isSyncing.value = true
+  isRestoring.value = true
   try {
-    await syncMenusFromModules()
+    await restoreMenuFromMigrations()
     notifyMenuUpdated()
     await Promise.all([loadMenuItems(), loadSeparators()])
-    toast.success('Меню синхронизировано с модулями')
+    toast.success('Меню восстановлено из миграций')
   } catch (error) {
-    logError('[MenuPanel] Sync error:', error)
-    toast.error(error.message || 'Не удалось синхронизировать меню')
+    logError('[MenuPanel] Restore menu error:', error)
+    toast.error(error.message || 'Не удалось восстановить меню')
   } finally {
-    isSyncing.value = false
+    isRestoring.value = false
   }
 }
 

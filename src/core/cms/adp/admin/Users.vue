@@ -205,36 +205,37 @@ const getItemKey = (item) => item.user_id
       <SpinnerLoading color="primary" />
     </div>
 
-    <div v-else-if="hasAdminAccess" class="card">
-      <div class="admin-section-header">
-        <h2>Пользователи</h2>
-        <p class="text-muted">Управление учётными записями, ролями и группами пользователей системы</p>
+    <div v-else-if="hasAdminAccess" class="admin-page">
+      <div class="page-header">
+        <h1 class="page-title">Пользователи</h1>
+        <p class="page-subtitle">Управление учётными записями, ролями и группами пользователей системы</p>
       </div>
 
-      <div class="mb-1">
-        <div class="row align-items-center gap-3 gap-sm-0">
-          <div class="col-12 col-sm-auto">
-            <h4 class="mb-0">Список пользователей</h4>
+      <div class="content-card">
+        <div class="table-header">
+          <div class="search-wrapper">
+            <input
+              type="search"
+              class="form-control search-input"
+              placeholder="Поиск по пользователям..."
+              @input="handleSearchQuery($event.target.value)"
+            />
           </div>
-          <div class="col-12 col-sm d-flex flex-wrap align-items-center justify-content-center justify-content-sm-end gap-3">
-            <label class="mb-0">
-              <input type="search" class="form-control" placeholder="Поиск..." @input="handleSearchQuery($event.target.value)"/>
-            </label>
-            <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToOnline">
-              <Radio :size="18" class="flex-shrink-0" />
+          <div class="actions-wrapper">
+            <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @click="goToOnline">
+              <Radio :size="16" />
               <span>Онлайн</span>
             </button>
-            <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToInvitations">
-              <MailPlus :size="18" class="flex-shrink-0" />
+            <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @click="goToInvitations">
+              <MailPlus :size="16" />
               <span>Приглашения</span>
             </button>
-            <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center gap-2" @click="goToImport">
-              <Upload :size="18" class="flex-shrink-0" />
+            <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @click="goToImport">
+              <Upload :size="16" />
               <span>Импорт пользователей</span>
             </button>
           </div>
         </div>
-      </div>
 
     <div v-if="isLoadingUsers" class="d-flex justify-content-center align-items-center py-5">
       <SpinnerLoading color="primary" />
@@ -275,56 +276,29 @@ const getItemKey = (item) => item.user_id
       </template>
 
       <template #cell-actions="{ item }">
-        <div class="d-flex justify-content-end">
-          <button type="button" class="btn btn-sm btn-settings user-action-btn" @click="openUserSettings(item)">
-            <Settings size="18" />
+        <div class="actions-cell">
+          <button
+            type="button"
+            class="btn-action btn-action--edit"
+            aria-label="Настройки пользователя"
+            @click="openUserSettings(item)"
+          >
+            <Settings :size="15" />
           </button>
         </div>
       </template>
     </DataTable>
 
     <AdminUserSettingsModal v-model:show="showUserSettings" :user-id="selectedUserId" :roles="roles" :role-groups="roleGroups" @saved="handleUserSaved" @deleted="handleUserDeleted"/>
+      </div>
   </div>
 </template>
 
 <style scoped lang="scss">
+@import './admin-page.scss';
+
 .loading-container {
   min-height: 400px;
-}
-
-.admin-section-header {
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--color-border);
-
-  h2 {
-    margin-bottom: 0.25rem;
-    color: var(--color-primary-text);
-    font-size: 1.5rem;
-    font-weight: 600;
-  }
-
-  p {
-    margin-bottom: 0;
-    font-size: 0.875rem;
-  }
-}
-
-:deep(.table tbody tr) {
-  .user-action-btn {
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-
-  &:hover .user-action-btn {
-    opacity: 1;
-  }
-}
-
-.btn-settings {
-  &:hover {
-    background-color: var(--color-hover-background);
-  }
 }
 
 .presence-online {
