@@ -147,8 +147,8 @@ export default {
     }
   },
   "ThemeEditor": {
-    "path": "/admin-panel/themes",
-    "component": "@/core/cms/adp/settings/themeEditor/ParentLayout.vue",
+    "path": "/settings/themes",
+    "component": "@/core/cms/adp/settings/themeEditor/ThemeEditor.vue",
     "meta": {
       "title": "Темы оформления",
       "requiresAuth": true,

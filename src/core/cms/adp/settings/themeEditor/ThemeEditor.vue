@@ -1,5 +1,6 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { 
   Save, Download, Upload, RotateCcw, Plus, Copy, Trash2, 
@@ -20,6 +21,7 @@ import {
   getCurrentThemeMode,
   loadThemeFromLocalStorage,
 } from '@/js/theme-manager'
+import { restoreSiteThemeAfterEditor } from '@/js/theme-service.js'
 
 const toast = useToast()
 
@@ -470,7 +472,10 @@ const handleFileImport = async (event) => {
 // Следим за изменениями и применяем превью
 // Watch удалён - превью применяется только при явном изменении цвета
 
-// Загрузка при монтировании
+onBeforeRouteLeave(async () => {
+  await restoreSiteThemeAfterEditor()
+})
+
 onMounted(() => {
   loadThemes()
 })
