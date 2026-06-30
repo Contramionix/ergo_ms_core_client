@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { Settings } from 'lucide-vue-next'
 import Cookies from 'js-cookie'
 import ModalCenter from '@/components/ModalCenter.vue'
@@ -13,14 +13,6 @@ const emit = defineEmits(['close', 'save'])
 const expandAllGroups = ref(false)
 const COOKIE_NAME = 'menu_panel_expand_all_groups'
 
-const disableBodyScroll = () => {
-  document.body.style.overflow = 'hidden'
-}
-
-const enableBodyScroll = () => {
-  document.body.style.overflow = ''
-}
-
 function loadFromCookie() {
   const value = Cookies.get(COOKIE_NAME)
   expandAllGroups.value = value === 'true'
@@ -32,15 +24,8 @@ function saveToCookie() {
 
 watch(() => props.show, (isOpen) => {
   if (isOpen) {
-    disableBodyScroll()
     loadFromCookie()
-  } else {
-    enableBodyScroll()
   }
-})
-
-onUnmounted(() => {
-  enableBodyScroll()
 })
 
 onMounted(() => {
@@ -59,8 +44,7 @@ function handleClose() {
 </script>
 
 <template>
-  <template v-if="show">
-    <ModalCenter modal-id="menuSettingsModal" title="Настройки страницы" custom-class="show d-block" @closemodal="handleClose">
+  <ModalCenter standalone :visible="show" modal-id="menuSettingsModal" title="Настройки страницы" @closemodal="handleClose">
       <template #title>
         <Settings :size="24" class="text-primary" /><span>Настройки страницы</span>
       </template>
@@ -72,9 +56,7 @@ function handleClose() {
         <button type="button" class="btn btn-secondary" @click="handleClose">Отмена</button>
         <button type="button" class="btn btn-primary" @click="handleSave">Сохранить</button>
       </div>
-    </ModalCenter>
-    <div class="modal-backdrop fade show" @click="handleClose"></div>
-  </template>
+  </ModalCenter>
 </template>
 
 <style scoped>

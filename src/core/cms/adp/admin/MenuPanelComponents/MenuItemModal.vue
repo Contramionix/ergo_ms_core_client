@@ -1,5 +1,5 @@
 <template>
-  <ModalCenter modal-id="menuItemModal" :title="isEditing ? 'Редактирование элемента меню' : 'Добавление элемента меню'" custom-class="show d-block" dialog-class="modal-lg" @closemodal="$emit('close')">
+  <ModalCenter standalone :visible="true" modal-id="menuItemModal" :title="isEditing ? 'Редактирование элемента меню' : 'Добавление элемента меню'" dialog-class="modal-lg" @closemodal="$emit('close')">
     <form @submit.prevent="handleSubmit">
       <div class="mb-3">
         <label class="form-label">Название <span class="text-danger">*</span></label>
@@ -99,7 +99,6 @@
       </button>
     </div>
   </ModalCenter>
-  <div class="modal-backdrop fade show" @click="$emit('close')"></div>
 </template>
 
 <script setup>

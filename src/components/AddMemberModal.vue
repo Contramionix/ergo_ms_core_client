@@ -1,5 +1,5 @@
 <template>
-  <ModalCenter v-if="show" :modal-id="modalId" :title="title" :dialog-class="'modal-md'" :custom-class="'show d-block'" @closemodal="close">
+  <ModalCenter standalone :visible="show" :modal-id="modalId" :title="title" :dialog-class="'modal-md'" @close="close">
     <div class="add-member-modal-content">
       <div class="pb-2 search-container">
         <div class="input-group border-0">
@@ -65,7 +65,6 @@
       </div>
     </div>
   </ModalCenter>
-  <div v-if="show" class="modal-backdrop fade show" @click="close"></div>
 </template>
 
 <script setup>

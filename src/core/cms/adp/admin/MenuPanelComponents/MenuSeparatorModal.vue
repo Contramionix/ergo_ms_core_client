@@ -1,5 +1,5 @@
 <template>
-  <ModalCenter modal-id="menuSeparatorModal" :title="isEditing ? 'Редактирование разделителя' : 'Добавление разделителя'" custom-class="show d-block" @closemodal="$emit('close')">
+  <ModalCenter standalone :visible="true" modal-id="menuSeparatorModal" :title="isEditing ? 'Редактирование разделителя' : 'Добавление разделителя'" @closemodal="$emit('close')">
     <form @submit.prevent="handleSubmit">
       <div class="mb-3">
         <label class="form-label">Название <span class="text-danger">*</span></label>
@@ -14,7 +14,6 @@
       </button>
     </div>
   </ModalCenter>
-  <div class="modal-backdrop fade show" @click="$emit('close')"></div>
 </template>
 
 <script setup>

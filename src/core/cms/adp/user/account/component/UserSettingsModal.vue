@@ -38,24 +38,14 @@ const activeTabId = ref(
 
 const activePanel = computed(() => tabById(activeTabId.value).component)
 
-const disableBodyScroll = () => {
-  document.body.style.overflow = 'hidden'
-}
-
-const enableBodyScroll = () => {
-  document.body.style.overflow = ''
-}
-
 watch(
   () => props.show,
   (isOpen) => {
     if (isOpen) {
-      disableBodyScroll()
       activeTabId.value = TAB_SECTIONS.some((s) => s.items.some((t) => t.id === props.initialTab))
         ? props.initialTab
         : TAB_SECTIONS[0].items[0].id
     } else {
-      enableBodyScroll()
       notificationNav.teardownObserver()
     }
   },
@@ -68,7 +58,6 @@ watch(activeTabId, (tabId) => {
 })
 
 onUnmounted(() => {
-  enableBodyScroll()
   notificationNav.teardownObserver()
 })
 
@@ -86,21 +75,25 @@ function handleClose() {
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="usm-backdrop">
-      <div v-if="show" class="user-settings-backdrop" @click="handleClose"></div>
-    </Transition>
-    <Transition name="usm-dialog" appear>
-      <ModalCenter v-if="show" modal-id="userSettingsModal" :show-title="false" modal-aria-label="Настройки пользователя" :show-footer="false" custom-class="show d-block user-settings-modal-root" dialog-class="modal-xl" body-class="p-0 user-settings-modal-body" @closemodal="handleClose">
-        <div class="user-settings-modal__layout">
-          <UserSettingsNav :sections="TAB_SECTIONS" :active-tab-id="activeTabId" :notification-sections="notificationSections" :notification-active-anchor-id="notificationActiveAnchorId" @select="selectTab" @notification-navigate="handleNotificationNavigate"/>
-          <div ref="panelWrapRef" class="user-settings-modal__panel-wrap">
-            <component :is="activePanel" />
-          </div>
-        </div>
-      </ModalCenter>
-    </Transition>
-  </Teleport>
+  <ModalCenter
+    standalone
+    :visible="show"
+    modal-id="userSettingsModal"
+    :show-title="false"
+    modal-aria-label="Настройки пользователя"
+    :show-footer="false"
+    custom-class="user-settings-modal-root"
+    dialog-class="modal-xl"
+    body-class="p-0 user-settings-modal-body"
+    @close="handleClose"
+  >
+    <div class="user-settings-modal__layout">
+      <UserSettingsNav :sections="TAB_SECTIONS" :active-tab-id="activeTabId" :notification-sections="notificationSections" :notification-active-anchor-id="notificationActiveAnchorId" @select="selectTab" @notification-navigate="handleNotificationNavigate"/>
+      <div ref="panelWrapRef" class="user-settings-modal__panel-wrap">
+        <component :is="activePanel" />
+      </div>
+    </div>
+  </ModalCenter>
 </template>
 
 <style scoped lang="scss">
@@ -125,13 +118,6 @@ function handleClose() {
 </style>
 
 <style lang="scss">
-.user-settings-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1050;
-}
-
 .user-settings-modal-body.modal-body {
   display: flex;
   flex-direction: column;
@@ -152,28 +138,6 @@ function handleClose() {
 }
 
 .user-settings-modal-root.modal {
-  z-index: 1055;
   transition: none !important;
-}
-
-.usm-backdrop-enter-active,
-.usm-backdrop-leave-active {
-  transition: opacity 0.22s ease;
-}
-.usm-backdrop-enter-from,
-.usm-backdrop-leave-to {
-  opacity: 0;
-}
-
-.usm-dialog-enter-active {
-  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.2, 0.64, 1);
-}
-.usm-dialog-leave-active {
-  transition: opacity 0.16s ease, transform 0.16s ease;
-}
-.usm-dialog-enter-from,
-.usm-dialog-leave-to {
-  opacity: 0;
-  transform: scale(0.96);
 }
 </style>

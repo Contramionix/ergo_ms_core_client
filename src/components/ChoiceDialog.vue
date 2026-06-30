@@ -1,21 +1,25 @@
 <script setup>
-import { AlertTriangle, Trash2, X } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { AlertTriangle, X } from 'lucide-vue-next'
+import ModalCenter from '@/components/ModalCenter.vue'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
   title: { type: String, default: 'Выберите действие' },
   message: { type: String, default: '' },
-  choices: { 
-    type: Array, 
+  choices: {
+    type: Array,
     default: () => [],
-    validator: (choices) => choices.length === 0 || choices.every(choice => 
+    validator: (choices) => choices.length === 0 || choices.every(choice =>
       choice.label && choice.value && choice.variant
-    )
+    ),
   },
-  loading: { type: Boolean, default: false }
+  loading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['choice', 'cancel', 'close'])
+
+const isVisible = computed(() => props.show && !!props.message && props.choices.length > 0)
 
 function handleChoice(choice) {
   if (!props.loading) {
@@ -49,83 +53,61 @@ function getButtonClass(variant) {
 </script>
 
 <template>
-  <div 
-    v-if="show && message && choices.length > 0" 
-    class="modal fade show d-block" 
-    tabindex="-1"
-    style="background-color: rgba(0, 0, 0, 0.5);"
+  <ModalCenter
+    standalone
+    modal-id="choiceDialog"
+    :visible="isVisible"
+    custom-class="choice-dialog"
+    :close-on-backdrop="!loading"
+    :close-on-esc="!loading"
+    @close="handleClose"
   >
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header border-0 pb-0">
-          <div class="d-flex align-items-center gap-2">
-            <AlertTriangle :size="24" class="text-warning" />
-            <h5 class="modal-title mb-0">{{ title }}</h5>
-          </div>
-          <button 
-            type="button" 
-            class="btn-close" 
-            @click="handleClose"
-            :disabled="loading"
-          ></button>
-        </div>
-        
-        <div class="modal-body pt-2">
-          <p class="mb-3">{{ message }}</p>
-          
-          <div class="d-grid gap-2">
-            <button
-              v-for="choice in choices"
-              :key="choice.value"
-              :class="getButtonClass(choice.variant)"
-              @click="handleChoice(choice)"
-              :disabled="loading"
-            >
-              <span 
-                v-if="loading" 
-                class="spinner-border spinner-border-sm me-2" 
-                role="status"
-              ></span>
-              <component 
-                v-if="choice.icon" 
-                :is="choice.icon" 
-                :size="16" 
-                class="me-2" 
-              />
-              {{ choice.label }}
-            </button>
-          </div>
-        </div>
-        
-        <div class="modal-footer border-0 pt-2">
-          <button 
-            type="button" 
-            class="btn btn-secondary" 
-            @click="handleCancel"
-            :disabled="loading"
-          >
-            <X :size="16" class="me-2" />
-            Отмена
-          </button>
-        </div>
-      </div>
+    <template #title>
+      <AlertTriangle :size="24" class="text-warning" />
+      <span>{{ title }}</span>
+    </template>
+
+    <p class="mb-3 cd-message">{{ message }}</p>
+
+    <div class="d-grid gap-2">
+      <button
+        v-for="choice in choices"
+        :key="choice.value"
+        :class="getButtonClass(choice.variant)"
+        @click="handleChoice(choice)"
+        :disabled="loading"
+      >
+        <span
+          v-if="loading"
+          class="spinner-border spinner-border-sm me-2"
+          role="status"
+        ></span>
+        <component
+          v-if="choice.icon"
+          :is="choice.icon"
+          :size="16"
+          class="me-2"
+        />
+        {{ choice.label }}
+      </button>
     </div>
-  </div>
+
+    <template #footer>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        @click="handleCancel"
+        :disabled="loading"
+      >
+        <X :size="16" class="me-2" />
+        Отмена
+      </button>
+    </template>
+  </ModalCenter>
 </template>
 
 <style scoped>
-.modal-content {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-}
-
-.modal-header, .modal-footer {
-  padding: 1.5rem;
-}
-
-.modal-body {
-  padding: 0 1.5rem 1rem;
+.cd-message {
   color: #6c757d;
 }
 
@@ -137,11 +119,7 @@ function getButtonClass(variant) {
   justify-content: center;
 }
 
-.btn-close:focus {
-  box-shadow: none;
-}
-
 .d-grid .btn {
   width: 100%;
 }
-</style> 
+</style>

@@ -200,22 +200,18 @@ const submitForm = async (event) => {
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="cpm-backdrop">
-      <div v-if="show" class="change-password-modal-backdrop" @click="handleClose"></div>
-    </Transition>
-    <Transition name="cpm-dialog" appear>
-      <ModalCenter
-        v-if="show"
-        modal-id="changePasswordModal"
-        title="Изменить пароль"
-        modal-aria-label="Изменить пароль"
-        :show-footer="false"
-        custom-class="show d-block change-password-modal-root"
-        dialog-class="modal-dialog-centered modal-lg"
-        body-class="p-3 change-password-modal-body"
-        @closemodal="handleClose"
-      >
+  <ModalCenter
+    standalone
+    :visible="show"
+    modal-id="changePasswordModal"
+    title="Изменить пароль"
+    modal-aria-label="Изменить пароль"
+    :show-footer="false"
+    custom-class="change-password-modal-root"
+    dialog-class="modal-lg"
+    body-class="p-3 change-password-modal-body"
+    @close="handleClose"
+  >
         <form @submit="submitForm">
           <div class="mb-3">
             <label class="form-label" for="cpm-current-password">Текущий пароль</label>
@@ -349,9 +345,7 @@ const submitForm = async (event) => {
             </button>
           </div>
         </form>
-      </ModalCenter>
-    </Transition>
-  </Teleport>
+  </ModalCenter>
 </template>
 
 <style scoped lang="scss">
@@ -361,36 +355,7 @@ const submitForm = async (event) => {
 </style>
 
 <style lang="scss">
-.change-password-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  z-index: 1060;
-}
-
 .change-password-modal-root.modal {
-  z-index: 1065;
   transition: none !important;
-}
-
-.cpm-backdrop-enter-active,
-.cpm-backdrop-leave-active {
-  transition: opacity 0.2s ease;
-}
-.cpm-backdrop-enter-from,
-.cpm-backdrop-leave-to {
-  opacity: 0;
-}
-
-.cpm-dialog-enter-active {
-  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.2, 0.64, 1);
-}
-.cpm-dialog-leave-active {
-  transition: opacity 0.16s ease, transform 0.16s ease;
-}
-.cpm-dialog-enter-from,
-.cpm-dialog-leave-to {
-  opacity: 0;
-  transform: scale(0.96);
 }
 </style>

@@ -13,6 +13,7 @@ const props = defineProps({
   customClass: { type: String, default: '' },
   title: { type: String, default: '' },
   showTitle: { type: Boolean, default: true },
+  showCloseButton: { type: Boolean, default: true },
   modalAriaLabel: { type: String, default: '' },
   showFooter: { type: Boolean, default: false },
   dialogClass: { type: String, default: '' },
@@ -173,10 +174,10 @@ onBeforeUnmount(() => {
             <h1 class="modal-title fs-5 d-flex align-items-center gap-2" :id="titleId">
               <slot name="title">{{ title }}</slot>
             </h1>
-            <button type="button" class="btn-close" aria-label="Закрыть" @click.stop="handleClose"></button>
+            <button v-if="showCloseButton" type="button" class="btn-close" aria-label="Закрыть" @click.stop="handleClose"></button>
           </div>
           <button
-            v-else
+            v-else-if="!showTitle && showCloseButton"
             type="button"
             class="modal-content__floating-close btn-close"
             aria-label="Закрыть"
@@ -212,9 +213,9 @@ onBeforeUnmount(() => {
           <h1 class="modal-title fs-5 d-flex align-items-center gap-2" :id="titleId">
             <slot name="title">{{ title }}</slot>
           </h1>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть" @click.stop="handleClose"></button>
+          <button v-if="showCloseButton" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть" @click.stop="handleClose"></button>
         </div>
-        <button v-else type="button" class="modal-content__floating-close btn-close" data-bs-dismiss="modal" aria-label="Закрыть" @click.stop="handleClose"></button>
+        <button v-else-if="!showTitle && showCloseButton" type="button" class="modal-content__floating-close btn-close" data-bs-dismiss="modal" aria-label="Закрыть" @click.stop="handleClose"></button>
         <div class="modal-body" :class="bodyClass">
           <slot></slot>
         </div>
