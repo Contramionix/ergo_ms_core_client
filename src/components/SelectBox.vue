@@ -106,6 +106,8 @@ const props = defineProps({
     overscan: { type: Number, default: 6 },
     /** Не подстраивать размер подписи под ширину и computed-style триггера (для компактных тулбаров) */
     fixedTriggerLabelFontSize: { type: Boolean, default: false },
+    /** Минимальная ширина выпадающего меню (может быть шире триггера) */
+    dropdownMinWidth: { type: Number, default: 0 },
     /** Доп. класс на выпадающее меню (teleport в body — для стилей с :global у потребителя) */
     dropdownMenuClass: { type: String, default: '' },
     /** Одинаковый размер шрифта у всех пунктов списка, включая active (компактные тулбары) */
@@ -182,7 +184,8 @@ function updateMenuPosition() {
     const viewportPadding = 8
     const minDropdownWidth = 120
     const maxWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
-    const width = Math.max(minDropdownWidth, Math.min(rect.width, maxWidth))
+    const minW = Math.max(minDropdownWidth, props.dropdownMinWidth || 0, rect.width)
+    const width = Math.min(minW, maxWidth)
     const left = Math.min(
         rect.left,
         window.innerWidth - viewportPadding - width
