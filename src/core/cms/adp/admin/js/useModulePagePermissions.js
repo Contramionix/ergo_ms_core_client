@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import { GetPages, GetPolicies, GetRoles, GetRoleGroups } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
 const ROOT_SUBMODULE_KEY = '__root__'

@@ -1,0 +1,39 @@
+// UI-кит ERGO MS — миксины. Использовать только --ui-* / --color-* / --bs-*.
+
+@mixin ui-card($shadow: var(--ui-shadow-sm)) {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  box-shadow: $shadow;
+}
+
+@mixin ui-card-hover {
+  transition: box-shadow var(--ui-transition), transform var(--ui-transition);
+  &:hover {
+    box-shadow: var(--ui-shadow-md);
+    transform: translateY(-1px);
+  }
+}
+
+@mixin ui-focus-ring {
+  outline: 2px solid rgba(var(--bs-primary-rgb), .35);
+  outline-offset: 2px;
+}
+
+@mixin ui-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-border) transparent;
+  &::-webkit-scrollbar { width: 8px; height: 8px; }
+  &::-webkit-scrollbar-thumb {
+    background: var(--ui-border);
+    border-radius: var(--ui-pill);
+  }
+  &::-webkit-scrollbar-track { background: transparent; }
+}
+
+@mixin ui-clamp($lines: 1) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

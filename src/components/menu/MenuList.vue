@@ -5,7 +5,7 @@ import { onMounted, onBeforeUnmount, provide, ref, watch, nextTick } from 'vue'
 import { ChevronLeft, Minus } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import { useSiteName } from '@/composables/useSiteName.js'

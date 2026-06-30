@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import SelectBox from '@/components/SelectBox.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import { useProfile } from '@/core/cms/js/profileService.js'

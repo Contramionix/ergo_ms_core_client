@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 import { CreateRoleGroup, GetRoles, UpdateRoleGroup } from '@/core/cms/adp/admin/js/GroupsPolitics'
 

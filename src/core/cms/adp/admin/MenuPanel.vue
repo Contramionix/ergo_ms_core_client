@@ -40,8 +40,6 @@
     
     <MenuSeparatorModal v-if="showSeparatorModal" :separator="currentSeparator" @save="saveSeparator" @close="closeSeparatorModal"/>
     
-    <ConfirmDialog />
-    
     <MenuSettingsModal :show="showSettingsModal" @close="showSettingsModal = false" @save="handleSettingsSave"/>
   </div>
 </template>
@@ -50,8 +48,8 @@
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { LayersPlus, SeparatorHorizontal, Settings } from 'lucide-vue-next'
-import { useToast } from 'vue-toastification'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { useToast } from '@/js/utils/toast.js'
+import { confirmAction } from '@/js/utils/confirm.js'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import UnsavedChangesToast from '@/components/UnsavedChangesToast.vue'
 import DraggableMenuList from './MenuPanelComponents/DraggableMenuList.vue'
@@ -194,12 +192,17 @@ function onBeforeUnload(e) {
   }
 }
 
-onBeforeRouteLeave((to, from, next) => {
-  if (hasUnsavedChanges.value && !window.confirm('Есть несохранённые изменения порядка. Уйти без сохранения?')) {
-    next(false)
-  } else {
-    next()
+onBeforeRouteLeave(async () => {
+  if (!hasUnsavedChanges.value) {
+    return true
   }
+
+  return confirmAction({
+    title: 'Несохранённые изменения',
+    message: 'Есть несохранённые изменения порядка. Уйти без сохранения?',
+    confirmText: 'Уйти',
+    variant: 'danger',
+  })
 })
 
 const visibleSeparators = computed(() =>

@@ -47,24 +47,13 @@
         <button type="button" class="btn btn-secondary" @click="showErrorModal = false">Закрыть</button>
       </template>
     </ModalCenter>
-
-    <ConfirmDialog
-      :show="confirmDialog.show"
-      :message="confirmDialog.message"
-      :confirm-text="confirmDialog.confirmText"
-      :variant="confirmDialog.variant"
-      :loading="confirmDialog.loading"
-      @confirm="handleConfirmDialog"
-      @cancel="closeConfirmDialog"
-      @close="closeConfirmDialog"
-    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
-import { useToast } from 'vue-toastification'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { useToast } from '@/js/utils/toast.js'
+import { runWithConfirm } from '@/js/utils/confirm.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 import {
   DeletePolicy,
@@ -92,15 +81,6 @@ const prevTypes = reactive({})
 const showErrorModal = ref(false)
 const errorMessage = ref('')
 const policyManagerRef = ref(null)
-
-const confirmDialog = reactive({
-  show: false,
-  message: '',
-  confirmText: 'Удалить',
-  variant: 'danger',
-  loading: false,
-  action: null
-})
 
 onMounted(async () => {
   await initializeData()
@@ -180,41 +160,22 @@ function renderPolicyTarget(policy) {
   return '—'
 }
 
-function requestPolicyDeletion(policy) {
-  confirmDialog.message = `Удалить политику «${policy.name}» для ${renderPolicyTarget(policy)}?`
-  confirmDialog.confirmText = 'Удалить'
-  confirmDialog.variant = 'danger'
-  confirmDialog.show = true
-  confirmDialog.action = async () => {
-    await DeletePolicy(policy.id)
-    toast.success('Политика удалена')
-    if (policyManagerRef.value) {
-      await policyManagerRef.value.refreshPolicies()
-    }
-  }
-}
-
-function closeConfirmDialog() {
-  if (confirmDialog.loading) return
-  confirmDialog.show = false
-  confirmDialog.action = null
-}
-
-async function handleConfirmDialog() {
-  if (!confirmDialog.action) {
-    closeConfirmDialog()
-    return
-  }
-  try {
-    confirmDialog.loading = true
-    await confirmDialog.action()
-  } catch (error) {
-    logError('Ошибка выполнения подтвержденного действия', error)
-    toast.error('Не удалось выполнить действие')
-  } finally {
-    confirmDialog.loading = false
-    closeConfirmDialog()
-  }
+async function requestPolicyDeletion(policy) {
+  await runWithConfirm(
+    {
+      title: 'Удаление политики',
+      message: `Удалить политику «${policy.name}» для ${renderPolicyTarget(policy)}?`,
+      confirmText: 'Удалить',
+      variant: 'danger',
+    },
+    async () => {
+      await DeletePolicy(policy.id)
+      toast.success('Политика удалена')
+      if (policyManagerRef.value) {
+        await policyManagerRef.value.refreshPolicies()
+      }
+    },
+  )
 }
 </script>
 

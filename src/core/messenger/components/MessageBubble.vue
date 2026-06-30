@@ -56,8 +56,6 @@
         </template>
       </div>
     </Teleport>
-
-    <ConfirmDialog :show="showConfirm" title="Удалить сообщение" message="Вы уверены, что хотите удалить это сообщение?" confirm-text="Удалить" cancel-text="Отмена" variant="danger" @confirm="onDeleteConfirm" @cancel="showConfirm = false" @close="showConfirm = false"/>
   </div>
 </template>
 
@@ -66,7 +64,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Paperclip, Pencil, Trash2, Reply } from 'lucide-vue-next'
 import { getSafeHref } from '@/js/utils/urlUtils.js'
 import UserAvatar from '@/components/UserAvatar.vue'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { confirmDelete } from '@/js/utils/confirm.js'
 
 const props = defineProps({
   message: { type: Object, required: true },
@@ -78,7 +76,6 @@ const props = defineProps({
 const emit = defineEmits(['delete', 'edit-start', 'reply'])
 
 const showMenu = ref(false)
-const showConfirm = ref(false)
 const menuStyle = ref({})
 const menuRef = ref(null)
 
@@ -121,13 +118,15 @@ function onEdit() {
   emit('edit-start', props.message)
 }
 
-function onDeleteClick() {
+async function onDeleteClick() {
   closeMenu()
-  showConfirm.value = true
-}
-
-function onDeleteConfirm() {
-  showConfirm.value = false
+  const ok = await confirmDelete(
+    'Удаление сообщения',
+    'Удалить это сообщение?',
+  )
+  if (!ok) {
+    return
+  }
   emit('delete', props.message.id)
 }
 

@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import {
   MailPlus,
   Copy,
@@ -14,7 +14,7 @@ import {
 } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { runWithConfirm } from '@/js/utils/confirm.js'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import {
@@ -44,16 +44,6 @@ const searchQuery = ref('')
 
 const showCreateModal = ref(false)
 const showBulkModal = ref(false)
-
-const confirmDialog = reactive({
-  show: false,
-  title: 'Очистка приглашений',
-  message: '',
-  confirmText: 'Удалить',
-  variant: 'danger',
-  loading: false,
-  scope: 'inactive',
-})
 
 const invitationModeEnabled = computed(() => registrationMode.value === 'invitation')
 const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / rowsPerPage.value)))
@@ -244,42 +234,26 @@ const goBack = () => {
   router.push({ name: 'UsersPanel' })
 }
 
-const closeConfirmDialog = () => {
-  if (!confirmDialog.loading) {
-    confirmDialog.show = false
-  }
-}
-
-const openClearConfirm = (scope) => {
-  confirmDialog.scope = scope
-  confirmDialog.confirmText = scope === 'all' ? 'Удалить все' : 'Удалить неактивные'
-  confirmDialog.message = scope === 'all'
-    ? `Будут безвозвратно удалены все приглашения (${totalAll.value}).\n\nОжидающие ссылки перестанут работать.`
-    : `Будут удалены использованные, истёкшие и отозванные приглашения (${inactiveCount.value}).\n\nОжидающие приглашения останутся.`
-  confirmDialog.show = true
-}
-
-const handleClearConfirm = async () => {
-  if (confirmDialog.loading) {
-    return
+const openClearConfirm = async (scope) => {
+  const options = {
+    title: 'Очистка приглашений',
+    confirmText: scope === 'all' ? 'Удалить все' : 'Удалить неактивные',
+    variant: 'danger',
+    message: scope === 'all'
+      ? `Будут безвозвратно удалены все приглашения (${totalAll.value}).\n\nОжидающие ссылки перестанут работать.`
+      : `Будут удалены использованные, истёкшие и отозванные приглашения (${inactiveCount.value}).\n\nОжидающие приглашения останутся.`,
   }
 
-  confirmDialog.loading = true
-  try {
-    const result = await clearInvitations(confirmDialog.scope)
+  await runWithConfirm(options, async () => {
+    const result = await clearInvitations(scope)
     if (result.deleted > 0) {
       toast.success(`Удалено приглашений: ${result.deleted}`)
     } else {
       toast.info(result.message || 'Нет приглашений для удаления')
     }
-    confirmDialog.show = false
     currentPage.value = 1
     await loadInvitations()
-  } catch (error) {
-    toast.error(error.response?.data?.error || 'Не удалось очистить приглашения')
-  } finally {
-    confirmDialog.loading = false
-  }
+  })
 }
 </script>
 
@@ -457,18 +431,6 @@ const handleClearConfirm = async () => {
       @completed="handleBulkCompleted"
     />
 
-    <ConfirmDialog
-      :show="confirmDialog.show"
-      :title="confirmDialog.title"
-      :message="confirmDialog.message"
-      :confirm-text="confirmDialog.confirmText"
-      cancel-text="Отмена"
-      :variant="confirmDialog.variant"
-      :loading="confirmDialog.loading"
-      @confirm="handleClearConfirm"
-      @cancel="closeConfirmDialog"
-      @close="closeConfirmDialog"
-    />
       </div>
   </div>
 </template>

@@ -1,13 +1,13 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
+import { confirmAction } from '@/js/utils/confirm.js'
 import { 
   Save, Download, Upload, RotateCcw, Plus, Copy, Trash2, 
   Check, Palette, Sun, Moon, Settings2
 } from 'lucide-vue-next'
 import ColorPicker from './ColorPicker.vue'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { apiClient } from '@/js/api/manager'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { endpoints, initEndpoints } from '@/js/api/endpoints.js'
@@ -32,16 +32,6 @@ const loading = ref(false)
 const saving = ref(false)
 const showBootstrapColors = ref(false)
 const fileInput = ref(null)
-
-// Диалог подтверждения
-const showConfirmDialog = ref(false)
-const confirmDialogConfig = ref({
-  title: '',
-  message: '',
-  confirmText: 'Удалить',
-  cancelText: 'Отмена'
-})
-const pendingDeleteTheme = ref(null)
 
 // Текущая редактируемая тема
 const currentTheme = reactive({
@@ -348,28 +338,21 @@ const duplicateTheme = async (theme) => {
   }
 }
 
-// Удаление темы - показать диалог
-const deleteTheme = (theme) => {
+const deleteTheme = async (theme) => {
   if (theme.is_system) {
     toast.error('Нельзя удалить системную тему')
     return
   }
-  
-  pendingDeleteTheme.value = theme
-  confirmDialogConfig.value = {
-    title: 'Удаление темы',
-    message: `Вы уверены, что хотите удалить тему "${theme.name}"?`,
-    confirmText: 'Удалить',
-    cancelText: 'Отмена'
-  }
-  showConfirmDialog.value = true
-}
 
-// Подтверждение удаления
-const confirmDelete = async () => {
-  const theme = pendingDeleteTheme.value
-  if (!theme) return
-  
+  const ok = await confirmAction({
+    title: 'Удаление темы',
+    message: `Вы uverены, что хотите удалить тему "${theme.name}"?`,
+    confirmText: 'Удалить',
+    cancelText: 'Отмена',
+    variant: 'danger',
+  })
+  if (!ok) return
+
   try {
     const res = await apiClient.delete(endpoints.themes.delete(theme.id))
     if (res.success) {
@@ -378,16 +361,7 @@ const confirmDelete = async () => {
     }
   } catch {
     toast.error('Ошибка удаления темы')
-  } finally {
-    showConfirmDialog.value = false
-    pendingDeleteTheme.value = null
   }
-}
-
-// Отмена удаления
-const cancelDelete = () => {
-  showConfirmDialog.value = false
-  pendingDeleteTheme.value = null
 }
 
 // Экспорт темы
@@ -495,17 +469,6 @@ onMounted(() => {
     />
     
     <!-- Диалог подтверждения удаления -->
-    <ConfirmDialog
-      :show="showConfirmDialog"
-      :title="confirmDialogConfig.title"
-      :message="confirmDialogConfig.message"
-      :confirm-text="confirmDialogConfig.confirmText"
-      :cancel-text="confirmDialogConfig.cancelText"
-      variant="danger"
-      @confirm="confirmDelete"
-      @cancel="cancelDelete"
-      @close="cancelDelete"
-    />
     
     <div class="row g-4">
       <!-- Левая панель: список тем -->

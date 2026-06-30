@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import {
   Download,
   Upload,

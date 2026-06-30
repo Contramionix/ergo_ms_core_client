@@ -1,8 +1,22 @@
 <template>
   <div class="user-avatar-wrap" :style="avatarStyle">
     <div class="user-avatar" :class="{ 'user-avatar--clickable': clickable }" :title="title">
-      <DefaultAvatar :size="size" :clickable="clickable" :title="title" :first-name="effectiveFirstName" :last-name="effectiveLastName"/>
-      <img v-if="hasCustomAvatar" :src="resolvedAvatarSrc" :alt="title" class="user-avatar-image" :class="{ 'is-loaded': imageLoaded }" @load="onImageLoad" @error="onImageError" />
+      <img
+        v-if="showPhoto"
+        :src="readyPhotoSrc"
+        :alt="title"
+        class="user-avatar-image"
+        @error="onImageError"
+      />
+      <div v-else-if="isAvatarPending" class="user-avatar-placeholder" aria-hidden="true" />
+      <DefaultAvatar
+        v-else
+        :size="size"
+        :clickable="clickable"
+        :title="title"
+        :first-name="effectiveFirstName"
+        :last-name="effectiveLastName"
+      />
     </div>
     <PresenceIndicator
       v-if="showOnlineStatus"
@@ -21,8 +35,13 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 import DefaultAvatar from './DefaultAvatar.vue'
 import PresenceIndicator from '@/core/cms/adp/components/PresenceIndicator.vue'
 import { usePresenceStatus } from '@/core/cms/adp/js/presence/usePresenceStatus.js'
-import { getUserPublicInfo, getCachedUserPublicInfo, invalidateUserPublicInfo, } from '@/js/userAvatar'
-import { peekAvatar, resolveAvatar, invalidateAvatar } from '@/js/avatarCache.js'
+import { getUserPublicInfo, getCachedUserPublicInfo, invalidateUserPublicInfo } from '@/js/userAvatar'
+import {
+  avatarCacheKey,
+  ensureAvatarDisplaySrc,
+  invalidateAvatar,
+  peekAvatarDisplaySrc,
+} from '@/js/avatarCache.js'
 
 const userStore = useUserStore()
 
@@ -71,9 +90,10 @@ const props = defineProps({
 
 const loadedPublicInfo = ref(null)
 const imageError = ref(false)
-const imageLoaded = ref(false)
-// Стабильный source аватарки: blob из централизованного кеша, либо прямой URL как откат.
-const resolvedAvatarSrc = ref(null)
+const readyPhotoSrc = ref(null)
+const activeCacheKey = ref('')
+
+let refreshGeneration = 0
 
 const avatarStyle = computed(() => ({
   width: `${props.size}px`,
@@ -131,46 +151,59 @@ const displayAvatarUrl = computed(() => {
   return null
 })
 
-const hasCustomAvatar = computed(() => Boolean(resolvedAvatarSrc.value) && !imageError.value)
+const showPhoto = computed(() => Boolean(readyPhotoSrc.value) && !imageError.value)
 
-const triedDirectFallback = ref(false)
-
-function setResolvedSrc(next) {
-  if (resolvedAvatarSrc.value === next) return
-  imageLoaded.value = false
-  resolvedAvatarSrc.value = next
-}
+const isAvatarPending = computed(
+  () => Boolean(displayAvatarUrl.value) && !showPhoto.value && !imageError.value,
+)
 
 async function refreshAvatarSrc() {
-  imageError.value = false
-  triedDirectFallback.value = false
-
+  const generation = ++refreshGeneration
   const url = displayAvatarUrl.value
+
   if (!url) {
-    setResolvedSrc(null)
+    readyPhotoSrc.value = null
+    activeCacheKey.value = ''
+    imageError.value = false
     return
   }
 
-  // Синхронный hit из памяти — фото показывается с первого кадра, без мигания.
-  const cached = peekAvatar(url)
-  if (cached) {
-    setResolvedSrc(cached)
+  const cacheKey = avatarCacheKey(url)
+  if (readyPhotoSrc.value && activeCacheKey.value === cacheKey) {
     return
   }
 
-  setResolvedSrc(null)
+  const syncSrc = peekAvatarDisplaySrc(url)
+  if (syncSrc) {
+    readyPhotoSrc.value = syncSrc
+    activeCacheKey.value = cacheKey
+    imageError.value = false
+    return
+  }
 
-  // Cache API (переживает Ctrl+F5) -> сеть. При сбое — откат на прямой URL.
-  const resolved = await resolveAvatar(url)
-  if (displayAvatarUrl.value !== url) return
-  setResolvedSrc(resolved || url)
+  imageError.value = false
+
+  if (activeCacheKey.value !== cacheKey) {
+    readyPhotoSrc.value = null
+  }
+
+  const src = await ensureAvatarDisplaySrc(url)
+  if (generation !== refreshGeneration || displayAvatarUrl.value !== url) {
+    return
+  }
+
+  if (src) {
+    readyPhotoSrc.value = src
+    activeCacheKey.value = cacheKey
+    return
+  }
+
+  readyPhotoSrc.value = null
+  activeCacheKey.value = ''
+  imageError.value = true
 }
 
 watch(displayAvatarUrl, refreshAvatarSrc, { immediate: true })
-
-function onImageLoad() {
-  imageLoaded.value = true
-}
 
 const needsPublicInfoLoad = computed(() => {
   if (normalizedUserId.value === null) return false
@@ -181,8 +214,6 @@ const needsPublicInfoLoad = computed(() => {
 })
 
 async function loadUserInfo() {
-  imageError.value = false
-
   if (!needsPublicInfoLoad.value) {
     loadedPublicInfo.value = null
     return
@@ -226,23 +257,18 @@ watch(
 
 async function onImageError() {
   const url = displayAvatarUrl.value
-
-  // Если не смог отрисоваться blob из кеша — сбрасываем кеш и один раз пробуем прямой URL.
-  if (url && !triedDirectFallback.value && resolvedAvatarSrc.value?.startsWith('blob:')) {
-    triedDirectFallback.value = true
-    invalidateAvatar(url)
-    setResolvedSrc(url)
-    return
-  }
-
   imageError.value = true
+  readyPhotoSrc.value = null
+
   if (props.avatarUrl !== undefined || props.customAvatarUrl !== undefined) return
+
   if (isCurrentUser.value) {
     invalidateAvatar(url)
     await userStore.loadAvatar()
     imageError.value = false
     return
   }
+
   const id = normalizedUserId.value
   if (id !== null) {
     invalidateUserPublicInfo(id)
@@ -250,7 +276,7 @@ async function onImageError() {
       loadedPublicInfo.value = await getUserPublicInfo(id)
       imageError.value = false
     } catch {
-      // оставляем imageError true, покажется DefaultAvatar
+      // остаётся DefaultAvatar
     }
   }
 }
@@ -283,25 +309,24 @@ async function onImageError() {
   }
 }
 
-// Фото накладывается поверх DefaultAvatar (инициалы), чтобы при перезагрузке
-// не было резкой подмены «инициалы → фото». Фото плавно проявляется после load.
 .user-avatar-image {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-
-  &.is-loaded {
-    opacity: 1;
-  }
+  display: block;
 
   .user-avatar--clickable:hover & {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   }
+}
+
+.user-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--ui-surface-2, #e9ecef);
+  flex-shrink: 0;
 }
 </style>

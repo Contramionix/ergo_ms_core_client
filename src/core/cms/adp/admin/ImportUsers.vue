@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2, ArrowLeft } from 'lucide-vue-next'
 import { apiClient } from '@/js/api/manager'
 import { mediaApiClient } from '@/js/api/media-api-client.js'

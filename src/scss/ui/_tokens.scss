@@ -1,0 +1,69 @@
+// ============================================================================
+// UI-кит ERGO MS — семантические токены (--ui-*). Слой над --color-* / --bs-*.
+// Подключается глобально из styles.scss; модули используют var(--ui-*).
+// ============================================================================
+
+:root,
+[data-bs-theme='light'] {
+  --ui-bg:          #f5f6f8;
+  --ui-surface:     #ffffff;
+  --ui-surface-2:   #f1f3f5;
+  --ui-text:        #14151a;
+  --ui-text-muted:  #5b616e;
+  --ui-accent:      var(--color-accent);
+
+  --ui-border:        rgba(17, 18, 35, 0.14);
+  --ui-border-strong: rgba(17, 18, 35, 0.24);
+  --ui-hover:         rgba(17, 18, 35, 0.045);
+  --ui-active:        rgba(17, 18, 35, 0.06);
+  --ui-active-text:   var(--ui-text);
+  --ui-fill:          rgba(17, 18, 35, 0.55);
+
+  --ui-success:      rgb(var(--bs-success-rgb));
+  --ui-success-soft: rgba(var(--bs-success-rgb), .12);
+  --ui-danger:       rgb(var(--bs-danger-rgb));
+  --ui-danger-soft:  rgba(var(--bs-danger-rgb), .12);
+  --ui-warning:      rgb(var(--bs-warning-rgb));
+  --ui-warning-soft: rgba(var(--bs-warning-rgb), .14);
+  --ui-info:         rgb(var(--bs-info-rgb));
+  --ui-info-soft:    rgba(var(--bs-info-rgb), .14);
+  --ui-accent-soft:  rgba(var(--bs-primary-rgb), .10);
+  --ui-neutral-soft: rgba(17, 18, 35, 0.05);
+
+  --ui-radius-sm: 7px;
+  --ui-radius:    10px;
+  --ui-radius-lg: 14px;
+  --ui-pill:      999px;
+
+  --ui-gap-xs: 4px;
+  --ui-gap-sm: 8px;
+  --ui-gap:    16px;
+  --ui-gap-lg: 24px;
+  --ui-pad:    16px;
+  --ui-pad-lg: 20px;
+
+  --ui-transition: .16s cubic-bezier(.4, 0, .2, 1);
+
+  --ui-shadow-sm: 0 1px 2px rgba(17, 18, 35, .04);
+  --ui-shadow-md: 0 2px 6px rgba(17, 18, 35, .06);
+  --ui-shadow-lg: 0 8px 24px rgba(17, 18, 35, .08);
+}
+
+[data-bs-theme='dark'] {
+  --ui-bg:            #0e0e11;
+  --ui-surface:       #17181b;
+  --ui-surface-2:     #202126;
+  --ui-text:          rgba(255, 255, 255, 0.92);
+  --ui-text-muted:    rgba(255, 255, 255, 0.56);
+
+  --ui-border:        rgba(255, 255, 255, 0.14);
+  --ui-border-strong: rgba(255, 255, 255, 0.28);
+  --ui-hover:         rgba(255, 255, 255, 0.05);
+  --ui-active:        rgba(255, 255, 255, 0.08);
+  --ui-neutral-soft:  rgba(255, 255, 255, 0.07);
+  --ui-fill:          rgba(255, 255, 255, 0.62);
+
+  --ui-shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+  --ui-shadow-md: 0 2px 8px rgba(0, 0, 0, .5);
+  --ui-shadow-lg: 0 8px 24px rgba(0, 0, 0, .6);
+}

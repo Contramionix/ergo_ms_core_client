@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import { Upload, Trash2 } from 'lucide-vue-next'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import UserAvatar from '@/components/UserAvatar.vue'

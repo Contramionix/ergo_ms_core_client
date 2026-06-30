@@ -222,7 +222,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import { CreatePolicy, GetPolicies, UpdatePolicy } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
 const props = defineProps({

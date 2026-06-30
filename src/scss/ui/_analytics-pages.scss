@@ -1,0 +1,125 @@
+// Общие layout/карточки для porosity / impuls / video_analysis.
+
+.va-module-layout {
+  min-height: 100vh;
+  background: var(--va-bg);
+  color: var(--va-text);
+}
+
+.va-analyses-page {
+  padding: 2rem;
+  min-height: 100vh;
+  background: var(--va-bg);
+  color: var(--va-text);
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+}
+
+.va-surface-card {
+  background: var(--va-surface);
+  border: 1px solid var(--va-border);
+  border-radius: var(--va-radius-lg);
+  box-shadow: var(--va-shadow-sm);
+}
+
+.va-filters-card {
+  @extend .va-surface-card;
+  margin-bottom: 2rem;
+
+  .form-label {
+    color: var(--va-text);
+    font-weight: 600;
+  }
+
+  .form-control,
+  .form-select {
+    background: var(--va-surface);
+    color: var(--va-text);
+    border-color: var(--va-border);
+
+    &:focus {
+      border-color: var(--bs-primary, var(--va-accent));
+      box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+    }
+  }
+}
+
+.va-statistics-card {
+  background: var(--va-surface);
+  border: 1px solid var(--va-border);
+  border-radius: var(--va-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--va-shadow-sm);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 5px;
+  }
+
+  &.card-primary::before { background: var(--va-gradient-primary); }
+  &.card-warning::before { background: var(--va-gradient-warning); }
+  &.card-success::before { background: var(--va-gradient-success); }
+  &.card-danger::before { background: var(--va-gradient-danger); }
+  &.card-info::before { background: var(--va-gradient-info); }
+  &.card-secondary::before { background: var(--va-gradient-secondary); }
+
+  .card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+  }
+
+  &.card-primary .card-icon { background: var(--va-gradient-primary); }
+  &.card-warning .card-icon { background: var(--va-gradient-warning); }
+  &.card-success .card-icon { background: var(--va-gradient-success); }
+  &.card-danger .card-icon { background: var(--va-gradient-danger); }
+  &.card-info .card-icon { background: var(--va-gradient-info); }
+  &.card-secondary .card-icon { background: var(--va-gradient-secondary); }
+
+  .card-subtitle {
+    color: var(--va-text-muted);
+  }
+
+  .card-value {
+    color: var(--va-text);
+  }
+}
+
+.va-btn-gradient {
+  border: none;
+  color: #fff;
+  font-weight: 600;
+  transition: transform var(--ui-transition), box-shadow var(--ui-transition);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--va-shadow-md);
+    color: #fff;
+  }
+
+  &--primary { background: var(--va-gradient-primary); }
+  &--success { background: var(--va-gradient-success); }
+  &--warning { background: var(--va-gradient-warning); }
+  &--danger { background: var(--va-gradient-danger); }
+  &--info { background: var(--va-gradient-info); }
+  &--secondary { background: var(--va-gradient-secondary); }
+  &--brand { background: var(--va-gradient-brand); }
+}
+
+.va-pagination-btn.is-active {
+  background: var(--va-gradient-primary);
+  border-color: var(--bs-primary, var(--va-accent));
+  color: #fff;
+}

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, inject, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ChevronDown, ChevronUp } from 'lucide-vue-next'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useNotificationSettings } from '@/core/notifications/js/useNotificationSettings.js'

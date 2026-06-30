@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import { executeNotificationAction } from '@/core/notifications/js/useNotificationsInbox.js'
 
 const props = defineProps({

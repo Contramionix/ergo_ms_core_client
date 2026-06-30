@@ -1,5 +1,6 @@
 @import './_colors.scss';
 @import './_theme.scss';
+@import './ui/index.scss';
 @import './_scrollbar.scss';
 @import './_variables.scss';
 @import './_overrides.scss';
@@ -14,3 +15,4 @@
 @import './_auth-page.scss';
 @import 'v-calendar/style.css';
 @import 'vue-toastification/dist/index.css';
+@import './_toast.scss';

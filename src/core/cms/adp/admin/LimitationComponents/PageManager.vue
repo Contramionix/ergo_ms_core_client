@@ -117,7 +117,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import { AddPageComponent, UpdatePageComponent } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
 const props = defineProps({

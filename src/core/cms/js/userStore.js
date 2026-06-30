@@ -1,13 +1,18 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import { apiClient } from '@/js/api/manager.js'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import { profileService } from '@/core/cms/js/profileService.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
-import { resolveAvatar, invalidateAvatar, clearAvatarCache } from '@/js/avatarCache.js'
+import {
+  ensureAvatarDisplaySrc,
+  invalidateAvatar,
+  clearAvatarCache,
+  avatarCacheKey,
+} from '@/js/avatarCache.js'
 import { showBootstrapMask } from '@/js/bootstrapMask.js'
 import Cookies from 'js-cookie'
 
@@ -232,7 +237,12 @@ export const useUserStore = defineStore('userStore', () => {
     try {
       const response = await apiClient.get(endpoints.userAvatars.list)
       if (response.data?.length && response.data[0].image) {
-        avatarUrl.value = response.data[0].image
+        const newUrl = response.data[0].image
+        const prevUrl = avatarUrl.value
+        if (prevUrl && avatarCacheKey(prevUrl) === avatarCacheKey(newUrl)) {
+          return
+        }
+        avatarUrl.value = newUrl
       }
     } catch (error) {
       logError('Ошибка загрузки аватара:', error)
@@ -349,7 +359,7 @@ export const useUserStore = defineStore('userStore', () => {
 
     if (avatarUrl.value) {
       try {
-        await resolveAvatar(avatarUrl.value)
+        await ensureAvatarDisplaySrc(avatarUrl.value)
       } catch {
         // прогрев кеша не критичен
       }

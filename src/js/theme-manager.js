@@ -15,6 +15,19 @@ const THEME_STORAGE_KEY = 'theme'
 const ACTIVE_THEME_STORAGE_KEY = 'activeTheme'
 
 export const THEME_MODES = ['light', 'dark', 'auto']
+export const THEME_CHANGE_EVENT = 'ergo:theme-change'
+
+function notifyThemeChange() {
+  if (typeof window === 'undefined') {
+    return
+  }
+  window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, {
+    detail: {
+      preference: readThemePreference(),
+      mode: getCurrentThemeMode(),
+    },
+  }))
+}
 
 const COLOR_VAR_MAP = {
   headerBackground: '--color-header-background',
@@ -156,6 +169,7 @@ export function applyThemeModePreference(mode) {
   }
 
   applyBootstrapThemeMode(mode)
+  notifyThemeChange()
 }
 
 export function applyTheme(theme, saveToStorage = true) {
@@ -186,6 +200,7 @@ export function applyTheme(theme, saveToStorage = true) {
     if (saveToStorage) {
       saveThemeToLocalStorage(theme)
     }
+    notifyThemeChange()
     return
   }
 
@@ -261,6 +276,8 @@ export function applyTheme(theme, saveToStorage = true) {
   if (saveToStorage) {
     saveThemeToLocalStorage(theme)
   }
+
+  notifyThemeChange()
 }
 
 export function previewTheme(theme) {

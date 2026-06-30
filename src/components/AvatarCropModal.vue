@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onUnmounted, onMounted, computed } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import { RotateCw, RotateCcw, Check } from 'lucide-vue-next'
 import ModalCenter from './ModalCenter.vue'
 import ImageCropper from './ImageCropper.vue'

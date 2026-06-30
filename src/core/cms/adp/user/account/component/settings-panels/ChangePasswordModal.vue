@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { Eye, EyeOff, CheckCircle, Shield } from 'lucide-vue-next'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import {

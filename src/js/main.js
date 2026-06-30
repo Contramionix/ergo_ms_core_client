@@ -16,6 +16,7 @@ import { autoAnimatePlugin } from '@formkit/auto-animate/vue'
 import { setupCalendar } from 'v-calendar'
 import { plugin as Slicksort } from 'vue-slicksort'
 import Toast from 'vue-toastification'
+import { getToastPluginOptions } from '@/js/utils/toast.js'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
@@ -25,7 +26,20 @@ import { initEndpoints } from '@/js/api/endpoints.js'
 import { ensureSiteNameLoaded } from '@/composables/useSiteName.js'
 import { getUserMenu } from '@/core/cms/js/menuService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import tokenService from '@/core/cms/js/tokenService.js'
 import { hideBootstrapMask } from '@/js/bootstrapMask.js'
+
+async function restoreSessionIfNeeded() {
+  if (tokenService.getAccess()) {
+    return true
+  }
+  try {
+    await tokenService.tryRefresh()
+    return Boolean(tokenService.getAccess())
+  } catch {
+    return false
+  }
+}
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -44,12 +58,7 @@ app.use(PerfectScrollbarPlugin)
 app.use(autoAnimatePlugin)
 app.use(Slicksort)
 
-app.use(Toast, {
-  position: 'top-center',
-  maxToasts: 3,
-  timeout: 2000,
-  showCloseButtonOnHover: true,
-})
+app.use(Toast, getToastPluginOptions())
 
 app.use(setupCalendar, {
   color: 'red',
@@ -61,7 +70,8 @@ await ensureSiteNameLoaded()
 const { syncSiteThemeFromApi } = await import('@/js/theme-service.js')
 await syncSiteThemeFromApi()
 
-if (authGuard.isAuthenticated()) {
+const hasSession = await restoreSessionIfNeeded()
+if (hasSession) {
   // Полностью готовим пользователя (данные + профиль + кеш аватарки) и меню до
   // монтирования — иначе данные приходят поэтапно и аватар/иконки дёргаются.
   await Promise.all([

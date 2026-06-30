@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import tokenService from '@/core/cms/js/tokenService'
 import { buildWebSocketUrl } from '@/js/api/baseUrl.js'
 import { notificationsApi } from './notifications-api'

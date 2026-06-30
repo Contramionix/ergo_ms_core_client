@@ -1,9 +1,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { confirmDelete } from '@/js/utils/confirm.js'
 import AvatarBlock from '@/core/cms/adp/user/account/component/settings-panels/AvatarBlock.vue'
 import UserProfileFields from '@/core/cms/adp/user/account/component/settings-panels/UserProfileFields.vue'
 import AdminUserSecuritySection from '@/core/cms/adp/admin/UsersComponent/AdminUserSecuritySection.vue'
@@ -40,7 +40,6 @@ const PROFILE_FIELDS = USER_PROFILE_ALL_FIELDS
 const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
-const showDeleteConfirm = ref(false)
 const errors = ref({})
 const formData = ref({})
 const avatarUrl = ref(null)
@@ -62,14 +61,6 @@ const modalTitle = computed(() =>
 
 const isCurrentUser = computed(() => props.userId != null && props.userId === userStore.user?.id)
 
-const deleteConfirmMessage = computed(() => {
-  const label = username.value || 'этого пользователя'
-  return (
-    `Удалить ${label}?\n\n` +
-    'Учётная запись и связанные данные будут удалены без возможности восстановления.'
-  )
-})
-
 const resetState = () => {
   formData.value = {}
   avatarUrl.value = null
@@ -78,7 +69,6 @@ const resetState = () => {
   username.value = ''
   passwordResetMode.value = 'system'
   errors.value = {}
-  showDeleteConfirm.value = false
 }
 
 const loadUser = async () => {
@@ -167,25 +157,24 @@ const handleSave = async () => {
   }
 }
 
-const requestDelete = () => {
-  if (!props.userId || isCurrentUser.value) return
-  showDeleteConfirm.value = true
-}
-
-const closeDeleteConfirm = () => {
-  if (!deleting.value) {
-    showDeleteConfirm.value = false
+const requestDelete = async () => {
+  if (!props.userId || isCurrentUser.value) {
+    return
   }
-}
 
-const confirmDelete = async () => {
-  if (!props.userId || deleting.value || isCurrentUser.value) return
+  const label = username.value || 'этого пользователя'
+  const ok = await confirmDelete(
+    'Удаление пользователя',
+    `Удалить ${label}?\n\nУчётная запись и связанные данные будут удалены без возможности восстановления.`,
+  )
+  if (!ok || deleting.value) {
+    return
+  }
 
   deleting.value = true
   try {
     await deleteAdminUser(props.userId)
     toast.success('Пользователь удалён')
-    showDeleteConfirm.value = false
     emit('deleted')
     handleClose()
   } catch (error) {
@@ -282,20 +271,6 @@ const confirmDelete = async () => {
       </button>
     </template>
   </ModalCenter>
-
-  <ConfirmDialog
-    :show="showDeleteConfirm"
-    title="Удаление пользователя"
-    :message="deleteConfirmMessage"
-    confirm-text="Удалить"
-    cancel-text="Отмена"
-    variant="danger"
-    :loading="deleting"
-    :z-index="1100"
-    @confirm="confirmDelete"
-    @cancel="closeDeleteConfirm"
-    @close="closeDeleteConfirm"
-  />
 </template>
 
 <style scoped lang="scss">

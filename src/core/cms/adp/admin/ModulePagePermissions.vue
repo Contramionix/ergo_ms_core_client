@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
 import { useModulePagePermissions } from './js/useModulePagePermissions'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import { apiClient } from '@/js/api/manager'
 import { CreatePolicy, UpdatePolicy, DeletePolicy } from '@/core/cms/adp/admin/js/GroupsPolitics'
 

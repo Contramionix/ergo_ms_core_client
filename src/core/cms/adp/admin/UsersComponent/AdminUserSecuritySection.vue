@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useToast } from 'vue-toastification'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { useToast } from '@/js/utils/toast.js'
+import { confirmAction, confirmDelete } from '@/js/utils/confirm.js'
 import { resetAdminUserPassword } from '@/core/cms/adp/admin/js/adminUserService.js'
 import { validatePasswordValue } from '@/js/passwordPolicy.js'
 
@@ -145,8 +145,6 @@ const handleManualSet = async () => {
         </div>
       </template>
     </div>
-
-    <ConfirmDialog :show="showResetConfirm" title="Сброс пароля" :message="resetConfirmMessage" confirm-text="Сбросить" cancel-text="Отмена" variant="danger" :loading="resetting" :z-index="1100" @confirm="confirmSystemReset" @cancel="closeResetConfirm" @close="closeResetConfirm"/>
   </div>
 </template>
 

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import { Save } from 'lucide-vue-next'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import { useProfile } from '@/core/cms/js/profileService.js'

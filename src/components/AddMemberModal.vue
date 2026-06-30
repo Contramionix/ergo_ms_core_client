@@ -74,7 +74,7 @@ import ModalCenter from '@/components/ModalCenter.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 import { parseFullNameParts, seedUserPublicInfoCache } from '@/js/userAvatar'
 
 const props = defineProps({

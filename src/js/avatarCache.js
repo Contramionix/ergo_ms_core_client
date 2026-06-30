@@ -18,6 +18,7 @@ const CACHE_NAME = 'ergo-avatars-v1'
 
 const memoryUrls = new Map() // cacheKey -> objectURL (синхронный доступ в пределах сессии)
 const inflight = new Map() // cacheKey -> Promise<string|null>
+const decodedKeys = new Set() // cacheKey — байты уже декодированы off-DOM в этой сессии
 
 function supportsCacheApi() {
   return typeof caches !== 'undefined' && typeof Response !== 'undefined'
@@ -30,6 +31,12 @@ function cacheKeyFor(url) {
   } catch {
     return url
   }
+}
+
+/** Стабильный ключ кеша (путь без подписи/expires в query). */
+export function avatarCacheKey(url) {
+  if (!url) return ''
+  return cacheKeyFor(url)
 }
 
 async function readFromCache(key) {
@@ -76,6 +83,18 @@ async function fetchAndStore(url, key) {
 export function peekAvatar(url) {
   if (!url) return null
   return memoryUrls.get(cacheKeyFor(url)) ?? null
+}
+
+/**
+ * Синхронно возвращает src для <img>, если аватар уже закеширован и декодирован.
+ * @param {string|null|undefined} url
+ * @returns {string|null}
+ */
+export function peekAvatarDisplaySrc(url) {
+  if (!url) return null
+  const key = cacheKeyFor(url)
+  if (!decodedKeys.has(key)) return null
+  return memoryUrls.get(key) ?? null
 }
 
 /**
@@ -128,6 +147,7 @@ export function invalidateAvatar(url) {
   }
   memoryUrls.delete(key)
   inflight.delete(key)
+  decodedKeys.delete(key)
 
   if (supportsCacheApi()) {
     caches
@@ -135,6 +155,57 @@ export function invalidateAvatar(url) {
       .then((cache) => cache.delete(key))
       .catch(() => {})
   }
+}
+
+const inflightDisplay = new Map()
+
+function preloadDecodedImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const done = () => resolve(src)
+      if (typeof img.decode === 'function') {
+        img.decode().then(done).catch(done)
+      } else {
+        done()
+      }
+    }
+    img.onerror = () => reject(new Error('avatar preload failed'))
+    img.src = src
+  })
+}
+
+/**
+ * Возвращает src, готовый к мгновенному показу в <img> (кеш + decode off-DOM).
+ * @param {string|null|undefined} url
+ * @returns {Promise<string|null>}
+ */
+export function ensureAvatarDisplaySrc(url) {
+  if (!url) return Promise.resolve(null)
+
+  const key = cacheKeyFor(url)
+  if (inflightDisplay.has(key)) {
+    return inflightDisplay.get(key)
+  }
+
+  const promise = (async () => {
+    const blobSrc = peekAvatar(url) || await resolveAvatar(url)
+    const candidates = [...new Set([blobSrc, url].filter(Boolean))]
+
+    for (const candidate of candidates) {
+      try {
+        await preloadDecodedImage(candidate)
+        decodedKeys.add(key)
+        return candidate
+      } catch {
+        // пробуем следующий источник
+      }
+    }
+    return null
+  })()
+
+  inflightDisplay.set(key, promise)
+  return promise.finally(() => inflightDisplay.delete(key))
 }
 
 /**
@@ -146,6 +217,8 @@ export function clearAvatarCache() {
   }
   memoryUrls.clear()
   inflight.clear()
+  inflightDisplay.clear()
+  decodedKeys.clear()
 
   if (supportsCacheApi()) {
     caches.delete(CACHE_NAME).catch(() => {})

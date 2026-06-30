@@ -37,7 +37,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useToast } from 'vue-toastification'
+import { useToast } from '@/js/utils/toast.js'
 
 import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
 
