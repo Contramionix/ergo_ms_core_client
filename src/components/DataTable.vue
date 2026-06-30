@@ -255,8 +255,8 @@ const nextPage = () => {
 .pagination .page-link {
   border-radius: 0.375rem;
   padding: 0.375rem 0.75rem;
-  color: #495057;
-  border-color: #dee2e6;
+  color: var(--color-primary-text);
+  border-color: var(--color-border);
   min-width: 36px;
   height: 31px;
   text-align: center;
@@ -267,18 +267,18 @@ const nextPage = () => {
 }
 
 .pagination .page-item.active .page-link {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
-  color: white;
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-primary-background);
 }
 
 .pagination .page-item.disabled .page-link {
-  color: #adb5bd;
+  color: var(--color-secondary-text);
   pointer-events: none;
 }
 
 .pagination .page-link:hover:not(.disabled) {
-  background-color: #e9ecef;
-  border-color: #dee2e6;
+  background-color: var(--color-hover-background);
+  border-color: var(--color-border);
 }
 </style>

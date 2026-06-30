@@ -5,7 +5,6 @@ import { preloadPasswordResetSettings } from '@/core/cms/adp/js/passwordResetSet
 
 import '@/js/utils/logger.js'
 
-import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import '@he-tree/vue/style/default.css'
 import '@he-tree/vue/style/material-design.css'
@@ -58,6 +57,9 @@ app.use(setupCalendar, {
 
 await initEndpoints()
 await ensureSiteNameLoaded()
+
+const { syncSiteThemeFromApi } = await import('@/js/theme-service.js')
+await syncSiteThemeFromApi()
 
 if (authGuard.isAuthenticated()) {
   // Полностью готовим пользователя (данные + профиль + кеш аватарки) и меню до

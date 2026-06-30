@@ -3,12 +3,13 @@
 // Подключение отрицательных отступов
 $enable-negative-margins: true;
 
-// Фон:
-$body-bg: rgb(242, 242, 242);
-$body-bg-dark: rgb(17, 17, 17);
+// Фон Bootstrap привязан к токенам темы (_theme.scss)
+$body-bg: $light-background;
+$body-bg-dark: $dark-background;
 
 body {
   color: var(--color-primary-text) !important;
+  background-color: var(--color-background) !important;
 }
 
 // Радиусы
@@ -51,7 +52,13 @@ $input-focus-box-shadow: none;
 
 .form-select:focus-within,
 .form-control:focus-within {
-  border: 1px solid $secondary !important;
+  border: 1px solid var(--color-accent) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
 // Переключатель

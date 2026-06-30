@@ -81,12 +81,12 @@ const breadcrumbs = computed(() =>
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #0d6efd;
+  color: var(--color-accent);
   text-decoration: none;
   transition: color 0.15s ease;
 
   &:hover {
-    color: #0a58ca;
+    color: color-mix(in srgb, var(--color-accent) 85%, var(--color-primary-text));
     text-decoration: underline;
   }
 }

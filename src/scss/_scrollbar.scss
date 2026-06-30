@@ -55,12 +55,12 @@
 .ps .ps__rail-y:focus,
 .ps .ps__rail-x.ps--clicking,
 .ps .ps__rail-y.ps--clicking {
-  background-color: #eee;
+  background-color: var(--scrollbar-rail-hover);
   opacity: 0.9;
 }
 
 .ps__thumb-x {
-  background-color: #aaa;
+  background-color: var(--scrollbar-thumb);
   border-radius: 6px;
   transition:
     background-color 0.2s linear,
@@ -74,7 +74,7 @@
 }
 
 .ps__thumb-y {
-  background-color: #aaa;
+  background-color: var(--scrollbar-thumb);
   border-radius: 6px;
   transition:
     background-color 0.2s linear,
@@ -90,14 +90,14 @@
 .ps__rail-x:hover > .ps__thumb-x,
 .ps__rail-x:focus > .ps__thumb-x,
 .ps__rail-x.ps--clicking .ps__thumb-x {
-  background-color: #999;
+  background-color: var(--scrollbar-thumb-active);
   height: 11px;
 }
 
 .ps__rail-y:hover > .ps__thumb-y,
 .ps__rail-y:focus > .ps__thumb-y,
 .ps__rail-y.ps--clicking .ps__thumb-y {
-  background-color: #999;
+  background-color: var(--scrollbar-thumb-active);
   width: 11px;
 }
 
@@ -162,8 +162,10 @@
 }
 
 .light-style .ps__thumb-x,
-.light-style .ps__thumb-y {
-  background-color: rgba(34, 48, 62, 0.4);
+.light-style .ps__thumb-y,
+.dark-style .ps__thumb-x,
+.dark-style .ps__thumb-y {
+  background-color: var(--scrollbar-thumb);
 }
 
 .light-style .ps__rail-x:hover,
@@ -171,8 +173,14 @@
 .light-style .ps__rail-x:focus,
 .light-style .ps__rail-y:focus,
 .light-style .ps__rail-x.ps--clicking,
-.light-style .ps__rail-y.ps--clicking {
-  background-color: rgba(34, 48, 62, 0.12);
+.light-style .ps__rail-y.ps--clicking,
+.dark-style .ps__rail-x:hover,
+.dark-style .ps__rail-y:hover,
+.dark-style .ps__rail-x:focus,
+.dark-style .ps__rail-y:focus,
+.dark-style .ps__rail-x.ps--clicking,
+.dark-style .ps__rail-y.ps--clicking {
+  background-color: var(--scrollbar-rail-hover);
 }
 
 .light-style .ps__rail-x:hover > .ps__thumb-x,
@@ -180,8 +188,14 @@
 .light-style .ps__rail-x:focus > .ps__thumb-x,
 .light-style .ps__rail-y:focus > .ps__thumb-y,
 .light-style .ps__rail-x.ps--clicking > .ps__thumb-x,
-.light-style .ps__rail-y.ps--clicking > .ps__thumb-y {
-  background-color: rgba(34, 48, 62, 0.7);
+.light-style .ps__rail-y.ps--clicking > .ps__thumb-y,
+.dark-style .ps__rail-x:hover > .ps__thumb-x,
+.dark-style .ps__rail-y:hover > .ps__thumb-y,
+.dark-style .ps__rail-x:focus > .ps__thumb-x,
+.dark-style .ps__rail-y:focus > .ps__thumb-y,
+.dark-style .ps__rail-x.ps--clicking > .ps__thumb-x,
+.dark-style .ps__rail-y.ps--clicking > .ps__thumb-y {
+  background-color: var(--scrollbar-thumb-active);
 }
 
 .light-style .ps-inverted .ps__rail-x:hover,
@@ -189,13 +203,21 @@
 .light-style .ps-inverted .ps__rail-x:focus,
 .light-style .ps-inverted .ps__rail-y:focus,
 .light-style .ps-inverted .ps__rail-x.ps--clicking,
-.light-style .ps-inverted .ps__rail-y.ps--clicking {
-  background-color: rgba(255, 255, 255, 0.5);
+.light-style .ps-inverted .ps__rail-y.ps--clicking,
+.dark-style .ps-inverted .ps__rail-x:hover,
+.dark-style .ps-inverted .ps__rail-y:hover,
+.dark-style .ps-inverted .ps__rail-x:focus,
+.dark-style .ps-inverted .ps__rail-y:focus,
+.dark-style .ps-inverted .ps__rail-x.ps--clicking,
+.dark-style .ps-inverted .ps__rail-y.ps--clicking {
+  background-color: color-mix(in srgb, var(--color-primary-background) 50%, transparent);
 }
 
 .light-style .ps-inverted .ps__thumb-x,
-.light-style .ps-inverted .ps__thumb-y {
-  background-color: rgba(255, 255, 255, 0.7);
+.light-style .ps-inverted .ps__thumb-y,
+.dark-style .ps-inverted .ps__thumb-x,
+.dark-style .ps-inverted .ps__thumb-y {
+  background-color: color-mix(in srgb, var(--color-primary-background) 70%, var(--color-primary-text));
 }
 
 .light-style .ps-inverted .ps__rail-x:hover > .ps__thumb-x,
@@ -203,63 +225,14 @@
 .light-style .ps-inverted .ps__rail-x:focus > .ps__thumb-x,
 .light-style .ps-inverted .ps__rail-y:focus > .ps__thumb-y,
 .light-style .ps-inverted .ps__rail-x.ps--clicking > .ps__thumb-x,
-.light-style .ps-inverted .ps__rail-y.ps--clicking > .ps__thumb-y {
-  background-color: #fff;
-}
-
-@supports (-moz-appearance: none) {
-  #both-scrollbars-example {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding-left: 0;
-    padding-right: 0;
-  }
-}
-
-.dark-style .ps__thumb-x,
-.dark-style .ps__thumb-y {
-  background-color: rgba(255, 255, 255, 0.438133) !important;
-}
-
-.dark-style .ps__rail-x:hover,
-.dark-style .ps__rail-y:hover,
-.dark-style .ps__rail-x:focus,
-.dark-style .ps__rail-y:focus,
-.dark-style .ps__rail-x.ps--clicking,
-.dark-style .ps__rail-y.ps--clicking {
-  background-color: rgba(255, 255, 255, 0.438133) !important;
-}
-
-.dark-style .ps__rail-x:hover > .ps__thumb-x,
-.dark-style .ps__rail-y:hover > .ps__thumb-y,
-.dark-style .ps__rail-x:focus > .ps__thumb-x,
-.dark-style .ps__rail-y:focus > .ps__thumb-y,
-.dark-style .ps__rail-x.ps--clicking > .ps__thumb-x,
-.dark-style .ps__rail-y.ps--clicking > .ps__thumb-y {
-  background-color: rgba(230, 230, 241, 0.7);
-}
-
-.dark-style .ps-inverted .ps__rail-x:hover,
-.dark-style .ps-inverted .ps__rail-y:hover,
-.dark-style .ps-inverted .ps__rail-x:focus,
-.dark-style .ps-inverted .ps__rail-y:focus,
-.dark-style .ps-inverted .ps__rail-x.ps--clicking,
-.dark-style .ps-inverted .ps__rail-y.ps--clicking {
-  background-color: rgba(255, 255, 255, 0.5);
-}
-
-.dark-style .ps-inverted .ps__thumb-x,
-.dark-style .ps-inverted .ps__thumb-y {
-  background-color: rgba(255, 255, 255, 0.7);
-}
-
+.light-style .ps-inverted .ps__rail-y.ps--clicking > .ps__thumb-y,
 .dark-style .ps-inverted .ps__rail-x:hover > .ps__thumb-x,
 .dark-style .ps-inverted .ps__rail-y:hover > .ps__thumb-y,
 .dark-style .ps-inverted .ps__rail-x:focus > .ps__thumb-x,
 .dark-style .ps-inverted .ps__rail-y:focus > .ps__thumb-y,
 .dark-style .ps-inverted .ps__rail-x.ps--clicking > .ps__thumb-x,
 .dark-style .ps-inverted .ps__rail-y.ps--clicking > .ps__thumb-y {
-  background-color: #fff;
+  background-color: var(--color-primary-background);
 }
 
 [dir='rtl'] .ps--active-y > .ps__rail-y {

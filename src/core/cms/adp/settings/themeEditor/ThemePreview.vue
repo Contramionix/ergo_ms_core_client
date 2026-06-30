@@ -15,7 +15,8 @@ import {
   Folder,
   Download,
   Share2,
-  MoreVertical
+  MoreVertical,
+  Eye,
 } from 'lucide-vue-next'
 
 // Получаем текущую тему из localStorage
@@ -53,7 +54,7 @@ onMounted(() => {
 <template>
   <div class="theme-preview">
     <div class="card rounded-3 shadow-sm mb-4">
-      <div class="card-header bg-white border-bottom">
+      <div class="card-header theme-preview__card-header">
         <div class="d-flex align-items-center">
           <Eye :size="24" class="text-primary me-2" />
           <h3 class="mb-0 text-primary">Предпросмотр темы</h3>
@@ -270,6 +271,12 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .theme-preview {
+  .theme-preview__card-header {
+    background-color: var(--color-primary-background);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-primary-text);
+  }
+
   .preview-header {
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--color-border, #e0e0e0);

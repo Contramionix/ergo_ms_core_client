@@ -185,8 +185,8 @@ function reset() {
   width: 100%;
   border-radius: 8px;
   overflow: hidden;
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
+  background-color: var(--color-secondary-background);
+  border: 1px solid var(--color-border);
 }
 
 .toolbar {

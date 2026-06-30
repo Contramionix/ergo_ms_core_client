@@ -11,18 +11,6 @@ import { getEndpoints } from '@/modules/index.js'
 let endpointsCache = null
 let endpointsPromise = null
 
-if (import.meta.hot) {
-  import.meta.hot.dispose((data) => {
-    data.endpointsCache = endpointsCache
-    data.endpointsPromise = endpointsPromise
-  })
-
-  if (import.meta.hot.data?.endpointsCache) {
-    endpointsCache = import.meta.hot.data.endpointsCache
-    endpointsPromise = import.meta.hot.data.endpointsPromise ?? null
-  }
-}
-
 async function loadEndpoints() {
   if (endpointsCache !== null) {
     return endpointsCache
@@ -46,11 +34,15 @@ async function loadEndpoints() {
 }
 
 /**
- * Загружает объединённые эндпоинты всех модулей (один раз).
+ * Загружает объединённые эндпоинты всех модулей (идемпотентно).
  * @returns {Promise<Object>}
  */
 export async function initEndpoints() {
   return loadEndpoints()
+}
+
+export function isEndpointsReady() {
+  return endpointsCache !== null
 }
 
 export const endpoints = new Proxy(
@@ -66,3 +58,21 @@ export const endpoints = new Proxy(
     },
   },
 )
+
+if (import.meta.hot) {
+  import.meta.hot.dispose((data) => {
+    data.endpointsCache = endpointsCache
+    data.endpointsPromise = endpointsPromise
+  })
+
+  if (import.meta.hot.data?.endpointsCache) {
+    endpointsCache = import.meta.hot.data.endpointsCache
+    endpointsPromise = import.meta.hot.data.endpointsPromise ?? null
+  }
+
+  import.meta.hot.accept(async () => {
+    if (!endpointsCache) {
+      await loadEndpoints()
+    }
+  })
+}

@@ -1,22 +1,25 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, onBeforeRouteLeave } from 'vue-router'
 import ThemeEditor from './ThemeEditor.vue'
 import ThemePreview from './ThemePreview.vue'
+import { restoreSiteThemeAfterEditor } from '@/js/theme-service.js'
 import { Edit, Eye } from 'lucide-vue-next'
 
 const route = useRoute()
-const activeView = ref('editor') // 'editor' или 'preview'
+const activeView = ref('editor')
 
-// Определяем, показывать ли переключатель (только для ThemeEditor)
 const showToggle = computed(() => route.name === 'ThemeEditor')
+
+onBeforeRouteLeave(async () => {
+  await restoreSiteThemeAfterEditor()
+})
 </script>
 
 <template>
-  <div class="container-fluid px-3">
+  <div class="theme-editor-layout container-fluid px-3">
     <div class="row justify-content-center">
       <div class="col-12">
-        <!-- Переключатель вида (только для редактора) -->
         <div v-if="showToggle" class="d-flex justify-content-center mb-4">
           <div class="btn-group" role="group">
             <button
@@ -40,20 +43,15 @@ const showToggle = computed(() => route.name === 'ThemeEditor')
           </div>
         </div>
 
-        <!-- Контент -->
-        <RouterView v-if="route.name !== 'ThemeEditor'" />
-        <template v-else>
-          <ThemeEditor v-if="activeView === 'editor'" />
-          <ThemePreview v-else />
-        </template>
+        <ThemeEditor v-if="activeView === 'editor'" />
+        <ThemePreview v-else />
       </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss">
-.container-fluid {
+.theme-editor-layout {
   padding: 0;
 }
 </style>
-

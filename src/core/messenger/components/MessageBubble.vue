@@ -154,21 +154,21 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
     flex-direction: row-reverse;
 
     .msng-bubble__content {
-      background: #007bff;
-      color: #fff;
+      background: var(--color-accent);
+      color: var(--color-primary-background);
       border-radius: 1rem 1rem 0.25rem 1rem;
     }
 
     .msng-bubble__time {
-      color: rgba(255, 255, 255, 0.7);
+      color: color-mix(in srgb, var(--color-primary-background) 70%, transparent);
     }
 
     .msng-bubble__edited {
-      color: rgba(255, 255, 255, 0.5);
+      color: color-mix(in srgb, var(--color-primary-background) 50%, transparent);
     }
 
     .msng-bubble__attachment-file {
-      color: rgba(255, 255, 255, 0.9);
+      color: color-mix(in srgb, var(--color-primary-background) 90%, transparent);
     }
   }
 

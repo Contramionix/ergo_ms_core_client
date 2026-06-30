@@ -2,11 +2,11 @@ import { ref, watch, markRaw } from 'vue'
 import { Sun, Moon, LaptopMinimal, Bell, Grid3x3, Languages } from 'lucide-vue-next'
 import { getSessionUserId, registerUiSettingsReset } from './tokenStorage.js'
 import {
-  applyBootstrapThemeMode,
-  loadThemeFromLocalStorage,
-  resolveThemeMode,
-  writeThemePreference,
+  applyThemeModePreference,
+  readThemePreference,
 } from '@/js/theme-manager.js'
+import { resetSiteThemeOnLogout } from '@/js/theme-service.js'
+
 export const THEME_OPTIONS = [
   { id: 'light', name: 'Светлая', icon: markRaw(Sun) },
   { id: 'dark', name: 'Тёмная', icon: markRaw(Moon) },
@@ -30,30 +30,16 @@ const DEFAULT_THEME = 'auto'
 const DEFAULT_ACTION_BUTTON = 'notifications'
 const DEFAULT_LANGUAGE = 'ru'
 
-const theme = ref(localStorage.getItem(THEME_BASE_KEY) || DEFAULT_THEME)
+const theme = ref(readThemePreference() || DEFAULT_THEME)
 const actionButton = ref(localStorage.getItem(ACTION_BUTTON_BASE_KEY) || DEFAULT_ACTION_BUTTON)
 const language = ref(localStorage.getItem(LANGUAGE_BASE_KEY) || DEFAULT_LANGUAGE)
-
-const applyThemeToDom = (value) => {
-  const savedTheme = loadThemeFromLocalStorage()
-  const hasCustomTheme =
-    savedTheme?.colors && Object.keys(savedTheme.colors).some((key) => savedTheme.colors[key])
-
-  if (hasCustomTheme) {
-    document.documentElement.setAttribute('data-bs-theme', resolveThemeMode(value))
-    return
-  }
-
-  applyBootstrapThemeMode(value)
-}
 
 watch(
   theme,
   (val) => {
-    writeThemePreference(val)
-    applyThemeToDom(val)
+    applyThemeModePreference(val)
   },
-  { immediate: true },
+  { immediate: false },
 )
 
 watch(actionButton, (val) => {
@@ -65,8 +51,10 @@ watch(language, (val) => {
 })
 
 export function resetUserSettings() {
+  theme.value = DEFAULT_THEME
   actionButton.value = DEFAULT_ACTION_BUTTON
   language.value = DEFAULT_LANGUAGE
+  resetSiteThemeOnLogout()
 }
 
 registerUiSettingsReset(resetUserSettings)

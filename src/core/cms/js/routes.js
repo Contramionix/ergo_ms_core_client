@@ -40,7 +40,7 @@ export default {
   "Settings": {
     "path": "/settings",
     "component": "@/core/cms/adp/settings/ParentLayout.vue",
-    "redirect": "SiteSettings",
+    "redirect": "AdminPanel",
     "meta": {
       "requiresAuth": true,
       "requiresGlobalAdmin": true
@@ -146,10 +146,11 @@ export default {
       "requiresGlobalAdmin": true
     }
   },
-  "SiteSettings": {
-    "path": "/settings/site-settings",
-    "component": "@/core/cms/adp/settings/siteSettings/ParentLayout.vue",
+  "ThemeEditor": {
+    "path": "/admin-panel/themes",
+    "component": "@/core/cms/adp/settings/themeEditor/ParentLayout.vue",
     "meta": {
+      "title": "Темы оформления",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }

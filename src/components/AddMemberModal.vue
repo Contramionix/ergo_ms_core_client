@@ -431,7 +431,7 @@ watch(resolvedTabs, () => {
         right: 0;
         width: 18px;
         height: 18px;
-        background-color: var(--bs-primary, #0d6efd);
+        background-color: var(--color-accent);
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -482,12 +482,12 @@ watch(resolvedTabs, () => {
   flex-shrink: 0;
 
   &:hover {
-    color: var(--bs-primary, #0d6efd);
+    color: var(--color-accent);
     background: transparent;
   }
 
   &.active {
-    color: var(--bs-primary, #0d6efd);
+    color: var(--color-accent);
     font-weight: 600;
 
     &::after {
@@ -497,7 +497,7 @@ watch(resolvedTabs, () => {
       left: 0;
       right: 0;
       height: 2px;
-      background-color: var(--bs-primary, #0d6efd);
+      background-color: var(--color-accent);
     }
   }
 }
@@ -556,7 +556,7 @@ watch(resolvedTabs, () => {
   transition: background-color 0.15s ease-in-out;
 
   &:hover {
-    background-color: var(--bs-gray-100, #f8f9fa);
+    background-color: var(--color-secondary-background);
     text-decoration: none;
   }
 }

@@ -9,14 +9,16 @@ import ColorPicker from './ColorPicker.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { apiClient } from '@/js/api/manager'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
-import { endpoints } from '@/js/api/endpoints'
+import { endpoints, initEndpoints } from '@/js/api/endpoints.js'
 import { 
   getDefaultColors, 
   getColorDescriptions,
   getBootstrapByCategories,
   previewTheme,
   applyTheme,
-  resetToInitialTheme
+  resetPreviewToDefaults,
+  getCurrentThemeMode,
+  loadThemeFromLocalStorage,
 } from '@/js/theme-manager'
 
 const toast = useToast()
@@ -64,6 +66,7 @@ const isNewTheme = computed(() => !currentTheme.id)
 const loadThemes = async () => {
   loading.value = true
   try {
+    await initEndpoints()
     const res = await apiClient.get(endpoints.themes.list)
     if (res.success) {
       themes.value = res.data || []
@@ -73,10 +76,10 @@ const loadThemes = async () => {
         await createSystemThemes()
       }
       
-      // Выбираем активную или первую тему
-      const activeTheme = themes.value.find(t => t.is_active) || themes.value[0]
-      if (activeTheme) {
-        selectTheme(activeTheme)
+      // Выбираем тему для формы без смены текущего оформления сайта
+      const initialTheme = pickInitialTheme(themes.value)
+      if (initialTheme) {
+        selectTheme(initialTheme, { preview: false })
       }
     }
   } catch (e) {
@@ -116,8 +119,36 @@ const resetSystemThemes = async () => {
   }
 }
 
+// Выбор темы в списке при первой загрузке (без смены глобальной темы)
+function pickInitialTheme(themeList) {
+  if (!themeList.length) {
+    return null
+  }
+
+  const active = themeList.find((t) => t.is_active)
+  if (active) {
+    return active
+  }
+
+  const saved = loadThemeFromLocalStorage()
+  if (saved?.id) {
+    const byId = themeList.find((t) => t.id === saved.id)
+    if (byId) {
+      return byId
+    }
+  }
+
+  const mode = getCurrentThemeMode()
+  const byMode = themeList.find((t) => t.base_theme === mode)
+  if (byMode) {
+    return byMode
+  }
+
+  return themeList[0]
+}
+
 // Выбор темы для редактирования
-const selectTheme = (theme) => {
+const selectTheme = (theme, { preview = true } = {}) => {
   selectedThemeId.value = theme.id
   
   // Берём цвета из темы или дефолтные из _theme.scss
@@ -132,18 +163,19 @@ const selectTheme = (theme) => {
     author: theme.author || '',
     base_theme: theme.base_theme,
     colors: colors,
-    bootstrap_colors: {},  // Игнорируем bootstrap_colors из БД
+    bootstrap_colors: theme.bootstrap_colors ? { ...theme.bootstrap_colors } : {},
     is_active: theme.is_active,
     is_default: theme.is_default,
     is_system: theme.is_system
   })
   
-  // Применяем превью темы
-  previewTheme({
-    base_theme: currentTheme.base_theme,
-    colors: { ...currentTheme.colors },
-    bootstrap_colors: {}
-  })
+  if (preview) {
+    previewTheme({
+      base_theme: currentTheme.base_theme,
+      colors: { ...currentTheme.colors },
+      bootstrap_colors: { ...currentTheme.bootstrap_colors },
+    })
+  }
 }
 
 // Создание новой темы
@@ -175,7 +207,7 @@ const changeBaseTheme = (base) => {
   previewTheme({
     base_theme: base,
     colors: { ...currentTheme.colors },
-    bootstrap_colors: {}
+    bootstrap_colors: { ...currentTheme.bootstrap_colors },
   })
 }
 
@@ -186,14 +218,17 @@ const updateColor = (key, value) => {
   previewTheme({
     base_theme: currentTheme.base_theme,
     colors: { ...currentTheme.colors },
-    bootstrap_colors: {}
+    bootstrap_colors: { ...currentTheme.bootstrap_colors },
   })
 }
 
-// Обновление Bootstrap цвета (сейчас не используется, но оставим для будущего)
 const updateBootstrapColor = (key, value) => {
   currentTheme.bootstrap_colors[key] = value
-  // Bootstrap переменные пока игнорируются
+  previewTheme({
+    base_theme: currentTheme.base_theme,
+    colors: { ...currentTheme.colors },
+    bootstrap_colors: { ...currentTheme.bootstrap_colors },
+  })
 }
 
 // Получить значение по умолчанию для Bootstrap переменной
@@ -210,23 +245,17 @@ const getDefaultValue = (key) => {
   return ''
 }
 
-// Сброс к начальным значениям из _theme.scss
+// Сброс к начальным значениям из _theme.scss (только превью редактора)
 const resetToDefaults = () => {
   const base = currentTheme.base_theme
-  
-  // Сброс к начальным значениям
-  currentTheme.colors = { ...getDefaultColors(base) }
-  currentTheme.bootstrap_colors = {}  // Bootstrap переменные сбрасываются
-  
-  // Применяем сброс
-  resetToInitialTheme(base)
-  
-  // Обновляем отображение
-  Object.assign(currentTheme, {
-    colors: { ...getDefaultColors(base) },
-    bootstrap_colors: {}
+  const defaults = resetPreviewToDefaults(base)
+  currentTheme.colors = { ...defaults.colors }
+  currentTheme.bootstrap_colors = {}
+  previewTheme({
+    base_theme: base,
+    colors: { ...currentTheme.colors },
+    bootstrap_colors: {},
   })
-  
   toast.success('Тема сброшена к начальным значениям')
 }
 
@@ -257,19 +286,17 @@ const saveTheme = async () => {
     
     if (res.success) {
       toast.success('Тема сохранена')
+      const savedId = res.data?.id || currentTheme.id
       await loadThemes()
-      
-      // Выбираем сохраненную тему
-      const savedTheme = themes.value.find(t => t.name === data.name)
+      const savedTheme = themes.value.find((t) => t.id === savedId)
+        || themes.value.find((t) => t.name === data.name)
       if (savedTheme) {
         selectTheme(savedTheme)
-        
-        // Если тема активна - сохраняем в localStorage
         if (savedTheme.is_active) {
           applyTheme({
             base_theme: savedTheme.base_theme,
             colors: savedTheme.colors || {},
-            bootstrap_colors: {}
+            bootstrap_colors: savedTheme.bootstrap_colors || {},
           }, true)
         }
       }
@@ -294,7 +321,7 @@ const activateTheme = async (theme) => {
       applyTheme({
         base_theme: res.data.base_theme,
         colors: res.data.colors || {},
-        bootstrap_colors: {}
+        bootstrap_colors: res.data.bootstrap_colors || {},
       }, true)
       selectTheme(res.data)
     }
@@ -387,9 +414,23 @@ const exportTheme = async () => {
     return
   }
   
-  // Экспорт сохраненной темы через API
-  window.open(`/api/${endpoints.themes.export(currentTheme.id)}`, '_blank')
-  toast.success('Тема экспортирована')
+  try {
+    const res = await apiClient.downloadFile(endpoints.themes.export(currentTheme.id))
+    if (!res.success || !res.data) {
+      toast.error(res.message || 'Ошибка экспорта темы')
+      return
+    }
+    const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${currentTheme.name || 'theme'}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success('Тема экспортирована')
+  } catch {
+    toast.error('Ошибка экспорта темы')
+  }
 }
 
 // Импорт темы
@@ -465,7 +506,7 @@ onMounted(() => {
       <!-- Левая панель: список тем -->
       <div class="col-12 col-lg-4">
         <div class="card rounded-3 shadow-sm h-100">
-          <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between">
+          <div class="card-header theme-editor__card-header d-flex align-items-center justify-content-between">
             <h5 class="mb-0 d-flex align-items-center">
               <Palette :size="20" class="me-2 text-primary" />
               Темы
@@ -549,7 +590,7 @@ onMounted(() => {
       <!-- Правая панель: редактор -->
       <div class="col-12 col-lg-8">
         <div class="card rounded-3 shadow-sm">
-          <div class="card-header bg-white border-bottom">
+          <div class="card-header theme-editor__card-header">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
               <h5 class="mb-0 d-flex align-items-center">
                 <Settings2 :size="20" class="me-2 text-primary" />
@@ -711,6 +752,16 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .theme-editor {
+  .theme-editor__card-header {
+    background-color: var(--color-primary-background);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-primary-text);
+  }
+
+  .form-label {
+    color: var(--color-primary-text);
+  }
+
   .theme-list {
     max-height: 600px;
     overflow-y: auto;
@@ -721,21 +772,21 @@ onMounted(() => {
     align-items: center;
     justify-content: space-between;
     padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--color-border, #e0e0e0);
+    border-bottom: 1px solid var(--color-border);
     cursor: pointer;
     transition: background-color 0.2s;
     
     &:hover {
-      background-color: var(--color-hover-background, #e1e1e1);
+      background-color: var(--color-hover-background);
     }
     
     &.active {
-      background-color: var(--bs-primary-bg-subtle, #cfe2ff);
-      border-left: 3px solid var(--bs-primary, #0d6efd);
+      background-color: color-mix(in srgb, var(--color-accent) 14%, var(--color-primary-background));
+      border-left: 3px solid var(--color-accent);
     }
     
     &.is-active-theme {
-      border-left: 3px solid var(--bs-success, #198754);
+      border-left: 3px solid var(--bs-success);
     }
   }
   
@@ -744,6 +795,10 @@ onMounted(() => {
     flex-direction: column;
     gap: 0.25rem;
     overflow: hidden;
+
+    small {
+      color: var(--color-secondary-text);
+    }
   }
   
   .theme-name {
@@ -751,11 +806,12 @@ onMounted(() => {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--color-primary-text);
   }
   
   .theme-icon {
     flex-shrink: 0;
-    color: var(--color-secondary-text, #6e6e6e);
+    color: var(--color-secondary-text);
   }
   
   .theme-actions {

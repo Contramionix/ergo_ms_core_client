@@ -1,26 +1,75 @@
 /**
- * МЕНЕДЖЕР ТЕМ
- * 
- * Начальные значения берутся ТОЛЬКО из _theme.scss
- * Bootstrap переменные НЕ переопределяются по умолчанию
+ * Менеджер тем: применение цветов к DOM, кеш в localStorage, режим light/dark/auto.
+ * Начальные значения — из bootstrap-variables.js (синхронизированы с _theme.scss).
  */
 
-import { 
-  THEME_SCSS_COLORS,
+import {
   COLOR_DESCRIPTIONS,
   BOOTSTRAP_VARIABLES,
   getThemeScssColors,
-  getBootstrapByCategories as getBootstrapCategories
+  getBootstrapByCategories as getBootstrapCategories,
+  valuesToCss,
 } from './bootstrap-variables.js'
 
 const THEME_STORAGE_KEY = 'theme'
+const ACTIVE_THEME_STORAGE_KEY = 'activeTheme'
 
 export const THEME_MODES = ['light', 'dark', 'auto']
 
-/**
- * Прочитать предпочтение темы из глобального ключа theme
- * @returns {'light'|'dark'|'auto'}
- */
+const COLOR_VAR_MAP = {
+  headerBackground: '--color-header-background',
+  authBackground: '--color-auth-background',
+  background: '--color-background',
+  border: '--color-border',
+  primaryText: '--color-primary-text',
+  secondaryText: '--color-secondary-text',
+  primaryBackground: '--color-primary-background',
+  secondaryBackground: '--color-secondary-background',
+  hoverBackground: '--color-hover-background',
+  accent: '--color-accent',
+}
+
+const BOOTSTRAP_BRIDGE_FROM_COLORS = {
+  background: ['--bs-body-bg'],
+  primaryText: ['--bs-body-color', '--bs-emphasis-color', '--bs-heading-color', '--bs-card-color'],
+  secondaryText: ['--bs-secondary-color', '--bs-tertiary-color'],
+  border: ['--bs-border-color'],
+  primaryBackground: ['--bs-card-bg'],
+  secondaryBackground: ['--bs-secondary-bg', '--bs-tertiary-bg'],
+  accent: ['--bs-primary', '--bs-link-color', '--bs-link-hover-color'],
+}
+
+function hasCustomColors(colors) {
+  return colors && Object.keys(colors).some((key) => colors[key])
+}
+
+function parseAccentRgb(accent) {
+  if (!accent || typeof accent !== 'string') {
+    return null
+  }
+
+  const hex = accent.trim()
+  if (hex.startsWith('#') && hex.length >= 7) {
+    const raw = hex.replace('#', '')
+    return {
+      r: parseInt(raw.substring(0, 2), 16),
+      g: parseInt(raw.substring(2, 4), 16),
+      b: parseInt(raw.substring(4, 6), 16),
+    }
+  }
+
+  const rgbMatch = hex.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i)
+  if (rgbMatch) {
+    return {
+      r: Number(rgbMatch[1]),
+      g: Number(rgbMatch[2]),
+      b: Number(rgbMatch[3]),
+    }
+  }
+
+  return null
+}
+
 export function readThemePreference() {
   const stored = localStorage.getItem(THEME_STORAGE_KEY)
   if (stored && THEME_MODES.includes(stored)) {
@@ -35,20 +84,11 @@ export function readThemePreference() {
   return 'auto'
 }
 
-/**
- * Сохранить предпочтение темы в глобальный ключ theme
- * @param {'light'|'dark'|'auto'} mode
- */
 export function writeThemePreference(mode) {
   if (!THEME_MODES.includes(mode)) return
   localStorage.setItem(THEME_STORAGE_KEY, mode)
 }
 
-/**
- * Разрешить режим auto в light/dark по системным настройкам
- * @param {'light'|'dark'|'auto'} mode
- * @returns {'light'|'dark'}
- */
 export function resolveThemeMode(mode) {
   if (mode === 'auto') {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
@@ -56,10 +96,17 @@ export function resolveThemeMode(mode) {
   return mode
 }
 
-/**
- * Применить Bootstrap-тему к документу (без кастомных цветов редактора)
- * @param {'light'|'dark'|'auto'} mode
- */
+export function getDefaultColors(baseTheme = 'light') {
+  return getThemeScssColors(baseTheme)
+}
+
+export function getDefaultThemeConfig() {
+  return {
+    light: getDefaultColors('light'),
+    dark: getDefaultColors('dark'),
+  }
+}
+
 export function applyBootstrapThemeMode(mode) {
   const resolved = resolveThemeMode(mode)
   document.documentElement.setAttribute('data-bs-theme', resolved)
@@ -70,64 +117,60 @@ export function applyBootstrapThemeMode(mode) {
   }
 }
 
-// Маппинг переменных (--color-*)
-const COLOR_VAR_MAP = {
-  headerBackground: '--color-header-background',
-  authBackground: '--color-auth-background',
-  background: '--color-background',
-  border: '--color-border',
-  primaryText: '--color-primary-text',
-  secondaryText: '--color-secondary-text',
-  primaryBackground: '--color-primary-background',
-  secondaryBackground: '--color-secondary-background',
-  hoverBackground: '--color-hover-background',
-  accent: '--color-accent'
-}
-
-/**
- * Получить начальные цвета из _theme.scss
- */
-export function getDefaultColors(baseTheme = 'light') {
-  return getThemeScssColors(baseTheme)
-}
-
-/**
- * Получить Bootstrap переменные по умолчанию
- * Возвращает ПУСТОЙ объект - используем стандартные Bootstrap + SCSS
- */
-export function getDefaultBootstrapColors(baseTheme = 'light') {
-  return {}
-}
-
-/**
- * Получить структуру темы по умолчанию
- */
-export function getDefaultThemeConfig() {
-  return {
-    light: getDefaultColors('light'),
-    dark: getDefaultColors('dark')
+function resolveColorsForAppearanceMode(savedTheme, resolvedMode) {
+  const savedBase = savedTheme.base_theme || savedTheme.baseTheme || 'light'
+  if (savedBase === resolvedMode) {
+    return savedTheme.colors
   }
+
+  const defaults = getDefaultColors(resolvedMode)
+  const savedAccent = savedTheme.colors?.accent
+  const savedBaseAccent = getDefaultColors(savedBase).accent
+
+  if (savedAccent && savedAccent !== savedBaseAccent) {
+    return { ...defaults, accent: savedAccent }
+  }
+
+  return defaults
 }
 
 /**
- * Применить тему к документу
- * @param {Object} theme - объект темы
- * @param {boolean} saveToStorage - сохранять ли в localStorage (по умолчанию true)
+ * Применить предпочтение light/dark/auto с учётом активной кастомной темы.
+ * Режим из шестерёнки всегда задаёт data-bs-theme; палитра подстраивается под него.
  */
+export function applyThemeModePreference(mode) {
+  writeThemePreference(mode)
+  const resolvedMode = resolveThemeMode(mode)
+  const savedTheme = loadThemeFromLocalStorage()
+
+  if (savedTheme && hasCustomColors(savedTheme.colors)) {
+    applyTheme(
+      {
+        ...savedTheme,
+        base_theme: resolvedMode,
+        colors: resolveColorsForAppearanceMode(savedTheme, resolvedMode),
+      },
+      false,
+    )
+    return
+  }
+
+  applyBootstrapThemeMode(mode)
+}
+
 export function applyTheme(theme, saveToStorage = true) {
   if (!theme) {
     logWarn('Тема не передана')
     return
   }
 
-  const baseTheme = theme.base_theme || theme.baseTheme || 'light'
+  const preference = readThemePreference()
+  const baseTheme = theme.base_theme || theme.baseTheme || resolveThemeMode(preference)
   const colors = theme.colors || {}
-  // Bootstrap переменные ИГНОРИРУЮТСЯ - используем только SCSS из _theme.scss
+  const bootstrapColors = theme.bootstrap_colors || theme.bootstrapColors || {}
 
-  // Устанавливаем data-bs-theme
   document.documentElement.setAttribute('data-bs-theme', baseTheme)
 
-  // Создаём элемент стилей только для кастомных переменных
   let styleElement = document.getElementById('custom-theme-styles')
   if (!styleElement) {
     styleElement = document.createElement('style')
@@ -135,48 +178,53 @@ export function applyTheme(theme, saveToStorage = true) {
     document.body.appendChild(styleElement)
   }
 
-  // Проверяем, есть ли кастомные цвета
-  const hasCustomColors = Object.keys(colors).some(key => colors[key])
-  
-  if (!hasCustomColors) {
-    // Если нет кастомных цветов - убираем стили, используем SCSS
+  const hasColors = hasCustomColors(colors)
+  const hasBootstrap = bootstrapColors && Object.keys(bootstrapColors).some((key) => bootstrapColors[key])
+
+  if (!hasColors && !hasBootstrap) {
     styleElement.textContent = ''
+    if (saveToStorage) {
+      saveThemeToLocalStorage(theme)
+    }
     return
   }
 
-  // Формируем CSS для кастомных переменных
   let cssRules = `
     html[data-bs-theme='${baseTheme}'],
     [data-bs-theme='${baseTheme}'] {
   `
 
-  // Добавляем кастомные переменные (--color-*)
   for (const [key, varName] of Object.entries(COLOR_VAR_MAP)) {
     if (colors[key]) {
       cssRules += `  ${varName}: ${colors[key]} !important;\n`
+      const bridgeVars = BOOTSTRAP_BRIDGE_FROM_COLORS[key]
+      if (bridgeVars) {
+        for (const bsVar of bridgeVars) {
+          cssRules += `  ${bsVar}: ${colors[key]} !important;\n`
+        }
+      }
     }
   }
 
-  // Связываем accent с Bootstrap primary для синхронизации кнопок, ссылок и т.д.
+  if (hasBootstrap) {
+    cssRules += valuesToCss(bootstrapColors)
+  }
+
   if (colors.accent) {
-    const accentHex = colors.accent.replace('#', '')
-    const r = parseInt(accentHex.substring(0, 2), 16)
-    const g = parseInt(accentHex.substring(2, 4), 16)
-    const b = parseInt(accentHex.substring(4, 6), 16)
-    
-    cssRules += `
-      /* Bootstrap primary синхронизация с accent */
+    const rgb = parseAccentRgb(colors.accent)
+    if (rgb) {
+      cssRules += `
       --bs-primary: ${colors.accent} !important;
-      --bs-primary-rgb: ${r}, ${g}, ${b} !important;
+      --bs-primary-rgb: ${rgb.r}, ${rgb.g}, ${rgb.b} !important;
       --bs-link-color: ${colors.accent} !important;
-      --bs-link-color-rgb: ${r}, ${g}, ${b} !important;
+      --bs-link-color-rgb: ${rgb.r}, ${rgb.g}, ${rgb.b} !important;
       --bs-link-hover-color: ${colors.accent} !important;
     `
+    }
   }
 
   cssRules += '}\n'
-  
-  // Добавляем стили для кнопок с primary цветом
+
   if (colors.accent) {
     cssRules += `
     .btn-primary {
@@ -209,83 +257,67 @@ export function applyTheme(theme, saveToStorage = true) {
   }
 
   styleElement.textContent = cssRules
-  
-  // Сохраняем только если явно указано
+
   if (saveToStorage) {
     saveThemeToLocalStorage(theme)
   }
 }
 
-/**
- * Применить тему как превью (БЕЗ сохранения в localStorage)
- */
 export function previewTheme(theme) {
   applyTheme(theme, false)
 }
 
-/**
- * Получить текущий режим темы
- */
 export function getCurrentThemeMode() {
-  const stored = localStorage.getItem('theme')
-  if (!stored) {
-    return resolveThemeMode('auto')
-  }
-  if (stored === 'auto') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-  return stored
+  return resolveThemeMode(readThemePreference())
 }
 
 /**
- * Сбросить тему к начальным значениям из _theme.scss
+ * Сброс превью редактора к SCSS-дефолтам (не трогает global activeTheme).
  */
-export function resetToInitialTheme(baseTheme = null) {
-  const mode = baseTheme || getCurrentThemeMode()
-  
-  // Удаляем кастомные стили
+export function resetPreviewToDefaults(baseTheme = 'light') {
   const styleElement = document.getElementById('custom-theme-styles')
   if (styleElement) {
     styleElement.textContent = ''
   }
-  
-  // Устанавливаем атрибут - SCSS применится автоматически
-  document.documentElement.setAttribute('data-bs-theme', mode)
-  
-  // Очищаем localStorage
-  localStorage.removeItem('activeTheme')
-  
+  document.documentElement.setAttribute('data-bs-theme', baseTheme)
   return {
-    base_theme: mode,
-    colors: getDefaultColors(mode),
-    bootstrap_colors: {}
+    base_theme: baseTheme,
+    colors: getDefaultColors(baseTheme),
+    bootstrap_colors: {},
   }
 }
 
-/**
- * Сбросить тему
- */
+export function resetToInitialTheme(baseTheme = null) {
+  const mode = baseTheme || getCurrentThemeMode()
+  const styleElement = document.getElementById('custom-theme-styles')
+  if (styleElement) {
+    styleElement.textContent = ''
+  }
+  document.documentElement.setAttribute('data-bs-theme', mode)
+  localStorage.removeItem(ACTIVE_THEME_STORAGE_KEY)
+  applyThemeModePreference(readThemePreference())
+  return {
+    base_theme: mode,
+    colors: getDefaultColors(mode),
+    bootstrap_colors: {},
+  }
+}
+
 export function resetTheme() {
   return resetToInitialTheme()
 }
 
-/**
- * Сохранить тему в localStorage
- */
 export function saveThemeToLocalStorage(theme) {
   try {
-    localStorage.setItem('activeTheme', JSON.stringify(theme))
+    localStorage.setItem(ACTIVE_THEME_STORAGE_KEY, JSON.stringify(theme))
   } catch (e) {
     logError('Ошибка сохранения темы:', e)
   }
 }
 
-/**
- * Загрузить тему из localStorage
- */
 export function loadThemeFromLocalStorage() {
   try {
-    const stored = localStorage.getItem('activeTheme')
+    const stored = localStorage.getItem(ACTIVE_THEME_STORAGE_KEY)
     if (stored) {
       return JSON.parse(stored)
     }
@@ -295,78 +327,48 @@ export function loadThemeFromLocalStorage() {
   return null
 }
 
-/**
- * Инициализация темы при загрузке страницы
- */
-export function initTheme() {
-  const savedTheme = loadThemeFromLocalStorage()
-  
-  if (savedTheme && savedTheme.colors && Object.keys(savedTheme.colors).length > 0) {
-    // Применяем сохранённую тему без перезаписи localStorage
-    applyTheme(savedTheme, false)
-  } else {
-    // Нет сохранённой темы - используем SCSS из _theme.scss
-    const mode = getCurrentThemeMode()
-    document.documentElement.setAttribute('data-bs-theme', mode)
-  }
+export function clearCachedActiveTheme() {
+  localStorage.removeItem(ACTIVE_THEME_STORAGE_KEY)
+}
 
-  // Слушаем изменения системной темы только если нет кастомной темы
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-    const stored = localStorage.getItem('theme')
-    const savedTheme = loadThemeFromLocalStorage()
-    
-    // Если есть кастомная тема - не реагируем на системную тему
-    if (savedTheme && savedTheme.colors && Object.keys(savedTheme.colors).length > 0) {
+let systemThemeListenerAttached = false
+
+function attachSystemThemeListener() {
+  if (systemThemeListenerAttached) {
+    return
+  }
+  systemThemeListenerAttached = true
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (readThemePreference() !== 'auto') {
       return
     }
-    
-    if (stored === 'auto') {
-      const mode = e.matches ? 'dark' : 'light'
-      document.documentElement.setAttribute('data-bs-theme', mode)
-    }
+    applyThemeModePreference('auto')
   })
 }
 
-/**
- * Описания цветов для UI редактора
- */
+export function initTheme() {
+  attachSystemThemeListener()
+  applyThemeModePreference(readThemePreference())
+}
+
 export function getColorDescriptions() {
   return COLOR_DESCRIPTIONS
 }
 
-/**
- * Bootstrap переменные по категориям для UI редактора
- */
 export function getBootstrapByCategories() {
   return getBootstrapCategories()
 }
 
-/**
- * Описания Bootstrap переменных
- */
 export function getBootstrapColorDescriptions() {
   const descriptions = {}
-  for (const [categoryKey, category] of Object.entries(BOOTSTRAP_VARIABLES)) {
+  for (const category of Object.values(BOOTSTRAP_VARIABLES)) {
     for (const [key, config] of Object.entries(category.variables)) {
       descriptions[key] = {
         label: config.label,
-        description: config.variable
+        description: config.variable,
       }
     }
   }
   return descriptions
-}
-
-/**
- * Совместимость со старым API
- */
-export function applyCurrentTheme() {
-  initTheme()
-}
-
-export function applyThemeConfig(themeConfig, themeMode = null) {
-  if (!themeConfig) return
-  const mode = themeMode || getCurrentThemeMode()
-  const colors = themeConfig[mode] || themeConfig.light || {}
-  applyTheme({ base_theme: mode, colors, bootstrap_colors: {} })
 }

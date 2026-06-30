@@ -119,7 +119,7 @@ function handleClose() {
 <style scoped>
 .cd-message {
   white-space: pre-line;
-  color: #6c757d;
+  color: var(--color-secondary-text);
 }
 
 .btn {

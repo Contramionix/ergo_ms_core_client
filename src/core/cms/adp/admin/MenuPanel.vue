@@ -655,12 +655,12 @@ onUnmounted(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #6c757d;
+      color: var(--color-secondary-text);
       transition: color 0.3s ease;
       flex-shrink: 0;
       
       &:hover {
-        color: #0d6efd;
+        color: var(--color-accent);
         
         .menu-panel__settings-icon {
           transform: rotate(180deg);

@@ -31,6 +31,9 @@ const showAppearanceSubmenu = computed(
 )
 
 const changeTheme = (newTheme) => {
+  if (theme.value === newTheme) {
+    return
+  }
   theme.value = newTheme
   appearanceMenuOpen.value = false
   closeDropdown()

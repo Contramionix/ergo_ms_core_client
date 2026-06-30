@@ -59,6 +59,7 @@ const submitForm = async () => {
       await Promise.all([
         useUserStore().ensureUserReady(),
         getUserMenu(),
+        import('@/js/theme-service.js').then(({ syncSiteThemeFromApi }) => syncSiteThemeFromApi()),
       ])
 
       // Запускаем проверку токена после успешной авторизации

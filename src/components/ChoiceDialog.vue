@@ -108,7 +108,7 @@ function getButtonClass(variant) {
 
 <style scoped>
 .cd-message {
-  color: #6c757d;
+  color: var(--color-secondary-text);
 }
 
 .btn {

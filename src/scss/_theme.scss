@@ -51,6 +51,36 @@ $dark-accent: #f14336;
   --color-accent: #{$accent};
 }
 
+@mixin bootstrap-theme-bridge() {
+  --bs-body-bg: var(--color-background);
+  --bs-body-color: var(--color-primary-text);
+  --bs-emphasis-color: var(--color-primary-text);
+  --bs-secondary-color: var(--color-secondary-text);
+  --bs-tertiary-color: var(--color-secondary-text);
+  --bs-border-color: var(--color-border);
+  --bs-card-bg: var(--color-primary-background);
+  --bs-card-color: var(--color-primary-text);
+  --bs-secondary-bg: var(--color-secondary-background);
+  --bs-tertiary-bg: var(--color-secondary-background);
+  --bs-primary: var(--color-accent);
+  --bs-link-color: var(--color-accent);
+  --bs-link-hover-color: var(--color-accent);
+  --bs-heading-color: var(--color-primary-text);
+  --scrollbar-thumb: color-mix(in srgb, var(--color-primary-text) 40%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-primary-text) 60%, transparent);
+  --scrollbar-thumb-active: color-mix(in srgb, var(--color-primary-text) 70%, transparent);
+  --scrollbar-rail-hover: color-mix(in srgb, var(--color-primary-text) 12%, transparent);
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-primary-text);
+}
+
 // Применение миксина к каждой теме
 [data-bs-theme='light'] {
   @include theme-colors(
@@ -65,6 +95,7 @@ $dark-accent: #f14336;
     $light-hover-background,
     $light-accent
   );
+  @include bootstrap-theme-bridge();
 }
 
 [data-bs-theme='dark'] {
@@ -80,4 +111,5 @@ $dark-accent: #f14336;
     $dark-hover-background,
     $dark-accent
   );
+  @include bootstrap-theme-bridge();
 }

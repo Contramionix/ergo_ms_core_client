@@ -476,7 +476,7 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
-  scrollbar-color: rgba(34, 48, 62, 0.4) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 
   &::-webkit-scrollbar {
     width: 6px;
@@ -487,31 +487,15 @@ onBeforeUnmount(() => {
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(34, 48, 62, 0.4);
+    background: var(--scrollbar-thumb);
     border-radius: 10rem;
 
     &:hover {
-      background: rgba(34, 48, 62, 0.6);
+      background: var(--scrollbar-thumb-hover);
     }
 
     &:active {
-      background: rgba(34, 48, 62, 0.7);
-    }
-  }
-}
-
-[data-bs-theme='dark'] .side-menu__scroll {
-  scrollbar-color: rgba(255, 255, 255, 0.44) transparent;
-
-  &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.44);
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.6);
-    }
-
-    &:active {
-      background: rgba(255, 255, 255, 0.7);
+      background: var(--scrollbar-thumb-active);
     }
   }
 }
@@ -531,7 +515,7 @@ onBeforeUnmount(() => {
   top: 2.875rem;
   width: 100%;
   height: 1.5rem;
-  background: linear-gradient(var(--bs-card-bg) 41%, rgba(255, 255, 255, 0));
+  background: linear-gradient(var(--bs-card-bg) 41%, transparent);
   pointer-events: none;
   z-index: 2;
   transition: background $transition;

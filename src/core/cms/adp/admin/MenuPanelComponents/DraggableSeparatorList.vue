@@ -143,14 +143,14 @@ function onSortEnd() {
   display: flex;
   align-items: center;
   padding: 0.75rem 0.5rem;
-  background: #fff;
-  border: 1px solid #e9ecef;
+  background: var(--color-primary-background);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   gap: 0.75rem;
   transition: background-color 0.15s ease;
   
   &:hover {
-    background-color: #f8f9fa;
+    background-color: var(--color-hover-background);
   }
   
   &__handle {

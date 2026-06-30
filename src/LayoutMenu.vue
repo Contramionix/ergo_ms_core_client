@@ -30,6 +30,7 @@ import AccessDenied from '@/components/AccessDenied.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 import { Menu as IconMenu } from 'lucide-vue-next'
 
+import { initEndpoints } from '@/js/api/endpoints.js'
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import { useSiteName } from '@/composables/useSiteName.js'
 
@@ -121,10 +122,16 @@ onMounted(async () => {
     ensurePresenceConnected()
   }
 
+  await initEndpoints()
+
   const plugins = []
   for (const loadPlugin of Object.values(layoutPluginGlob)) {
-    const module = await loadPlugin()
-    plugins.push(module.default)
+    try {
+      const module = await loadPlugin()
+      plugins.push(module.default)
+    } catch (e) {
+      logError('Ошибка загрузки layout-плагина модуля', e)
+    }
   }
   layoutPlugins.value = plugins
 })
@@ -177,8 +184,8 @@ onBeforeUnmount(() => {
   right: 0;
   height: 56px;
   z-index: 1100;
-  background: #ffffff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: var(--color-header-background);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   padding: 0 12px;
@@ -188,7 +195,7 @@ onBeforeUnmount(() => {
     width: 40px;
     height: 40px;
     margin-right: 8px;
-    color: #0d6efd;
+    color: var(--color-accent);
   }
 
   &__brand {

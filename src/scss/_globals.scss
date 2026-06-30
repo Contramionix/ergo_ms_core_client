@@ -184,7 +184,7 @@ svg.apexcharts-svg {
 // Календарь v-календарь
 .vc-container .vc-weekday-1,
 .vc-container .vc-weekday-7 {
-  color: $primary;
+  color: var(--color-accent);
 }
 
 .vc-container {
@@ -233,12 +233,12 @@ svg.apexcharts-svg {
   }
   
   &.hq-avatar-primary {
-    border: 3px solid var(--bs-primary);
-    box-shadow: 0 4px 20px rgba(0, 123, 255, 0.2);
+    border: 3px solid var(--color-accent);
+    box-shadow: 0 4px 20px color-mix(in srgb, var(--color-accent) 20%, transparent);
     
     &:hover {
       transform: translateZ(0) scale(1.03);
-      box-shadow: 0 8px 30px rgba(0, 123, 255, 0.3);
+      box-shadow: 0 8px 30px color-mix(in srgb, var(--color-accent) 30%, transparent);
     }
   }
 }
