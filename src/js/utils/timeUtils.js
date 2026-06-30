@@ -169,6 +169,32 @@ export function getFullDateTime(date) {
 }
 
 /**
+ * Форматирует дату: день недели, число и месяц (например, «понедельник, 30 июня»)
+ * @param {string|Date} date - Дата в ISO формате или объект Date
+ * @returns {string} Отформатированная дата или пустая строка при ошибке
+ */
+export function formatWeekdayDate(date = new Date()) {
+    const targetDate = parseDate(date)
+    if (!targetDate) return ''
+
+    try {
+        const weekdayRaw = new Intl.DateTimeFormat('ru-RU', { weekday: 'long' }).format(targetDate)
+        const weekday = weekdayRaw.charAt(0).toUpperCase() + weekdayRaw.slice(1)
+        const dayMonth = new Intl.DateTimeFormat('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+        }).format(targetDate)
+        const dayMonthNormalized = dayMonth.replace(
+            /(\d+\s+)(.+)/,
+            (_, prefix, month) => `${prefix}${month.toLowerCase()}`,
+        )
+        return `${weekday}, ${dayMonthNormalized}`
+    } catch {
+        return ''
+    }
+}
+
+/**
  * Форматирует дату в формат "dd месяц yyyy" (например, "01 января 2024")
  * @param {string|Date} date - Дата в ISO формате или объект Date
  * @returns {string} Отформатированная дата или исходная строка при ошибке

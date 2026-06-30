@@ -5,6 +5,7 @@ import { Boxes, Cog, ShieldCheck, Users } from 'lucide-vue-next'
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useSiteName } from '@/composables/useSiteName.js'
+import { formatWeekdayDate } from '@/js/utils/timeUtils.js'
 
 const userStore = useUserStore()
 const { ensureSiteNameLoaded } = useSiteName()
@@ -20,15 +21,9 @@ const greeting = computed(() => {
   return 'Добрый вечер'
 })
 
-const userLabel = computed(() => userStore.fullName || 'пользователь')
+const userLabel = computed(() => userStore.greetingName)
 
-const formattedDate = computed(() =>
-  new Intl.DateTimeFormat('ru-RU', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(new Date()),
-)
+const formattedDate = computed(() => formatWeekdayDate(new Date()))
 
 const highlights = [
   {
@@ -65,12 +60,12 @@ onMounted(loadSiteName)
     <div class="app-shell__content">
       <header class="app-shell__hero app-shell__hero--centered">
         <div class="app-shell__brand app-shell__brand--centered">
-          <p class="app-shell__eyebrow">{{ formattedDate }}</p>
+          <p class="app-shell__eyebrow app-shell__eyebrow--date">{{ formattedDate }}</p>
           <h1 class="app-shell__title">
             <SiteWordmark class="site-wordmark--hero site-wordmark--centered" />
           </h1>
           <p class="app-shell__subtitle">
-            {{ greeting }}, <span class="app-home__username">{{ userLabel }}</span>
+            {{ greeting }}, <span class="app-home__username">{{ userLabel }}</span>!
           </p>
         </div>
       </header>
@@ -92,12 +87,7 @@ onMounted(loadSiteName)
 
       <section class="app-home__highlights" aria-label="Возможности платформы">
         <ul class="app-home__highlights-list">
-          <li
-            v-for="(item, index) in highlights"
-            :key="item.title"
-            class="app-home__highlight"
-            :style="{ '--item-delay': `${index * 80}ms` }"
-          >
+          <li v-for="(item, index) in highlights" :key="item.title" class="app-home__highlight" :style="{ '--item-delay': `${index * 80}ms` }">
             <span class="app-home__highlight-icon" aria-hidden="true">
               <component :is="item.icon" :size="22" />
             </span>

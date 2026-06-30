@@ -59,6 +59,19 @@ export const useUserStore = defineStore('userStore', () => {
     return name
   })
 
+  const greetingName = computed(() => {
+    if (!user.value) return 'пользователь'
+
+    const firstName =
+      user.value.first_name?.trim() || profile.value?.firstName?.trim() || ''
+    const middleName =
+      user.value.middle_name?.trim() || profile.value?.middleName?.trim() || ''
+
+    if (firstName && middleName) return `${firstName} ${middleName}`
+    if (firstName) return firstName
+    return user.value.username || 'пользователь'
+  })
+
   const menuUserName = computed(() => {
     if (!user.value) return 'Гость'
 
@@ -161,7 +174,7 @@ export const useUserStore = defineStore('userStore', () => {
       
       const userData = response?.data || response
       
-      if (userData && userData.username && !userData.adp_profile && !userData.first_name) {
+      if (userData?.username && !userData.adp_profile && userData.initials_name !== undefined) {
         updateUserData(userData)
         return
       }
@@ -352,6 +365,7 @@ export const useUserStore = defineStore('userStore', () => {
     isAuthenticated,
     fullName,
     displayName,
+    greetingName,
     menuUserName,
     menuUserNameTruncated,
     userEmail,

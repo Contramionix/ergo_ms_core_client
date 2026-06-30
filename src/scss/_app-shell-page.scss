@@ -77,6 +77,10 @@
   color: var(--color-secondary-text);
 }
 
+.app-shell__eyebrow--date {
+  text-transform: none;
+}
+
 .app-shell__title {
   margin: 0;
   font-size: clamp(2rem, 4vw, 3rem);
