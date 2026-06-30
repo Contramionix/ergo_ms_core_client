@@ -1,22 +1,38 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { Briefcase, Calendar, MapPin } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 const userStore = useUserStore()
 
+function getAvatarSizeForViewport() {
+  if (typeof window === 'undefined') {
+    return 180
+  }
+
+  if (window.innerWidth <= 575) {
+    return 120
+  }
+
+  if (window.innerWidth <= 992) {
+    return 150
+  }
+
+  return 180
+}
+
 const profileData = ref(null)
 const loading = ref(true)
+const avatarSize = ref(getAvatarSizeForViewport())
 
-// Вычисляемые свойства для отображения данных
 const displayUserInfo = computed(() => {
   if (!profileData.value && !userStore.user) {
     return {
       username: 'Пользователь',
       profession: '',
       location: 'Не указано',
-      registration: 'Неизвестно'
+      registration: 'Неизвестно',
     }
   }
 
@@ -26,43 +42,41 @@ const displayUserInfo = computed(() => {
   return {
     username: profile?.fullName || userStore.fullName || 'Гость',
     profession: profile?.bio || '',
-    location: profile?.city && profile?.country 
-      ? `${profile.city}, ${profile.country}` 
-      : profile?.city || profile?.country || 'Не указано',
-    registration: user?.date_joined 
+    location:
+      profile?.city && profile?.country
+        ? `${profile.city}, ${profile.country}`
+        : profile?.city || profile?.country || 'Не указано',
+    registration: user?.date_joined
       ? formatRegistrationDate(user.date_joined)
-      : 'Неизвестно'
+      : 'Неизвестно',
   }
 })
 
-// Форматирование даты регистрации
 function formatRegistrationDate(dateString) {
   if (!dateString) return 'Неизвестно'
-  
+
   const date = new Date(dateString)
   const options = { year: 'numeric', month: 'long' }
   return date.toLocaleDateString('ru-RU', options)
 }
 
-// Загрузка профиля
-async function fetchProfile() {
+async function fetchProfile({ showLoading = false } = {}) {
   try {
-    loading.value = true
-    
-    // Инициализируем пользователя если еще не инициализирован
+    if (showLoading) {
+      loading.value = true
+    }
+
     if (!userStore.isInitialized) {
       await userStore.initializeUser()
     }
-    
-    // Используем данные из userStore, если они уже загружены
+
     if (userStore.profile) {
       profileData.value = userStore.profile
       return
     }
-    
+
     await userStore.loadProfile()
-    
-    // Используем данные из store после загрузки
+
     if (userStore.profile) {
       profileData.value = userStore.profile
     }
@@ -76,109 +90,114 @@ async function fetchProfile() {
   }
 }
 
-// Следим за изменениями в userStore для автоматического обновления
-watch(() => userStore.profile, (newProfile) => {
-  if (newProfile && !loading.value) {
-    // Просто обновляем локальные данные из store без нового запроса
-    profileData.value = newProfile
-  }
-}, { deep: true })
+watch(
+  () => userStore.profile,
+  (newProfile) => {
+    if (newProfile && !loading.value) {
+      profileData.value = newProfile
+    }
+  },
+  { deep: true },
+)
 
-// Функция для принудительного обновления данных (экспортируем для использования в других компонентах)
 const refreshData = async () => {
-  loading.value = true
-  await fetchProfile()
+  await fetchProfile({ showLoading: !profileData.value })
 }
 
-// Подписываемся на обновления из userStore
-watch(() => userStore.user, async (newUser, oldUser) => {
-  if (newUser && (!oldUser || newUser.id !== oldUser.id)) {
-    await refreshData()
-  }
-})
+watch(
+  () => userStore.user,
+  async (newUser, oldUser) => {
+    if (newUser && (!oldUser || newUser.id !== oldUser.id)) {
+      await refreshData()
+    }
+  },
+)
+
+function updateAvatarSize() {
+  avatarSize.value = getAvatarSizeForViewport()
+}
 
 onMounted(async () => {
-  // Инициализируем профиль из userStore если он есть
+  window.addEventListener('resize', updateAvatarSize)
+
   if (userStore.profile) {
     profileData.value = userStore.profile
-    loading.value = false
   }
-  
-  // Загружаем профиль
-  await fetchProfile()
+
+  await fetchProfile({ showLoading: !profileData.value && !userStore.user })
 })
 
-// Экспортируем функцию для внешнего использования
+onUnmounted(() => {
+  window.removeEventListener('resize', updateAvatarSize)
+})
+
 defineExpose({
-  refreshData
+  refreshData,
 })
 </script>
 
-
 <template>
-  <div class="profile__cover col-12">
-    <img src="@/core/cms/assets/profile-cover.png" alt="Profile Cover" />
-  </div>
-  <div class="profile__basic basic card col-12">
-    <div class="row px-0 px-lg-3">
-      <div class="col-12 col-xxl-2 col-lg-3">
-        <div class="basic__avatar avatar rounded-circle overflow-hidden mx-auto d-flex justify-content-center align-items-center">
-          <UserAvatar 
-            :size="120"
-            :title="displayUserInfo.username"
-          />
-        </div>
+  <div class="profile-card col-12">
+    <div class="profile-card__cover">
+      <img src="@/core/cms/assets/profile-cover.png" alt="Profile Cover" />
+    </div>
+
+    <div class="profile-card__body">
+      <div class="profile-card__avatar">
+        <UserAvatar
+          :size="avatarSize"
+          :title="displayUserInfo.username"
+          :first-name="userStore.user?.first_name ?? userStore.profile?.firstName ?? null"
+          :last-name="userStore.user?.last_name ?? userStore.profile?.lastName ?? null"
+        />
       </div>
-      <div class="col-12 col-xxl-10 col-lg-9">
-        <div
-          class="basic__user d-flex flex-column flex-md-row align-items-md-center justify-content-start justify-content-md-between"
-        >
-          <div class="basic__data d-flex flex-column gap-2 text-center text-md-start">
-            <!-- Показываем спиннер загрузки во время загрузки -->
-            <h3 class="basic__username">
-              <span v-if="loading" class="d-inline-flex align-items-center">
-                <div class="spinner-border spinner-border-sm me-2" role="status">
-                  <span class="visually-hidden">Загрузка...</span>
-                </div>
-                Загрузка...
-              </span>
-              <span v-else>{{ displayUserInfo.username }}</span>
-            </h3>
-            <div class="basic__about">
-              <ul
-                class="list-unstyled mb-3 mb-lg-0 d-flex align-items-center flex-wrap justify-content-lg-start justify-content-center gap-3"
-              >
-                <li v-if="displayUserInfo.profession" class="d-flex align-items-center gap-2">
-                  <div class="icon-flex text-muted"><Briefcase :size="22" /></div>
-                  <div class="text-muted">{{ displayUserInfo.profession }}</div>
-                </li>
-                <li class="d-flex align-items-center gap-2">
-                  <div class="icon-flex text-muted"><MapPin :size="22" /></div>
-                  <div class="text-muted">{{ displayUserInfo.location }}</div>
-                </li>
-                <li class="d-flex align-items-center gap-2">
-                  <div class="icon-flex text-muted"><Calendar :size="22" /></div>
-                  <div class="text-muted">{{ displayUserInfo.registration }}</div>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
+
+      <div class="profile-card__info">
+        <h3 class="profile-card__username">
+          <span v-if="loading && !displayUserInfo.username" class="profile-card__loading">
+            <span class="spinner-border spinner-border-sm me-2" role="status">
+              <span class="visually-hidden">Загрузка...</span>
+            </span>
+            Загрузка...
+          </span>
+          <span v-else>{{ displayUserInfo.username }}</span>
+        </h3>
+
+        <ul class="profile-card__meta list-unstyled mb-0">
+          <li v-if="displayUserInfo.profession" class="profile-card__meta-item">
+            <Briefcase :size="20" class="profile-card__meta-icon" />
+            <span>{{ displayUserInfo.profession }}</span>
+          </li>
+          <li class="profile-card__meta-item">
+            <MapPin :size="20" class="profile-card__meta-icon" />
+            <span>{{ displayUserInfo.location }}</span>
+          </li>
+          <li class="profile-card__meta-item">
+            <Calendar :size="20" class="profile-card__meta-icon" />
+            <span>{{ displayUserInfo.registration }}</span>
+          </li>
+        </ul>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss">
-.profile__cover {
+.profile-card {
   overflow: hidden;
-  border-radius: 0.375rem 0.375rem 0 0;
-  
+  border: 1px solid var(--color-border);
+  border-radius: 0.625rem;
+  background: var(--color-primary-background);
+}
+
+.profile-card__cover {
+  overflow: hidden;
+
   img {
+    display: block;
     width: 100%;
     height: 200px;
     object-fit: cover;
-    display: block;
   }
 
   @media (width <= 992px) {
@@ -186,6 +205,7 @@ defineExpose({
       height: 180px;
     }
   }
+
   @media (width <= 575px) {
     img {
       height: 120px;
@@ -193,57 +213,88 @@ defineExpose({
   }
 }
 
-.basic {
-  position: relative;
-  min-height: 150px;
-  height: auto;
-  border-radius: 0 0 0.375rem 0.375rem;
+.profile-card__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 1.5rem 1.5rem;
+  text-align: center;
+}
+
+.profile-card__avatar {
+  --profile-avatar-size: 180px;
+  width: var(--profile-avatar-size);
+  height: var(--profile-avatar-size);
+  margin-top: calc(var(--profile-avatar-size) / -2);
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 0 0 4px var(--color-primary-background);
+
+  :deep(.user-avatar-wrap),
+  :deep(.user-avatar) {
+    width: 100% !important;
+    height: 100% !important;
+  }
 
   @media (width <= 992px) {
-    height: 200px;
+    --profile-avatar-size: 150px;
   }
-  @media (width <= 767px) {
-    height: 250px;
-  }
+
   @media (width <= 575px) {
-    height: 220px;
-  }
-  @media (width <= 415px) {
-    height: 260px;
-  }
-
-  & .row {
-    position: absolute;
-    top: -50px;
-    left: 12px;
-
-    width: 100%;
+    --profile-avatar-size: 120px;
   }
 }
 
-.basic__avatar {
-  width: 180px;
-  height: 180px;
-
-  @media (width <= 992px) {
-    width: 150px;
-    height: 150px;
-  }
-  @media (width <= 575px) {
-    width: 120px;
-    height: 120px;
-  }
+.profile-card__info {
+  width: 100%;
+  max-width: 42rem;
 }
 
-.basic__user {
-  margin-top: 85px;
+.profile-card__username {
+  margin: 0 0 0.75rem;
+  min-height: 2.25rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-primary-text);
+}
 
-  @media (width >= 1400px) {
-    padding-left: 3%;
-  }
+.profile-card__loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
-  @media (width <= 992px) {
-    margin-top: 16px;
-  }
+.profile-card__meta {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+.profile-card__meta-item {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-secondary-text);
+  font-size: 0.9375rem;
+  text-align: left;
+}
+
+.profile-card__meta-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 </style>

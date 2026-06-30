@@ -24,6 +24,9 @@ import { createPinia } from 'pinia'
 import App from '@/App.vue'
 import { initEndpoints } from '@/js/api/endpoints.js'
 import { ensureSiteNameLoaded } from '@/composables/useSiteName.js'
+import { getUserMenu } from '@/core/cms/js/menuService.js'
+import { useUserStore } from '@/core/cms/js/userStore.js'
+import { hideBootstrapMask } from '@/js/bootstrapMask.js'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -56,6 +59,15 @@ app.use(setupCalendar, {
 await initEndpoints()
 await ensureSiteNameLoaded()
 
+if (authGuard.isAuthenticated()) {
+  // Полностью готовим пользователя (данные + профиль + кеш аватарки) и меню до
+  // монтирования — иначе данные приходят поэтапно и аватар/иконки дёргаются.
+  await Promise.all([
+    useUserStore().ensureUserReady(),
+    getUserMenu(),
+  ])
+}
+
 const router = await initRouter()
 app.use(router)
 
@@ -65,6 +77,10 @@ await Promise.all([
 ])
 
 app.mount('#app')
+
+// Защитный таймаут: если по какой-то причине App.vue не снял маску загрузки
+// (ошибка роутера и т.п.), всё равно показываем интерфейс.
+setTimeout(hideBootstrapMask, 4000)
 
 if (authGuard.isAuthenticated()) {
   authGuard.startTokenValidation()

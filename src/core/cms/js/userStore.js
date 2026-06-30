@@ -7,6 +7,8 @@ import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import { profileService } from '@/core/cms/js/profileService.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
+import { resolveAvatar, invalidateAvatar, clearAvatarCache } from '@/js/avatarCache.js'
+import { showBootstrapMask } from '@/js/bootstrapMask.js'
 import Cookies from 'js-cookie'
 
 export const useUserStore = defineStore('userStore', () => {
@@ -280,8 +282,9 @@ export const useUserStore = defineStore('userStore', () => {
       await apiClient.post(endpoints.userAvatars.create, {
         image_path: uploadResult.path,
       })
-      
-      // Перезагружаем аватар
+
+      // Сбрасываем кеш старой аватарки, затем перезагружаем новую
+      invalidateAvatar(avatarUrl.value)
       await loadAvatar()
       toast.success('Аватар успешно обновлён')
       return true
@@ -297,6 +300,7 @@ export const useUserStore = defineStore('userStore', () => {
   const resetAvatar = async () => {
     try {
       await apiClient.delete(endpoints.userAvatars.deleteCurrent)
+      invalidateAvatar(avatarUrl.value)
       avatarUrl.value = null // Используем стандартный аватар
       toast.success('Аватар сброшен')
       return true
@@ -310,8 +314,12 @@ export const useUserStore = defineStore('userStore', () => {
 
   // Выход из системы
   const logout = () => {
+    // Скрываем интерфейс до сброса состояния, иначе аватарка на миг
+    // схлопывается в гостевую иконку перед полным переходом на /login.
+    showBootstrapMask()
     resetPresenceConnection()
     resetPresenceStore()
+    clearAvatarCache()
     resetUserState()
     isInitialized.value = false
     
@@ -328,6 +336,24 @@ export const useUserStore = defineStore('userStore', () => {
     
     // Перенаправляем на страницу входа
     window.location.href = '/login'
+  }
+
+  // Гарантирует полную готовность пользователя перед входом в интерфейс:
+  // базовые данные, профиль (first_name/last_name для стабильных инициалов) и
+  // прогретый кеш аватарки. Идемпотентна — вызывается при входе и при загрузке.
+  const ensureUserReady = async () => {
+    await Promise.all([
+      initializeUser(),
+      loadProfile(),
+    ])
+
+    if (avatarUrl.value) {
+      try {
+        await resolveAvatar(avatarUrl.value)
+      } catch {
+        // прогрев кеша не критичен
+      }
+    }
   }
 
   // Принудительная перезагрузка данных пользователя
@@ -380,6 +406,7 @@ export const useUserStore = defineStore('userStore', () => {
     updateAvatar,
     resetAvatar,
     logout,
+    ensureUserReady,
     refreshUserData,
     refreshAllData
   }

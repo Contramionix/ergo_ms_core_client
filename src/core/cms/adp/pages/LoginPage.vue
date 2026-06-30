@@ -5,6 +5,8 @@ import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
 import { authorization } from '@/core/cms/adp/js/auth-index'
 import { validateLoginForm } from '@/js/validation'
 import { authGuard } from '@/core/cms/js/authGuard'
+import { useUserStore } from '@/core/cms/js/userStore.js'
+import { getUserMenu } from '@/core/cms/js/menuService.js'
 import { useRegistrationSettings } from '@/core/cms/adp/js/useRegistrationSettings.js'
 import { usePasswordResetSettings } from '@/core/cms/adp/js/usePasswordResetSettings.js'
 
@@ -52,6 +54,13 @@ const submitForm = async () => {
     const authResult = await authorization(form.login, form.password, form.rememberUser)
 
     if (authResult.success === true) {
+      // Готовим пользователя и меню до перехода в кабинет, иначе данные приходят
+      // поэтапно и аватар/инициалы дёргаются при первом входе.
+      await Promise.all([
+        useUserStore().ensureUserReady(),
+        getUserMenu(),
+      ])
+
       // Запускаем проверку токена после успешной авторизации
       authGuard.startTokenValidation()
       router.push({ name: 'AppHome' })

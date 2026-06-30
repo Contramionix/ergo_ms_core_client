@@ -40,11 +40,15 @@ const emailPreview = ref([])
 const createdInvitations = ref([])
 const skippedInvitations = ref([])
 const sendResults = ref(null)
+const sendEmailsOnCreate = ref(false)
+const emailsAlreadySent = ref(false)
 
 const readyEmails = computed(() => emailPreview.value.filter((item) => item.canInvite))
 const hasPreview = computed(() => emailPreview.value.length > 0)
 const canCreate = computed(() => readyEmails.value.length > 0 && !createdInvitations.value.length)
-const canSendEmails = computed(() => createdInvitations.value.length > 0 && !isSending.value)
+const canSendEmails = computed(() =>
+  createdInvitations.value.length > 0 && !isSending.value && !emailsAlreadySent.value,
+)
 
 const resetState = () => {
   selectedFile.value = null
@@ -56,6 +60,8 @@ const resetState = () => {
   createdInvitations.value = []
   skippedInvitations.value = []
   sendResults.value = null
+  sendEmailsOnCreate.value = false
+  emailsAlreadySent.value = false
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -95,6 +101,7 @@ const processFile = async (file) => {
   createdInvitations.value = []
   skippedInvitations.value = []
   sendResults.value = null
+  emailsAlreadySent.value = false
   isParsing.value = true
 
   try {
@@ -157,9 +164,10 @@ const createInvitations = async () => {
   parseError.value = ''
 
   try {
+    const shouldSendEmail = sendEmailsOnCreate.value
     const result = await bulkCreateInvitations({
       emails: readyEmails.value.map((item) => item.email),
-      send_email: false,
+      send_email: shouldSendEmail,
     })
     createdInvitations.value = result.created || []
     skippedInvitations.value = [
@@ -170,6 +178,21 @@ const createInvitations = async () => {
     ]
     if (createdInvitations.value.length) {
       toast.success(`Создано приглашений: ${createdInvitations.value.length}`)
+    }
+    if (shouldSendEmail) {
+      emailsAlreadySent.value = true
+      const warnings = result.email_warnings || []
+      const sentItems = createdInvitations.value.filter((item) => !item.email_warning)
+      sendResults.value = {
+        sent: sentItems.map((item) => ({ id: item.id, email: item.email })),
+        failed: warnings.map((item) => ({ email: item.email, error: item.warning })),
+      }
+      if (sentItems.length) {
+        toast.success(`Отправлено писем: ${sentItems.length}`)
+      }
+      if (warnings.length) {
+        toast.warning(`Не удалось отправить: ${warnings.length}`)
+      }
     }
   } catch (apiError) {
     parseError.value = extractApiError(apiError, 'Не удалось создать приглашения')
@@ -256,7 +279,7 @@ const previewStatusClass = {
         <div class="modal-body">
           <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
             <p class="text-muted small mb-0">
-              Загрузите Excel-файл с email-адресами. Сначала проверьте список, создайте приглашения, затем отправьте письма.
+              Загрузите Excel-файл с email-адресами, проверьте список и создайте приглашения. Письма можно отправить сразу или отдельной кнопкой после создания.
             </p>
             <button
               type="button"
@@ -397,6 +420,29 @@ const previewStatusClass = {
         </div>
 
         <div class="modal-footer flex-wrap gap-2">
+          <div
+            v-if="hasPreview && canCreate"
+            class="email-send-option w-100"
+            :class="{ 'email-send-option--active': sendEmailsOnCreate }"
+          >
+            <div class="form-check m-0">
+              <input
+                id="sendEmailsOnCreate"
+                v-model="sendEmailsOnCreate"
+                type="checkbox"
+                class="form-check-input email-send-option__input"
+                :disabled="disabled || isCreating || isSending || isParsing"
+              />
+              <label class="form-check-label email-send-option__label" for="sendEmailsOnCreate">
+                <Mail :size="18" class="email-send-option__icon" />
+                <span>Отправить письма с приглашениями сразу при создании</span>
+              </label>
+            </div>
+            <p class="email-send-option__hint mb-0">
+              Если опция выключена, письма можно отправить отдельной кнопкой после создания приглашений.
+            </p>
+          </div>
+
           <button
             type="button"
             class="btn btn-secondary"
@@ -474,5 +520,68 @@ const previewStatusClass = {
 .invitation-email-text {
   cursor: text;
   word-break: break-all;
+}
+
+.email-send-option {
+  padding: 0.875rem 1rem;
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-secondary-background);
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+
+  &--active {
+    border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 10%, var(--color-secondary-background));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
+  }
+}
+
+.email-send-option__input {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-top: 0.15rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 2px solid var(--color-secondary-text);
+  background-color: var(--color-primary-background);
+
+  &:checked {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  &:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--color-accent) 25%, transparent);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.email-send-option__label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-primary-text);
+  line-height: 1.4;
+}
+
+.email-send-option__icon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--color-accent);
+}
+
+.email-send-option__hint {
+  margin-top: 0.5rem;
+  padding-left: calc(1.35rem + 0.5rem);
+  font-size: 0.8125rem;
+  color: var(--color-secondary-text);
 }
 </style>

@@ -82,7 +82,6 @@ const iconSize = computed(() => Math.round(props.size * 0.5))
   justify-content: center;
   border-radius: 50%;
   color: #fff;
-  transition: all 0.2s ease;
   user-select: none;
   box-sizing: border-box;
   flex-shrink: 0;
@@ -92,8 +91,14 @@ const iconSize = computed(() => Math.round(props.size * 0.5))
     height: 100% !important;
   }
 
+  // Анимируем только hover. Фон/размер/инициалы меняются мгновенно, чтобы
+  // смена данных пользователя не выглядела как повторная «подгрузка» аватарки.
   &--clickable {
     cursor: pointer;
+    transition:
+      transform 0.2s ease,
+      filter 0.2s ease,
+      box-shadow 0.2s ease;
 
     &:hover {
       transform: scale(1.05);

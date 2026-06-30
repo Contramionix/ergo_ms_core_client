@@ -1,4 +1,4 @@
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 
 /**
  * Размеры иконок пунктов меню. Логотип (шестерёнка) в шапке — фиксированный :size в MenuList.
@@ -15,26 +15,27 @@ export function buildMenuIconSizes(innerWidth) {
 }
 
 export function getDefaultMenuIconSizes() {
-  return buildMenuIconSizes(2000)
+  return buildMenuIconSizes(
+    typeof window !== 'undefined' ? window.innerWidth : 1600,
+  )
 }
 
 export function useMenuIconSizes() {
-  const menuIconSizes = ref(
-    buildMenuIconSizes(typeof window !== 'undefined' ? window.innerWidth : 1600)
-  )
+  const menuIconSizes = ref(getDefaultMenuIconSizes())
 
   const sync = () => {
     if (typeof window === 'undefined') return
     menuIconSizes.value = buildMenuIconSizes(window.innerWidth)
   }
 
-  onMounted(() => {
-    sync()
+  if (typeof window !== 'undefined') {
     window.addEventListener('resize', sync)
-  })
+  }
 
   onBeforeUnmount(() => {
-    window.removeEventListener('resize', sync)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', sync)
+    }
   })
 
   return { menuIconSizes }

@@ -1,42 +1,18 @@
 <script setup>
-  import MainInfo from '@/core/cms/adp/user/CardMain.vue'
+import MainInfo from '@/core/cms/adp/user/CardMain.vue'
 </script>
 
 <template>
-  <div class="mb-4">
+  <div class="profile-page">
     <MainInfo />
+    <RouterView />
   </div>
-
-  <RouterView></RouterView>
 </template>
 
 <style lang="scss" scoped>
-.navigation-container {
-  position: relative;
-  padding-right: 1rem;
-}
-
-.create-project-btn {
-  margin-left: auto;
-  white-space: nowrap;
-  position: relative;
-  z-index: 2;
-  
-  &:not(.btn-primary):hover {
-    background-color: var(--bs-primary-bg-subtle);
-    color: var(--bs-primary);
-  }
-}
-
-@media (max-width: 768px) {
-  .navigation-container {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .create-project-btn {
-    margin-left: 0;
-    width: 100%;
-  }
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 </style>

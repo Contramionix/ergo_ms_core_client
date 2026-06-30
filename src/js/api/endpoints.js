@@ -11,6 +11,18 @@ import { getEndpoints } from '@/modules/index.js'
 let endpointsCache = null
 let endpointsPromise = null
 
+if (import.meta.hot) {
+  import.meta.hot.dispose((data) => {
+    data.endpointsCache = endpointsCache
+    data.endpointsPromise = endpointsPromise
+  })
+
+  if (import.meta.hot.data?.endpointsCache) {
+    endpointsCache = import.meta.hot.data.endpointsCache
+    endpointsPromise = import.meta.hot.data.endpointsPromise ?? null
+  }
+}
+
 async function loadEndpoints() {
   if (endpointsCache !== null) {
     return endpointsCache

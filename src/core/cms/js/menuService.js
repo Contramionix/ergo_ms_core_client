@@ -7,11 +7,27 @@
 
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
+import { getIcon } from '@/config/icons-mapping.js'
+import { markRaw } from 'vue'
 
-// Кеш меню
+// In-memory кеш меню. Прогревается в main.js до монтирования, поэтому MenuList
+// может синхронно отрисовать меню с первого кадра (см. peekCachedMenu).
 let menuCache = null
 let cacheTimestamp = null
 const CACHE_TTL = 5 * 60 * 1000 // 5 минут
+
+function persistMenuCache(data) {
+  menuCache = data
+  cacheTimestamp = Date.now()
+}
+
+/**
+ * Синхронно возвращает кеш меню из памяти (без обращения к сети).
+ * @returns {Object|null}
+ */
+export function peekCachedMenu() {
+  return menuCache && cacheTimestamp ? menuCache : null
+}
 
 /**
  * Получает меню для текущего пользователя
@@ -31,8 +47,7 @@ export async function getUserMenu(forceRefresh = false) {
     const response = await apiClient.get(endpoints.cms.menu.userMenu)
     
     if (response.success) {
-      menuCache = response.data
-      cacheTimestamp = Date.now()
+      persistMenuCache(response.data)
       return response.data
     }
     
@@ -68,13 +83,20 @@ export function transformMenuData(menuData) {
  * @param {Object} item - Элемент меню из API
  * @returns {Object} - Преобразованный элемент
  */
+function resolveMenuIcon(icon) {
+  if (!icon) return null
+  if (typeof icon !== 'string') return icon
+  const resolved = getIcon(icon)
+  return resolved ? markRaw(resolved) : null
+}
+
 function transformMenuItem(item) {
   const transformed = {
     id: item.id,
     routeName: item.route_name,
     name: item.name,
     title: item.name,
-    icon: item.icon,
+    icon: resolveMenuIcon(item.icon),
     order: item.order,
     item_type: item.item_type // Сохраняем тип элемента
   }
@@ -108,7 +130,7 @@ function transformMenuItem(item) {
         const listItem = {
           routeName: child.route_name,
           name: child.name,
-          icon: child.icon,
+          icon: resolveMenuIcon(child.icon),
           page: child.page,
           isOffcanvas: child.item_type === 'offcanvas',
           item_type: child.item_type, // Сохраняем тип элемента
@@ -392,6 +414,7 @@ export async function logMenuAccess(menuItemId) {
 
 export default {
   getUserMenu,
+  peekCachedMenu,
   clearMenuCache,
   transformMenuData,
   transformSeparators,

@@ -191,7 +191,9 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
   text-decoration: none;
   padding: $padding-internal $padding-external;
   border-radius: $radius-small;
-  transition: all $transition;
+  transition:
+    background-color $transition,
+    color $transition;
   overflow: hidden;
   
   &:not(.menu-item--active):hover {
@@ -207,6 +209,9 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
 
 .menu-item__icon {
   flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
 }
 
 .menu-item__name {

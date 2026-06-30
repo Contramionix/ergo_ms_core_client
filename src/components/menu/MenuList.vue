@@ -1,7 +1,7 @@
 <script setup>
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
-import { onMounted, onBeforeUnmount, provide, ref, watch } from 'vue'
+import { onMounted, onBeforeUnmount, provide, ref, watch, nextTick } from 'vue'
 import { ChevronLeft, Minus } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
@@ -12,6 +12,7 @@ import { useSiteName } from '@/composables/useSiteName.js'
 
 import {
   getUserMenu,
+  peekCachedMenu,
   transformMenuData,
   transformSeparators,
   shouldShowSeparatorAt,
@@ -50,6 +51,8 @@ const isCollapsed = ref(readMenuCollapsedPreference())
 const isHovering = ref(!isCollapsed.value)
 const isToolbarDropdownActive = ref(false)
 const menuSections = ref([])
+const isMenuReady = ref(false)
+const allowMenuTransitions = ref(false)
 const { siteName, ensureSiteNameLoaded } = useSiteName()
 const menuRef = ref(null)
 
@@ -115,6 +118,10 @@ provide(MENU_ICON_SIZES_KEY, menuIconSizes)
 
 // Helper функция для вызова updateMenuWidth с текущими параметрами
 const updateWidth = () => {
+  if (!allowMenuTransitions.value) {
+    return
+  }
+
   updateMenuWidth(
     menuSections.value,
     siteName.value,
@@ -122,8 +129,61 @@ const updateWidth = () => {
     getSeparator,
     shouldShowSeparator,
     handleMenuMetricsChange,
-    isCollapsed.value
+    isCollapsed.value,
   )
+}
+
+function applyInitialMenuLayout() {
+  initializeMenuWidth(
+    menuSections.value,
+    siteName.value,
+    userStore,
+    getSeparator,
+    shouldShowSeparator,
+    handleMenuMetricsChange,
+    isCollapsed.value,
+  )
+}
+
+async function finishMenuBootstrap() {
+  await nextTick()
+  await new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(resolve)
+    })
+  })
+  allowMenuTransitions.value = true
+  updateWidth()
+}
+
+// Ссылка на уже применённые данные меню. getUserMenu возвращает один и тот же
+// объект из in-memory кеша, поэтому повторный вызов не пересобирает список и не
+// перерисовывает иконки (важно для отсутствия мигания при гидратации + onMounted).
+let appliedMenuData = null
+
+function applyMenuData(menuData, { force = false } = {}) {
+  if (!menuData?.menu_items?.length) {
+    return false
+  }
+
+  if (!force && menuData === appliedMenuData && menuSections.value.length > 0) {
+    return true
+  }
+
+  menuSections.value = transformMenuData(menuData)
+  separatorsConfig.value = transformSeparators(menuData.separators || [], menuData.menu_items)
+  appliedMenuData = menuData
+  return true
+}
+
+function hydrateMenuFromCache() {
+  const cached = peekCachedMenu()
+  return cached ? applyMenuData(cached) : false
+}
+
+if (hydrateMenuFromCache()) {
+  isMenuReady.value = true
+  applyInitialMenuLayout()
 }
 
 const {
@@ -143,24 +203,11 @@ watch(
       if (isCollapsed.value) {
         isHovering.value = false
       }
-      initializeMenuWidth(
-        menuSections.value,
-        siteName.value,
-        userStore,
-        getSeparator,
-        shouldShowSeparator,
-        handleMenuMetricsChange,
-        isCollapsed.value
-      )
+      applyInitialMenuLayout()
       setTimeout(updateWidth, 50)
     }
-  }
+  },
 )
-
-// Немедленно рассчитываем начальную ширину
-if (typeof window !== 'undefined') {
-  setTimeout(updateWidth, 0)
-}
 
 // Переключение меню
 const toggleMenu = () => {
@@ -221,13 +268,21 @@ const handleNavigate = (item) => {
 
 const resetOffcanvasPage = () => emit('reset-offcanvas-page')
 
-// Следим за изменениями в меню
-watch(menuSections, updateWidth, { deep: true })
-watch(siteName, updateWidth)
+// Следим за изменениями в меню — только после завершения bootstrap
+watch(menuSections, () => {
+  if (allowMenuTransitions.value) {
+    updateWidth()
+  }
+}, { deep: true })
+watch(siteName, () => {
+  if (allowMenuTransitions.value) {
+    updateWidth()
+  }
+})
 
 // Следим за изменениями имени пользователя (только имя, не весь объект)
 watch(() => userStore.fullName, (newName, oldName) => {
-  if (oldName !== newName && newName) {
+  if (allowMenuTransitions.value && oldName !== newName && newName) {
     updateWidth()
   }
 })
@@ -237,21 +292,26 @@ const loadMenu = async (forceRefresh = false) => {
   const resetMenu = () => {
     menuSections.value = []
     separatorsConfig.value = { byOrderIndex: {} }
+    appliedMenuData = null
   }
 
   try {
     const menuData = await getUserMenu(forceRefresh)
-    
+
     if (menuData?.menu_items?.length > 0) {
-      menuSections.value = transformMenuData(menuData)
-      separatorsConfig.value = transformSeparators(menuData.separators || [], menuData.menu_items)
+      const applied = applyMenuData(menuData, { force: forceRefresh })
+      if (applied && forceRefresh) {
+        applyInitialMenuLayout()
+      }
       return
     }
-    
+
     resetMenu()
     toast.warning('Меню пока не настроено. Обратитесь к администратору.')
   } catch (error) {
-    resetMenu()
+    if (!menuSections.value.length) {
+      resetMenu()
+    }
     toast.error('Не удалось загрузить меню. Попробуйте обновить страницу.')
     logError('Ошибка загрузки меню:', error)
   }
@@ -262,24 +322,22 @@ const handleMenuUpdate = () => loadMenu(true)
 
 // Инициализация при монтировании
 onMounted(async () => {
-  // Загружаем меню (из API или статический конфиг)
-  await loadMenu()
-
   window.addEventListener('menu-updated', handleMenuUpdate)
 
-  await ensureSiteNameLoaded()
+  await Promise.all([
+    ensureSiteNameLoaded(),
+    userStore.isInitialized ? Promise.resolve(true) : userStore.initializeUser(),
+  ])
 
-  initializeMenuWidth(
-    menuSections.value,
-    siteName.value,
-    userStore,
-    getSeparator,
-    shouldShowSeparator,
-    handleMenuMetricsChange,
-    isCollapsed.value
-  )
+  if (!isMenuReady.value) {
+    await loadMenu()
+    isMenuReady.value = true
+    applyInitialMenuLayout()
+  } else {
+    await loadMenu()
+  }
 
-  handleMenuMetricsChange(isCollapsed.value, menuWidth.value)
+  scheduleLayoutOffsetSync()
 
   if (isCollapsed.value) {
     isHovering.value = false
@@ -290,12 +348,12 @@ onMounted(async () => {
     layoutObserver.observe(menuRef.value)
   }
 
-  scheduleLayoutOffsetSync(100)
-
   setupWidthTracking(() => {
     updateWidth()
     scheduleLayoutOffsetSync()
   })
+
+  await finishMenuBootstrap()
 })
 
 // Удаляем слушатель при размонтировании
@@ -312,7 +370,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible }" :style="{ '--menu-width': `${menuWidth}px` }" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions }" :style="{ '--menu-width': `${menuWidth}px` }" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
     <div class="side-menu__header side-header">
       <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">
         <div class="side-header__title text-smooth-animation">
@@ -328,8 +386,8 @@ onBeforeUnmount(() => {
     <div class="side-header__shadow" style="display: block"></div>
     <div class="side-menu__body">
       <div class="side-menu__scroll">
-        <ul class="side-menu__list p-2" :class="{ short: !isHovering }">
-        <li v-for="(section, index) in menuSections" :key="index">
+        <ul v-show="isMenuReady" class="side-menu__list p-2" :class="{ short: !isHovering }">
+        <li v-for="(section, index) in menuSections" :key="section.id ?? section.routeName ?? index">
           <div v-if="shouldShowSeparator(index)" class="side-menu__divider side-divider py-2">
             <div class="side-divider__icon"><Minus :size="menuIconSizes.divider" /></div>
             <div class="side-divider__name text-smooth-animation" :class="{ hidden: !isHovering }">
@@ -373,7 +431,13 @@ onBeforeUnmount(() => {
   height: 100dvh;
   transform: translateX(0);
   z-index: 1005;
-  transition: all $transition;
+  transition:
+    transform $transition,
+    inline-size $transition;
+
+  &--bootstrapping {
+    transition: none;
+  }
 
   &.is-hidden {
     transform: translateX(-110%);

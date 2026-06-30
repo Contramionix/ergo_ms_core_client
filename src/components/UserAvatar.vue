@@ -1,8 +1,8 @@
 <template>
   <div class="user-avatar-wrap" :style="avatarStyle">
     <div class="user-avatar" :class="{ 'user-avatar--clickable': clickable }" :title="title">
-      <img v-if="hasCustomAvatar" :src="displayAvatarUrl" :alt="title" class="user-avatar-image" @error="onImageError" />
-      <DefaultAvatar v-else :size="size" :clickable="clickable" :title="title" :first-name="effectiveFirstName" :last-name="effectiveLastName"/>
+      <DefaultAvatar :size="size" :clickable="clickable" :title="title" :first-name="effectiveFirstName" :last-name="effectiveLastName"/>
+      <img v-if="hasCustomAvatar" :src="resolvedAvatarSrc" :alt="title" class="user-avatar-image" :class="{ 'is-loaded': imageLoaded }" @load="onImageLoad" @error="onImageError" />
     </div>
     <PresenceIndicator
       v-if="showOnlineStatus"
@@ -22,6 +22,7 @@ import DefaultAvatar from './DefaultAvatar.vue'
 import PresenceIndicator from '@/core/cms/adp/components/PresenceIndicator.vue'
 import { usePresenceStatus } from '@/core/cms/adp/js/presence/usePresenceStatus.js'
 import { getUserPublicInfo, getCachedUserPublicInfo, invalidateUserPublicInfo, } from '@/js/userAvatar'
+import { peekAvatar, resolveAvatar, invalidateAvatar } from '@/js/avatarCache.js'
 
 const userStore = useUserStore()
 
@@ -70,6 +71,9 @@ const props = defineProps({
 
 const loadedPublicInfo = ref(null)
 const imageError = ref(false)
+const imageLoaded = ref(false)
+// Стабильный source аватарки: blob из централизованного кеша, либо прямой URL как откат.
+const resolvedAvatarSrc = ref(null)
 
 const avatarStyle = computed(() => ({
   width: `${props.size}px`,
@@ -127,7 +131,46 @@ const displayAvatarUrl = computed(() => {
   return null
 })
 
-const hasCustomAvatar = computed(() => Boolean(displayAvatarUrl.value) && !imageError.value)
+const hasCustomAvatar = computed(() => Boolean(resolvedAvatarSrc.value) && !imageError.value)
+
+const triedDirectFallback = ref(false)
+
+function setResolvedSrc(next) {
+  if (resolvedAvatarSrc.value === next) return
+  imageLoaded.value = false
+  resolvedAvatarSrc.value = next
+}
+
+async function refreshAvatarSrc() {
+  imageError.value = false
+  triedDirectFallback.value = false
+
+  const url = displayAvatarUrl.value
+  if (!url) {
+    setResolvedSrc(null)
+    return
+  }
+
+  // Синхронный hit из памяти — фото показывается с первого кадра, без мигания.
+  const cached = peekAvatar(url)
+  if (cached) {
+    setResolvedSrc(cached)
+    return
+  }
+
+  setResolvedSrc(null)
+
+  // Cache API (переживает Ctrl+F5) -> сеть. При сбое — откат на прямой URL.
+  const resolved = await resolveAvatar(url)
+  if (displayAvatarUrl.value !== url) return
+  setResolvedSrc(resolved || url)
+}
+
+watch(displayAvatarUrl, refreshAvatarSrc, { immediate: true })
+
+function onImageLoad() {
+  imageLoaded.value = true
+}
 
 const needsPublicInfoLoad = computed(() => {
   if (normalizedUserId.value === null) return false
@@ -182,9 +225,20 @@ watch(
 )
 
 async function onImageError() {
+  const url = displayAvatarUrl.value
+
+  // Если не смог отрисоваться blob из кеша — сбрасываем кеш и один раз пробуем прямой URL.
+  if (url && !triedDirectFallback.value && resolvedAvatarSrc.value?.startsWith('blob:')) {
+    triedDirectFallback.value = true
+    invalidateAvatar(url)
+    setResolvedSrc(url)
+    return
+  }
+
   imageError.value = true
   if (props.avatarUrl !== undefined || props.customAvatarUrl !== undefined) return
   if (isCurrentUser.value) {
+    invalidateAvatar(url)
     await userStore.loadAvatar()
     imageError.value = false
     return
@@ -209,6 +263,7 @@ async function onImageError() {
 }
 
 .user-avatar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -216,28 +271,36 @@ async function onImageError() {
   height: 100%;
   border-radius: 50%;
   overflow: hidden;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease;
   user-select: none;
-  
+
   &--clickable {
     cursor: pointer;
-    
+
     &:hover {
       transform: scale(1.05);
     }
   }
 }
 
+// Фото накладывается поверх DefaultAvatar (инициалы), чтобы при перезагрузке
+// не было резкой подмены «инициалы → фото». Фото плавно проявляется после load.
 .user-avatar-image {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-  
+  opacity: 0;
+  transition: opacity 0.2s ease;
+
+  &.is-loaded {
+    opacity: 1;
+  }
+
   .user-avatar--clickable:hover & {
-    border-color: rgba(255, 255, 255, 0.4);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   }
 }

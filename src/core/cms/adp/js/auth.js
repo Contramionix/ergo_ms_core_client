@@ -1,5 +1,5 @@
-import { apiClient } from '../../../../js/api/manager';
-import { endpoints } from '../../../../js/api/endpoints';
+import { apiClient } from '@/js/api/manager.js'
+import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import Cookies from 'js-cookie';
 import tokenService from '@/core/cms/js/tokenService'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'

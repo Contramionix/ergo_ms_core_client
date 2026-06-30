@@ -147,7 +147,6 @@ export const validateFieldWithRegex = (value, regex, error) => {
  * @param {string} email - Email пользователя.
  * @param {string} password - Пароль пользователя.
  * @param {string} passwordConfirm - Подтверждение пароля пользователя.
- * @param {string} terms - Пользовательское соглашение.
  * 
  * @returns {Object} - Объект с ошибками валидации для каждого поля.
  * 
@@ -156,16 +155,14 @@ export const validateFieldWithRegex = (value, regex, error) => {
  * @property {string|null} emailError - Ошибка для поля "Email".
  * @property {string|null} passwordError - Ошибка для поля "Пароль".
  * @property {string|null} passwordConfirmError - Ошибка для поля "Подтверждение пароля".
- * @property {string|null} terms - Ошибка для поля "Пользовательское соглашение".
  */
-export const validateRegistrationForm = (name, login, email, password, passwordConfirm, terms) => {
+export const validateRegistrationForm = (name, login, email, password, passwordConfirm) => {
     let errors = {
         name: null,
         login: null,
         email: null,
         password: null,
         passwordConfirm: null,
-        terms: null
     };
 
     // Валидация полей на пустые значения (null или пустая строка)
@@ -174,9 +171,6 @@ export const validateRegistrationForm = (name, login, email, password, passwordC
     errors.email = validateFieldValue(email, 'Email');
     errors.password = validateFieldValue(password, 'Пароль');
     errors.passwordConfirm = validateFieldValue(passwordConfirm, 'Подтверждение пароля');
-
-    // Валидация пользовательского соглашения
-    errors.terms = validateCheckBoxValue(terms, 'Необходимо согласиться с пользовательским соглашением.')
 
     // Валидация email с использованием регулярного выражения
     if (errors.email === null) {
@@ -214,7 +208,6 @@ export const validateRegistrationMethod = (apiErrors) => {
         email: null,
         password: null,
         passwordConfirm: null,
-        terms: null
     };
 
     const firstErrorObject = apiErrors;

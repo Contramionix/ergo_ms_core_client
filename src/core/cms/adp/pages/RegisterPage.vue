@@ -26,7 +26,6 @@ const form = reactive({
   email: '',
   password: '',
   passwordConfirm: '',
-  terms: false,
 })
 
 const errors = reactive({
@@ -37,7 +36,6 @@ const errors = reactive({
   email: null,
   password: null,
   passwordConfirm: null,
-  terms: null,
   general: null,
 })
 
@@ -107,7 +105,6 @@ const validateForm = () => {
     form.email,
     form.password,
     form.passwordConfirm,
-    form.terms
   )
 
   // Маппим ошибки
@@ -123,7 +120,7 @@ const validateForm = () => {
 
   // Проверяем все ошибки
   const hasErrors = errors.firstName || errors.lastName || errors.login || errors.email || 
-                    errors.password || errors.passwordConfirm || errors.terms
+                    errors.password || errors.passwordConfirm
 
   return !hasErrors
 }
@@ -443,27 +440,6 @@ const showSuccessMessage = () => {
             </label>
             <div v-if="errors.passwordConfirm" class="invalid-feedback">
               {{ errors.passwordConfirm }}
-            </div>
-          </div>
-
-          <!-- Соглашение -->
-          <div class="form-check mb-4" v-auto-animate>
-            <input
-              type="checkbox"
-              id="terms"
-              class="form-check-input"
-              :class="{ 'is-invalid': errors.terms }"
-              v-model="form.terms"
-              :disabled="isLoading"
-            />
-            <label class="form-check-label text-muted" for="terms">
-              Я согласен с 
-              <a href="#" class="text-primary text-decoration-none">условиями использования</a>
-              и 
-              <a href="#" class="text-primary text-decoration-none">политикой конфиденциальности</a>
-            </label>
-            <div v-if="errors.terms" class="invalid-feedback d-block">
-              {{ errors.terms }}
             </div>
           </div>
 

@@ -260,7 +260,9 @@ function routeClick(event) {
 .nav-btn {
   padding: $padding-internal $padding-external;
   border-radius: $radius-small;
-  transition: all $transition;
+  transition:
+    background-color $transition,
+    color $transition;
   overflow: hidden;
 
   &:not(.side-title--active):hover {
@@ -286,6 +288,9 @@ function routeClick(event) {
 
 .side-icon {
   flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
 }
 
 .side-subtitle__name {

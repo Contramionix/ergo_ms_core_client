@@ -130,25 +130,29 @@ export function useMenuWidth() {
   }
 
   const initializeMenuWidth = (menuSections, siteName, userStore, getSeparator, shouldShowSeparator, onChange, isCollapsed) => {
-    if (typeof window !== 'undefined') {
-      const newWidth = calculateOptimalWidth(menuSections, siteName, userStore, getSeparator, shouldShowSeparator)
-      menuWidth.value = newWidth
-
-      setTimeout(() => {
-        onChange?.(isCollapsed, menuWidth.value)
-      }, 100)
-
-      setTimeout(() => {
-        updateMenuWidth(menuSections, siteName, userStore, getSeparator, shouldShowSeparator, onChange, isCollapsed)
-      }, 300)
+    if (typeof window === 'undefined') {
+      return
     }
+
+    const newWidth = calculateOptimalWidth(
+      menuSections,
+      siteName,
+      userStore,
+      getSeparator,
+      shouldShowSeparator,
+    )
+
+    if (newWidth !== menuWidth.value) {
+      menuWidth.value = newWidth
+    }
+
+    onChange?.(isCollapsed, menuWidth.value)
   }
 
   const setupWidthTracking = (callback) => {
     if (typeof window === 'undefined') return
 
     window.addEventListener('resize', callback)
-    callback()
   }
 
   return {

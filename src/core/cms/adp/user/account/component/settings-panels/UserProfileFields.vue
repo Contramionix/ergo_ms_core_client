@@ -47,7 +47,7 @@ const fieldMeta = {
     label: 'Веб-сайт',
     type: 'url',
     autocomplete: 'url',
-    placeholder: 'https://example.com',
+    placeholder: 'https://',
   },
   country: {
     label: 'Страна',
