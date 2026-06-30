@@ -1,7 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { Settings, Trash2 } from 'lucide-vue-next'
-import ModalCenter from '@/components/ModalCenter.vue'
 import GroupForm from '@/core/cms/adp/admin/GroupsComponent/SubmitGroupsAdd.vue'
 import { DeleteRoleGroup } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
@@ -53,8 +52,15 @@ const totalPages = computed(() => {
   return Math.ceil(filteredRows.value.length / props.rowsPerPage)
 })
 
+const showEditModal = ref(false)
+
 const changeGroup = () => {
   emit('updateGroups')
+}
+
+const openEditModal = row => {
+  changingRow(row)
+  showEditModal.value = true
 }
 
 const deleteGroup = async groupId => {
@@ -94,9 +100,7 @@ const deleteGroup = async groupId => {
               <div class="actions-cell">
                 <button
                   class="btn-action btn-action--edit"
-                  data-bs-toggle="modal"
-                  data-bs-target="#groupEdit"
-                  @click="changingRow(row)"
+                  @click="openEditModal(row)"
                   type="button"
                   aria-label="Изменить группу"
                 >
@@ -139,9 +143,13 @@ const deleteGroup = async groupId => {
       </button>
     </div>
 
-    <ModalCenter title="Редактировать ролевую группу" modalId="groupEdit">
-      <GroupForm @changeGroup="changeGroup()" :group="rowSelected" mode="update" />
-    </ModalCenter>
+    <GroupForm
+      v-model:visible="showEditModal"
+      modal-id="groupEdit"
+      mode="update"
+      :group="rowSelected"
+      @change-group="changeGroup()"
+    />
   </div>
 </template>
 

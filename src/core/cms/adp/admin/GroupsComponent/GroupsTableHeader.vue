@@ -1,18 +1,13 @@
 <script setup>
-import ModalCenter from '@/components/ModalCenter.vue'
 import SubmitForm from '@/core/cms/adp/admin/GroupsComponent/SubmitGroupsAdd.vue'
 import { Plus } from 'lucide-vue-next'
 import { ref } from 'vue'
 
 const emit = defineEmits(['updateGroups'])
-const GroupAddRef = ref(null)
+const showAddModal = ref(false)
 
 const updateGroups = () => {
   emit('updateGroups')
-}
-
-const closemodal = () => {
-  GroupAddRef.value.close()
 }
 </script>
 
@@ -27,13 +22,11 @@ const closemodal = () => {
       />
     </div>
     <div class="actions-wrapper">
-      <button class="btn btn-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#groupAdd">
+      <button class="btn btn-primary d-flex align-items-center gap-2" type="button" @click="showAddModal = true">
         <Plus :size="16" />
         <span>Добавить группу</span>
       </button>
-      <ModalCenter title="Добавить новую ролевую группу" modalId="groupAdd" @closemodal="closemodal()">
-        <SubmitForm @addGroup="updateGroups()" ref="GroupAddRef" />
-      </ModalCenter>
+      <SubmitForm v-model:visible="showAddModal" modal-id="groupAdd" @add-group="updateGroups()" />
     </div>
   </div>
 </template>

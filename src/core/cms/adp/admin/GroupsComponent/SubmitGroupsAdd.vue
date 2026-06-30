@@ -1,23 +1,29 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useToast } from 'vue-toastification'
+import ModalCenter from '@/components/ModalCenter.vue'
 import { CreateRoleGroup, GetRoles, UpdateRoleGroup } from '@/core/cms/adp/admin/js/GroupsPolitics'
 
-const emit = defineEmits(['addGroup', 'changeGroup'])
-
 const props = defineProps({
+  visible: { type: Boolean, default: false },
+  modalId: { type: String, default: 'groupAdd' },
   mode: {
     type: String,
     default: 'create',
-    validator: value => ['create', 'update'].includes(value)
+    validator: value => ['create', 'update'].includes(value),
   },
   group: {
     type: Object,
-    default: null
-  }
+    default: null,
+  },
 })
 
+const emit = defineEmits(['update:visible', 'addGroup', 'changeGroup'])
+
 const isEditMode = computed(() => props.mode === 'update')
+const modalTitle = computed(() =>
+  isEditMode.value ? 'Редактировать ролевую группу' : 'Добавить новую ролевую группу',
+)
 const toast = useToast()
 
 const name = ref('')
@@ -38,6 +44,8 @@ const submitButtonText = computed(() => {
   }
   return isEditMode.value ? 'Изменить' : 'Добавить'
 })
+
+const formId = computed(() => `${props.modalId}-form`)
 
 const loadRoles = async () => {
   try {
@@ -75,7 +83,21 @@ watch(
     }
     syncWithGroup(newGroup)
   },
-  { immediate: true }
+  { immediate: true },
+)
+
+watch(
+  () => props.visible,
+  open => {
+    if (!open) {
+      return
+    }
+    if (isEditMode.value && props.group) {
+      syncWithGroup(props.group)
+    }
+    showErrorName.value = false
+    showErrorRole.value = false
+  },
 )
 
 const resetForm = () => {
@@ -86,6 +108,15 @@ const resetForm = () => {
   groupId.value = null
   showErrorName.value = false
   showErrorRole.value = false
+}
+
+const closeModal = () => {
+  if (isEditMode.value && props.group) {
+    syncWithGroup(props.group)
+  } else {
+    resetForm()
+  }
+  emit('update:visible', false)
 }
 
 const submitForm = async () => {
@@ -102,7 +133,7 @@ const submitForm = async () => {
       name: name.value.trim(),
       parent_role: parentRoleId.value,
       description: description.value || '',
-      is_active: isActive.value
+      is_active: isActive.value,
     }
 
     if (isEditMode.value) {
@@ -111,7 +142,7 @@ const submitForm = async () => {
       emit('changeGroup')
       syncWithGroup({
         ...payload,
-        id: groupId.value
+        id: groupId.value,
       })
     } else {
       await CreateRoleGroup(payload)
@@ -119,6 +150,8 @@ const submitForm = async () => {
       emit('addGroup')
       resetForm()
     }
+
+    emit('update:visible', false)
   } catch (error) {
     const responseData = error?.response?.data
     const defaultMessage = isEditMode.value
@@ -131,82 +164,78 @@ const submitForm = async () => {
     isSubmitting.value = false
   }
 }
-
-const canDismiss = computed(() => name.value.trim() !== '' && !!parentRoleId.value)
-
-const close = () => {
-  if (isEditMode.value && props.group) {
-    syncWithGroup(props.group)
-    return
-  }
-  resetForm()
-}
-
-defineExpose({ close })
 </script>
 
 <template>
-  <form @submit.prevent="submitForm" novalidate>
-    <div class="form-floating mb-3" v-auto-animate>
-      <input
-        type="text"
-        id="nameInput"
-        class="form-control"
-        v-model="name"
-        :class="{ 'is-invalid': showErrorName }"
-        placeholder="Введите название группы"
-      />
-      <label for="nameInput">Введите название группы</label>
-      <div v-if="showErrorName" class="invalid-feedback">Название обязательно для заполнения.</div>
-    </div>
-
-    <div class="mb-3">
-      <label for="roleSelect" class="form-label">Родительская роль</label>
-      <select
-        id="roleSelect"
-        class="form-select"
-        v-model="parentRoleId"
-        :class="{ 'is-invalid': showErrorRole }"
-        :disabled="availableRoles.length === 0"
-      >
-        <option value="" disabled>Выберите роль</option>
-        <option v-for="role in availableRoles" :key="role.id" :value="role.id">
-          {{ role.name }} ({{ role.role_type_display }})
-        </option>
-      </select>
-      <div v-if="availableRoles.length === 0" class="form-text text-danger">
-        Нет доступных ролей для привязки. Сначала создайте пользовательскую роль.
+  <ModalCenter
+    :modal-id="modalId"
+    standalone
+    :visible="visible"
+    :title="modalTitle"
+    size="md"
+    scrollable
+    @closemodal="closeModal"
+  >
+    <form :id="formId" @submit.prevent="submitForm" novalidate>
+      <div class="form-floating mb-3" v-auto-animate>
+        <input
+          type="text"
+          id="nameInput"
+          class="form-control"
+          v-model="name"
+          :class="{ 'is-invalid': showErrorName }"
+          placeholder="Введите название группы"
+        />
+        <label for="nameInput">Введите название группы</label>
+        <div v-if="showErrorName" class="invalid-feedback">Название обязательно для заполнения.</div>
       </div>
-      <div v-if="showErrorRole" class="invalid-feedback">Необходимо выбрать родительскую роль.</div>
-    </div>
 
-    <div class="form-floating mb-3">
-      <textarea
-        id="groupDescription"
-        class="form-control"
-        style="height: 100px"
-        v-model="description"
-        placeholder="Описание группы"
-      ></textarea>
-      <label for="groupDescription">Описание группы</label>
-    </div>
+      <div class="mb-3">
+        <label for="roleSelect" class="form-label">Родительская роль</label>
+        <select
+          id="roleSelect"
+          class="form-select"
+          v-model="parentRoleId"
+          :class="{ 'is-invalid': showErrorRole }"
+          :disabled="availableRoles.length === 0"
+        >
+          <option value="" disabled>Выберите роль</option>
+          <option v-for="role in availableRoles" :key="role.id" :value="role.id">
+            {{ role.name }} ({{ role.role_type_display }})
+          </option>
+        </select>
+        <div v-if="availableRoles.length === 0" class="form-text text-danger">
+          Нет доступных ролей для привязки. Сначала создайте пользовательскую роль.
+        </div>
+        <div v-if="showErrorRole" class="invalid-feedback">Необходимо выбрать родительскую роль.</div>
+      </div>
 
-    <div class="form-check mb-3">
-      <input class="form-check-input" type="checkbox" id="activeCheckbox" v-model="isActive" />
-      <label class="form-check-label" for="activeCheckbox">
-        Группа активна
-      </label>
-    </div>
+      <div class="form-floating mb-3">
+        <textarea
+          id="groupDescription"
+          class="form-control"
+          style="height: 100px"
+          v-model="description"
+          placeholder="Описание группы"
+        ></textarea>
+        <label for="groupDescription">Описание группы</label>
+      </div>
 
-    <div class="mt-3 text-end">
-      <button
-        type="submit"
-        class="btn btn-primary"
-        :data-bs-dismiss="canDismiss ? 'modal' : ''"
-        :disabled="isSubmitting"
-      >
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="activeCheckbox" v-model="isActive" />
+        <label class="form-check-label" for="activeCheckbox">
+          Группа активна
+        </label>
+      </div>
+    </form>
+
+    <template #footer>
+      <button type="button" class="btn btn-secondary" :disabled="isSubmitting" @click="closeModal">
+        Отмена
+      </button>
+      <button type="submit" :form="formId" class="btn btn-primary" :disabled="isSubmitting">
         {{ submitButtonText }}
       </button>
-    </div>
-  </form>
+    </template>
+  </ModalCenter>
 </template>
