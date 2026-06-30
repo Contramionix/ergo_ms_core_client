@@ -1,7 +1,8 @@
 import { apiClient } from '@/js/api/manager.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
-import Cookies from 'js-cookie';
 import tokenService from '@/core/cms/js/tokenService'
+import { isExpired } from '@/core/cms/js/tokenStorage.js'
+import { performServerLogout, performTokenRefresh } from '@/core/cms/js/tokenRefresh.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
 
@@ -13,8 +14,8 @@ export const authService = {
             remember_me: rememberMe,
         }, false);
         
-        if (response.success) {
-            tokenService.setTokens(response.data.access, response.data.refresh)
+        if (response.success && response.data?.access) {
+            tokenService.setTokens(response.data.access)
         }
         
         return response;
@@ -65,35 +66,31 @@ export const authService = {
     },
     
     async checkToken() {
-        const token = Cookies.get('token');
-        if (!token) {
-            return false;
-        }
-        
-        try {
-            // Используем /protected/ для проверки токена (возвращает пустой ответ при успехе)
-            const response = await apiClient.get(endpoints.auth.protected);
-            return response.success;
-        } catch (error) {
-            // Если токен недействителен (401), очищаем все cookies
-            if (error.response?.status === 401) {
-                this.logout();
+        const access = tokenService.getAccess()
+        if (access && !isExpired(access)) {
+            try {
+                const response = await apiClient.get(endpoints.auth.protected)
+                return response.success
+            } catch (error) {
+                if (error.response?.status === 401) {
+                    await this.logout()
+                }
+                return false
             }
-            return false;
+        }
+
+        try {
+            await performTokenRefresh()
+            return true
+        } catch {
+            return false
         }
     },
     
-    logout() {
+    async logout() {
         resetPresenceConnection()
         resetPresenceStore()
+        await performServerLogout()
         tokenService.clear()
-        
-        // Очищаем активную организацию при выходе
-        try {
-            const STORAGE_KEY = 'crm_active_organization'
-            localStorage.removeItem(STORAGE_KEY)
-        } catch (error) {
-            logError('Ошибка очистки активной организации при выходе:', error)
-        }
     }
-};  
+};

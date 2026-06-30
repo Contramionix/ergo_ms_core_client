@@ -1,4 +1,3 @@
-import Cookies from 'js-cookie'
 import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 
@@ -105,9 +104,7 @@ export class AuthGuard {
     
     // Перенаправляем на стартовую страницу
     if (typeof window !== 'undefined' && window.location) {
-      // Проверяем, не находимся ли мы уже на стартовой странице
       if (!window.location.pathname.includes('/start') && !window.location.pathname.includes('/login')) {
-        console.log('Перенаправление на стартовую страницу из-за недействительного токена')
         window.location.href = '/start'
       }
     }
@@ -117,7 +114,7 @@ export class AuthGuard {
    * Проверяет, авторизован ли пользователь
    */
   isAuthenticated() {
-    return !!Cookies.get('token')
+    return !!tokenService.getAccess()
   }
 }
 

@@ -1,5 +1,10 @@
 import Cookies from 'js-cookie'
 
+/**
+ * Хранение access-токена в памяти процесса (не в cookie/localStorage).
+ * Refresh-токен — только в HttpOnly cookie, выставляется сервером.
+ */
+
 export function decodePayload(token) {
   try {
     const base64 = token.split('.')[1]
@@ -10,11 +15,7 @@ export function decodePayload(token) {
   }
 }
 
-function getExpiryDate(token) {
-  const payload = decodePayload(token)
-  if (!payload || !payload.exp) return null
-  return new Date(payload.exp * 1000)
-}
+let _accessToken = null
 
 export function isExpired(token, skewSeconds = 0) {
   const payload = decodePayload(token)
@@ -23,21 +24,13 @@ export function isExpired(token, skewSeconds = 0) {
   return nowSec >= (payload.exp - skewSeconds)
 }
 
-function setCookieByExp(name, token) {
-  const expDate = getExpiryDate(token)
-  if (expDate) {
-    Cookies.set(name, token, { expires: expDate })
-  } else {
-    Cookies.set(name, token)
-  }
-}
-
 export function getAccess() {
-  return Cookies.get('token') || null
+  return _accessToken || null
 }
 
+/** @deprecated Refresh доступен только через HttpOnly cookie на сервере */
 export function getRefresh() {
-  return Cookies.get('refresh') || null
+  return null
 }
 
 export function getAccessExp() {
@@ -46,9 +39,21 @@ export function getAccessExp() {
   return payload?.exp ? payload.exp * 1000 : 0
 }
 
-export function setTokens(access, refresh) {
-  if (access) setCookieByExp('token', access)
-  if (refresh) setCookieByExp('refresh', refresh)
+export function setTokens(access, _refreshIgnored = null) {
+  if (access) {
+    _accessToken = access
+  }
+  clearLegacyAuthCookies()
+}
+
+/** Удаляет устаревшие JWT-cookie, выставленные клиентом до перехода на HttpOnly. */
+export function clearLegacyAuthCookies() {
+  try {
+    Cookies.remove('token', { path: '/' })
+    Cookies.remove('refresh', { path: '/' })
+  } catch {
+    // ignore
+  }
 }
 
 let _uiSettingsReset = null
@@ -58,11 +63,12 @@ export function registerUiSettingsReset(callback) {
 }
 
 export function clearTokens() {
-  Cookies.remove('token')
-  Cookies.remove('refresh')
+  _accessToken = null
+  clearLegacyAuthCookies()
 
   try {
     localStorage.removeItem('crm_active_organization')
+    localStorage.removeItem('lms_active_organization_id')
   } catch {
     // ignore
   }
@@ -74,7 +80,7 @@ export function shouldRefresh(thresholdSeconds = 120) {
   const access = getAccess()
   if (!access) return false
   const payload = decodePayload(access)
-  if (!payload?.exp) return false
+  if (!payload?.exp) return true
   const nowSec = Math.floor(Date.now() / 1000)
   return payload.exp - nowSec <= thresholdSeconds
 }
@@ -114,4 +120,8 @@ export function getPayload() {
   const access = getAccess()
   if (!access) return null
   return decodePayload(access)
+}
+
+export function hasAccessToken() {
+  return Boolean(_accessToken)
 }

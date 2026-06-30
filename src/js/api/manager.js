@@ -13,6 +13,7 @@ class ApiClient {
     const fullBase = this.baseUrl ? `${this.baseUrl}${this.apiPath}` : `/${this.apiPath}`
     this.client = axios.create({
       baseURL: fullBase,
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -210,7 +211,7 @@ class ApiClient {
       }
       config.headers.Authorization = `Bearer ${token}`
     } else {
-      logWarn('Токен не найден в cookies')
+      logWarn('Токен доступа отсутствует в памяти сессии')
     }
     return config
   }
@@ -218,7 +219,12 @@ class ApiClient {
   /**
    * Выход из системы
    */
-  logout() {
+  /**
+   * Выход из системы
+   */
+  async logout() {
+    const { performServerLogout } = await import('@/core/cms/js/tokenRefresh.js')
+    await performServerLogout()
     tokenService.clear()
   }
 
@@ -226,14 +232,7 @@ class ApiClient {
    * Проверка валидности токена
    */
   isTokenValid() {
-    const token = tokenService.getAccess()
-    if (!token) {
-      console.log('Токен отсутствует')
-      return false
-    }
-
-    console.log('Токен найден, длина:', token.length)
-    return true
+    return !!tokenService.getAccess()
   }
 
   /**
