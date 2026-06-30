@@ -2,7 +2,7 @@ export default {
   "coreRoutes": [
     {
       "path": "/",
-      "redirect": { "name": "Account" },
+      "redirect": { "name": "AppHome" },
       "meta": {
         "requiresAuth": true
       }
@@ -13,7 +13,8 @@ export default {
       "component": "@/components/NotFound.vue",
       "meta": {
         "title": "Страница не найдена",
-        "requiresAuth": true
+        "requiresAuth": true,
+        "flushContent": true
       }
     },
     {

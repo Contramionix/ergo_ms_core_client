@@ -1,0 +1,94 @@
+@import './_app-shell-page.scss';
+
+.auth-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 100dvh;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.auth-page__inner {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1.25rem;
+  margin-inline: auto;
+}
+
+.auth-page__inner--wide {
+  max-width: 560px;
+}
+
+.auth-page__brand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  animation: app-shell-fade-up 0.6s ease both;
+}
+
+.auth-page__site-name {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+  color: var(--color-primary-text);
+}
+
+.auth-page__card {
+  width: 100%;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: 1px solid var(--color-border);
+  border-radius: 1.125rem;
+  background: color-mix(in srgb, var(--color-primary-background) 90%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--color-accent) 8%, transparent);
+  animation: app-shell-fade-up 0.7s ease 0.05s both;
+
+  .form-control:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--color-accent) 25%, transparent);
+  }
+
+  .btn-primary {
+    border-radius: 0.5rem;
+    font-weight: 600;
+  }
+
+  .alert {
+    border-radius: 0.5rem;
+    border: none;
+  }
+}
+
+.auth-page__header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.auth-page__title {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.35rem, 2.5vw, 1.65rem);
+  font-weight: 700;
+  color: var(--color-primary-text);
+}
+
+.auth-page__description {
+  margin: 0;
+  font-size: 0.975rem;
+  color: var(--color-secondary-text);
+}
+
+
+@media (width < 576px) {
+  .auth-page {
+    padding: 1rem;
+  }
+}

@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
 import { registration, fetchRegistrationSettings, validateInvitationToken } from '@/core/cms/adp/js/auth-index'
 import { validateRegistrationForm } from '@/js/validation'
 
@@ -256,24 +257,18 @@ const showSuccessMessage = () => {
 </script>
 
 <template>
-  <div class="d-flex justify-content-center align-items-center min-vh-100 py-4">
-    <div class="card shadow-sm border-0" style="width: 500px">
-      <div class="card-body p-5">
-        <div v-if="isBootstrapping" class="text-center py-4">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Загрузка...</span>
-          </div>
-        </div>
+  <AuthPageShell wide>
+    <div v-if="isBootstrapping" class="text-center py-4">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Загрузка...</span>
+      </div>
+    </div>
 
-        <template v-else>
-          <div class="text-center mb-4">
-            <div class="mb-3">
-              <i :class="isSuccess ? 'bi bi-check-circle-fill text-success' : 'bi bi-person-plus text-primary'"
-                 style="font-size: 3rem;"></i>
-            </div>
-            <h2 class="fw-bold text-primary mb-2">{{ pageTitle }}</h2>
-            <p class="text-muted">{{ pageDescription }}</p>
-          </div>
+    <template v-else>
+      <div class="auth-page__header">
+        <h2 class="auth-page__title">{{ pageTitle }}</h2>
+        <p class="auth-page__description">{{ pageDescription }}</p>
+      </div>
 
           <div v-if="registrationClosed" class="text-center">
             <RouterLink :to="{ name: 'Login' }" class="btn btn-primary">
@@ -492,46 +487,6 @@ const showSuccessMessage = () => {
             </RouterLink>
           </div>
           </form>
-        </template>
-      </div>
-    </div>
-  </div>
+    </template>
+  </AuthPageShell>
 </template>
-
-<style lang="scss" scoped>
-.card {
-  border-radius: 1rem;
-}
-
-.form-control:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-}
-
-.btn-primary {
-  border-radius: 0.5rem;
-  font-weight: 600;
-}
-
-.alert {
-  border-radius: 0.5rem;
-  border: none;
-}
-
-
-
-.min-vh-100 {
-  min-height: 100vh;
-}
-
-@media (max-width: 576px) {
-  .card {
-    width: 95% !important;
-    margin: 1rem;
-  }
-  
-  .card-body {
-    padding: 2rem 1.5rem !important;
-  }
-}
-</style> 

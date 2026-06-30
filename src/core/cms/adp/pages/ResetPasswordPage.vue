@@ -2,6 +2,7 @@
 import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import PasswordInput from '@/core/cms/adp/components/PasswordInput.vue'
+import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
 import { validateFieldValue, validateFieldsOnEquality } from '@/js/validation'
 import { validatePasswordValue } from '@/js/passwordPolicy.js'
 import { resetPassword, fetchPasswordResetSettings } from '@/core/cms/adp/js/auth-index'
@@ -179,46 +180,34 @@ const submitForm = async () => {
 </script>
 
 <template>
-  <div class="d-flex justify-content-center align-items-center min-vh-100 bg-light">
-    <div class="card shadow-sm border-0" style="width: 500px">
-      <div class="card-body p-5">
-        <div v-if="isBootstrapping" class="text-center py-4">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Загрузка...</span>
-          </div>
-        </div>
+  <AuthPageShell>
+    <div v-if="isBootstrapping" class="text-center py-4">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Загрузка...</span>
+      </div>
+    </div>
 
-        <template v-else>
-          <div class="text-center mb-4">
-            <div class="mb-3">
-              <i
-                :class="isSuccess
-                  ? 'bi bi-check-circle-fill text-success'
-                  : passwordResetDisabled
-                    ? 'bi bi-shield-lock text-muted'
-                    : 'bi bi-shield-lock text-primary'"
-                style="font-size: 3rem;"
-              ></i>
-            </div>
-            <h2 class="fw-bold text-primary mb-2">
-              {{
-                isSuccess
-                  ? 'Пароль изменен!'
-                  : passwordResetDisabled
-                    ? 'Восстановление недоступно'
-                    : 'Новый пароль'
-              }}
-            </h2>
-            <p class="text-muted">
-              {{
-                isSuccess
-                  ? 'Ваш пароль успешно изменен. Перенаправляем на страницу входа...'
-                  : passwordResetDisabled
-                    ? 'Самостоятельное восстановление пароля отключено администратором.'
-                    : 'Создайте новый пароль для вашего аккаунта'
-              }}
-            </p>
-          </div>
+    <template v-else>
+      <div class="auth-page__header">
+        <h2 class="auth-page__title">
+          {{
+            isSuccess
+              ? 'Пароль изменен!'
+              : passwordResetDisabled
+                ? 'Восстановление недоступно'
+                : 'Новый пароль'
+          }}
+        </h2>
+        <p class="auth-page__description">
+          {{
+            isSuccess
+              ? 'Ваш пароль успешно изменен. Перенаправляем на страницу входа...'
+              : passwordResetDisabled
+                ? 'Самостоятельное восстановление пароля отключено администратором.'
+                : 'Создайте новый пароль для вашего аккаунта'
+          }}
+        </p>
+      </div>
 
           <div v-if="passwordResetDisabled" class="text-center">
             <div class="alert alert-warning" role="alert">
@@ -330,44 +319,6 @@ const submitForm = async () => {
             </RouterLink>
           </div>
         </form>
-        </template>
-      </div>
-    </div>
-  </div>
+    </template>
+  </AuthPageShell>
 </template>
-
-<style lang="scss" scoped>
-.card {
-  border-radius: 1rem;
-}
-
-.form-control:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-}
-
-.btn-primary {
-  border-radius: 0.5rem;
-  font-weight: 600;
-}
-
-.alert {
-  border-radius: 0.5rem;
-  border: none;
-}
-
-.min-vh-100 {
-  min-height: 100vh;
-}
-
-@media (max-width: 576px) {
-  .card {
-    width: 95% !important;
-    margin: 1rem;
-  }
-  
-  .card-body {
-    padding: 2rem 1.5rem !important;
-  }
-}
-</style> 

@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
 import { authorization } from '@/core/cms/adp/js/auth-index'
 import { validateLoginForm } from '@/js/validation'
 import { authGuard } from '@/core/cms/js/authGuard'
@@ -53,7 +54,7 @@ const submitForm = async () => {
     if (authResult.success === true) {
       // Запускаем проверку токена после успешной авторизации
       authGuard.startTokenValidation()
-      router.push({ name: 'Account' })
+      router.push({ name: 'AppHome' })
     } else {
       // Обработка ошибок от сервера
       if (authResult.errors && typeof authResult.errors === 'object') {
@@ -111,13 +112,11 @@ const submitForm = async () => {
 </script>
 
 <template>
-  <div class="d-flex justify-content-center align-items-center min-vh-100">
-    <div class="card shadow-sm border-0" style="width: 500px">
-      <div class="card-body p-5">
-        <div class="text-center mb-4">
-          <h2 class="fw-bold text-primary mb-2">Вход в систему</h2>
-          <p class="text-muted">Введите ваши учетные данные</p>
-        </div>
+  <AuthPageShell>
+    <div class="auth-page__header">
+      <h2 class="auth-page__title">Вход в систему</h2>
+      <p class="auth-page__description">Введите ваши учетные данные</p>
+    </div>
 
         <!-- Общая ошибка -->
         <div v-if="errors.general" class="alert alert-danger" role="alert">
@@ -210,98 +209,5 @@ const submitForm = async () => {
             </RouterLink>
           </div>
         </form>
-      </div>
-    </div>
-  </div>
+  </AuthPageShell>
 </template>
-
-<style lang="scss" scoped>
-.card {
-  border-radius: 1rem;
-}
-
-.form-control:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-}
-
-.btn-primary {
-  border-radius: 0.5rem;
-  font-weight: 600;
-}
-
-.alert {
-  border-radius: 0.5rem;
-  border: none;
-}
-
-.password-toggle-btn {
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  border: 2px solid var(--color-border);
-  background: var(--color-secondary-background);
-  border-radius: 8px;
-  width: 42px;
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 20;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-}
-
-.password-toggle-btn:hover {
-  background: var(--color-hover-background);
-  border-color: var(--color-border);
-  transform: translateY(-50%) scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.password-toggle-btn:active {
-  transform: translateY(-50%) scale(0.95);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-}
-
-.password-toggle-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-  background: var(--color-secondary-background);
-  border-color: var(--color-border);
-}
-
-.password-toggle-btn i {
-  font-size: 1.4rem;
-  color: #ffffff !important;
-  transition: all 0.2s ease;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-}
-
-.password-toggle-btn:hover i {
-  color: #ffffff !important;
-  transform: scale(1.1);
-}
-
-.password-toggle-btn:disabled i {
-  color: #ffffff !important;
-  opacity: 0.7;
-}
-
-.min-vh-100 {
-  min-height: 100vh;
-}
-
-@media (max-width: 576px) {
-  .card {
-    width: 95% !important;
-    margin: 1rem;
-  }
-  
-  .card-body {
-    padding: 2rem 1.5rem !important;
-  }
-}
-</style> 

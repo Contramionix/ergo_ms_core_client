@@ -83,9 +83,6 @@ export const cmsEndpoints = {
         adminUserDetail: (userId) => `cms/adp/admin-users/${userId}/`,
         adminUserAvatar: (userId) => `cms/adp/admin-users/${userId}/avatar/`,
         adminUserResetPassword: (userId) => `cms/adp/admin-users/${userId}/reset-password/`,
-        presence: {
-            batch: 'cms/adp/presence/',
-        },
         importUsers: 'cms/adp/import-users/',
         importUsersTaskStatus: (taskId) => `cms/adp/import-users/status/${taskId}/`,
         invitations: 'cms/adp/invitations/',
@@ -106,8 +103,7 @@ export const cmsEndpoints = {
             separators: 'cms/adp/menu/separators/',
             separatorDetail: (id) => `cms/adp/menu/separators/${id}/`,
             accessLog: 'cms/adp/menu/access-log/',
-            availableIcons: 'cms/adp/menu/available-icons/',
-            sync: 'cms/adp/menu/sync/',
+            availableIcons: 'cms/adp/menu/available-icons/'
         }
     },
     themes: {

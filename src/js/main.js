@@ -23,6 +23,7 @@ import { createPinia } from 'pinia'
 
 import App from '@/App.vue'
 import { initEndpoints } from '@/js/api/endpoints.js'
+import { ensureSiteNameLoaded } from '@/composables/useSiteName.js'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -53,6 +54,7 @@ app.use(setupCalendar, {
 })
 
 await initEndpoints()
+await ensureSiteNameLoaded()
 
 const router = await initRouter()
 app.use(router)

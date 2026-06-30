@@ -2,52 +2,58 @@ import { CheckAccess } from '../../../js/cms';
 import { router } from '../../../../../js/routers.js';
 import Cookies from 'js-cookie';
 export const checkAccessToPage = async (path) => {
-    if(Cookies.get('token')!= null){
-        if(path.includes('AdminPanel')){
-        let b = await CheckAccessToAdminPanel()
-        if(!b.access_to_panel){
-            router.push('/:pathMatch(.*)*');
+    if (Cookies.get('token') == null) {
+        return
+    }
+
+    const normalizedPath = (path || '').toLowerCase()
+
+    if (normalizedPath.includes('admin-panel') || normalizedPath.includes('adminpanel')) {
+        const access = await CheckAccessToAdminPanel()
+        if (!access.access_to_panel) {
+            router.push({ name: 'AccessDenied' })
         }
-        else if( path == '/AdminPanel/CategoriesPanel'& !b.access_to_category){
-            router.push('/:pathMatch(.*)*');
-        }
-        }
-        else{
-            const response = await CheckAccess.CheckAccesToPage(path);
-            if(response.status!= 401){
-                const accessed = response.data.access;
-                if(!accessed) 
-                    {
-                        router.push('/:pathMatch(.*)*');
-                    }
-            }
+        return
+    }
+
+    const response = await CheckAccess.CheckAccesToPage(path)
+    if (response.status != 401) {
+        const accessed = response.data.access
+        if (!accessed) {
+            router.push({ name: 'AccessDenied' })
         }
     }
 }
 
 export const CheckAccessToComponents = async (path) => {
-    if(Cookies.get('token')!= null){
-        const response = await CheckAccess.CheckAccesToComponent(path);
-        if(response.status != 401){
-            const accesses = response.data;
-            for (let acc of accesses){
-                if(!acc.write){
-                    const element = document.getElementById(acc.component)
-                    element.style.pointerEvents = 'none';
-                    element.style.userSelect = 'none';
-                    element.style.webkitUserSelect ='none'
-                    element.style.MozUserSelect ='none'
-                    element.style.msUserSelect ='none'
-                }
-                if(!acc.read){
-                    const element = document.getElementById(acc.component)
-                    element.remove();
-                }
-            }
-            
-            return response;
+    if (Cookies.get('token') == null) {
+        return
+    }
+
+    const response = await CheckAccess.CheckAccesToComponent(path)
+    if (response.status == 401) {
+        return
+    }
+
+    const accesses = response.data
+    for (const acc of accesses) {
+        const element = document.getElementById(acc.component)
+        if (!element) {
+            continue
+        }
+        if (!acc.write) {
+            element.style.pointerEvents = 'none'
+            element.style.userSelect = 'none'
+            element.style.webkitUserSelect = 'none'
+            element.style.MozUserSelect = 'none'
+            element.style.msUserSelect = 'none'
+        }
+        if (!acc.read) {
+            element.remove()
         }
     }
+
+    return response
 }
 
 export const CheckAccessToAdminPanel = async () => {

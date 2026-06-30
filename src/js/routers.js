@@ -137,7 +137,7 @@ function setupRouterGuards(router) {
       }
 
       if (to.meta?.startRoute === true && (await runCheckToken())) {
-        return safeNext({ name: 'Account' })
+        return safeNext({ name: 'AppHome' })
       }
 
       if (to.meta.requiresAuth && !(await runCheckToken())) {

@@ -2,10 +2,13 @@
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 import { onMounted, onBeforeUnmount, provide, ref, watch } from 'vue'
-import { ChevronLeft, Cog, Minus } from 'lucide-vue-next'
+import { ChevronLeft, Minus } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useToast } from 'vue-toastification'
+
+import SiteWordmark from '@/components/SiteWordmark.vue'
+import { useSiteName } from '@/composables/useSiteName.js'
 
 import {
   getUserMenu,
@@ -22,6 +25,10 @@ import { useMenuWidth } from './composables/useMenuWidth'
 import { useMenuNavigation } from './composables/useMenuNavigation'
 import { useMenuIconSizes, MENU_ICON_SIZES_KEY } from './composables/useMenuIconSizes'
 import { safeNavigateByName } from './composables/safeMenuNavigate.js'
+import {
+  getMenuLayoutPaddingFallback,
+  measureMenuLayoutOffset,
+} from './composables/menuLayoutMeasure.js'
 import { openOffcanvasSidebar } from '@/js/useOffcanvasSidebarStore.js'
 
 const props = defineProps({
@@ -39,7 +46,51 @@ const isCollapsed = ref(false)
 const isHovering = ref(true)
 const isToolbarDropdownActive = ref(false)
 const menuSections = ref([])
-const siteName = ref('...')
+const { siteName, ensureSiteNameLoaded } = useSiteName()
+const menuRef = ref(null)
+
+let layoutObserver = null
+let layoutSyncFrame = null
+let layoutSyncTimeout = null
+
+const MENU_LAYOUT_SYNC_DELAY_MS = 320
+
+function syncLayoutOffset() {
+  if (layoutSyncFrame) {
+    cancelAnimationFrame(layoutSyncFrame)
+  }
+
+  layoutSyncFrame = requestAnimationFrame(() => {
+    layoutSyncFrame = null
+
+    const measured = measureMenuLayoutOffset(menuRef.value)
+    if (measured) {
+      emit('left-padding', measured)
+      return
+    }
+
+    emit('left-padding', getMenuLayoutPaddingFallback(isCollapsed.value, menuWidth.value))
+  })
+}
+
+function scheduleLayoutOffsetSync(delay = 0) {
+  if (layoutSyncTimeout) {
+    clearTimeout(layoutSyncTimeout)
+    layoutSyncTimeout = null
+  }
+
+  if (delay > 0) {
+    layoutSyncTimeout = setTimeout(syncLayoutOffset, delay)
+    return
+  }
+
+  syncLayoutOffset()
+}
+
+function handleMenuMetricsChange(collapsed, width) {
+  emit('menu-state-change', collapsed, width)
+  scheduleLayoutOffsetSync()
+}
 
 // Конфигурация разделителей из API
 const separatorsConfig = ref({ byOrderIndex: {} })
@@ -66,7 +117,7 @@ const updateWidth = () => {
     userStore,
     getSeparator,
     shouldShowSeparator,
-    emit,
+    handleMenuMetricsChange,
     isCollapsed.value
   )
 }
@@ -91,7 +142,7 @@ watch(
         userStore,
         getSeparator,
         shouldShowSeparator,
-        emit,
+        handleMenuMetricsChange,
         isCollapsed.value
       )
       setTimeout(updateWidth, 50)
@@ -107,19 +158,22 @@ if (typeof window !== 'undefined') {
 // Переключение меню
 const toggleMenu = () => {
   isCollapsed.value = !isCollapsed.value
-  const padding = isCollapsed.value ? '120px' : `${menuWidth.value + 40}px`
-  emit('left-padding', padding)
   emit('menu-state-change', isCollapsed.value, menuWidth.value)
+  scheduleLayoutOffsetSync(MENU_LAYOUT_SYNC_DELAY_MS)
 }
 
 // Обработка наведения
 const handleMouseEnter = () => {
-  if (isCollapsed.value) isHovering.value = true
+  if (isCollapsed.value) {
+    isHovering.value = true
+    scheduleLayoutOffsetSync(MENU_LAYOUT_SYNC_DELAY_MS)
+  }
 }
 
 const handleMouseLeave = () => {
   if (isCollapsed.value && !isToolbarDropdownActive.value) {
     isHovering.value = false
+    scheduleLayoutOffsetSync(MENU_LAYOUT_SYNC_DELAY_MS)
   }
 }
 
@@ -128,6 +182,7 @@ const setToolbarDropdownActive = (active) => {
   isToolbarDropdownActive.value = active
   if (active && isCollapsed.value) {
     isHovering.value = true
+    scheduleLayoutOffsetSync(MENU_LAYOUT_SYNC_DELAY_MS)
   }
 }
 
@@ -205,43 +260,49 @@ onMounted(async () => {
   // Загружаем меню (из API или статический конфиг)
   await loadMenu()
 
-  // Слушаем событие обновления меню
   window.addEventListener('menu-updated', handleMenuUpdate)
 
-  // Загружаем название сайта
-  try {
-    const res = await apiClient.get(endpoints.settings.siteName)
-    if (res.success) {
-      siteName.value = res.data?.site_name || 'ERGOMS'
-    }
-  } catch {
-    siteName.value = 'ERGOMS'
-  }
+  await ensureSiteNameLoaded()
 
-  // Рассчитываем оптимальную ширину
   initializeMenuWidth(
     menuSections.value,
     siteName.value,
     userStore,
     getSeparator,
     shouldShowSeparator,
-    emit,
+    handleMenuMetricsChange,
     isCollapsed.value
   )
 
-  // Настраиваем отслеживание изменений ширины
-  setupWidthTracking(updateWidth)
-  setTimeout(() => setupWidthTracking(updateWidth), 500)
+  if (menuRef.value && typeof ResizeObserver !== 'undefined') {
+    layoutObserver = new ResizeObserver(() => scheduleLayoutOffsetSync())
+    layoutObserver.observe(menuRef.value)
+  }
+
+  scheduleLayoutOffsetSync(100)
+
+  setupWidthTracking(() => {
+    updateWidth()
+    scheduleLayoutOffsetSync()
+  })
 })
 
 // Удаляем слушатель при размонтировании
 onBeforeUnmount(() => {
   window.removeEventListener('menu-updated', handleMenuUpdate)
+  layoutObserver?.disconnect()
+  if (layoutSyncFrame) {
+    cancelAnimationFrame(layoutSyncFrame)
+  }
+  if (layoutSyncTimeout) {
+    clearTimeout(layoutSyncTimeout)
+  }
 })
 </script>
 
 <template>
   <aside
+    ref="menuRef"
     class="side-menu card p-0"
     :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible }"
     :style="{ '--menu-width': `${menuWidth}px` }"
@@ -249,12 +310,14 @@ onBeforeUnmount(() => {
     @mouseleave="handleMouseLeave"
   >
     <div class="side-menu__header side-header">
-      <RouterLink to="/" class="side-menu__logo">
-        <div class="side-header__icon" aria-hidden="true">
-          <Cog :size="32" />
-        </div>
-        <div class="side-header__title text-smooth-animation" :class="{ hidden: !isHovering }">
-          {{ siteName }}
+      <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">
+        <div class="side-header__title text-smooth-animation">
+          <SiteWordmark
+            :name="siteName"
+            :cog-size="24"
+            :compact="isCollapsed && !isHovering"
+            class="site-wordmark--menu site-wordmark--brand-cog"
+          />
         </div>
       </RouterLink>
       <div class="side-menu__toggle">
@@ -309,6 +372,8 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   align-items: center;
   min-width: 0;
+  text-decoration: none;
+  color: inherit;
 }
 
 .side-menu__body {
@@ -334,12 +399,8 @@ onBeforeUnmount(() => {
     transform: translateX(-110%);
   }
 
-  &.collapsed {
-    width: 84px;
-  }
-
-  &.hovering {
-    width: var(--menu-width, 260px);
+  &.collapsed:not(.hovering) {
+    inline-size: 84px;
   }
 }
 
@@ -413,18 +474,6 @@ onBeforeUnmount(() => {
   transition: background $transition;
 }
 
-// Иконка логотипа (фиксированный размер, не от компактного font-size тела меню)
-.side-header__icon {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  color: var(--color-primary-text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-// Заголовок
 .side-header__title {
   flex-grow: 1;
   color: var(--color-primary-text);

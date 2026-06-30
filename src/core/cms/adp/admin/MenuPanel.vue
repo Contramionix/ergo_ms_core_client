@@ -9,8 +9,12 @@
     </div>
 
     <div class="menu-panel__actions d-flex gap-3 mb-4 flex-wrap">
-      <button class="btn" :disabled="isSaving" @click="showAddModal"><LayersPlus :size="18" class="me-2" style="vertical-align: middle;" />Добавить элемент</button>
-      <button class="btn" :disabled="isSaving" @click="showAddSeparatorModal"><SeparatorHorizontal :size="18" class="me-2" style="vertical-align: middle;" />Добавить разделитель</button>
+      <button class="btn" :disabled="isSaving || isSyncing" @click="showAddModal"><LayersPlus :size="18" class="me-2" style="vertical-align: middle;" />Добавить элемент</button>
+      <button class="btn" :disabled="isSaving || isSyncing" @click="showAddSeparatorModal"><SeparatorHorizontal :size="18" class="me-2" style="vertical-align: middle;" />Добавить разделитель</button>
+      <button class="btn btn-outline-secondary" :disabled="isSaving || isSyncing" @click="handleSyncMenus">
+        <span v-if="isSyncing" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+        {{ isSyncing ? 'Синхронизация...' : 'Синхронизировать с модулями' }}
+      </button>
     </div>
 
     <UnsavedChangesToast :visible="hasUnsavedChanges" :saving="isSaving" title="Есть несохранённые изменения порядка" description="Сохраните или отмените изменения порядка элементов." cancel-label="Отменить" @save="saveAllChanges" @cancel="cancelChanges"/>
@@ -21,8 +25,11 @@
       <div v-if="isLoading" class="text-center py-5">
         <SpinnerLoading loading-text="Загрузка..." color="primary" />
       </div>
-      <div v-else-if="menuItems.length === 0" class="alert alert-info">
-        Элементы меню не найдены. Нажмите "Синхронизировать с модулями" для импорта.
+      <div v-else-if="menuItems.length === 0" class="alert alert-info d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+        <span>Элементы меню не найдены. Синхронизируйте пункты из routes.js модулей.</span>
+        <button class="btn btn-primary" :disabled="isSyncing" @click="handleSyncMenus">
+          {{ isSyncing ? 'Синхронизация...' : 'Синхронизировать с модулями' }}
+        </button>
       </div>
       <div v-else>
         <DraggableMenuList :items="visibleMenuItems" :separators="visibleSeparators" :expand-all-groups="expandAllGroups" @edit="editItem" @delete="confirmDeleteItem" @reorder="handleMenuReorder" @reorder-separators="handleSeparatorReorderFromList" @toggle-visibility="handleToggleVisibility" @edit-separator="editSeparator" @delete-separator="confirmDeleteSeparator" @toggle-visibility-separator="handleToggleSeparatorVisibility"/>
@@ -61,7 +68,8 @@ import {
   updateMenuSeparator,
   deleteMenuSeparator,
   clearMenuCache,
-  reorderMenuItems
+  reorderMenuItems,
+  syncMenusFromModules
 } from '@/core/cms/js/menuService.js'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
@@ -74,6 +82,7 @@ const expandAllGroups = ref(false)
 
 const isLoading = ref(false)
 const isSaving = ref(false)
+const isSyncing = ref(false)
 const isDeletingSeparator = ref(false)
 const isDeletingItem = ref(false)
 const menuItems = ref([])
@@ -240,6 +249,25 @@ async function loadMenuItems() {
     toast.error('Ошибка загрузки элементов меню: ' + error.message)
   } finally {
     isLoading.value = false
+  }
+}
+
+async function handleSyncMenus() {
+  if (isSyncing.value) {
+    return
+  }
+
+  isSyncing.value = true
+  try {
+    await syncMenusFromModules()
+    notifyMenuUpdated()
+    await Promise.all([loadMenuItems(), loadSeparators()])
+    toast.success('Меню синхронизировано с модулями')
+  } catch (error) {
+    logError('[MenuPanel] Sync error:', error)
+    toast.error(error.message || 'Не удалось синхронизировать меню')
+  } finally {
+    isSyncing.value = false
   }
 }
 

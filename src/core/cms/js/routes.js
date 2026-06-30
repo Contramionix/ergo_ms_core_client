@@ -1,4 +1,14 @@
 export default {
+  "AppHome": {
+    "path": "/home",
+    "name": "AppHome",
+    "component": "@/pages/AppHomePage.vue",
+    "meta": {
+      "title": "Главная",
+      "requiresAuth": true,
+      "flushContent": true
+    }
+  },
   "User": {
     "path": "/user",
     "component": "@/core/cms/adp/user/ParentLayout.vue",

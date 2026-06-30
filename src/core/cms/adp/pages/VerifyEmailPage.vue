@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
 import { verifyConfirmationCode, sendConfirmationCode } from '@/core/cms/adp/js/auth-index'
 import { validateFieldValue } from '@/js/validation'
 
@@ -118,24 +119,19 @@ const resendCode = async () => {
 </script>
 
 <template>
-  <div class="d-flex justify-content-center align-items-center min-vh-100 bg-light">
-    <div class="card shadow-sm border-0" style="width: 500px">
-      <div class="card-body p-5">
-        <div class="text-center mb-4">
-          <div class="mb-3">
-            <i :class="isSuccess ? 'bi bi-check-circle-fill text-success' : 'bi bi-envelope-check text-primary'" 
-               style="font-size: 3rem;"></i>
-          </div>
-          <h2 class="fw-bold text-primary mb-2">
-            {{ isSuccess ? 'Email подтвержден!' : 'Подтверждение email' }}
-          </h2>
-          <p class="text-muted">
-            {{ isSuccess 
-              ? 'Ваш email успешно подтвержден. Перенаправляем на страницу входа...' 
-              : `Введите код подтверждения, отправленный на ${form.email}` 
-            }}
-          </p>
-        </div>
+  <AuthPageShell>
+    <div class="auth-page__header">
+      <h2 class="auth-page__title">
+        {{ isSuccess ? 'Email подтвержден!' : 'Подтверждение email' }}
+      </h2>
+      <p class="auth-page__description">
+        {{
+          isSuccess
+            ? 'Ваш email успешно подтвержден. Перенаправляем на страницу входа...'
+            : `Введите код подтверждения, отправленный на ${form.email}`
+        }}
+      </p>
+    </div>
 
         <div v-if="isSuccess" class="text-center">
           <div class="alert alert-success" role="alert">
@@ -230,43 +226,5 @@ const resendCode = async () => {
             </RouterLink>
           </div>
         </form>
-      </div>
-    </div>
-  </div>
+  </AuthPageShell>
 </template>
-
-<style lang="scss" scoped>
-.card {
-  border-radius: 1rem;
-}
-
-.form-control:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-}
-
-.btn-primary {
-  border-radius: 0.5rem;
-  font-weight: 600;
-}
-
-.alert {
-  border-radius: 0.5rem;
-  border: none;
-}
-
-.min-vh-100 {
-  min-height: 100vh;
-}
-
-@media (max-width: 576px) {
-  .card {
-    width: 95% !important;
-    margin: 1rem;
-  }
-  
-  .card-body {
-    padding: 2rem 1.5rem !important;
-  }
-}
-</style> 

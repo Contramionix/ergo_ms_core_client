@@ -1,31 +1,10 @@
-<template>
-  <div class="welcome-container">
-    <div>
-      <h1>{{ message }}</h1>
-    </div>
-    <div class="d-flex justify-content-center align-items-center card-container">
-      <div class="auth-box">
-        <button type="submit" class="btn btn-primary w-100" @click="navigateToLogin">
-          Авторизация
-        </button>
-        <div v-if="showRegisterLink" class="mt-3 text-center no-select">
-          Нет аккаунта?
-          <RouterLink :to="{ name: 'Register' }" class="text-decoration-none">
-            Зарегистрироваться
-          </RouterLink>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { useRouter } from 'vue-router'
+
+import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
 import { useRegistrationSettings } from '@/core/cms/adp/js/useRegistrationSettings.js'
 
-const message = 'Авторизуйтесь в системе'
 const { showRegisterLink } = useRegistrationSettings()
-
 const router = useRouter()
 
 const navigateToLogin = () => {
@@ -33,40 +12,25 @@ const navigateToLogin = () => {
 }
 </script>
 
-<style lang="scss" scoped>
-.welcome-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-height: 100dvh;
-  text-align: center;
-  padding: 16px;
-  box-sizing: border-box;
-  width: 100%;
-}
+<template>
+  <AuthPageShell>
+    <div class="auth-page__header">
+      <h2 class="auth-page__title">Авторизуйтесь в системе</h2>
+      <p class="auth-page__description">
+        Войдите под своей учётной записью, чтобы продолжить работу с платформой
+      </p>
+    </div>
 
-.card-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+    <button type="button" class="btn btn-primary w-100 py-3" @click="navigateToLogin">
+      <i class="bi bi-box-arrow-in-right me-2" />
+      Войти
+    </button>
 
-.auth-box {
-  width: 100%;
-  max-width: 500px;
-}
-
-h1 {
-  color: var(--color-primary-text);
-  font-size: clamp(30px, 4vw, $font-size-h0);
-  line-height: 1.2;
-  font-weight: bold;
-  white-space: normal;
-  word-break: break-word;
-  text-overflow: ellipsis;
-  user-select: none;
-  margin-bottom: 20px;
-}
-</style>
+    <div v-if="showRegisterLink" class="text-center mt-3">
+      <span class="text-muted">Нет аккаунта?</span>
+      <RouterLink :to="{ name: 'Register' }" class="text-decoration-none text-primary fw-semibold ms-1">
+        Зарегистрироваться
+      </RouterLink>
+    </div>
+  </AuthPageShell>
+</template>

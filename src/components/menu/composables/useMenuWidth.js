@@ -1,5 +1,7 @@
 import { ref } from 'vue'
 
+import { getSiteWordmarkText } from '@/js/siteWordmark.js'
+
 const MENU_ITEM_MEASURE_FONT = '14px system-ui, -apple-system, sans-serif'
 const SITE_BRAND_MEASURE_FONT = 'bold 22px system-ui, -apple-system, sans-serif'
 const VIEWPORT_WIDTH_CAP_FRACTION = 0.26
@@ -70,7 +72,7 @@ export function useMenuWidth() {
     let maxWidth = 0
 
     context.font = SITE_BRAND_MEASURE_FONT
-    const siteNameWidth = context.measureText(siteName || 'ERGOMS').width + 100
+    const siteNameWidth = context.measureText(getSiteWordmarkText(siteName)).width + 100
     maxWidth = Math.max(maxWidth, siteNameWidth)
 
     context.font = MENU_ITEM_MEASURE_FONT
@@ -111,7 +113,7 @@ export function useMenuWidth() {
     return Math.max(capped, minMenuWidth)
   }
 
-  const updateMenuWidth = (menuSections, siteName, userStore, getSeparator, shouldShowSeparator, emit, isCollapsed) => {
+  const updateMenuWidth = (menuSections, siteName, userStore, getSeparator, shouldShowSeparator, onChange, isCollapsed) => {
     if (typeof window !== 'undefined') {
       if (widthUpdateTimeout) {
         clearTimeout(widthUpdateTimeout)
@@ -121,29 +123,23 @@ export function useMenuWidth() {
         const newWidth = calculateOptimalWidth(menuSections, siteName, userStore, getSeparator, shouldShowSeparator)
         if (newWidth !== menuWidth.value) {
           menuWidth.value = newWidth
-          if (!isCollapsed) {
-            emit('left-padding', `${newWidth + 40}px`)
-          }
-          emit('menu-state-change', isCollapsed, menuWidth.value)
+          onChange?.(isCollapsed, menuWidth.value)
         }
       }, 150)
     }
   }
 
-  const initializeMenuWidth = (menuSections, siteName, userStore, getSeparator, shouldShowSeparator, emit, isCollapsed) => {
+  const initializeMenuWidth = (menuSections, siteName, userStore, getSeparator, shouldShowSeparator, onChange, isCollapsed) => {
     if (typeof window !== 'undefined') {
       const newWidth = calculateOptimalWidth(menuSections, siteName, userStore, getSeparator, shouldShowSeparator)
       menuWidth.value = newWidth
 
       setTimeout(() => {
-        if (!isCollapsed) {
-          emit('left-padding', `${menuWidth.value + 40}px`)
-        }
-        emit('menu-state-change', isCollapsed, menuWidth.value)
+        onChange?.(isCollapsed, menuWidth.value)
       }, 100)
 
       setTimeout(() => {
-        updateMenuWidth(menuSections, siteName, userStore, getSeparator, shouldShowSeparator, emit, isCollapsed)
+        updateMenuWidth(menuSections, siteName, userStore, getSeparator, shouldShowSeparator, onChange, isCollapsed)
       }, 300)
     }
   }

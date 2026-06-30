@@ -1,0 +1,74 @@
+@keyframes layout-backdrop-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -16px, 0);
+  }
+}
+
+.layout-backdrop {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: clip;
+  contain: paint;
+  isolation: isolate;
+  z-index: 0;
+}
+
+.layout-backdrop--menu-offset {
+  left: var(--layout-backdrop-offset, 0);
+}
+
+.layout-backdrop__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(48px);
+  opacity: 0.4;
+  animation: layout-backdrop-float 12s ease-in-out infinite;
+  will-change: transform;
+
+  &--primary {
+    width: 320px;
+    height: 320px;
+    top: -72px;
+    right: 0;
+    background: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  }
+
+  &--secondary {
+    width: 280px;
+    height: 280px;
+    bottom: -56px;
+    left: 0;
+    background: color-mix(in srgb, var(--color-border) 80%, var(--color-accent) 20%);
+    animation-delay: -4s;
+  }
+
+  &--accent {
+    width: 200px;
+    height: 200px;
+    top: 38%;
+    left: 38%;
+    background: color-mix(in srgb, var(--color-secondary-background) 70%, var(--color-accent) 30%);
+    animation-delay: -8s;
+  }
+}
+
+@media (width < 1200px) {
+  .layout-backdrop--menu-offset {
+    top: 56px;
+    left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layout-backdrop__orb {
+    animation: none;
+  }
+}

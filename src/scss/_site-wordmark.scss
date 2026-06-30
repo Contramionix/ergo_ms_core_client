@@ -1,0 +1,63 @@
+.site-wordmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.04em;
+  line-height: 1;
+  min-width: 0;
+}
+
+.site-wordmark--compact {
+  justify-content: center;
+}
+
+.site-wordmark--centered {
+  justify-content: center;
+  margin-inline: auto;
+}
+
+.site-wordmark--brand-cog .site-wordmark__cog {
+  color: #dc2626;
+}
+
+.site-wordmark__text {
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+
+.site-wordmark__cog {
+  color: var(--color-accent);
+  flex-shrink: 0;
+  margin-inline: -0.02em;
+}
+
+.site-wordmark--lg {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.site-wordmark--menu {
+  font-size: $font-size-h1;
+  font-weight: bold;
+  letter-spacing: 0.02em;
+}
+
+.site-wordmark--mobile {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.site-wordmark--hero {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.site-wordmark--inline {
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  vertical-align: baseline;
+}

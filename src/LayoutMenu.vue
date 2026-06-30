@@ -25,15 +25,20 @@ import { currentOffcanvasSidebarPage } from '@/js/useOffcanvasSidebarStore.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { ensurePresenceConnected } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import MenuList from '@/components/menu/MenuList.vue'
+import LayoutBackdrop from '@/components/LayoutBackdrop.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 import { Menu as IconMenu } from 'lucide-vue-next'
+
+import SiteWordmark from '@/components/SiteWordmark.vue'
+import { useSiteName } from '@/composables/useSiteName.js'
 
 const layoutPluginGlob = import.meta.glob('../../../modules/*/client/LayoutPlugin.vue')
 const layoutPlugins = shallowRef([])
 
 const userStore = useUserStore()
 const route = useRoute()
+const { siteName, ensureSiteNameLoaded } = useSiteName()
 
 let resizeTimeout = null
 
@@ -103,7 +108,10 @@ function onHamburgerClick() {
 onMounted(async () => {
   updateMenuVisibilityImmediate()
   window.addEventListener('resize', updateMenuVisibility)
-  await userStore.initializeUser()
+  await Promise.all([
+    userStore.initializeUser(),
+    ensureSiteNameLoaded(),
+  ])
   if (userStore.isAuthenticated) {
     ensurePresenceConnected()
   }
@@ -136,8 +144,12 @@ onBeforeUnmount(() => {
       >
         <IconMenu :size="24" />
       </button>
-      <RouterLink to="/" class="mobile-header__brand text-decoration-none">
-        <span class="fw-semibold">ERGOMS</span>
+      <RouterLink :to="{ name: 'AppHome' }" class="mobile-header__brand text-decoration-none">
+        <SiteWordmark
+          :name="siteName"
+          :cog-size="18"
+          class="site-wordmark--mobile site-wordmark--centered site-wordmark--brand-cog"
+        />
       </RouterLink>
     </div>
   </Teleport>
@@ -149,24 +161,31 @@ onBeforeUnmount(() => {
       @menu-state-change="handleMenuStateChange"
       @reset-offcanvas-page="() => { currentOffcanvasSidebarPage.value = '' }"
     />
-    <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage }">
-      <template v-if="route.meta?.fullPage">
-        <AccessDenied
-          v-if="accessDeniedState.active"
-          bordered
-          :title="accessDeniedState.title"
-          :message="accessDeniedState.message"
-        />
-        <RouterView v-else :key="routeViewKey" />
-      </template>
-      <div v-else class="py-4 container-xxl">
-        <AccessDenied
-          v-if="accessDeniedState.active"
-          bordered
-          :title="accessDeniedState.title"
-          :message="accessDeniedState.message"
-        />
-        <RouterView v-else :key="routeViewKey" />
+    <div
+      class="layout-page"
+      :class="{ 'layout-page--full-page': isFullPage }"
+      :style="{ '--layout-backdrop-offset': leftPadding }"
+    >
+      <LayoutBackdrop v-if="!isFullPage" menu-offset />
+      <div class="layout-page__content">
+        <template v-if="route.meta?.fullPage">
+          <AccessDenied
+            v-if="accessDeniedState.active"
+            bordered
+            :title="accessDeniedState.title"
+            :message="accessDeniedState.message"
+          />
+          <RouterView v-else :key="routeViewKey" />
+        </template>
+        <div v-else :class="route.meta?.flushContent ? 'layout-content--flush' : 'py-4 container-xxl'">
+          <AccessDenied
+            v-if="accessDeniedState.active"
+            bordered
+            :title="accessDeniedState.title"
+            :message="accessDeniedState.message"
+          />
+          <RouterView v-else :key="routeViewKey" />
+        </div>
       </div>
     </div>
   </div>
@@ -204,19 +223,33 @@ onBeforeUnmount(() => {
   }
 
   &__brand {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     display: inline-flex;
     align-items: center;
     color: inherit;
   }
 }
 .layout-page {
+  position: relative;
   padding-inline-start: v-bind(leftPadding);
   transition: padding-inline-start 0.3s ease;
+  overflow-x: clip;
+  min-height: 100dvh;
+  background: var(--color-background);
 
   &--full-page {
     padding-inline-start: 0 !important;
     height: 100dvh;
+    min-height: 100dvh;
   }
+}
+
+.layout-page__content {
+  position: relative;
+  z-index: 1;
+  min-height: inherit;
 }
 
 .layout-container--full-page {
@@ -227,6 +260,12 @@ onBeforeUnmount(() => {
     height: 100dvh;
     overflow: auto;
   }
+}
+
+.layout-content--flush {
+  padding: 0;
+  max-width: none;
+  overflow: clip;
 }
 
 .layout-overlay {

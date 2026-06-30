@@ -362,6 +362,21 @@ export async function getAvailableIcons() {
 }
 
 /**
+ * Синхронизирует пункты меню из routes.js модулей
+ * @returns {Promise<Object>}
+ */
+export async function syncMenusFromModules() {
+  const response = await apiClient.post(endpoints.cms.menu.sync, {})
+
+  if (response.success) {
+    clearMenuCache()
+    return response.data
+  }
+
+  throw new Error(response.error || response.message || 'Ошибка синхронизации меню')
+}
+
+/**
  * Записывает лог доступа к элементу меню
  * @param {number} menuItemId - ID элемента меню
  * @returns {Promise<void>}

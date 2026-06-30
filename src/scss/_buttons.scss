@@ -1,0 +1,53 @@
+// Вторичные outline-кнопки (Отмена, Назад и т.п.)
+// Bootstrap по умолчанию использует $secondary (#ccc) — на светлом фоне почти не видно.
+
+.btn-outline-secondary {
+  --bs-btn-color: var(--color-primary-text);
+  --bs-btn-border-color: color-mix(in srgb, var(--color-primary-text) 18%, var(--color-border));
+  --bs-btn-bg: var(--color-secondary-background);
+  --bs-btn-hover-color: var(--color-primary-text);
+  --bs-btn-hover-bg: var(--color-hover-background);
+  --bs-btn-hover-border-color: color-mix(in srgb, var(--color-primary-text) 28%, var(--color-border));
+  --bs-btn-active-color: var(--color-primary-text);
+  --bs-btn-active-bg: var(--color-hover-background);
+  --bs-btn-active-border-color: color-mix(in srgb, var(--color-primary-text) 32%, var(--color-border));
+  --bs-btn-disabled-color: var(--color-secondary-text);
+  --bs-btn-disabled-bg: var(--color-secondary-background);
+  --bs-btn-disabled-border-color: var(--color-border);
+
+  color: var(--color-primary-text);
+  border-color: color-mix(in srgb, var(--color-primary-text) 18%, var(--color-border));
+  background-color: var(--color-secondary-background);
+  box-shadow: none;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--color-primary-text);
+    background-color: var(--color-hover-background);
+    border-color: color-mix(in srgb, var(--color-primary-text) 28%, var(--color-border));
+    box-shadow: none;
+  }
+
+  &:active,
+  &.active,
+  &.show {
+    color: var(--color-primary-text);
+    background-color: var(--color-hover-background);
+    border-color: color-mix(in srgb, var(--color-primary-text) 32%, var(--color-border));
+    box-shadow: none;
+  }
+
+  &:disabled,
+  &.disabled,
+  fieldset:disabled & {
+    color: var(--color-secondary-text);
+    background-color: color-mix(in srgb, var(--color-secondary-background) 70%, transparent);
+    border-color: var(--color-border);
+    opacity: 0.75;
+  }
+}
+
+html,
+body {
+  overflow-x: clip;
+}
