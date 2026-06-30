@@ -7,7 +7,7 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useSiteName } from '@/composables/useSiteName.js'
 
 const userStore = useUserStore()
-const { siteName, ensureSiteNameLoaded } = useSiteName()
+const { ensureSiteNameLoaded } = useSiteName()
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -67,11 +67,7 @@ onMounted(loadSiteName)
         <div class="app-shell__brand app-shell__brand--centered">
           <p class="app-shell__eyebrow">{{ formattedDate }}</p>
           <h1 class="app-shell__title">
-            <SiteWordmark
-              :name="siteName"
-              :cog-size="36"
-              class="site-wordmark--hero site-wordmark--centered site-wordmark--brand-cog"
-            />
+            <SiteWordmark class="site-wordmark--hero site-wordmark--centered" />
           </h1>
           <p class="app-shell__subtitle">
             {{ greeting }}, <span class="app-home__username">{{ userLabel }}</span>
@@ -82,11 +78,7 @@ onMounted(loadSiteName)
       <section class="app-shell__card" aria-label="О системе">
         <h2 class="app-shell__card-title">О платформе</h2>
         <p class="app-shell__card-text">
-          <SiteWordmark
-            :name="siteName"
-            :cog-size="18"
-            class="site-wordmark--inline site-wordmark--brand-cog"
-          />
+          ERGOMS
           — корпоративная веб-платформа для управления бизнес-процессами,
           обучением, проектами и аналитикой. Система построена на модульной архитектуре:
           ядро обеспечивает авторизацию, меню и общие сервисы, а подключаемые модули

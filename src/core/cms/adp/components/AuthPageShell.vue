@@ -15,7 +15,7 @@ defineProps({
   },
 })
 
-const { siteName, ensureSiteNameLoaded } = useSiteName()
+const { ensureSiteNameLoaded } = useSiteName()
 
 onMounted(ensureSiteNameLoaded)
 </script>
@@ -25,11 +25,7 @@ onMounted(ensureSiteNameLoaded)
     <div class="auth-page__inner" :class="{ 'auth-page__inner--wide': wide }">
       <header v-if="showBrand" class="auth-page__brand">
         <h1 class="auth-page__site-name">
-          <SiteWordmark
-            :name="siteName"
-            :cog-size="34"
-            class="site-wordmark--lg site-wordmark--centered site-wordmark--brand-cog"
-          />
+          <SiteWordmark class="auth-page__wordmark site-wordmark--centered" />
         </h1>
       </header>
 
@@ -39,3 +35,11 @@ onMounted(ensureSiteNameLoaded)
     </div>
   </div>
 </template>
+
+<style scoped lang="scss">
+.auth-page__wordmark {
+  font-size: clamp(4.5rem, 10vw, 6rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+</style>

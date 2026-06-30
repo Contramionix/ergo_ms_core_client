@@ -29,6 +29,10 @@ import {
   getMenuLayoutPaddingFallback,
   measureMenuLayoutOffset,
 } from './composables/menuLayoutMeasure.js'
+import {
+  readMenuCollapsedPreference,
+  writeMenuCollapsedPreference,
+} from './composables/useMenuCollapsedPreference.js'
 import { openOffcanvasSidebar } from '@/js/useOffcanvasSidebarStore.js'
 
 const props = defineProps({
@@ -42,8 +46,8 @@ const userStore = useUserStore()
 const toast = useToast()
 
 // Состояние меню
-const isCollapsed = ref(false)
-const isHovering = ref(true)
+const isCollapsed = ref(readMenuCollapsedPreference())
+const isHovering = ref(!isCollapsed.value)
 const isToolbarDropdownActive = ref(false)
 const menuSections = ref([])
 const { siteName, ensureSiteNameLoaded } = useSiteName()
@@ -136,6 +140,9 @@ watch(
     if (!newValue) {
       isHovering.value = true
     } else {
+      if (isCollapsed.value) {
+        isHovering.value = false
+      }
       initializeMenuWidth(
         menuSections.value,
         siteName.value,
@@ -158,6 +165,10 @@ if (typeof window !== 'undefined') {
 // Переключение меню
 const toggleMenu = () => {
   isCollapsed.value = !isCollapsed.value
+  writeMenuCollapsedPreference(isCollapsed.value)
+  if (isCollapsed.value) {
+    isHovering.value = false
+  }
   emit('menu-state-change', isCollapsed.value, menuWidth.value)
   scheduleLayoutOffsetSync(MENU_LAYOUT_SYNC_DELAY_MS)
 }
@@ -216,14 +227,8 @@ watch(siteName, updateWidth)
 
 // Следим за изменениями имени пользователя (только имя, не весь объект)
 watch(() => userStore.fullName, (newName, oldName) => {
-  // Обновляем ширину меню только если изменилось имя
   if (oldName !== newName && newName) {
-    if (isCollapsed.value) {
-      isHovering.value = true
-      setTimeout(updateWidth, 100)
-    } else {
-      updateWidth()
-    }
+    updateWidth()
   }
 })
 
@@ -274,6 +279,12 @@ onMounted(async () => {
     isCollapsed.value
   )
 
+  handleMenuMetricsChange(isCollapsed.value, menuWidth.value)
+
+  if (isCollapsed.value) {
+    isHovering.value = false
+  }
+
   if (menuRef.value && typeof ResizeObserver !== 'undefined') {
     layoutObserver = new ResizeObserver(() => scheduleLayoutOffsetSync())
     layoutObserver.observe(menuRef.value)
@@ -301,32 +312,16 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside
-    ref="menuRef"
-    class="side-menu card p-0"
-    :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible }"
-    :style="{ '--menu-width': `${menuWidth}px` }"
-    @mouseenter="handleMouseEnter"
-    @mouseleave="handleMouseLeave"
-  >
+  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible }" :style="{ '--menu-width': `${menuWidth}px` }" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
     <div class="side-menu__header side-header">
       <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">
         <div class="side-header__title text-smooth-animation">
-          <SiteWordmark
-            :name="siteName"
-            :cog-size="24"
-            :compact="isCollapsed && !isHovering"
-            class="site-wordmark--menu site-wordmark--brand-cog"
-          />
+          <SiteWordmark :compact="isCollapsed && !isHovering" :compact-icon-size="menuIconSizes.item" class="site-wordmark--menu"/>
         </div>
       </RouterLink>
       <div class="side-menu__toggle">
         <button @click="toggleMenu" class="btn btn-primary">
-          <ChevronLeft
-            :class="{ rotated: isCollapsed }"
-            :size="menuIconSizes.toggle"
-            class="menu-group__chevron"
-          />
+          <ChevronLeft :class="{ rotated: isCollapsed }" :size="menuIconSizes.toggle" class="menu-group__chevron"/>
         </button>
       </div>
     </div>
@@ -342,31 +337,16 @@ onBeforeUnmount(() => {
             </div>
           </div>
           
-          <MenuGroup
-            :is-hovering="isHovering"
-            :is-collapsed="!isCollapsed"
-            :is-open="openGroupRouteName === section.routeName"
-            :data="section"
-            :nested-open-states="nestedOpenStates"
-            @toggle="toggleGroup(section.routeName)"
-            @navigate="handleNavigate"
-            @reset-offcanvas-page="resetOffcanvasPage"
-            @toggle-nested="toggleNestedGroup"
-          />
+          <MenuGroup :is-hovering="isHovering" :is-collapsed="!isCollapsed" :is-open="openGroupRouteName === section.routeName" :data="section" :nested-open-states="nestedOpenStates" @toggle="toggleGroup(section.routeName)" @navigate="handleNavigate" @reset-offcanvas-page="resetOffcanvasPage" @toggle-nested="toggleNestedGroup"/>
         </li>
         </ul>
       </div>
-      <MenuToolbar
-        :is-collapsed="isCollapsed"
-        :is-hovering="isHovering"
-        @dropdown-state-change="setToolbarDropdownActive"
-      />
+      <MenuToolbar :is-collapsed="isCollapsed" :is-hovering="isHovering" @dropdown-state-change="setToolbarDropdownActive"/>
     </div>
   </aside>
 </template>
 
-<style lang="scss" scoped>
-// Меню
+<style scoped lang="scss">
 .side-menu__logo {
   display: flex;
   flex-shrink: 0;
@@ -401,10 +381,31 @@ onBeforeUnmount(() => {
 
   &.collapsed:not(.hovering) {
     inline-size: 84px;
+
+    .side-header {
+      padding: 12px 0 0;
+    }
+
+    .side-menu__logo {
+      width: 100%;
+      box-sizing: border-box;
+      justify-content: flex-start;
+      // та же колонка, что у .nav-btn внутри ul.p-2
+      padding: $padding-internal 0 $padding-internal calc(0.5rem + #{$padding-external});
+    }
+
+    .side-header__title {
+      display: flex;
+      flex-grow: 0;
+      justify-content: flex-start;
+    }
+
+    :deep(.site-wordmark--menu) {
+      letter-spacing: 0;
+    }
   }
 }
 
-// Область прокрутки списка меню
 .side-menu__scroll {
   flex: 1 1 0;
   min-height: 0;
@@ -451,10 +452,9 @@ onBeforeUnmount(() => {
   }
 }
 
-// Шапка меню
 .side-header {
   position: relative;
-  padding: 15px 0 15px 26px;
+  padding: 12px 0 0 26px;
 
   a {
     @include flex-row-gap($padding-internal, center);
@@ -462,12 +462,11 @@ onBeforeUnmount(() => {
   }
 }
 
-// Тень
 .side-header__shadow {
   position: absolute;
-  top: 3.3125rem;
+  top: 2.875rem;
   width: 100%;
-  height: 2rem;
+  height: 1.5rem;
   background: linear-gradient(var(--bs-card-bg) 41%, rgba(255, 255, 255, 0));
   pointer-events: none;
   z-index: 2;
@@ -479,13 +478,13 @@ onBeforeUnmount(() => {
   color: var(--color-primary-text);
   font-size: $font-size-h1;
   font-weight: bold;
+  line-height: 0;
   white-space: nowrap;
   text-overflow: ellipsis;
   user-select: none;
   overflow: hidden;
 }
 
-// Кнопка переключения
 .side-menu__toggle {
   position: absolute;
   top: 50%;
@@ -505,7 +504,6 @@ onBeforeUnmount(() => {
   }
 }
 
-// Анимация иконки
 .menu-group__chevron {
   transition: transform 0.3s ease;
 
@@ -514,7 +512,6 @@ onBeforeUnmount(() => {
   }
 }
 
-// Список меню
 .side-menu__list {
   display: flex;
   flex-direction: column;
@@ -528,7 +525,6 @@ onBeforeUnmount(() => {
   }
 }
 
-// Разделитель
 .side-divider {
   @include flex-row-gap($padding-internal, center);
   padding: $padding-internal $padding-external;

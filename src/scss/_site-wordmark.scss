@@ -5,10 +5,11 @@
   gap: 0.04em;
   line-height: 1;
   min-width: 0;
+  color: inherit;
 }
 
 .site-wordmark--compact {
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .site-wordmark--centered {
@@ -16,19 +17,16 @@
   margin-inline: auto;
 }
 
-.site-wordmark--brand-cog .site-wordmark__cog {
-  color: #dc2626;
-}
-
-.site-wordmark__text {
-  font-weight: inherit;
-  letter-spacing: inherit;
-}
-
-.site-wordmark__cog {
-  color: var(--color-accent);
+.site-wordmark__logo {
+  display: inline-flex;
+  height: 1em;
+  width: auto;
   flex-shrink: 0;
-  margin-inline: -0.02em;
+}
+
+.site-wordmark--compact .site-wordmark__logo {
+  width: auto;
+  height: auto;
 }
 
 .site-wordmark--lg {

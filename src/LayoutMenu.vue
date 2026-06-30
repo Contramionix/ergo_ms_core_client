@@ -38,7 +38,7 @@ const layoutPlugins = shallowRef([])
 
 const userStore = useUserStore()
 const route = useRoute()
-const { siteName, ensureSiteNameLoaded } = useSiteName()
+const { ensureSiteNameLoaded } = useSiteName()
 
 let resizeTimeout = null
 
@@ -140,55 +140,25 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <div v-if="!isFullPage" class="mobile-header d-xl-none">
-      <button
-        class="btn btn-link d-flex align-items-center justify-content-center mobile-header__btn"
-        type="button"
-        :aria-label="isMenuVisible ? 'Закрыть меню' : 'Открыть меню'"
-        :title="isMenuVisible ? 'Закрыть меню' : 'Открыть меню'"
-        @click="onHamburgerClick"
-      >
+      <button class="btn btn-link d-flex align-items-center justify-content-center mobile-header__btn" type="button" :aria-label="isMenuVisible ? 'Закрыть меню' : 'Открыть меню'" :title="isMenuVisible ? 'Закрыть меню' : 'Открыть меню'" @click="onHamburgerClick">
         <IconMenu :size="24" />
       </button>
       <RouterLink :to="{ name: 'AppHome' }" class="mobile-header__brand text-decoration-none">
-        <SiteWordmark
-          :name="siteName"
-          :cog-size="18"
-          class="site-wordmark--mobile site-wordmark--centered site-wordmark--brand-cog"
-        />
+        <SiteWordmark class="site-wordmark--mobile site-wordmark--centered" />
       </RouterLink>
     </div>
   </Teleport>
   <div class="layout-container" :class="{ 'layout-container--full-page': isFullPage }">
-    <MenuList
-      v-if="!isFullPage"
-      @left-padding="leftToggle"
-      :is-visible="isMenuVisible"
-      @menu-state-change="handleMenuStateChange"
-      @reset-offcanvas-page="() => { currentOffcanvasSidebarPage.value = '' }"
-    />
-    <div
-      class="layout-page"
-      :class="{ 'layout-page--full-page': isFullPage }"
-      :style="{ '--layout-backdrop-offset': leftPadding }"
-    >
-      <LayoutBackdrop v-if="!isFullPage && showShellBackdrop" menu-offset />
+    <MenuList v-if="!isFullPage" @left-padding="leftToggle" :is-visible="isMenuVisible" @menu-state-change="handleMenuStateChange" @reset-offcanvas-page="() => { currentOffcanvasSidebarPage.value = '' }"/>
+    <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage }">
+      <LayoutBackdrop v-if="!isFullPage && showShellBackdrop" />
       <div class="layout-page__content">
         <template v-if="route.meta?.fullPage">
-          <AccessDenied
-            v-if="accessDeniedState.active"
-            bordered
-            :title="accessDeniedState.title"
-            :message="accessDeniedState.message"
-          />
+          <AccessDenied v-if="accessDeniedState.active" bordered :title="accessDeniedState.title" :message="accessDeniedState.message"/>
           <RouterView v-else :key="routeViewKey" />
         </template>
         <div v-else :class="route.meta?.flushContent ? 'layout-content--flush' : 'py-4 container-xxl'">
-          <AccessDenied
-            v-if="accessDeniedState.active"
-            bordered
-            :title="accessDeniedState.title"
-            :message="accessDeniedState.message"
-          />
+          <AccessDenied v-if="accessDeniedState.active" bordered :title="accessDeniedState.title" :message="accessDeniedState.message"/>
           <RouterView v-else :key="routeViewKey" />
         </div>
       </div>
@@ -196,13 +166,7 @@ onBeforeUnmount(() => {
   </div>
 
   <div @click="closeMenu" class="layout-overlay" :class="{ active: isOverlayVisible }" />
-  <component
-    v-for="(plugin, index) in layoutPlugins"
-    :key="index"
-    :is="plugin"
-    :isMenuCollapsed="isMenuCollapsed"
-    :menuWidth="menuWidth"
-  />
+  <component v-for="(plugin, index) in layoutPlugins" :key="index" :is="plugin" :isMenuCollapsed="isMenuCollapsed" :menuWidth="menuWidth"/>
 </template>
 
 <style scoped lang="scss">
@@ -234,6 +198,10 @@ onBeforeUnmount(() => {
     display: inline-flex;
     align-items: center;
     color: inherit;
+
+    :deep(.site-wordmark--mobile) {
+      font-size: 1.875rem;
+    }
   }
 }
 .layout-page {
@@ -275,6 +243,10 @@ onBeforeUnmount(() => {
 
 .layout-overlay {
   z-index: 1004;
+}
+
+:deep(.site-wordmark--menu) {
+  font-size: 2.5rem;
 }
 
 @media (width < 1200px) {
