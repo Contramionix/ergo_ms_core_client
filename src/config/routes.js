@@ -14,7 +14,8 @@ export default {
       "meta": {
         "title": "Страница не найдена",
         "requiresAuth": true,
-        "flushContent": true
+        "flushContent": true,
+        "shellBackdrop": true
       }
     },
     {

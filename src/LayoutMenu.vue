@@ -61,6 +61,11 @@ const menuWidth = ref(260)
 // Полноэкранный режим (без меню и ограничений контейнера)
 const isFullPage = computed(() => route.meta?.fullPage === true)
 
+// Декоративный фон с «кругляшками» — только на стандартных shell-страницах (home, 404 и т.п.)
+const showShellBackdrop = computed(() =>
+  route.matched.some((record) => record.meta?.shellBackdrop === true),
+)
+
 function updateMenuVisibilityImmediate() {
   if (window.innerWidth >= 1200) {
     isMenuVisible.value = true
@@ -166,7 +171,7 @@ onBeforeUnmount(() => {
       :class="{ 'layout-page--full-page': isFullPage }"
       :style="{ '--layout-backdrop-offset': leftPadding }"
     >
-      <LayoutBackdrop v-if="!isFullPage" menu-offset />
+      <LayoutBackdrop v-if="!isFullPage && showShellBackdrop" menu-offset />
       <div class="layout-page__content">
         <template v-if="route.meta?.fullPage">
           <AccessDenied

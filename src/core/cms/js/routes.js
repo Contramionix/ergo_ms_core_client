@@ -6,7 +6,8 @@ export default {
     "meta": {
       "title": "Главная",
       "requiresAuth": true,
-      "flushContent": true
+      "flushContent": true,
+      "shellBackdrop": true
     }
   },
   "User": {
@@ -158,7 +159,8 @@ export default {
     "component": "@/components/AccessDenied.vue",
     "meta": {
       "title": "Ошибка доступа",
-      "requiresAuth": true
+      "requiresAuth": true,
+      "shellBackdrop": true
     }
   }
 }
