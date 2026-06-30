@@ -33,25 +33,20 @@
       </div>
     </div>
 
-    <div
-      v-if="showErrorModal"
-      class="modal fade show d-block"
-      tabindex="-1"
-      style="background-color: rgba(0,0,0,0.5);"
+    <ModalCenter
+      standalone
+      modal-id="limitationErrorModal"
+      :visible="showErrorModal"
+      @close="showErrorModal = false"
     >
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title text-danger">Ошибка</h5>
-            <button type="button" class="btn-close" @click="showErrorModal = false"></button>
-          </div>
-          <div class="modal-body">{{ errorMessage }}</div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @click="showErrorModal = false">Закрыть</button>
-          </div>
-        </div>
-      </div>
-    </div>
+      <template #title>
+        <span class="text-danger">Ошибка</span>
+      </template>
+      {{ errorMessage }}
+      <template #footer>
+        <button type="button" class="btn btn-secondary" @click="showErrorModal = false">Закрыть</button>
+      </template>
+    </ModalCenter>
 
     <ConfirmDialog
       :show="confirmDialog.show"
@@ -70,6 +65,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import ModalCenter from '@/components/ModalCenter.vue'
 import {
   DeletePolicy,
   GetPageComponents,

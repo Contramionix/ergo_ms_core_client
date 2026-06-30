@@ -166,15 +166,20 @@ defineExpose({
         <ul class="profile-card__meta list-unstyled mb-0">
           <li v-if="displayUserInfo.profession" class="profile-card__meta-item">
             <Briefcase :size="20" class="profile-card__meta-icon" />
-            <span>{{ displayUserInfo.profession }}</span>
+            <span class="profile-card__meta-value">{{ displayUserInfo.profession }}</span>
           </li>
-          <li class="profile-card__meta-item">
-            <MapPin :size="20" class="profile-card__meta-icon" />
-            <span>{{ displayUserInfo.location }}</span>
-          </li>
-          <li class="profile-card__meta-item">
-            <Calendar :size="20" class="profile-card__meta-icon" />
-            <span>{{ displayUserInfo.registration }}</span>
+          <li class="profile-card__meta-item profile-card__meta-item--inline">
+            <span class="profile-card__meta-part">
+              <MapPin :size="20" class="profile-card__meta-icon" />
+              <span class="profile-card__meta-label">Местоположение:</span>
+              <span class="profile-card__meta-value">{{ displayUserInfo.location }}</span>
+            </span>
+            <span class="profile-card__meta-divider" aria-hidden="true">·</span>
+            <span class="profile-card__meta-part">
+              <Calendar :size="20" class="profile-card__meta-icon" />
+              <span class="profile-card__meta-label">На платформе с:</span>
+              <span class="profile-card__meta-value">{{ displayUserInfo.registration }}</span>
+            </span>
           </li>
         </ul>
       </div>
@@ -270,22 +275,50 @@ defineExpose({
 }
 
 .profile-card__meta {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   margin: 0 auto;
   max-width: 100%;
 }
 
 .profile-card__meta-item {
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  color: var(--color-secondary-text);
+  justify-content: center;
+  gap: 0.375rem;
   font-size: 0.9375rem;
-  text-align: left;
+  text-align: center;
+
+  &--inline {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.875rem;
+  }
+}
+
+.profile-card__meta-part {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+}
+
+.profile-card__meta-label {
+  color: var(--color-primary-text);
+  font-weight: 500;
+}
+
+.profile-card__meta-value {
+  color: var(--color-secondary-text);
+}
+
+.profile-card__meta-divider {
+  align-self: center;
+  color: var(--color-secondary-text);
+  opacity: 0.5;
+  user-select: none;
 }
 
 .profile-card__meta-icon {
@@ -295,6 +328,6 @@ defineExpose({
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  opacity: 0.85;
+  color: var(--color-primary-text);
 }
 </style>

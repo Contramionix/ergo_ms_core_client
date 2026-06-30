@@ -1,6 +1,7 @@
 <script setup>
 import { AlertTriangle } from 'lucide-vue-next'
 import { ref, computed, watch, onUnmounted } from 'vue'
+import ModalCenter from '@/components/ModalCenter.vue'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -14,15 +15,9 @@ const props = defineProps({
   zIndex: { type: [Number, String], default: null },
 })
 
-const rootStyle = computed(() => {
-  if (props.zIndex == null || props.zIndex === '') return undefined
-  return {
-    '--bs-modal-zindex': props.zIndex,
-    zIndex: props.zIndex,
-  }
-})
-
 const emit = defineEmits(['confirm', 'cancel', 'close'])
+
+const isVisible = computed(() => props.show && !!props.message)
 
 const countdown = ref(0)
 let countdownTimer = null
@@ -59,26 +54,15 @@ const startCountdown = () => {
   }, 1000)
 }
 
-const disableBodyScroll = () => { 
-  document.body.style.overflow = 'hidden' 
-}
-
-const enableBodyScroll = () => { 
-  document.body.style.overflow = '' 
-}
-
 watch(() => props.show, (isOpen) => {
   if (isOpen) {
-    disableBodyScroll()
     startCountdown()
   } else {
-    enableBodyScroll()
     clearCountdown()
   }
 })
 
 onUnmounted(() => {
-  enableBodyScroll()
   clearCountdown()
 })
 
@@ -103,81 +87,38 @@ function handleClose() {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="show && message"
-      class="modal fade show d-block cd-standalone"
-      tabindex="-1"
-      role="dialog"
-      aria-modal="true"
-      :style="rootStyle"
-    >
-      <div class="modal-dialog modal-dialog-centered cd-standalone__dialog">
-        <div class="modal-content">
-          <div class="modal-header border-0 pb-0">
-            <div class="d-flex align-items-center gap-2">
-              <AlertTriangle v-if="variant === 'danger' || variant === 'warning'" :size="24" :class="variant === 'danger' ? 'text-danger' : 'text-warning'" />
-              <h5 class="modal-title mb-0">{{ title }}</h5>
-            </div>
-            <button type="button" class="btn-close" @click="handleClose" :disabled="loading"></button>
-          </div>
+  <ModalCenter
+    standalone
+    modal-id="confirmDialog"
+    :visible="isVisible"
+    :z-index="zIndex"
+    :close-on-backdrop="false"
+    :close-on-esc="false"
+    custom-class="confirm-dialog"
+    @close="handleClose"
+  >
+    <template #title>
+      <AlertTriangle v-if="variant === 'danger' || variant === 'warning'" :size="24" :class="variant === 'danger' ? 'text-danger' : 'text-warning'" />
+      <span>{{ title }}</span>
+    </template>
 
-          <div class="modal-body pt-2">
-            <p class="mb-0 cd-standalone__message">{{ message }}</p>
-          </div>
+    <p class="mb-0 cd-message">{{ message }}</p>
 
-          <div class="modal-footer border-0 pt-2">
-            <button type="button" class="btn btn-secondary" @click="handleCancel" :disabled="loading">
-              {{ cancelText }}
-            </button>
-            <button type="button" :class="`btn btn-${variant === 'primary' ? 'primary' : 'danger'}`" @click="handleConfirm" :disabled="isConfirmDisabled">
-              <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
-              {{ confirmButtonText }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+    <template #footer>
+      <button type="button" class="btn btn-secondary" @click="handleCancel" :disabled="loading">
+        {{ cancelText }}
+      </button>
+      <button type="button" :class="`btn btn-${variant === 'primary' ? 'primary' : 'danger'}`" @click="handleConfirm" :disabled="isConfirmDisabled">
+        <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
+        {{ confirmButtonText }}
+      </button>
+    </template>
+  </ModalCenter>
 </template>
 
 <style scoped>
-.cd-standalone {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  z-index: var(--bs-modal-zindex, 1100);
-  background-color: rgba(0, 0, 0, var(--bs-backdrop-opacity, 0.5));
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-.cd-standalone__dialog {
-  position: relative !important;
-  z-index: 1 !important;
-  margin: 1.75rem auto;
-  pointer-events: auto;
-}
-
-.modal-content {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  position: relative !important;
-}
-
-.cd-standalone__message {
+.cd-message {
   white-space: pre-line;
-}
-
-.modal-header, .modal-footer {
-  padding: 1.5rem;
-}
-
-.modal-body {
-  padding: 0 1.5rem 1rem;
   color: #6c757d;
 }
 
@@ -185,8 +126,4 @@ function handleClose() {
   border-radius: 8px;
   font-weight: 500;
 }
-
-.btn-close:focus {
-  box-shadow: none;
-}
-</style> 
+</style>

@@ -38,6 +38,7 @@ const props = defineProps({
   closeOnEsc: { type: Boolean, default: true },
   lockBodyScroll: { type: Boolean, default: true },
   zIndex: { type: [Number, String], default: null },
+  dialogStyle: { type: [Object, String], default: null },
 })
 
 const emit = defineEmits(['close', 'closemodal'])
@@ -166,7 +167,7 @@ onBeforeUnmount(() => {
       :style="standaloneRootStyle"
       @mousedown.self="onBackdropClick"
     >
-      <div class="modal-dialog mc-standalone__dialog" :class="dialogComputedClass" @mousedown.stop>
+      <div class="modal-dialog mc-standalone__dialog" :class="dialogComputedClass" :style="dialogStyle" @mousedown.stop>
         <div class="modal-content">
           <div v-if="showTitle" class="modal-header">
             <h1 class="modal-title fs-5 d-flex align-items-center gap-2" :id="titleId">
@@ -205,7 +206,7 @@ onBeforeUnmount(() => {
     :data-bs-backdrop="backdrop"
     :data-bs-keyboard="keyboard"
   >
-    <div class="modal-dialog" :class="dialogComputedClass">
+    <div class="modal-dialog" :class="dialogComputedClass" :style="dialogStyle">
       <div class="modal-content">
         <div v-if="showTitle" class="modal-header">
           <h1 class="modal-title fs-5 d-flex align-items-center gap-2" :id="titleId">

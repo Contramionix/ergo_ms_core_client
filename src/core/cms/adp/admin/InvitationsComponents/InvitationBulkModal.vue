@@ -24,7 +24,7 @@ import {
   bulkSendInvitations,
 } from '@/core/cms/adp/admin/js/invitationService'
 import { copyTextToClipboard } from '@/js/utils/clipboard.js'
-import { useSafeModalBackdrop } from '@/js/utils/useSafeModalBackdrop.js'
+import ModalCenter from '@/components/ModalCenter.vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -102,8 +102,6 @@ const close = () => {
     emit('completed')
   }
 }
-
-const { onBackdropMouseDown, onBackdropClick } = useSafeModalBackdrop(close)
 
 const triggerFileInput = () => {
   if (!isParsing.value && !isCreating.value && !isSending.value) {
@@ -289,37 +287,31 @@ const previewStatusClass = {
 </script>
 
 <template>
-  <div
-    v-if="visible"
-    class="modal fade show d-block invitation-bulk-modal"
-    tabindex="-1"
-    @mousedown.self="onBackdropMouseDown"
-    @click.self="onBackdropClick"
+  <ModalCenter
+    standalone
+    modal-id="invitationBulkModal"
+    size="lg"
+    :visible="visible"
+    :close-on-esc="false"
+    custom-class="invitation-bulk-modal"
+    @close="close"
   >
-    <div class="modal-dialog modal-lg modal-dialog-scrollable" @mousedown.stop>
-      <div class="modal-content">
-        <div class="modal-header">
-          <div class="ibm-header">
-            <div class="ibm-header__icon">
-              <Users :size="22" />
-            </div>
-            <div>
-              <h5 class="modal-title mb-1">Массовая рассылка приглашений</h5>
-              <p class="ibm-header__subtitle mb-0">
-                Загрузите Excel, проверьте адреса и создайте приглашения
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            class="btn-close"
-            :disabled="isCreating || isSending"
-            @click="close"
-          />
-        </div>
+    <template #title>
+      <span class="ibm-header">
+        <span class="ibm-header__icon">
+          <Users :size="22" />
+        </span>
+        <span>
+          <span class="ibm-header__title">Массовая рассылка приглашений</span>
+          <span class="ibm-header__subtitle">
+            Загрузите Excel, проверьте адреса и создайте приглашения
+          </span>
+        </span>
+      </span>
+    </template>
 
-        <div class="modal-body">
-          <div class="ibm-steps" aria-hidden="true">
+    <div class="ibm-body">
+      <div class="ibm-steps" aria-hidden="true">
             <div class="ibm-step" :class="{ 'ibm-step--active': currentStep >= 0, 'ibm-step--done': currentStep > 0 }">
               <span class="ibm-step__num">1</span>
               <span class="ibm-step__label">Файл</span>
@@ -543,93 +535,79 @@ const previewStatusClass = {
                 Ошибок отправки: {{ sendResults.failed.length }}.
               </template>
             </span>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            :disabled="isCreating || isSending"
-            @click="close"
-          >
-            {{ createdInvitations.length ? 'Закрыть' : 'Отмена' }}
-          </button>
-
-          <div class="ibm-footer-actions">
-            <button
-              v-if="canCreate"
-              type="button"
-              class="btn btn-primary d-inline-flex align-items-center gap-2"
-              :disabled="disabled || isCreating || isParsing"
-              @click="createInvitations"
-            >
-              <Loader2 v-if="isCreating" :size="16" class="ibm-upload__loader" />
-              <span>{{ isCreating ? 'Создание...' : `Создать приглашения (${readyEmails.length})` }}</span>
-            </button>
-
-            <button
-              v-if="createdInvitations.length && canSendEmails"
-              type="button"
-              class="btn btn-primary d-inline-flex align-items-center gap-2"
-              :disabled="disabled || isSending"
-              @click="sendEmails"
-            >
-              <Loader2 v-if="isSending" :size="16" class="spinner" />
-              <Mail v-else :size="16" />
-              <span>{{ isSending ? 'Отправка...' : `Отправить письма (${createdInvitations.length})` }}</span>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
-  </div>
+
+    <template #footer>
+      <div class="ibm-footer">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          :disabled="isCreating || isSending"
+          @click="close"
+        >
+          {{ createdInvitations.length ? 'Закрыть' : 'Отмена' }}
+        </button>
+
+        <div class="ibm-footer-actions">
+          <button
+            v-if="canCreate"
+            type="button"
+            class="btn btn-primary d-inline-flex align-items-center gap-2"
+            :disabled="disabled || isCreating || isParsing"
+            @click="createInvitations"
+          >
+            <Loader2 v-if="isCreating" :size="16" class="ibm-upload__loader" />
+            <span>{{ isCreating ? 'Создание...' : `Создать приглашения (${readyEmails.length})` }}</span>
+          </button>
+
+          <button
+            v-if="createdInvitations.length && canSendEmails"
+            type="button"
+            class="btn btn-primary d-inline-flex align-items-center gap-2"
+            :disabled="disabled || isSending"
+            @click="sendEmails"
+          >
+            <Loader2 v-if="isSending" :size="16" class="spinner" />
+            <Mail v-else :size="16" />
+            <span>{{ isSending ? 'Отправка...' : `Отправить письма (${createdInvitations.length})` }}</span>
+          </button>
+        </div>
+      </div>
+    </template>
+  </ModalCenter>
 </template>
 
 <style scoped lang="scss">
 @import '../admin-page.scss';
 
-.invitation-bulk-modal {
-  background: rgba(0, 0, 0, 0.5);
-}
-
-.modal-content {
-  border: 1px solid var(--color-border);
-  background: var(--color-primary-background);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.modal-header {
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-secondary-background);
-}
-
-.modal-body {
+.ibm-body {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  padding: 1.5rem;
 }
 
-.modal-footer {
+.ibm-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.75rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--color-border);
-  background: var(--color-secondary-background);
+  width: 100%;
 }
 
 .ibm-header {
   display: flex;
   align-items: flex-start;
   gap: 0.875rem;
+}
+
+.ibm-header__title {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--color-primary-text);
 }
 
 .ibm-header__icon {
@@ -645,7 +623,9 @@ const previewStatusClass = {
 }
 
 .ibm-header__subtitle {
+  display: block;
   font-size: 0.875rem;
+  font-weight: 400;
   color: var(--color-secondary-text);
 }
 
@@ -1076,7 +1056,7 @@ const previewStatusClass = {
     display: none;
   }
 
-  .modal-footer {
+  .ibm-footer {
     flex-direction: column;
     align-items: stretch;
   }
