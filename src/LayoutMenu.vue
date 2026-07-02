@@ -19,9 +19,12 @@
 -->
 
 <script setup>
-import { ref, computed, shallowRef, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, shallowRef, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { currentOffcanvasSidebarPage } from '@/js/useOffcanvasSidebarStore.js'
+import {
+  closeOffcanvasSidebar,
+  currentOffcanvasSidebarPage,
+} from '@/js/useOffcanvasSidebarStore.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { ensurePresenceConnected } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import MenuList from '@/components/menu/MenuList.vue'
@@ -53,6 +56,7 @@ const routeViewKey = computed(() => {
 })
 
 const leftPadding = ref('320px')
+const menuRightEdge = ref('260px')
 const isMenuVisible = ref(window.innerWidth >= 1200)
 const isMenuToggledManually = ref(false)
 const isOverlayVisible = ref(false)
@@ -61,6 +65,16 @@ const menuWidth = ref(260)
 
 // Полноэкранный режим (без меню и ограничений контейнера)
 const isFullPage = computed(() => route.meta?.fullPage === true)
+
+watch(
+  isFullPage,
+  (fullPage) => {
+    if (fullPage) {
+      closeOffcanvasSidebar()
+    }
+  },
+  { immediate: true, flush: 'sync' },
+)
 
 // Декоративный фон с «кругляшками» — только на стандартных shell-страницах (home, 404 и т.п.)
 const showShellBackdrop = computed(() =>
@@ -100,6 +114,10 @@ function closeMenu() {
 
 function leftToggle(val) {
   leftPadding.value = val
+}
+
+function handleMenuRightEdge(val) {
+  menuRightEdge.value = val
 }
 
 function handleMenuStateChange(collapsed, width) {
@@ -156,7 +174,7 @@ onBeforeUnmount(() => {
     </div>
   </Teleport>
   <div class="layout-container" :class="{ 'layout-container--full-page': isFullPage }">
-    <MenuList v-if="!isFullPage" @left-padding="leftToggle" :is-visible="isMenuVisible" @menu-state-change="handleMenuStateChange" @reset-offcanvas-page="() => { currentOffcanvasSidebarPage.value = '' }"/>
+    <MenuList v-if="!isFullPage" @left-padding="leftToggle" @menu-right-edge="handleMenuRightEdge" :is-visible="isMenuVisible" @menu-state-change="handleMenuStateChange" @reset-offcanvas-page="() => { currentOffcanvasSidebarPage.value = '' }"/>
     <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage }">
       <LayoutBackdrop v-if="!isFullPage && showShellBackdrop" />
       <div class="layout-page__content">
@@ -173,7 +191,7 @@ onBeforeUnmount(() => {
   </div>
 
   <div @click="closeMenu" class="layout-overlay" :class="{ active: isOverlayVisible }" />
-  <component v-for="(plugin, index) in layoutPlugins" :key="index" :is="plugin" :isMenuCollapsed="isMenuCollapsed" :menuWidth="menuWidth"/>
+  <component v-for="(plugin, index) in layoutPlugins" :key="index" :is="plugin" :isMenuCollapsed="isMenuCollapsed" :menuWidth="menuWidth" :menuRightEdge="menuRightEdge"/>
 </template>
 
 <style scoped lang="scss">

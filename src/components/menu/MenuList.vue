@@ -28,19 +28,21 @@ import { useMenuIconSizes, MENU_ICON_SIZES_KEY } from './composables/useMenuIcon
 import { safeNavigateByName } from './composables/safeMenuNavigate.js'
 import {
   getMenuLayoutPaddingFallback,
+  getMenuRightEdgeTarget,
   measureMenuLayoutOffset,
+  measureMenuRightEdge,
 } from './composables/menuLayoutMeasure.js'
 import {
   readMenuCollapsedPreference,
   writeMenuCollapsedPreference,
 } from './composables/useMenuCollapsedPreference.js'
-import { openOffcanvasSidebar } from '@/js/useOffcanvasSidebarStore.js'
+import { isOffcanvasSidebarOpen, openOffcanvasSidebar } from '@/js/useOffcanvasSidebarStore.js'
 
 const props = defineProps({
   isVisible: Boolean,
 })
 
-const emit = defineEmits(['left-padding', 'menu-state-change', 'reset-offcanvas-page'])
+const emit = defineEmits(['left-padding', 'menu-right-edge', 'menu-state-change', 'reset-offcanvas-page'])
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -71,13 +73,18 @@ function syncLayoutOffset() {
   layoutSyncFrame = requestAnimationFrame(() => {
     layoutSyncFrame = null
 
+    const fallback = getMenuLayoutPaddingFallback(isCollapsed.value, menuWidth.value)
+
+    const menuRight = measureMenuRightEdge(menuRef.value)
+    emit('menu-right-edge', menuRight ?? fallback)
+
     const measured = measureMenuLayoutOffset(menuRef.value)
     if (measured) {
       emit('left-padding', measured)
       return
     }
 
-    emit('left-padding', getMenuLayoutPaddingFallback(isCollapsed.value, menuWidth.value))
+    emit('left-padding', fallback)
   })
 }
 
@@ -93,6 +100,15 @@ function scheduleLayoutOffsetSync(delay = 0) {
   }
 
   syncLayoutOffset()
+}
+
+async function syncMenuRightEdgeWithTransition() {
+  await nextTick()
+  emit(
+    'menu-right-edge',
+    getMenuRightEdgeTarget(isCollapsed.value, isHovering.value, menuWidth.value),
+  )
+  scheduleLayoutOffsetSync(MENU_LAYOUT_SYNC_DELAY_MS)
 }
 
 function handleMenuMetricsChange(collapsed, width) {
@@ -216,21 +232,21 @@ const toggleMenu = () => {
   writeMenuCollapsedPreference(isCollapsed.value)
   isHovering.value = !isCollapsed.value
   emit('menu-state-change', isCollapsed.value, menuWidth.value)
-  scheduleLayoutOffsetSync(MENU_LAYOUT_SYNC_DELAY_MS)
+  syncMenuRightEdgeWithTransition()
 }
 
 // Обработка наведения
 const handleMouseEnter = () => {
   if (isCollapsed.value) {
     isHovering.value = true
-    scheduleLayoutOffsetSync(MENU_LAYOUT_SYNC_DELAY_MS)
+    syncMenuRightEdgeWithTransition()
   }
 }
 
 const handleMouseLeave = () => {
   if (isCollapsed.value && !isToolbarDropdownActive.value) {
     isHovering.value = false
-    scheduleLayoutOffsetSync(MENU_LAYOUT_SYNC_DELAY_MS)
+    syncMenuRightEdgeWithTransition()
   }
 }
 
@@ -239,7 +255,7 @@ const setToolbarDropdownActive = (active) => {
   isToolbarDropdownActive.value = active
   if (active && isCollapsed.value) {
     isHovering.value = true
-    scheduleLayoutOffsetSync(MENU_LAYOUT_SYNC_DELAY_MS)
+    syncMenuRightEdgeWithTransition()
   }
 }
 
@@ -369,7 +385,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions }" :style="{ '--menu-width': `${menuWidth}px` }" @mouseleave="handleMouseLeave">
+  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen }" :style="{ '--menu-width': `${menuWidth}px` }" @mouseleave="handleMouseLeave">
     <div class="side-menu__header side-header">
       <div class="side-header__brand-row">
         <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">
@@ -434,7 +450,8 @@ onBeforeUnmount(() => {
   z-index: 1005;
   transition:
     transform $transition,
-    inline-size $transition;
+    inline-size $transition,
+    border-radius $transition;
 
   &--bootstrapping {
     transition: none;
@@ -550,7 +567,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
   border: 6px solid var(--bs-body-bg);
   border-radius: 50%;
-  transition: border 0.5s ease;
+  transition: border 0.5s ease, opacity 0.2s ease, visibility 0.2s ease;
 
   button {
     @include flex-row-gap(0, center, center);
@@ -559,6 +576,17 @@ onBeforeUnmount(() => {
     width: 26px;
     padding: 0;
   }
+}
+
+.side-menu--offcanvas-open {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.side-menu--offcanvas-open .side-menu__toggle {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .menu-group__chevron {
