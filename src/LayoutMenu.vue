@@ -23,7 +23,6 @@ import { ref, computed, shallowRef, onMounted, onBeforeUnmount, watch } from 'vu
 import { useRoute } from 'vue-router'
 import {
   closeOffcanvasSidebar,
-  currentOffcanvasSidebarPage,
 } from '@/js/useOffcanvasSidebarStore.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { ensurePresenceConnected } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
@@ -174,7 +173,7 @@ onBeforeUnmount(() => {
     </div>
   </Teleport>
   <div class="layout-container" :class="{ 'layout-container--full-page': isFullPage }">
-    <MenuList v-if="!isFullPage" @left-padding="leftToggle" @menu-right-edge="handleMenuRightEdge" :is-visible="isMenuVisible" @menu-state-change="handleMenuStateChange" @reset-offcanvas-page="() => { currentOffcanvasSidebarPage.value = '' }"/>
+    <MenuList v-if="!isFullPage" @left-padding="leftToggle" @menu-right-edge="handleMenuRightEdge" :is-visible="isMenuVisible" @menu-state-change="handleMenuStateChange"/>
     <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage }">
       <LayoutBackdrop v-if="!isFullPage && showShellBackdrop" />
       <div class="layout-page__content">

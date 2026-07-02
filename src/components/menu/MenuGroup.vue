@@ -96,7 +96,7 @@ const hasMenuItems = computed(() => {
 
 const router = useRouter()
 const route = useRoute()
-const emit = defineEmits(['toggle', 'navigate', 'toggle-nested', 'reset-offcanvas-page'])
+const emit = defineEmits(['toggle', 'navigate', 'toggle-nested'])
 
 // Проверяем, находится ли пользователь на странице группы или её подстраницах
 const isCurrentGroupPage = computed(() => {
@@ -152,10 +152,6 @@ function handleToggleNested(groupId) {
 // Обработчик навигации для вложенных элементов
 function handleNestedNavigate(item) {
   emit('navigate', item)
-}
-
-function handleResetOffcanvasPage() {
-  emit('reset-offcanvas-page')
 }
 
 function routeClick(event) {
@@ -221,7 +217,6 @@ function routeClick(event) {
         :openStates="nestedOpenStates"
         :style="{ transitionDelay: `${index * 50}ms` }"
         @navigate="handleNestedNavigate"
-        @reset-offcanvas-page="handleResetOffcanvasPage"
         @toggle-group="handleToggleNested"
       />
     </ul>

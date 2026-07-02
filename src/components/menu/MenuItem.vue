@@ -33,7 +33,7 @@ const props = defineProps({
 
 const router = useRouter()
 const route = useRoute()
-const emit = defineEmits(['navigate', 'toggle-group', 'reset-offcanvas-page'])
+const emit = defineEmits(['navigate', 'toggle-group'])
 
 const injectedIconSizes = inject(MENU_ICON_SIZES_KEY, null)
 const iconSizes = computed(() => injectedIconSizes?.value ?? getDefaultMenuIconSizes())
@@ -172,7 +172,6 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
         :openStates="openStates"
         :style="{ transitionDelay: `${index * 30}ms` }"
         @navigate="$emit('navigate', $event)"
-        @reset-offcanvas-page="$emit('reset-offcanvas-page')"
         @toggle-group="$emit('toggle-group', $event)"
       />
     </ul>

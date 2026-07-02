@@ -1,6 +1,4 @@
 <script setup>
-import { apiClient } from '@/js/api/manager'
-import { endpoints } from '@/js/api/endpoints'
 import { onMounted, onBeforeUnmount, provide, ref, watch, nextTick, computed } from 'vue'
 import { ChevronLeft, Minus } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
@@ -42,7 +40,7 @@ const props = defineProps({
   isVisible: Boolean,
 })
 
-const emit = defineEmits(['left-padding', 'menu-right-edge', 'menu-state-change', 'reset-offcanvas-page'])
+const emit = defineEmits(['left-padding', 'menu-right-edge', 'menu-state-change'])
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -273,15 +271,8 @@ const handleNavigate = (item) => {
 
   if (item.routeName) {
     safeNavigateByName(router, item.routeName)
-    return
-  }
-
-  if (item.path) {
-    safeNavigateByName(router, item.path)
   }
 }
-
-const resetOffcanvasPage = () => emit('reset-offcanvas-page')
 
 // Следим за изменениями в меню — только после завершения bootstrap
 watch(menuSections, () => {
@@ -400,19 +391,19 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-    <div class="side-header__shadow" style="display: block"></div>
+    <div class="side-header__shadow"></div>
     <div class="side-menu__body" @mouseenter="handleMouseEnter">
       <div class="side-menu__scroll">
         <ul v-show="isMenuReady" class="side-menu__list p-2" :class="{ short: isCollapsed && !isHovering }">
         <li v-for="(section, index) in menuSections" :key="section.id ?? section.routeName ?? index">
-          <div v-if="shouldShowSeparator(index)" class="side-menu__divider side-divider py-2">
+          <div v-if="shouldShowSeparator(index)" class="side-divider py-2">
             <div class="side-divider__icon"><Minus :size="menuIconSizes.divider" /></div>
             <div class="side-divider__name text-smooth-animation" :class="{ hidden: !showMenuLabels }">
               {{ getSeparator(index) }}
             </div>
           </div>
           
-          <MenuGroup :is-hovering="showMenuLabels" :is-collapsed="!isCollapsed" :is-open="openGroupRouteName === section.routeName" :data="section" :nested-open-states="nestedOpenStates" @toggle="toggleGroup(section.routeName)" @navigate="handleNavigate" @reset-offcanvas-page="resetOffcanvasPage" @toggle-nested="toggleNestedGroup"/>
+          <MenuGroup :is-hovering="showMenuLabels" :is-collapsed="!isCollapsed" :is-open="openGroupRouteName === section.routeName" :data="section" :nested-open-states="nestedOpenStates" @toggle="toggleGroup(section.routeName)" @navigate="handleNavigate" @toggle-nested="toggleNestedGroup"/>
         </li>
         </ul>
       </div>
