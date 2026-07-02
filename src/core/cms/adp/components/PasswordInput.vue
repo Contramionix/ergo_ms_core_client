@@ -1,7 +1,8 @@
 <script setup>
 import { ref } from 'vue'
+import { Eye, EyeOff } from 'lucide-vue-next'
 
-const props = defineProps({
+defineProps({
   modelValue: {
     type: String,
     default: ''
@@ -46,49 +47,87 @@ const updateValue = (event) => {
 </script>
 
 <template>
-  <div class="form-floating position-relative" v-auto-animate>
-    <input
-      :type="showPassword ? 'text' : 'password'"
-      :id="$attrs.id || 'password'"
-      class="form-control pe-5"
-      :class="{ 'is-invalid': error }"
-      :value="modelValue"
-      @input="updateValue"
-      :placeholder="placeholder"
-      :disabled="disabled"
-      :autocomplete="autocomplete"
-    />
-    <label :for="$attrs.id || 'password'">
-      <i :class="`bi ${icon} me-2`"></i>{{ label }}
-    </label>
-    <button
-      type="button"
-      class="btn btn-link position-absolute top-50 end-0 translate-middle-y me-2 text-decoration-none"
-      @click="togglePasswordVisibility"
-      :disabled="disabled"
-      style="z-index: 10;"
-      :title="showPassword ? 'Скрыть пароль' : 'Показать пароль'"
-    >
-      <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'" class="text-muted"></i>
-    </button>
-    <div v-if="error" class="invalid-feedback">
+  <div class="password-input" v-auto-animate>
+    <div class="password-input__field position-relative">
+      <div class="form-floating">
+        <input
+          :type="showPassword ? 'text' : 'password'"
+          :id="$attrs.id || 'password'"
+          class="form-control pe-5"
+          :class="{ 'is-invalid': error }"
+          :value="modelValue"
+          @input="updateValue"
+          placeholder=" "
+          :disabled="disabled"
+          :autocomplete="autocomplete"
+          :aria-label="label"
+        />
+        <label :for="$attrs.id || 'password'">
+          <i :class="`bi ${icon} me-2`"></i>{{ label }}
+        </label>
+      </div>
+
+      <button
+        type="button"
+        class="password-input__toggle"
+        @click="togglePasswordVisibility"
+        :disabled="disabled"
+        :title="showPassword ? 'Скрыть пароль' : 'Показать пароль'"
+        :aria-label="showPassword ? 'Скрыть пароль' : 'Показать пароль'"
+      >
+        <EyeOff v-if="showPassword" :size="18" aria-hidden="true" />
+        <Eye v-else :size="18" aria-hidden="true" />
+      </button>
+    </div>
+
+    <div v-if="error" class="invalid-feedback d-block">
       {{ error }}
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
-.btn-link {
-  border: none;
-  background: none;
-  padding: 0.5rem;
-  
-  &:hover {
-    background: none;
+.password-input {
+  :deep(.form-floating > label) {
+    max-width: calc(100% - 2.75rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  
-  &:focus {
+}
+
+.password-input__toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.625rem;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.375rem;
+  background: none;
+  color: var(--ui-text-muted);
+  transform: translateY(-50%);
+  line-height: 1;
+
+  &:hover:not(:disabled) {
+    color: var(--ui-text);
+    background: var(--ui-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+    outline-offset: 2px;
     box-shadow: none;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }
 
@@ -96,4 +135,4 @@ const updateValue = (event) => {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
-</style> 
+</style>
