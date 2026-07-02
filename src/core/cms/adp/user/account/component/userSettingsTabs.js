@@ -21,7 +21,7 @@ export const TAB_SECTIONS = [
       { id: 'system', label: 'Система', icon: Monitor, component: markRaw(SystemPanel) },
       {
         id: 'toast',
-        label: 'Всплывающие',
+        label: 'Всплывающие уведомления',
         icon: MessageSquareText,
         component: markRaw(ToastPanel),
       },
