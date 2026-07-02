@@ -1,5 +1,7 @@
 import Cookies from 'js-cookie'
 
+const SESSION_HINT_COOKIE_NAME = 'ergo_session'
+
 /**
  * Хранение access-токена в памяти процесса (не в cookie/localStorage).
  * Refresh-токен — только в HttpOnly cookie, выставляется сервером.
@@ -56,6 +58,23 @@ export function clearLegacyAuthCookies() {
   }
 }
 
+export function hasLegacyRefreshCookie() {
+  return Boolean(Cookies.get('refresh'))
+}
+
+/** Подсказка от сервера: есть HttpOnly refresh (без секретов в JS). */
+export function hasSessionHintCookie() {
+  return Cookies.get(SESSION_HINT_COOKIE_NAME) === '1'
+}
+
+export function clearSessionHintCookie() {
+  try {
+    Cookies.remove(SESSION_HINT_COOKIE_NAME, { path: '/' })
+  } catch {
+    // ignore
+  }
+}
+
 let _uiSettingsReset = null
 
 export function registerUiSettingsReset(callback) {
@@ -65,6 +84,7 @@ export function registerUiSettingsReset(callback) {
 export function clearTokens() {
   _accessToken = null
   clearLegacyAuthCookies()
+  clearSessionHintCookie()
 
   try {
     localStorage.removeItem('crm_active_organization')

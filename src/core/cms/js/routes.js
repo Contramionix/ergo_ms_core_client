@@ -69,16 +69,7 @@ export default {
     "path": "/admin-panel/users/import",
     "component": "@/core/cms/adp/admin/ImportUsers.vue",
     "meta": {
-      "title": "Импорт пользователей",
-      "requiresAuth": true,
-      "requiresGlobalAdmin": true
-    }
-  },
-  "OnlineUsersPanel": {
-    "path": "/admin-panel/users/online",
-    "component": "@/core/cms/adp/admin/OnlineUsers.vue",
-    "meta": {
-      "title": "Пользователи онлайн",
+      "title": "Загрузка пользователей",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -87,7 +78,7 @@ export default {
     "path": "/admin-panel/invitations",
     "component": "@/core/cms/adp/admin/Invitations.vue",
     "meta": {
-      "title": "Приглашения на регистрацию",
+      "title": "Управление приглашениями",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }

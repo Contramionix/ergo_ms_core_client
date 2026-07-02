@@ -126,6 +126,11 @@ export const CheckAccess = {
         return response;
     },
 
+    async CreateAdminUser(data) {
+        const response = await apiClient.post(endpoints.cms.adminUsers, data, true);
+        return response;
+    },
+
     async GetAdminUser(userId) {
         const response = await apiClient.get(endpoints.cms.adminUserDetail(userId), {}, true);
         return response;

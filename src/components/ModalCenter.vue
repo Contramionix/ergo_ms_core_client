@@ -1,5 +1,12 @@
 <script setup>
-import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import {
+  pushModal,
+  popModal,
+  isTopModal,
+  acquireScrollLock,
+  releaseScrollLock,
+} from '@/js/utils/modalStack.js'
 
 const SIZE_CLASS_MAP = {
   sm: 'modal-sm',
@@ -44,6 +51,9 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'closemodal'])
 
+const stackZIndex = ref(null)
+let isStacked = false
+
 const titleId = computed(() => `${props.modalId}Label`)
 
 const rootAriaLabelledby = computed(() =>
@@ -65,9 +75,16 @@ const dialogComputedClass = computed(() => {
   return classes
 })
 
+const resolvedZIndex = computed(() => {
+  if (props.zIndex != null && props.zIndex !== '') {
+    return props.zIndex
+  }
+  return stackZIndex.value
+})
+
 const standaloneRootStyle = computed(() => {
-  if (props.zIndex == null || props.zIndex === '') return undefined
-  const value = props.zIndex
+  const value = resolvedZIndex.value
+  if (value == null || value === '') return undefined
   return {
     '--bs-modal-zindex': value,
     zIndex: value,
@@ -80,20 +97,41 @@ const handleClose = () => {
 }
 
 const onBackdropClick = () => {
-  if (props.standalone && props.closeOnBackdrop) {
-    handleClose()
+  if (!props.standalone || !props.closeOnBackdrop || !isTopModal(props.modalId)) {
+    return
   }
+  handleClose()
 }
 
 const onKeydown = (e) => {
   if (e.key !== 'Escape') return
   if (!props.standalone || !props.closeOnEsc || !props.visible) return
+  if (!isTopModal(props.modalId)) return
   handleClose()
 }
 
-const setBodyScrollLocked = (locked) => {
-  if (!props.lockBodyScroll) return
-  document.body.style.overflow = locked ? 'hidden' : ''
+const registerInStack = () => {
+  if (isStacked) return
+
+  const explicitZIndex = props.zIndex != null && props.zIndex !== ''
+    ? Number(props.zIndex)
+    : null
+  stackZIndex.value = pushModal(props.modalId, explicitZIndex)
+  if (props.lockBodyScroll) {
+    acquireScrollLock()
+  }
+  isStacked = true
+}
+
+const unregisterFromStack = () => {
+  if (!isStacked) return
+
+  popModal(props.modalId)
+  if (props.lockBodyScroll) {
+    releaseScrollLock()
+  }
+  isStacked = false
+  stackZIndex.value = null
 }
 
 watch(
@@ -101,14 +139,13 @@ watch(
   (open) => {
     if (!props.standalone) return
     if (open) {
-      setBodyScrollLocked(true)
+      registerInStack()
       document.addEventListener('keydown', onKeydown)
     } else {
-      setBodyScrollLocked(false)
+      unregisterFromStack()
       document.removeEventListener('keydown', onKeydown)
     }
   },
-  { immediate: true },
 )
 
 let applyBackdropStyle = null
@@ -143,7 +180,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown)
   if (props.standalone) {
-    setBodyScrollLocked(false)
+    unregisterFromStack()
   }
   if (!applyBackdropStyle) return
   const el = document.getElementById(props.modalId)

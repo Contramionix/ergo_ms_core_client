@@ -2,11 +2,13 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/js/utils/toast.js'
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2, ArrowLeft } from 'lucide-vue-next'
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2, ArrowLeft, Download } from 'lucide-vue-next'
 import { apiClient } from '@/js/api/manager'
+import { logError } from '@/js/utils/logError.js'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { cmsEndpoints } from '@/core/cms/js/endpoints'
 import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { downloadImportUsersTemplate } from '@/core/cms/adp/admin/js/importUsersExcel.js'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 const router = useRouter()
 const toast = useToast()
@@ -20,10 +22,21 @@ const importProgress = ref(0)
 const importStatus = ref('')
 const hasAdminAccess = ref(false)
 const isCheckingAccess = ref(true)
-const skipWelcomeEmails = ref(false)
+const sendWelcomeEmails = ref(false)
+const welcomeEmailSubject = ref('')
+const welcomeEmailBody = ref('')
+const welcomePlaceholders = ref([])
 const logsContainer = ref(null)  // Для автопрокрутки
+const completedTaskId = ref(null)
+const passwordsAvailable = ref(false)
+const passwordsDownloaded = ref(false)
+const downloadingPasswords = ref(false)
+const downloadingTemplate = ref(false)
 
 const STORAGE_KEY_TASK_ID = 'cms_import_users_task_id'
+const STORAGE_KEY_PASSWORDS_TASK_ID = 'cms_import_users_passwords_task_id'
+const STORAGE_KEY_PASSWORDS_DOWNLOADED = 'cms_import_users_passwords_downloaded'
+const STORAGE_KEY_WELCOME_EMAIL = 'cms_import_users_welcome_email'
 const savedTaskId = ref(null)
 
 // Для очистки polling при unmount
@@ -42,11 +55,157 @@ const progressPercent = computed(() => {
   return Math.min(100, Math.max(0, importProgress.value))
 })
 
+const canDownloadPasswords = computed(() =>
+  Boolean(importResults.value?.success)
+  && (importResults.value?.created || 0) > 0
+  && passwordsAvailable.value
+  && !passwordsDownloaded.value
+  && Boolean(completedTaskId.value),
+)
+
 const clearStorageTaskId = () => {
   try {
     sessionStorage.removeItem(STORAGE_KEY_TASK_ID)
   } catch (_) {}
   savedTaskId.value = null
+}
+
+const clearPasswordsTaskStorage = () => {
+  try {
+    sessionStorage.removeItem(STORAGE_KEY_PASSWORDS_TASK_ID)
+  } catch (_) {}
+}
+
+const markPasswordsDownloaded = (taskId) => {
+  passwordsDownloaded.value = true
+  passwordsAvailable.value = false
+  try {
+    sessionStorage.setItem(STORAGE_KEY_PASSWORDS_DOWNLOADED, taskId)
+  } catch (_) {}
+  clearPasswordsTaskStorage()
+}
+
+const isPasswordsDownloadedForTask = (taskId) => {
+  try {
+    return sessionStorage.getItem(STORAGE_KEY_PASSWORDS_DOWNLOADED) === taskId
+  } catch (_) {
+    return false
+  }
+}
+
+const storePasswordsTaskId = (taskId) => {
+  try {
+    sessionStorage.setItem(STORAGE_KEY_PASSWORDS_TASK_ID, taskId)
+  } catch (_) {}
+}
+
+const persistWelcomeEmailSettings = () => {
+  try {
+    sessionStorage.setItem(STORAGE_KEY_WELCOME_EMAIL, JSON.stringify({
+      sendWelcomeEmails: sendWelcomeEmails.value,
+      subject: welcomeEmailSubject.value,
+      body: welcomeEmailBody.value,
+    }))
+  } catch (_) {}
+}
+
+const restoreWelcomeEmailSettings = () => {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY_WELCOME_EMAIL)
+    if (!raw) return
+    const stored = JSON.parse(raw)
+    if (typeof stored.sendWelcomeEmails === 'boolean') {
+      sendWelcomeEmails.value = stored.sendWelcomeEmails
+    }
+    if (typeof stored.subject === 'string' && stored.subject) {
+      welcomeEmailSubject.value = stored.subject
+    }
+    if (typeof stored.body === 'string' && stored.body) {
+      welcomeEmailBody.value = stored.body
+    }
+  } catch (_) {}
+}
+
+const loadWelcomeEmailDefaults = async () => {
+  try {
+    const response = await apiClient.get(cmsEndpoints.cms.importUsersWelcomeEmailDefaults)
+    const data = response.data || {}
+    welcomePlaceholders.value = Array.isArray(data.placeholders) ? data.placeholders : []
+    if (!welcomeEmailSubject.value) {
+      welcomeEmailSubject.value = data.subject || ''
+    }
+    if (!welcomeEmailBody.value) {
+      welcomeEmailBody.value = data.body || ''
+    }
+  } catch (error) {
+    logError('Ошибка загрузки шаблона приветственного письма', error)
+  }
+}
+
+const resetWelcomeEmailTemplate = async () => {
+  try {
+    const response = await apiClient.get(cmsEndpoints.cms.importUsersWelcomeEmailDefaults)
+    const data = response.data || {}
+    welcomeEmailSubject.value = data.subject || ''
+    welcomeEmailBody.value = data.body || ''
+    welcomePlaceholders.value = Array.isArray(data.placeholders) ? data.placeholders : []
+    persistWelcomeEmailSettings()
+  } catch (error) {
+    logError('Ошибка сброса шаблона приветственного письма', error)
+    toast.error('Не удалось загрузить шаблон по умолчанию')
+  }
+}
+
+const restorePasswordsDownloadState = async () => {
+  let taskId = null
+  try {
+    taskId = sessionStorage.getItem(STORAGE_KEY_PASSWORDS_TASK_ID)
+  } catch (_) {}
+
+  if (!taskId) return
+
+  try {
+    const statusResponse = await apiClient.get(
+      cmsEndpoints.cms.importUsersTaskStatus(taskId),
+    )
+    const taskStatus = statusResponse.data
+    if (taskStatus.state !== 'SUCCESS') {
+      clearPasswordsTaskStorage()
+      return
+    }
+    if (isPasswordsDownloadedForTask(taskId)) {
+      passwordsDownloaded.value = true
+      passwordsAvailable.value = false
+      return
+    }
+    if (!taskStatus.passwords_available) {
+      clearPasswordsTaskStorage()
+      return
+    }
+
+    const result = taskStatus.result || {}
+    completedTaskId.value = taskId
+    passwordsAvailable.value = true
+    passwordsDownloaded.value = false
+    importResults.value = {
+      success: result.success !== false,
+      created: result.created || 0,
+      skipped: result.skipped || 0,
+      total: result.total || 0,
+      errors: result.errors || [],
+    }
+    currentStats.value = {
+      total: result.total || 0,
+      processed: result.total || 0,
+      created: result.created || 0,
+      skipped: result.skipped || 0,
+    }
+    importProgress.value = 100
+    importStatus.value = 'Загрузка завершена'
+  } catch (error) {
+    logError('Ошибка восстановления выгрузки паролей', error)
+    clearPasswordsTaskStorage()
+  }
 }
 
 onMounted(async () => {
@@ -58,10 +217,13 @@ onMounted(async () => {
       return
     }
     hasAdminAccess.value = true
+    restoreWelcomeEmailSettings()
+    await loadWelcomeEmailDefaults()
     try {
       const stored = sessionStorage.getItem(STORAGE_KEY_TASK_ID)
       if (stored) savedTaskId.value = stored
     } catch (_) {}
+    await restorePasswordsDownloadState()
   } catch (error) {
     logError('Ошибка проверки прав доступа:', error)
     toast.error('Ошибка проверки прав доступа')
@@ -84,6 +246,22 @@ const triggerFileInput = () => {
   fileInput.value?.click()
 }
 
+const handleDownloadTemplate = async () => {
+  if (downloadingTemplate.value || isImporting.value) {
+    return
+  }
+
+  downloadingTemplate.value = true
+  try {
+    await downloadImportUsersTemplate()
+  } catch (error) {
+    logError('Ошибка формирования шаблона загрузки пользователей', error)
+    toast.error('Не удалось сформировать шаблон')
+  } finally {
+    downloadingTemplate.value = false
+  }
+}
+
 // Вспомогательные функции для устранения дублирования
 const isValidFileExtension = (fileName) => {
   const allowedExtensions = ['.xlsx', '.xls', '.csv']
@@ -96,6 +274,10 @@ const resetImportState = () => {
   importProgress.value = 0
   importStatus.value = ''
   currentStats.value = { total: 0, processed: 0, created: 0, skipped: 0 }
+  completedTaskId.value = null
+  passwordsAvailable.value = false
+  passwordsDownloaded.value = false
+  downloadingPasswords.value = false
 }
 
 const stopPolling = () => {
@@ -218,13 +400,22 @@ function runPolling(taskId) {
           skipped: result.skipped || 0
         }
         importProgress.value = 100
-        importStatus.value = 'Импорт завершён!'
+        importStatus.value = 'Загрузка завершена!'
         importResults.value = {
           success: result.success !== false,
           created: result.created || 0,
           skipped: result.skipped || 0,
           total: result.total || 0,
-          errors: result.errors || []
+          errors: result.errors || [],
+          emailsSent: result.emails_sent || 0,
+          emailsFailed: result.emails_failed || 0,
+          emailsSkippedNoEmail: result.emails_skipped_no_email || 0,
+        }
+        completedTaskId.value = taskId
+        passwordsAvailable.value = Boolean(taskStatus.passwords_available) && (result.created || 0) > 0
+        passwordsDownloaded.value = isPasswordsDownloadedForTask(taskId)
+        if (passwordsAvailable.value && !passwordsDownloaded.value) {
+          storePasswordsTaskId(taskId)
         }
         if (result.logs && result.logs.length > 0) {
           const uniqueNewLogs = filterDuplicateLogs(result.logs)
@@ -234,7 +425,7 @@ function runPolling(taskId) {
           }
         }
         if (result.created > 0) {
-          toast.success(`Импортировано ${result.created} пользователей`)
+          toast.success(`Загружено пользователей: ${result.created}`)
         } else {
           toast.info('Новых пользователей не создано')
         }
@@ -243,15 +434,15 @@ function runPolling(taskId) {
         isImporting.value = false
       } else if (taskStatus.state === 'FAILURE') {
         importProgress.value = 100
-        importStatus.value = 'Ошибка импорта'
+        importStatus.value = 'Ошибка загрузки'
         importResults.value = {
           success: false,
           created: 0,
           skipped: 0,
           total: 0,
-          errors: [taskStatus.error || 'Произошла ошибка при импорте']
+          errors: [taskStatus.error || 'Произошла ошибка при загрузке']
         }
-        toast.error(taskStatus.error || 'Ошибка при импорте пользователей')
+        toast.error(taskStatus.error || 'Ошибка при загрузке пользователей')
         clearStorageTaskId()
         stopPolling()
         isImporting.value = false
@@ -270,7 +461,7 @@ function runPolling(taskId) {
       stopPolling()
       isImporting.value = false
       toast.warning(
-        'Импорт ещё выполняется. Вы можете уйти со страницы и вернуться позже — нажмите «Продолжить отслеживание», чтобы снова увидеть прогресс.'
+        'Загрузка ещё выполняется. Вы можете уйти со страницы и вернуться позже — нажмите «Продолжить отслеживание», чтобы снова увидеть прогресс.'
       )
     }
   }, POLL_TIMEOUT_MS)
@@ -287,13 +478,13 @@ const resumeImport = () => {
 
 const startImport = async () => {
   if (!selectedFile.value) {
-    toast.warning('Выберите файл для импорта')
+    toast.warning('Выберите файл для загрузки')
     return
   }
   
   isImporting.value = true
   resetImportState()
-  importStatus.value = 'Запуск импорта...'
+  importStatus.value = 'Запуск загрузки...'
   
   try {
     const uploadResult = await mediaApiClient.upload(selectedFile.value, {
@@ -303,8 +494,12 @@ const startImport = async () => {
 
     const response = await apiClient.post(cmsEndpoints.cms.importUsers, {
       file_path: uploadResult.path,
-      skip_welcome_emails: skipWelcomeEmails.value,
+      send_welcome_emails: sendWelcomeEmails.value,
+      welcome_email_subject: welcomeEmailSubject.value,
+      welcome_email_body: welcomeEmailBody.value,
     })
+    
+    persistWelcomeEmailSettings()
     
     if (!response.data || !response.data.task_id) {
       throw new Error('Не получен task_id от сервера')
@@ -321,7 +516,7 @@ const startImport = async () => {
     
   } catch (error) {
     importProgress.value = 100
-    importStatus.value = 'Ошибка импорта'
+    importStatus.value = 'Ошибка загрузки'
     
     const errorData = error.response?.data || {}
     
@@ -330,10 +525,10 @@ const startImport = async () => {
       created: 0,
       skipped: 0,
       total: 0,
-      errors: [errorData.error || 'Произошла ошибка при импорте']
+      errors: [errorData.error || 'Произошла ошибка при загрузке']
     }
     
-    toast.error(errorData.error || 'Ошибка при запуске импорта')
+    toast.error(errorData.error || 'Ошибка при запуске загрузки')
     isImporting.value = false
   }
 }
@@ -365,6 +560,93 @@ const getLogClass = (level) => {
     default: return 'text-secondary'
   }
 }
+
+function extractFilenameFromContentDisposition(headers, defaultName) {
+  const contentDisposition = headers?.['content-disposition']
+  if (!contentDisposition) return defaultName
+
+  const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+  return match?.[1]?.replace(/['"]/g, '') || defaultName
+}
+
+function downloadBlobAsFile(blob, filename) {
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}
+
+async function extractDownloadErrorMessage(result, fallback = 'Не удалось скачать файл с паролями') {
+  const blob = result?.data
+  if (!(blob instanceof Blob)) {
+    return result?.message || fallback
+  }
+
+  try {
+    const text = await blob.text()
+    if (!text) {
+      return fallback
+    }
+    try {
+      const parsed = JSON.parse(text)
+      return parsed.error || parsed.message || parsed.detail || fallback
+    } catch {
+      return text.slice(0, 200) || fallback
+    }
+  } catch {
+    return fallback
+  }
+}
+
+const downloadPasswords = async () => {
+  if (!canDownloadPasswords.value || downloadingPasswords.value) {
+    return
+  }
+
+  const taskId = completedTaskId.value
+  downloadingPasswords.value = true
+  try {
+    const result = await apiClient.downloadFile(
+      cmsEndpoints.cms.importUsersPasswords(taskId),
+    )
+
+    if (!result.success || !result.data) {
+      const message = await extractDownloadErrorMessage(result)
+      if (result.status === 410) {
+        markPasswordsDownloaded(taskId)
+      }
+      toast.error(message)
+      return
+    }
+
+    const contentType = result.headers?.['content-type'] || result.data.type || ''
+    if (contentType.includes('application/json')) {
+      const message = await extractDownloadErrorMessage(result)
+      toast.error(message)
+      return
+    }
+
+    const filename = extractFilenameFromContentDisposition(
+      result.headers,
+      'import-users-passwords.xlsx',
+    )
+    downloadBlobAsFile(result.data, filename)
+    markPasswordsDownloaded(taskId)
+    toast.success('Файл с паролями скачан. Повторная загрузка недоступна.')
+  } catch (error) {
+    logError('Ошибка скачивания паролей импорта', error)
+    const message = await extractDownloadErrorMessage(
+      { data: error.response?.data, message: error.message },
+    )
+    toast.error(message || 'Ошибка при скачивании файла с паролями')
+  } finally {
+    downloadingPasswords.value = false
+  }
+}
 </script>
 
 <template>
@@ -373,7 +655,7 @@ const getLogClass = (level) => {
     </div>
     <div v-else-if="hasAdminAccess" class="admin-page">
       <div class="page-header">
-        <h1 class="page-title">Импорт пользователей</h1>
+        <h1 class="page-title">Загрузка пользователей</h1>
         <p class="page-subtitle">Загрузка учётных записей из файла Excel или CSV</p>
       </div>
 
@@ -388,21 +670,37 @@ const getLogClass = (level) => {
         </button>
 
       <div v-if="savedTaskId && !isImporting && !importResults" class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 mb-0">
-        <span>Есть незавершённый импорт. Вы можете продолжить отслеживание.</span>
+        <span>Есть незавершённая загрузка. Вы можете продолжить отслеживание.</span>
         <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2" @click="resumeImport">
           Продолжить отслеживание
         </button>
       </div>
 
       <div class="alert alert-info mb-0">
-        <strong>Требования к файлу:</strong>
-        <ul class="mb-0 mt-2">
-          <li>Формат: Excel (.xlsx, .xls) или CSV (.csv)</li>
-          <li>Обязательные столбцы: <code>Фамилия</code>, <code>Имя</code>, <code>Логин</code></li>
-          <li>Опциональные столбцы: <code>Отчество</code>, <code>E-mail</code></li>
-          <li>Пароль по умолчанию для всех создаваемых пользователей: <code>1</code></li>
-          <li>Пользователи с совпадающими ФИО будут пропущены</li>
-        </ul>
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+          <div>
+            <strong>Требования к файлу:</strong>
+            <ul class="mb-0 mt-2">
+              <li>Формат: Excel (.xlsx, .xls) или CSV (.csv)</li>
+              <li>Обязательные столбцы: <code>Фамилия</code>, <code>Имя</code>, <code>Логин</code></li>
+              <li>Опциональные столбцы: <code>Отчество</code>, <code>E-mail</code></li>
+              <li>Для каждого нового пользователя генерируется случайный пароль</li>
+              <li>После импорта пароли можно один раз скачать в Excel-файле</li>
+              <li>Пользователи с совпадающими ФИО будут пропущены</li>
+              <li>Перед загрузкой удалите пример строки из шаблона</li>
+            </ul>
+          </div>
+          <button
+            type="button"
+            class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2 flex-shrink-0"
+            :disabled="isImporting || downloadingTemplate"
+            @click="handleDownloadTemplate"
+          >
+            <Loader2 v-if="downloadingTemplate" :size="15" class="spinner" />
+            <Download v-else :size="15" />
+            <span>{{ downloadingTemplate ? 'Формирование...' : 'Скачать шаблон' }}</span>
+          </button>
+        </div>
       </div>
       <div class="upload-zone mb-4" :class="{ 'has-file': selectedFile }" @click="triggerFileInput" @dragover="handleDragOver" @drop="handleDrop">
         <input ref="fileInput" type="file" accept=".xlsx,.xls,.csv" class="d-none" @change="handleFileSelect"/>
@@ -432,15 +730,75 @@ const getLogClass = (level) => {
       
       <div class="mb-4">
         <div class="form-check mb-3">
-          <input id="skipWelcomeEmails" v-model="skipWelcomeEmails" type="checkbox" class="form-check-input" :disabled="isImporting"/>
-          <label class="form-check-label" for="skipWelcomeEmails">Не отправлять приветственные письма на электронную почту</label>
-          <div class="form-text text-muted">При включении этой опции пользователям не будут отправлены письма об успешной регистрации</div>
+          <input
+            id="sendWelcomeEmails"
+            v-model="sendWelcomeEmails"
+            type="checkbox"
+            class="form-check-input"
+            :disabled="isImporting"
+            @change="persistWelcomeEmailSettings"
+          />
+          <label class="form-check-label" for="sendWelcomeEmails">
+            Отправлять приветственные письма на электронную почту
+          </label>
+          <div class="form-text text-muted">
+            По умолчанию письма не отправляются. Письма уходят только пользователям с указанным E-mail.
+          </div>
+        </div>
+
+        <div v-if="sendWelcomeEmails" class="welcome-email-settings border rounded p-3 mb-3">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <h6 class="mb-0">Текст приветственного письма</h6>
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm"
+              :disabled="isImporting"
+              @click="resetWelcomeEmailTemplate"
+            >
+              Сбросить шаблон
+            </button>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="welcomeEmailSubject">Тема письма</label>
+            <input
+              id="welcomeEmailSubject"
+              v-model="welcomeEmailSubject"
+              type="text"
+              class="form-control"
+              maxlength="200"
+              :disabled="isImporting"
+              @input="persistWelcomeEmailSettings"
+            />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="welcomeEmailBody">Текст письма</label>
+            <textarea
+              id="welcomeEmailBody"
+              v-model="welcomeEmailBody"
+              class="form-control welcome-email-settings__textarea"
+              rows="8"
+              maxlength="5000"
+              :disabled="isImporting"
+              @input="persistWelcomeEmailSettings"
+            />
+          </div>
+
+          <p v-if="welcomePlaceholders.length" class="form-text text-muted mb-0">
+            Доступные подстановки:
+            <code
+              v-for="placeholder in welcomePlaceholders"
+              :key="placeholder.key"
+              class="me-2"
+            >{{ '{' + placeholder.key + '}' }}</code>
+          </p>
         </div>
         
         <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2" :disabled="!selectedFile || isImporting" @click="startImport">
           <Loader2 v-if="isImporting" :size="16" class="spinner" />
           <Upload v-else :size="16" />
-          <span>{{ isImporting ? 'Импортирование...' : 'Начать импорт' }}</span>
+          <span>{{ isImporting ? 'Загрузка...' : 'Начать загрузку' }}</span>
         </button>
       </div>
       
@@ -491,18 +849,54 @@ const getLogClass = (level) => {
           <div class="d-flex align-items-center gap-2 mb-2">
             <CheckCircle v-if="importResults.success" :size="20" />
             <XCircle v-else :size="20" />
-            <strong>{{ importResults.success ? 'Импорт завершён' : 'Ошибка импорта' }}</strong>
+            <strong>{{ importResults.success ? 'Загрузка завершена' : 'Ошибка загрузки' }}</strong>
           </div>
           <ul class="mb-0">
             <li>Создано пользователей: <strong>{{ importResults.created }}</strong></li>
             <li>Пропущено (дубликаты или ошибки): <strong>{{ importResults.skipped }}</strong></li>
+            <li v-if="importResults.emailsSent > 0">
+              Отправлено приветственных писем: <strong>{{ importResults.emailsSent }}</strong>
+            </li>
+            <li v-if="importResults.emailsFailed > 0">
+              Не удалось отправить писем: <strong>{{ importResults.emailsFailed }}</strong>
+            </li>
+            <li v-if="importResults.emailsSkippedNoEmail > 0">
+              Без E-mail (письма не отправлены): <strong>{{ importResults.emailsSkippedNoEmail }}</strong>
+            </li>
             <li v-if="importResults.errors.length > 0">Ошибок: <strong>{{ importResults.errors.length }}</strong></li>
           </ul>
+        </div>
+
+        <div
+          v-if="canDownloadPasswords"
+          class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-3 mb-0"
+        >
+          <div>
+            <strong class="d-block mb-1">Файл с паролями готов</strong>
+            <span class="small">Скачивание доступно один раз. Сохраните файл в надёжное место.</span>
+          </div>
+          <button
+            type="button"
+            class="btn btn-warning d-inline-flex align-items-center gap-2 flex-shrink-0"
+            :disabled="downloadingPasswords"
+            @click="downloadPasswords"
+          >
+            <Loader2 v-if="downloadingPasswords" :size="16" class="spinner" />
+            <Download v-else :size="16" />
+            <span>{{ downloadingPasswords ? 'Скачивание...' : 'Скачать пароли (Excel)' }}</span>
+          </button>
+        </div>
+
+        <div
+          v-else-if="importResults.success && passwordsDownloaded"
+          class="alert alert-secondary mb-0"
+        >
+          Файл с паролями уже был скачан. Повторная выгрузка недоступна.
         </div>
       </div>
       
       <div v-if="importLogs.length > 0" class="import-logs">
-        <h6 class="mb-3">Журнал импорта</h6>
+        <h6 class="mb-3">Журнал загрузки</h6>
         <div class="logs-container" ref="logsContainer">
           <div v-for="(log, index) in importLogs" :key="index" class="log-entry d-flex align-items-start gap-2" :class="getLogClass(log.level)">
             <component :is="getLogIcon(log.level)" v-if="getLogIcon(log.level)" :size="16" class="flex-shrink-0 mt-1"/>
@@ -591,6 +985,15 @@ const getLogClass = (level) => {
 
   .stats-label {
     font-size: 0.75rem;
+  }
+}
+
+.welcome-email-settings {
+  background-color: var(--color-secondary-background);
+
+  &__textarea {
+    font-family: var(--font-family-mono);
+    font-size: 0.875rem;
   }
 }
 

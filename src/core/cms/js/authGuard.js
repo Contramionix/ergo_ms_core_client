@@ -54,13 +54,12 @@ export class AuthGuard {
     try {
       // Сначала локально: если срок на исходе — пробуем тихий refresh
       if (tokenService.shouldRefresh(90)) {
-        try { 
-          await tokenService.tryRefresh()
+        const access = await tokenService.tryRefresh()
+        if (access) {
           this.isCheckingToken = false
-          return 
-        } catch (_) { 
-          /* пойдём к серверной проверке */ 
+          return
         }
+        /* пойдём к серверной проверке */
       }
 
       // Проверяем через userStore, если пользователь уже инициализирован

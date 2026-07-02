@@ -36,6 +36,11 @@ export function validateAdminProfileData(data) {
   return validateUserProfileData(data)
 }
 
+export async function createAdminUser(data) {
+  const response = await CheckAccess.CreateAdminUser(data)
+  return response.data
+}
+
 export async function resetAdminUserPassword(userId, payload = {}) {
   const response = await CheckAccess.ResetAdminUserPassword(userId, payload)
   return response.data

@@ -224,20 +224,21 @@ const currentItem = ref(null)
 const currentSeparator = ref(null)
 
 const parentOptions = computed(() => {
-  const options = [{ id: null, name: '-- Нет (корневой элемент) --' }]
-  
-  function addItems(items, prefix = '') {
+  const options = [{ id: null, name: '-- Нет (корневой элемент) --', depth: 0 }]
+
+  function addItems(items, depth = 0) {
     for (const item of items) {
       options.push({
         id: item.id,
-        name: `${prefix}${item.name}`
+        name: item.name,
+        depth,
       })
       if (item.children && item.children.length > 0) {
-        addItems(item.children, `${prefix}  └ `)
+        addItems(item.children, depth + 1)
       }
     }
   }
-  
+
   addItems(menuItems.value)
   return options
 })

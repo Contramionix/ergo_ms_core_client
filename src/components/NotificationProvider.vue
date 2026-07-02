@@ -26,6 +26,7 @@ import ChoiceDialog from './ChoiceDialog.vue'
     :message="choiceDialog.message"
     :choices="choiceDialog.choices"
     :loading="choiceDialog.loading"
+    :z-index="choiceDialog.zIndex"
     @choice="choiceDialog.onChoice"
     @cancel="choiceDialog.onCancel"
     @close="cancelChoiceDialog"

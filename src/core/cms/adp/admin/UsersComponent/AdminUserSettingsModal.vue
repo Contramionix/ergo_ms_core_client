@@ -23,6 +23,8 @@ import {
   applyProfileApiErrors,
 } from '@/core/cms/adp/js/userProfileForm.js'
 import { AssignRoleToUser } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import SelectBox from '@/components/SelectBox.vue'
+import { mapRoleSelectOptions, mapRoleGroupSelectOptions } from '@/core/cms/js/adminSelectOptions.js'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -43,7 +45,7 @@ const deleting = ref(false)
 const errors = ref({})
 const formData = ref({})
 const avatarUrl = ref(null)
-const selectedRoleId = ref('')
+const selectedRoleId = ref(null)
 const selectedGroupIds = ref([])
 const username = ref('')
 const passwordResetMode = ref('system')
@@ -61,10 +63,13 @@ const modalTitle = computed(() =>
 
 const isCurrentUser = computed(() => props.userId != null && props.userId === userStore.user?.id)
 
+const roleSelectOptions = computed(() => mapRoleSelectOptions(props.roles))
+const roleGroupSelectOptions = computed(() => mapRoleGroupSelectOptions(props.roleGroups))
+
 const resetState = () => {
   formData.value = {}
   avatarUrl.value = null
-  selectedRoleId.value = ''
+  selectedRoleId.value = null
   selectedGroupIds.value = []
   username.value = ''
   passwordResetMode.value = 'system'
@@ -81,7 +86,7 @@ const loadUser = async () => {
     username.value = data.username || ''
     formData.value = mapAdminUserToFormData(data)
     avatarUrl.value = data.avatar_url || null
-    selectedRoleId.value = data.role?.id || ''
+    selectedRoleId.value = data.role?.id ?? null
     selectedGroupIds.value = data.role_groups?.map((group) => group.id) || []
     passwordResetMode.value = data.password_reset_mode || 'system'
   } catch (error) {
@@ -211,25 +216,38 @@ const requestDelete = async () => {
         <div class="profile-card__row">
           <label class="profile-card__label" for="admin-user-role">Роль</label>
           <div class="profile-card__control">
-            <select id="admin-user-role" v-model="selectedRoleId" class="form-select form-select-sm">
-              <option value="">Без роли</option>
-              <option v-for="role in roles" :key="role.id" :value="role.id">
-                {{ role.name }} ({{ role.role_type_display }})
-              </option>
-            </select>
+            <SelectBox
+              id="admin-user-role"
+              v-model="selectedRoleId"
+              :options="roleSelectOptions"
+              value-key="id"
+              label-key="name"
+              all-label="Без роли"
+              cast-to-number
+              fixed-trigger-label-font-size
+            />
             <small class="text-muted">Роль можно назначить позже. Профиль сохраняется независимо от роли.</small>
           </div>
         </div>
 
         <div class="profile-card__row profile-card__row--last">
-          <label class="profile-card__label" for="admin-user-groups">Ролевые группы</label> <!-- TODO: В очереди на рефакторинг -->
+          <label class="profile-card__label" for="admin-user-groups">Ролевые группы</label>
           <div class="profile-card__control">
-            <select id="admin-user-groups" v-model="selectedGroupIds" class="form-select form-select-sm" multiple size="5">
-              <option v-for="group in roleGroups" :key="group.id" :value="group.id">
-                {{ group.name }} · {{ group.parent_role_name }}
-              </option>
-            </select>
-            <small class="text-muted">Удерживайте Ctrl/Cmd для выбора нескольких групп.</small>
+            <SelectBox
+              id="admin-user-groups"
+              v-model="selectedGroupIds"
+              :options="roleGroupSelectOptions"
+              value-key="id"
+              label-key="name"
+              :include-all-option="false"
+              multiple
+              show-checkboxes-when-multiple
+              multiple-label-format="count"
+              cast-to-number
+              :disabled="!selectedRoleId"
+              fixed-trigger-label-font-size
+            />
+            <small class="text-muted">Доступно после выбора роли.</small>
           </div>
         </div>
       </div>

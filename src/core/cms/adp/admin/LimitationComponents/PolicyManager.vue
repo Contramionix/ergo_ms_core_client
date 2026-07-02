@@ -14,13 +14,15 @@
     <div class="limitation-card__body">
       <div class="row g-3 align-items-end mb-4">
         <div class="col-md-4">
-          <label class="form-label">Страница / URL</label>
-          <select v-model="localSelectedPage" class="form-select">
-            <option value="">Все страницы</option>
-            <option v-for="page in pages" :key="page.path" :value="page.path">
-              {{ page.path }}
-            </option>
-          </select>
+          <SelectBox
+            v-model="localSelectedPage"
+            label="Страница / URL"
+            :options="pagePathOptions"
+            value-key="id"
+            label-key="name"
+            all-label="Все страницы"
+            fixed-trigger-label-font-size
+          />
         </div>
         <div class="col-md-4">
           <label class="form-label">Поиск по политикам</label>
@@ -68,11 +70,15 @@
             />
           </div>
           <div class="col-md-2">
-            <label class="form-label">Действие</label>
-            <select class="form-select" v-model="policyForm.action">
-              <option value="allow">Разрешить</option>
-              <option value="deny">Запретить</option>
-            </select>
+            <SelectBox
+              v-model="policyForm.action"
+              label="Действие"
+              :options="POLICY_ACTION_OPTIONS"
+              value-key="id"
+              label-key="name"
+              :include-all-option="false"
+              fixed-trigger-label-font-size
+            />
           </div>
           <div class="col-md-2">
             <label class="form-label">Приоритет</label>
@@ -109,22 +115,28 @@
             </div>
           </div>
           <div class="col-md-4" v-if="policyForm.targetType === 'role'">
-            <label class="form-label">Роль</label>
-            <select class="form-select" v-model="policyForm.role">
-              <option value="">Выберите роль</option>
-              <option v-for="role in roles" :key="role.id" :value="role.id">
-                {{ role.name }} ({{ role.role_type_display }})
-              </option>
-            </select>
+            <SelectBox
+              v-model="policyForm.role"
+              label="Роль"
+              :options="roleSelectOptions"
+              value-key="id"
+              label-key="name"
+              all-label="Выберите роль"
+              cast-to-number
+              fixed-trigger-label-font-size
+            />
           </div>
           <div class="col-md-4" v-else>
-            <label class="form-label">Ролевая группа</label>
-            <select class="form-select" v-model="policyForm.role_group">
-              <option value="">Выберите ролевую группу</option>
-              <option v-for="group in roleGroups" :key="group.id" :value="group.id">
-                {{ group.name }} · {{ group.parent_role_name }}
-              </option>
-            </select>
+            <SelectBox
+              v-model="policyForm.role_group"
+              label="Ролевая группа"
+              :options="roleGroupSelectOptions"
+              value-key="id"
+              label-key="name"
+              all-label="Выберите ролевую группу"
+              cast-to-number
+              fixed-trigger-label-font-size
+            />
           </div>
           <div class="col-md-2 d-flex align-items-center">
             <div class="form-check form-switch mt-4 pt-2">
@@ -223,7 +235,14 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
+import SelectBox from '@/components/SelectBox.vue'
 import { CreatePolicy, GetPolicies, UpdatePolicy } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import {
+  POLICY_ACTION_OPTIONS,
+  mapPagePathOptions,
+  mapRoleSelectOptions,
+  mapRoleGroupSelectOptions,
+} from '@/core/cms/js/adminSelectOptions.js'
 
 const props = defineProps({
   pages: { type: Array, required: true },
@@ -242,9 +261,13 @@ const policySearch = ref('')
 const showOnlySelected = ref(true)
 
 const localSelectedPage = computed({
-  get: () => props.selectedPagePath,
-  set: (val) => emit('update:selectedPagePath', val)
+  get: () => props.selectedPagePath || null,
+  set: (val) => emit('update:selectedPagePath', val ?? ''),
 })
+
+const pagePathOptions = computed(() => mapPagePathOptions(props.pages))
+const roleSelectOptions = computed(() => mapRoleSelectOptions(props.roles))
+const roleGroupSelectOptions = computed(() => mapRoleGroupSelectOptions(props.roleGroups))
 
 const policyForm = reactive({
   id: null,
@@ -253,8 +276,8 @@ const policyForm = reactive({
   action: 'allow',
   priority: 0,
   targetType: 'role',
-  role: '',
-  role_group: '',
+  role: null,
+  role_group: null,
   is_pattern: false,
   description: ''
 })
@@ -312,8 +335,8 @@ function resetPolicyForm() {
   policyForm.action = 'allow'
   policyForm.priority = 0
   policyForm.targetType = 'role'
-  policyForm.role = ''
-  policyForm.role_group = ''
+  policyForm.role = null
+  policyForm.role_group = null
   policyForm.is_pattern = false
   policyForm.description = ''
 }
@@ -329,11 +352,11 @@ function startPolicyEdit(policy) {
   if (policy.role) {
     policyForm.targetType = 'role'
     policyForm.role = policy.role
-    policyForm.role_group = ''
+    policyForm.role_group = null
   } else {
     policyForm.targetType = 'role_group'
     policyForm.role_group = policy.role_group
-    policyForm.role = ''
+    policyForm.role = null
   }
 }
 

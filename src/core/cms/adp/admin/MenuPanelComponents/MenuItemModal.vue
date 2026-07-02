@@ -54,7 +54,7 @@
 
       <div class="mb-3">
         <label class="form-label">Родительский элемент</label>
-        <SelectBox :model-value="form.parent" :options="filteredParentOptions" value-key="id" label-key="name" :include-all-option="false" all-label="-- Нет (корневой элемент) --" @update:model-value="v => form.parent = v"/>
+        <SelectBox :model-value="form.parent" :options="filteredParentOptions" value-key="id" label-key="name" depth-key="depth" :option-indent-per-level="0" :include-all-option="false" all-label="-- Нет (корневой элемент) --" @update:model-value="v => form.parent = v"/>
       </div>
 
       <div class="mb-3">

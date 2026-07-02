@@ -264,7 +264,7 @@ const openClearConfirm = async (scope) => {
 
     <div v-else-if="hasAdminAccess" class="admin-page">
       <div class="page-header">
-        <h1 class="page-title">Приглашения</h1>
+        <h1 class="page-title">Управление приглашениями</h1>
         <p class="page-subtitle">Создавайте ссылки вручную или загружайте список email из Excel для массовой рассылки</p>
       </div>
 

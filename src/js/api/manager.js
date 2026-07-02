@@ -29,10 +29,9 @@ class ApiClient {
     // Интерцептор запросов: тихий refresh перед отправкой
     this.client.interceptors.request.use(async (config) => {
       if (tokenService.shouldRefresh()) {
-        try { 
-          await tokenService.tryRefresh() 
-        } catch (_) { 
-          /* игнор, дадим серверу ответить 401 */ 
+        const access = await tokenService.tryRefresh()
+        if (!access) {
+          /* игнор, дадим серверу ответить 401 */
         }
       }
       return config
@@ -45,16 +44,15 @@ class ApiClient {
         const originalRequest = error.config
         if (error.response?.status === 401 && !originalRequest?._retry) {
           originalRequest._retry = true
-          try {
-            await tokenService.tryRefresh()
+          const access = await tokenService.tryRefresh()
+          if (access) {
             this._addAuthToken(originalRequest)
             return this.client(originalRequest)
-          } catch (e) {
-            this.logout()
-            if (typeof window !== 'undefined' && window.location) {
-              if (!window.location.pathname.includes('/start') && !window.location.pathname.includes('/login')) {
-                window.location.href = '/start'
-              }
+          }
+          this.logout()
+          if (typeof window !== 'undefined' && window.location) {
+            if (!window.location.pathname.includes('/start') && !window.location.pathname.includes('/login')) {
+              window.location.href = '/start'
             }
           }
         }

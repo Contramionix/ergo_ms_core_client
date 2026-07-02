@@ -1,16 +1,19 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/js/utils/toast.js'
-import { Settings, Upload, MailPlus, Radio } from 'lucide-vue-next'
+import { Settings, Upload, MailPlus, UserPlus } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import AdminUserSettingsModal from '@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue'
+import AdminUserCreateModal from '@/core/cms/adp/admin/UsersComponent/AdminUserCreateModal.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { formatDateShort, formatDateTime } from '@/js/utils/timeUtils.js'
 import { GetAdminUsers, GetRoles, GetRoleGroupOptions, CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import { presenceStore, seedFromUsers } from '@/core/cms/adp/js/presence/presenceStore.js'
 import { useAdminPresenceFeed } from '@/core/cms/adp/admin/js/useAdminPresenceFeed.js'
+import SelectBox from '@/components/SelectBox.vue'
+import { PRESENCE_FILTER_OPTIONS } from '@/core/cms/js/adminSelectOptions.js'
 
 const router = useRouter()
 const toast = useToast()
@@ -23,17 +26,67 @@ const hasAdminAccess = ref(false)
 const isCheckingAccess = ref(true)
 const isLoadingUsers = ref(false)
 const showUserSettings = ref(false)
+const showUserCreate = ref(false)
 const selectedUserId = ref(null)
 
 const rowsPerPage = ref(12)
 const searchQuery = ref('')
 const currentPage = ref(1)
+const presenceFilter = ref('all')
+
+const isOnlineFilter = computed(() => presenceFilter.value === 'online')
 
 let searchDebounceTimer = null
+let presenceReloadTimer = null
+
+const schedulePresenceReload = () => {
+  if (!isOnlineFilter.value) {
+    return
+  }
+  if (presenceReloadTimer) {
+    clearTimeout(presenceReloadTimer)
+  }
+  presenceReloadTimer = setTimeout(() => {
+    loadUsers()
+  }, 500)
+}
 
 watch(
   () => presenceStore.state.entries,
   (entries) => {
+    if (isOnlineFilter.value) {
+      const prevCount = rows.value.length
+      rows.value = rows.value
+        .filter((row) => {
+          const status = entries[String(row.user_id)]
+          return status ? status.isOnline : row.is_online
+        })
+        .map((row) => {
+          const status = entries[String(row.user_id)]
+          if (!status) {
+            return row
+          }
+          return {
+            ...row,
+            is_online: status.isOnline,
+            last_seen: status.lastSeen,
+          }
+        })
+
+      if (rows.value.length !== prevCount) {
+        totalUsers.value = Math.max(0, totalUsers.value - (prevCount - rows.value.length))
+      }
+
+      const rowIds = new Set(rows.value.map((row) => row.user_id))
+      const hasNewOnline = Object.entries(entries).some(
+        ([id, status]) => status?.isOnline && !rowIds.has(Number(id)),
+      )
+      if (hasNewOnline) {
+        schedulePresenceReload()
+      }
+      return
+    }
+
     rows.value = rows.value.map((row) => {
       const status = entries[String(row.user_id)]
       if (!status) {
@@ -71,6 +124,7 @@ const loadUsers = async () => {
       page: currentPage.value,
       page_size: rowsPerPage.value,
       search: searchQuery.value.trim() || undefined,
+      online_only: isOnlineFilter.value || undefined,
     })
     rows.value = (data.users || []).map(mapUserToRow)
     seedFromUsers(data.users || [])
@@ -115,6 +169,12 @@ onMounted(async () => {
 
 onUnmounted(() => {
   disconnectAdminPresenceFeed()
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+  }
+  if (presenceReloadTimer) {
+    clearTimeout(presenceReloadTimer)
+  }
 })
 
 const handlePageChange = (page) => {
@@ -134,6 +194,13 @@ const handleSearchQuery = (query) => {
     loadUsers()
   }, 300)
 }
+
+watch(presenceFilter, () => {
+  if (currentPage.value !== 1) {
+    currentPage.value = 1
+  }
+  loadUsers()
+})
 
 const columns = [
   {
@@ -185,16 +252,21 @@ const handleUserDeleted = async () => {
   await loadUsers()
 }
 
+const openUserCreate = () => {
+  showUserCreate.value = true
+}
+
+const handleUserCreated = async () => {
+  currentPage.value = 1
+  await loadUsers()
+}
+
 const goToImport = () => {
   router.push({ name: 'ImportUsersPanel' })
 }
 
 const goToInvitations = () => {
   router.push({ name: 'InvitationsPanel' })
-}
-
-const goToOnline = () => {
-  router.push({ name: 'OnlineUsersPanel' })
 }
 
 const getItemKey = (item) => item.user_id
@@ -212,27 +284,43 @@ const getItemKey = (item) => item.user_id
       </div>
 
       <div class="content-card">
-        <div class="table-header">
-          <div class="search-wrapper">
-            <input
-              type="search"
-              class="form-control search-input"
-              placeholder="Поиск по пользователям..."
-              @input="handleSearchQuery($event.target.value)"
-            />
+        <div class="table-header users-toolbar">
+          <div class="filters-wrapper">
+            <div class="search-wrapper">
+              <label for="users-search" class="form-label mb-1">Поиск</label>
+              <input
+                id="users-search"
+                type="search"
+                class="form-control search-input"
+                placeholder="Поиск по пользователям..."
+                @input="handleSearchQuery($event.target.value)"
+              />
+            </div>
+            <div class="presence-filter">
+              <SelectBox
+                id="users-presence-filter"
+                v-model="presenceFilter"
+                label="Фильтрация"
+                :options="PRESENCE_FILTER_OPTIONS"
+                value-key="id"
+                label-key="name"
+                :include-all-option="false"
+                fixed-trigger-label-font-size
+              />
+            </div>
           </div>
           <div class="actions-wrapper">
-            <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @click="goToOnline">
-              <Radio :size="16" />
-              <span>Онлайн</span>
+            <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @click="openUserCreate">
+              <UserPlus :size="16" />
+              <span>Создать пользователя</span>
             </button>
             <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @click="goToInvitations">
               <MailPlus :size="16" />
-              <span>Приглашения</span>
+              <span>Управление приглашениями</span>
             </button>
             <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @click="goToImport">
               <Upload :size="16" />
-              <span>Импорт пользователей</span>
+              <span>Загрузка пользователей</span>
             </button>
           </div>
         </div>
@@ -290,6 +378,7 @@ const getItemKey = (item) => item.user_id
     </DataTable>
 
     <AdminUserSettingsModal v-model:show="showUserSettings" :user-id="selectedUserId" :roles="roles" :role-groups="roleGroups" @saved="handleUserSaved" @deleted="handleUserDeleted"/>
+    <AdminUserCreateModal v-model:show="showUserCreate" :roles="roles" :role-groups="roleGroups" @created="handleUserCreated"/>
       </div>
   </div>
 </template>
@@ -315,5 +404,43 @@ const getItemKey = (item) => item.user_id
     border-radius: 50%;
     background-color: currentColor;
   }
+}
+
+.filters-wrapper {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.users-toolbar {
+  align-items: flex-end;
+}
+
+.users-toolbar .actions-wrapper {
+  align-items: flex-end;
+}
+
+.users-toolbar .actions-wrapper .btn {
+  min-height: 38px;
+}
+
+.search-wrapper {
+  flex: 1 1 220px;
+  min-width: 180px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.search-wrapper .search-input {
+  min-height: 38px;
+}
+
+.presence-filter {
+  flex: 0 1 220px;
+  min-width: 180px;
 }
 </style>

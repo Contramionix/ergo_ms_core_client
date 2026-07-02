@@ -2,7 +2,9 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import ModalCenter from '@/components/ModalCenter.vue'
+import SelectBox from '@/components/SelectBox.vue'
 import { CreateRoleGroup, GetRoles, UpdateRoleGroup } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { mapRoleSelectOptions } from '@/core/cms/js/adminSelectOptions.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -28,7 +30,7 @@ const toast = useToast()
 
 const name = ref('')
 const roles = ref([])
-const parentRoleId = ref('')
+const parentRoleId = ref(null)
 const description = ref('')
 const isActive = ref(true)
 const isSubmitting = ref(false)
@@ -38,6 +40,7 @@ const showErrorName = ref(false)
 const showErrorRole = ref(false)
 
 const availableRoles = computed(() => roles.value)
+const roleSelectOptions = computed(() => mapRoleSelectOptions(availableRoles.value))
 const submitButtonText = computed(() => {
   if (isSubmitting.value) {
     return 'Сохранение...'
@@ -67,7 +70,7 @@ const syncWithGroup = group => {
   }
   groupId.value = group.id ?? null
   name.value = group.name || ''
-  parentRoleId.value = group.parent_role || ''
+  parentRoleId.value = group.parent_role || null
   description.value = group.description || ''
   isActive.value = group.is_active ?? true
 }
@@ -102,7 +105,7 @@ watch(
 
 const resetForm = () => {
   name.value = ''
-  parentRoleId.value = ''
+  parentRoleId.value = null
   description.value = ''
   isActive.value = true
   groupId.value = null
@@ -191,23 +194,22 @@ const submitForm = async () => {
       </div>
 
       <div class="mb-3">
-        <label for="roleSelect" class="form-label">Родительская роль</label>
-        <select
+        <SelectBox
           id="roleSelect"
-          class="form-select"
           v-model="parentRoleId"
-          :class="{ 'is-invalid': showErrorRole }"
+          label="Родительская роль"
+          :options="roleSelectOptions"
+          value-key="id"
+          label-key="name"
+          all-label="Выберите роль"
+          cast-to-number
           :disabled="availableRoles.length === 0"
-        >
-          <option value="" disabled>Выберите роль</option>
-          <option v-for="role in availableRoles" :key="role.id" :value="role.id">
-            {{ role.name }} ({{ role.role_type_display }})
-          </option>
-        </select>
+          fixed-trigger-label-font-size
+        />
         <div v-if="availableRoles.length === 0" class="form-text text-danger">
           Нет доступных ролей для привязки. Сначала создайте пользовательскую роль.
         </div>
-        <div v-if="showErrorRole" class="invalid-feedback">Необходимо выбрать родительскую роль.</div>
+        <div v-if="showErrorRole" class="invalid-feedback d-block">Необходимо выбрать родительскую роль.</div>
       </div>
 
       <div class="form-floating mb-3">

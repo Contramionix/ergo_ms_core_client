@@ -1,33 +1,22 @@
 import { ref } from 'vue'
 
 import tokenService from '@/core/cms/js/tokenService'
-import { buildWebSocketUrl } from '@/js/api/baseUrl.js'
+import { openAuthenticatedWebSocket } from '@/js/ws/authenticatedWebSocket.js'
 import { mergeSnapshot } from '@/core/cms/adp/js/presence/presenceStore.js'
 
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000]
 const MAX_RECONNECT_ATTEMPTS = 10
 
-let socket = null
+let wsConnection = null
 let reconnectTimer = null
 let reconnectAttempt = 0
 let intentionalClose = false
 
 const connected = ref(false)
 
-function buildWsUrl() {
-  const token = tokenService.getAccess()
-  const query = token ? `?token=${encodeURIComponent(token)}` : ''
-  return buildWebSocketUrl(`/ws/presence/admin/${query}`)
-}
-
-function handleSocketMessage(event) {
-  try {
-    const data = JSON.parse(event.data)
-    if (data?.type === 'presence_snapshot') {
-      mergeSnapshot(data.users)
-    }
-  } catch {
-    // ignore parse errors
+function handleSocketMessage(_event, data) {
+  if (data?.type === 'presence_snapshot') {
+    mergeSnapshot(data.users)
   }
 }
 
@@ -50,37 +39,36 @@ function openSocket() {
     return
   }
 
-  try {
-    intentionalClose = false
-    socket = new WebSocket(buildWsUrl())
-    const openedAt = Date.now()
+  wsConnection?.close()
+  intentionalClose = false
+  const openedAt = Date.now()
 
-    socket.onopen = () => {
+  wsConnection = openAuthenticatedWebSocket('/ws/presence/admin/', {
+    onAuthenticated: () => {
       connected.value = true
       reconnectAttempt = 0
-    }
-
-    socket.onmessage = handleSocketMessage
-    socket.onclose = () => {
+    },
+    onMessage: handleSocketMessage,
+    onClose: (_event, wasIntentional) => {
       connected.value = false
-      socket = null
+      wsConnection = null
       const elapsed = Date.now() - openedAt
-      if (!intentionalClose && elapsed > 500) {
+      if (!wasIntentional && !intentionalClose && elapsed > 500) {
         scheduleReconnect()
       }
-    }
-
-    socket.onerror = () => {
+    },
+    onError: () => {
       connected.value = false
-    }
-  } catch {
-    connected.value = false
-    scheduleReconnect()
-  }
+    },
+  })
 }
 
 export function connectAdminPresenceFeed() {
-  if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) {
+  if (wsConnection?.isAuthenticated()) {
+    return
+  }
+  const socket = wsConnection?.getSocket()
+  if (socket?.readyState === WebSocket.CONNECTING) {
     return
   }
   openSocket()
@@ -94,15 +82,8 @@ export function disconnectAdminPresenceFeed() {
     reconnectTimer = null
   }
 
-  if (socket) {
-    try {
-      socket.close()
-    } catch {
-      // ignore
-    }
-    socket = null
-  }
-
+  wsConnection?.close()
+  wsConnection = null
   connected.value = false
   reconnectAttempt = 0
 }

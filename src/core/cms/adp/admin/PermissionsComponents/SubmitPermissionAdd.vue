@@ -1,7 +1,14 @@
 <script setup>
 import { ref, computed } from 'vue'
 import ModalCenter from '@/components/ModalCenter.vue'
+import SelectBox from '@/components/SelectBox.vue'
 import { CreatePolicy } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import {
+  POLICY_TYPE_OPTIONS,
+  POLICY_ACTION_OPTIONS,
+  mapRoleSelectOptions,
+  mapRoleGroupSelectOptions,
+} from '@/core/cms/js/adminSelectOptions.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -19,9 +26,12 @@ const resourcePath = ref('')
 const isPattern = ref(false)
 const priority = ref(0)
 const targetType = ref('role')
-const selectedRoleId = ref('')
-const selectedRoleGroupId = ref('')
+const selectedRoleId = ref(null)
+const selectedRoleGroupId = ref(null)
 const isSubmitting = ref(false)
+
+const roleSelectOptions = computed(() => mapRoleSelectOptions(props.roles))
+const roleGroupSelectOptions = computed(() => mapRoleGroupSelectOptions(props.roleGroups))
 
 const showErrorName = ref(false)
 const showErrorResource = ref(false)
@@ -37,8 +47,8 @@ const resetForm = () => {
   isPattern.value = false
   priority.value = 0
   targetType.value = 'role'
-  selectedRoleId.value = ''
-  selectedRoleGroupId.value = ''
+  selectedRoleId.value = null
+  selectedRoleGroupId.value = null
   showErrorName.value = false
   showErrorResource.value = false
   showErrorTarget.value = false
@@ -93,18 +103,28 @@ const submitForm = async () => {
 
       <div class="row g-3 mb-3">
         <div class="col-md-6">
-          <label for="policyTypeSelect" class="form-label">Тип политики</label>
-          <select id="policyTypeSelect" class="form-select" v-model="policyType">
-            <option value="url">URL</option>
-            <option value="component">Компонент</option>
-          </select>
+          <SelectBox
+            id="policyTypeSelect"
+            v-model="policyType"
+            label="Тип политики"
+            :options="POLICY_TYPE_OPTIONS"
+            value-key="id"
+            label-key="name"
+            :include-all-option="false"
+            fixed-trigger-label-font-size
+          />
         </div>
         <div class="col-md-6">
-          <label for="actionSelect" class="form-label">Действие</label>
-          <select id="actionSelect" class="form-select" v-model="action">
-            <option value="allow">Разрешить</option>
-            <option value="deny">Запретить</option>
-          </select>
+          <SelectBox
+            id="actionSelect"
+            v-model="action"
+            label="Действие"
+            :options="POLICY_ACTION_OPTIONS"
+            value-key="id"
+            label-key="name"
+            :include-all-option="false"
+            fixed-trigger-label-font-size
+          />
         </div>
       </div>
 
@@ -135,19 +155,27 @@ const submitForm = async () => {
           <label class="btn btn-outline-primary" for="targetGroupAdd">Ролевая группа</label>
         </div>
 
-        <select v-if="targetType === 'role'" class="form-select" v-model="selectedRoleId" :class="{ 'is-invalid': showErrorTarget }">
-          <option value="" disabled>Выберите роль</option>
-          <option v-for="role in props.roles" :key="role.id" :value="role.id">
-            {{ role.name }} ({{ role.role_type_display }})
-          </option>
-        </select>
+        <SelectBox
+          v-if="targetType === 'role'"
+          v-model="selectedRoleId"
+          :options="roleSelectOptions"
+          value-key="id"
+          label-key="name"
+          all-label="Выберите роль"
+          cast-to-number
+          fixed-trigger-label-font-size
+        />
 
-        <select v-else class="form-select" v-model="selectedRoleGroupId" :class="{ 'is-invalid': showErrorTarget }">
-          <option value="" disabled>Выберите ролевую группу</option>
-          <option v-for="group in props.roleGroups" :key="group.id" :value="group.id">
-            {{ group.name }} · {{ group.parent_role_name }}
-          </option>
-        </select>
+        <SelectBox
+          v-else
+          v-model="selectedRoleGroupId"
+          :options="roleGroupSelectOptions"
+          value-key="id"
+          label-key="name"
+          all-label="Выберите ролевую группу"
+          cast-to-number
+          fixed-trigger-label-font-size
+        />
 
         <div v-if="showErrorTarget" class="invalid-feedback d-block">
           Необходимо выбрать цель политики.

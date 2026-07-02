@@ -1,27 +1,33 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { Trash2 } from 'lucide-vue-next'
+import SelectBox from '@/components/SelectBox.vue'
 import {
   GetModulePermissions,
   CreateModulePermission,
   DeleteModulePermission
 } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { mapRoleGroupSelectOptions } from '@/core/cms/js/adminSelectOptions.js'
 
 const props = defineProps({
   roleGroups: { type: Array, required: true }
 })
 
 const permissions = ref([])
-const selectedRoleGroup = ref('')
+const selectedRoleGroup = ref(null)
 
 const form = ref({
   module_name: '',
   permission_key: '',
   permission_name: '',
-  role_group: '',
+  role_group: null,
   is_granted: true,
   description: ''
 })
+
+const roleGroupSelectOptions = computed(() =>
+  mapRoleGroupSelectOptions(props.roleGroups, { withParent: false }),
+)
 
 const showErrors = ref({
   module_name: false,
@@ -71,7 +77,7 @@ const submitForm = async () => {
     module_name: '',
     permission_key: '',
     permission_name: '',
-    role_group: '',
+    role_group: null,
     is_granted: true,
     description: ''
   }
@@ -96,12 +102,16 @@ onMounted(async () => {
         <h5 class="mb-0">Права модулей</h5>
         <small class="text-secondary-custom">Управление доступом к функционалу модулей по ролевым группам</small>
       </div>
-      <select class="form-select w-auto" v-model="selectedRoleGroup">
-        <option value="">Все группы</option>
-        <option v-for="group in roleGroups" :key="group.id" :value="group.id">
-          {{ group.name }}
-        </option>
-      </select>
+      <SelectBox
+        v-model="selectedRoleGroup"
+        :options="roleGroupSelectOptions"
+        value-key="id"
+        label-key="name"
+        all-label="Все группы"
+        cast-to-number
+        fixed-trigger-label-font-size
+        :full-width="false"
+      />
     </div>
 
     <div class="module-permission-manager__body">
@@ -138,17 +148,16 @@ onMounted(async () => {
             <div v-if="showErrors.permission_name" class="invalid-feedback">Укажите название</div>
           </div>
           <div class="col-md-3">
-            <select
-              class="form-select form-select-sm"
+            <SelectBox
               v-model="form.role_group"
-              :class="{ 'is-invalid': showErrors.role_group }"
-            >
-              <option value="">Группа</option>
-              <option v-for="group in roleGroups" :key="group.id" :value="group.id">
-                {{ group.name }}
-              </option>
-            </select>
-            <div v-if="showErrors.role_group" class="invalid-feedback">Выберите группу</div>
+              :options="roleGroupSelectOptions"
+              value-key="id"
+              label-key="name"
+              all-label="Группа"
+              cast-to-number
+              fixed-trigger-label-font-size
+            />
+            <div v-if="showErrors.role_group" class="invalid-feedback d-block">Выберите группу</div>
           </div>
         </div>
         <div class="row g-2 mt-1">

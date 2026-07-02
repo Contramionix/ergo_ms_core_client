@@ -20,6 +20,7 @@ export const choiceDialog = ref({
   message: '',
   choices: [],
   loading: false,
+  zIndex: null,
   onChoice: null,
   onCancel: null,
 })
@@ -135,6 +136,7 @@ export function confirmChoice(options = {}) {
       message: options.message ?? 'Выберите одно из действий:',
       choices: options.choices ?? [],
       loading: false,
+      zIndex: options.zIndex ?? null,
       onChoice: (value) => {
         if (choiceDialog.value.loading) {
           return

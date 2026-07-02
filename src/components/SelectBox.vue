@@ -1,14 +1,14 @@
 <template>
-    <div class="select-box" ref="rootEl">
+    <div class="select-box" ref="rootEl" :style="rootCssVars">
         <label v-if="label" class="form-label mb-1">{{ label }}</label>
         <div class="dropdown" :class="{ 'is-open': isOpen }">
-            <button class="btn btn-light w-100 d-flex align-items-center justify-content-between select-trigger" type="button" :disabled="disabled" @click="toggle" @blur="$emit('blur')">
+            <button class="btn btn-light w-100 d-flex align-items-center justify-content-between select-trigger" :class="{ 'select-trigger--open': isOpen }" type="button" :disabled="disabled" @click="toggle" @blur="$emit('blur')">
                 <span class="select-trigger-slot d-flex align-items-center flex-grow-1 me-2">
                     <slot name="selected" :option="selectedOption" :label="currentLabel">
                         <span ref="valueTextEl" class="value-text" :style="valueTextInlineStyle">{{ currentLabel }}</span>
                     </slot>
                 </span>
-                <span v-if="!hideChevron" class="d-inline-flex align-items-center"><ChevronDown class="icon-center" /></span>
+                <span v-if="!hideChevron" class="d-inline-flex align-items-center select-trigger-chevron" :class="{ 'select-trigger-chevron--open': isOpen }"><ChevronDown class="icon-center" /></span>
             </button>
             <teleport to="body">
                 <div
@@ -32,12 +32,26 @@
                                 <a class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" @click.prevent="choose(null)">{{ allLabel }}</a>
                             </li>
                             <li v-for="opt in filteredOptions" :key="opt.key">
-                                <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" @click.prevent="choose(opt.value)">
-                                    <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)">
-                                        <div v-if="multiple && showCheckboxesWhenMultiple" class="d-flex align-items-center">
-                                            <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input me-2" @change="() => {}" />
-                                            <span>{{ opt.label }}</span>
+                                <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" :style="getDropdownItemStyle(opt)" @click.prevent="choose(opt.value)">
+                                    <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)" :depth="getOptionDepth(opt.raw)">
+                                        <div v-if="multiple && showCheckboxesWhenMultiple" class="select-box-option-row">
+                                            <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input select-box-option-checkbox" @change="() => {}" />
+                                            <span class="select-box-option-label">
+                                                <template v-if="hasNestedLayout(opt)">
+                                                    <span class="select-box-nested-option" :title="getOptionTitle(opt)">
+                                                        <span v-if="getSecondaryLabel(opt.raw)" class="select-box-nested-option__secondary">{{ getSecondaryLabel(opt.raw) }}</span>
+                                                        <span class="select-box-nested-option__primary">{{ opt.label }}</span>
+                                                    </span>
+                                                </template>
+                                                <template v-else>{{ opt.label }}</template>
+                                            </span>
                                         </div>
+                                        <template v-else-if="hasNestedLayout(opt)">
+                                            <span class="select-box-nested-option" :title="getOptionTitle(opt)">
+                                                <span v-if="getSecondaryLabel(opt.raw)" class="select-box-nested-option__secondary">{{ getSecondaryLabel(opt.raw) }}</span>
+                                                <span class="select-box-nested-option__primary">{{ opt.label }}</span>
+                                            </span>
+                                        </template>
                                         <span v-else>{{ opt.label }}</span>
                                     </slot>
                                 </a>
@@ -51,12 +65,26 @@
                                     <div class="virtual-list-inner" :style="{ position: 'absolute', top: 0, left: 0, right: 0, transform: 'translateY(' + virtualOffsetY + 'px)' }">
                                         <template v-for="opt in visibleOptions" :key="opt.key">
                                             <a v-if="opt.key === '__all__'" class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" :style="{ minHeight: itemHeight + 'px' }" @click.prevent="choose(null)">{{ opt.label }}</a>
-                                            <a v-else class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" :style="{ minHeight: itemHeight + 'px' }" @click.prevent="choose(opt.value)">
-                                                <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)">
-                                                    <div v-if="multiple && showCheckboxesWhenMultiple" class="d-flex align-items-center">
-                                                        <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input me-2" @change="() => {}" />
-                                                        <span>{{ opt.label }}</span>
+                                            <a v-else class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" :style="{ minHeight: itemHeight + 'px', ...getDropdownItemStyle(opt) }" @click.prevent="choose(opt.value)">
+                                                <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)" :depth="getOptionDepth(opt.raw)">
+                                                    <div v-if="multiple && showCheckboxesWhenMultiple" class="select-box-option-row">
+                                                        <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input select-box-option-checkbox" @change="() => {}" />
+                                                        <span class="select-box-option-label">
+                                                            <template v-if="hasNestedLayout(opt)">
+                                                                <span class="select-box-nested-option" :title="getOptionTitle(opt)">
+                                                                    <span v-if="getSecondaryLabel(opt.raw)" class="select-box-nested-option__secondary">{{ getSecondaryLabel(opt.raw) }}</span>
+                                                                    <span class="select-box-nested-option__primary">{{ opt.label }}</span>
+                                                                </span>
+                                                            </template>
+                                                            <template v-else>{{ opt.label }}</template>
+                                                        </span>
                                                     </div>
+                                                    <template v-else-if="hasNestedLayout(opt)">
+                                                        <span class="select-box-nested-option" :title="getOptionTitle(opt)">
+                                                            <span v-if="getSecondaryLabel(opt.raw)" class="select-box-nested-option__secondary">{{ getSecondaryLabel(opt.raw) }}</span>
+                                                            <span class="select-box-nested-option__primary">{{ opt.label }}</span>
+                                                        </span>
+                                                    </template>
                                                     <span v-else>{{ opt.label }}</span>
                                                 </slot>
                                             </a>
@@ -112,9 +140,65 @@ const props = defineProps({
     dropdownMenuClass: { type: String, default: '' },
     /** Одинаковый размер шрифта у всех пунктов списка, включая active (компактные тулбары) */
     uniformDropdownListFont: { type: Boolean, default: false },
+    /** Ключ глубины вложенности в объекте опции (пусто — без иерархии) */
+    depthKey: { type: String, default: '' },
+    /** Доп. отступ слева на уровень вложенности, rem; 0 — без отступа */
+    optionIndentPerLevel: { type: Number, default: 0 },
+    /** Ключ доп. подписи (вторая строка) в объекте опции */
+    secondaryLabelKey: { type: String, default: '' },
+    /** Размер шрифта основной подписи вложенного пункта; пусто — как у списка */
+    nestedOptionFontSize: { type: String, default: '' },
+    /** Размер шрифта доп. подписи; пусто — как у списка */
+    nestedSecondaryFontSize: { type: String, default: '' },
 })
 
 const emit = defineEmits(['update:modelValue', 'change', 'blur'])
+
+const rootCssVars = computed(() => {
+    const vars = {
+        '--select-box-nested-indent-per-level': `${props.optionIndentPerLevel}rem`,
+    }
+    if (props.nestedOptionFontSize) {
+        vars['--select-box-nested-font-size'] = props.nestedOptionFontSize
+    }
+    if (props.nestedSecondaryFontSize) {
+        vars['--select-box-nested-secondary-font-size'] = props.nestedSecondaryFontSize
+    }
+    return vars
+})
+
+function getOptionDepth(raw) {
+    if (!props.depthKey || raw == null || typeof raw !== 'object') return 0
+    const value = raw[props.depthKey]
+    const num = Number(value)
+    return Number.isFinite(num) ? Math.max(0, num) : 0
+}
+
+function getSecondaryLabel(raw) {
+    if (!props.secondaryLabelKey || raw == null || typeof raw !== 'object') return ''
+    const value = raw[props.secondaryLabelKey]
+    if (value == null) return ''
+    const text = String(value).trim()
+    return text || ''
+}
+
+function hasNestedLayout(opt) {
+    return getOptionDepth(opt.raw) > 0 || Boolean(getSecondaryLabel(opt.raw))
+}
+
+function getOptionTitle(opt) {
+    const secondary = getSecondaryLabel(opt.raw)
+    if (secondary) return `${secondary} › ${opt.label}`
+    return opt.label
+}
+
+function getDropdownItemStyle(opt) {
+    const depth = getOptionDepth(opt.raw)
+    if (depth <= 0 || props.optionIndentPerLevel <= 0) return undefined
+    return {
+        paddingLeft: `calc(var(--select-box-item-padding-x) + ${depth * props.optionIndentPerLevel}rem)`,
+    }
+}
 
 const dropdownTeleportMenuClass = computed(() => {
     const parts = ['dropdown-menu', 'show', 'fixed-menu']
@@ -172,6 +256,17 @@ const filteredOptions = computed(() => {
 
 const isOpen = ref(false)
 const fixedMenuStyle = ref({ top: '0px', left: '0px', width: '0px' })
+function resolveContextFontSize(trigger, root) {
+    if (!trigger) return '1rem'
+    const triggerStyle = getComputedStyle(trigger)
+    if (triggerStyle.fontSize) return triggerStyle.fontSize
+    if (root) {
+        const rootStyle = getComputedStyle(root)
+        if (rootStyle.fontSize) return rootStyle.fontSize
+    }
+    return '1rem'
+}
+
 function updateMenuPosition() {
     const root = rootEl.value
     if (!root) return
@@ -190,12 +285,33 @@ function updateMenuPosition() {
         rect.left,
         window.innerWidth - viewportPadding - width
     )
+    const triggerStyle = getComputedStyle(trigger)
+    const rootStyle = root ? getComputedStyle(root) : null
+    const menuFontSize = resolveContextFontSize(trigger, root)
+    const customFontSize = rootStyle?.getPropertyValue('--select-box-font-size').trim()
+    const resolvedMenuFontSize = customFontSize || menuFontSize
+    const menuLineHeight = triggerStyle.lineHeight || rootStyle?.lineHeight || '1.5'
     fixedMenuStyle.value = {
-        top: `${triggerRect.bottom + 4}px`,
+        top: `${triggerRect.bottom}px`,
         left: `${left}px`,
         width: `${width}px`,
         maxWidth: `${maxWidth}px`,
         boxSizing: 'border-box',
+        fontSize: resolvedMenuFontSize,
+        lineHeight: menuLineHeight,
+        '--select-box-font-size': resolvedMenuFontSize,
+        '--select-box-search-font-size': rootStyle?.getPropertyValue('--select-box-search-font-size').trim() || '1em',
+        '--select-box-compact-font-size': rootStyle?.getPropertyValue('--select-box-compact-font-size').trim() || '1em',
+        '--select-box-item-padding-y': rootStyle?.getPropertyValue('--select-box-item-padding-y').trim() || '0.375rem',
+        '--select-box-item-padding-x': rootStyle?.getPropertyValue('--select-box-item-padding-x').trim() || '0.75rem',
+        '--select-box-nested-indent-per-level': rootStyle?.getPropertyValue('--select-box-nested-indent-per-level').trim() || `${props.optionIndentPerLevel}rem`,
+        '--select-box-nested-font-size': props.nestedOptionFontSize
+            || rootStyle?.getPropertyValue('--select-box-nested-font-size').trim()
+            || '1em',
+        '--select-box-nested-secondary-font-size': props.nestedSecondaryFontSize
+            || rootStyle?.getPropertyValue('--select-box-nested-secondary-font-size').trim()
+            || props.nestedOptionFontSize
+            || '1em',
     }
 }
 const searchInputEl = ref(null)
@@ -371,9 +487,10 @@ function updateVisibleRange() {
 function onListScroll() {
     updateVisibleRange()
 }
-const currentFontSize = ref('1rem')
+const currentFontSize = ref('')
 const valueTextInlineStyle = computed(() => {
     if (props.fixedTriggerLabelFontSize) return undefined
+    if (!currentFontSize.value) return undefined
     return { fontSize: currentFontSize.value }
 })
 const baseFontSize = 16
@@ -384,15 +501,24 @@ function adjustFontSize() {
     const el = valueTextEl.value
     if (!el) return
     el.style.fontSize = ''
-    currentFontSize.value = '1rem'
+    currentFontSize.value = ''
     const parent = el.parentElement
     if (!parent) return
-    const iconWidth = props.hideChevron ? 0 : 22
+    const trigger = rootEl.value?.querySelector('.select-trigger')
+    const root = rootEl.value
+    const rootStyle = root ? getComputedStyle(root) : null
+    const containerFontSizePx = trigger ? (parseFloat(getComputedStyle(trigger).fontSize) || baseFontSize) : baseFontSize
+    const iconSizeVar = rootStyle?.getPropertyValue('--select-box-icon-size').trim() || '1em'
+    let iconPx = containerFontSizePx
+    if (iconSizeVar.endsWith('em')) {
+        iconPx = (parseFloat(iconSizeVar) || 1) * containerFontSizePx
+    } else {
+        iconPx = parseFloat(iconSizeVar) || containerFontSizePx
+    }
+    const iconWidth = props.hideChevron ? 0 : iconPx + 8
     const available = parent.clientWidth - iconWidth - 8
     if (available <= 0) return
-    const trigger = rootEl.value?.querySelector('.select-trigger')
-    const containerFontSizePx = trigger ? (parseFloat(getComputedStyle(trigger).fontSize) || baseFontSize) : baseFontSize
-    const effectiveMinSize = Math.max(minFontSize, Math.round(containerFontSizePx))
+    const effectiveMinSize = Math.max(minFontSize, Math.round(containerFontSizePx * 0.75))
     let size = Math.round(containerFontSizePx)
     el.style.fontSize = size + 'px'
     el.style.whiteSpace = 'nowrap'
@@ -400,7 +526,9 @@ function adjustFontSize() {
         size -= 1
         el.style.fontSize = size + 'px'
     }
-    currentFontSize.value = el.style.fontSize
+    if (size < Math.round(containerFontSizePx)) {
+        currentFontSize.value = el.style.fontSize
+    }
 }
 const onResize = () => {
     adjustFontSize()
@@ -438,6 +566,34 @@ watch(searchQuery, () => {
 </script>
 
 <style scoped lang="scss">
+.select-box {
+    --select-box-font-size: 1rem;
+    --select-box-search-font-size: 1em;
+    --select-box-compact-font-size: 1em;
+    --select-box-trigger-min-height: 38px;
+    --select-box-icon-size: 1.125em;
+    --select-box-item-padding-y: 0.375rem;
+    --select-box-item-padding-x: 0.75rem;
+    --select-box-nested-indent-per-level: 0rem;
+    --select-box-nested-font-size: 1em;
+    --select-box-nested-secondary-font-size: 1em;
+
+    max-width: 100%;
+    font-size: var(--select-box-font-size);
+    line-height: 1.5;
+}
+
+.select-box > .form-label {
+    font-size: 1em;
+    line-height: 1.5;
+}
+
+.select-trigger--open {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-color: transparent;
+}
+
 .select-trigger {
     background-color: var(--color-primary-background);
     border: 1px solid var(--bs-border-color, #dee2e6);
@@ -446,10 +602,28 @@ watch(searchQuery, () => {
     box-shadow: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    min-height: 38px;
+    min-height: var(--select-box-trigger-min-height);
+    padding: var(--select-box-item-padding-y) var(--select-box-item-padding-x);
+    font-size: 1em;
+    line-height: 1.5;
+    --bs-btn-font-size: 1em;
+    --bs-btn-line-height: 1.5;
+    --bs-btn-padding-y: var(--select-box-item-padding-y);
+    --bs-btn-padding-x: var(--select-box-item-padding-x);
     white-space: nowrap;
     text-align: left;
     display: inline-flex;
+    transition:
+        background-color 0.3s ease,
+        border-color 0.3s ease,
+        color 0.3s ease,
+        box-shadow 0.3s ease,
+        transform 0.28s ease;
+
+    &:active:not(:disabled) {
+        transform: scale(0.992);
+        transition-duration: 0.28s;
+    }
 }
 
 .select-trigger :deep(svg) {
@@ -486,13 +660,14 @@ watch(searchQuery, () => {
 
 .select-box-search {
     flex-shrink: 0;
-    padding: 0.5rem 0.75rem;
+    padding: var(--select-box-item-padding-y) var(--select-box-item-padding-x);
     border: none;
     border-bottom: 1px solid var(--color-border);
     border-radius: 0;
     background-color: var(--color-primary-background);
     color: var(--color-primary-text);
-    font-size: 14px;
+    font-size: var(--select-box-search-font-size);
+    line-height: 1.5;
     outline: none;
     width: 100%;
     box-sizing: border-box;
@@ -540,24 +715,31 @@ watch(searchQuery, () => {
     right: auto;
     top: auto;
     min-width: unset;
+    margin-top: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
 }
-.select-box { max-width: 100%; }
 .select-box .dropdown { position: relative; width: 100%; max-width: 100%; }
 
 .dropdown-item {
     color: var(--color-primary-text);
     background-color: transparent;
-    font-size: clamp(0.75rem, 2vmin, 1rem);
-    padding: clamp(0.35rem, 1vmin, 0.5rem) clamp(0.75rem, 2vmin, 1rem);
+    font-size: 1em;
+    line-height: 1.5;
+    padding: var(--select-box-item-padding-y) var(--select-box-item-padding-x);
     display: block;
     width: 100%;
     clear: both;
     font-weight: 400;
     text-align: left;
     text-decoration: none;
-    transition: all 0.15s ease-in-out;
+    transition: background-color 0.3s ease, color 0.3s ease;
     border: 0;
     cursor: pointer;
+
+    &:active {
+        transition-duration: 0.28s;
+    }
 }
 
 .dropdown-item :deep(svg) {
@@ -585,16 +767,83 @@ watch(searchQuery, () => {
 
 .select-box-menu--uniform-font .dropdown-item,
 .select-box-menu--uniform-font .dropdown-item.active {
-    font-size: 12px;
+    font-size: 1em;
     font-weight: 400;
 }
 
+.select-box-option-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5em;
+    width: 100%;
+    min-width: 0;
+}
+
+.select-box-option-checkbox {
+    width: 1em;
+    height: 1em;
+    min-width: 1em;
+    margin: 0.125em 0 0;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.select-box-option-label {
+    flex: 1;
+    min-width: 0;
+}
+
+.select-trigger-chevron {
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+}
+
+.select-trigger-chevron--open {
+    transform: rotate(180deg);
+}
+
 .icon-center {
-    width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+    width: var(--select-box-icon-size);
+    height: var(--select-box-icon-size);
+    min-width: var(--select-box-icon-size);
+    min-height: var(--select-box-icon-size);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
 }
 
 .form-check-input {
-    margin-top: 0.25rem;
     cursor: pointer;
+}
+</style>
+
+<style lang="scss">
+.fixed-menu {
+    .select-box-nested-option {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .select-box-nested-option__secondary {
+        font-size: var(--select-box-nested-secondary-font-size, 1em);
+        color: var(--color-secondary-text, #6c757d);
+        line-height: 1.35;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .select-box-nested-option__primary {
+        font-size: var(--select-box-nested-font-size, 1em);
+        line-height: 1.35;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        word-break: break-word;
+    }
 }
 </style>

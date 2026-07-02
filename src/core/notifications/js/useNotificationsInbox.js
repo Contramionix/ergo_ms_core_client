@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import tokenService from '@/core/cms/js/tokenService'
-import { buildWebSocketUrl } from '@/js/api/baseUrl.js'
+import { openAuthenticatedWebSocket } from '@/js/ws/authenticatedWebSocket.js'
 import { notificationsApi } from './notifications-api'
 
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000]
@@ -15,7 +15,7 @@ const loading = ref(false)
 const sidebarLoading = ref(false)
 const connected = ref(false)
 
-let socket = null
+let wsConnection = null
 let reconnectTimer = null
 let reconnectAttempt = 0
 let intentionalClose = false
@@ -37,10 +37,29 @@ function findNotification(id) {
   return items.value.find((n) => n.id === id) || sidebarItems.value.find((n) => n.id === id)
 }
 
-function buildWsUrl() {
-  const token = tokenService.getAccess()
-  const query = token ? `?token=${encodeURIComponent(token)}` : ''
-  return buildWebSocketUrl(`/ws/notifications/${query}`)
+function openSocket() {
+  if (!tokenService.getAccess()) return
+
+  wsConnection?.close()
+  intentionalClose = false
+  const openedAt = Date.now()
+
+  wsConnection = openAuthenticatedWebSocket('/ws/notifications/', {
+    onAuthenticated: () => {
+      connected.value = true
+      reconnectAttempt = 0
+    },
+    onMessage: handleSocketMessage,
+    onClose: (_event, wasIntentional) => {
+      connected.value = false
+      wsConnection = null
+      const elapsed = Date.now() - openedAt
+      if (!wasIntentional && !intentionalClose && elapsed > 500) scheduleReconnect()
+    },
+    onError: () => {
+      connected.value = false
+    },
+  })
 }
 
 async function loadInitial() {
@@ -157,10 +176,7 @@ function showIncomingToast(notification) {
   } catch { /* toast — best effort, инбокс уже обновлён */ }
 }
 
-function handleSocketMessage(event) {
-  let data
-  try { data = JSON.parse(event.data) } catch { return }
-
+function handleSocketMessage(_event, data) {
   if (data.type === 'notification_new' && data.notification) {
     const { notification } = data
     const existsInItems = items.value.find((n) => n.id === notification.id)
@@ -173,32 +189,6 @@ function handleSocketMessage(event) {
     if (!existsInSidebar && matchesSidebarFilter(notification)) {
       sidebarItems.value.unshift(notification)
     }
-  }
-}
-
-function openSocket() {
-  if (!tokenService.getAccess()) return
-  try {
-    intentionalClose = false
-    socket = new WebSocket(buildWsUrl())
-    const openedAt = Date.now()
-
-    socket.onopen = () => {
-      connected.value = true
-      reconnectAttempt = 0
-    }
-    socket.onmessage = handleSocketMessage
-    socket.onclose = () => {
-      connected.value = false
-      socket = null
-      const elapsed = Date.now() - openedAt
-      if (!intentionalClose && elapsed > 500) scheduleReconnect()
-    }
-    socket.onerror = () => {
-      connected.value = false
-    }
-  } catch {
-    connected.value = false
   }
 }
 
@@ -216,10 +206,8 @@ function disconnect() {
     clearTimeout(reconnectTimer)
     reconnectTimer = null
   }
-  if (socket) {
-    try { socket.close() } catch { /* ignore */ }
-    socket = null
-  }
+  wsConnection?.close()
+  wsConnection = null
   connected.value = false
   reconnectAttempt = 0
 }

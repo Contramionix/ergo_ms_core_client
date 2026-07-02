@@ -19,15 +19,15 @@
                 <tr v-for="(page, index) in pages" :key="index">
                   <td class="text-monospace">{{ page.path }}</td>
                   <td>
-                    <select
+                    <SelectBox
                       v-model="page.type"
-                      class="form-select form-select-sm"
+                      :options="PAGE_ACCESS_TYPE_OPTIONS"
+                      value-key="id"
+                      label-key="name"
+                      :include-all-option="false"
+                      fixed-trigger-label-font-size
                       @change="onPageTypeChange(page)"
-                    >
-                      <option value="withoutliminations">Открытая</option>
-                      <option value="closepage">Закрытая</option>
-                      <option value="withliminations">С ограничениями</option>
-                    </select>
+                    />
                   </td>
                 </tr>
               </tbody>
@@ -39,12 +39,16 @@
           <h6 class="section-subtitle">Компоненты</h6>
           <form @submit.prevent="addComponent" class="component-form">
             <div class="mb-2">
-              <label for="pageSelect" class="form-label">Выберите страницу:</label>
-              <select id="pageSelect" v-model="newComponent.page_path" class="form-select">
-                <option v-for="page in closedOrLimitedPages" :key="page.path" :value="page.path">
-                  {{ page.path }}
-                </option>
-              </select>
+              <SelectBox
+                id="pageSelect"
+                v-model="newComponent.page_path"
+                label="Выберите страницу:"
+                :options="closedPagePathOptions"
+                value-key="id"
+                label-key="name"
+                :include-all-option="false"
+                fixed-trigger-label-font-size
+              />
             </div>
             <div class="mb-2">
               <label for="componentId" class="form-label">ID компонента:</label>
@@ -116,9 +120,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
+import SelectBox from '@/components/SelectBox.vue'
 import { AddPageComponent, UpdatePageComponent } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { PAGE_ACCESS_TYPE_OPTIONS, mapPagePathOptions } from '@/core/cms/js/adminSelectOptions.js'
 
 const props = defineProps({
   pages: { type: Array, required: true },
@@ -135,6 +141,18 @@ const newComponent = ref({ page_path: '', id: '' })
 const closedOrLimitedPages = computed(() => {
   return props.pages.filter((p) => p.type !== 'withoutliminations')
 })
+
+const closedPagePathOptions = computed(() => mapPagePathOptions(closedOrLimitedPages.value))
+
+watch(
+  closedPagePathOptions,
+  (options) => {
+    if (!newComponent.value.page_path && options.length) {
+      newComponent.value.page_path = options[0].id
+    }
+  },
+  { immediate: true },
+)
 
 function onPageTypeChange(page) {
   emit('page-type-change', page)

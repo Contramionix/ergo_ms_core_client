@@ -1,22 +1,16 @@
 import tokenService from '@/core/cms/js/tokenService'
-import { buildWebSocketUrl } from '@/js/api/baseUrl.js'
+import { openAuthenticatedWebSocket } from '@/js/ws/authenticatedWebSocket.js'
 
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000]
 const MAX_RECONNECT_ATTEMPTS = 10
 const PING_INTERVAL_MS = 45000
 
-let socket = null
+let wsConnection = null
 let reconnectTimer = null
 let pingTimer = null
 let reconnectAttempt = 0
 let intentionalClose = false
 let connectionPromise = null
-
-function buildWsUrl() {
-  const token = tokenService.getAccess()
-  const query = token ? `?token=${encodeURIComponent(token)}` : ''
-  return buildWebSocketUrl(`/ws/presence/${query}`)
-}
 
 function clearPingTimer() {
   if (pingTimer) {
@@ -28,6 +22,7 @@ function clearPingTimer() {
 function startPingTimer() {
   clearPingTimer()
   pingTimer = setInterval(() => {
+    const socket = wsConnection?.getSocket()
     if (socket?.readyState === WebSocket.OPEN) {
       try {
         socket.send(JSON.stringify({ type: 'ping' }))
@@ -57,31 +52,27 @@ function openSocket() {
     return
   }
 
-  try {
-    intentionalClose = false
-    socket = new WebSocket(buildWsUrl())
-    const openedAt = Date.now()
+  wsConnection?.close()
+  intentionalClose = false
+  const openedAt = Date.now()
 
-    socket.onopen = () => {
+  wsConnection = openAuthenticatedWebSocket('/ws/presence/', {
+    onAuthenticated: () => {
       reconnectAttempt = 0
       startPingTimer()
-    }
-
-    socket.onclose = () => {
+    },
+    onClose: (_event, wasIntentional) => {
       clearPingTimer()
-      socket = null
+      wsConnection = null
       const elapsed = Date.now() - openedAt
-      if (!intentionalClose && elapsed > 500) {
+      if (!wasIntentional && !intentionalClose && elapsed > 500) {
         scheduleReconnect()
       }
-    }
-
-    socket.onerror = () => {
+    },
+    onError: () => {
       clearPingTimer()
-    }
-  } catch {
-    scheduleReconnect()
-  }
+    },
+  })
 }
 
 export function ensurePresenceConnected() {
@@ -89,7 +80,7 @@ export function ensurePresenceConnected() {
     return Promise.resolve()
   }
 
-  if (socket?.readyState === WebSocket.OPEN) {
+  if (wsConnection?.isAuthenticated()) {
     return Promise.resolve()
   }
 
@@ -114,16 +105,8 @@ export function disconnectPresenceConnection() {
   }
 
   clearPingTimer()
-
-  if (socket) {
-    try {
-      socket.close()
-    } catch {
-      // ignore
-    }
-    socket = null
-  }
-
+  wsConnection?.close()
+  wsConnection = null
   reconnectAttempt = 0
 }
 

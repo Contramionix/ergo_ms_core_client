@@ -2,7 +2,7 @@ import { apiClient } from '@/js/api/manager.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import tokenService from '@/core/cms/js/tokenService'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
-import { performServerLogout, performTokenRefresh } from '@/core/cms/js/tokenRefresh.js'
+import { performServerLogout, restoreSession, invalidateSessionRestoreCache } from '@/core/cms/js/tokenRefresh.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
 
@@ -80,8 +80,7 @@ export const authService = {
         }
 
         try {
-            await performTokenRefresh()
-            return true
+            return await restoreSession()
         } catch {
             return false
         }
@@ -91,6 +90,7 @@ export const authService = {
         resetPresenceConnection()
         resetPresenceStore()
         await performServerLogout()
+        invalidateSessionRestoreCache()
         tokenService.clear()
     }
 };

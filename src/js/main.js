@@ -27,18 +27,11 @@ import { ensureSiteNameLoaded } from '@/composables/useSiteName.js'
 import { getUserMenu } from '@/core/cms/js/menuService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import tokenService from '@/core/cms/js/tokenService.js'
+import { restoreSession } from '@/core/cms/js/tokenRefresh.js'
 import { hideBootstrapMask } from '@/js/bootstrapMask.js'
 
 async function restoreSessionIfNeeded() {
-  if (tokenService.getAccess()) {
-    return true
-  }
-  try {
-    await tokenService.tryRefresh()
-    return Boolean(tokenService.getAccess())
-  } catch {
-    return false
-  }
+  return restoreSession()
 }
 
 const app = createApp(App)

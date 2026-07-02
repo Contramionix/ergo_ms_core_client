@@ -15,6 +15,7 @@ const props = defineProps({
     ),
   },
   loading: { type: Boolean, default: false },
+  zIndex: { type: [Number, String], default: null },
 })
 
 const emit = defineEmits(['choice', 'cancel', 'close'])
@@ -57,6 +58,7 @@ function getButtonClass(variant) {
     standalone
     modal-id="choiceDialog"
     :visible="isVisible"
+    :z-index="zIndex"
     custom-class="choice-dialog"
     :close-on-backdrop="!loading"
     :close-on-esc="!loading"

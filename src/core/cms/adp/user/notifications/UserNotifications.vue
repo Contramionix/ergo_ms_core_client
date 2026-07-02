@@ -7,6 +7,8 @@ import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsI
 import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
 import NotificationActions from '@/core/notifications/components/NotificationActions.vue'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
+import SelectBox from '@/components/SelectBox.vue'
+import { mapStringOptions } from '@/core/cms/js/adminSelectOptions.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -26,7 +28,9 @@ const {
 } = useNotificationsInbox()
 
 const showOnlyUnread = ref(false)
-const sourceFilter = ref('')
+const sourceFilter = ref(null)
+
+const sourceSelectOptions = computed(() => mapStringOptions(availableSources.value))
 
 const availableSources = computed(() => {
   const set = new Set()
@@ -157,12 +161,17 @@ onMounted(async () => {
           </button>
         </div>
 
-        <div v-if="availableSources.length" class="d-flex align-items-center gap-2">
-          <label class="form-label small text-muted mb-0">Модуль:</label>
-          <select v-model="sourceFilter" class="form-select form-select-sm filters__source">
-            <option value="">Все</option>
-            <option v-for="src in availableSources" :key="src" :value="src">{{ src }}</option>
-          </select>
+        <div v-if="availableSources.length" class="d-flex align-items-center gap-2 filters__source">
+          <SelectBox
+            v-model="sourceFilter"
+            label="Модуль:"
+            :options="sourceSelectOptions"
+            value-key="id"
+            label-key="name"
+            all-label="Все"
+            fixed-trigger-label-font-size
+            :full-width="false"
+          />
         </div>
       </div>
 
@@ -226,6 +235,10 @@ onMounted(async () => {
 
 .filters__source {
   min-width: 180px;
+
+  :deep(.select-box) {
+    --select-box-font-size: 0.875rem;
+  }
 }
 
 .notifications-list {

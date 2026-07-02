@@ -118,7 +118,7 @@ onMounted(() => {
       <div class="settings-card__row">
         <label class="settings-card__label" for="security-privacy">Приватность профиля</label>
         <div class="settings-card__control">
-          <SelectBox id="security-privacy" v-model="privacyLockedValue" :options="PROFILE_VISIBILITY_OPTIONS" :include-all-option="false" disabled fixed-trigger-label-font-size uniform-dropdown-list-font/>
+          <SelectBox id="security-privacy" v-model="privacyLockedValue" :options="PROFILE_VISIBILITY_OPTIONS" :include-all-option="false" disabled fixed-trigger-label-font-size />
         </div>
       </div>
 
@@ -257,10 +257,15 @@ onMounted(() => {
     flex-shrink: 0;
   }
 
+  :deep(.select-box) {
+    --select-box-font-size: 0.8125rem;
+    --select-box-icon-size: 14px;
+    --select-box-trigger-min-height: 30px;
+    --select-box-item-padding-y: 0.25rem;
+    --select-box-item-padding-x: 0.5rem;
+  }
+
   :deep(.select-trigger) {
-    min-height: 30px;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.8125rem;
     line-height: 1.2;
   }
 }
