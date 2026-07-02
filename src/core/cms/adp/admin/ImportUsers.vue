@@ -2,7 +2,18 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/js/utils/toast.js'
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Loader2, ArrowLeft, Download } from 'lucide-vue-next'
+import {
+  Upload,
+  FileSpreadsheet,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Loader2,
+  ArrowLeft,
+  Download,
+  Info,
+  Users,
+} from 'lucide-vue-next'
 import { apiClient } from '@/js/api/manager'
 import { logError } from '@/js/utils/logError.js'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
@@ -53,6 +64,32 @@ const currentStats = ref({
 
 const progressPercent = computed(() => {
   return Math.min(100, Math.max(0, importProgress.value))
+})
+
+const currentStep = computed(() => {
+  if (importResults.value) {
+    return 3
+  }
+  if (isImporting.value) {
+    return 2
+  }
+  if (selectedFile.value) {
+    return 1
+  }
+  return 0
+})
+
+const progressBarClass = computed(() => {
+  if (isImporting.value) {
+    return 'iu-progress-bar__fill--running iu-progress-bar__fill--animated'
+  }
+  if (importResults.value?.success) {
+    return 'iu-progress-bar__fill--success'
+  }
+  if (importResults.value && !importResults.value.success) {
+    return 'iu-progress-bar__fill--error'
+  }
+  return 'iu-progress-bar__fill--running'
 })
 
 const canDownloadPasswords = computed(() =>
@@ -553,11 +590,11 @@ const getLogIcon = (level) => {
 
 const getLogClass = (level) => {
   switch (level) {
-    case 'success': return 'text-success'
-    case 'error': return 'text-danger'
-    case 'warn': return 'text-warning'
-    case 'info': return 'text-info'
-    default: return 'text-secondary'
+    case 'success': return 'iu-log-entry--success'
+    case 'error': return 'iu-log-entry--error'
+    case 'warn': return 'iu-log-entry--warn'
+    case 'info': return 'iu-log-entry--info'
+    default: return 'iu-log-entry--default'
   }
 }
 
@@ -651,359 +688,376 @@ const downloadPasswords = async () => {
 
 <template>
   <div v-if="isCheckingAccess" class="d-flex justify-content-center align-items-center loading-container">
-      <SpinnerLoading color="primary" />
+    <SpinnerLoading color="primary" />
+  </div>
+
+  <div v-else-if="hasAdminAccess" class="admin-page">
+    <div class="page-header">
+      <h1 class="page-title">Загрузка пользователей</h1>
+      <p class="page-subtitle">Массовое создание учётных записей из файла Excel или CSV</p>
     </div>
-    <div v-else-if="hasAdminAccess" class="admin-page">
-      <div class="page-header">
-        <h1 class="page-title">Загрузка пользователей</h1>
-        <p class="page-subtitle">Загрузка учётных записей из файла Excel или CSV</p>
-      </div>
 
-      <div class="content-card">
-        <button
-          type="button"
-          class="btn btn-primary d-inline-flex align-items-center gap-2 align-self-start"
-          @click="goBack"
+    <div class="content-card">
+      <div class="iu-body">
+        <div class="iu-toolbar">
+          <button
+            type="button"
+            class="btn btn-primary d-inline-flex align-items-center gap-2"
+            @click="goBack"
+          >
+            <ArrowLeft :size="16" />
+            <span>К пользователям</span>
+          </button>
+        </div>
+
+        <div
+          v-if="savedTaskId && !isImporting && !importResults"
+          class="iu-alert iu-alert--warning d-flex align-items-center justify-content-between flex-wrap gap-3"
         >
-          <ArrowLeft :size="16" />
-          <span>К пользователям</span>
-        </button>
-
-      <div v-if="savedTaskId && !isImporting && !importResults" class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 mb-0">
-        <span>Есть незавершённая загрузка. Вы можете продолжить отслеживание.</span>
-        <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2" @click="resumeImport">
-          Продолжить отслеживание
-        </button>
-      </div>
-
-      <div class="alert alert-info mb-0">
-        <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
-          <div>
-            <strong>Требования к файлу:</strong>
-            <ul class="mb-0 mt-2">
-              <li>Формат: Excel (.xlsx, .xls) или CSV (.csv)</li>
-              <li>Обязательные столбцы: <code>Фамилия</code>, <code>Имя</code>, <code>Логин</code></li>
-              <li>Опциональные столбцы: <code>Отчество</code>, <code>E-mail</code></li>
-              <li>Для каждого нового пользователя генерируется случайный пароль</li>
-              <li>После импорта пароли можно один раз скачать в Excel-файле</li>
-              <li>Дубликаты определяются по логину; по E-mail — если в настройках сервера включена проверка уникальности email</li>
-              <li>Перед загрузкой удалите пример строки из шаблона</li>
-            </ul>
+          <div class="iu-alert__content d-flex align-items-start gap-2">
+            <AlertCircle :size="18" class="flex-shrink-0 mt-1" />
+            <span>Есть незавершённая загрузка. Вы можете продолжить отслеживание прогресса.</span>
           </div>
           <button
             type="button"
-            class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2 flex-shrink-0"
-            :disabled="isImporting || downloadingTemplate"
-            @click="handleDownloadTemplate"
+            class="btn btn-primary d-inline-flex align-items-center gap-2 flex-shrink-0"
+            @click="resumeImport"
           >
-            <Loader2 v-if="downloadingTemplate" :size="15" class="spinner" />
-            <Download v-else :size="15" />
-            <span>{{ downloadingTemplate ? 'Формирование...' : 'Скачать шаблон' }}</span>
+            Продолжить отслеживание
           </button>
         </div>
-      </div>
-      <div class="upload-zone mb-4" :class="{ 'has-file': selectedFile }" @click="triggerFileInput" @dragover="handleDragOver" @drop="handleDrop">
-        <input ref="fileInput" type="file" accept=".xlsx,.xls,.csv" class="d-none" @change="handleFileSelect"/>
-        <template v-if="!selectedFile">
-          <Upload :size="48" class="text-muted mb-3" />
-          <p class="mb-2">Перетащите файл сюда или нажмите для выбора</p>
-          <p class="text-muted small mb-0">Поддерживаются Excel (.xlsx, .xls) и CSV (.csv)</p>
-        </template>
-        <template v-else>
-          <div class="d-flex align-items-center gap-3">
-            <FileSpreadsheet :size="40" class="text-success flex-shrink-0" />
-            <div class="flex-grow-1 text-start">
-              <p class="mb-0 fw-medium">{{ selectedFile.name }}</p>
-              <p class="mb-0 text-muted small">{{ formatFileSize(selectedFile.size) }}</p>
+
+        <div class="iu-steps" aria-hidden="true">
+          <div
+            class="iu-step"
+            :class="{ 'iu-step--active': currentStep >= 0, 'iu-step--done': currentStep > 0 }"
+          >
+            <span class="iu-step__num">1</span>
+            <span class="iu-step__label">Файл</span>
+          </div>
+          <div class="iu-step__line" :class="{ 'iu-step__line--done': currentStep > 0 }" />
+          <div
+            class="iu-step"
+            :class="{ 'iu-step--active': currentStep >= 1, 'iu-step--done': currentStep > 1 }"
+          >
+            <span class="iu-step__num">2</span>
+            <span class="iu-step__label">Настройки</span>
+          </div>
+          <div class="iu-step__line" :class="{ 'iu-step__line--done': currentStep > 1 }" />
+          <div
+            class="iu-step"
+            :class="{ 'iu-step--active': currentStep >= 2, 'iu-step--done': currentStep > 2 }"
+          >
+            <span class="iu-step__num">3</span>
+            <span class="iu-step__label">Загрузка</span>
+          </div>
+          <div class="iu-step__line" :class="{ 'iu-step__line--done': currentStep > 2 }" />
+          <div class="iu-step" :class="{ 'iu-step--active': currentStep >= 3 }">
+            <span class="iu-step__num">4</span>
+            <span class="iu-step__label">Результат</span>
+          </div>
+        </div>
+
+        <section class="iu-section">
+          <div class="iu-section__head">
+            <div>
+              <h2 class="iu-section__title">Подготовка файла</h2>
+              <p class="iu-section__desc">
+                Загрузите таблицу с пользователями. Для каждого нового аккаунта будет сгенерирован случайный пароль.
+              </p>
             </div>
             <button
               type="button"
-              class="btn-action btn-action--delete"
-              aria-label="Удалить файл"
-              @click.stop="removeFile"
+              class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2 flex-shrink-0"
+              :disabled="isImporting || downloadingTemplate"
+              @click="handleDownloadTemplate"
             >
-              <XCircle :size="15" />
-            </button>
-          </div>
-        </template>
-      </div>
-      
-      <div class="mb-4">
-        <div class="form-check mb-3">
-          <input
-            id="sendWelcomeEmails"
-            v-model="sendWelcomeEmails"
-            type="checkbox"
-            class="form-check-input"
-            :disabled="isImporting"
-            @change="persistWelcomeEmailSettings"
-          />
-          <label class="form-check-label" for="sendWelcomeEmails">
-            Отправлять приветственные письма на электронную почту
-          </label>
-          <div class="form-text text-muted">
-            По умолчанию письма не отправляются. Письма уходят только пользователям с указанным E-mail.
-          </div>
-        </div>
-
-        <div v-if="sendWelcomeEmails" class="welcome-email-settings border rounded p-3 mb-3">
-          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-            <h6 class="mb-0">Текст приветственного письма</h6>
-            <button
-              type="button"
-              class="btn btn-outline-secondary btn-sm"
-              :disabled="isImporting"
-              @click="resetWelcomeEmailTemplate"
-            >
-              Сбросить шаблон
+              <Loader2 v-if="downloadingTemplate" :size="15" class="iu-spinner" />
+              <Download v-else :size="15" />
+              <span>{{ downloadingTemplate ? 'Формирование...' : 'Скачать шаблон' }}</span>
             </button>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label" for="welcomeEmailSubject">Тема письма</label>
+          <div class="iu-alert iu-alert--info">
+            <Info :size="18" class="flex-shrink-0 mt-1" />
+            <div class="iu-alert__content">
+              <span class="iu-alert__title">Требования к файлу</span>
+              <ul class="iu-requirements-list mb-0">
+                <li>Формат: Excel (<code>.xlsx</code>, <code>.xls</code>) или CSV (<code>.csv</code>)</li>
+                <li>Обязательные столбцы: <code>Фамилия</code>, <code>Имя</code>, <code>Логин</code></li>
+                <li>Опциональные столбцы: <code>Отчество</code>, <code>E-mail</code></li>
+                <li>После импорта пароли можно один раз скачать в Excel-файле</li>
+                <li>Дубликаты определяются по логину; по E-mail — если в настройках сервера включена проверка уникальности email</li>
+                <li>Перед загрузкой удалите пример строки из шаблона</li>
+              </ul>
+            </div>
+          </div>
+
+          <div
+            class="iu-upload"
+            :class="{
+              'iu-upload--filled': selectedFile,
+              'iu-upload--disabled': isImporting,
+            }"
+            @click="triggerFileInput"
+            @dragover="handleDragOver"
+            @drop="handleDrop"
+          >
             <input
-              id="welcomeEmailSubject"
-              v-model="welcomeEmailSubject"
-              type="text"
-              class="form-control"
-              maxlength="200"
-              :disabled="isImporting"
-              @input="persistWelcomeEmailSettings"
+              ref="fileInput"
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              class="d-none"
+              @change="handleFileSelect"
             />
+
+            <template v-if="!selectedFile">
+              <div class="iu-upload__icon-wrap">
+                <Upload :size="28" />
+              </div>
+              <p class="iu-upload__title">Перетащите файл или нажмите для выбора</p>
+              <p class="iu-upload__hint">Поддерживаются Excel (.xlsx, .xls) и CSV (.csv)</p>
+            </template>
+
+            <template v-else>
+              <div class="iu-file-row">
+                <div class="iu-file-row__icon">
+                  <FileSpreadsheet :size="28" />
+                </div>
+                <div class="iu-file-row__info">
+                  <p class="iu-file-row__name">{{ selectedFile.name }}</p>
+                  <p class="iu-file-row__meta">{{ formatFileSize(selectedFile.size) }}</p>
+                </div>
+                <button
+                  type="button"
+                  class="btn-action btn-action--delete"
+                  aria-label="Удалить файл"
+                  :disabled="isImporting"
+                  @click.stop="removeFile"
+                >
+                  <XCircle :size="16" />
+                </button>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <section class="iu-section">
+          <div class="iu-section__head">
+            <div>
+              <h2 class="iu-section__title">Приветственные письма</h2>
+              <p class="iu-section__desc mb-0">
+                По умолчанию письма не отправляются. Они уходят только пользователям с указанным E-mail.
+              </p>
+            </div>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label" for="welcomeEmailBody">Текст письма</label>
-            <textarea
-              id="welcomeEmailBody"
-              v-model="welcomeEmailBody"
-              class="form-control welcome-email-settings__textarea"
-              rows="8"
-              maxlength="5000"
-              :disabled="isImporting"
-              @input="persistWelcomeEmailSettings"
-            />
+          <div
+            class="iu-email-option"
+            :class="{ 'iu-email-option--active': sendWelcomeEmails }"
+          >
+            <div class="iu-email-option__row">
+              <input
+                id="sendWelcomeEmails"
+                v-model="sendWelcomeEmails"
+                type="checkbox"
+                class="iu-email-option__input"
+                :disabled="isImporting"
+                @change="persistWelcomeEmailSettings"
+              />
+              <label class="iu-email-option__label" for="sendWelcomeEmails">
+                <span class="iu-email-option__text">
+                  <strong>Отправлять приветственные письма на электронную почту</strong>
+                  <small>Можно настроить тему и текст письма перед загрузкой</small>
+                </span>
+              </label>
+            </div>
           </div>
 
-          <p v-if="welcomePlaceholders.length" class="form-text text-muted mb-0">
-            Доступные подстановки:
-            <code
-              v-for="placeholder in welcomePlaceholders"
-              :key="placeholder.key"
-              class="me-2"
-            >{{ '{' + placeholder.key + '}' }}</code>
-          </p>
-        </div>
-        
-        <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2" :disabled="!selectedFile || isImporting" @click="startImport">
-          <Loader2 v-if="isImporting" :size="16" class="spinner" />
-          <Upload v-else :size="16" />
-          <span>{{ isImporting ? 'Загрузка...' : 'Начать загрузку' }}</span>
-        </button>
-      </div>
-      
-      <div v-if="isImporting || importResults" class="mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="text-muted small">{{ importStatus }}</span>
-          <span class="text-muted small fw-medium">{{ Math.round(progressPercent) }}%</span>
-        </div>
-        <div class="progress" style="height: 8px;">
-          <div class="progress-bar" :class="{
-              'bg-primary': isImporting,
-              'bg-success': importResults?.success,
-              'bg-danger': importResults && !importResults.success,
-              'progress-bar-striped progress-bar-animated': isImporting
-            }" role="progressbar" :style="{ width: progressPercent + '%' }" :aria-valuenow="progressPercent" aria-valuemin="0" aria-valuemax="100"></div>
-        </div>
-        
-        <div class="mt-3 row g-2">
-          <div class="col-6 col-md-3">
-            <div class="stats-card text-center p-2 rounded border">
-              <div class="stats-value text-primary fw-bold">{{ currentStats.total || importResults?.total || 0 }}</div>
-              <div class="stats-label text-muted small">Всего строк</div>
+          <div v-if="sendWelcomeEmails" class="iu-email-settings">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <h3 class="iu-section__title mb-0">Текст приветственного письма</h3>
+              <button
+                type="button"
+                class="btn btn-outline-secondary btn-sm"
+                :disabled="isImporting"
+                @click="resetWelcomeEmailTemplate"
+              >
+                Сбросить шаблон
+              </button>
             </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="stats-card text-center p-2 rounded border">
-              <div class="stats-value text-info fw-bold">{{ currentStats.processed || importResults?.total || 0 }}</div>
-              <div class="stats-label text-muted small">Обработано</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="stats-card text-center p-2 rounded border">
-              <div class="stats-value text-success fw-bold">{{ currentStats.created || importResults?.created || 0 }}</div>
-              <div class="stats-label text-muted small">Создано</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="stats-card text-center p-2 rounded border">
-              <div class="stats-value text-warning fw-bold">{{ currentStats.skipped || importResults?.skipped || 0 }}</div>
-              <div class="stats-label text-muted small">Пропущено</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div v-if="importResults" class="mb-4">
-        <div class="alert" :class="importResults.success ? 'alert-success' : 'alert-danger'">
-          <div class="d-flex align-items-center gap-2 mb-2">
-            <CheckCircle v-if="importResults.success" :size="20" />
-            <XCircle v-else :size="20" />
-            <strong>{{ importResults.success ? 'Загрузка завершена' : 'Ошибка загрузки' }}</strong>
-          </div>
-          <ul class="mb-0">
-            <li>Создано пользователей: <strong>{{ importResults.created }}</strong></li>
-            <li>Пропущено (дубликаты или ошибки): <strong>{{ importResults.skipped }}</strong></li>
-            <li v-if="importResults.emailsSent > 0">
-              Отправлено приветственных писем: <strong>{{ importResults.emailsSent }}</strong>
-            </li>
-            <li v-if="importResults.emailsFailed > 0">
-              Не удалось отправить писем: <strong>{{ importResults.emailsFailed }}</strong>
-            </li>
-            <li v-if="importResults.emailsSkippedNoEmail > 0">
-              Без E-mail (письма не отправлены): <strong>{{ importResults.emailsSkippedNoEmail }}</strong>
-            </li>
-            <li v-if="importResults.errors.length > 0">Ошибок: <strong>{{ importResults.errors.length }}</strong></li>
-          </ul>
-        </div>
 
-        <div
-          v-if="canDownloadPasswords"
-          class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-3 mb-0"
-        >
-          <div>
-            <strong class="d-block mb-1">Файл с паролями готов</strong>
-            <span class="small">Скачивание доступно один раз. Сохраните файл в надёжное место.</span>
+            <div>
+              <label class="form-label" for="welcomeEmailSubject">Тема письма</label>
+              <input
+                id="welcomeEmailSubject"
+                v-model="welcomeEmailSubject"
+                type="text"
+                class="form-control"
+                maxlength="200"
+                :disabled="isImporting"
+                @input="persistWelcomeEmailSettings"
+              />
+            </div>
+
+            <div>
+              <label class="form-label" for="welcomeEmailBody">Текст письма</label>
+              <textarea
+                id="welcomeEmailBody"
+                v-model="welcomeEmailBody"
+                class="form-control iu-email-settings__textarea"
+                rows="8"
+                maxlength="5000"
+                :disabled="isImporting"
+                @input="persistWelcomeEmailSettings"
+              />
+            </div>
+
+            <p v-if="welcomePlaceholders.length" class="form-text text-muted mb-0">
+              Доступные подстановки:
+              <code
+                v-for="placeholder in welcomePlaceholders"
+                :key="placeholder.key"
+                class="me-2"
+              >{{ '{' + placeholder.key + '}' }}</code>
+            </p>
           </div>
+        </section>
+
+        <div class="iu-actions">
           <button
             type="button"
-            class="btn btn-warning d-inline-flex align-items-center gap-2 flex-shrink-0"
-            :disabled="downloadingPasswords"
-            @click="downloadPasswords"
+            class="btn btn-primary d-inline-flex align-items-center gap-2"
+            :disabled="!selectedFile || isImporting"
+            @click="startImport"
           >
-            <Loader2 v-if="downloadingPasswords" :size="16" class="spinner" />
-            <Download v-else :size="16" />
-            <span>{{ downloadingPasswords ? 'Скачивание...' : 'Скачать пароли (Excel)' }}</span>
+            <Loader2 v-if="isImporting" :size="16" class="iu-spinner" />
+            <Users v-else :size="16" />
+            <span>{{ isImporting ? 'Загрузка...' : 'Начать загрузку' }}</span>
           </button>
         </div>
 
-        <div
-          v-else-if="importResults.success && passwordsDownloaded"
-          class="alert alert-secondary mb-0"
-        >
-          Файл с паролями уже был скачан. Повторная выгрузка недоступна.
-        </div>
-      </div>
-      
-      <div v-if="importLogs.length > 0" class="import-logs">
-        <h6 class="mb-3">Журнал загрузки</h6>
-        <div class="logs-container" ref="logsContainer">
-          <div v-for="(log, index) in importLogs" :key="index" class="log-entry d-flex align-items-start gap-2" :class="getLogClass(log.level)">
-            <component :is="getLogIcon(log.level)" v-if="getLogIcon(log.level)" :size="16" class="flex-shrink-0 mt-1"/>
-            <span class="log-message">{{ log.message }}</span>
+        <section v-if="isImporting || importResults" class="iu-section">
+          <div class="iu-section__head">
+            <div>
+              <h2 class="iu-section__title">Прогресс загрузки</h2>
+              <p class="iu-section__desc mb-0">{{ importStatus || 'Ожидание запуска...' }}</p>
+            </div>
+            <p class="iu-progress-percent mb-0">{{ Math.round(progressPercent) }}%</p>
           </div>
-        </div>
-      </div>
+
+          <div class="iu-progress-bar" role="progressbar" :aria-valuenow="progressPercent" aria-valuemin="0" aria-valuemax="100">
+            <div
+              class="iu-progress-bar__fill"
+              :class="progressBarClass"
+              :style="{ width: progressPercent + '%' }"
+            />
+          </div>
+
+          <div class="iu-stats">
+            <div class="iu-stat">
+              <span class="iu-stat__value">{{ currentStats.total || importResults?.total || 0 }}</span>
+              <span class="iu-stat__label">Всего строк</span>
+            </div>
+            <div class="iu-stat iu-stat--info">
+              <span class="iu-stat__value">{{ currentStats.processed || importResults?.total || 0 }}</span>
+              <span class="iu-stat__label">Обработано</span>
+            </div>
+            <div class="iu-stat iu-stat--success">
+              <span class="iu-stat__value">{{ currentStats.created || importResults?.created || 0 }}</span>
+              <span class="iu-stat__label">Создано</span>
+            </div>
+            <div class="iu-stat iu-stat--warning">
+              <span class="iu-stat__value">{{ currentStats.skipped || importResults?.skipped || 0 }}</span>
+              <span class="iu-stat__label">Пропущено</span>
+            </div>
+          </div>
+        </section>
+
+        <template v-if="importResults">
+          <div
+            class="iu-alert"
+            :class="importResults.success ? 'iu-alert--success' : 'iu-alert--danger'"
+          >
+            <CheckCircle v-if="importResults.success" :size="20" class="flex-shrink-0" />
+            <XCircle v-else :size="20" class="flex-shrink-0" />
+            <div class="iu-alert__content">
+              <span class="iu-alert__title">
+                {{ importResults.success ? 'Загрузка завершена' : 'Ошибка загрузки' }}
+              </span>
+              <ul class="iu-result-list mb-0">
+                <li>Создано пользователей: <strong>{{ importResults.created }}</strong></li>
+                <li>Пропущено (дубликаты или ошибки): <strong>{{ importResults.skipped }}</strong></li>
+                <li v-if="importResults.emailsSent > 0">
+                  Отправлено приветственных писем: <strong>{{ importResults.emailsSent }}</strong>
+                </li>
+                <li v-if="importResults.emailsFailed > 0">
+                  Не удалось отправить писем: <strong>{{ importResults.emailsFailed }}</strong>
+                </li>
+                <li v-if="importResults.emailsSkippedNoEmail > 0">
+                  Без E-mail (письма не отправлены): <strong>{{ importResults.emailsSkippedNoEmail }}</strong>
+                </li>
+                <li v-if="importResults.errors.length > 0">
+                  Ошибок: <strong>{{ importResults.errors.length }}</strong>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div
+            v-if="canDownloadPasswords"
+            class="iu-alert iu-alert--warning d-flex align-items-center justify-content-between flex-wrap gap-3"
+          >
+            <div class="iu-alert__content">
+              <span class="iu-alert__title">Файл с паролями готов</span>
+              <span class="small">Скачивание доступно один раз. Сохраните файл в надёжное место.</span>
+            </div>
+            <button
+              type="button"
+              class="btn btn-warning d-inline-flex align-items-center gap-2 flex-shrink-0"
+              :disabled="downloadingPasswords"
+              @click="downloadPasswords"
+            >
+              <Loader2 v-if="downloadingPasswords" :size="16" class="iu-spinner" />
+              <Download v-else :size="16" />
+              <span>{{ downloadingPasswords ? 'Скачивание...' : 'Скачать пароли (Excel)' }}</span>
+            </button>
+          </div>
+
+          <div v-else-if="importResults.success && passwordsDownloaded" class="iu-alert iu-alert--muted">
+            Файл с паролями уже был скачан. Повторная выгрузка недоступна.
+          </div>
+        </template>
+
+        <section v-if="importLogs.length > 0" class="iu-section iu-logs">
+          <h2 class="iu-section__title mb-0">Журнал загрузки</h2>
+          <div ref="logsContainer" class="iu-logs__container">
+            <div
+              v-for="(log, index) in importLogs"
+              :key="index"
+              class="iu-log-entry"
+              :class="getLogClass(log.level)"
+            >
+              <component
+                :is="getLogIcon(log.level)"
+                v-if="getLogIcon(log.level)"
+                :size="16"
+                class="flex-shrink-0 mt-1"
+              />
+              <span class="iu-log-entry__message">{{ log.message }}</span>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
+  </div>
 </template>
 
 <style scoped lang="scss">
 @import './admin-page.scss';
+@import './import-users.scss';
 
 .loading-container {
   min-height: 400px;
-}
-
-.upload-zone {
-  border: 2px dashed var(--color-border);
-  border-radius: 8px;
-  padding: 2rem;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    border-color: var(--color-accent);
-    background-color: var(--color-hover-background);
-  }
-
-  &.has-file {
-    border-style: solid;
-    border-color: var(--bs-success, #198754);
-    background-color: rgba(25, 135, 84, 0.05);
-    cursor: default;
-  }
-}
-
-.spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.import-logs {
-  .logs-container {
-    max-height: 400px;
-    overflow-y: auto;
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 1rem;
-    background-color: var(--color-secondary-background);
-  }
-
-  .log-entry {
-    padding: 0.25rem 0;
-    font-size: 0.875rem;
-    font-family: monospace;
-
-    &:not(:last-child) {
-      border-bottom: 1px solid var(--color-border);
-    }
-  }
-
-  .log-message {
-    word-break: break-word;
-  }
-}
-
-.stats-card {
-  background-color: var(--color-secondary-background);
-  transition: all 0.2s ease;
-
-  .stats-value {
-    font-size: 1.25rem;
-    line-height: 1.2;
-  }
-
-  .stats-label {
-    font-size: 0.75rem;
-  }
-}
-
-.welcome-email-settings {
-  background-color: var(--color-secondary-background);
-
-  &__textarea {
-    font-family: var(--font-family-mono);
-    font-size: 0.875rem;
-  }
-}
-
-@media (max-width: 576px) {
-  .upload-zone {
-    padding: 1.5rem;
-  }
-
-  .stats-card .stats-value {
-    font-size: 1rem;
-  }
 }
 </style>
