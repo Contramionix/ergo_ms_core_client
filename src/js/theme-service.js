@@ -2,7 +2,6 @@ import { apiClient } from '@/js/api/manager'
 import { endpoints, initEndpoints } from '@/js/api/endpoints.js'
 import {
   applyThemeModePreference,
-  clearCachedActiveTheme,
   initTheme,
   readThemePreference,
   saveThemeToLocalStorage,
@@ -46,11 +45,6 @@ export async function syncSiteThemeFromApi() {
 
   initTheme()
   return null
-}
-
-export function resetSiteThemeOnLogout() {
-  clearCachedActiveTheme()
-  applyThemeModePreference(readThemePreference())
 }
 
 /** Восстанавливает активную тему сайта после редактора (превью не сохраняется). */

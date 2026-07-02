@@ -1,5 +1,5 @@
 import tokenService from '@/core/cms/js/tokenService'
-import { openAuthenticatedWebSocket } from '@/js/ws/authenticatedWebSocket.js'
+import { connectPresenceTransport } from '@/js/realtime/presenceTransport.js'
 
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000]
 const MAX_RECONNECT_ATTEMPTS = 10
@@ -56,7 +56,7 @@ function openSocket() {
   intentionalClose = false
   const openedAt = Date.now()
 
-  wsConnection = openAuthenticatedWebSocket('/ws/presence/', {
+  wsConnection = connectPresenceTransport({
     onAuthenticated: () => {
       reconnectAttempt = 0
       startPingTimer()

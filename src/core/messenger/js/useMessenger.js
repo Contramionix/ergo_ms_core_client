@@ -2,8 +2,7 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/core/cms/js/userStore'
 import { messengerApi } from './messenger-api'
 import { useWebSocket } from './useWebSocket'
-
-const POLL_INTERVAL_MS = 10000
+import { isHttpPollingMode, pollIntervalMs } from '@/js/realtime/config.js'
 
 export function useMessenger(contentType, objectId) {
   const messages = ref([])
@@ -14,25 +13,53 @@ export function useMessenger(contentType, objectId) {
 
   let pollTimer = null
 
-  async function loadMessages() {
+  function pollInterval() {
+    return pollIntervalMs('messenger')
+  }
+
+  function lastMessageId() {
+    return messages.value.reduce((max, item) => Math.max(max, item?.id ?? 0), 0)
+  }
+
+  async function loadMessages(incremental = false, { silent = false } = {}) {
     if (!contentType.value || !objectId.value) return
-    loading.value = true
+    if (!incremental && !silent) {
+      loading.value = true
+    }
     try {
-      const response = await messengerApi.getMessages(contentType.value, objectId.value)
+      const afterId = incremental ? lastMessageId() : 0
+      const response = await messengerApi.getMessages(contentType.value, objectId.value, afterId)
       const list = response.data?.results ?? response.data ?? []
-      messages.value = Array.isArray(list) ? list : []
+      const incoming = Array.isArray(list) ? list : []
+      if (incremental && afterId > 0) {
+        for (const message of incoming) {
+          if (!messages.value.find((m) => m.id === message.id)) {
+            messages.value.push(message)
+          }
+        }
+      } else {
+        messages.value = incoming
+      }
     } catch {
-      messages.value = []
+      if (!incremental) {
+        messages.value = []
+      }
     } finally {
-      loading.value = false
+      if (!incremental && !silent) {
+        loading.value = false
+      }
     }
   }
 
   function startPolling() {
     stopPolling()
     pollTimer = setInterval(() => {
-      if (!connected.value) loadMessages()
-    }, POLL_INTERVAL_MS)
+      if (isHttpPollingMode()) {
+        loadMessages(false, { silent: true })
+      } else if (!connected.value) {
+        loadMessages(true)
+      }
+    }, pollInterval())
   }
 
   function stopPolling() {

@@ -4,10 +4,15 @@ import { mediaApiClient } from '@/js/api/media-api-client.js'
 const BASE_URL = '/messenger'
 
 export const messengerApi = {
-  getMessages(contentType, objectId) {
-    return apiClient.get(`${BASE_URL}/messages/`, {
-      content_type: contentType, object_id: objectId,
-    })
+  getMessages(contentType, objectId, afterId = 0) {
+    const params = {
+      content_type: contentType,
+      object_id: objectId,
+    }
+    if (afterId > 0) {
+      params.after_id = afterId
+    }
+    return apiClient.get(`${BASE_URL}/messages/`, params)
   },
 
   sendMessage(contentType, objectId, text, replyToId = null) {

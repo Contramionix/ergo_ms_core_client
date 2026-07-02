@@ -75,12 +75,6 @@ export function clearSessionHintCookie() {
   }
 }
 
-let _uiSettingsReset = null
-
-export function registerUiSettingsReset(callback) {
-  _uiSettingsReset = callback
-}
-
 export function clearTokens() {
   _accessToken = null
   clearLegacyAuthCookies()
@@ -92,8 +86,6 @@ export function clearTokens() {
   } catch {
     // ignore
   }
-
-  _uiSettingsReset?.()
 }
 
 export function shouldRefresh(thresholdSeconds = 120) {

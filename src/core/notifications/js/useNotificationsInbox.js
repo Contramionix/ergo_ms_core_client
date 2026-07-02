@@ -1,7 +1,8 @@
 import { ref, computed } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import tokenService from '@/core/cms/js/tokenService'
-import { openAuthenticatedWebSocket } from '@/js/ws/authenticatedWebSocket.js'
+import { connectNotificationsTransport } from '@/js/realtime/notificationsTransport.js'
+import { isHttpPollingMode } from '@/js/realtime/config.js'
 import { notificationsApi } from './notifications-api'
 
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000]
@@ -37,6 +38,16 @@ function findNotification(id) {
   return items.value.find((n) => n.id === id) || sidebarItems.value.find((n) => n.id === id)
 }
 
+function syncPollingCursorFromItems() {
+  if (!isHttpPollingMode() || !wsConnection?.setLastNotificationId) {
+    return
+  }
+  const maxId = items.value.reduce((max, item) => Math.max(max, item?.id ?? 0), 0)
+  if (maxId > 0) {
+    wsConnection.setLastNotificationId(maxId)
+  }
+}
+
 function openSocket() {
   if (!tokenService.getAccess()) return
 
@@ -44,12 +55,18 @@ function openSocket() {
   intentionalClose = false
   const openedAt = Date.now()
 
-  wsConnection = openAuthenticatedWebSocket('/ws/notifications/', {
+  wsConnection = connectNotificationsTransport({
     onAuthenticated: () => {
       connected.value = true
       reconnectAttempt = 0
+      syncPollingCursorFromItems()
     },
     onMessage: handleSocketMessage,
+    onPollMeta: ({ unreadCount: polledCount }) => {
+      if (typeof polledCount === 'number') {
+        unreadCount.value = polledCount
+      }
+    },
     onClose: (_event, wasIntentional) => {
       connected.value = false
       wsConnection = null
@@ -73,6 +90,7 @@ async function loadInitial() {
     const list = listResp?.data?.results ?? listResp?.data ?? []
     items.value = Array.isArray(list) ? list : []
     unreadCount.value = Number(countResp?.data?.count ?? 0)
+    syncPollingCursorFromItems()
   } catch {
     items.value = []
     unreadCount.value = 0
@@ -189,6 +207,7 @@ function handleSocketMessage(_event, data) {
     if (!existsInSidebar && matchesSidebarFilter(notification)) {
       sidebarItems.value.unshift(notification)
     }
+    wsConnection?.setLastNotificationId?.(notification.id)
   }
 }
 

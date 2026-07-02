@@ -1,5 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 import { buildWebSocketUrl } from '@/js/api/baseUrl.js'
+import { isHttpPollingMode } from '@/js/realtime/config.js'
 
 const RECONNECT_DELAYS = [1000, 2000, 4000]
 const MAX_RECONNECT_ATTEMPTS = 3
@@ -20,9 +21,15 @@ export function useWebSocket() {
 
   function connect(contentType, objectId, onMessage) {
     disconnect()
+    messageHandler = onMessage
+
+    if (isHttpPollingMode()) {
+      connected.value = false
+      return
+    }
+
     intentionalClose = false
     currentUrl = buildWsUrl(contentType, objectId)
-    messageHandler = onMessage
     _open()
   }
 
@@ -67,6 +74,9 @@ export function useWebSocket() {
   }
 
   function send(data) {
+    if (isHttpPollingMode()) {
+      return
+    }
     if (socket.value && socket.value.readyState === WebSocket.OPEN) {
       socket.value.send(JSON.stringify(data))
     }
@@ -83,6 +93,7 @@ export function useWebSocket() {
       socket.value = null
     }
     connected.value = false
+    currentUrl = null
   }
 
   onUnmounted(disconnect)

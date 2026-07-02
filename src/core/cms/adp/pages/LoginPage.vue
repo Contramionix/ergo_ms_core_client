@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
+import PasswordInput from '@/core/cms/adp/components/PasswordInput.vue'
 import { authorization } from '@/core/cms/adp/js/auth-index'
 import { validateLoginForm } from '@/js/validation'
 import { authGuard } from '@/core/cms/js/authGuard'
@@ -156,24 +157,13 @@ const submitForm = async () => {
           </div>
 
           <!-- Поле пароля -->
-          <div class="form-floating mb-3" v-auto-animate>
-            <input
-              type="password"
-              id="password"
-              class="form-control"
-              :class="{ 'is-invalid': errors.password }"
-              v-model="form.password"
-              placeholder="Пароль"
-              :disabled="isLoading"
-              autocomplete="current-password"
-            />
-            <label for="password">
-              <i class="bi bi-lock me-2"></i>Пароль
-            </label>
-            <div v-if="errors.password" class="invalid-feedback">
-              {{ errors.password }}
-            </div>
-          </div>
+          <PasswordInput
+            id="password"
+            v-model="form.password"
+            :error="errors.password"
+            :disabled="isLoading"
+            class="mb-3"
+          />
 
           <!-- Дополнительные опции -->
           <div class="d-flex justify-content-between align-items-center mb-4">

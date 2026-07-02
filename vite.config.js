@@ -40,6 +40,21 @@ if (fs.existsSync(mainEnvPath)) {
 
 const runtimeEnv = applyNginxViteEnv(process.env)
 
+function resolvePollIntervalMs(viteKey, serverKey, defaultMs) {
+  const viteValue = runtimeEnv[viteKey]
+  if (viteValue !== undefined && viteValue !== '') {
+    return String(viteValue)
+  }
+  const serverValue = runtimeEnv[serverKey]
+  if (serverValue !== undefined && serverValue !== '') {
+    const seconds = Number.parseInt(String(serverValue), 10)
+    if (Number.isFinite(seconds) && seconds > 0) {
+      return String(seconds * 1000)
+    }
+  }
+  return String(defaultMs)
+}
+
 
 // Определение конфигурации Vite
 export default defineConfig({
@@ -169,6 +184,37 @@ export default defineConfig({
     'import.meta.env.VITE_USE_RELATIVE_API': JSON.stringify(
       runtimeEnv.VITE_USE_RELATIVE_API
         || (runtimeEnv.NGINX_ENABLED === 'true' ? 'true' : ''),
+    ),
+    'import.meta.env.VITE_REALTIME_TRANSPORT': JSON.stringify(
+      runtimeEnv.VITE_REALTIME_TRANSPORT || runtimeEnv.REALTIME_TRANSPORT || 'websocket',
+    ),
+    'import.meta.env.VITE_REALTIME_POLL_PRESENCE_INTERVAL': JSON.stringify(
+      resolvePollIntervalMs(
+        'VITE_REALTIME_POLL_PRESENCE_INTERVAL',
+        'REALTIME_POLL_PRESENCE_INTERVAL',
+        45000,
+      ),
+    ),
+    'import.meta.env.VITE_REALTIME_POLL_NOTIFICATIONS_INTERVAL': JSON.stringify(
+      resolvePollIntervalMs(
+        'VITE_REALTIME_POLL_NOTIFICATIONS_INTERVAL',
+        'REALTIME_POLL_NOTIFICATIONS_INTERVAL',
+        15000,
+      ),
+    ),
+    'import.meta.env.VITE_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL': JSON.stringify(
+      resolvePollIntervalMs(
+        'VITE_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL',
+        'REALTIME_POLL_ADMIN_PRESENCE_INTERVAL',
+        10000,
+      ),
+    ),
+    'import.meta.env.VITE_REALTIME_POLL_MESSENGER_INTERVAL': JSON.stringify(
+      resolvePollIntervalMs(
+        'VITE_REALTIME_POLL_MESSENGER_INTERVAL',
+        'REALTIME_POLL_MESSENGER_INTERVAL',
+        5000,
+      ),
     ),
     'import.meta.env.VITE_PASSWORD_MIN_LENGTH': JSON.stringify(process.env.API_PASSWORD_MIN_LENGTH || '8'),
     'import.meta.env.VITE_PASSWORD_MAX_LENGTH': JSON.stringify(process.env.API_PASSWORD_MAX_LENGTH || '128'),

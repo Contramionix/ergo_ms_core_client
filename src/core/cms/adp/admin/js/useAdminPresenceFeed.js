@@ -1,8 +1,7 @@
 import { ref } from 'vue'
 
 import tokenService from '@/core/cms/js/tokenService'
-import { openAuthenticatedWebSocket } from '@/js/ws/authenticatedWebSocket.js'
-import { mergeSnapshot } from '@/core/cms/adp/js/presence/presenceStore.js'
+import { connectAdminPresenceTransport } from '@/js/realtime/adminPresenceTransport.js'
 
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000]
 const MAX_RECONNECT_ATTEMPTS = 10
@@ -13,12 +12,6 @@ let reconnectAttempt = 0
 let intentionalClose = false
 
 const connected = ref(false)
-
-function handleSocketMessage(_event, data) {
-  if (data?.type === 'presence_snapshot') {
-    mergeSnapshot(data.users)
-  }
-}
 
 function scheduleReconnect() {
   if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
@@ -43,12 +36,11 @@ function openSocket() {
   intentionalClose = false
   const openedAt = Date.now()
 
-  wsConnection = openAuthenticatedWebSocket('/ws/presence/admin/', {
+  wsConnection = connectAdminPresenceTransport({
     onAuthenticated: () => {
       connected.value = true
       reconnectAttempt = 0
     },
-    onMessage: handleSocketMessage,
     onClose: (_event, wasIntentional) => {
       connected.value = false
       wsConnection = null

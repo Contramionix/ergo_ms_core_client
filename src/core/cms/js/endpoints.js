@@ -54,6 +54,9 @@ export const cmsEndpoints = {
         adminUserResetPassword: (userId) => `cms/adp/admin-users/${userId}/reset-password/`,
         presence: {
             batch: 'cms/adp/presence/',
+            heartbeat: 'cms/adp/presence/heartbeat/',
+            offline: 'cms/adp/presence/offline/',
+            adminSnapshot: 'cms/adp/presence/admin-snapshot/',
         },
         importUsers: 'cms/adp/import-users/',
         importUsersWelcomeEmailDefaults: 'cms/adp/import-users/welcome-email-defaults/',

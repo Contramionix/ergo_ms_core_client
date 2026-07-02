@@ -1,11 +1,9 @@
 import { ref, watch, markRaw } from 'vue'
 import { Sun, Moon, LaptopMinimal, Bell, Grid3x3, Languages } from 'lucide-vue-next'
-import { getSessionUserId, registerUiSettingsReset } from './tokenStorage.js'
 import {
   applyThemeModePreference,
   readThemePreference,
 } from '@/js/theme-manager.js'
-import { resetSiteThemeOnLogout } from '@/js/theme-service.js'
 
 export const THEME_OPTIONS = [
   { id: 'light', name: 'Светлая', icon: markRaw(Sun) },
@@ -50,22 +48,20 @@ watch(language, (val) => {
   localStorage.setItem(LANGUAGE_BASE_KEY, val)
 })
 
-export function resetUserSettings() {
-  theme.value = DEFAULT_THEME
-  actionButton.value = DEFAULT_ACTION_BUTTON
-  language.value = DEFAULT_LANGUAGE
-  resetSiteThemeOnLogout()
+/** Синхронизирует реактивное состояние с localStorage (без сброса в дефолты). */
+export function syncUiSettingsFromStorage() {
+  theme.value = readThemePreference() || DEFAULT_THEME
+  actionButton.value = localStorage.getItem(ACTION_BUTTON_BASE_KEY) || DEFAULT_ACTION_BUTTON
+  language.value = localStorage.getItem(LANGUAGE_BASE_KEY) || DEFAULT_LANGUAGE
 }
 
-registerUiSettingsReset(resetUserSettings)
-
 /**
- * Вызывается при входе/выходе пользователя.
+ * При смене пользователя подтягивает сохранённые UI-настройки.
+ * Предпочтения темы/языка не сбрасываются при logout или 401.
  */
 export function initUserSettings(userId) {
   if (userId != null) return
-  if (getSessionUserId()) return
-  resetUserSettings()
+  syncUiSettingsFromStorage()
 }
 
 export function useUiSettings() {
