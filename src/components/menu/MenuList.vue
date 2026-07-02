@@ -1,7 +1,7 @@
 <script setup>
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
-import { onMounted, onBeforeUnmount, provide, ref, watch, nextTick } from 'vue'
+import { onMounted, onBeforeUnmount, provide, ref, watch, nextTick, computed } from 'vue'
 import { ChevronLeft, Minus } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
@@ -49,6 +49,7 @@ const toast = useToast()
 // Состояние меню
 const isCollapsed = ref(readMenuCollapsedPreference())
 const isHovering = ref(!isCollapsed.value)
+const showMenuLabels = computed(() => !isCollapsed.value || isHovering.value)
 const isToolbarDropdownActive = ref(false)
 const menuSections = ref([])
 const isMenuReady = ref(false)
@@ -213,9 +214,7 @@ watch(
 const toggleMenu = () => {
   isCollapsed.value = !isCollapsed.value
   writeMenuCollapsedPreference(isCollapsed.value)
-  if (isCollapsed.value) {
-    isHovering.value = false
-  }
+  isHovering.value = !isCollapsed.value
   emit('menu-state-change', isCollapsed.value, menuWidth.value)
   scheduleLayoutOffsetSync(MENU_LAYOUT_SYNC_DELAY_MS)
 }
@@ -370,36 +369,38 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions }" :style="{ '--menu-width': `${menuWidth}px` }" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions }" :style="{ '--menu-width': `${menuWidth}px` }" @mouseleave="handleMouseLeave">
     <div class="side-menu__header side-header">
-      <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">
-        <div class="side-header__title text-smooth-animation">
-          <SiteWordmark :compact="isCollapsed && !isHovering" :compact-icon-size="menuIconSizes.item" class="site-wordmark--menu"/>
+      <div class="side-header__brand-row">
+        <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">
+          <div class="side-header__title text-smooth-animation">
+            <SiteWordmark :compact="isCollapsed && !isHovering" :compact-icon-size="menuIconSizes.item" class="site-wordmark--menu"/>
+          </div>
+        </RouterLink>
+        <div class="side-menu__toggle">
+          <button @click="toggleMenu" class="btn btn-primary">
+            <ChevronLeft :class="{ rotated: isCollapsed }" :size="menuIconSizes.toggle" class="menu-group__chevron"/>
+          </button>
         </div>
-      </RouterLink>
-      <div class="side-menu__toggle">
-        <button @click="toggleMenu" class="btn btn-primary">
-          <ChevronLeft :class="{ rotated: isCollapsed }" :size="menuIconSizes.toggle" class="menu-group__chevron"/>
-        </button>
       </div>
     </div>
     <div class="side-header__shadow" style="display: block"></div>
-    <div class="side-menu__body">
+    <div class="side-menu__body" @mouseenter="handleMouseEnter">
       <div class="side-menu__scroll">
-        <ul v-show="isMenuReady" class="side-menu__list p-2" :class="{ short: !isHovering }">
+        <ul v-show="isMenuReady" class="side-menu__list p-2" :class="{ short: isCollapsed && !isHovering }">
         <li v-for="(section, index) in menuSections" :key="section.id ?? section.routeName ?? index">
           <div v-if="shouldShowSeparator(index)" class="side-menu__divider side-divider py-2">
             <div class="side-divider__icon"><Minus :size="menuIconSizes.divider" /></div>
-            <div class="side-divider__name text-smooth-animation" :class="{ hidden: !isHovering }">
+            <div class="side-divider__name text-smooth-animation" :class="{ hidden: !showMenuLabels }">
               {{ getSeparator(index) }}
             </div>
           </div>
           
-          <MenuGroup :is-hovering="isHovering" :is-collapsed="!isCollapsed" :is-open="openGroupRouteName === section.routeName" :data="section" :nested-open-states="nestedOpenStates" @toggle="toggleGroup(section.routeName)" @navigate="handleNavigate" @reset-offcanvas-page="resetOffcanvasPage" @toggle-nested="toggleNestedGroup"/>
+          <MenuGroup :is-hovering="showMenuLabels" :is-collapsed="!isCollapsed" :is-open="openGroupRouteName === section.routeName" :data="section" :nested-open-states="nestedOpenStates" @toggle="toggleGroup(section.routeName)" @navigate="handleNavigate" @reset-offcanvas-page="resetOffcanvasPage" @toggle-nested="toggleNestedGroup"/>
         </li>
         </ul>
       </div>
-      <MenuToolbar :is-collapsed="isCollapsed" :is-hovering="isHovering" @dropdown-state-change="setToolbarDropdownActive"/>
+      <MenuToolbar :is-collapsed="isCollapsed" :is-hovering="showMenuLabels" @dropdown-state-change="setToolbarDropdownActive"/>
     </div>
   </aside>
 </template>
@@ -503,11 +504,18 @@ onBeforeUnmount(() => {
 .side-header {
   position: relative;
   padding: 12px 0 0 26px;
+}
 
-  a {
-    @include flex-row-gap($padding-internal, center);
-    text-decoration: none;
-  }
+.side-header__brand-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 0;
+}
+
+.side-header a {
+  @include flex-row-gap($padding-internal, center);
+  text-decoration: none;
 }
 
 .side-header__shadow {
@@ -526,7 +534,7 @@ onBeforeUnmount(() => {
   color: var(--color-primary-text);
   font-size: $font-size-h1;
   font-weight: bold;
-  line-height: 0;
+  line-height: 1;
   white-space: nowrap;
   text-overflow: ellipsis;
   user-select: none;
@@ -537,6 +545,7 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 50%;
   right: 0;
+  z-index: 3;
   transform: translate(50%, -50%);
   cursor: pointer;
   border: 6px solid var(--bs-body-bg);

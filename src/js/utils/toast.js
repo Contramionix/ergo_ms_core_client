@@ -4,6 +4,12 @@ import {
   globalEventBus,
   useToast as useVueToast,
 } from 'vue-toastification'
+import {
+  getToastSettingsSnapshot,
+  getToastTimeouts,
+  isToastEnabled,
+  subscribeToastSettingsChange,
+} from '@/js/utils/toastSettings.js'
 
 export const TOAST_TIMEOUT = {
   success: 3000,
@@ -88,31 +94,55 @@ export function createToastFilterBeforeCreate() {
 }
 
 export function getToastPluginOptions() {
+  const snapshot = getToastSettingsSnapshot()
+  const timeouts = getToastTimeouts(snapshot.durationPreset)
+
   return {
-    position: 'top-right',
-    maxToasts: 4,
-    timeout: TOAST_TIMEOUT.default,
-    draggable: true,
-    pauseOnHover: true,
+    position: snapshot.position,
+    maxToasts: snapshot.maxToasts,
+    timeout: timeouts.default,
+    draggable: snapshot.draggable,
+    pauseOnHover: snapshot.pauseOnHover,
     closeOnClick: false,
     showCloseButtonOnHover: false,
-    hideProgressBar: false,
+    hideProgressBar: snapshot.hideProgressBar,
     shareAppContext: true,
     filterBeforeCreate: createToastFilterBeforeCreate(),
     toastDefaults: {
-      success: { timeout: TOAST_TIMEOUT.success },
-      error: { timeout: TOAST_TIMEOUT.error },
-      warning: { timeout: TOAST_TIMEOUT.warning },
-      info: { timeout: TOAST_TIMEOUT.info },
+      success: { timeout: timeouts.success },
+      error: { timeout: timeouts.error },
+      warning: { timeout: timeouts.warning },
+      info: { timeout: timeouts.info },
     },
   }
 }
 
+export function syncToastPluginWithSettings() {
+  const snapshot = getToastSettingsSnapshot()
+  const timeouts = getToastTimeouts(snapshot.durationPreset)
+
+  getToast().updateDefaults({
+    position: snapshot.position,
+    maxToasts: snapshot.maxToasts,
+    timeout: timeouts.default,
+    draggable: snapshot.draggable,
+    pauseOnHover: snapshot.pauseOnHover,
+    hideProgressBar: snapshot.hideProgressBar,
+    toastDefaults: {
+      success: { timeout: timeouts.success },
+      error: { timeout: timeouts.error },
+      warning: { timeout: timeouts.warning },
+      info: { timeout: timeouts.info },
+    },
+  })
+}
+
 function mergeOptions(type, options = {}) {
   const normalizedType = mapToastType(type)
+  const timeouts = getToastTimeouts()
   return {
     type: normalizedType,
-    timeout: TOAST_TIMEOUT[normalizedType] ?? TOAST_TIMEOUT.default,
+    timeout: timeouts[normalizedType] ?? timeouts.default ?? TOAST_TIMEOUT.default,
     ...options,
   }
 }
@@ -122,7 +152,12 @@ export function wrapToastInterface(rawToast) {
     return rawToast
   }
 
-  const show = (message, options = {}) => rawToast(normalizeToastMessage(message), options)
+  const show = (message, options = {}) => {
+    if (!isToastEnabled()) {
+      return undefined
+    }
+    return rawToast(normalizeToastMessage(message), options)
+  }
 
   const wrapped = (message, options = {}) => show(message, options)
 
@@ -131,17 +166,33 @@ export function wrapToastInterface(rawToast) {
   wrapped.update = rawToast.update.bind(rawToast)
   wrapped.updateDefaults = rawToast.updateDefaults.bind(rawToast)
 
-  wrapped.success = (message, options = {}) =>
-    rawToast.success(normalizeToastMessage(message), mergeOptions('success', options))
+  wrapped.success = (message, options = {}) => {
+    if (!isToastEnabled()) {
+      return undefined
+    }
+    return rawToast.success(normalizeToastMessage(message), mergeOptions('success', options))
+  }
 
-  wrapped.error = (message, options = {}) =>
-    rawToast.error(normalizeToastMessage(message), mergeOptions('error', options))
+  wrapped.error = (message, options = {}) => {
+    if (!isToastEnabled()) {
+      return undefined
+    }
+    return rawToast.error(normalizeToastMessage(message), mergeOptions('error', options))
+  }
 
-  wrapped.warning = (message, options = {}) =>
-    rawToast.warning(normalizeToastMessage(message), mergeOptions('warning', options))
+  wrapped.warning = (message, options = {}) => {
+    if (!isToastEnabled()) {
+      return undefined
+    }
+    return rawToast.warning(normalizeToastMessage(message), mergeOptions('warning', options))
+  }
 
-  wrapped.info = (message, options = {}) =>
-    rawToast.info(normalizeToastMessage(message), mergeOptions('info', options))
+  wrapped.info = (message, options = {}) => {
+    if (!isToastEnabled()) {
+      return undefined
+    }
+    return rawToast.info(normalizeToastMessage(message), mergeOptions('info', options))
+  }
 
   return wrapped
 }
@@ -159,25 +210,34 @@ export function useToast() {
   return wrapToastInterface(useVueToast())
 }
 
-export function showSuccess(message, duration = TOAST_TIMEOUT.success) {
-  return getToast().success(message, { timeout: duration })
+export function showSuccess(message, duration) {
+  const timeouts = getToastTimeouts()
+  return getToast().success(message, { timeout: duration ?? timeouts.success })
 }
 
-export function showError(message, duration = TOAST_TIMEOUT.error) {
-  return getToast().error(message, { timeout: duration })
+export function showError(message, duration) {
+  const timeouts = getToastTimeouts()
+  return getToast().error(message, { timeout: duration ?? timeouts.error })
 }
 
-export function showWarning(message, duration = TOAST_TIMEOUT.warning) {
-  return getToast().warning(message, { timeout: duration })
+export function showWarning(message, duration) {
+  const timeouts = getToastTimeouts()
+  return getToast().warning(message, { timeout: duration ?? timeouts.warning })
 }
 
-export function showInfo(message, duration = TOAST_TIMEOUT.info) {
-  return getToast().info(message, { timeout: duration })
+export function showInfo(message, duration) {
+  const timeouts = getToastTimeouts()
+  return getToast().info(message, { timeout: duration ?? timeouts.info })
 }
 
 export function showToast(message, type = 'info', duration) {
+  if (!isToastEnabled()) {
+    return undefined
+  }
+
   const normalizedType = mapToastType(type)
-  const timeout = duration ?? TOAST_TIMEOUT[normalizedType] ?? TOAST_TIMEOUT.default
+  const timeouts = getToastTimeouts()
+  const timeout = duration ?? timeouts[normalizedType] ?? timeouts.default ?? TOAST_TIMEOUT.default
   const toast = getToast()
 
   if (typeof toast[normalizedType] === 'function') {
@@ -186,6 +246,10 @@ export function showToast(message, type = 'info', duration) {
 
   return toast(message, mergeOptions(normalizedType, { timeout }))
 }
+
+subscribeToastSettingsChange(() => {
+  syncToastPluginWithSettings()
+})
 
 export async function handleApiError(error, defaultMessage = 'Произошла ошибка') {
   const errorMessage =

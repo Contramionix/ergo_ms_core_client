@@ -16,7 +16,7 @@ import { autoAnimatePlugin } from '@formkit/auto-animate/vue'
 import { setupCalendar } from 'v-calendar'
 import { plugin as Slicksort } from 'vue-slicksort'
 import Toast from 'vue-toastification'
-import { getToastPluginOptions } from '@/js/utils/toast.js'
+import { getToastPluginOptions, syncToastPluginWithSettings } from '@/js/utils/toast.js'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
@@ -52,6 +52,7 @@ app.use(autoAnimatePlugin)
 app.use(Slicksort)
 
 app.use(Toast, getToastPluginOptions())
+syncToastPluginWithSettings()
 
 app.use(setupCalendar, {
   color: 'red',
