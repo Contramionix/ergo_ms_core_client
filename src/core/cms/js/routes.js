@@ -83,6 +83,15 @@ export default {
       "requiresGlobalAdmin": true
     }
   },
+  "ProfileChangeRequestsPanel": {
+    "path": "/admin-panel/profile-change-requests",
+    "component": "@/core/cms/adp/admin/ProfileChangeRequests.vue",
+    "meta": {
+      "title": "Заявки на изменение данных профиля",
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
+    }
+  },
   "CategoriesPanel": {
     "path": "/admin-panel/categories",
     "component": "@/core/cms/adp/admin/Categories.vue",

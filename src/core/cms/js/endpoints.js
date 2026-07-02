@@ -13,6 +13,8 @@ export const cmsEndpoints = {
         registration: 'cms/adp/registration/',
         registrationSettings: 'cms/adp/registration-settings/',
         passwordResetSettings: 'cms/adp/password-reset-settings/',
+        profileSettings: 'cms/adp/profile-settings/',
+        profileChangeRequests: 'cms/adp/profile-change-requests/',
         validateInvitation: 'cms/adp/invitations/validate/',
         protected: 'cms/adp/protected/',
         changePassword: 'cms/adp/change-password/',
@@ -68,6 +70,9 @@ export const cmsEndpoints = {
         invitationsClear: 'cms/adp/invitations/clear/',
         invitationDetail: (id) => `cms/adp/invitations/${id}/`,
         invitationResend: (id) => `cms/adp/invitations/${id}/resend/`,
+        profileChangeRequestsAdmin: 'cms/adp/profile-change-requests/admin/',
+        profileChangeRequestApprove: (id) => `cms/adp/profile-change-requests/${id}/approve/`,
+        profileChangeRequestReject: (id) => `cms/adp/profile-change-requests/${id}/reject/`,
         myPermissions: 'cms/adp/my-permissions/',
         checkURLAccess: 'cms/adp/check-url-access/',
 

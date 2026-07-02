@@ -1,6 +1,8 @@
 import { profileService } from '@/core/cms/js/profileService.js'
 
 export const USER_PROFILE_MAIN_FIELDS = ['email', 'first_name', 'last_name', 'middle_name']
+export const USER_PROFILE_FIO_FIELDS = ['first_name', 'last_name', 'middle_name']
+export const USER_PROFILE_IDENTITY_FIELDS = USER_PROFILE_MAIN_FIELDS
 export const USER_PROFILE_ADDITIONAL_FIELDS = ['phone', 'website', 'country', 'city', 'bio']
 export const USER_PROFILE_ALL_FIELDS = [
   ...USER_PROFILE_MAIN_FIELDS,

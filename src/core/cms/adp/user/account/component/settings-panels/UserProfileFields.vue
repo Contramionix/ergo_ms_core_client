@@ -8,6 +8,7 @@ const props = defineProps({
   errors: { type: Object, default: () => ({}) },
   idPrefix: { type: String, default: 'user-profile' },
   emailReadonly: { type: Boolean, default: false },
+  readonlyFields: { type: Array, default: () => [] },
 })
 
 const bioCharCount = computed(() => (props.formData.bio || '').length)
@@ -73,6 +74,9 @@ const visibleFields = computed(() =>
 )
 
 const inputId = (field) => `${props.idPrefix}-${field}`
+
+const isFieldReadonly = (fieldKey) =>
+  (fieldKey === 'email' && props.emailReadonly) || props.readonlyFields.includes(fieldKey)
 </script>
 
 <template>
@@ -84,11 +88,11 @@ const inputId = (field) => `${props.idPrefix}-${field}`
       <label class="profile-card__label" :for="inputId(field.key)">{{ field.label }}</label>
       <div class="profile-card__control">
         <span
-          v-if="field.key === 'email' && emailReadonly"
+          v-if="isFieldReadonly(field.key)"
           class="profile-card__value profile-card__value--static text-truncate"
-          :title="formData.email || 'Не указан'"
+          :title="formData[field.key] || 'Не указано'"
         >
-          {{ formData.email || 'Не указан' }}
+          {{ formData[field.key] || 'Не указано' }}
         </span>
 
         <textarea

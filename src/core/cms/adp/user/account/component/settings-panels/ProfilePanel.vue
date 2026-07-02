@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import { Save } from 'lucide-vue-next'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
@@ -7,14 +7,17 @@ import { useProfile } from '@/core/cms/js/profileService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import AvatarBlock from './AvatarBlock.vue'
 import UserProfileFields from './UserProfileFields.vue'
+import ProfileChangeRequestBlock from './ProfileChangeRequestBlock.vue'
 import {
   USER_PROFILE_MAIN_FIELDS,
   USER_PROFILE_ADDITIONAL_FIELDS,
+  USER_PROFILE_IDENTITY_FIELDS,
   mapUserProfileToFormData,
   buildUserProfilePayload,
   validateUserProfileData,
   applyProfileApiErrors,
 } from '@/core/cms/adp/js/userProfileForm.js'
+import { fetchProfileSettings } from '@/core/cms/adp/js/profileSettings.js'
 
 const toast = useToast()
 const userStore = useUserStore()
@@ -26,10 +29,16 @@ const savingAdditional = ref(false)
 const profileData = ref(null)
 const formData = ref({})
 const errors = ref({})
+const profileSelfEditEnabled = ref(true)
+
+const identityReadonly = computed(() => profileSelfEditEnabled.value === false)
 
 const fetchProfile = async () => {
   try {
     loading.value = true
+
+    const settings = await fetchProfileSettings()
+    profileSelfEditEnabled.value = settings.profile_self_edit_enabled !== false
 
     if (!userStore.isInitialized) {
       await userStore.initializeUser()
@@ -83,7 +92,7 @@ const saveSection = async (fields, savingRef, successMessage) => {
     logError('Ошибка сохранения профиля:', error)
 
     if (!applyProfileApiErrors(error, errors)) {
-      toast.error('Ошибка сохранения профиля')
+      toast.error(error?.response?.data?.error || 'Ошибка сохранения профиля')
     }
   } finally {
     savingRef.value = false
@@ -122,9 +131,10 @@ onMounted(() => {
           :form-data="formData"
           :errors="errors"
           id-prefix="profile"
+          :readonly-fields="identityReadonly ? USER_PROFILE_IDENTITY_FIELDS : []"
         />
 
-        <div class="profile-card__footer">
+        <div v-if="!identityReadonly" class="profile-card__footer">
           <button
             type="button"
             class="btn btn-sm profile-card__save"
@@ -137,6 +147,8 @@ onMounted(() => {
           </button>
         </div>
       </div>
+
+      <ProfileChangeRequestBlock v-if="identityReadonly" :profile-data="profileData" />
 
       <h1 class="settings-panel__title settings-panel__title--secondary">Дополнительная информация</h1>
 

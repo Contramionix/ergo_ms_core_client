@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/js/utils/toast.js'
-import { Settings, Upload, MailPlus, UserPlus } from 'lucide-vue-next'
+import { Settings, Upload, MailPlus, UserPlus, FilePenLine } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import AdminUserSettingsModal from '@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue'
@@ -14,6 +14,8 @@ import { presenceStore, seedFromUsers } from '@/core/cms/adp/js/presence/presenc
 import { useAdminPresenceFeed } from '@/core/cms/adp/admin/js/useAdminPresenceFeed.js'
 import SelectBox from '@/components/SelectBox.vue'
 import { PRESENCE_FILTER_OPTIONS } from '@/core/cms/js/adminSelectOptions.js'
+import { fetchProfileSettings } from '@/core/cms/adp/js/profileSettings.js'
+import { fetchAdminProfileChangeRequests } from '@/core/cms/adp/admin/js/profileChangeRequestService.js'
 
 const router = useRouter()
 const toast = useToast()
@@ -33,6 +35,8 @@ const rowsPerPage = ref(12)
 const searchQuery = ref('')
 const currentPage = ref(1)
 const presenceFilter = ref('all')
+const profileSelfEditEnabled = ref(true)
+const pendingProfileChangeCount = ref(0)
 
 const isOnlineFilter = computed(() => presenceFilter.value === 'online')
 
@@ -154,7 +158,7 @@ onMounted(async () => {
       return
     }
     hasAdminAccess.value = true
-    await Promise.all([loadRefs(), loadUsers()])
+    await Promise.all([loadRefs(), loadUsers(), loadProfileChangeMeta()])
     connectAdminPresenceFeed()
   } catch (error) {
     logError('Ошибка проверки прав доступа или загрузки данных:', error)
@@ -269,6 +273,25 @@ const goToInvitations = () => {
   router.push({ name: 'InvitationsPanel' })
 }
 
+const goToProfileChangeRequests = () => {
+  router.push({ name: 'ProfileChangeRequestsPanel' })
+}
+
+const loadProfileChangeMeta = async () => {
+  try {
+    const settings = await fetchProfileSettings(true)
+    profileSelfEditEnabled.value = settings.profile_self_edit_enabled !== false
+    if (!profileSelfEditEnabled.value) {
+      const data = await fetchAdminProfileChangeRequests({ page: 1, page_size: 1, status: 'pending' })
+      pendingProfileChangeCount.value = data.pending_count ?? 0
+    } else {
+      pendingProfileChangeCount.value = 0
+    }
+  } catch (error) {
+    logError('Ошибка загрузки настроек профиля:', error)
+  }
+}
+
 const getItemKey = (item) => item.user_id
 </script>
 
@@ -317,6 +340,18 @@ const getItemKey = (item) => item.user_id
             <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @click="goToInvitations">
               <MailPlus :size="16" />
               <span>Управление приглашениями</span>
+            </button>
+            <button
+              v-if="!profileSelfEditEnabled"
+              type="button"
+              class="btn btn-primary d-flex align-items-center gap-2"
+              @click="goToProfileChangeRequests"
+            >
+              <FilePenLine :size="16" />
+              <span>
+                Заявки на изменение данных
+                <span v-if="pendingProfileChangeCount > 0">({{ pendingProfileChangeCount }})</span>
+              </span>
             </button>
             <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @click="goToImport">
               <Upload :size="16" />
