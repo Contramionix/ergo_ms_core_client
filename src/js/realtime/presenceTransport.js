@@ -4,8 +4,30 @@ import { presenceApi, sendPresenceOfflineBeacon } from '@/js/realtime/presenceAp
 
 const WS_PATH = '/ws/presence/'
 
+function attachPageHideOfflineBeacon() {
+  function onPageHide(event) {
+    if (event.persisted) {
+      return
+    }
+    sendPresenceOfflineBeacon()
+  }
+
+  window.addEventListener('pagehide', onPageHide)
+  return () => window.removeEventListener('pagehide', onPageHide)
+}
+
 function connectPresenceWebSocket(handlers) {
-  return openAuthenticatedWebSocket(WS_PATH, handlers)
+  const connection = openAuthenticatedWebSocket(WS_PATH, handlers)
+  const removePageHide = attachPageHideOfflineBeacon()
+  const originalClose = connection.close.bind(connection)
+
+  return {
+    ...connection,
+    close() {
+      removePageHide()
+      originalClose()
+    },
+  }
 }
 
 function connectPresenceHttpPolling(handlers) {
@@ -15,8 +37,14 @@ function connectPresenceHttpPolling(handlers) {
   const intervalMs = pollIntervalMs('presence')
 
   async function sendHeartbeat() {
+    if (intentionalClose) {
+      return
+    }
     try {
       await presenceApi.heartbeat()
+      if (intentionalClose) {
+        return
+      }
       if (!authenticated) {
         authenticated = true
         handlers.onAuthenticated?.()
@@ -42,10 +70,13 @@ function connectPresenceHttpPolling(handlers) {
     }
   }
 
-  function onPageHide() {
-    if (!intentionalClose) {
-      sendPresenceOfflineBeacon()
+  function onPageHide(event) {
+    if (intentionalClose || event.persisted) {
+      return
     }
+    intentionalClose = true
+    stopTimers()
+    sendPresenceOfflineBeacon()
   }
 
   window.addEventListener('pagehide', onPageHide)
