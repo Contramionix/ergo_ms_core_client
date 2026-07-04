@@ -36,9 +36,7 @@ import DefaultAvatar from './DefaultAvatar.vue'
 import PresenceIndicator from '@/core/cms/adp/components/PresenceIndicator.vue'
 import { usePresenceStatus } from '@/core/cms/adp/js/presence/usePresenceStatus.js'
 import {
-  getUserPublicInfo,
   getCachedUserPublicInfo,
-  invalidateUserPublicInfo,
   getUserPublicInfoByRef,
   getCachedUserPublicInfoByRef,
   invalidateUserPublicInfoByRef,
@@ -250,19 +248,9 @@ async function loadUserInfo() {
     return
   }
 
-  const id = normalizedUserId.value
-  const cached = getCachedUserPublicInfo(id)
-  if (cached) {
-    loadedPublicInfo.value = cached
-    return
-  }
-
-  try {
-    loadedPublicInfo.value = await getUserPublicInfo(id)
-  } catch (error) {
-    logError('Ошибка загрузки публичных данных пользователя', error)
-    loadedPublicInfo.value = null
-  }
+  // Без userRef сетевой загрузки нет (числовой enumeration-эндпоинт убран) —
+  // используем только то, что уже осело в кеше из ранее загруженных списков.
+  loadedPublicInfo.value = getCachedUserPublicInfo(normalizedUserId.value)
 }
 
 onMounted(async () => {
@@ -308,19 +296,8 @@ async function onImageError() {
     } catch {
       // остаётся DefaultAvatar
     }
-    return
   }
-
-  const id = normalizedUserId.value
-  if (id !== null) {
-    invalidateUserPublicInfo(id)
-    try {
-      loadedPublicInfo.value = await getUserPublicInfo(id)
-      imageError.value = false
-    } catch {
-      // остаётся DefaultAvatar
-    }
-  }
+  // Без userRef переретраить нечем (числового эндпоинта больше нет) — остаётся DefaultAvatar.
 }
 </script>
 

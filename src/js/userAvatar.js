@@ -4,13 +4,10 @@
 import { apiClient } from '@/js/api/manager'
 
 const userInfoCache = new Map()
-const pendingRequests = new Map()
-// Кеш/запросы по public_id (непоследовательная ссылка) — предпочтительный путь.
+// Кеш/запросы по public_id (непоследовательная ссылка) — единственный сетевой путь.
 const userInfoByRefCache = new Map()
 const pendingByRef = new Map()
 const SIGNED_URL_MIN_SECONDS_LEFT = 60
-
-export const defaultAvatar = null
 
 function normalizeId(userId) {
   if (userId == null) return null
@@ -94,39 +91,10 @@ export function seedUserPublicInfoCache(entries) {
   }
 }
 
-export async function getUserPublicInfo(userId) {
-  const id = normalizeId(userId)
-  if (id === null) return null
-
-  if (userInfoCache.has(id)) {
-    const cached = userInfoCache.get(id)
-    if (!isAvatarUrlExpired(cached?.avatarUrl)) return cached
-    userInfoCache.delete(id)
-  }
-
-  if (pendingRequests.has(id)) return pendingRequests.get(id)
-
-  const promise = apiClient
-    .get(`/cms/users/${id}/public-info/`)
-    .then((resp) => {
-      const raw = resp?.data ?? resp
-      const info = normalizeInfo(raw) ?? { userId: id, publicId: null, username: '', firstName: '', lastName: '', middleName: '', fullName: '', avatarUrl: null }
-      indexInfo(info)
-      return info
-    })
-    .catch(() => {
-      const fallback = { userId: id, publicId: null, username: '', firstName: '', lastName: '', middleName: '', fullName: '', avatarUrl: null }
-      userInfoCache.set(id, fallback)
-      return fallback
-    })
-    .finally(() => pendingRequests.delete(id))
-
-  pendingRequests.set(id, promise)
-  return promise
-}
-
 /**
- * Предпочтительный способ: получить публичные данные по public_id (непоследовательная ссылка).
+ * Получить публичные данные пользователя по public_id (непоследовательная ссылка).
+ * Единственный сетевой способ загрузки чужих публичных данных — по числовому id
+ * эндпоинта больше нет (был убран как enumeration-риск).
  */
 export async function getUserPublicInfoByRef(ref) {
   if (!ref) return null
@@ -182,12 +150,6 @@ export function invalidateUserPublicInfoByRef(ref) {
 export function clearUserPublicInfoCache() {
   userInfoCache.clear()
   userInfoByRefCache.clear()
-}
-
-// Обратная совместимость: старый API возвращал только avatarUrl
-export async function getUserAvatar(userId) {
-  const info = await getUserPublicInfo(userId)
-  return info?.avatarUrl ?? defaultAvatar
 }
 
 export function getCachedUserAvatar(userId) {

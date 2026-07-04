@@ -51,12 +51,19 @@ const toast = useToast()
 const isCollapsed = ref(readMenuCollapsedPreference())
 const isHovering = ref(!isCollapsed.value)
 const showMenuLabels = computed(() => !isCollapsed.value || isHovering.value)
+const showCompactWordmark = computed(() => {
+  if (isWordmarkHiding.value) {
+    return false
+  }
+  return isCollapsed.value && !showMenuLabels.value
+})
 const isToolbarDropdownActive = ref(false)
 const menuSections = ref([])
 const isMenuReady = ref(false)
 const allowMenuTransitions = ref(false)
 const isLayoutTransitionActive = ref(false)
 const isVisibilityTransitionActive = ref(false)
+const isWordmarkHiding = ref(false)
 const { siteName, ensureSiteNameLoaded } = useSiteName()
 const menuRef = ref(null)
 
@@ -73,6 +80,30 @@ let lastContentPadding = null
 
 const MENU_TRANSITION_MS = 300
 const MENU_LAYOUT_SYNC_DELAY_MS = MENU_TRANSITION_MS + 20
+const WORDMARK_ANIMATION_MS = MENU_TRANSITION_MS
+
+let wordmarkHideTimer = null
+
+function clearWordmarkHideTimer() {
+  if (wordmarkHideTimer) {
+    clearTimeout(wordmarkHideTimer)
+    wordmarkHideTimer = null
+  }
+}
+
+function cancelWordmarkHide() {
+  clearWordmarkHideTimer()
+  isWordmarkHiding.value = false
+}
+
+function startWordmarkHide() {
+  clearWordmarkHideTimer()
+  isWordmarkHiding.value = true
+  wordmarkHideTimer = setTimeout(() => {
+    isWordmarkHiding.value = false
+    wordmarkHideTimer = null
+  }, WORDMARK_ANIMATION_MS)
+}
 
 function resolveContentLayoutPadding() {
   return getContentLayoutPadding(isCollapsed.value, menuWidth.value)
@@ -333,8 +364,11 @@ watch(
 const toggleMenu = () => {
   const expanding = isCollapsed.value
   if (expanding) {
+    cancelWordmarkHide()
     isLayoutTransitionActive.value = true
     emit('layout-sync-transition', true)
+  } else {
+    startWordmarkHide()
   }
 
   isCollapsed.value = !isCollapsed.value
@@ -347,6 +381,7 @@ const toggleMenu = () => {
 // Обработка наведения
 const handleMouseEnter = () => {
   if (isCollapsed.value) {
+    cancelWordmarkHide()
     isHovering.value = true
     syncMenuRightEdgeWithTransition()
   }
@@ -354,6 +389,9 @@ const handleMouseEnter = () => {
 
 const handleMouseLeave = () => {
   if (isCollapsed.value && !isToolbarDropdownActive.value) {
+    if (isHovering.value) {
+      startWordmarkHide()
+    }
     isHovering.value = false
     syncMenuRightEdgeWithTransition()
   }
@@ -473,6 +511,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onWindowResize)
   menuRef.value?.removeEventListener('transitionend', onMenuTransitionEnd)
   clearLayoutTransitionTimer()
+  clearWordmarkHideTimer()
   if (layoutSyncFrame) {
     cancelAnimationFrame(layoutSyncFrame)
   }
@@ -483,12 +522,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen, 'side-menu--visibility-transition': isVisibilityTransitionActive, 'side-menu--layout-transition': isLayoutTransitionActive || isCollapsed }" :style="{ '--menu-width': `${menuWidth}px` }" @mouseleave="handleMouseLeave">
+  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen, 'side-menu--visibility-transition': isVisibilityTransitionActive, 'side-menu--layout-transition': isLayoutTransitionActive || isCollapsed, 'wordmark-hiding': isWordmarkHiding }" :style="{ '--menu-width': `${menuWidth}px` }" @mouseleave="handleMouseLeave">
     <div class="side-menu__header side-header">
       <div class="side-header__brand-row">
         <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">
           <div class="side-header__title text-smooth-animation">
-            <SiteWordmark :compact="isCollapsed && !showMenuLabels" :compact-icon-size="menuIconSizes.item" class="site-wordmark--menu"/>
+            <SiteWordmark :compact="showCompactWordmark" :compact-icon-size="menuIconSizes.item" class="site-wordmark--menu"/>
           </div>
         </RouterLink>
         <div class="side-menu__toggle">
@@ -604,6 +643,15 @@ onBeforeUnmount(() => {
   // Разворот кнопкой: класс .collapsed уже снят, ловим момент перехода layout.
   &.side-menu--layout-transition:not(.collapsed) .side-header__title :deep(.ergoms-logo:not(.ergoms-logo--compact)) {
     animation: menu-wordmark-reveal $transition forwards;
+  }
+
+  // Сворачивание: вордмарк уезжает влево (обратно reveal) до переключения на иконку.
+  &.wordmark-hiding .side-header__title :deep(.ergoms-logo:not(.ergoms-logo--compact)) {
+    animation: menu-wordmark-hide $menu-collapsed-peek-transition forwards;
+  }
+
+  &.wordmark-hiding .side-header__title {
+    overflow: visible;
   }
 
   :deep(.text-smooth-animation) {
@@ -799,6 +847,15 @@ onBeforeUnmount(() => {
   }
   to {
     clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes menu-wordmark-hide {
+  from {
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    clip-path: inset(0 100% 0 0);
   }
 }
 </style>
