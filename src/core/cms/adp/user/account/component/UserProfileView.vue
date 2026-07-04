@@ -14,9 +14,6 @@ const FIELD_LABELS = {
   last_name: 'Фамилия',
   middle_name: 'Отчество',
   phone: 'Телефон',
-  website: 'Веб-сайт',
-  country: 'Страна',
-  city: 'Город',
   bio: 'О себе',
 }
 
@@ -112,21 +109,12 @@ onMounted(fetchProfile)
       </section>
 
       <section class="user-profile-view__section">
-        <h2 class="user-profile-view__section-title">Контакты и местоположение</h2>
+        <h2 class="user-profile-view__section-title">Контакты</h2>
         <dl class="user-profile-view__grid">
           <div v-for="item in additionalSection" :key="item.key" class="user-profile-view__item">
             <dt class="user-profile-view__label">{{ item.label }}</dt>
             <dd class="user-profile-view__value" :class="{ 'user-profile-view__value--empty': item.empty }">
-              <a
-                v-if="item.key === 'website' && !item.empty"
-                :href="formData.website.startsWith('http') ? formData.website : `https://${formData.website}`"
-                class="user-profile-view__link"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {{ item.value }}
-              </a>
-              <template v-else>{{ item.value }}</template>
+              {{ item.value }}
             </dd>
           </div>
         </dl>
@@ -210,16 +198,6 @@ onMounted(fetchProfile)
   &--empty {
     color: var(--color-secondary-text);
     font-style: italic;
-  }
-}
-
-.user-profile-view__link {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-
-  &:hover {
-    color: var(--color-primary-text);
   }
 }
 

@@ -121,8 +121,8 @@ onMounted(async () => {
     <div class="profile-change-request__header">
       <h2 class="profile-change-request__title">Заявка на изменение данных</h2>
       <p class="profile-change-request__hint">
-        Изменение email, фамилии, имени и отчества доступно только администратору. Заполните форму
-        ниже — заявка попадёт в реестр администратора.
+        Изменение email, фамилии, имени, отчества и телефона доступно только администратору.
+        Заполните форму ниже — заявка попадёт в реестр администратора.
       </p>
     </div>
 
@@ -140,6 +140,9 @@ onMounted(async () => {
         </p>
         <p class="mb-1">
           ФИО: <strong>{{ pendingRequest.requested_full_name || '—' }}</strong>
+        </p>
+        <p class="mb-1">
+          Телефон: <strong>{{ pendingRequest.phone || pendingRequest.current_phone || '—' }}</strong>
         </p>
         <p v-if="pendingRequest.comment" class="mb-0 text-muted">
           Комментарий: {{ pendingRequest.comment }}
@@ -177,7 +180,7 @@ onMounted(async () => {
             :disabled="submitting"
             @click="submitRequest"
           >
-            <Send :size="16" />
+            <Send :size="16" class="profile-change-request__submit-icon" />
             <span v-if="submitting">Отправка...</span>
             <span v-else>Отправить заявку</span>
           </button>
@@ -197,6 +200,7 @@ onMounted(async () => {
             </span>
             <span class="text-muted small">{{ item.email || item.current_email }}</span>
             <span class="text-muted small">{{ item.requested_full_name }}</span>
+            <span v-if="item.phone" class="text-muted small">{{ item.phone }}</span>
           </div>
           <p v-if="item.admin_comment" class="mb-0 small text-muted">
             Ответ администратора: {{ item.admin_comment }}
@@ -283,12 +287,33 @@ onMounted(async () => {
   justify-content: flex-end;
   padding: 0.75rem 1rem 1rem;
   border-top: 1px solid var(--color-border);
+  background: var(--color-primary-background);
 }
 
 .profile-change-request__submit {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  background: var(--color-primary-background);
+  color: var(--color-primary-text);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+
+  &:hover:not(:disabled),
+  &:focus-visible:not(:disabled) {
+    background: var(--color-secondary-background);
+    color: var(--color-primary-text);
+    border-color: var(--color-border);
+    box-shadow: none;
+  }
+
+  &:disabled {
+    opacity: 0.65;
+  }
+}
+
+.profile-change-request__submit-icon {
+  flex-shrink: 0;
 }
 
 .profile-change-request__status {

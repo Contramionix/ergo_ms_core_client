@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-import { Briefcase, Calendar, MapPin } from 'lucide-vue-next'
+import { Briefcase, Calendar } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore'
 import UserAvatar from '@/components/UserAvatar.vue'
 
@@ -31,7 +31,6 @@ const displayUserInfo = computed(() => {
     return {
       username: 'Пользователь',
       profession: '',
-      location: 'Не указано',
       registration: 'Неизвестно',
     }
   }
@@ -42,10 +41,6 @@ const displayUserInfo = computed(() => {
   return {
     username: profile?.fullName || userStore.fullName || 'Гость',
     profession: profile?.bio || '',
-    location:
-      profile?.city && profile?.country
-        ? `${profile.city}, ${profile.country}`
-        : profile?.city || profile?.country || 'Не указано',
     registration: user?.date_joined
       ? formatRegistrationDate(user.date_joined)
       : 'Неизвестно',
@@ -169,12 +164,6 @@ defineExpose({
             <span class="profile-card__meta-value">{{ displayUserInfo.profession }}</span>
           </li>
           <li class="profile-card__meta-item profile-card__meta-item--inline">
-            <span class="profile-card__meta-part">
-              <MapPin :size="20" class="profile-card__meta-icon" />
-              <span class="profile-card__meta-label">Местоположение:</span>
-              <span class="profile-card__meta-value">{{ displayUserInfo.location }}</span>
-            </span>
-            <span class="profile-card__meta-divider" aria-hidden="true">·</span>
             <span class="profile-card__meta-part">
               <Calendar :size="20" class="profile-card__meta-icon" />
               <span class="profile-card__meta-label">На платформе с:</span>

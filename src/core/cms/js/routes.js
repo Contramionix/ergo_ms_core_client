@@ -13,16 +13,17 @@ export default {
   "User": {
     "path": "/user",
     "component": "@/core/cms/adp/user/ParentLayout.vue",
-    "redirect": "/user/account",
+    "redirect": "Account",
     "meta": {
       "requiresAuth": true
     },
     "children": [
       {
-        "path": "account",
+        "path": "",
         "name": "Account",
-        "component": "@/core/cms/adp/user/account/ParentLayout.vue",
+        "component": "@/core/cms/adp/user/account/component/UserProfileView.vue",
         "meta": {
+          "title": "Личный кабинет",
           "requiresAuth": true
         }
       },

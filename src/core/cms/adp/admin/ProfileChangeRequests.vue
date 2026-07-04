@@ -67,6 +67,8 @@ const columns = [
   { key: 'email', label: 'Новый email' },
   { key: 'current_full_name', label: 'Текущее ФИО' },
   { key: 'requested_full_name', label: 'Новое ФИО' },
+  { key: 'current_phone', label: 'Текущий телефон' },
+  { key: 'phone', label: 'Новый телефон' },
   { key: 'comment', label: 'Комментарий' },
   { key: 'status', label: 'Статус', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
   { key: 'created_at', label: 'Создано', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
@@ -218,7 +220,7 @@ const handleReject = async (item) => {
       <div v-if="profileSelfEditEnabled" class="alert alert-warning d-flex align-items-start gap-2 mb-0">
         <AlertCircle :size="18" class="flex-shrink-0 mt-1" />
         <div>
-          Сейчас пользователи могут менять email и ФИО самостоятельно. Чтобы включить заявки,
+          Сейчас пользователи могут менять email, ФИО и телефон самостоятельно. Чтобы включить заявки,
           установите <code>API_USER_PROFILE_SELF_EDIT_ENABLED=false</code> в .env.
         </div>
       </div>
@@ -235,7 +237,7 @@ const handleReject = async (item) => {
               id="profile-change-requests-search"
               type="search"
               class="form-control search-input"
-              placeholder="Пользователь, email, ФИО..."
+              placeholder="Пользователь, email, ФИО, телефон..."
               @input="handleSearchQuery($event.target.value)"
             />
           </div>

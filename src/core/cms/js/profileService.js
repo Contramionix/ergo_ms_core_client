@@ -141,10 +141,7 @@ export const profileService = {
 
       // Профиль пользователя
       phone: profile.phone || '',
-      website: profile.website || '',
       bio: profile.bio || '',
-      country: profile.country || '',
-      city: profile.city || '',
       language: profile.language || 'ru',
       timezone: profile.timezone || 'Europe/Moscow',
 
@@ -210,11 +207,6 @@ export const profileService = {
     // Проверка телефона
     if (profileData.phone && !/^[\+]?[\d\s().-]{7,20}$/.test(String(profileData.phone).replace(/\s/g, ''))) {
       errors.phone = 'Некорректный формат телефона'
-    }
-
-    // Проверка website
-    if (profileData.website && !/^https?:\/\/.+/.test(profileData.website)) {
-      errors.website = 'URL должен начинаться с http:// или https://'
     }
 
     // Проверка био

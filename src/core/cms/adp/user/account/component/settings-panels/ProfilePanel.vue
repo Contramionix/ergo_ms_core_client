@@ -11,6 +11,7 @@ import ProfileChangeRequestBlock from './ProfileChangeRequestBlock.vue'
 import {
   USER_PROFILE_MAIN_FIELDS,
   USER_PROFILE_ADDITIONAL_FIELDS,
+  USER_PROFILE_SELF_EDITABLE_ADDITIONAL_FIELDS,
   USER_PROFILE_IDENTITY_FIELDS,
   mapUserProfileToFormData,
   buildUserProfilePayload,
@@ -104,7 +105,9 @@ const saveMainProfile = () =>
 
 const saveAdditionalInfo = () =>
   saveSection(
-    USER_PROFILE_ADDITIONAL_FIELDS,
+    identityReadonly.value
+      ? USER_PROFILE_SELF_EDITABLE_ADDITIONAL_FIELDS
+      : USER_PROFILE_ADDITIONAL_FIELDS,
     savingAdditional,
     'Дополнительная информация успешно обновлена',
   )
@@ -154,7 +157,7 @@ onMounted(() => {
 
       <div class="profile-card">
         <UserProfileFields
-          :fields="USER_PROFILE_ADDITIONAL_FIELDS"
+          :fields="identityReadonly ? USER_PROFILE_SELF_EDITABLE_ADDITIONAL_FIELDS : USER_PROFILE_ADDITIONAL_FIELDS"
           :form-data="formData"
           :errors="errors"
           id-prefix="profile"

@@ -44,24 +44,6 @@ const fieldMeta = {
     autocomplete: 'tel',
     placeholder: '+7 (999) 123-45-67',
   },
-  website: {
-    label: 'Веб-сайт',
-    type: 'url',
-    autocomplete: 'url',
-    placeholder: 'https://',
-  },
-  country: {
-    label: 'Страна',
-    type: 'text',
-    autocomplete: 'country-name',
-    placeholder: 'Введите страну',
-  },
-  city: {
-    label: 'Город',
-    type: 'text',
-    autocomplete: 'address-level2',
-    placeholder: 'Введите город',
-  },
   bio: {
     label: 'О себе',
     type: 'textarea',

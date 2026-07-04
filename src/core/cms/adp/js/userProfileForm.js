@@ -2,8 +2,9 @@ import { profileService } from '@/core/cms/js/profileService.js'
 
 export const USER_PROFILE_MAIN_FIELDS = ['email', 'first_name', 'last_name', 'middle_name']
 export const USER_PROFILE_FIO_FIELDS = ['first_name', 'last_name', 'middle_name']
-export const USER_PROFILE_IDENTITY_FIELDS = USER_PROFILE_MAIN_FIELDS
-export const USER_PROFILE_ADDITIONAL_FIELDS = ['phone', 'website', 'country', 'city', 'bio']
+export const USER_PROFILE_IDENTITY_FIELDS = [...USER_PROFILE_MAIN_FIELDS, 'phone']
+export const USER_PROFILE_ADDITIONAL_FIELDS = ['phone', 'bio']
+export const USER_PROFILE_SELF_EDITABLE_ADDITIONAL_FIELDS = ['bio']
 export const USER_PROFILE_ALL_FIELDS = [
   ...USER_PROFILE_MAIN_FIELDS,
   ...USER_PROFILE_ADDITIONAL_FIELDS,
@@ -26,10 +27,7 @@ export function mapUserProfileToFormData(source) {
     last_name: normalizeEmptyString(source.last_name ?? source.lastName),
     middle_name: normalizeEmptyString(source.middle_name ?? source.middleName),
     phone: normalizeEmptyString(profile.phone ?? source.phone),
-    website: profile.website ?? source.website ?? '',
     bio: profile.bio ?? source.bio ?? '',
-    country: profile.country ?? source.country ?? '',
-    city: profile.city ?? source.city ?? '',
   }
 }
 
