@@ -93,8 +93,8 @@
     </form>
 
     <div class="d-flex justify-content-end gap-2 mt-3 pt-3 border-top">
-      <button type="button" class="btn btn-secondary" @click="$emit('close')">Отмена</button>
-      <button type="button" class="btn btn-primary" @click="handleSubmit" :disabled="!isFormValid">
+      <button type="button" class="ui-btn ui-btn--secondary" @click="$emit('close')">Отмена</button>
+      <button type="button" class="ui-btn ui-btn--primary" @click="handleSubmit" :disabled="!isFormValid">
         {{ isEditing ? 'Сохранить' : 'Создать' }}
       </button>
     </div>

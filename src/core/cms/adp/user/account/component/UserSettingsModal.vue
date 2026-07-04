@@ -90,7 +90,9 @@ function handleClose() {
     <div class="user-settings-modal__layout">
       <UserSettingsNav :sections="TAB_SECTIONS" :active-tab-id="activeTabId" :notification-sections="notificationSections" :notification-active-anchor-id="notificationActiveAnchorId" @select="selectTab" @notification-navigate="handleNotificationNavigate"/>
       <div ref="panelWrapRef" class="user-settings-modal__panel-wrap">
-        <component :is="activePanel" />
+        <KeepAlive>
+          <component :is="activePanel" :key="activeTabId" />
+        </KeepAlive>
       </div>
     </div>
   </ModalCenter>

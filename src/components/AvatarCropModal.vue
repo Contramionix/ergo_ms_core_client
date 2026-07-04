@@ -168,10 +168,10 @@ function reset() {
     </div>
 
     <template #footer>
-      <button type="button" class="btn btn-secondary" @click="handleClose" :disabled="loading">
+      <button type="button" class="ui-btn ui-btn--secondary" @click="handleClose" :disabled="loading">
         Отмена
       </button>
-      <button type="button" class="btn btn-primary" @click="handleConfirm" :disabled="loading">
+      <button type="button" class="ui-btn ui-btn--primary" @click="handleConfirm" :disabled="loading">
         <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
         <Check v-else :size="16" class="me-1" />
         Применить

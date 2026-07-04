@@ -4,6 +4,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { moduleManager } from '@/modules/index.js'
 import { useDropdown } from '@/composables/useDropdown.js'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
@@ -50,34 +51,29 @@ onMounted(async () => {
       <Grid3x3 :size="20" />
     </div>
     <Transition name="dropdown">
-      <ul v-if="isOpen" class="apps-dropdown-menu">
-      <li v-if="isLoading" class="apps-menu__loading">
-        <div class="spinner-border spinner-border-sm text-primary" role="status">
-          <span class="visually-hidden">Загрузка...</span>
-        </div>
-      </li>
-      <li v-else-if="apps.length === 0" class="apps-menu__empty text-muted text-center py-3">
-        Нет доступных приложений
-      </li>
-      <li v-else class="apps-menu__container">
-        <div class="apps-menu__grid">
-          <div
-            v-for="(app, index) in apps"
-            :key="app.name"
-            @click="goToApp(app)"
-            class="apps-menu__item"
-            :title="app.title"
-            :style="{ transitionDelay: `${index * 30}ms` }"
-          >
-            <div class="apps-menu__icon">
-              <component v-if="app.icon" :is="app.icon" :size="24" />
-              <div v-else class="apps-menu__icon-placeholder">{{ app.title.charAt(0) }}</div>
-            </div>
-            <div class="apps-menu__title">{{ app.title }}</div>
+      <div v-if="isOpen" class="apps-dropdown-menu">
+        <LoadingContentArea :loading="isLoading" min-height="6rem">
+          <div v-if="apps.length === 0" class="apps-menu__empty text-muted text-center py-3">
+            Нет доступных приложений
           </div>
-        </div>
-      </li>
-      </ul>
+          <div v-else class="apps-menu__grid">
+            <div
+              v-for="(app, index) in apps"
+              :key="app.name"
+              @click="goToApp(app)"
+              class="apps-menu__item"
+              :title="app.title"
+              :style="{ transitionDelay: `${index * 30}ms` }"
+            >
+              <div class="apps-menu__icon">
+                <component v-if="app.icon" :is="app.icon" :size="24" />
+                <div v-else class="apps-menu__icon-placeholder">{{ app.title.charAt(0) }}</div>
+              </div>
+              <div class="apps-menu__title">{{ app.title }}</div>
+            </div>
+          </div>
+        </LoadingContentArea>
+      </div>
     </Transition>
   </div>
 </template>
@@ -97,19 +93,11 @@ onMounted(async () => {
   padding: 1rem;
 }
 
-.apps-menu__loading,
 .apps-menu__empty {
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 2rem;
-  list-style: none;
-}
-
-.apps-menu__container {
-  list-style: none;
-  padding: 0;
-  margin: 0;
 }
 
 .apps-menu__grid {

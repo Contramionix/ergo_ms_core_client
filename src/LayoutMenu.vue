@@ -45,22 +45,18 @@ const { ensureSiteNameLoaded } = useSiteName()
 
 let resizeTimeout = null
 
-// Ключ для RouterView - позволяет не пересоздавать компонент при переключении между вкладками
-// Модули могут указать meta.cacheGroup для группировки роутов под одним ключом
-const routeViewKey = computed(() => {
-  if (route.meta?.cacheGroup) {
-    return route.meta.cacheGroup
-  }
-  return route.path
-})
+function cachedRouteKey(activeRoute) {
+  return activeRoute.name ?? activeRoute.path
+}
 
-const leftPadding = ref('320px')
+const leftPadding = ref('279px')
 const menuRightEdge = ref('260px')
 const isMenuVisible = ref(window.innerWidth >= 1200)
 const isMenuToggledManually = ref(false)
 const isOverlayVisible = ref(false)
 const isMenuCollapsed = ref(false)
 const menuWidth = ref(260)
+const isMenuLayoutTransitioning = ref(false)
 
 // Полноэкранный режим (без меню и ограничений контейнера)
 const isFullPage = computed(() => route.meta?.fullPage === true)
@@ -124,6 +120,10 @@ function handleMenuStateChange(collapsed, width) {
   menuWidth.value = width
 }
 
+function handleMenuLayoutSyncTransition(active) {
+  isMenuLayoutTransitioning.value = active
+}
+
 function onHamburgerClick() {
   toggleMenu(!isMenuVisible.value)
 }
@@ -173,17 +173,25 @@ onBeforeUnmount(() => {
     </div>
   </Teleport>
   <div class="layout-container" :class="{ 'layout-container--full-page': isFullPage }">
-    <MenuList v-if="!isFullPage" @left-padding="leftToggle" @menu-right-edge="handleMenuRightEdge" :is-visible="isMenuVisible" @menu-state-change="handleMenuStateChange"/>
-    <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage }">
+    <MenuList v-if="!isFullPage" @left-padding="leftToggle" @menu-right-edge="handleMenuRightEdge" @layout-sync-transition="handleMenuLayoutSyncTransition" :is-visible="isMenuVisible" @menu-state-change="handleMenuStateChange"/>
+    <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage, 'layout-page--menu-sync-transition': isMenuLayoutTransitioning }">
       <LayoutBackdrop v-if="!isFullPage && showShellBackdrop" />
       <div class="layout-page__content">
         <template v-if="route.meta?.fullPage">
           <AccessDenied v-if="accessDeniedState.active" bordered :title="accessDeniedState.title" :message="accessDeniedState.message"/>
-          <RouterView v-else :key="routeViewKey" />
+          <RouterView v-else v-slot="{ Component, route: activeRoute }">
+            <KeepAlive :max="15">
+              <component :is="Component" v-if="Component" :key="cachedRouteKey(activeRoute)" />
+            </KeepAlive>
+          </RouterView>
         </template>
         <div v-else :class="route.meta?.flushContent ? 'layout-content--flush' : 'py-4 container-xxl'">
           <AccessDenied v-if="accessDeniedState.active" bordered :title="accessDeniedState.title" :message="accessDeniedState.message"/>
-          <RouterView v-else :key="routeViewKey" />
+          <RouterView v-else v-slot="{ Component, route: activeRoute }">
+            <KeepAlive :max="15">
+              <component :is="Component" v-if="Component" :key="cachedRouteKey(activeRoute)" />
+            </KeepAlive>
+          </RouterView>
         </div>
       </div>
     </div>
@@ -231,10 +239,13 @@ onBeforeUnmount(() => {
 .layout-page {
   position: relative;
   padding-inline-start: v-bind(leftPadding);
-  transition: padding-inline-start 0.3s ease;
   overflow-x: clip;
   min-height: 100dvh;
   background: var(--color-background);
+
+  &--menu-sync-transition {
+    transition: padding-inline-start $transition;
+  }
 
   &--full-page {
     padding-inline-start: 0 !important;

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import { Save } from 'lucide-vue-next'
-import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import AvatarBlock from './AvatarBlock.vue'
@@ -121,11 +121,8 @@ onMounted(() => {
   <div class="settings-panel">
     <h1 class="settings-panel__title">Профиль</h1>
 
-    <div v-if="loading" class="profile-panel__loading">
-      <SpinnerLoading color="primary" />
-    </div>
-
-    <template v-else-if="profileData">
+    <LoadingContentArea :loading="loading" min-height="8rem">
+    <template v-if="profileData">
       <div class="profile-card">
         <AvatarBlock :saving="savingMain || savingAdditional" />
 
@@ -184,6 +181,7 @@ onMounted(() => {
         Попробовать снова
       </button>
     </div>
+    </LoadingContentArea>
   </div>
 </template>
 
@@ -201,17 +199,6 @@ onMounted(() => {
 
 .settings-panel__title--secondary {
   margin-top: 1.25rem;
-}
-
-.profile-panel__loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 8rem;
-  border-radius: 0.625rem;
-  background: var(--color-primary-background);
-  border: 1px solid var(--color-border);
 }
 
 .profile-card {

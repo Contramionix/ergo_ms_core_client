@@ -1,13 +1,14 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { ref, reactive, computed, onMounted, markRaw } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import { confirmAction } from '@/js/utils/confirm.js'
-import { 
-  Save, Download, Upload, RotateCcw, Plus, Copy, Trash2, 
-  Check, Palette, Sun, Moon, Settings2
+import {
+  Save, Download, Upload, RotateCcw, Plus, Copy, Trash2,
+  Check, Sun, Moon,
 } from 'lucide-vue-next'
 import ColorPicker from './ColorPicker.vue'
+import SelectBox from '@/components/SelectBox.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { apiClient } from '@/js/api/manager'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { endpoints, initEndpoints } from '@/js/api/endpoints.js'
@@ -21,17 +22,24 @@ import {
   getCurrentThemeMode,
   loadThemeFromLocalStorage,
 } from '@/js/theme-manager'
-import { restoreSiteThemeAfterEditor } from '@/js/theme-service.js'
-
 const toast = useToast()
+
+const BASE_THEME_OPTIONS = [
+  { id: 'light', name: 'Светлая', icon: markRaw(Sun) },
+  { id: 'dark', name: 'Тёмная', icon: markRaw(Moon) },
+]
+
+const DRAFT_THEME_ID = '__draft__'
 
 // Состояние
 const themes = ref([])
 const selectedThemeId = ref(null)
 const loading = ref(false)
 const saving = ref(false)
+const resettingThemeId = ref(null)
 const showBootstrapColors = ref(false)
 const fileInput = ref(null)
+const draftTheme = ref(null)
 
 // Текущая редактируемая тема
 const currentTheme = reactive({
@@ -52,7 +60,72 @@ const colorDescriptions = getColorDescriptions()
 const bootstrapCategories = getBootstrapByCategories()
 
 // Вычисляемые свойства
-const isNewTheme = computed(() => !currentTheme.id)
+const isDraftSelected = computed(() => selectedThemeId.value === DRAFT_THEME_ID)
+const isNewTheme = computed(() => isDraftSelected.value)
+
+const displayThemes = computed(() => {
+  if (!draftTheme.value) {
+    return themes.value
+  }
+
+  const source = isDraftSelected.value ? currentTheme : draftTheme.value
+  const draft = {
+    id: DRAFT_THEME_ID,
+    name: source.name || 'Новая тема',
+    description: source.description || '',
+    base_theme: source.base_theme,
+    is_system: false,
+    is_active: false,
+    is_draft: true,
+  }
+
+  return [draft, ...themes.value]
+})
+
+function createEmptyDraft(baseTheme = 'light') {
+  return {
+    id: DRAFT_THEME_ID,
+    name: 'Новая тема',
+    description: '',
+    author: '',
+    base_theme: baseTheme,
+    colors: { ...getDefaultColors(baseTheme) },
+    bootstrap_colors: {},
+    is_active: false,
+    is_default: false,
+    is_system: false,
+  }
+}
+
+function snapshotTheme(source) {
+  return {
+    id: source.id,
+    name: source.name,
+    description: source.description || '',
+    author: source.author || '',
+    base_theme: source.base_theme,
+    colors: { ...(source.colors || {}) },
+    bootstrap_colors: { ...(source.bootstrap_colors || {}) },
+    is_active: Boolean(source.is_active),
+    is_default: Boolean(source.is_default),
+    is_system: Boolean(source.is_system),
+  }
+}
+
+function applyThemeToCurrent(theme) {
+  Object.assign(currentTheme, snapshotTheme(theme))
+}
+
+function syncCurrentToDraft() {
+  if (!draftTheme.value) {
+    return
+  }
+  draftTheme.value = snapshotTheme(currentTheme)
+  draftTheme.value.id = DRAFT_THEME_ID
+  draftTheme.value.is_active = false
+  draftTheme.value.is_default = false
+  draftTheme.value.is_system = false
+}
 
 // Загрузка списка тем
 const loadThemes = async () => {
@@ -95,19 +168,48 @@ const createSystemThemes = async () => {
   }
 }
 
-// Сброс системных тем к начальным значениям
-const resetSystemThemes = async () => {
+// Сброс одной системной темы к начальным значениям
+const resetSystemTheme = async (theme) => {
+  if (!theme.is_system) {
+    return
+  }
+
+  const ok = await confirmAction({
+    title: 'Сброс темы',
+    message: `Сбросить тему «${theme.name}» к начальным значениям?`,
+    confirmText: 'Сбросить',
+    cancelText: 'Отмена',
+    variant: 'warning',
+  })
+  if (!ok) {
+    return
+  }
+
+  resettingThemeId.value = theme.id
   try {
-    const res = await apiClient.post(endpoints.themes.createSystemThemes)
+    const res = await apiClient.post(endpoints.themes.resetDefaults(theme.id))
     if (res.success) {
-      toast.success('Системные темы сброшены к начальным значениям')
+      toast.success(`Тема «${theme.name}» сброшена к начальным значениям`)
       await loadThemes()
+      const resetTheme = res.data || themes.value.find((t) => t.id === theme.id)
+      if (resetTheme) {
+        selectTheme(resetTheme)
+        if (resetTheme.is_active) {
+          applyTheme({
+            base_theme: resetTheme.base_theme,
+            colors: resetTheme.colors || {},
+            bootstrap_colors: resetTheme.bootstrap_colors || {},
+          }, true)
+        }
+      }
     } else {
-      toast.error(res.message || 'Ошибка сброса тем')
+      toast.error(res.message || 'Ошибка сброса темы')
     }
   } catch (e) {
-    logError('Ошибка сброса тем:', e)
-    toast.error('Ошибка сброса системных тем')
+    logError('Ошибка сброса темы:', e)
+    toast.error('Ошибка сброса темы')
+  } finally {
+    resettingThemeId.value = null
   }
 }
 
@@ -141,6 +243,26 @@ function pickInitialTheme(themeList) {
 
 // Выбор темы для редактирования
 const selectTheme = (theme, { preview = true } = {}) => {
+  if (isDraftSelected.value) {
+    syncCurrentToDraft()
+  }
+
+  if (theme.id === DRAFT_THEME_ID) {
+    if (!draftTheme.value) {
+      return
+    }
+    selectedThemeId.value = DRAFT_THEME_ID
+    applyThemeToCurrent(draftTheme.value)
+    if (preview) {
+      previewTheme({
+        base_theme: currentTheme.base_theme,
+        colors: { ...currentTheme.colors },
+        bootstrap_colors: { ...currentTheme.bootstrap_colors },
+      })
+    }
+    return
+  }
+
   selectedThemeId.value = theme.id
   
   // Берём цвета из темы или дефолтные из _theme.scss
@@ -172,19 +294,40 @@ const selectTheme = (theme, { preview = true } = {}) => {
 
 // Создание новой темы
 const createNewTheme = () => {
-  const baseTheme = 'light'
-  Object.assign(currentTheme, {
-    id: null,
-    name: 'Новая тема',
-    description: '',
-    author: '',
-    base_theme: baseTheme,
-    colors: { ...getDefaultColors(baseTheme) },
-    bootstrap_colors: {},  // Начинаем без переопределений Bootstrap
-    is_active: false,
-    is_default: false,
-    is_system: false
+  if (draftTheme.value) {
+    selectTheme({ id: DRAFT_THEME_ID })
+    return
+  }
+
+  draftTheme.value = createEmptyDraft()
+  selectTheme({ id: DRAFT_THEME_ID })
+}
+
+const discardDraft = async () => {
+  const ok = await confirmAction({
+    title: 'Удаление черновика',
+    message: 'Удалить несохранённый черновик темы?',
+    confirmText: 'Удалить',
+    cancelText: 'Отмена',
+    variant: 'danger',
   })
+  if (!ok) {
+    return
+  }
+
+  const wasSelected = isDraftSelected.value
+  draftTheme.value = null
+
+  if (!wasSelected) {
+    return
+  }
+
+  const fallback = themes.value[0]
+  if (fallback) {
+    selectTheme(fallback, { preview: false })
+    return
+  }
+
   selectedThemeId.value = null
 }
 
@@ -270,7 +413,10 @@ const saveTheme = async () => {
     }
     
     let res
-    if (currentTheme.id) {
+    if (isDraftSelected.value) {
+      syncCurrentToDraft()
+      res = await apiClient.post(endpoints.themes.create, data)
+    } else if (currentTheme.id) {
       res = await apiClient.put(endpoints.themes.update(currentTheme.id), data)
     } else {
       res = await apiClient.post(endpoints.themes.create, data)
@@ -278,6 +424,7 @@ const saveTheme = async () => {
     
     if (res.success) {
       toast.success('Тема сохранена')
+      draftTheme.value = null
       const savedId = res.data?.id || currentTheme.id
       await loadThemes()
       const savedTheme = themes.value.find((t) => t.id === savedId)
@@ -346,7 +493,7 @@ const deleteTheme = async (theme) => {
 
   const ok = await confirmAction({
     title: 'Удаление темы',
-    message: `Вы uverены, что хотите удалить тему "${theme.name}"?`,
+    message: `Вы уверены, что хотите удалить тему "${theme.name}"?`,
     confirmText: 'Удалить',
     cancelText: 'Отмена',
     variant: 'danger',
@@ -366,7 +513,7 @@ const deleteTheme = async (theme) => {
 
 // Экспорт темы
 const exportTheme = async () => {
-  if (!currentTheme.id) {
+  if (!currentTheme.id || isDraftSelected.value) {
     // Экспорт несохраненной темы
     const data = {
       name: currentTheme.name,
@@ -446,10 +593,6 @@ const handleFileImport = async (event) => {
 // Следим за изменениями и применяем превью
 // Watch удалён - превью применяется только при явном изменении цвета
 
-onBeforeRouteLeave(async () => {
-  await restoreSiteThemeAfterEditor()
-})
-
 onMounted(() => {
   loadThemes()
 })
@@ -459,222 +602,240 @@ onMounted(() => {
 
 <template>
   <div class="theme-editor">
-    <!-- Скрытый input для импорта -->
     <input
       ref="fileInput"
       type="file"
       accept=".json"
-      style="display: none"
+      class="visually-hidden"
       @change="handleFileImport"
     />
-    
-    <!-- Диалог подтверждения удаления -->
-    
+
     <div class="row g-4">
-      <!-- Левая панель: список тем -->
       <div class="col-12 col-lg-4">
-        <div class="card rounded-3 shadow-sm h-100">
-          <div class="card-header theme-editor__card-header d-flex align-items-center justify-content-between">
-            <h5 class="mb-0 d-flex align-items-center">
-              <Palette :size="20" class="me-2 text-primary" />
-              Темы
-            </h5>
-            <div class="d-flex gap-2">
-              <button 
-                class="btn btn-sm btn-outline-secondary" 
-                @click="resetSystemThemes"
-                title="Сбросить системные темы к начальным значениям"
+        <section class="theme-editor__section">
+          <div class="table-header mb-3">
+            <h2 class="admin-section-heading mb-0">Список тем</h2>
+            <div class="actions-wrapper">
+              <button
+                type="button"
+                class="btn btn-primary d-inline-flex align-items-center gap-2"
+                @click="createNewTheme"
+              >
+                <Plus :size="16" />
+                <span>Новая тема</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="content-card content-card--flush">
+            <LoadingContentArea :loading="loading" min-height="8rem">
+              <div class="theme-list">
+                <div
+                  v-for="theme in displayThemes"
+                  :key="theme.id"
+                  class="theme-item"
+                  :class="{
+                    active: selectedThemeId === theme.id,
+                    'is-active-theme': theme.is_active,
+                    'is-draft-theme': theme.is_draft,
+                  }"
+                  @click="selectTheme(theme)"
+                >
+                  <div class="theme-info">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <component
+                        :is="theme.base_theme === 'dark' ? Moon : Sun"
+                        :size="16"
+                        class="theme-icon"
+                      />
+                      <span class="theme-name">{{ theme.name }}</span>
+                      <span v-if="theme.is_draft" class="theme-badge theme-badge--draft">Черновик</span>
+                      <span v-if="theme.is_system" class="theme-badge theme-badge--muted">Системная</span>
+                      <span v-if="theme.is_active" class="theme-badge theme-badge--active">Активна</span>
+                    </div>
+                    <small>{{ theme.description || 'Без описания' }}</small>
+                  </div>
+
+                  <div class="theme-actions actions-cell">
+                    <button
+                      v-if="theme.is_system"
+                      type="button"
+                      class="btn-action"
+                      title="Сбросить к начальным значениям"
+                      :disabled="resettingThemeId === theme.id"
+                      @click.stop="resetSystemTheme(theme)"
+                    >
+                      <RotateCcw :size="15" />
+                    </button>
+                    <button
+                      v-if="!theme.is_active && !theme.is_draft"
+                      type="button"
+                      class="btn-action"
+                      title="Активировать"
+                      @click.stop="activateTheme(theme)"
+                    >
+                      <Check :size="15" />
+                    </button>
+                    <button
+                      v-if="!theme.is_draft"
+                      type="button"
+                      class="btn-action btn-action--edit"
+                      title="Дублировать"
+                      @click.stop="duplicateTheme(theme)"
+                    >
+                      <Copy :size="15" />
+                    </button>
+                    <button
+                      v-if="theme.is_draft"
+                      type="button"
+                      class="btn-action btn-action--delete"
+                      title="Удалить черновик"
+                      @click.stop="discardDraft"
+                    >
+                      <Trash2 :size="15" />
+                    </button>
+                    <button
+                      v-if="!theme.is_system && !theme.is_draft"
+                      type="button"
+                      class="btn-action btn-action--delete"
+                      title="Удалить"
+                      @click.stop="deleteTheme(theme)"
+                    >
+                      <Trash2 :size="15" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </LoadingContentArea>
+          </div>
+        </section>
+      </div>
+
+      <div class="col-12 col-lg-8">
+        <section class="theme-editor__section">
+          <div class="table-header mb-3">
+            <h2 class="admin-section-heading mb-0">
+              {{ isNewTheme ? 'Новая тема' : 'Редактирование' }}
+            </h2>
+            <div class="actions-wrapper">
+              <button
+                type="button"
+                class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
+                :disabled="currentTheme.is_system"
+                title="Сбросить цвета"
+                @click="resetToDefaults"
               >
                 <RotateCcw :size="16" />
+                <span>Сбросить</span>
               </button>
-              <button class="btn btn-sm btn-primary" @click="createNewTheme">
-                <Plus :size="16" class="me-1" />
-                Новая
-              </button>
-            </div>
-          </div>
-          
-          <div class="card-body p-0">
-            <div v-if="loading" class="text-center py-4">
-              <div class="spinner-border spinner-border-sm text-primary"></div>
-            </div>
-            
-            <div v-else class="theme-list">
-              <div
-                v-for="theme in themes"
-                :key="theme.id"
-                class="theme-item"
-                :class="{ 
-                  active: selectedThemeId === theme.id,
-                  'is-active-theme': theme.is_active
-                }"
-                @click="selectTheme(theme)"
+              <button
+                type="button"
+                class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
+                @click="importTheme"
               >
-                <div class="theme-info">
-                  <div class="d-flex align-items-center gap-2">
-                    <component 
-                      :is="theme.base_theme === 'dark' ? Moon : Sun" 
-                      :size="16" 
-                      class="theme-icon"
-                    />
-                    <span class="theme-name">{{ theme.name }}</span>
-                    <span v-if="theme.is_system" class="badge bg-secondary">Системная</span>
-                    <span v-if="theme.is_active" class="badge bg-success">Активна</span>
-                  </div>
-                  <small class="text-muted">{{ theme.description || 'Без описания' }}</small>
-                </div>
-                
-                <div class="theme-actions">
-                  <button
-                    v-if="!theme.is_active"
-                    class="btn btn-sm btn-outline-success"
-                    @click.stop="activateTheme(theme)"
-                    title="Активировать"
-                  >
-                    <Check :size="14" />
-                  </button>
-                  <button
-                    class="btn btn-sm btn-outline-secondary"
-                    @click.stop="duplicateTheme(theme)"
-                    title="Дублировать"
-                  >
-                    <Copy :size="14" />
-                  </button>
-                  <button
-                    v-if="!theme.is_system"
-                    class="btn btn-sm btn-outline-danger"
-                    @click.stop="deleteTheme(theme)"
-                    title="Удалить"
-                  >
-                    <Trash2 :size="14" />
-                  </button>
-                </div>
-              </div>
+                <Upload :size="16" />
+                <span>Импорт</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
+                @click="exportTheme"
+              >
+                <Download :size="16" />
+                <span>Экспорт</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary d-inline-flex align-items-center gap-2"
+                :disabled="saving || currentTheme.is_system"
+                @click="saveTheme"
+              >
+                <Save :size="16" />
+                <span>{{ saving ? 'Сохранение...' : 'Сохранить' }}</span>
+              </button>
             </div>
           </div>
-        </div>
-      </div>
-      
-      <!-- Правая панель: редактор -->
-      <div class="col-12 col-lg-8">
-        <div class="card rounded-3 shadow-sm">
-          <div class="card-header theme-editor__card-header">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-              <h5 class="mb-0 d-flex align-items-center">
-                <Settings2 :size="20" class="me-2 text-primary" />
-                {{ isNewTheme ? 'Новая тема' : 'Редактирование' }}
-              </h5>
-              
-              <div class="d-flex gap-2 flex-wrap">
-                <button
-                  class="btn btn-sm btn-outline-secondary"
-                  @click="resetToDefaults"
-                  :disabled="currentTheme.is_system"
-                  title="Сбросить цвета"
-                >
-                  <RotateCcw :size="16" class="me-1" />
-                  Сбросить
-                </button>
-                <button class="btn btn-sm btn-outline-primary" @click="importTheme">
-                  <Upload :size="16" class="me-1" />
-                  Импорт
-                </button>
-                <button class="btn btn-sm btn-outline-primary" @click="exportTheme">
-                  <Download :size="16" class="me-1" />
-                  Экспорт
-                </button>
-                <button
-                  class="btn btn-sm btn-primary"
-                  @click="saveTheme"
-                  :disabled="saving || currentTheme.is_system"
-                >
-                  <Save :size="16" class="me-1" />
-                  {{ saving ? 'Сохранение...' : 'Сохранить' }}
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <div class="card-body">
-            <!-- Информация о теме -->
+
+          <div class="content-card">
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-4">
-                <label class="form-label">Название</label>
+                <label class="form-label" for="theme-name">Название</label>
                 <input
+                  id="theme-name"
                   v-model="currentTheme.name"
                   type="text"
-                  class="form-control"
+                  class="form-control theme-editor__input"
                   :disabled="currentTheme.is_system"
                   placeholder="Название темы"
                 />
               </div>
               <div class="col-12 col-md-4">
-                <label class="form-label">Автор</label>
+                <label class="form-label" for="theme-author">Автор</label>
                 <input
+                  id="theme-author"
                   v-model="currentTheme.author"
                   type="text"
-                  class="form-control"
+                  class="form-control theme-editor__input"
                   :disabled="currentTheme.is_system"
                   placeholder="Автор"
                 />
               </div>
               <div class="col-12 col-md-4">
-                <label class="form-label">Базовая тема</label>
-                <div class="btn-group w-100">
-                  <button
-                    type="button"
-                    class="btn"
-                    :class="currentTheme.base_theme === 'light' ? 'btn-primary' : 'btn-outline-secondary'"
-                    @click="changeBaseTheme('light')"
-                    :disabled="currentTheme.is_system"
-                  >
-                    <Sun :size="16" class="me-1" />
-                    Светлая
-                  </button>
-                  <button
-                    type="button"
-                    class="btn"
-                    :class="currentTheme.base_theme === 'dark' ? 'btn-primary' : 'btn-outline-secondary'"
-                    @click="changeBaseTheme('dark')"
-                    :disabled="currentTheme.is_system"
-                  >
-                    <Moon :size="16" class="me-1" />
-                    Тёмная
-                  </button>
-                </div>
+                <SelectBox
+                  id="theme-base"
+                  label="Базовая тема"
+                  :model-value="currentTheme.base_theme"
+                  :options="BASE_THEME_OPTIONS"
+                  :include-all-option="false"
+                  :disabled="currentTheme.is_system"
+                  fixed-trigger-label-font-size
+                  @update:model-value="changeBaseTheme"
+                >
+                  <template #selected="{ option, label }">
+                    <span class="theme-editor__select-option">
+                      <component v-if="option?.icon" :is="option.icon" :size="16" />
+                      <span>{{ label }}</span>
+                    </span>
+                  </template>
+                  <template #option="{ option, label }">
+                    <span class="theme-editor__select-option">
+                      <component v-if="option?.icon" :is="option.icon" :size="16" />
+                      <span>{{ label }}</span>
+                    </span>
+                  </template>
+                </SelectBox>
               </div>
               <div class="col-12">
-                <label class="form-label">Описание</label>
+                <label class="form-label" for="theme-description">Описание</label>
                 <input
+                  id="theme-description"
                   v-model="currentTheme.description"
                   type="text"
-                  class="form-control"
+                  class="form-control theme-editor__input"
                   :disabled="currentTheme.is_system"
                   placeholder="Описание темы"
                 />
               </div>
             </div>
-            
-            <!-- Переключатель расширенных настроек -->
+
             <div class="form-check form-switch mb-4">
               <input
-                class="form-check-input"
-                type="checkbox"
                 id="showBootstrap"
                 v-model="showBootstrapColors"
+                class="form-check-input"
+                type="checkbox"
               />
               <label class="form-check-label" for="showBootstrap">
                 Показать Bootstrap переменные
               </label>
             </div>
-            
-            <!-- Основные цвета -->
-            <h6 class="mb-3">Основные цвета</h6>
+
+            <h3 class="admin-section-heading mb-3">Основные цвета</h3>
             <div class="row">
-              <div 
-                class="col-12 col-md-6" 
-                v-for="(desc, key) in colorDescriptions" 
+              <div
+                v-for="(desc, key) in colorDescriptions"
                 :key="key"
+                class="col-12 col-md-6"
               >
                 <ColorPicker
                   :label="desc.label"
@@ -685,20 +846,16 @@ onMounted(() => {
                 />
               </div>
             </div>
-            
-            <!-- Bootstrap цвета по категориям -->
+
             <template v-if="showBootstrapColors">
               <template v-for="(category, categoryKey) in bootstrapCategories" :key="categoryKey">
-                <hr class="my-4" />
-                <h6 class="mb-3 d-flex align-items-center">
-                  <span class="text-primary me-2">●</span>
-                  {{ category.label }}
-                </h6>
+                <hr class="theme-editor__divider" />
+                <h3 class="admin-section-heading mb-3">{{ category.label }}</h3>
                 <div class="row">
-                  <div 
-                    class="col-12 col-md-6" 
-                    v-for="(varConfig, key) in category.variables" 
+                  <div
+                    v-for="(varConfig, key) in category.variables"
                     :key="key"
+                    class="col-12 col-md-6"
                   >
                     <ColorPicker
                       :label="varConfig.label"
@@ -712,90 +869,171 @@ onMounted(() => {
               </template>
             </template>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss">
+@import '@/core/cms/adp/admin/admin-page.scss';
+
 .theme-editor {
-  .theme-editor__card-header {
-    background-color: var(--color-primary-background);
-    border-bottom: 1px solid var(--color-border);
+  .admin-section-heading {
+    font-size: 1.1rem;
+    font-weight: 600;
     color: var(--color-primary-text);
   }
 
-  .form-label {
+  .content-card--flush {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .form-label,
+  .form-check-label {
     color: var(--color-primary-text);
+    font-size: 0.875rem;
+  }
+
+  .theme-editor__input {
+    border: 1px solid var(--color-border);
+    background: var(--color-secondary-background);
+    color: var(--color-primary-text);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+
+    &:focus {
+      border-color: var(--color-primary-text);
+      box-shadow: none;
+    }
+
+    &::placeholder {
+      color: var(--color-secondary-text);
+    }
+
+    &:disabled {
+      opacity: 0.65;
+    }
+  }
+
+  .theme-editor__select-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .theme-editor__divider {
+    border-color: var(--color-border);
+    margin: 1.5rem 0;
+    opacity: 1;
   }
 
   .theme-list {
     max-height: 600px;
     overflow-y: auto;
   }
-  
+
   .theme-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
     border-bottom: 1px solid var(--color-border);
     cursor: pointer;
-    transition: background-color 0.2s;
-    
+    transition: background-color 0.15s ease;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
     &:hover {
       background-color: var(--color-hover-background);
     }
-    
+
     &.active {
       background-color: color-mix(in srgb, var(--color-accent) 14%, var(--color-primary-background));
       border-left: 3px solid var(--color-accent);
     }
-    
-    &.is-active-theme {
-      border-left: 3px solid var(--bs-success);
+
+    &.is-active-theme:not(.active) {
+      border-left: 3px solid var(--bs-success, #198754);
     }
   }
-  
+
   .theme-info {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
     overflow: hidden;
+    min-width: 0;
 
     small {
-      color: var(--color-secondary-text);
+      color: color-mix(in srgb, var(--ui-text) 88%, var(--ui-text-muted));
+      font-size: 0.8125rem;
     }
   }
-  
+
   .theme-name {
-    font-weight: 500;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--color-primary-text);
   }
-  
+
   .theme-icon {
     flex-shrink: 0;
-    color: var(--color-secondary-text);
+    color: var(--ui-text);
   }
-  
-  .theme-actions {
-    display: flex;
-    gap: 0.25rem;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-  
-  .theme-item:hover .theme-actions {
-    opacity: 1;
-  }
-  
-  .badge {
-    font-size: 0.65rem;
+
+  .theme-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
     font-weight: 500;
+    line-height: 1.4;
+
+    &--muted {
+      background: var(--ui-surface-2);
+      color: var(--ui-text);
+    }
+
+    &--active {
+      background: rgba(var(--bs-success-rgb, 25, 135, 84), 0.12);
+      color: var(--bs-success, #198754);
+    }
+
+    &--draft {
+      background: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
+      color: var(--color-accent, var(--bs-primary, #0d6efd));
+    }
+  }
+
+  .theme-item.is-draft-theme.active {
+    border-left-color: var(--color-accent, var(--bs-primary, #0d6efd));
+  }
+
+  .theme-actions {
+    opacity: 1;
+    transition: opacity 0.15s ease;
+    flex-shrink: 0;
+
+    :deep(.btn-action) {
+      color: var(--ui-text);
+
+      &:hover:not(:disabled) {
+        color: var(--ui-text);
+      }
+    }
+  }
+
+  .theme-item:hover .theme-actions,
+  .theme-item.active .theme-actions {
+    opacity: 1;
   }
 }
 </style>

@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import { Send } from 'lucide-vue-next'
-import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import UserProfileFields from './UserProfileFields.vue'
 import {
   USER_PROFILE_IDENTITY_FIELDS,
@@ -126,12 +126,8 @@ onMounted(async () => {
       </p>
     </div>
 
-    <div v-if="loading" class="profile-change-request__loading">
-      <SpinnerLoading color="primary" />
-    </div>
-
-    <template v-else>
-      <div v-if="pendingRequest" class="profile-change-request__notice">
+    <LoadingContentArea :loading="loading" min-height="6rem">
+    <div v-if="pendingRequest" class="profile-change-request__notice">
         <span class="profile-change-request__status" :class="statusClass.pending">
           {{ statusLabels.pending }}
         </span>
@@ -207,7 +203,7 @@ onMounted(async () => {
           </p>
         </div>
       </div>
-    </template>
+    </LoadingContentArea>
   </div>
 </template>
 
@@ -236,12 +232,6 @@ onMounted(async () => {
   margin: 0;
   font-size: 0.8125rem;
   color: var(--color-secondary-text);
-}
-
-.profile-change-request__loading {
-  display: flex;
-  justify-content: center;
-  padding: 1.5rem;
 }
 
 .profile-change-request__notice {

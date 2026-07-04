@@ -19,6 +19,8 @@ const emit = defineEmits(['close'])
 const toast = useToast()
 const { changePassword } = useProfile()
 
+const formId = 'change-password-form'
+
 const isCurrentPasswordVisible = ref(false)
 const isNewPasswordVisible = ref(false)
 const isConfirmPasswordVisible = ref(false)
@@ -76,7 +78,7 @@ const passwordRequirementHints = getPasswordRequirementHints()
 
 const passwordStrength = computed(() => {
   const password = form.value.newPassword
-  if (!password) return { score: 0, label: '', color: '' }
+  if (!password) return { score: 0, label: '', tone: '' }
 
   let score = 0
   if (password.length >= passwordPolicy.minLength) score += 1
@@ -87,17 +89,24 @@ const passwordStrength = computed(() => {
   if (!passwordPolicy.requireSpecial || /[^A-Za-z0-9]/.test(password)) score += 1
 
   const strengthMap = {
-    0: { label: '', color: '' },
-    1: { label: 'Очень слабый', color: 'danger' },
-    2: { label: 'Слабый', color: 'warning' },
-    3: { label: 'Слабый', color: 'warning' },
-    4: { label: 'Средний', color: 'info' },
-    5: { label: 'Сильный', color: 'success' },
-    6: { label: 'Очень сильный', color: 'success' },
+    0: { label: '', tone: '' },
+    1: { label: 'Очень слабый', tone: 'danger' },
+    2: { label: 'Слабый', tone: 'warning' },
+    3: { label: 'Слабый', tone: 'warning' },
+    4: { label: 'Средний', tone: 'info' },
+    5: { label: 'Сильный', tone: 'success' },
+    6: { label: 'Очень сильный', tone: 'success' },
   }
 
   return { score, ...strengthMap[score] }
 })
+
+const passwordsMatch = computed(
+  () =>
+    Boolean(form.value.confirmPassword)
+    && Boolean(form.value.newPassword)
+    && form.value.confirmPassword === form.value.newPassword,
+)
 
 const cleanErrors = () => {
   errors.value = {
@@ -146,9 +155,7 @@ const handleClose = () => {
   emit('close')
 }
 
-const submitForm = async (event) => {
-  event.preventDefault()
-
+const submitForm = async () => {
   if (!validateForm()) {
     return
   }
@@ -206,156 +213,352 @@ const submitForm = async (event) => {
     modal-id="changePasswordModal"
     title="Изменить пароль"
     modal-aria-label="Изменить пароль"
-    :show-footer="false"
-    custom-class="change-password-modal-root"
-    dialog-class="modal-lg"
-    body-class="p-3 change-password-modal-body"
+    size="md"
+    scrollable
     @close="handleClose"
   >
-        <form @submit="submitForm">
-          <div class="mb-3">
-            <label class="form-label" for="cpm-current-password">Текущий пароль</label>
-            <div class="input-group">
-              <input
-                id="cpm-current-password"
-                class="form-control"
-                :class="{ 'is-invalid': errors.currentPassword }"
-                :type="currentPasswordFieldType"
-                v-model="form.currentPassword"
-                :disabled="isLoading"
-                autocomplete="current-password"
-              />
-              <button
-                type="button"
-                class="btn btn-outline-secondary"
-                :disabled="isLoading"
-                @click="togglePasswordVisibility('currentPassword')"
-              >
-                <component :is="currentPasswordIcon" :size="18" />
-              </button>
-              <div v-if="errors.currentPassword" class="invalid-feedback d-block">
-                {{ errors.currentPassword }}
-              </div>
-            </div>
-          </div>
+    <form :id="formId" class="change-password-modal" @submit.prevent="submitForm">
+      <div class="change-password-modal__field">
+        <label class="change-password-modal__label" for="cpm-current-password">Текущий пароль</label>
+        <div class="change-password-modal__input-wrap">
+          <input
+            id="cpm-current-password"
+            class="change-password-modal__input"
+            :class="{ 'change-password-modal__input--invalid': errors.currentPassword }"
+            :type="currentPasswordFieldType"
+            v-model="form.currentPassword"
+            :disabled="isLoading"
+            autocomplete="current-password"
+            placeholder="Введите текущий пароль"
+          />
+          <button
+            type="button"
+            class="change-password-modal__toggle"
+            :disabled="isLoading"
+            :title="isCurrentPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+            @click="togglePasswordVisibility('currentPassword')"
+          >
+            <component :is="currentPasswordIcon" :size="18" />
+          </button>
+        </div>
+        <p v-if="errors.currentPassword" class="change-password-modal__error">{{ errors.currentPassword }}</p>
+      </div>
 
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label class="form-label" for="cpm-new-password">Новый пароль</label>
-              <div class="input-group">
-                <input
-                  id="cpm-new-password"
-                  class="form-control"
-                  :class="{ 'is-invalid': errors.newPassword }"
-                  :type="newPasswordFieldType"
-                  v-model="form.newPassword"
-                  :disabled="isLoading"
-                  autocomplete="new-password"
-                />
-                <button
-                  type="button"
-                  class="btn btn-outline-secondary"
-                  :disabled="isLoading"
-                  @click="togglePasswordVisibility('newPassword')"
-                >
-                  <component :is="newPasswordIcon" :size="18" />
-                </button>
-              </div>
-              <div v-if="errors.newPassword" class="invalid-feedback d-block">{{ errors.newPassword }}</div>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label" for="cpm-confirm-password">Подтвердите новый пароль</label>
-              <div class="input-group">
-                <input
-                  id="cpm-confirm-password"
-                  class="form-control"
-                  :class="{ 'is-invalid': errors.confirmPassword }"
-                  :type="confirmPasswordFieldType"
-                  v-model="form.confirmPassword"
-                  :disabled="isLoading"
-                  autocomplete="new-password"
-                />
-                <button
-                  type="button"
-                  class="btn btn-outline-secondary"
-                  :disabled="isLoading"
-                  @click="togglePasswordVisibility('confirmPassword')"
-                >
-                  <component :is="confirmPasswordIcon" :size="18" />
-                </button>
-              </div>
-              <div v-if="errors.confirmPassword" class="invalid-feedback d-block">
-                {{ errors.confirmPassword }}
-              </div>
-            </div>
-          </div>
-
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <div v-if="form.newPassword && passwordStrength.score > 0" class="mb-2">
-                <div class="d-flex align-items-center justify-content-between">
-                  <small class="text-muted">Сила пароля:</small>
-                  <span :class="`text-${passwordStrength.color}`" class="small fw-semibold">
-                    {{ passwordStrength.label }}
-                  </span>
-                </div>
-                <div class="progress mt-1" style="height: 4px">
-                  <div
-                    class="progress-bar"
-                    :class="`bg-${passwordStrength.color}`"
-                    :style="{ width: `${(passwordStrength.score / 6) * 100}%` }"
-                  ></div>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div
-                v-if="form.confirmPassword && form.newPassword && form.confirmPassword === form.newPassword"
-                class="mb-2"
-              >
-                <small class="text-success">
-                  <CheckCircle :size="14" class="me-1" />
-                  Пароли совпадают
-                </small>
-              </div>
-            </div>
-          </div>
-
-          <div class="alert alert-info small mb-3">
-            <h6 class="alert-heading mb-2 d-flex align-items-center gap-1">
-              <Shield :size="16" />
-              Требования к паролю
-            </h6>
-            <ul class="mb-0 ps-3">
-              <li v-for="hint in passwordRequirementHints" :key="hint">{{ hint }}</li>
-            </ul>
-          </div>
-
-          <div class="d-flex gap-2 justify-content-end">
-            <button type="button" class="btn btn-light" :disabled="isLoading" @click="handleClose">
-              Отмена
+      <div class="change-password-modal__grid">
+        <div class="change-password-modal__field">
+          <label class="change-password-modal__label" for="cpm-new-password">Новый пароль</label>
+          <div class="change-password-modal__input-wrap">
+            <input
+              id="cpm-new-password"
+              class="change-password-modal__input"
+              :class="{ 'change-password-modal__input--invalid': errors.newPassword }"
+              :type="newPasswordFieldType"
+              v-model="form.newPassword"
+              :disabled="isLoading"
+              autocomplete="new-password"
+              placeholder="Введите новый пароль"
+            />
+            <button
+              type="button"
+              class="change-password-modal__toggle"
+              :disabled="isLoading"
+              :title="isNewPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+              @click="togglePasswordVisibility('newPassword')"
+            >
+              <component :is="newPasswordIcon" :size="18" />
             </button>
-            <button type="submit" class="btn btn-primary" :disabled="isLoading">
+          </div>
+          <p v-if="errors.newPassword" class="change-password-modal__error">{{ errors.newPassword }}</p>
+
+          <div v-if="form.newPassword && passwordStrength.score > 0" class="change-password-modal__strength">
+            <div class="change-password-modal__strength-head">
+              <span class="change-password-modal__strength-label">Сила пароля</span>
               <span
-                v-if="isLoading"
-                class="spinner-border spinner-border-sm me-2"
-                role="status"
-              ></span>
-              {{ isLoading ? 'Сохранение...' : 'Сохранить' }}
+                class="change-password-modal__strength-value"
+                :class="`change-password-modal__strength-value--${passwordStrength.tone}`"
+              >
+                {{ passwordStrength.label }}
+              </span>
+            </div>
+            <div class="change-password-modal__strength-track">
+              <div
+                class="change-password-modal__strength-bar"
+                :class="`change-password-modal__strength-bar--${passwordStrength.tone}`"
+                :style="{ width: `${(passwordStrength.score / 6) * 100}%` }"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="change-password-modal__field">
+          <label class="change-password-modal__label" for="cpm-confirm-password">Подтверждение</label>
+          <div class="change-password-modal__input-wrap">
+            <input
+              id="cpm-confirm-password"
+              class="change-password-modal__input"
+              :class="{ 'change-password-modal__input--invalid': errors.confirmPassword }"
+              :type="confirmPasswordFieldType"
+              v-model="form.confirmPassword"
+              :disabled="isLoading"
+              autocomplete="new-password"
+              placeholder="Повторите новый пароль"
+            />
+            <button
+              type="button"
+              class="change-password-modal__toggle"
+              :disabled="isLoading"
+              :title="isConfirmPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+              @click="togglePasswordVisibility('confirmPassword')"
+            >
+              <component :is="confirmPasswordIcon" :size="18" />
             </button>
           </div>
-        </form>
+          <p v-if="errors.confirmPassword" class="change-password-modal__error">{{ errors.confirmPassword }}</p>
+          <p v-else-if="passwordsMatch" class="change-password-modal__match">
+            <CheckCircle :size="14" />
+            Пароли совпадают
+          </p>
+        </div>
+      </div>
+
+      <div class="change-password-modal__requirements">
+        <h2 class="change-password-modal__requirements-title">
+          <Shield :size="16" />
+          Требования к паролю
+        </h2>
+        <ul class="change-password-modal__requirements-list">
+          <li v-for="hint in passwordRequirementHints" :key="hint">{{ hint }}</li>
+        </ul>
+      </div>
+    </form>
+
+    <template #footer>
+      <button
+        type="button"
+        class="ui-btn ui-btn--secondary"
+        :disabled="isLoading"
+        @click="handleClose"
+      >
+        Отмена
+      </button>
+      <button
+        type="submit"
+        :form="formId"
+        class="ui-btn ui-btn--primary"
+        :disabled="isLoading"
+      >
+        <span v-if="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+        <span>{{ isLoading ? 'Сохранение...' : 'Сохранить' }}</span>
+      </button>
+    </template>
   </ModalCenter>
 </template>
 
 <style scoped lang="scss">
-.input-group .btn {
-  border-color: var(--color-border, #ced4da);
+.change-password-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
-</style>
 
-<style lang="scss">
-.change-password-modal-root.modal {
-  transition: none !important;
+.change-password-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.change-password-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.875rem 1rem;
+
+  @media (width <= 767px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.change-password-modal__label {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-secondary-text);
+}
+
+.change-password-modal__input-wrap {
+  position: relative;
+}
+
+.change-password-modal__input {
+  width: 100%;
+  min-height: 2.125rem;
+  padding: 0.375rem 2.5rem 0.375rem 0.625rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--color-primary-text);
+  background: var(--color-primary-background);
+  border: 1px solid var(--color-border);
+  border-radius: $radius-usual;
+  box-shadow: none;
+
+  &::placeholder {
+    color: var(--color-secondary-text);
+    opacity: 0.75;
+  }
+
+  &:focus,
+  &:focus-visible {
+    outline: none;
+    background: var(--color-hover-background);
+    border-color: var(--color-border);
+    box-shadow: none;
+  }
+
+  &:disabled {
+    opacity: 0.65;
+  }
+
+  &--invalid {
+    border-color: var(--bs-danger, #dc3545);
+  }
+}
+
+.change-password-modal__toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.375rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--color-secondary-text);
+  transform: translateY(-50%);
+
+  &:hover:not(:disabled) {
+    color: var(--color-primary-text);
+    background: var(--color-hover-background);
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-accent, #0d6efd) 45%, transparent);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.change-password-modal__error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--bs-danger, #dc3545);
+}
+
+.change-password-modal__match {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--bs-success, #198754);
+}
+
+.change-password-modal__strength {
+  margin-top: 0.125rem;
+}
+
+.change-password-modal__strength-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.change-password-modal__strength-label {
+  font-size: 0.75rem;
+  color: var(--color-secondary-text);
+}
+
+.change-password-modal__strength-value {
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &--danger {
+    color: var(--bs-danger, #dc3545);
+  }
+
+  &--warning {
+    color: var(--bs-warning-text-emphasis, #997404);
+  }
+
+  &--info {
+    color: var(--color-accent, #0d6efd);
+  }
+
+  &--success {
+    color: var(--bs-success, #198754);
+  }
+}
+
+.change-password-modal__strength-track {
+  height: 0.25rem;
+  margin-top: 0.35rem;
+  border-radius: 999px;
+  background: var(--color-secondary-background);
+  overflow: hidden;
+}
+
+.change-password-modal__strength-bar {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.15s ease;
+
+  &--danger {
+    background: var(--bs-danger, #dc3545);
+  }
+
+  &--warning {
+    background: var(--bs-warning, #ffc107);
+  }
+
+  &--info {
+    background: var(--color-accent, #0d6efd);
+  }
+
+  &--success {
+    background: var(--bs-success, #198754);
+  }
+}
+
+.change-password-modal__requirements {
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: $radius-usual;
+  background: var(--color-secondary-background);
+}
+
+.change-password-modal__requirements-title {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary-text);
+}
+
+.change-password-modal__requirements-list {
+  margin: 0;
+  padding-left: 1.125rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-secondary-text);
 }
 </style>

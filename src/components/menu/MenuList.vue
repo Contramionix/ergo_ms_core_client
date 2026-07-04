@@ -19,15 +19,16 @@ import {
 
 import MenuGroup from '@/components/menu/MenuGroup.vue'
 import MenuToolbar from '@/components/menu/MenuToolbar.vue'
+import MenuPeekLabel from '@/components/menu/MenuPeekLabel.vue'
 
 import { useMenuWidth } from './composables/useMenuWidth'
 import { useMenuNavigation } from './composables/useMenuNavigation'
 import { useMenuIconSizes, MENU_ICON_SIZES_KEY } from './composables/useMenuIconSizes'
+import { MENU_PEEK_STATE_KEY } from './composables/useMenuPeekState.js'
 import { safeNavigateByName } from './composables/safeMenuNavigate.js'
 import {
-  getMenuLayoutPaddingFallback,
+  getContentLayoutPadding,
   getMenuRightEdgeTarget,
-  measureMenuLayoutOffset,
   measureMenuRightEdge,
 } from './composables/menuLayoutMeasure.js'
 import {
@@ -40,7 +41,7 @@ const props = defineProps({
   isVisible: Boolean,
 })
 
-const emit = defineEmits(['left-padding', 'menu-right-edge', 'menu-state-change'])
+const emit = defineEmits(['left-padding', 'menu-right-edge', 'menu-state-change', 'layout-sync-transition'])
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -54,14 +55,97 @@ const isToolbarDropdownActive = ref(false)
 const menuSections = ref([])
 const isMenuReady = ref(false)
 const allowMenuTransitions = ref(false)
+const isLayoutTransitionActive = ref(false)
+const isVisibilityTransitionActive = ref(false)
 const { siteName, ensureSiteNameLoaded } = useSiteName()
 const menuRef = ref(null)
 
-let layoutObserver = null
+function onWindowResize() {
+  updateWidth()
+  scheduleLayoutOffsetSync()
+}
+
 let layoutSyncFrame = null
 let layoutSyncTimeout = null
+let layoutTransitionTimer = null
+let pendingAfterLayoutTransition = null
+let lastContentPadding = null
 
-const MENU_LAYOUT_SYNC_DELAY_MS = 320
+const MENU_TRANSITION_MS = 300
+const MENU_LAYOUT_SYNC_DELAY_MS = MENU_TRANSITION_MS + 20
+
+function resolveContentLayoutPadding() {
+  return getContentLayoutPadding(isCollapsed.value, menuWidth.value)
+}
+
+function resolveMenuRightEdgeTarget() {
+  return getMenuRightEdgeTarget(isCollapsed.value, isHovering.value, menuWidth.value)
+}
+
+function emitLeftPadding(value) {
+  if (value === lastContentPadding) {
+    return
+  }
+  lastContentPadding = value
+  emit('left-padding', value)
+}
+
+function emitLayoutTargets() {
+  emitLeftPadding(resolveContentLayoutPadding())
+  emit('menu-right-edge', resolveMenuRightEdgeTarget())
+}
+
+function clearLayoutTransitionTimer() {
+  if (layoutTransitionTimer) {
+    clearTimeout(layoutTransitionTimer)
+    layoutTransitionTimer = null
+  }
+}
+
+function finishLayoutTransition() {
+  if (!isLayoutTransitionActive.value) {
+    return
+  }
+
+  isLayoutTransitionActive.value = false
+  isVisibilityTransitionActive.value = false
+  emit('layout-sync-transition', false)
+  clearLayoutTransitionTimer()
+
+  const callback = pendingAfterLayoutTransition
+  pendingAfterLayoutTransition = null
+
+  syncLayoutOffset()
+  callback?.()
+}
+
+function beginLayoutTransition({ visibility = false, afterComplete = null } = {}) {
+  isLayoutTransitionActive.value = true
+  emit('layout-sync-transition', true)
+  if (visibility) {
+    isVisibilityTransitionActive.value = true
+  }
+  if (afterComplete) {
+    pendingAfterLayoutTransition = afterComplete
+  }
+
+  clearLayoutTransitionTimer()
+  emitLayoutTargets()
+  layoutTransitionTimer = setTimeout(finishLayoutTransition, MENU_LAYOUT_SYNC_DELAY_MS)
+}
+
+function onMenuTransitionEnd(event) {
+  if (event.target !== menuRef.value) {
+    return
+  }
+
+  const { propertyName } = event
+  if (propertyName !== 'transform' && propertyName !== 'inline-size' && propertyName !== 'width') {
+    return
+  }
+
+  finishLayoutTransition()
+}
 
 function syncLayoutOffset() {
   if (layoutSyncFrame) {
@@ -71,22 +155,18 @@ function syncLayoutOffset() {
   layoutSyncFrame = requestAnimationFrame(() => {
     layoutSyncFrame = null
 
-    const fallback = getMenuLayoutPaddingFallback(isCollapsed.value, menuWidth.value)
-
+    const contentPadding = resolveContentLayoutPadding()
     const menuRight = measureMenuRightEdge(menuRef.value)
-    emit('menu-right-edge', menuRight ?? fallback)
-
-    const measured = measureMenuLayoutOffset(menuRef.value)
-    if (measured) {
-      emit('left-padding', measured)
-      return
-    }
-
-    emit('left-padding', fallback)
+    emit('menu-right-edge', menuRight ?? resolveMenuRightEdgeTarget())
+    emitLeftPadding(contentPadding)
   })
 }
 
 function scheduleLayoutOffsetSync(delay = 0) {
+  if (isLayoutTransitionActive.value && delay === 0) {
+    return
+  }
+
   if (layoutSyncTimeout) {
     clearTimeout(layoutSyncTimeout)
     layoutSyncTimeout = null
@@ -100,17 +180,22 @@ function scheduleLayoutOffsetSync(delay = 0) {
   syncLayoutOffset()
 }
 
-async function syncMenuRightEdgeWithTransition() {
+async function syncMenuRightEdgeWithTransition({ updateContentPadding = false } = {}) {
   await nextTick()
-  emit(
-    'menu-right-edge',
-    getMenuRightEdgeTarget(isCollapsed.value, isHovering.value, menuWidth.value),
-  )
-  scheduleLayoutOffsetSync(MENU_LAYOUT_SYNC_DELAY_MS)
+
+  if (isCollapsed.value && !updateContentPadding) {
+    emit('menu-right-edge', resolveMenuRightEdgeTarget())
+    return
+  }
+
+  beginLayoutTransition()
 }
 
 function handleMenuMetricsChange(collapsed, width) {
   emit('menu-state-change', collapsed, width)
+  if (isCollapsed.value || isLayoutTransitionActive.value) {
+    return
+  }
   scheduleLayoutOffsetSync()
 }
 
@@ -130,6 +215,12 @@ const {
 
 const { menuIconSizes } = useMenuIconSizes()
 provide(MENU_ICON_SIZES_KEY, menuIconSizes)
+
+const menuPeekState = computed(() => ({
+  collapsed: isCollapsed.value,
+  peekActive: isCollapsed.value && isHovering.value,
+}))
+provide(MENU_PEEK_STATE_KEY, menuPeekState)
 
 // Helper функция для вызова updateMenuWidth с текущими параметрами
 const updateWidth = () => {
@@ -212,25 +303,44 @@ const {
 watch(
   () => props.isVisible,
   (newValue) => {
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1200
+
+    beginLayoutTransition({
+      visibility: true,
+      afterComplete: () => {
+        if (newValue) {
+          applyInitialMenuLayout()
+          updateWidth()
+        }
+      },
+    })
+
     if (!newValue) {
-      isHovering.value = true
-    } else {
-      if (isCollapsed.value) {
-        isHovering.value = false
+      if (isDesktop) {
+        isHovering.value = true
       }
-      applyInitialMenuLayout()
-      setTimeout(updateWidth, 50)
+      return
+    }
+
+    if (isCollapsed.value && isDesktop) {
+      isHovering.value = false
     }
   },
 )
 
 // Переключение меню
 const toggleMenu = () => {
+  const expanding = isCollapsed.value
+  if (expanding) {
+    isLayoutTransitionActive.value = true
+    emit('layout-sync-transition', true)
+  }
+
   isCollapsed.value = !isCollapsed.value
   writeMenuCollapsedPreference(isCollapsed.value)
   isHovering.value = !isCollapsed.value
   emit('menu-state-change', isCollapsed.value, menuWidth.value)
-  syncMenuRightEdgeWithTransition()
+  syncMenuRightEdgeWithTransition({ updateContentPadding: true })
 }
 
 // Обработка наведения
@@ -349,23 +459,19 @@ onMounted(async () => {
     isHovering.value = false
   }
 
-  if (menuRef.value && typeof ResizeObserver !== 'undefined') {
-    layoutObserver = new ResizeObserver(() => scheduleLayoutOffsetSync())
-    layoutObserver.observe(menuRef.value)
-  }
-
-  setupWidthTracking(() => {
-    updateWidth()
-    scheduleLayoutOffsetSync()
-  })
+  setupWidthTracking(onWindowResize)
 
   await finishMenuBootstrap()
+
+  menuRef.value?.addEventListener('transitionend', onMenuTransitionEnd)
 })
 
 // Удаляем слушатель при размонтировании
 onBeforeUnmount(() => {
   window.removeEventListener('menu-updated', handleMenuUpdate)
-  layoutObserver?.disconnect()
+  window.removeEventListener('resize', onWindowResize)
+  menuRef.value?.removeEventListener('transitionend', onMenuTransitionEnd)
+  clearLayoutTransitionTimer()
   if (layoutSyncFrame) {
     cancelAnimationFrame(layoutSyncFrame)
   }
@@ -376,12 +482,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen }" :style="{ '--menu-width': `${menuWidth}px` }" @mouseleave="handleMouseLeave">
+  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen, 'side-menu--visibility-transition': isVisibilityTransitionActive, 'side-menu--layout-transition': isLayoutTransitionActive || isCollapsed }" :style="{ '--menu-width': `${menuWidth}px` }" @mouseleave="handleMouseLeave">
     <div class="side-menu__header side-header">
       <div class="side-header__brand-row">
         <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">
           <div class="side-header__title text-smooth-animation">
-            <SiteWordmark :compact="isCollapsed && !isHovering" :compact-icon-size="menuIconSizes.item" class="site-wordmark--menu"/>
+            <SiteWordmark :compact="isCollapsed && !showMenuLabels" :compact-icon-size="menuIconSizes.item" class="site-wordmark--menu"/>
           </div>
         </RouterLink>
         <div class="side-menu__toggle">
@@ -391,16 +497,18 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-    <div class="side-header__shadow"></div>
     <div class="side-menu__body" @mouseenter="handleMouseEnter">
+      <div class="side-header__shadow" aria-hidden="true"></div>
       <div class="side-menu__scroll">
         <ul v-show="isMenuReady" class="side-menu__list p-2" :class="{ short: isCollapsed && !isHovering }">
         <li v-for="(section, index) in menuSections" :key="section.id ?? section.routeName ?? index">
           <div v-if="shouldShowSeparator(index)" class="side-divider py-2">
             <div class="side-divider__icon"><Minus :size="menuIconSizes.divider" /></div>
-            <div class="side-divider__name text-smooth-animation" :class="{ hidden: !showMenuLabels }">
-              {{ getSeparator(index) }}
-            </div>
+            <MenuPeekLabel
+              :text="getSeparator(index)"
+              :visible="showMenuLabels"
+              class="side-divider__name"
+            />
           </div>
           
           <MenuGroup :is-hovering="showMenuLabels" :is-collapsed="!isCollapsed" :is-open="openGroupRouteName === section.routeName" :data="section" :nested-open-states="nestedOpenStates" @toggle="toggleGroup(section.routeName)" @navigate="handleNavigate" @toggle-nested="toggleNestedGroup"/>
@@ -428,6 +536,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   font-size: 0.875rem;
+  overflow: visible;
+  position: relative;
 }
 
 .side-menu {
@@ -437,24 +547,89 @@ onBeforeUnmount(() => {
   inline-size: var(--menu-width, 260px);
   padding: $padding-external;
   height: 100dvh;
-  transform: translateX(0);
+  transform: translate3d(0, 0, 0);
   z-index: 1005;
+  backface-visibility: hidden;
+  --menu-inline-size-transition: #{$transition};
+  --menu-label-transition: #{$transition};
   transition:
     transform $transition,
-    inline-size $transition,
     border-radius $transition;
+
+  &.side-menu--layout-transition {
+    transition:
+      transform $transition,
+      inline-size var(--menu-inline-size-transition),
+      border-radius $transition;
+  }
+
+  &.collapsed {
+    --menu-inline-size-transition: #{$menu-collapsed-peek-transition};
+    --menu-label-transition: #{$menu-collapsed-peek-transition};
+
+    .side-menu__scroll {
+      overflow-x: hidden;
+    }
+
+    .side-header__title {
+      overflow: hidden;
+    }
+
+    :deep(.text-smooth-animation) {
+      transition: none;
+    }
+  }
+
+  // Логотип ERGOMS: полный вордмарк раскрывается слева направо за всю
+  // длительность анимации ширины (clip-path), а не мгновенно.
+  // Peek по наведению на свёрнутое меню.
+  &.collapsed.hovering .side-header__title :deep(.ergoms-logo:not(.ergoms-logo--compact)) {
+    animation: menu-wordmark-reveal $menu-collapsed-peek-transition forwards;
+  }
+
+  &.collapsed.hovering .side-header__title {
+    overflow: visible;
+  }
+
+  // Разворот кнопкой: класс .collapsed уже снят, ловим момент перехода layout.
+  &.side-menu--layout-transition:not(.collapsed) .side-header__title :deep(.ergoms-logo:not(.ergoms-logo--compact)) {
+    animation: menu-wordmark-reveal $transition forwards;
+  }
+
+  :deep(.text-smooth-animation) {
+    transition:
+      transform var(--menu-label-transition),
+      opacity var(--menu-label-transition);
+
+    &.hidden {
+      transform: translateX(-10px);
+      opacity: 0;
+    }
+  }
 
   &--bootstrapping {
     transition: none;
   }
 
+  &--visibility-transition {
+    will-change: transform;
+
+    :deep(.text-smooth-animation) {
+      transition: none !important;
+    }
+  }
+
   &.is-hidden {
-    transform: translateX(-110%);
+    transform: translate3d(-110%, 0, 0);
   }
 
   &.collapsed:not(.hovering) {
     inline-size: 84px;
+  }
 
+  // Раскладка свёрнутого меню держится и во время peek-наведения — при hover
+  // меняется только ширина, а padding/justify не переключаются (без рывка).
+  &.collapsed {
     .side-header {
       padding: 12px 0 0;
     }
@@ -469,7 +644,6 @@ onBeforeUnmount(() => {
 
     .side-header__title {
       display: flex;
-      flex-grow: 0;
       justify-content: flex-start;
     }
 
@@ -511,6 +685,7 @@ onBeforeUnmount(() => {
 
 .side-header {
   position: relative;
+  z-index: 3;
   padding: 12px 0 0 26px;
 }
 
@@ -528,8 +703,9 @@ onBeforeUnmount(() => {
 
 .side-header__shadow {
   position: absolute;
-  top: 2.875rem;
-  width: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 1.5rem;
   background: linear-gradient(var(--bs-card-bg) 41%, transparent);
   pointer-events: none;
@@ -622,6 +798,15 @@ onBeforeUnmount(() => {
     overflow: hidden;
     flex: 1;
     min-width: 0;
+  }
+}
+
+@keyframes menu-wordmark-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
   }
 }
 </style>

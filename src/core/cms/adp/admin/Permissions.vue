@@ -2,12 +2,14 @@
 import PermissionTableHeader from '@/core/cms/adp/admin/PermissionsComponents/PermissionTableHeader.vue'
 import PermissionTable from '@/core/cms/adp/admin/PermissionsComponents/PermissionTable.vue'
 import ModulePermissionManager from '@/core/cms/adp/admin/PermissionsComponents/ModulePermissionManager.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { GetPolicies, GetRoles, GetRoleGroups } from '@/core/cms/adp/admin/js/GroupsPolitics'
-import { ref, onMounted } from 'vue' 
+import { ref, onMounted } from 'vue'
 
 const rows = ref([])
 const roles = ref([])
 const roleGroups = ref([])
+const isLoading = ref(false)
 
 const loadPolicies = async () => {
   const policies = await GetPolicies()
@@ -28,9 +30,12 @@ const loadPolicies = async () => {
 
 const updatePermissions = async () => {
   try {
+    isLoading.value = true
     await loadPolicies()
   } catch (error) {
     logError('Error fetching policies:', error)
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -41,9 +46,12 @@ const loadRefs = async () => {
 
 onMounted(async () => {
   try {
+    isLoading.value = true
     await Promise.all([loadRefs(), loadPolicies()])
   } catch (error) {
     logError('Error initializing permissions data:', error)
+  } finally {
+    isLoading.value = false
   }
 })
 
@@ -74,15 +82,17 @@ const handleSearchQuery = query => (searchQuery.value = query)
           />
         </div>
 
-        <PermissionTable 
-          :rows="rows"
-          :roles="roles"
-          :roleGroups="roleGroups"
-          :headers="['Название','Тип политики', 'Действие', 'Ресурс', 'Цель', 'Шаблон', 'Приоритет', 'Действия']"
-          :rowsPerPage="rowsPerPage"
-          :searchQuery="searchQuery"  
-          @updatePermissions="updatePermissions"
-        />
+        <LoadingContentArea :loading="isLoading">
+          <PermissionTable
+            :rows="rows"
+            :roles="roles"
+            :roleGroups="roleGroups"
+            :headers="['Название','Тип политики', 'Действие', 'Ресурс', 'Цель', 'Шаблон', 'Приоритет', 'Действия']"
+            :rowsPerPage="rowsPerPage"
+            :searchQuery="searchQuery"
+            @updatePermissions="updatePermissions"
+          />
+        </LoadingContentArea>
       </div>
     </section>
 

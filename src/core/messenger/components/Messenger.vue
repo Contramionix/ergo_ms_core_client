@@ -1,20 +1,16 @@
 <template>
   <div class="msng">
-    <div v-if="loading && messages.length === 0" class="msng__loader">
-      <div class="spinner-border spinner-border-sm text-secondary" role="status" />
-      <span class="ms-2 text-secondary">Загрузка сообщений...</span>
-    </div>
-
-    <MessagesList
-      v-else
-      :messages="messages"
-      :current-user-id="currentUserId()"
-      :show-system-messages="showSystemMessages"
-      :system-messages="systemMessages"
-      @delete="handleDelete"
-      @edit-start="handleEditStart"
-      @reply="handleReply"
-    />
+    <LoadingContentArea :loading="loading" :reset-key="objectId" min-height="8rem">
+      <MessagesList
+        :messages="messages"
+        :current-user-id="currentUserId()"
+        :show-system-messages="showSystemMessages"
+        :system-messages="systemMessages"
+        @delete="handleDelete"
+        @edit-start="handleEditStart"
+        @reply="handleReply"
+      />
+    </LoadingContentArea>
 
     <MessageInput
       v-if="!readonly"
@@ -32,6 +28,7 @@
 
 <script setup>
 import { ref, toRef } from 'vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useMessenger } from '../js/useMessenger'
 import MessagesList from './MessagesList.vue'
 import MessageInput from './MessageInput.vue'

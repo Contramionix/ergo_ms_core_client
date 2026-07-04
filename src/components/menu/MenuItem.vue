@@ -23,6 +23,7 @@ import { iconMapping } from '@/config/icons-mapping.js'
 import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
 import { isMenuItemActive } from './composables/isMenuItemActive.js'
 import { safeNavigateByName } from './composables/safeMenuNavigate.js'
+import MenuPeekLabel from '@/components/menu/MenuPeekLabel.vue'
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -154,11 +155,18 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
           <component v-if="itemIcon" :is="itemIcon" :size="iconSizes.item" />
           <Dot v-else :size="iconSizes.item" />
         </div>
-        <div v-if="isHovering" class="menu-item__name text-smooth-animation" :title="item.name || item.title">
-          {{ item.name || item.title }}
-        </div>
+        <MenuPeekLabel
+          :text="item.name || item.title"
+          :visible="isHovering"
+          :title="item.name || item.title"
+          class="menu-item__name"
+        />
       </div>
-      <div v-if="isGroup && isHovering" class="menu-item__chevron icon-flex">
+      <div
+        v-if="isGroup"
+        class="menu-item__chevron icon-flex text-smooth-animation"
+        :class="{ hidden: !isHovering }"
+      >
         <ChevronRight :size="iconSizes.chevronNested" :class="{ rotated: isOpen }" />
       </div>
     </div>

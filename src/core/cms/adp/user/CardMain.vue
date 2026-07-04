@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { Briefcase, Calendar } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore'
 import UserAvatar from '@/components/UserAvatar.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 
 const userStore = useUserStore()
 
@@ -137,42 +138,38 @@ defineExpose({
       <img src="@/core/cms/assets/profile-cover.png" alt="Profile Cover" />
     </div>
 
-    <div class="profile-card__body">
-      <div class="profile-card__avatar">
-        <UserAvatar
-          :size="avatarSize"
-          :title="displayUserInfo.username"
-          :first-name="userStore.user?.first_name ?? userStore.profile?.firstName ?? null"
-          :last-name="userStore.user?.last_name ?? userStore.profile?.lastName ?? null"
-        />
-      </div>
+    <LoadingContentArea :loading="loading" min-height="8rem">
+      <div class="profile-card__body">
+        <div class="profile-card__avatar">
+          <UserAvatar
+            :size="avatarSize"
+            :title="displayUserInfo.username"
+            :first-name="userStore.user?.first_name ?? userStore.profile?.firstName ?? null"
+            :last-name="userStore.user?.last_name ?? userStore.profile?.lastName ?? null"
+          />
+        </div>
 
-      <div class="profile-card__info">
-        <h3 class="profile-card__username">
-          <span v-if="loading && !displayUserInfo.username" class="profile-card__loading">
-            <span class="spinner-border spinner-border-sm me-2" role="status">
-              <span class="visually-hidden">Загрузка...</span>
-            </span>
-            Загрузка...
-          </span>
-          <span v-else>{{ displayUserInfo.username }}</span>
-        </h3>
+        <div class="profile-card__info">
+          <h3 class="profile-card__username">
+            {{ displayUserInfo.username }}
+          </h3>
 
-        <ul class="profile-card__meta list-unstyled mb-0">
-          <li v-if="displayUserInfo.profession" class="profile-card__meta-item">
-            <Briefcase :size="20" class="profile-card__meta-icon" />
-            <span class="profile-card__meta-value">{{ displayUserInfo.profession }}</span>
-          </li>
-          <li class="profile-card__meta-item profile-card__meta-item--inline">
-            <span class="profile-card__meta-part">
-              <Calendar :size="20" class="profile-card__meta-icon" />
-              <span class="profile-card__meta-label">На платформе с:</span>
-              <span class="profile-card__meta-value">{{ displayUserInfo.registration }}</span>
-            </span>
-          </li>
-        </ul>
+          <ul class="profile-card__meta list-unstyled mb-0">
+            <li v-if="displayUserInfo.profession" class="profile-card__meta-item">
+              <Briefcase :size="20" class="profile-card__meta-icon" />
+              <span class="profile-card__meta-value">{{ displayUserInfo.profession }}</span>
+            </li>
+            <li class="profile-card__meta-item profile-card__meta-item--inline">
+              <span class="profile-card__meta-part">
+                <Calendar :size="20" class="profile-card__meta-icon" />
+                <span class="profile-card__meta-label">На платформе с:</span>
+                <span class="profile-card__meta-value">{{ displayUserInfo.registration }}</span>
+              </span>
+            </li>
+          </ul>
+        </div>
       </div>
-    </div>
+    </LoadingContentArea>
   </div>
 </template>
 
@@ -255,12 +252,6 @@ defineExpose({
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--color-primary-text);
-}
-
-.profile-card__loading {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .profile-card__meta {

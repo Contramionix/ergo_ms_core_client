@@ -98,6 +98,7 @@ export const cmsEndpoints = {
         activate: (id) => `settings/themes/${id}/activate/`,
         duplicate: (id) => `settings/themes/${id}/duplicate/`,
         export: (id) => `settings/themes/${id}/export/`,
+        resetDefaults: (id) => `settings/themes/${id}/reset-defaults/`,
         import: 'settings/themes/import/',
         createSystemThemes: 'settings/themes/create-system-themes/',
     },

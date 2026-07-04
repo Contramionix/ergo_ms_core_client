@@ -6,6 +6,7 @@ import { useDropdown } from '@/composables/useDropdown.js'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
 import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
 import NotificationActions from '@/core/notifications/components/NotificationActions.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { moduleManager } from '@/modules/index.js'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 
@@ -154,31 +155,30 @@ function goToFullList() {
           </button>
         </div>
 
-        <div v-if="sidebarLoading && sidebarItems.length === 0" class="notifications-dropdown__state">
-          Загрузка...
-        </div>
-        <div v-else-if="sidebarItems.length === 0" class="notifications-dropdown__state text-muted">
-          Пока нет уведомлений
-        </div>
+        <LoadingContentArea :loading="sidebarLoading" min-height="6rem">
+          <div v-if="sidebarItems.length === 0" class="notifications-dropdown__state text-muted">
+            Пока нет уведомлений
+          </div>
 
-        <ul v-else class="notifications-list">
-          <li v-for="item in sidebarItems" :key="item.id" class="notifications-item" :class="[levelClass(item.level), { 'is-unread': !item.is_read }]" @click="activate(item)" @mouseenter="onItemHoverStart(item)" @mouseleave="onItemHoverEnd(item)">
-            <div class="notifications-item__icon" :class="levelClass(item.level)">
-              <component :is="iconFor(item)" :size="18" />
-            </div>
-            <div class="notifications-item__content">
-              <div class="notifications-item__title">{{ item.title }}</div>
-              <div v-if="item.body" class="notifications-item__body">{{ item.body }}</div>
-              <NotificationActions :notification="item" compact @click.stop />
-              <div class="notifications-item__meta">
-                <span v-if="item.source_module" class="notifications-item__source">
-                  {{ item.source_module }}
-                </span>
-                <span class="notifications-item__date" v-tooltip :title="readAtTooltip(item)">{{ formatNotificationDate(item.created_at) }}</span>
+          <ul v-else class="notifications-list">
+            <li v-for="item in sidebarItems" :key="item.id" class="notifications-item" :class="[levelClass(item.level), { 'is-unread': !item.is_read }]" @click="activate(item)" @mouseenter="onItemHoverStart(item)" @mouseleave="onItemHoverEnd(item)">
+              <div class="notifications-item__icon" :class="levelClass(item.level)">
+                <component :is="iconFor(item)" :size="18" />
               </div>
-            </div>
-          </li>
-        </ul>
+              <div class="notifications-item__content">
+                <div class="notifications-item__title">{{ item.title }}</div>
+                <div v-if="item.body" class="notifications-item__body">{{ item.body }}</div>
+                <NotificationActions :notification="item" compact @click.stop />
+                <div class="notifications-item__meta">
+                  <span v-if="item.source_module" class="notifications-item__source">
+                    {{ item.source_module }}
+                  </span>
+                  <span class="notifications-item__date" v-tooltip :title="readAtTooltip(item)">{{ formatNotificationDate(item.created_at) }}</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </LoadingContentArea>
       </div>
     </Transition>
   </div>

@@ -42,13 +42,13 @@ function handleClose() {
 }
 
 function getButtonClass(variant) {
-  const baseClass = 'btn'
+  const baseClass = 'ui-btn'
   switch (variant) {
-    case 'danger': return `${baseClass} btn-danger`
-    case 'warning': return `${baseClass} btn-warning`
-    case 'primary': return `${baseClass} btn-primary`
-    case 'secondary': return `${baseClass} btn-secondary`
-    default: return `${baseClass} btn-secondary`
+    case 'danger': return `${baseClass} ui-btn--danger`
+    case 'warning': return `${baseClass} ui-btn--warning`
+    case 'primary': return `${baseClass} ui-btn--primary`
+    case 'secondary': return `${baseClass} ui-btn--secondary`
+    default: return `${baseClass} ui-btn--secondary`
   }
 }
 </script>
@@ -97,7 +97,7 @@ function getButtonClass(variant) {
     <template #footer>
       <button
         type="button"
-        class="btn btn-secondary"
+        class="ui-btn ui-btn--secondary"
         @click="handleCancel"
         :disabled="loading"
       >
@@ -113,15 +113,14 @@ function getButtonClass(variant) {
   color: var(--color-secondary-text);
 }
 
-.btn {
-  border-radius: 8px;
+.ui-btn {
   font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.d-grid .btn {
+.d-grid .ui-btn {
   width: 100%;
 }
 </style>

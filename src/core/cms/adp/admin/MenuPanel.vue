@@ -22,18 +22,17 @@
     <UnsavedChangesToast :visible="showDeleteItemToast" :saving="isDeletingItem" title="Удаление элемента меню" description="Вы уверены, что хотите удалить этот элемент? Это также удалит все дочерние элементы." cancel-label="Отмена" save-label="Удалить" saving-label="Удаление..." @save="executeDeleteItem" @cancel="cancelDeleteItem"/>
 
     <div class="menu-panel__items">
-      <div v-if="isLoading" class="text-center py-5">
-        <SpinnerLoading loading-text="Загрузка..." color="primary" />
-      </div>
-      <div v-else-if="menuItems.length === 0" class="alert alert-info d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-        <span>Элементы меню не найдены. Восстановите пункты из миграций ядра и модулей.</span>
-        <button class="btn btn-primary" :disabled="isRestoring" @click="handleRestoreMenu">
-          {{ isRestoring ? 'Восстановление...' : 'Восстановить из миграций' }}
-        </button>
-      </div>
-      <div v-else>
-        <DraggableMenuList :items="visibleMenuItems" :separators="visibleSeparators" :expand-all-groups="expandAllGroups" @edit="editItem" @delete="confirmDeleteItem" @reorder="handleMenuReorder" @reorder-separators="handleSeparatorReorderFromList" @toggle-visibility="handleToggleVisibility" @edit-separator="editSeparator" @delete-separator="confirmDeleteSeparator" @toggle-visibility-separator="handleToggleSeparatorVisibility"/>
-      </div>
+      <LoadingContentArea :loading="isLoading" loading-text="Загрузка...">
+        <div v-if="menuItems.length === 0" class="alert alert-info d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+          <span>Элементы меню не найдены. Восстановите пункты из миграций ядра и модулей.</span>
+          <button class="btn btn-primary" :disabled="isRestoring" @click="handleRestoreMenu">
+            {{ isRestoring ? 'Восстановление...' : 'Восстановить из миграций' }}
+          </button>
+        </div>
+        <div v-else>
+          <DraggableMenuList :items="visibleMenuItems" :separators="visibleSeparators" :expand-all-groups="expandAllGroups" @edit="editItem" @delete="confirmDeleteItem" @reorder="handleMenuReorder" @reorder-separators="handleSeparatorReorderFromList" @toggle-visibility="handleToggleVisibility" @edit-separator="editSeparator" @delete-separator="confirmDeleteSeparator" @toggle-visibility-separator="handleToggleSeparatorVisibility"/>
+        </div>
+      </LoadingContentArea>
     </div>
 
     <MenuItemModal v-if="showItemModal" :item="currentItem" :parent-options="parentOptions" :roles="roles" :role-groups="roleGroups" @save="saveItem" @close="closeItemModal"/>
@@ -50,7 +49,7 @@ import { onBeforeRouteLeave } from 'vue-router'
 import { LayersPlus, SeparatorHorizontal, Settings } from 'lucide-vue-next'
 import { useToast } from '@/js/utils/toast.js'
 import { confirmAction } from '@/js/utils/confirm.js'
-import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import UnsavedChangesToast from '@/components/UnsavedChangesToast.vue'
 import DraggableMenuList from './MenuPanelComponents/DraggableMenuList.vue'
 import MenuItemModal from './MenuPanelComponents/MenuItemModal.vue'

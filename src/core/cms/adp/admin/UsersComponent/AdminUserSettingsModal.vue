@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import ModalCenter from '@/components/ModalCenter.vue'
-import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { confirmDelete } from '@/js/utils/confirm.js'
 import AvatarBlock from '@/core/cms/adp/user/account/component/settings-panels/AvatarBlock.vue'
 import UserProfileFields from '@/core/cms/adp/user/account/component/settings-panels/UserProfileFields.vue'
@@ -194,11 +194,8 @@ const requestDelete = async () => {
 
 <template>
   <ModalCenter modal-id="adminUserSettings" standalone :visible="show" :title="modalTitle" size="lg" scrollable @closemodal="handleClose">
-    <div v-if="loading" class="admin-user-modal__loading">
-      <SpinnerLoading color="primary" />
-    </div>
-
-    <template v-else-if="userId">
+    <LoadingContentArea :loading="loading" :reset-key="userId" min-height="16rem">
+    <template v-if="userId">
       <AvatarBlock :user-id="userId" :avatar-url="avatarUrl" :display-name="displayName" :first-name="formData.first_name" :last-name="formData.last_name" :saving="saving" :on-upload="handleAvatarUpload" :on-remove="handleAvatarRemove" @avatar-updated="handleAvatarUpdated"/>
 
       <h2 class="admin-user-modal__section-title">Профиль</h2>
@@ -280,10 +277,11 @@ const requestDelete = async () => {
         </div>
       </div>
     </template>
+    </LoadingContentArea>
 
     <template #footer>
-      <button type="button" class="btn btn-secondary" :disabled="saving || deleting" @click="handleClose">Отмена</button>
-      <button type="button" class="btn btn-primary" :disabled="saving || loading || deleting" @click="handleSave">
+      <button type="button" class="ui-btn ui-btn--secondary" :disabled="saving || deleting" @click="handleClose">Отмена</button>
+      <button type="button" class="ui-btn ui-btn--primary" :disabled="saving || loading || deleting" @click="handleSave">
         <span v-if="saving">Сохранение...</span>
         <span v-else>Сохранить</span>
       </button>
@@ -292,13 +290,6 @@ const requestDelete = async () => {
 </template>
 
 <style scoped lang="scss">
-.admin-user-modal__loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 12rem;
-}
-
 .admin-user-modal__section-title {
   font-size: 1rem;
   font-weight: 600;

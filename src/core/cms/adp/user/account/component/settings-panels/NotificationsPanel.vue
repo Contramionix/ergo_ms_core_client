@@ -2,7 +2,7 @@
 import { computed, inject, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { useToast } from '@/js/utils/toast.js'
-import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useNotificationSettings } from '@/core/notifications/js/useNotificationSettings.js'
 import {
@@ -81,12 +81,8 @@ onUnmounted(() => {
       Настройки уведомлений для {{ userEmail }}
     </p>
 
-    <div v-if="loading" class="notif-panel__loading">
-      <SpinnerLoading color="primary" />
-    </div>
-
-    <template v-else>
-      <div v-if="loadError" class="notif-panel__empty text-muted">
+    <LoadingContentArea :loading="loading" min-height="8rem">
+    <div v-if="loadError" class="notif-panel__empty text-muted">
         Не удалось загрузить настройки уведомлений.
         <button type="button" class="btn btn-sm btn-link" @click="load">Повторить</button>
       </div>
@@ -175,7 +171,7 @@ onUnmounted(() => {
           </Transition>
         </section>
       </template>
-    </template>
+    </LoadingContentArea>
   </div>
 </template>
 
@@ -200,13 +196,6 @@ onUnmounted(() => {
 .settings-panel__hint {
   font-size: 0.9375rem;
   margin-bottom: 1rem;
-}
-
-.notif-panel__loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 160px;
 }
 
 .notif-panel__anchor {

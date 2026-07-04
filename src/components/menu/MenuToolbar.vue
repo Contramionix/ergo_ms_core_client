@@ -1,21 +1,34 @@
 <template>
   <div class="menu-toolbar">
-    <div id="menu-toolbar-content" class="tools" :class="{ collapsed: isCollapsed && !isHovering }">
-      <div class="toolbar__user" :class="{ collapsed: isCollapsed && !isHovering }">
+    <div id="menu-toolbar-content" class="tools">
+      <div class="toolbar__user">
         <div class="tools__user__avatar">
           <UserMenu ref="userMenuRef" @dropdown-toggle="(active) => setDropdownActive('userMenu', active)" />
         </div>
-        <div class="tools__user__name" v-if="shouldShowFullInfo">
-          <div class="user__fullname" :title="userStore.menuUserName">{{ userStore.menuUserNameTruncated }}</div>
+        <div
+          class="tools__user__name menu-toolbar__sync-fade"
+          :class="{ hidden: !shouldShowFullInfo }"
+        >
+          <div class="menu-toolbar__sync-inner">
+            <div class="user__fullname" :title="userStore.menuUserName">{{ userStore.menuUserNameTruncated }}</div>
+          </div>
         </div>
       </div>
-      <div class="tools-buttons" v-if="shouldShowFullInfo">
-        <div class="tools__notifications">
-          <SidebarNotifications v-if="actionButton === 'notifications'" ref="notificationsMenuRef" @dropdown-toggle="(active) => setDropdownActive('notifications', active)"/>
-          <AppsMenu v-else ref="appsMenuRef" @dropdown-toggle="(active) => setDropdownActive('apps', active)"/>
-        </div>
-        <div class="tools__settings">
-          <SettingsMenu ref="settingsMenuRef" @dropdown-toggle="(active) => setDropdownActive('settings', active)" @open-user-settings="showUserSettingsModal = true"/>
+      <div
+        class="menu-toolbar__sync-fade menu-toolbar__sync-fade--actions"
+        :class="{
+          hidden: !shouldShowFullInfo,
+          'menu-toolbar__sync-fade--allow-overflow': actionsAllowOverflow,
+        }"
+      >
+        <div class="menu-toolbar__sync-inner tools-buttons">
+          <div class="tools__notifications">
+            <SidebarNotifications v-if="actionButton === 'notifications'" ref="notificationsMenuRef" @dropdown-toggle="(active) => setDropdownActive('notifications', active)"/>
+            <AppsMenu v-else ref="appsMenuRef" @dropdown-toggle="(active) => setDropdownActive('apps', active)"/>
+          </div>
+          <div class="tools__settings">
+            <SettingsMenu ref="settingsMenuRef" @dropdown-toggle="(active) => setDropdownActive('settings', active)" @open-user-settings="showUserSettingsModal = true"/>
+          </div>
         </div>
       </div>
     </div>
@@ -63,9 +76,19 @@ watch(
 )
 
 const activeDropdowns = ref(new Set())
+const hasActiveDropdown = ref(false)
 
 const shouldShowFullInfo = computed(() => {
   return !props.isCollapsed || props.isHovering
+})
+
+// В peek-режиме колонка 0fr→1fr анимируется: overflow:visible показывал кнопки раньше слота.
+// Разрешаем overflow только в развёрнутом меню или при открытом dropdown.
+const actionsAllowOverflow = computed(() => {
+  if (!props.isCollapsed) {
+    return true
+  }
+  return hasActiveDropdown.value
 })
 
 const setDropdownActive = (dropdownId, active) => {
@@ -88,7 +111,8 @@ const setDropdownActive = (dropdownId, active) => {
     activeDropdowns.value.delete(dropdownId)
   }
 
-  emit('dropdown-state-change', activeDropdowns.value.size > 0)
+  hasActiveDropdown.value = activeDropdowns.value.size > 0
+  emit('dropdown-state-change', hasActiveDropdown.value)
 }
 </script>
 
@@ -103,6 +127,8 @@ const setDropdownActive = (dropdownId, active) => {
   display: flex;
   flex-direction: column;
   position: relative;
+  z-index: 2;
+  overflow: visible;
   background-color: var(--color-secondary-background);
   margin: 2%;
   width: auto;
@@ -115,10 +141,6 @@ const setDropdownActive = (dropdownId, active) => {
     justify-content: space-between;
     align-items: center;
     width: 100%;
-
-    &.collapsed {
-      justify-content: center;
-    }
   }
 }
 
@@ -128,19 +150,10 @@ const setDropdownActive = (dropdownId, active) => {
   gap: 8px;
   flex: 1;
   min-width: 0;
-
-  &.collapsed {
-    justify-content: center;
-    gap: 0;
-    flex: 0;
-  }
 }
 
 .tools__user__name {
-  display: flex;
-  flex-direction: column;
   min-width: 0;
-  overflow: hidden;
 }
 
 .user__fullname {
@@ -156,6 +169,40 @@ const setDropdownActive = (dropdownId, active) => {
   justify-content: flex-end;
   align-items: center;
   flex-shrink: 0;
+}
+
+// Раскрытие по натуральной ширине (0fr → 1fr) синхронно с шириной меню,
+// без max-width-скачка и без опережающего opacity.
+.menu-toolbar__sync-fade {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-width: 0;
+  overflow: hidden;
+  transition: grid-template-columns var(--menu-label-transition, #{$menu-collapsed-peek-transition});
+
+  &.hidden {
+    grid-template-columns: 0fr;
+    pointer-events: none;
+  }
+
+  &--actions {
+    overflow: hidden;
+  }
+
+  // Dropdown вверх — только когда overflow не ломает синхрон с анимацией ширины.
+  &--actions.menu-toolbar__sync-fade--allow-overflow:not(.hidden) {
+    overflow: visible;
+
+    .menu-toolbar__sync-inner.tools-buttons {
+      overflow: visible;
+    }
+  }
+}
+
+.menu-toolbar__sync-inner {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .tools__user__avatar {

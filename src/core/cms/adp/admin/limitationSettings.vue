@@ -9,25 +9,29 @@
               <p class="admin-section-desc">Управление ограничениями страниц и URL-политиками доступа</p>
             </div>
 
-            <PageManager
-              :pages="pages"
-              :components="components"
-              @page-type-change="onPageTypeChange"
-              @component-added="onComponentAdded"
-              @delete-component="deleteComponent"
-            />
+            <LoadingContentArea :loading="isLoading" min-height="16rem">
+              <div class="d-flex flex-column gap-4">
+                <PageManager
+                  :pages="pages"
+                  :components="components"
+                  @page-type-change="onPageTypeChange"
+                  @component-added="onComponentAdded"
+                  @delete-component="deleteComponent"
+                />
 
-            <PolicyManager
-              ref="policyManagerRef"
-              :pages="pages"
-              :roles="roles"
-              :role-groups="roleGroups"
-              :policies="policies"
-              :selected-page-path="selectedPagePath"
-              @update:policies="policies = $event"
-              @update:selected-page-path="selectedPagePath = $event"
-              @request-delete="requestPolicyDeletion"
-            />
+                <PolicyManager
+                  ref="policyManagerRef"
+                  :pages="pages"
+                  :roles="roles"
+                  :role-groups="roleGroups"
+                  :policies="policies"
+                  :selected-page-path="selectedPagePath"
+                  @update:policies="policies = $event"
+                  @update:selected-page-path="selectedPagePath = $event"
+                  @request-delete="requestPolicyDeletion"
+                />
+              </div>
+            </LoadingContentArea>
           </div>
         </div>
       </div>
@@ -44,7 +48,7 @@
       </template>
       {{ errorMessage }}
       <template #footer>
-        <button type="button" class="btn btn-secondary" @click="showErrorModal = false">Закрыть</button>
+        <button type="button" class="ui-btn ui-btn--secondary" @click="showErrorModal = false">Закрыть</button>
       </template>
     </ModalCenter>
   </div>
@@ -55,6 +59,7 @@ import { ref, reactive, onMounted, watch } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import { runWithConfirm } from '@/js/utils/confirm.js'
 import ModalCenter from '@/components/ModalCenter.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import {
   DeletePolicy,
   GetPageComponents,
@@ -81,12 +86,14 @@ const prevTypes = reactive({})
 const showErrorModal = ref(false)
 const errorMessage = ref('')
 const policyManagerRef = ref(null)
+const isLoading = ref(true)
 
 onMounted(async () => {
   await initializeData()
 })
 
 async function initializeData() {
+  isLoading.value = true
   try {
     const [pagesResponse, componentsResponse, rolesResponse, roleGroupsResponse, policiesResponse] = await Promise.all([
       GetPages(),
@@ -112,6 +119,8 @@ async function initializeData() {
   } catch (error) {
     logError('Ошибка инициализации ограничений', error)
     toast.error('Не удалось загрузить данные ограничений. Попробуйте позже.')
+  } finally {
+    isLoading.value = false
   }
 }
 

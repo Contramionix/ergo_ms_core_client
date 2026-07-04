@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import {
   USER_PROFILE_MAIN_FIELDS,
@@ -91,11 +91,8 @@ onMounted(fetchProfile)
 
 <template>
   <div class="user-profile-view">
-    <div v-if="loading" class="user-profile-view__loading">
-      <SpinnerLoading color="primary" />
-    </div>
-
-    <template v-else-if="profileData">
+    <LoadingContentArea :loading="loading" min-height="8rem">
+    <div v-if="profileData" class="user-profile-view__content">
       <section class="user-profile-view__section">
         <h2 class="user-profile-view__section-title">Основная информация</h2>
         <dl class="user-profile-view__grid">
@@ -124,7 +121,7 @@ onMounted(fetchProfile)
         <h2 class="user-profile-view__section-title">О себе</h2>
         <p class="user-profile-view__bio">{{ bioText }}</p>
       </section>
-    </template>
+    </div>
 
     <div v-else class="user-profile-view__empty text-center py-4">
       <p class="text-muted mb-3">Не удалось загрузить данные профиля</p>
@@ -132,25 +129,19 @@ onMounted(fetchProfile)
         Попробовать снова
       </button>
     </div>
+    </LoadingContentArea>
   </div>
 </template>
 
 <style scoped lang="scss">
 .user-profile-view {
   width: 100%;
+}
+
+.user-profile-view__content {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-
-.user-profile-view__loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 8rem;
-  border-radius: 0.625rem;
-  background: var(--color-primary-background);
-  border: 1px solid var(--color-border);
 }
 
 .user-profile-view__section {

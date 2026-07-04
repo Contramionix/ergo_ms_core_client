@@ -2,7 +2,7 @@
 import { computed, ref, onMounted, watch } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import SelectBox from '@/components/SelectBox.vue'
-import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import ChangePasswordModal from './ChangePasswordModal.vue'
 import SessionCard from './SessionCard.vue'
@@ -137,11 +137,8 @@ onMounted(() => {
 
     <p class="sessions-block__caption">Активные сессии</p>
     <div class="settings-card settings-card--sessions">
-      <div v-if="loading" class="sessions__loading">
-        <SpinnerLoading color="primary" />
-      </div>
-      <template v-else>
-        <div v-if="paginationTotal === 0" class="sessions__empty text-muted small py-3 px-2">
+      <LoadingContentArea :loading="loading" min-height="6rem">
+      <div v-if="paginationTotal === 0" class="sessions__empty text-muted small py-3 px-2">
           Нет активных сессий
         </div>
 
@@ -169,7 +166,7 @@ onMounted(() => {
             </button>
           </div>
         </div>
-      </template>
+      </LoadingContentArea>
     </div>
 
     <p class="sessions__disclaimer text-muted small mt-2 mb-0">
@@ -300,13 +297,6 @@ onMounted(() => {
 
 .settings-card--sessions {
   padding: 0;
-}
-
-.sessions__loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 120px;
 }
 
 .sessions__list {

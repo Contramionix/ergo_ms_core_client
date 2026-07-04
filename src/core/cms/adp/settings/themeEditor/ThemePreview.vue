@@ -16,7 +16,6 @@ import {
   Download,
   Share2,
   MoreVertical,
-  Eye,
 } from 'lucide-vue-next'
 
 // Получаем текущую тему из localStorage
@@ -53,15 +52,8 @@ onMounted(() => {
 
 <template>
   <div class="theme-preview">
-    <div class="card rounded-3 shadow-sm mb-4">
-      <div class="card-header theme-preview__card-header">
-        <div class="d-flex align-items-center">
-          <Eye :size="24" class="text-primary me-2" />
-          <h3 class="mb-0 text-primary">Предпросмотр темы</h3>
-        </div>
-      </div>
-
-      <div class="card-body p-0">
+    <div class="content-card content-card--flush">
+      <div class="theme-preview__canvas">
         <!-- Шапка -->
         <div class="preview-header" style="background: var(--color-header-background);">
           <div class="container-fluid px-4 py-3">
@@ -270,11 +262,17 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
+@import '@/core/cms/adp/admin/admin-page.scss';
+
 .theme-preview {
-  .theme-preview__card-header {
-    background-color: var(--color-primary-background);
-    border-bottom: 1px solid var(--color-border);
-    color: var(--color-primary-text);
+  .content-card--flush {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .theme-preview__canvas {
+    overflow: hidden;
+    border-radius: inherit;
   }
 
   .preview-header {

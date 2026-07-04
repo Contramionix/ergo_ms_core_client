@@ -5,6 +5,7 @@ import { useToast } from '@/js/utils/toast.js'
 import { Settings, Upload, MailPlus, UserPlus, FilePenLine } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import AdminUserSettingsModal from '@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue'
 import AdminUserCreateModal from '@/core/cms/adp/admin/UsersComponent/AdminUserCreateModal.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -360,11 +361,8 @@ const getItemKey = (item) => item.user_id
           </div>
         </div>
 
-    <div v-if="isLoadingUsers" class="d-flex justify-content-center align-items-center py-5">
-      <SpinnerLoading color="primary" />
-    </div>
-
-    <DataTable v-else :items="rows" :columns="columns" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalUsers" :get-item-key="getItemKey" :enable-pagination="true" @update:current-page="handlePageChange">
+    <LoadingContentArea :loading="isLoadingUsers">
+    <DataTable :items="rows" :columns="columns" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalUsers" :get-item-key="getItemKey" :enable-pagination="true" @update:current-page="handlePageChange">
       <template #cell-user="{ item }">
         <div class="d-flex align-items-center gap-3">
           <UserAvatar :user-id="item.user_id" :custom-avatar-url="item.avatar_url" :title="item.user" :size="32" :first-name="item.first_name" :last-name="item.last_name" show-online-status show-presence-tooltip />
@@ -411,6 +409,7 @@ const getItemKey = (item) => item.user_id
         </div>
       </template>
     </DataTable>
+    </LoadingContentArea>
 
     <AdminUserSettingsModal v-model:show="showUserSettings" :user-id="selectedUserId" :roles="roles" :role-groups="roleGroups" @saved="handleUserSaved" @deleted="handleUserDeleted"/>
     <AdminUserCreateModal v-model:show="showUserCreate" :roles="roles" :role-groups="roleGroups" @created="handleUserCreated"/>

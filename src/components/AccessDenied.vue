@@ -8,7 +8,7 @@
         <div v-if="showActions" class="d-flex gap-2 flex-wrap">
           <button
             v-if="showBack"
-            class="btn btn-secondary"
+            class="ui-btn ui-btn--secondary"
             type="button"
             @click="goBack"
           >
@@ -16,7 +16,7 @@
           </button>
           <button
             v-if="showHome"
-            class="btn btn-primary"
+            class="ui-btn ui-btn--primary"
             type="button"
             @click="goHome"
           >

@@ -20,16 +20,17 @@
       </div>
 
       <div class="users-list-container">
-        <div v-if="isLoading" class="loading-state">
-          <div class="spinner-border text-primary mb-2" role="status"></div>
-          <div class="text-muted">Загрузка пользователей...</div>
-        </div>
+        <LoadingContentArea
+          :loading="isLoading"
+          :reset-key="show ? `${organizationId}-${activeTab}` : null"
+          min-height="10rem"
+          loading-text="Загрузка пользователей..."
+        >
+          <div v-if="filteredUsers.length === 0" class="empty-state">
+            <div class="text-muted">Пользователи не найдены</div>
+          </div>
 
-        <div v-else-if="filteredUsers.length === 0" class="empty-state">
-          <div class="text-muted">Пользователи не найдены</div>
-        </div>
-
-        <div v-else class="users-list">
+          <div v-else class="users-list">
           <div v-for="user in filteredUsers" :key="user.id" class="user-item" 
             :class="{ 
               'user-item-assigned': isAssigned(user.id),
@@ -55,6 +56,7 @@
             </div>
           </div>
         </div>
+        </LoadingContentArea>
       </div>
 
       <div class="px-3 pt-2 border-top d-flex justify-content-end align-items-center buttons-container">
@@ -71,6 +73,7 @@
 import { ref, computed, watch } from 'vue'
 import { Search, Check } from 'lucide-vue-next'
 import ModalCenter from '@/components/ModalCenter.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'

@@ -147,9 +147,18 @@ export default {
       "requiresGlobalAdmin": true
     }
   },
+  "AuditLogPanel": {
+    "path": "/admin-panel/audit-log",
+    "component": "@/core/cms/adp/admin/AuditLog.vue",
+    "meta": {
+      "title": "Журнал действий",
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
+    }
+  },
   "ThemeEditor": {
     "path": "/settings/themes",
-    "component": "@/core/cms/adp/settings/themeEditor/ThemeEditor.vue",
+    "component": "@/core/cms/adp/settings/themeEditor/ParentLayout.vue",
     "meta": {
       "title": "Темы оформления",
       "requiresAuth": true,

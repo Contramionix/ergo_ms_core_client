@@ -36,6 +36,7 @@ import { iconMapping } from '@/config/icons-mapping.js'
 import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
 import { isMenuItemActive } from './composables/isMenuItemActive.js'
 import { canNavigateToRoute, safeNavigateByName } from './composables/safeMenuNavigate.js'
+import MenuPeekLabel from '@/components/menu/MenuPeekLabel.vue'
 
 const props = defineProps({
   data: { type: Object, required: true },
@@ -194,15 +195,18 @@ function routeClick(event) {
           <component v-if="groupIcon" :is="groupIcon" :size="iconSizes.item" />
           <Dot v-else :size="iconSizes.item" />
         </div>
-        <div
-          class="side-title__name text-smooth-animation"
-          :class="{ hidden: !isHovering }"
+        <MenuPeekLabel
+          :text="data.title"
+          :visible="isHovering"
           :title="data.title"
-        >
-          {{ data.title }}
-        </div>
+          class="side-title__name"
+        />
       </div>
-      <div v-if="isHovering && hasMenuItems" class="nav-icon icon-flex">
+      <div
+        v-if="hasMenuItems"
+        class="nav-icon icon-flex text-smooth-animation"
+        :class="{ hidden: !isHovering }"
+      >
         <ChevronRight :size="iconSizes.chevronGroup" :class="{ rotated: isOpen }" />
       </div>
     </div>

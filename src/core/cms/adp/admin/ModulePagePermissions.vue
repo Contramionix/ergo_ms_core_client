@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useModulePagePermissions } from './js/useModulePagePermissions'
 import { useToast } from '@/js/utils/toast.js'
 import { apiClient } from '@/js/api/manager'
@@ -360,12 +361,8 @@ onMounted(async () => {
             <h5 class="mb-0">Модули и страницы</h5>
           </div>
           <div class="card-body p-0">
-            <div v-if="isLoading" class="p-4 text-center">
-              <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Загрузка...</span>
-              </div>
-            </div>
-            <div v-else-if="errorMessage" class="p-3">
+            <LoadingContentArea :loading="isLoading" min-height="10rem">
+            <div v-if="errorMessage" class="p-3">
               <div class="alert alert-danger mb-0">
                 {{ errorMessage }}
               </div>
@@ -424,6 +421,7 @@ onMounted(async () => {
                 </div>
               </div>
             </div>
+            </LoadingContentArea>
           </div>
         </div>
       </div>

@@ -292,10 +292,10 @@ const handleCreate = async () => {
     </div>
 
     <template #footer>
-      <button type="button" class="btn btn-secondary" :disabled="saving" @click="handleClose">
+      <button type="button" class="ui-btn ui-btn--secondary" :disabled="saving" @click="handleClose">
         Отмена
       </button>
-      <button type="button" class="btn btn-primary" :disabled="saving" @click="handleCreate">
+      <button type="button" class="ui-btn ui-btn--primary" :disabled="saving" @click="handleCreate">
         <span v-if="saving">Создание...</span>
         <span v-else>Создать</span>
       </button>

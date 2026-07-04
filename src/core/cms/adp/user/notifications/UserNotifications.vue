@@ -8,6 +8,7 @@ import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolv
 import NotificationActions from '@/core/notifications/components/NotificationActions.vue'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import SelectBox from '@/components/SelectBox.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { mapStringOptions } from '@/core/cms/js/adminSelectOptions.js'
 
 const router = useRouter()
@@ -175,19 +176,17 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div v-if="loading && items.length === 0" class="text-center py-5 text-muted">
-        Загрузка...
-      </div>
-      <div v-else-if="items.length === 0" class="empty-state text-center py-5 text-muted">
-        <BellOff :size="40" class="mb-2 opacity-50" />
-        <p class="mb-0">Пока нет уведомлений</p>
-      </div>
-      <div v-else-if="filteredItems.length === 0" class="empty-state text-center py-5 text-muted">
-        <BellOff :size="40" class="mb-2 opacity-50" />
-        <p class="mb-0">Под выбранные фильтры ничего не подходит</p>
-      </div>
+      <LoadingContentArea :loading="loading" min-height="10rem">
+        <div v-if="items.length === 0" class="empty-state text-center py-5 text-muted">
+          <BellOff :size="40" class="mb-2 opacity-50" />
+          <p class="mb-0">Пока нет уведомлений</p>
+        </div>
+        <div v-else-if="filteredItems.length === 0" class="empty-state text-center py-5 text-muted">
+          <BellOff :size="40" class="mb-2 opacity-50" />
+          <p class="mb-0">Под выбранные фильтры ничего не подходит</p>
+        </div>
 
-      <ul v-else class="notifications-list">
+        <ul v-else class="notifications-list">
         <li v-for="item in filteredItems" :key="item.id" :data-notification-id="item.id" class="notifications-item" :class="[levelClass(item.level), { 'is-unread': !item.is_read, 'is-clickable': hasTarget(item), 'is-highlighted': item.id === highlightedId }]" @click="hasTarget(item) && activate(item)">
           <div class="notifications-item__icon" :class="levelClass(item.level)">
             <component :is="iconFor(item)" :size="20" />
@@ -214,6 +213,7 @@ onMounted(async () => {
           </div>
         </li>
       </ul>
+      </LoadingContentArea>
     </div>
   </div>
 </template>

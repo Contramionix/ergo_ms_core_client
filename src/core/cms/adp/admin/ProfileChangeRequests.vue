@@ -5,6 +5,7 @@ import { useToast } from '@/js/utils/toast.js'
 import { ArrowLeft, Check, X, AlertCircle } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import SelectBox from '@/components/SelectBox.vue'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { confirmAction } from '@/js/utils/confirm.js'
@@ -225,7 +226,7 @@ const handleReject = async (item) => {
         </div>
       </div>
 
-      <p v-if="!isLoading" class="text-muted mb-0 small requests-summary">
+      <p class="text-muted mb-0 small requests-summary">
         {{ listSummary }} · {{ rowsPerPage }} на странице
       </p>
 
@@ -257,12 +258,8 @@ const handleReject = async (item) => {
         </div>
       </div>
 
-      <div v-if="isLoading" class="d-flex justify-content-center align-items-center py-5">
-        <SpinnerLoading color="primary" />
-      </div>
-
+      <LoadingContentArea :loading="isLoading">
       <DataTable
-        v-else
         :items="rows"
         :columns="columns"
         :items-per-page="rowsPerPage"
@@ -319,6 +316,7 @@ const handleReject = async (item) => {
           </span>
         </template>
       </DataTable>
+      </LoadingContentArea>
     </div>
   </div>
 </template>

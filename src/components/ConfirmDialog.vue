@@ -105,10 +105,15 @@ function handleClose() {
     <p class="mb-0 cd-message">{{ message }}</p>
 
     <template #footer>
-      <button type="button" class="btn btn-secondary" @click="handleCancel" :disabled="loading">
+      <button type="button" class="ui-btn ui-btn--secondary" @click="handleCancel" :disabled="loading">
         {{ cancelText }}
       </button>
-      <button type="button" :class="`btn btn-${variant === 'primary' ? 'primary' : 'danger'}`" @click="handleConfirm" :disabled="isConfirmDisabled">
+      <button
+        type="button"
+        :class="`ui-btn ui-btn--${variant === 'primary' ? 'primary' : 'danger'}`"
+        @click="handleConfirm"
+        :disabled="isConfirmDisabled"
+      >
         <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
         {{ confirmButtonText }}
       </button>
@@ -120,10 +125,5 @@ function handleClose() {
 .cd-message {
   white-space: pre-line;
   color: var(--color-secondary-text);
-}
-
-.btn {
-  border-radius: 8px;
-  font-weight: 500;
 }
 </style>

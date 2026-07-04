@@ -175,6 +175,7 @@
         </div>
       </form>
 
+      <LoadingContentArea :loading="policyLoading" min-height="8rem">
       <div class="table-responsive">
         <table class="table table-hover align-middle limitation-table">
           <thead>
@@ -189,11 +190,6 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="policyLoading">
-              <td colspan="7" class="text-center py-4">
-                <div class="spinner-border spinner-border-sm" role="status"></div>
-              </td>
-            </tr>
             <tr v-for="policy in filteredPolicies" :key="policy.id">
               <td>{{ policy.name }}</td>
               <td class="text-monospace">{{ policy.resource_path }}</td>
@@ -220,7 +216,7 @@
                 </div>
               </td>
             </tr>
-            <tr v-if="!policyLoading && filteredPolicies.length === 0">
+            <tr v-if="filteredPolicies.length === 0">
               <td colspan="7" class="text-center text-muted py-4">
                 Нет политик для выбранных условий
               </td>
@@ -228,6 +224,7 @@
           </tbody>
         </table>
       </div>
+      </LoadingContentArea>
     </div>
   </div>
 </template>
@@ -236,6 +233,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import SelectBox from '@/components/SelectBox.vue'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { CreatePolicy, GetPolicies, UpdatePolicy } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import {
   POLICY_ACTION_OPTIONS,

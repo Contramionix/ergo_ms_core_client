@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 
 /**
  * Композабл для управления состоянием dropdown меню
@@ -8,18 +8,33 @@ import { ref, onMounted, onUnmounted } from 'vue'
 export function useDropdown(emit) {
   const dropdownRef = ref(null)
   const isOpen = ref(false)
+  let suppressOutsideClick = false
 
   const toggleDropdown = () => {
-    isOpen.value = !isOpen.value
-    emit('dropdown-toggle', isOpen.value)
+    const willOpen = !isOpen.value
+    isOpen.value = willOpen
+    emit('dropdown-toggle', willOpen)
+
+    if (willOpen) {
+      suppressOutsideClick = true
+      nextTick(() => {
+        suppressOutsideClick = false
+      })
+    }
   }
 
   const closeDropdown = () => {
+    if (!isOpen.value) {
+      return
+    }
     isOpen.value = false
     emit('dropdown-toggle', false)
   }
 
   const handleClickOutside = (event) => {
+    if (suppressOutsideClick || !isOpen.value) {
+      return
+    }
     if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
       closeDropdown()
     }

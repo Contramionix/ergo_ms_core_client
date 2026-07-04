@@ -184,10 +184,10 @@ const submitForm = async () => {
     </form>
 
     <template #footer>
-      <button type="button" class="btn btn-secondary" :disabled="isSubmitting" @click="closeModal">
+      <button type="button" class="ui-btn ui-btn--secondary" :disabled="isSubmitting" @click="closeModal">
         Отмена
       </button>
-      <button type="submit" :form="formId" class="btn btn-primary" :disabled="isSubmitting">
+      <button type="submit" :form="formId" class="ui-btn ui-btn--primary" :disabled="isSubmitting">
         {{ isSubmitting ? 'Сохранение...' : 'Добавить' }}
       </button>
     </template>

@@ -53,8 +53,8 @@ function handleClose() {
         <label class="form-check-label" for="expandAllGroups">Раскрывать все родительские группы</label>
       </div>
       <div class="d-flex justify-content-end gap-2 mt-3 pt-3 border-top">
-        <button type="button" class="btn btn-secondary" @click="handleClose">Отмена</button>
-        <button type="button" class="btn btn-primary" @click="handleSave">Сохранить</button>
+        <button type="button" class="ui-btn ui-btn--secondary" @click="handleClose">Отмена</button>
+        <button type="button" class="ui-btn ui-btn--primary" @click="handleSave">Сохранить</button>
       </div>
   </ModalCenter>
 </template>

@@ -4,8 +4,12 @@
 }
 
 .Vue-Toastification__toast {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
   min-width: min(100%, 320px);
   max-width: 400px;
+  min-height: unset;
   padding: 0;
   border-radius: 8px;
   border: 1px solid var(--ui-border);
@@ -35,12 +39,33 @@
 
 .ergo-toast__body,
 .Vue-Toastification__toast-component-body {
-  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  margin: 0;
 }
 
 .Vue-Toastification__progress-bar {
+  height: 3px;
   background: var(--ui-accent, var(--bs-primary));
   opacity: 0.55;
+}
+
+.ergo-toast--success .Vue-Toastification__progress-bar {
+  background: var(--bs-success);
+}
+
+.ergo-toast--error .Vue-Toastification__progress-bar {
+  background: var(--bs-danger);
+}
+
+.ergo-toast--warning .Vue-Toastification__progress-bar {
+  background: var(--bs-warning);
+}
+
+.ergo-toast--info .Vue-Toastification__progress-bar,
+.ergo-toast--default .Vue-Toastification__progress-bar {
+  background: var(--bs-info);
 }
 
 @media (max-width: 768px) {

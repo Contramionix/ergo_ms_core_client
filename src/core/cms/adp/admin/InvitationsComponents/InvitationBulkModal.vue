@@ -542,7 +542,7 @@ const previewStatusClass = {
       <div class="ibm-footer">
         <button
           type="button"
-          class="btn btn-secondary"
+          class="ui-btn ui-btn--secondary"
           :disabled="isCreating || isSending"
           @click="close"
         >
@@ -553,7 +553,7 @@ const previewStatusClass = {
           <button
             v-if="canCreate"
             type="button"
-            class="btn btn-primary d-inline-flex align-items-center gap-2"
+            class="ui-btn ui-btn--primary d-inline-flex align-items-center gap-2"
             :disabled="disabled || isCreating || isParsing"
             @click="createInvitations"
           >
@@ -564,7 +564,7 @@ const previewStatusClass = {
           <button
             v-if="createdInvitations.length && canSendEmails"
             type="button"
-            class="btn btn-primary d-inline-flex align-items-center gap-2"
+            class="ui-btn ui-btn--primary d-inline-flex align-items-center gap-2"
             :disabled="disabled || isSending"
             @click="sendEmails"
           >
