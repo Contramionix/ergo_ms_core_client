@@ -35,13 +35,21 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 import DefaultAvatar from './DefaultAvatar.vue'
 import PresenceIndicator from '@/core/cms/adp/components/PresenceIndicator.vue'
 import { usePresenceStatus } from '@/core/cms/adp/js/presence/usePresenceStatus.js'
-import { getUserPublicInfo, getCachedUserPublicInfo, invalidateUserPublicInfo } from '@/js/userAvatar'
+import {
+  getUserPublicInfo,
+  getCachedUserPublicInfo,
+  invalidateUserPublicInfo,
+  getUserPublicInfoByRef,
+  getCachedUserPublicInfoByRef,
+  invalidateUserPublicInfoByRef,
+} from '@/js/userAvatar'
 import {
   avatarCacheKey,
   ensureAvatarDisplaySrc,
   invalidateAvatar,
   peekAvatarDisplaySrc,
 } from '@/js/avatarCache.js'
+import { logError } from '@/js/utils/logError.js'
 
 const userStore = useUserStore()
 
@@ -68,6 +76,10 @@ const props = defineProps({
   },
   userId: {
     type: [Number, String, null],
+    default: null
+  },
+  userRef: {
+    type: [String, null],
     default: null
   },
   firstName: {
@@ -107,6 +119,10 @@ const normalizedUserId = computed(() => {
 })
 
 const isCurrentUser = computed(() => {
+  if (props.userRef) {
+    const storeRef = userStore.user?.public_id
+    return Boolean(storeRef) && String(storeRef) === String(props.userRef)
+  }
   if (normalizedUserId.value === null) return true
   const storeUserId = Number(userStore.user?.id)
   return Number.isFinite(storeUserId) && storeUserId === normalizedUserId.value
@@ -206,8 +222,8 @@ async function refreshAvatarSrc() {
 watch(displayAvatarUrl, refreshAvatarSrc, { immediate: true })
 
 const needsPublicInfoLoad = computed(() => {
-  if (normalizedUserId.value === null) return false
   if (isCurrentUser.value) return false
+  if (normalizedUserId.value === null && !props.userRef) return false
   const hasNames = Boolean(props.firstName) && Boolean(props.lastName)
   const hasExplicitAvatar = props.avatarUrl !== undefined || props.customAvatarUrl !== undefined
   return !hasNames || !hasExplicitAvatar
@@ -216,6 +232,21 @@ const needsPublicInfoLoad = computed(() => {
 async function loadUserInfo() {
   if (!needsPublicInfoLoad.value) {
     loadedPublicInfo.value = null
+    return
+  }
+
+  if (props.userRef) {
+    const cachedByRef = getCachedUserPublicInfoByRef(props.userRef)
+    if (cachedByRef) {
+      loadedPublicInfo.value = cachedByRef
+      return
+    }
+    try {
+      loadedPublicInfo.value = await getUserPublicInfoByRef(props.userRef)
+    } catch (error) {
+      logError('Ошибка загрузки публичных данных пользователя по ref', error)
+      loadedPublicInfo.value = null
+    }
     return
   }
 
@@ -229,7 +260,7 @@ async function loadUserInfo() {
   try {
     loadedPublicInfo.value = await getUserPublicInfo(id)
   } catch (error) {
-    logError(`Ошибка загрузки публичных данных пользователя ${id}:`, error)
+    logError('Ошибка загрузки публичных данных пользователя', error)
     loadedPublicInfo.value = null
   }
 }
@@ -242,7 +273,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => [props.avatarUrl, props.customAvatarUrl, props.userId, props.firstName, props.lastName],
+  () => [props.avatarUrl, props.customAvatarUrl, props.userId, props.userRef, props.firstName, props.lastName],
   loadUserInfo
 )
 
@@ -266,6 +297,17 @@ async function onImageError() {
     invalidateAvatar(url)
     await userStore.loadAvatar()
     imageError.value = false
+    return
+  }
+
+  if (props.userRef) {
+    invalidateUserPublicInfoByRef(props.userRef)
+    try {
+      loadedPublicInfo.value = await getUserPublicInfoByRef(props.userRef)
+      imageError.value = false
+    } catch {
+      // остаётся DefaultAvatar
+    }
     return
   }
 

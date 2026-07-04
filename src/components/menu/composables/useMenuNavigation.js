@@ -1,127 +1,151 @@
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
+export function getMenuGroupKey(section) {
+  if (!section) return null
+  if (section.id != null) return `id:${section.id}`
+  if (section.routeName) return `route:${section.routeName}`
+  const label = section.title || section.name
+  return label ? `name:${label}` : null
+}
+
+export function buildMenuItemGroupId(item, level) {
+  return `${item.routeName || item.page || item.name}_${level}`
+}
+
+function getMenuItemNestedItems(item) {
+  return [...(item.list || []), ...(item.children || [])]
+}
+
+function routeBelongsToMenuItem(routeName, item) {
+  if (item.routeName === routeName) {
+    return true
+  }
+
+  return getMenuItemNestedItems(item).some((child) => routeBelongsToMenuItem(routeName, child))
+}
+
+function routeBelongsToSection(routeName, section) {
+  if (section.routeName === routeName) {
+    return true
+  }
+
+  return getMenuItemNestedItems(section).some((item) => routeBelongsToMenuItem(routeName, item))
+}
+
 /**
  * Composable для управления навигацией в меню
  */
 export function useMenuNavigation(menuSections) {
   const route = useRoute()
-  const openGroupRouteName = ref(null)
-  const preventAutoOpen = ref(false)
+  const openGroupKey = ref(null)
+  const manuallyCollapsedGroups = ref(new Set())
   const nestedOpenStates = ref({})
+  const manuallyCollapsedNested = ref(new Set())
 
-  // Рекурсивная функция для поиска родительской группы по маршруту
-  const findParentGroupByRoute = (routeName, sections) => {
-    for (let section of sections) {
-      if (section.routeName === routeName) {
-        return section.routeName
-      }
-
-      if (section.list && Array.isArray(section.list)) {
-        for (let item of section.list) {
-          if (item.routeName === routeName) {
-            return section.routeName
-          }
-        }
-      }
-
-      if (section.children && Array.isArray(section.children)) {
-        const found = findParentInChildren(routeName, section.children)
-        if (found) {
-          return section.routeName
-        }
+  const findParentGroupKeyByRoute = (routeName, sections) => {
+    for (const section of sections) {
+      if (routeBelongsToSection(routeName, section)) {
+        return getMenuGroupKey(section)
       }
     }
     return null
   }
 
-  // Рекурсивная функция для поиска в дочерних элементах
-  const findParentInChildren = (routeName, children) => {
-    for (let child of children) {
-      if (child.routeName === routeName) {
-        return true
-      }
-      if (child.children && Array.isArray(child.children)) {
-        if (findParentInChildren(routeName, child.children)) {
-          return true
-        }
-      }
-    }
-    return false
-  }
-
-  // Рекурсивная функция для открытия всех вложенных групп
   const openNestedGroupsForRoute = (routeName, sections) => {
-    const findAndOpenNestedGroups = (routeName, children, parentId = '') => {
-      for (let i = 0; i < children.length; i++) {
-        const child = children[i]
-        const childId = `${child.routeName || child.page || child.name}_${parentId ? parentId + '_' : ''}${i}`
+    const visitItems = (items, level) => {
+      if (!items?.length) return false
 
-        if (child.routeName === routeName) {
+      for (const item of items) {
+        if (item.routeName === routeName) {
           return true
         }
 
-        if (child.children && Array.isArray(child.children)) {
-          if (findAndOpenNestedGroups(routeName, child.children, childId)) {
-            nestedOpenStates.value[childId] = true
-            return true
+        const nested = getMenuItemNestedItems(item)
+        if (!nested.length) {
+          continue
+        }
+
+        if (visitItems(nested, level + 1)) {
+          const groupId = buildMenuItemGroupId(item, level)
+          if (!manuallyCollapsedNested.value.has(groupId)) {
+            nestedOpenStates.value[groupId] = true
           }
+          return true
         }
       }
+
       return false
     }
 
-    for (let section of sections) {
-      if (section.children && Array.isArray(section.children)) {
-        findAndOpenNestedGroups(routeName, section.children)
+    for (const section of sections) {
+      visitItems(getMenuItemNestedItems(section), 0)
+    }
+  }
+
+  const syncOpenGroupForRoute = (currentRouteName) => {
+    if (!menuSections.value?.length || !currentRouteName) {
+      return
+    }
+
+    const parentGroupKey = findParentGroupKeyByRoute(currentRouteName, menuSections.value)
+
+    if (!parentGroupKey) {
+      manuallyCollapsedGroups.value.clear()
+      return
+    }
+
+    for (const collapsedKey of [...manuallyCollapsedGroups.value]) {
+      if (collapsedKey !== parentGroupKey) {
+        manuallyCollapsedGroups.value.delete(collapsedKey)
       }
     }
-  }
 
-  // Переключение группы
-  const toggleGroup = (routeName) => {
-    if (openGroupRouteName.value === routeName) {
-      preventAutoOpen.value = true
-      openGroupRouteName.value = null
-    } else {
-      openGroupRouteName.value = routeName
+    if (!manuallyCollapsedGroups.value.has(parentGroupKey)) {
+      openGroupKey.value = parentGroupKey
     }
+
+    openNestedGroupsForRoute(currentRouteName, menuSections.value)
   }
 
-  // Обработчик переключения вложенных групп
+  const toggleGroup = (groupKey) => {
+    if (!groupKey) return
+
+    if (openGroupKey.value === groupKey) {
+      manuallyCollapsedGroups.value.add(groupKey)
+      openGroupKey.value = null
+      return
+    }
+
+    manuallyCollapsedGroups.value.delete(groupKey)
+    openGroupKey.value = groupKey
+  }
+
   const toggleNestedGroup = (groupId) => {
-    nestedOpenStates.value[groupId] = !nestedOpenStates.value[groupId]
+    if (nestedOpenStates.value[groupId]) {
+      manuallyCollapsedNested.value.add(groupId)
+      nestedOpenStates.value[groupId] = false
+      return
+    }
+
+    manuallyCollapsedNested.value.delete(groupId)
+    nestedOpenStates.value[groupId] = true
   }
 
-  // Отслеживание изменения маршрута
   watch(
     () => route.matched,
     (newMatched) => {
-      if (preventAutoOpen.value) {
-        preventAutoOpen.value = false
-        return
-      }
-
-      if (menuSections.value && Array.isArray(menuSections.value)) {
-        const currentRouteName = newMatched[0]?.name
-        const parentGroup = findParentGroupByRoute(currentRouteName, menuSections.value)
-
-        if (parentGroup) {
-          openGroupRouteName.value = parentGroup
-          openNestedGroupsForRoute(currentRouteName, menuSections.value)
-        }
-      }
+      syncOpenGroupForRoute(newMatched[0]?.name)
     },
-    { immediate: false }
+    { immediate: false },
   )
 
   return {
-    openGroupRouteName,
+    getMenuGroupKey,
+    openGroupKey,
     nestedOpenStates,
     toggleGroup,
     toggleNestedGroup,
-    findParentGroupByRoute,
-    openNestedGroupsForRoute
+    syncOpenGroupForRoute,
   }
 }
-

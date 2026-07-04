@@ -10,31 +10,6 @@ export const GetPages = async () => {
     return response.data;
 };
 
-export const PutPages = async (path, type) => {
-    const response = await CheckAccess.PutPages(path, type);
-    return response.data;
-};
-
-export const AddPageComponent = async (path, componentId) => {
-    const response = await CheckAccess.AddPageComponent(path, componentId);
-    return response.data;
-};
-
-export const RemovePageComponent = async (path, componentId) => {
-    const response = await CheckAccess.RemovePageComponent(path, componentId);
-    return response.data;
-};
-
-export const UpdatePageComponent = async (path, oldComponentId, newComponentId) => {
-    const response = await CheckAccess.UpdatePageComponent(path, oldComponentId, newComponentId);
-    return response.data;
-};
-
-export const GetPageComponents = async () => {
-    const response = await CheckAccess.GetPageComponents();
-    return response.data.components;
-};
-
 export const GetRoles = async () => {
     const response = await CheckAccess.GetRoles();
     return response.data;

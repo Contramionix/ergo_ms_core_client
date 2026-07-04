@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
-import { useModulePagePermissions } from './js/useModulePagePermissions'
+import { useModulePagePermissions } from '@/core/cms/adp/admin/js/useModulePagePermissions'
 import { useToast } from '@/js/utils/toast.js'
 import { apiClient } from '@/js/api/manager'
 import { CreatePolicy, UpdatePolicy, DeletePolicy } from '@/core/cms/adp/admin/js/GroupsPolitics'
@@ -20,7 +20,7 @@ const {
   errorMessage,
   handleSelectModule,
   handleSelectPage,
-  loadData
+  loadData,
 } = useModulePagePermissions()
 
 const toast = useToast()
@@ -47,7 +47,7 @@ const pageAccessByRoleGroup = computed(() => {
       name: policy.name,
       priority: policy.priority ?? 0,
       is_pattern: Boolean(policy.is_pattern),
-      resource_path: policy.resource_path
+      resource_path: policy.resource_path,
     }
   }
 
@@ -74,7 +74,7 @@ const pageAccessByRole = computed(() => {
       name: policy.name,
       priority: policy.priority ?? 0,
       is_pattern: Boolean(policy.is_pattern),
-      resource_path: policy.resource_path
+      resource_path: policy.resource_path,
     }
   }
 
@@ -105,7 +105,6 @@ const handleSyncRoutes = async () => {
     await loadData()
     toast.success('Маршруты модулей синхронизированы')
   } catch (error) {
-    // eslint-disable-next-line no-console
     logError('Ошибка синхронизации маршрутов модулей', error)
     toast.error('Не удалось синхронизировать маршруты. Попробуйте позже.')
   } finally {
@@ -113,36 +112,28 @@ const handleSyncRoutes = async () => {
   }
 }
 
-const getGroupAccessState = groupId => {
+const getGroupAccessState = (groupId) => {
   const current = pageAccessByRoleGroup.value[groupId]
-
   if (!current) {
     return 'inherit'
   }
-
   return current.allowed ? 'allow' : 'deny'
 }
 
-const getRoleAccessState = roleId => {
+const getRoleAccessState = (roleId) => {
   if (adminRoleIds.value.has(roleId)) {
     return 'allow'
   }
 
   const current = pageAccessByRole.value[roleId]
-
   if (!current) {
     return 'inherit'
   }
-
   return current.allowed ? 'allow' : 'deny'
 }
 
 const setPageAccessStateForGroup = async (roleGroup, state) => {
-  if (!selectedPage.value || !roleGroup) {
-    return
-  }
-
-  if (isSavingAccess.value) {
+  if (!selectedPage.value || !roleGroup || isSavingAccess.value) {
     return
   }
 
@@ -167,7 +158,7 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
           is_pattern: current.is_pattern ?? false,
           priority: current.priority ?? 0,
           role: null,
-          role_group: roleGroup.id
+          role_group: roleGroup.id,
         })
       } else {
         await CreatePolicy({
@@ -178,7 +169,7 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
           is_pattern: false,
           priority: 0,
           role: null,
-          role_group: roleGroup.id
+          role_group: roleGroup.id,
         })
       }
     } else if (state === 'deny') {
@@ -191,7 +182,7 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
           is_pattern: current.is_pattern ?? false,
           priority: current.priority ?? 0,
           role: null,
-          role_group: roleGroup.id
+          role_group: roleGroup.id,
         })
       } else {
         await CreatePolicy({
@@ -202,7 +193,7 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
           is_pattern: false,
           priority: 0,
           role: null,
-          role_group: roleGroup.id
+          role_group: roleGroup.id,
         })
       }
     }
@@ -210,7 +201,6 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
     await loadData()
     toast.success('Доступ к странице обновлён')
   } catch (error) {
-    // eslint-disable-next-line no-console
     logError('Ошибка изменения доступа к странице', error)
     toast.error('Не удалось изменить доступ. Попробуйте позже.')
   } finally {
@@ -219,15 +209,7 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
 }
 
 const setPageAccessStateForRole = async (role, state) => {
-  if (!selectedPage.value || !role) {
-    return
-  }
-
-  if (adminRoleIds.value.has(role.id)) {
-    return
-  }
-
-  if (isSavingAccess.value) {
+  if (!selectedPage.value || !role || adminRoleIds.value.has(role.id) || isSavingAccess.value) {
     return
   }
 
@@ -252,7 +234,7 @@ const setPageAccessStateForRole = async (role, state) => {
           is_pattern: current.is_pattern ?? false,
           priority: current.priority ?? 0,
           role: role.id,
-          role_group: null
+          role_group: null,
         })
       } else {
         await CreatePolicy({
@@ -263,7 +245,7 @@ const setPageAccessStateForRole = async (role, state) => {
           is_pattern: false,
           priority: 0,
           role: role.id,
-          role_group: null
+          role_group: null,
         })
       }
     } else if (state === 'deny') {
@@ -276,7 +258,7 @@ const setPageAccessStateForRole = async (role, state) => {
           is_pattern: current.is_pattern ?? false,
           priority: current.priority ?? 0,
           role: role.id,
-          role_group: null
+          role_group: null,
         })
       } else {
         await CreatePolicy({
@@ -287,7 +269,7 @@ const setPageAccessStateForRole = async (role, state) => {
           is_pattern: false,
           priority: 0,
           role: role.id,
-          role_group: null
+          role_group: null,
         })
       }
     }
@@ -295,7 +277,6 @@ const setPageAccessStateForRole = async (role, state) => {
     await loadData()
     toast.success('Доступ к странице обновлён')
   } catch (error) {
-    // eslint-disable-next-line no-console
     logError('Ошибка изменения доступа к странице по роли', error)
     toast.error('Не удалось изменить доступ. Попробуйте позже.')
   } finally {
@@ -303,17 +284,16 @@ const setPageAccessStateForRole = async (role, state) => {
   }
 }
 
-const isGroupAccessAllowed = groupId => getGroupAccessState(groupId) === 'allow'
+const isGroupAccessAllowed = (groupId) => getGroupAccessState(groupId) === 'allow'
+const isRoleAccessAllowed = (roleId) => getRoleAccessState(roleId) === 'allow'
 
-const isRoleAccessAllowed = roleId => getRoleAccessState(roleId) === 'allow'
-
-const handleToggleGroupAccess = roleGroup => {
+const handleToggleGroupAccess = (roleGroup) => {
   const currentState = getGroupAccessState(roleGroup.id)
   const nextState = currentState === 'allow' ? 'deny' : 'allow'
   return setPageAccessStateForGroup(roleGroup, nextState)
 }
 
-const handleToggleRoleAccess = role => {
+const handleToggleRoleAccess = (role) => {
   const currentState = getRoleAccessState(role.id)
   const nextState = currentState === 'allow' ? 'deny' : 'allow'
   return setPageAccessStateForRole(role, nextState)
@@ -328,13 +308,11 @@ onMounted(async () => {
   <div>
     <div class="row">
       <div class="col-12 mb-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
-        <div>
-          <h2 class="admin-section-title">Модули и страницы</h2>
-          <p class="admin-section-subtitle">
-            Выберите модуль и страницу слева, чтобы настроить политики доступа и модульные права для неё.
-          </p>
-        </div>
-        <div class="d-flex gap-2">
+        <p class="access-control-tab-desc mb-0">
+          Выберите модуль и страницу, затем настройте доступ для ролей и ролевых групп.
+          Переключатель «вкл» — разрешить, «выкл» — запретить; без политики действует наследование по умолчанию.
+        </p>
+        <div class="d-flex gap-2 flex-shrink-0">
           <button
             type="button"
             class="btn btn-outline-secondary btn-sm"
@@ -356,113 +334,156 @@ onMounted(async () => {
 
     <div class="row g-3">
       <div class="col-12 col-lg-4">
-        <div class="card h-100 module-page-permissions__sidebar-card">
+        <div class="card h-100 access-pages-tab__sidebar-card">
           <div class="card-header">
             <h5 class="mb-0">Модули и страницы</h5>
           </div>
           <div class="card-body p-0">
             <LoadingContentArea :loading="isLoading" min-height="10rem">
-            <div v-if="errorMessage" class="p-3">
-              <div class="alert alert-danger mb-0">
-                {{ errorMessage }}
-              </div>
-            </div>
-            <div v-else class="row g-0">
-              <div class="col-12 col-sm-5 border-end">
-                <div class="list-group list-group-flush">
-                  <button
-                    v-for="module in modules"
-                    :key="module.key"
-                    type="button"
-                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                    :class="{ active: module.key === selectedModuleKey }"
-                    @click="handleSelectModule(module.key)"
-                  >
-                    <span class="text-truncate">{{ module.title }}</span>
-                    <span class="badge bg-secondary rounded-pill ms-2">
-                      {{
-                        module.submodules
-                          ? module.submodules.reduce((acc, sub) => acc + (sub.pages ? sub.pages.length : 0), 0)
-                          : 0
-                      }}
-                    </span>
-                  </button>
-                  <div v-if="modules.length === 0" class="p-3 text-muted small">
-                    Страницы не найдены.
-                  </div>
+              <div v-if="errorMessage" class="p-3">
+                <div class="alert alert-danger mb-0">
+                  {{ errorMessage }}
                 </div>
               </div>
-              <div class="col-12 col-sm-7">
-                <div class="p-2 border-start-sm h-100 d-flex flex-column module-page-permissions__pages-card">
-                  <div class="mb-2">
-                    <div class="fw-semibold small text-uppercase text-muted">Страницы модуля</div>
-                  </div>
-                  <div class="flex-grow-1 overflow-auto">
+              <div v-else class="row g-0">
+                <div class="col-12 col-sm-5 border-end">
+                  <div class="list-group list-group-flush">
                     <button
-                      v-for="page in visiblePages"
-                      :key="page.path"
+                      v-for="module in modules"
+                      :key="module.key"
                       type="button"
-                      class="btn w-100 text-start mb-1 module-page-permissions__page-btn"
-                      :class="{
-                        'btn-outline-secondary': page.path !== selectedPagePath,
-                        'btn-primary': page.path === selectedPagePath
-                      }"
-                      @click="handleSelectPage(page.path)"
+                      class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                      :class="{ active: module.key === selectedModuleKey }"
+                      @click="handleSelectModule(module.key)"
                     >
-                      <div class="d-flex flex-column">
-                        <span class="fw-semibold text-truncate">{{ page.label }}</span>
-                        <small class="text-monospace text-truncate">{{ page.path }}</small>
-                      </div>
+                      <span class="text-truncate">{{ module.title }}</span>
+                      <span class="badge bg-secondary rounded-pill ms-2">
+                        {{
+                          module.submodules
+                            ? module.submodules.reduce(
+                                (acc, sub) => acc + (sub.pages ? sub.pages.length : 0),
+                                0,
+                              )
+                            : 0
+                        }}
+                      </span>
                     </button>
-                    <div v-if="visiblePages.length === 0" class="text-muted small">
-                      Выберите модуль, чтобы увидеть список его страниц.
+                    <div v-if="modules.length === 0" class="p-3 text-muted small">
+                      Страницы не найдены.
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-sm-7">
+                  <div class="p-2 border-start-sm h-100 d-flex flex-column access-pages-tab__pages-card">
+                    <div class="mb-2">
+                      <div class="fw-semibold small text-uppercase text-muted">Страницы модуля</div>
+                    </div>
+                    <div class="flex-grow-1 overflow-auto">
+                      <button
+                        v-for="page in visiblePages"
+                        :key="page.path"
+                        type="button"
+                        class="btn w-100 text-start mb-1 access-pages-tab__page-btn"
+                        :class="{
+                          'btn-outline-secondary': page.path !== selectedPagePath,
+                          'btn-primary': page.path === selectedPagePath,
+                        }"
+                        @click="handleSelectPage(page.path)"
+                      >
+                        <div class="d-flex flex-column">
+                          <span class="fw-semibold text-truncate">{{ page.label }}</span>
+                          <small class="text-monospace text-truncate">{{ page.path }}</small>
+                        </div>
+                      </button>
+                      <div v-if="visiblePages.length === 0" class="text-muted small">
+                        Выберите модуль, чтобы увидеть список его страниц.
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
             </LoadingContentArea>
           </div>
         </div>
       </div>
 
       <div class="col-12 col-lg-8">
-        <div class="d-flex flex-column gap-3">
-          <div class="card">
-            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
-              <div>
-                <h5 class="mb-1">
-                  Доступ к странице
-                  <span v-if="selectedPage">
-                    «{{ selectedPage.label }}»
-                  </span>
-                  <span v-else class="text-muted">не выбранной страницы</span>
-                </h5>
-                <p class="mb-0 text-muted small" v-if="selectedPage">
-                  URL: <span class="text-monospace">{{ selectedPage.path }}</span>
-                </p>
-              </div>
+        <div class="card">
+          <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+            <div>
+              <h5 class="mb-1">
+                Доступ к странице
+                <span v-if="selectedPage">«{{ selectedPage.label }}»</span>
+                <span v-else class="text-muted">не выбранной страницы</span>
+              </h5>
+              <p v-if="selectedPage" class="mb-0 text-muted small">
+                URL: <span class="text-monospace">{{ selectedPage.path }}</span>
+              </p>
             </div>
+          </div>
 
-            <div class="card-body">
-              <div v-if="!selectedPage" class="alert alert-info mb-0">
-                Выберите страницу слева, чтобы управлять доступом к ней.
-              </div>
-              <div v-else class="d-flex flex-column gap-4">
-                <section>
-                  <p class="text-muted small mb-3">
-                    Управляйте доступом <strong>ролевых групп</strong> к выбранной странице.
-                  </p>
-                  <div class="list-group">
-                    <div
-                      v-for="group in roleGroups"
-                      :key="group.id"
-                      class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2"
-                    >
+          <div class="card-body">
+            <div v-if="!selectedPage" class="alert alert-info mb-0">
+              Выберите страницу слева, чтобы управлять доступом к ней.
+            </div>
+            <div v-else class="d-flex flex-column gap-4">
+              <section>
+                <p class="text-muted small mb-3">
+                  Управляйте доступом <strong>ролевых групп</strong> к выбранной странице.
+                </p>
+                <div class="list-group">
+                  <div
+                    v-for="group in roleGroups"
+                    :key="group.id"
+                    class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2"
+                  >
+                    <div class="me-3">
+                      <div class="fw-semibold">{{ group.name }}</div>
+                      <div class="text-muted small">
+                        {{ group.parent_role_name || 'Ролевая группа' }}
+                      </div>
+                    </div>
+
+                    <div class="permission-toggle d-flex align-items-center gap-2">
+                      <span class="small text-muted d-none d-md-inline">Доступ к странице</span>
+                      <button
+                        type="button"
+                        class="permission-toggle-switch"
+                        :class="{ 'permission-toggle-switch--on': isGroupAccessAllowed(group.id) }"
+                        :disabled="isSavingAccess"
+                        :aria-pressed="isGroupAccessAllowed(group.id)"
+                        aria-label="Переключить доступ к странице"
+                        @click="handleToggleGroupAccess(group)"
+                      >
+                        <span class="permission-toggle-switch__thumb"></span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div v-if="roleGroups.length === 0" class="list-group-item text-muted small">
+                    Ролевые группы не найдены. Сначала создайте хотя бы одну группу.
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h6 class="mb-2">Доступ по ролям</h6>
+                <p class="text-muted small mb-3">
+                  Настройте доступ для конкретных <strong>ролей</strong>. Политики ролей и групп
+                  применяются по приоритету на сервере.
+                </p>
+
+                <div class="list-group">
+                  <div
+                    v-for="role in roles"
+                    :key="role.id"
+                    class="list-group-item d-flex flex-column gap-2"
+                  >
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                       <div class="me-3">
-                        <div class="fw-semibold">{{ group.name }}</div>
+                        <div class="fw-semibold">{{ role.name }}</div>
                         <div class="text-muted small">
-                          {{ group.parent_role_name || 'Ролевая группа' }}
+                          {{ role.role_type_display || 'Роль' }}
                         </div>
                       </div>
 
@@ -471,81 +492,33 @@ onMounted(async () => {
                         <button
                           type="button"
                           class="permission-toggle-switch"
-                          :class="{ 'permission-toggle-switch--on': isGroupAccessAllowed(group.id) }"
-                          :disabled="isSavingAccess"
-                          @click="handleToggleGroupAccess(group)"
-                          :aria-pressed="isGroupAccessAllowed(group.id)"
+                          :class="{ 'permission-toggle-switch--on': isRoleAccessAllowed(role.id) }"
+                          :disabled="isSavingAccess || adminRoleIds.has(role.id)"
+                          :aria-pressed="isRoleAccessAllowed(role.id)"
                           aria-label="Переключить доступ к странице"
+                          @click="handleToggleRoleAccess(role)"
                         >
                           <span class="permission-toggle-switch__thumb"></span>
                         </button>
                       </div>
                     </div>
 
-                    <div v-if="roleGroups.length === 0" class="list-group-item text-muted small">
-                      Ролевые группы не найдены. Сначала создайте хотя бы одну группу.
-                    </div>
-                  </div>
-                </section>
-
-                <section>
-                  <h6 class="mb-2">Доступ по ролям</h6>
-                  <p class="text-muted small mb-3">
-                    Точно так же настройте доступ для конкретных <strong>ролей</strong>. Ролевые политики имеют такой же
-                    приоритет, как и политики ролевых групп, подробности зависят от конфигурации сервера.
-                  </p>
-
-                  <div class="list-group">
                     <div
-                      v-for="role in roles"
-                      :key="role.id"
-                      class="list-group-item d-flex flex-column gap-2"
+                      v-if="adminRoleIds.has(role.id)"
+                      class="mt-1 p-2 rounded border permission-warning d-flex align-items-center gap-2"
                     >
-                      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
-                        <div class="me-3">
-                          <div class="fw-semibold">
-                            {{ role.name }}
-                          </div>
-                          <div class="text-muted small">
-                            {{ role.role_type_display || 'Роль' }}
-                          </div>
-                        </div>
-
-                        <div class="permission-toggle d-flex align-items-center gap-2">
-                          <span class="small text-muted d-none d-md-inline">Доступ к странице</span>
-                          <button
-                            type="button"
-                            class="permission-toggle-switch"
-                            :class="{ 'permission-toggle-switch--on': isRoleAccessAllowed(role.id) }"
-                            :disabled="isSavingAccess || adminRoleIds.has(role.id)"
-                            @click="handleToggleRoleAccess(role)"
-                            :aria-pressed="isRoleAccessAllowed(role.id)"
-                            aria-label="Переключить доступ к странице"
-                          >
-                            <span class="permission-toggle-switch__thumb"></span>
-                          </button>
-                        </div>
+                      <AlertTriangle class="permission-warning__icon flex-shrink-0" size="26" />
+                      <div class="small permission-warning__text">
+                        Системные администраторы всегда имеют полный доступ к страницам.
                       </div>
-
-                      <div
-                        v-if="adminRoleIds.has(role.id)"
-                        class="mt-1 p-2 rounded border permission-warning d-flex align-items-center gap-2"
-                      >
-                        <AlertTriangle class="permission-warning__icon flex-shrink-0" size="26" />
-                        <div class="small permission-warning__text">
-                          Вы не можете изменять это право для этой роли, потому что системные администраторы всегда имеют
-                          полный доступ к страницам и управляются на уровне конфигурации системы.
-                        </div>
-                      </div>
-                    </div>
-
-                    <div v-if="roles.length === 0" class="list-group-item text-muted small">
-                      Роли не найдены. Сначала создайте хотя бы одну роль.
                     </div>
                   </div>
 
-                </section>
-              </div>
+                  <div v-if="roles.length === 0" class="list-group-item text-muted small">
+                    Роли не найдены. Сначала создайте хотя бы одну роль.
+                  </div>
+                </div>
+              </section>
             </div>
           </div>
         </div>
@@ -555,30 +528,22 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
-.admin-section-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--color-primary-text);
-  margin-bottom: 0.25rem;
-}
-
-.admin-section-subtitle {
+.access-control-tab-desc {
   font-size: 0.875rem;
   color: var(--color-secondary-text);
-  margin-bottom: 0;
 }
 
-.module-page-permissions__sidebar-card {
+.access-pages-tab__sidebar-card {
   max-height: 70vh;
   overflow-y: auto;
 }
 
-.module-page-permissions__pages-card {
+.access-pages-tab__pages-card {
   max-height: 70vh;
   overflow-y: auto;
 }
 
-.module-page-permissions__page-btn {
+.access-pages-tab__page-btn {
   padding: 0.4rem 0.6rem;
   font-size: 0.875rem;
 }
@@ -632,12 +597,21 @@ onMounted(async () => {
 }
 
 .text-monospace {
-  font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-      monospace);
+  font-family: var(
+    --bs-font-monospace,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    'Liberation Mono',
+    'Courier New',
+    monospace
+  );
 }
 
 @media (max-width: 575.98px) {
-  .module-page-permissions__page-btn {
+  .access-pages-tab__page-btn {
     font-size: 0.8rem;
   }
 }

@@ -111,29 +111,44 @@ export default {
       "requiresGlobalAdmin": true
     }
   },
+  "AccessControlPanel": {
+    "path": "/admin-panel/access",
+    "component": "@/core/cms/adp/admin/AccessControl.vue",
+    "meta": {
+      "title": "Доступ и права",
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
+    }
+  },
   "PermissionsPanel": {
     "path": "/admin-panel/permissions",
-    "component": "@/core/cms/adp/admin/Permissions.vue",
+    "redirect": {
+      "path": "/admin-panel/access",
+      "query": { "tab": "policies" }
+    },
     "meta": {
-      "title": "Политики и модульные права",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
   },
   "ModulePagePermissionsPanel": {
     "path": "/admin-panel/module-page-permissions",
-    "component": "@/core/cms/adp/admin/ModulePagePermissions.vue",
+    "redirect": {
+      "path": "/admin-panel/access",
+      "query": { "tab": "pages" }
+    },
     "meta": {
-      "title": "Права по страницам модулей",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
   },
   "LiminationPanel": {
     "path": "/admin-panel/limitations",
-    "component": "@/core/cms/adp/admin/limitationSettings.vue",
+    "redirect": {
+      "path": "/admin-panel/access",
+      "query": { "tab": "pages" }
+    },
     "meta": {
-      "title": "Панель Ограничений",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }

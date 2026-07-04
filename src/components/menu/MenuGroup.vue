@@ -35,7 +35,7 @@ import MenuItem from './MenuItem.vue'
 import { iconMapping } from '@/config/icons-mapping.js'
 import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
 import { isMenuItemActive } from './composables/isMenuItemActive.js'
-import { canNavigateToRoute, safeNavigateByName } from './composables/safeMenuNavigate.js'
+import { canNavigateToRoute, isSameMenuRoutePath, safeNavigateByName } from './composables/safeMenuNavigate.js'
 import MenuPeekLabel from '@/components/menu/MenuPeekLabel.vue'
 
 const props = defineProps({
@@ -157,33 +157,32 @@ function handleNestedNavigate(item) {
 
 function routeClick(event) {
   event.preventDefault() // Всегда блокируем стандартную навигацию RouterLink
-  
-  // Проверяем, является ли элемент внешней ссылкой
+
   const externalUrl = props.data.externalUrl || props.data.external_url
   if (props.data.item_type === 'external' && externalUrl) {
     window.open(externalUrl, '_blank', 'noopener,noreferrer')
     return
   }
-  
+
+  const routeName = props.data.routeName
+  const hasTargetRoute = canNavigateToRoute(router, routeName)
+  const targetRoute = hasTargetRoute ? router.resolve({ name: routeName }) : null
+
   if (hasMenuItems.value) {
-    // Если у элемента есть подменю
     if (props.isOpen) {
-      // Если группа открыта - просто закрываем, не переходим никуда
       emit('toggle')
-    } 
-    else {
-      // Если группа закрыта - открываем
-      emit('toggle')
-      
-      // Переходим на основную страницу только если пользователь НЕ находится в пределах этой группы
-      if (!isCurrentGroupPage.value) {
-        safeNavigateByName(router, props.data.routeName)
-      }
+      return
     }
-  } else {
-    // Если подменю нет - просто переходим на страницу
-    safeNavigateByName(router, props.data.routeName)
+
+    emit('toggle')
+
+    if (hasTargetRoute && !isSameMenuRoutePath(route.path, targetRoute?.path)) {
+      safeNavigateByName(router, routeName)
+    }
+    return
   }
+
+  safeNavigateByName(router, routeName)
 }
 </script>
 

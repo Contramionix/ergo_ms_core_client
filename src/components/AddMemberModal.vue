@@ -40,7 +40,7 @@
           >
             <div class="d-flex align-items-center gap-3 p-3">
               <div class="avatar-wrapper">
-                <UserAvatar :userId="user.id" :size="48" :title="user.full_name || user.username" :avatar-url="user.avatar_url" :first-name="user.first_name" :last-name="user.last_name" />
+                <UserAvatar :userId="user.id" :user-ref="user.public_id" :size="48" :title="user.full_name || user.username" :avatar-url="user.avatar_url" :first-name="user.first_name" :last-name="user.last_name" />
                 <div v-if="isSelected(user.id) || isAssigned(user.id)" class="check-badge" :class="{ 'check-badge-assigned': isAssigned(user.id) && !isSelected(user.id) }">
                   <Check :size="12" stroke-width="3" />
                 </div>
@@ -219,6 +219,7 @@ function normalizeModalUser(raw) {
 
   return {
     id: raw.id,
+    public_id: raw.public_id ?? raw.publicId ?? null,
     username: raw.username || '',
     full_name: fallbackName,
     first_name: firstName,

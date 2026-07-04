@@ -9,6 +9,7 @@ import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 import { getIcon } from '@/config/icons-mapping.js'
 import { markRaw } from 'vue'
+import { logError, logWarn } from '@/js/utils/logError.js'
 
 // In-memory кеш меню. Прогревается в main.js до монтирования, поэтому MenuList
 // может синхронно отрисовать меню с первого кадра (см. peekCachedMenu).
@@ -407,8 +408,8 @@ export async function logMenuAccess(menuItemId) {
   try {
     await apiClient.post(endpoints.cms.menu.accessLog, { menu_item_id: menuItemId })
   } catch (error) {
-    // Логирование не критично, игнорируем ошибки
-    console.debug('Ошибка логирования доступа к меню:', error)
+    // Логирование не критично, но пишем безопасно (без сырого объекта ошибки)
+    logWarn('Ошибка логирования доступа к меню', error)
   }
 }
 

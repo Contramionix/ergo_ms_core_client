@@ -150,6 +150,12 @@ const props = defineProps({
     nestedOptionFontSize: { type: String, default: '' },
     /** Размер шрифта доп. подписи; пусто — как у списка */
     nestedSecondaryFontSize: { type: String, default: '' },
+    /** Сторона раскрытия меню: 'bottom' (по умолчанию) — под триггером, 'right' — сбоку справа (для пунктов-подменю) */
+    placement: { type: String, default: 'bottom', validator: (v) => ['bottom', 'right'].includes(v) },
+    /** Зазор в px между триггером и меню при placement="right" (0 — меню примыкает к триггеру) */
+    placementGap: { type: Number, default: 4 },
+    /** Вертикальное выравнивание меню при placement="right": 'start' (по умолчанию, верх меню = верх триггера) | 'center' (центр меню = центр триггера) */
+    placementAlign: { type: String, default: 'start', validator: (v) => ['start', 'center'].includes(v) },
 })
 
 const emit = defineEmits(['update:modelValue', 'change', 'blur'])
@@ -278,13 +284,45 @@ function updateMenuPosition() {
     const rect = (anchorRect && anchorRect.width > 0) ? anchorRect : triggerRect
     const viewportPadding = 8
     const minDropdownWidth = 120
-    const maxWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
-    const minW = Math.max(minDropdownWidth, props.dropdownMinWidth || 0, rect.width)
-    const width = Math.min(minW, maxWidth)
-    const left = Math.min(
-        rect.left,
-        window.innerWidth - viewportPadding - width
-    )
+
+    let top
+    let left
+    let width
+    let maxWidth
+
+    if (props.placement === 'right') {
+        const sideGap = props.placementGap
+        maxWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
+        width = Math.min(Math.max(minDropdownWidth, props.dropdownMinWidth || 0), maxWidth)
+        const fitsRight = triggerRect.right + sideGap + width <= window.innerWidth - viewportPadding
+        left = fitsRight
+            ? triggerRect.right + sideGap
+            : Math.max(viewportPadding, triggerRect.left - sideGap - width)
+
+        if (props.placementAlign === 'center') {
+            const menuHeight = menuEl.value?.getBoundingClientRect().height || triggerRect.height
+            const centerTop = triggerRect.top + triggerRect.height / 2 - menuHeight / 2
+            top = Math.min(
+                Math.max(viewportPadding, centerTop),
+                Math.max(viewportPadding, window.innerHeight - viewportPadding - menuHeight)
+            )
+        } else {
+            top = Math.min(
+                triggerRect.top,
+                window.innerHeight - viewportPadding
+            )
+        }
+    } else {
+        maxWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
+        const minW = Math.max(minDropdownWidth, props.dropdownMinWidth || 0, rect.width)
+        width = Math.min(minW, maxWidth)
+        left = Math.min(
+            rect.left,
+            window.innerWidth - viewportPadding - width
+        )
+        top = triggerRect.bottom
+    }
+
     const triggerStyle = getComputedStyle(trigger)
     const rootStyle = root ? getComputedStyle(root) : null
     const menuFontSize = resolveContextFontSize(trigger, root)
@@ -292,7 +330,7 @@ function updateMenuPosition() {
     const resolvedMenuFontSize = customFontSize || menuFontSize
     const menuLineHeight = triggerStyle.lineHeight || rootStyle?.lineHeight || '1.5'
     fixedMenuStyle.value = {
-        top: `${triggerRect.bottom}px`,
+        top: `${top}px`,
         left: `${left}px`,
         width: `${width}px`,
         maxWidth: `${maxWidth}px`,

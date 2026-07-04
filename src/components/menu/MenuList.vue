@@ -293,7 +293,8 @@ if (hydrateMenuFromCache()) {
 }
 
 const {
-  openGroupRouteName,
+  getMenuGroupKey,
+  openGroupKey,
   nestedOpenStates,
   toggleGroup,
   toggleNestedGroup
@@ -511,7 +512,7 @@ onBeforeUnmount(() => {
             />
           </div>
           
-          <MenuGroup :is-hovering="showMenuLabels" :is-collapsed="!isCollapsed" :is-open="openGroupRouteName === section.routeName" :data="section" :nested-open-states="nestedOpenStates" @toggle="toggleGroup(section.routeName)" @navigate="handleNavigate" @toggle-nested="toggleNestedGroup"/>
+          <MenuGroup :is-hovering="showMenuLabels" :is-collapsed="!isCollapsed" :is-open="openGroupKey === getMenuGroupKey(section)" :data="section" :nested-open-states="nestedOpenStates" @toggle="toggleGroup(getMenuGroupKey(section))" @navigate="handleNavigate" @toggle-nested="toggleNestedGroup"/>
         </li>
         </ul>
       </div>
@@ -526,8 +527,13 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   align-items: center;
   min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: flex-start;
   text-decoration: none;
   color: inherit;
+  // та же колонка, что у .nav-btn внутри ul.p-2 — в обоих режимах меню
+  padding: $padding-internal 0 $padding-internal calc(0.5rem + #{$padding-external});
 }
 
 .side-menu__body {
@@ -578,6 +584,10 @@ onBeforeUnmount(() => {
     :deep(.text-smooth-animation) {
       transition: none;
     }
+
+    :deep(.site-wordmark--menu) {
+      letter-spacing: 0;
+    }
   }
 
   // Логотип ERGOMS: полный вордмарк раскрывается слева направо за всю
@@ -626,31 +636,6 @@ onBeforeUnmount(() => {
   &.collapsed:not(.hovering) {
     inline-size: 84px;
   }
-
-  // Раскладка свёрнутого меню держится и во время peek-наведения — при hover
-  // меняется только ширина, а padding/justify не переключаются (без рывка).
-  &.collapsed {
-    .side-header {
-      padding: 12px 0 0;
-    }
-
-    .side-menu__logo {
-      width: 100%;
-      box-sizing: border-box;
-      justify-content: flex-start;
-      // та же колонка, что у .nav-btn внутри ul.p-2
-      padding: $padding-internal 0 $padding-internal calc(0.5rem + #{$padding-external});
-    }
-
-    .side-header__title {
-      display: flex;
-      justify-content: flex-start;
-    }
-
-    :deep(.site-wordmark--menu) {
-      letter-spacing: 0;
-    }
-  }
 }
 
 .side-menu__scroll {
@@ -686,7 +671,7 @@ onBeforeUnmount(() => {
 .side-header {
   position: relative;
   z-index: 3;
-  padding: 12px 0 0 26px;
+  padding: 12px 0 0;
 }
 
 .side-header__brand-row {
@@ -714,7 +699,10 @@ onBeforeUnmount(() => {
 }
 
 .side-header__title {
+  display: flex;
   flex-grow: 1;
+  align-items: center;
+  justify-content: flex-start;
   color: var(--color-primary-text);
   font-size: $font-size-h1;
   font-weight: bold;
@@ -723,6 +711,10 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   user-select: none;
   overflow: hidden;
+}
+
+.side-menu :deep(.site-wordmark--menu) {
+  min-height: 1em;
 }
 
 .side-menu__toggle {

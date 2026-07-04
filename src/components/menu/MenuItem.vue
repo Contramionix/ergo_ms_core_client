@@ -22,7 +22,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { iconMapping } from '@/config/icons-mapping.js'
 import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
 import { isMenuItemActive } from './composables/isMenuItemActive.js'
-import { safeNavigateByName } from './composables/safeMenuNavigate.js'
+import { canNavigateToRoute, isSameMenuRoutePath, safeNavigateByName } from './composables/safeMenuNavigate.js'
+import { buildMenuItemGroupId } from './composables/useMenuNavigation.js'
 import MenuPeekLabel from '@/components/menu/MenuPeekLabel.vue'
 
 const props = defineProps({
@@ -39,10 +40,7 @@ const emit = defineEmits(['navigate', 'toggle-group'])
 const injectedIconSizes = inject(MENU_ICON_SIZES_KEY, null)
 const iconSizes = computed(() => injectedIconSizes?.value ?? getDefaultMenuIconSizes())
 
-// Уникальный идентификатор для группы (соответствует логике в MenuList.vue)
-const groupId = computed(() => {
-  return `${props.item.routeName || props.item.page || props.item.name}_${props.level}`
-})
+const groupId = computed(() => buildMenuItemGroupId(props.item, props.level))
 
 // Объединяем children и list в один массив для отображения, сохраняя порядок по order
 const allChildren = computed(() => {
@@ -120,13 +118,21 @@ const handleClick = (event) => {
   }
   
   if (isGroup.value) {
-    // Переключаем состояние группы
-    emit('toggle-group', groupId.value)
-    
-    // Если группа закрыта и есть маршрут, переходим на него
-    if (!isOpen.value && props.item.routeName) {
-      safeNavigateByName(router, props.item.routeName)
+    const routeName = props.item.routeName
+    const hasTargetRoute = canNavigateToRoute(router, routeName)
+    const targetRoute = hasTargetRoute ? router.resolve({ name: routeName }) : null
+
+    if (isOpen.value) {
+      emit('toggle-group', groupId.value)
+      return
     }
+
+    emit('toggle-group', groupId.value)
+
+    if (hasTargetRoute && !isSameMenuRoutePath(route.path, targetRoute?.path)) {
+      safeNavigateByName(router, routeName)
+    }
+    return
   } else if (props.item.isOffcanvas || props.item.page) {
     emit('navigate', props.item)
   } else if (props.item.routeName) {

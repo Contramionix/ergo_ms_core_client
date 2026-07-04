@@ -8,12 +8,6 @@ export const POLICY_ACTION_OPTIONS = [
   { id: 'deny', name: 'Запретить' },
 ]
 
-export const PAGE_ACCESS_TYPE_OPTIONS = [
-  { id: 'withoutliminations', name: 'Открытая' },
-  { id: 'closepage', name: 'Закрытая' },
-  { id: 'withliminations', name: 'С ограничениями' },
-]
-
 export const PRESENCE_FILTER_OPTIONS = [
   { id: 'all', name: 'Все пользователи' },
   { id: 'online', name: 'В сети' },

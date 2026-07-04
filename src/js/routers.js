@@ -8,6 +8,7 @@ import { generateAllRoutes, validateAll, getPermissionRules } from '@/modules/in
 import { checkRouteAdpAccess, hasAnyModulePermission, checkGlobalAdminAccess } from '@/core/cms/adp/js/accessControl'
 import tokenService from '@/core/cms/js/tokenService'
 import { accessDeniedState } from './accessDeniedState'
+import { logWarn } from '@/js/utils/logError.js'
 
 const organizationGuardModules = import.meta.glob(
   '../../../../modules/organizations/client/js/organizationGuard.js',
@@ -45,10 +46,7 @@ async function loadOrganizationGuard() {
     const orgGuardModule = await loadGuardModule()
     return orgGuardModule.organizationGuard
   } catch (e) {
-    console.debug(
-      '[Router] Ошибка загрузки organizationGuard из модуля organizations:',
-      e,
-    )
+    logWarn('[Router] Ошибка загрузки organizationGuard из модуля organizations', e)
     return null
   }
 }

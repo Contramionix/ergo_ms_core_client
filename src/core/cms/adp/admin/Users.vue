@@ -365,7 +365,7 @@ const getItemKey = (item) => item.user_id
     <DataTable :items="rows" :columns="columns" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalUsers" :get-item-key="getItemKey" :enable-pagination="true" @update:current-page="handlePageChange">
       <template #cell-user="{ item }">
         <div class="d-flex align-items-center gap-3">
-          <UserAvatar :user-id="item.user_id" :custom-avatar-url="item.avatar_url" :title="item.user" :size="32" :first-name="item.first_name" :last-name="item.last_name" show-online-status show-presence-tooltip />
+          <UserAvatar :user-id="item.user_id" :user-ref="item.public_id" :custom-avatar-url="item.avatar_url" :title="item.user" :size="32" :first-name="item.first_name" :last-name="item.last_name" show-online-status show-presence-tooltip />
           <div class="d-flex flex-column">
             <span class="fw-semibold">{{ item.user }}</span>
             <small class="text-muted">{{ item.username }} · {{ item.email }}</small>

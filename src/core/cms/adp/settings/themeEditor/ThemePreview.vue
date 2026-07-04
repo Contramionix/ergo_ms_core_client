@@ -1,5 +1,4 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { 
   Home, 
   Settings, 
@@ -17,37 +16,6 @@ import {
   Share2,
   MoreVertical,
 } from 'lucide-vue-next'
-
-// Получаем текущую тему из localStorage
-const getCurrentTheme = () => {
-  const stored = localStorage.getItem('theme') || 'auto'
-  if (stored === 'auto') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-  return stored
-}
-
-const currentTheme = ref(getCurrentTheme())
-
-// Слушаем изменения темы
-onMounted(() => {
-  const observer = new MutationObserver(() => {
-    currentTheme.value = getCurrentTheme()
-  })
-  
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-bs-theme']
-  })
-
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    currentTheme.value = getCurrentTheme()
-  })
-
-  onUnmounted(() => {
-    observer.disconnect()
-  })
-})
 </script>
 
 <template>
