@@ -10,6 +10,7 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 const props = defineProps({
   saving: { type: Boolean, default: false },
   userId: { type: Number, default: null },
+  userRef: { type: String, default: null },
   avatarUrl: { type: String, default: null },
   displayName: { type: String, default: '' },
   firstName: { type: String, default: '' },
@@ -173,6 +174,7 @@ onBeforeUnmount(() => {
         <UserAvatar
           :size="200"
           :user-id="isAdminMode ? userId : null"
+          :user-ref="isAdminMode ? userRef : null"
           :avatar-url="avatarExplicitUrl"
           :first-name="isAdminMode ? firstName : null"
           :last-name="isAdminMode ? lastName : null"

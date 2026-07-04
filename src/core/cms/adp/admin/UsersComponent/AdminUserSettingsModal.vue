@@ -45,6 +45,7 @@ const deleting = ref(false)
 const errors = ref({})
 const formData = ref({})
 const avatarUrl = ref(null)
+const userPublicId = ref(null)
 const selectedRoleId = ref(null)
 const selectedGroupIds = ref([])
 const username = ref('')
@@ -69,6 +70,7 @@ const roleGroupSelectOptions = computed(() => mapRoleGroupSelectOptions(props.ro
 const resetState = () => {
   formData.value = {}
   avatarUrl.value = null
+  userPublicId.value = null
   selectedRoleId.value = null
   selectedGroupIds.value = []
   username.value = ''
@@ -86,6 +88,7 @@ const loadUser = async () => {
     username.value = data.username || ''
     formData.value = mapAdminUserToFormData(data)
     avatarUrl.value = data.avatar_url || null
+    userPublicId.value = data.public_id || null
     selectedRoleId.value = data.role?.id ?? null
     selectedGroupIds.value = data.role_groups?.map((group) => group.id) || []
     passwordResetMode.value = data.password_reset_mode || 'system'
@@ -196,7 +199,7 @@ const requestDelete = async () => {
   <ModalCenter modal-id="adminUserSettings" standalone :visible="show" :title="modalTitle" size="lg" scrollable @closemodal="handleClose">
     <LoadingContentArea :loading="loading" :reset-key="userId" min-height="16rem">
     <template v-if="userId">
-      <AvatarBlock :user-id="userId" :avatar-url="avatarUrl" :display-name="displayName" :first-name="formData.first_name" :last-name="formData.last_name" :saving="saving" :on-upload="handleAvatarUpload" :on-remove="handleAvatarRemove" @avatar-updated="handleAvatarUpdated"/>
+      <AvatarBlock :user-id="userId" :user-ref="userPublicId" :avatar-url="avatarUrl" :display-name="displayName" :first-name="formData.first_name" :last-name="formData.last_name" :saving="saving" :on-upload="handleAvatarUpload" :on-remove="handleAvatarRemove" @avatar-updated="handleAvatarUpdated"/>
 
       <h2 class="admin-user-modal__section-title">Профиль</h2>
       <div class="profile-card">
