@@ -9,6 +9,7 @@ import {
   validatePasswordValue,
   getPasswordRequirementHints,
 } from '@/js/passwordPolicy.js'
+import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -174,6 +175,7 @@ const submitForm = async () => {
     toast.success('Пароль успешно изменён')
     handleClose()
   } catch (error) {
+    logError('Ошибка смены пароля', error)
     if (error.response?.data) {
       const serverErrors = error.response.data
       if (serverErrors.current_password) {

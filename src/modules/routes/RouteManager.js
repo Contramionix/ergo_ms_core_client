@@ -7,6 +7,8 @@
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
 
+import { logWarn } from '@/js/utils/logError.js'
+
 export class RouteManager extends ModuleLoader {
   constructor() {
     super()
@@ -91,7 +93,7 @@ export class RouteManager extends ModuleLoader {
     const loader = this.componentsMap[searchPath]
 
     if (!loader) {
-      console.warn(`Компонент не найден: ${componentPath} (искали: ${searchPath})`)
+      logWarn(`Компонент не найден: ${componentPath} (искали: ${searchPath})`)
     }
 
     return loader || null

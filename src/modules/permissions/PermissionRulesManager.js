@@ -9,6 +9,8 @@
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
 
+import { logWarn } from '@/js/utils/logError.js'
+
 export class PermissionRulesManager extends ModuleLoader {
   constructor() {
     super()
@@ -50,7 +52,7 @@ export class PermissionRulesManager extends ModuleLoader {
           }
         })
       } else {
-        console.warn(`[PermissionRulesManager] Модуль ${path} не экспортирует массив правил`)
+        logWarn(`[PermissionRulesManager] Модуль ${path} не экспортирует массив правил`)
       }
     })
   }

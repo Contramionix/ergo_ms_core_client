@@ -1,7 +1,12 @@
 <template>
     <div class="select-box" ref="rootEl" :style="rootCssVars">
         <label v-if="label" class="form-label mb-1">{{ label }}</label>
-        <div class="dropdown" :class="{ 'is-open': isOpen }">
+        <div
+            class="dropdown"
+            :class="{ 'is-open': isOpen }"
+            @mouseenter="onHoverZoneEnter"
+            @mouseleave="onHoverZoneLeave"
+        >
             <button class="btn btn-light w-100 d-flex align-items-center justify-content-between select-trigger" :class="{ 'select-trigger--open': isOpen }" type="button" :disabled="disabled" @click="toggle" @blur="$emit('blur')">
                 <span class="select-trigger-slot d-flex align-items-center flex-grow-1 me-2">
                     <slot name="selected" :option="selectedOption" :label="currentLabel">
@@ -16,6 +21,8 @@
                     ref="menuEl"
                     :class="dropdownTeleportMenuClass"
                     :style="fixedMenuStyle"
+                    @mouseenter="onHoverZoneEnter"
+                    @mouseleave="onHoverZoneLeave"
                 >
                     <input
                         v-if="searchable"
@@ -156,6 +163,10 @@ const props = defineProps({
     placementGap: { type: Number, default: 4 },
     /** Вертикальное выравнивание меню при placement="right": 'start' (по умолчанию, верх меню = верх триггера) | 'center' (центр меню = центр триггера) */
     placementAlign: { type: String, default: 'start', validator: (v) => ['start', 'center'].includes(v) },
+    /** Открывать выпадающий список при наведении (удобно для подменю, напр. выбор темы в SettingsMenu) */
+    openOnHover: { type: Boolean, default: false },
+    /** Задержка закрытия при уходе курсора, ms — чтобы успеть перейти с триггера на телепортированное меню */
+    hoverCloseDelay: { type: Number, default: 120 },
 })
 
 const emit = defineEmits(['update:modelValue', 'change', 'blur'])
@@ -353,35 +364,70 @@ function updateMenuPosition() {
     }
 }
 const searchInputEl = ref(null)
-function toggle() {
-    if (props.disabled) return
-    isOpen.value = !isOpen.value
-    if (isOpen.value) {
-        updateMenuPosition()
-        if (props.dropdownAnchorRef) {
-            nextTick(() => {
-                updateMenuPosition()
-                requestAnimationFrame(() => updateMenuPosition())
-            })
-        } else {
-            requestAnimationFrame(() => updateMenuPosition())
-        }
-        if (props.searchable) {
-            nextTick(() => searchInputEl.value?.focus())
-        }
-        if (props.virtualized) {
-            startIndex.value = 0
-            endIndex.value = 0
-            nextTick(() => {
-                if (listContainerRef.value) {
-                    listContainerRef.value.scrollTop = 0
-                    updateVisibleRange()
-                }
-            })
-        }
+let hoverCloseTimer = null
+
+function clearHoverCloseTimer() {
+    if (hoverCloseTimer !== null) {
+        clearTimeout(hoverCloseTimer)
+        hoverCloseTimer = null
     }
 }
+
+function scheduleHoverClose() {
+    if (!props.openOnHover) return
+    clearHoverCloseTimer()
+    hoverCloseTimer = setTimeout(() => {
+        close()
+        hoverCloseTimer = null
+    }, props.hoverCloseDelay)
+}
+
+function onHoverZoneEnter() {
+    if (!props.openOnHover || props.disabled) return
+    clearHoverCloseTimer()
+    open()
+}
+
+function onHoverZoneLeave() {
+    if (!props.openOnHover) return
+    scheduleHoverClose()
+}
+
+function open() {
+    if (props.disabled || isOpen.value) return
+    isOpen.value = true
+    updateMenuPosition()
+    if (props.dropdownAnchorRef) {
+        nextTick(() => {
+            updateMenuPosition()
+            requestAnimationFrame(() => updateMenuPosition())
+        })
+    } else {
+        requestAnimationFrame(() => updateMenuPosition())
+    }
+    if (props.searchable) {
+        nextTick(() => searchInputEl.value?.focus())
+    }
+    if (props.virtualized) {
+        startIndex.value = 0
+        endIndex.value = 0
+        nextTick(() => {
+            if (listContainerRef.value) {
+                listContainerRef.value.scrollTop = 0
+                updateVisibleRange()
+            }
+        })
+    }
+}
+
+function toggle() {
+    if (props.disabled) return
+    if (isOpen.value) close()
+    else open()
+}
+
 function close() {
+    clearHoverCloseTimer()
     isOpen.value = false
     searchQuery.value = ''
 }
@@ -579,6 +625,7 @@ onMounted(() => {
     window.addEventListener('scroll', updateMenuPosition, true)
 })
 onBeforeUnmount(() => {
+    clearHoverCloseTimer()
     document.removeEventListener('click', handleClickOutside, true)
     window.removeEventListener('resize', onResize)
     window.removeEventListener('scroll', updateMenuPosition, true)

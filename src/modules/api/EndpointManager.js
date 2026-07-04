@@ -7,6 +7,8 @@
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
 
+import { logWarn } from '@/js/utils/logError.js'
+
 export class EndpointManager extends ModuleLoader {
   constructor() {
     super()
@@ -103,7 +105,7 @@ export class EndpointManager extends ModuleLoader {
               _modulePath: path
             })
           } else {
-            console.warn(`Дублирующийся эндпоинт: ${name} в ${path}`)
+            logWarn(`Дублирующийся эндпоинт: ${name} в ${path}`)
           }
         })
       }

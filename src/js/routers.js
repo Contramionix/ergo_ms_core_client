@@ -34,9 +34,7 @@ async function resolveOrganizationGuard() {
 
 async function loadOrganizationGuard() {
   if (Object.keys(organizationGuardModules).length === 0) {
-    console.debug(
-      '[Router] Модуль organizations не установлен, organizationGuard отключен',
-    )
+    logWarn('[Router] Модуль organizations не установлен, organizationGuard отключен')
     return null
   }
 

@@ -14,6 +14,7 @@ import {
   avatarCacheKey,
 } from '@/js/avatarCache.js'
 import { showBootstrapMask } from '@/js/bootstrapMask.js'
+import { logError, logWarn } from '@/js/utils/logError.js'
 import Cookies from 'js-cookie'
 
 export const useUserStore = defineStore('userStore', () => {
@@ -186,7 +187,7 @@ export const useUserStore = defineStore('userStore', () => {
         return
       }
       
-      console.warn('Menu endpoint вернул полные данные вместо легковесных, используем fallback')
+      logWarn('Menu endpoint вернул полные данные вместо легковесных, используем fallback')
       await loadProfile()
     } catch (error) {
       logError('Ошибка загрузки данных меню:', error)
@@ -333,18 +334,8 @@ export const useUserStore = defineStore('userStore', () => {
     resetUserState()
     isInitialized.value = false
     
-    // Очищаем куки
     Cookies.remove('csrftoken')
-    
-    // Очищаем активную организацию при выходе
-    try {
-      const STORAGE_KEY = 'crm_active_organization'
-      localStorage.removeItem(STORAGE_KEY)
-    } catch (error) {
-      logError('Ошибка очистки активной организации при выходе:', error)
-    }
-    
-    // Перенаправляем на страницу входа
+
     window.location.href = '/login'
   }
 

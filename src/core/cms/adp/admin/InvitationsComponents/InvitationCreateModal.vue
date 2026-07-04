@@ -3,6 +3,8 @@ import { ref, watch } from 'vue'
 import { Copy, Mail } from 'lucide-vue-next'
 import { createInvitation } from '@/core/cms/adp/admin/js/invitationService'
 import { copyTextToClipboard } from '@/js/utils/clipboard.js'
+import { extractApiError } from '@/js/utils/extractApiError.js'
+import { logError } from '@/js/utils/logError.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 
 const props = defineProps({
@@ -40,24 +42,6 @@ const close = () => {
   emit('close')
 }
 
-const extractApiError = (apiError, fallback = 'Не удалось выполнить операцию') => {
-  const data = apiError?.response?.data
-  if (!data) {
-    return fallback
-  }
-  if (typeof data.error === 'string') {
-    return data.error
-  }
-  if (typeof data.detail === 'string') {
-    return data.detail
-  }
-  const firstFieldError = Object.values(data).find((value) => Array.isArray(value) && value.length)
-  if (firstFieldError) {
-    return String(firstFieldError[0])
-  }
-  return fallback
-}
-
 const submit = async (sendEmail) => {
   error.value = ''
   if (!email.value.trim()) {
@@ -90,6 +74,7 @@ const submit = async (sendEmail) => {
     isSubmitting.value = false
     close()
   } catch (apiError) {
+    logError('Ошибка создания приглашения', apiError)
     error.value = extractApiError(apiError, 'Не удалось создать приглашение')
     isSubmitting.value = false
   }

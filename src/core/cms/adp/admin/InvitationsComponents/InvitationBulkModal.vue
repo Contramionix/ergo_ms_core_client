@@ -24,6 +24,8 @@ import {
   bulkSendInvitations,
 } from '@/core/cms/adp/admin/js/invitationService'
 import { copyTextToClipboard } from '@/js/utils/clipboard.js'
+import { extractApiError } from '@/js/utils/extractApiError.js'
+import { logError } from '@/js/utils/logError.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 
 const props = defineProps({
@@ -169,17 +171,6 @@ const handleDownloadTemplate = async () => {
   }
 }
 
-const extractApiError = (apiError, fallback = 'Не удалось выполнить операцию') => {
-  const data = apiError?.response?.data
-  if (!data) {
-    return fallback
-  }
-  if (typeof data.error === 'string') {
-    return data.error
-  }
-  return fallback
-}
-
 const createInvitations = async () => {
   if (!canCreate.value) {
     return
@@ -220,6 +211,7 @@ const createInvitations = async () => {
       }
     }
   } catch (apiError) {
+    logError('Ошибка массового создания приглашений', apiError)
     parseError.value = extractApiError(apiError, 'Не удалось создать приглашения')
   } finally {
     isCreating.value = false
@@ -248,6 +240,7 @@ const sendEmails = async () => {
       toast.warning(`Не удалось отправить: ${result.failed.length}`)
     }
   } catch (apiError) {
+    logError('Ошибка отправки приглашений', apiError)
     parseError.value = extractApiError(apiError, 'Не удалось отправить письма')
   } finally {
     isSending.value = false

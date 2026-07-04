@@ -6,6 +6,7 @@ import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
 import { validateFieldValue, validateFieldsOnEquality } from '@/js/validation'
 import { validatePasswordValue } from '@/js/passwordPolicy.js'
 import { resetPassword, fetchPasswordResetSettings } from '@/core/cms/adp/js/auth-index'
+import { logError } from '@/js/utils/logError.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -132,6 +133,7 @@ const submitForm = async () => {
     }
     
   } catch (error) {
+    logError('Ошибка сброса пароля', error)
     if (error.response) {
       if (error.response.status === 400) {
         const errorData = error.response.data
