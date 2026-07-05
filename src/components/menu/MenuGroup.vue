@@ -257,6 +257,8 @@ function routeClick(event) {
 
 .nav-btn {
   padding: $padding-internal $padding-external;
+  min-height: var(--menu-item-height, 36px);
+  box-sizing: border-box;
   border-radius: $radius-small;
   transition:
     background-color $transition,
@@ -282,6 +284,7 @@ function routeClick(event) {
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
+  line-height: 1;
 }
 
 .side-icon {

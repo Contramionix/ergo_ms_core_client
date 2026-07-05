@@ -19,14 +19,13 @@ const props = defineProps({
 
 const peekState = inject(MENU_PEEK_STATE_KEY, null)
 
-// Peek-reveal только при hover или анимации ширины. В устойчивом collapsed
-// без hover текст прячем через .hidden — иначе flex оставляет место под 1-й символ.
+// Peek-reveal только при hover на свёрнутое меню (не при закреплении кнопкой).
 const usePeekReveal = computed(() => {
   const state = peekState?.value
   if (!state?.collapsed) {
     return false
   }
-  return state.peekActive === true || state.layoutSync === true
+  return state.peekActive === true
 })
 const labelTitle = computed(() => props.title || props.text)
 </script>

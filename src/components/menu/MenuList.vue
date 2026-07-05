@@ -51,6 +51,14 @@ const toast = useToast()
 const isCollapsed = ref(readMenuCollapsedPreference())
 const isHovering = ref(!isCollapsed.value)
 const showMenuLabels = computed(() => !isCollapsed.value || isHovering.value)
+// Подписи скрываем сразу при сворачивании (без peek-текста во время анимации ширины)
+const isCollapsedLabelsHidden = computed(() =>
+  isCollapsed.value && !isHovering.value,
+)
+// Центрирование иконок — только после окончания анимации ширины
+const isCollapsedSettled = computed(() =>
+  isCollapsed.value && !isHovering.value && !isLayoutTransitionActive.value,
+)
 const showCompactWordmark = computed(() => {
   if (isWordmarkHiding.value) {
     return false
@@ -366,12 +374,11 @@ const toggleMenu = () => {
   const expanding = isCollapsed.value
   if (expanding) {
     cancelWordmarkHide()
-    isLayoutTransitionActive.value = true
-    emit('layout-sync-transition', true)
   } else {
     startWordmarkHide()
   }
 
+  beginLayoutTransition()
   isCollapsed.value = !isCollapsed.value
   writeMenuCollapsedPreference(isCollapsed.value)
   isHovering.value = !isCollapsed.value
@@ -392,6 +399,7 @@ const handleMouseLeave = () => {
   if (isCollapsed.value && !isToolbarDropdownActive.value) {
     if (isHovering.value) {
       startWordmarkHide()
+      beginLayoutTransition()
     }
     isHovering.value = false
     syncMenuRightEdgeWithTransition()
@@ -523,7 +531,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen, 'side-menu--visibility-transition': isVisibilityTransitionActive, 'side-menu--layout-transition': isLayoutTransitionActive || isCollapsed, 'wordmark-hiding': isWordmarkHiding }" :style="{ '--menu-width': `${menuWidth}px` }" @mouseleave="handleMouseLeave">
+  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'side-menu--collapsed-settled': isCollapsedSettled, 'side-menu--labels-hidden': isCollapsedLabelsHidden, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen, 'side-menu--visibility-transition': isVisibilityTransitionActive, 'side-menu--layout-transition': isLayoutTransitionActive || isCollapsed, 'wordmark-hiding': isWordmarkHiding }" :style="{ '--menu-width': `${menuWidth}px`, '--menu-item-height': `${menuIconSizes.item + 16}px`, '--menu-icon-inset': `calc((100% - ${menuIconSizes.item}px) / 2)`, '--menu-avatar-inset': 'calc((100% - 40px) / 2)' }" @mouseleave="handleMouseLeave">
     <div class="side-menu__header side-header">
       <div class="side-header__brand-row">
         <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">
@@ -602,11 +610,36 @@ onBeforeUnmount(() => {
     transform $transition,
     border-radius $transition;
 
+  &:not(.side-menu--bootstrapping) {
+    .side-menu__logo,
+    .side-menu__list {
+      transition: padding-inline var(--menu-inline-size-transition);
+    }
+
+    :deep(.side-divider),
+    :deep(.nav-btn) {
+      transition: padding-inline var(--menu-inline-size-transition);
+    }
+
+    :deep(.menu-toolbar) {
+      transition:
+        padding-inline var(--menu-inline-size-transition),
+        margin-inline var(--menu-inline-size-transition);
+    }
+  }
+
   &.side-menu--layout-transition {
     transition:
       transform $transition,
       inline-size var(--menu-inline-size-transition),
       border-radius $transition;
+
+    &:not(.hovering) {
+      :deep(.side-group__list),
+      :deep(.menu-item__children) {
+        transition: none !important;
+      }
+    }
   }
 
   &.collapsed {
@@ -685,60 +718,60 @@ onBeforeUnmount(() => {
   &.collapsed:not(.hovering) {
     inline-size: 84px;
 
-    .side-menu__logo {
-      padding-inline: 0;
-      justify-content: center;
-    }
-
-    .side-header__title {
-      justify-content: center;
-    }
-
     .side-menu__list {
       padding-inline: 0;
     }
+  }
+
+  // Центрирование — после transition ширины, через padding (плавно)
+  &.side-menu--collapsed-settled {
+    .side-menu__logo {
+      padding-inline-start: var(--menu-icon-inset);
+      padding-inline-end: 0;
+    }
 
     .side-divider {
-      padding-inline: 0;
+      padding-inline-start: var(--menu-icon-inset);
+      padding-inline-end: 0;
       gap: 0;
-      justify-content: center;
     }
 
     :deep(.nav-btn) {
-      padding-inline: 0;
-      justify-content: center;
+      padding-inline-start: var(--menu-icon-inset);
+      padding-inline-end: 0;
     }
 
     :deep(.side-title__label),
     :deep(.menu-item__label) {
-      flex: 0;
-      justify-content: center;
+      flex: 0 0 auto;
       gap: 0;
+      min-width: 0;
     }
 
+    :deep(.side-icon),
+    :deep(.menu-item__icon) {
+      flex-shrink: 0;
+    }
+
+    :deep(.menu-item__content) {
+      padding-left: 0 !important;
+      padding-right: 0;
+    }
+
+    :deep(.menu-toolbar) {
+      margin-inline: 0;
+      margin-block-end: $padding-internal;
+      padding-inline-start: var(--menu-avatar-inset);
+      padding-inline-end: 0;
+    }
+  }
+
+  &.side-menu--labels-hidden {
     :deep(.side-title__name.hidden),
     :deep(.menu-item__name.hidden),
     :deep(.side-divider__name.hidden),
     :deep(.nav-icon.hidden) {
       display: none;
-    }
-
-    :deep(.menu-item__content) {
-      padding-left: 0 !important;
-    }
-
-    :deep(.menu-toolbar) {
-      margin-inline: 0;
-      padding-inline: 6px;
-
-      .tools {
-        justify-content: center;
-      }
-
-      .toolbar__user {
-        flex: 0 0 auto;
-        justify-content: center;
-      }
     }
   }
 }
@@ -783,7 +816,7 @@ onBeforeUnmount(() => {
   position: relative;
   display: flex;
   align-items: center;
-  min-height: 0;
+  min-height: 2.5rem;
 }
 
 .side-header a {
@@ -807,6 +840,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-grow: 1;
   align-items: center;
+  min-height: 2.5rem;
   justify-content: flex-start;
   color: var(--color-primary-text);
   font-size: $font-size-h1;
@@ -877,6 +911,8 @@ onBeforeUnmount(() => {
 .side-divider {
   @include flex-row-gap($padding-internal, center);
   padding: $padding-internal $padding-external;
+  min-height: var(--menu-item-height, 36px);
+  box-sizing: border-box;
   overflow: hidden;
 
   &__icon {

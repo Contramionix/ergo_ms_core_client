@@ -130,7 +130,8 @@ const setDropdownActive = (dropdownId, active) => {
   z-index: 2;
   overflow: visible;
   background-color: var(--color-secondary-background);
-  margin: 2%;
+  margin-block: 0 $padding-internal;
+  margin-inline: 2%;
   width: auto;
   height: auto;
   padding: 8px 12px;

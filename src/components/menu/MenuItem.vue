@@ -203,6 +203,8 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
   color: var(--color-primary-text);
   text-decoration: none;
   padding: $padding-internal $padding-external;
+  min-height: var(--menu-item-height, 36px);
+  box-sizing: border-box;
   border-radius: $radius-small;
   transition:
     background-color $transition,
@@ -233,6 +235,7 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
+  line-height: 1;
 }
 
 .menu-item__chevron svg {
