@@ -6,6 +6,7 @@ import { ArrowLeft, Check, X, AlertCircle } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
+import SearchInput from '@/components/SearchInput.vue'
 import SelectBox from '@/components/SelectBox.vue'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { confirmAction } from '@/js/utils/confirm.js'
@@ -209,11 +210,7 @@ const handleReject = async (item) => {
     </div>
 
     <div class="content-card">
-      <button
-        type="button"
-        class="btn btn-primary d-inline-flex align-items-center gap-2 align-self-start"
-        @click="goBack"
-      >
+      <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2 align-self-start" @click="goBack">
         <ArrowLeft :size="16" />
         <span>К пользователям</span>
       </button>
@@ -232,43 +229,15 @@ const handleReject = async (item) => {
 
       <div class="table-header users-toolbar">
         <div class="filters-wrapper">
-          <div class="search-wrapper">
-            <label for="profile-change-requests-search" class="form-label mb-1">Поиск</label>
-            <input
-              id="profile-change-requests-search"
-              type="search"
-              class="form-control search-input"
-              placeholder="Пользователь, email, ФИО, телефон..."
-              @input="handleSearchQuery($event.target.value)"
-            />
-          </div>
+          <SearchInput id="profile-change-requests-search" :model-value="searchQuery" label="Поиск" layout="fixed" placeholder="Пользователь, email, ФИО, телефон..." :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
           <div class="status-filter">
-            <SelectBox
-              id="profile-change-requests-status"
-              v-model="statusFilter"
-              label="Статус"
-              :options="STATUS_OPTIONS"
-              value-key="id"
-              label-key="name"
-              :include-all-option="false"
-              fixed-trigger-label-font-size
-              @update:model-value="handleStatusFilterChange"
-            />
+            <SelectBox id="profile-change-requests-status" v-model="statusFilter" label="Статус" :options="STATUS_OPTIONS" value-key="id" label-key="name" :include-all-option="false" fixed-trigger-label-font-size @update:model-value="handleStatusFilterChange"/>
           </div>
         </div>
       </div>
 
       <LoadingContentArea :loading="isLoading">
-      <DataTable
-        :items="rows"
-        :columns="columns"
-        :items-per-page="rowsPerPage"
-        :current-page="currentPage"
-        :total-items="totalItems"
-        :get-item-key="getItemKey"
-        :enable-pagination="true"
-        @update:current-page="handlePageChange"
-      >
+      <DataTable :items="rows" :columns="columns" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalItems" :get-item-key="getItemKey" :enable-pagination="true" @update:current-page="handlePageChange">
         <template #cell-user="{ item }">
           <div class="d-flex flex-column">
             <span class="fw-semibold">{{ item.username }}</span>
@@ -294,19 +263,11 @@ const handleReject = async (item) => {
 
         <template #cell-actions="{ item }">
           <div v-if="item.status === 'pending'" class="d-flex justify-content-end gap-2">
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1"
-              @click="handleApprove(item)"
-            >
+            <button type="button" class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1" @click="handleApprove(item)">
               <Check :size="14" />
               Одобрить
             </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
-              @click="handleReject(item)"
-            >
+            <button type="button" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1" @click="handleReject(item)">
               <X :size="14" />
               Отклонить
             </button>
@@ -343,18 +304,6 @@ const handleReject = async (item) => {
 
 .users-toolbar {
   align-items: flex-end;
-}
-
-.search-wrapper {
-  flex: 1 1 220px;
-  min-width: 180px;
-  max-width: 320px;
-  display: flex;
-  flex-direction: column;
-}
-
-.search-wrapper .search-input {
-  min-height: 38px;
 }
 
 .status-filter {

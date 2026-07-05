@@ -1,0 +1,493 @@
+<template>
+  <div ref="rootEl" class="filter-menu">
+    <label v-if="label" class="form-label mb-1">{{ label }}</label>
+    <button type="button" class="btn btn-light w-100 d-flex align-items-center justify-content-between filter-menu__trigger" :class="{ 'filter-menu__trigger--open': isMainOpen }" :disabled="disabled" @click="toggleMain">
+      <span class="filter-menu__trigger-label">{{ triggerText }}</span>
+      <ChevronDown class="filter-menu__trigger-chevron" :class="{ 'filter-menu__trigger-chevron--open': isMainOpen }" />
+    </button>
+
+    <Teleport to="body">
+      <div v-if="isMainOpen" ref="mainPanelEl" class="filter-menu__panel dropdown-menu show fixed-menu" :style="mainPanelStyle" data-filter-menu-panel @mousedown.stop>
+        <ul class="filter-menu__list">
+          <template v-for="field in fields" :key="fieldKey(field)">
+            <li v-if="field.type === 'heading'" class="filter-menu__heading">
+              {{ field.label }}
+            </li>
+            <li v-else-if="isInteractiveField(field)">
+              <button type="button" class="filter-menu__row" :class="{ 'filter-menu__row--active': activeFlyoutKey === field.key }" :data-field-key="field.key" @mouseenter="onRowEnter(field.key, $event.currentTarget)" @mouseleave="onRowLeave" @click.stop="onRowClick(field, $event)">
+                <span class="filter-menu__row-label">{{ field.label }}</span>
+                <span class="filter-menu__row-value text-muted">{{ getFieldDisplayValue(field) }}</span>
+                <ChevronRight class="filter-menu__row-chevron" :size="16" />
+              </button>
+            </li>
+          </template>
+        </ul>
+
+        <div class="filter-menu__footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary w-100" :disabled="!hasActiveValues" @click="handleReset">
+            Сбросить
+          </button>
+        </div>
+      </div>
+
+      <div v-if="isMainOpen && activeFlyoutKey && activeField" ref="flyoutPanelEl" class="filter-menu__flyout dropdown-menu show fixed-menu" :style="flyoutPanelStyle" data-filter-menu-flyout @mousedown.stop @mouseenter="onFlyoutEnter" @mouseleave="onFlyoutLeave">
+        <template v-if="activeField.type === 'select'">
+          <input v-if="activeField.searchable" ref="flyoutSearchEl" v-model="flyoutSearchQuery" type="text" class="filter-menu__search select-box-search" placeholder="Поиск..." autocomplete="off" @mousedown.stop/>
+          <ul class="dropdown-menu-list">
+            <li v-if="activeField.includeAllOption !== false && !flyoutSearchActive">
+              <a href="#" class="dropdown-item" :class="{ active: isEmptyValue(activeField.key) }" @click.prevent="chooseSelectValue(activeField, null)">
+                {{ activeField.allLabel || 'Все' }}
+              </a>
+            </li>
+            <li v-for="opt in filteredFlyoutOptions" :key="opt.key">
+              <a href="#" class="dropdown-item" :class="{ active: isSelectValueActive(activeField, opt.value) }" @click.prevent="chooseSelectValue(activeField, opt.value)">
+                {{ opt.label }}
+              </a>
+            </li>
+          </ul>
+        </template>
+
+        <template v-else-if="activeField.type === 'date'">
+          <div class="filter-menu__date-body">
+            <label :for="`filter-menu-date-${activeField.key}`" class="form-label mb-1">
+              {{ activeField.label }}
+            </label>
+            <input :id="`filter-menu-date-${activeField.key}`" :value="getFieldRawValue(activeField.key)" type="date" class="form-control" @change="onDateChange(activeField, $event)"/>
+            <button type="button" class="btn btn-sm btn-link filter-menu__date-clear px-0" :disabled="isEmptyValue(activeField.key)" @click="clearDateValue(activeField)">
+              Очистить
+            </button>
+          </div>
+        </template>
+      </div>
+    </Teleport>
+  </div>
+</template>
+
+<script setup>
+import { computed, ref, watch, nextTick } from 'vue'
+import { ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { useFilterMenuFlyout } from '@/composables/useFilterMenuFlyout.js'
+
+const props = defineProps({
+  modelValue: {
+    type: Object,
+    default: () => ({}),
+  },
+  fields: {
+    type: Array,
+    default: () => [],
+  },
+  label: {
+    type: String,
+    default: '',
+  },
+  triggerLabel: {
+    type: String,
+    default: 'Фильтры',
+  },
+  applyOnChange: {
+    type: Boolean,
+    default: true,
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
+})
+
+const emit = defineEmits(['update:modelValue', 'apply', 'reset'])
+
+const {
+  rootEl,
+  mainPanelEl,
+  flyoutPanelEl,
+  isMainOpen,
+  activeFlyoutKey,
+  mainPanelStyle,
+  flyoutPanelStyle,
+  toggleMain,
+  openFlyout,
+  closeFlyout,
+  onRowEnter,
+  onRowLeave,
+  onFlyoutEnter,
+  onFlyoutLeave,
+} = useFilterMenuFlyout()
+
+const flyoutSearchQuery = ref('')
+const flyoutSearchEl = ref(null)
+
+const activeField = computed(() =>
+  props.fields.find((field) => field.type !== 'heading' && field.key === activeFlyoutKey.value) || null,
+)
+
+const activeCount = computed(() =>
+  props.fields.filter((field) => field.type !== 'heading' && !isEmptyValue(field.key)).length,
+)
+
+const hasActiveValues = computed(() => activeCount.value > 0)
+
+const triggerText = computed(() => {
+  if (activeCount.value > 0) {
+    return `${props.triggerLabel} (${activeCount.value})`
+  }
+  return props.triggerLabel
+})
+
+const flyoutSearchActive = computed(() =>
+  Boolean(activeField.value?.searchable && flyoutSearchQuery.value.trim()),
+)
+
+const filteredFlyoutOptions = computed(() => {
+  const field = activeField.value
+  if (!field || field.type !== 'select') return []
+  const options = normalizeSelectOptions(field)
+  const query = flyoutSearchQuery.value.trim().toLowerCase()
+  if (!query) return options
+  return options.filter((opt) => (opt.label || '').toLowerCase().includes(query))
+})
+
+watch(activeFlyoutKey, (key) => {
+  flyoutSearchQuery.value = ''
+  if (!key) return
+  nextTick(() => {
+    if (activeField.value?.searchable) {
+      flyoutSearchEl.value?.focus()
+    }
+  })
+})
+
+function fieldKey(field) {
+  if (field.type === 'heading') return `heading-${field.label}`
+  return field.key
+}
+
+function isInteractiveField(field) {
+  return field.type === 'select' || field.type === 'date'
+}
+
+function isEmptyValue(key) {
+  const value = props.modelValue?.[key]
+  return value === null || value === undefined || value === ''
+}
+
+function getFieldRawValue(key) {
+  const value = props.modelValue?.[key]
+  if (value === null || value === undefined) return ''
+  return String(value)
+}
+
+function toOptionKey(value) {
+  if (value === null || value === undefined) return 'null'
+  return `${typeof value}:${String(value)}`
+}
+
+function normalizeSelectOptions(field) {
+  const valueKey = field.valueKey || 'value'
+  const labelKey = field.labelKey || 'label'
+  return (field.options || []).map((raw) => {
+    const isObject = typeof raw === 'object' && raw !== null
+    const value = isObject ? raw[valueKey] : raw
+    const label = isObject ? (raw[labelKey] ?? String(value ?? '')) : String(raw ?? '')
+    return { key: toOptionKey(value), value, label, raw }
+  })
+}
+
+function getFieldDisplayValue(field) {
+  if (isEmptyValue(field.key)) {
+    if (field.type === 'select' && field.includeAllOption !== false) {
+      return field.allLabel || 'Все'
+    }
+    return field.emptyLabel || '—'
+  }
+
+  if (field.type === 'date') {
+    return getFieldRawValue(field.key)
+  }
+
+  if (field.type === 'select') {
+    const value = props.modelValue[field.key]
+    const found = normalizeSelectOptions(field).find((opt) => valuesAreEqual(opt.value, value))
+    return found?.label || String(value)
+  }
+
+  return String(props.modelValue[field.key])
+}
+
+function valuesAreEqual(a, b) {
+  if (a === b) return true
+  if (a == null || b == null) return false
+  return String(a) === String(b)
+}
+
+function isSelectValueActive(field, value) {
+  if (value === null || value === undefined) {
+    return isEmptyValue(field.key)
+  }
+  return valuesAreEqual(props.modelValue[field.key], value)
+}
+
+function patchModelValue(key, value) {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    [key]: value,
+  })
+}
+
+function emitApplyIfNeeded() {
+  if (props.applyOnChange) {
+    emit('apply')
+  }
+}
+
+function chooseSelectValue(field, value) {
+  const nextValue = value === null || value === undefined ? '' : value
+  patchModelValue(field.key, nextValue)
+  closeFlyout()
+  emitApplyIfNeeded()
+}
+
+function onDateChange(field, event) {
+  patchModelValue(field.key, event.target.value || '')
+  emitApplyIfNeeded()
+}
+
+function clearDateValue(field) {
+  patchModelValue(field.key, '')
+  emitApplyIfNeeded()
+}
+
+function onRowClick(field, event) {
+  if (!isInteractiveField(field)) return
+  openFlyout(field.key, event.currentTarget, { pin: true })
+}
+
+function handleReset() {
+  const cleared = { ...props.modelValue }
+  for (const field of props.fields) {
+    if (field.type === 'heading') continue
+    cleared[field.key] = ''
+  }
+  emit('update:modelValue', cleared)
+  emit('reset')
+  if (props.applyOnChange) {
+    emit('apply')
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.filter-menu {
+  --filter-menu-trigger-font-size: 1rem;
+  --select-box-font-size: 1rem;
+  --select-box-item-padding-y: 0.375rem;
+  --select-box-item-padding-x: 0.75rem;
+  --select-box-trigger-min-height: 38px;
+  position: relative;
+  min-width: 170px;
+  font-size: var(--select-box-font-size);
+  line-height: 1.5;
+}
+
+.filter-menu__trigger {
+  min-height: var(--select-box-trigger-min-height);
+  padding: var(--select-box-item-padding-y) var(--select-box-item-padding-x);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-primary-background);
+  color: var(--color-primary-text);
+  font-size: var(--filter-menu-trigger-font-size);
+  line-height: 1.5;
+  --bs-btn-font-size: var(--filter-menu-trigger-font-size);
+  --bs-btn-line-height: 1.5;
+  --bs-btn-padding-y: var(--select-box-item-padding-y);
+  --bs-btn-padding-x: var(--select-box-item-padding-x);
+  white-space: nowrap;
+  text-align: left;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+
+  &:hover:not(:disabled),
+  &.filter-menu__trigger--open {
+    background-color: var(--color-hover-background);
+  }
+}
+
+.filter-menu__trigger-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--filter-menu-trigger-font-size);
+  line-height: 1.5;
+}
+
+.filter-menu__trigger-chevron {
+  width: var(--select-box-icon-size, 1.125em);
+  height: var(--select-box-icon-size, 1.125em);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+
+  &--open {
+    transform: rotate(180deg);
+  }
+}
+
+.filter-menu__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.filter-menu__heading {
+  padding: 0.375rem 0.75rem 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-secondary-text);
+  user-select: none;
+}
+
+.filter-menu__footer {
+  padding: 0.5rem 0.75rem 0.625rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.filter-menu__date-body {
+  padding: 0.625rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+
+  .form-control {
+    min-height: 38px;
+  }
+}
+
+.filter-menu__date-clear {
+  align-self: flex-start;
+  text-decoration: none;
+
+  &:hover:not(:disabled) {
+    text-decoration: underline;
+  }
+}
+</style>
+
+<style lang="scss">
+.filter-menu__panel.fixed-menu,
+.filter-menu__flyout.fixed-menu {
+  position: fixed;
+  margin-top: 0;
+  padding: 0;
+  background-color: var(--color-primary-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  box-shadow: 0 0.25rem 0.75rem rgba(34, 48, 62, 0.14);
+  overflow: hidden;
+  box-sizing: border-box;
+  font-size: var(--select-box-font-size, 1rem);
+  line-height: 1.5;
+}
+
+.filter-menu__panel .filter-menu__row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  margin: 0;
+  padding: var(--select-box-item-padding-y, 0.375rem) var(--select-box-item-padding-x, 0.75rem);
+  border: 0;
+  background-color: transparent;
+  color: var(--color-primary-text);
+  font-size: 1em;
+  line-height: 1.5;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
+
+  &:hover,
+  &.filter-menu__row--active {
+    background-color: var(--color-hover-background);
+    color: var(--color-primary-text);
+  }
+}
+
+.filter-menu__panel .filter-menu__row-label {
+  flex: 0 0 auto;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.filter-menu__panel .filter-menu__row-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-size: 0.8125rem;
+}
+
+.filter-menu__panel .filter-menu__row-chevron {
+  flex: 0 0 auto;
+  width: 1em;
+  height: 1em;
+  opacity: 0.75;
+}
+
+.filter-menu__flyout .dropdown-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.filter-menu__flyout .dropdown-item {
+  color: var(--color-primary-text);
+  background-color: transparent;
+  font-size: 1em;
+  line-height: 1.5;
+  padding: var(--select-box-item-padding-y, 0.375rem) var(--select-box-item-padding-x, 0.75rem);
+  display: block;
+  width: 100%;
+  text-align: left;
+  text-decoration: none;
+  border: 0;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--color-hover-background);
+  }
+
+  &.active {
+    background-color: color-mix(in srgb, var(--color-accent, #0d6efd) 12%, transparent);
+    color: var(--color-accent, #0d6efd);
+  }
+}
+
+.filter-menu__search.select-box-search {
+  flex-shrink: 0;
+  padding: var(--select-box-item-padding-y, 0.375rem) var(--select-box-item-padding-x, 0.75rem);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  background-color: var(--color-primary-background);
+  color: var(--color-primary-text);
+  font-size: 1em;
+  line-height: 1.5;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.filter-menu__search.select-box-search::placeholder {
+  color: var(--color-secondary-text);
+}
+</style>

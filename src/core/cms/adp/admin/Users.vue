@@ -16,6 +16,7 @@ import { useAdminPresenceFeed } from '@/core/cms/adp/admin/js/useAdminPresenceFe
 import SelectBox from '@/components/SelectBox.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
+import SearchInput from '@/components/SearchInput.vue'
 import { PRESENCE_FILTER_OPTIONS } from '@/core/cms/js/adminSelectOptions.js'
 import { fetchProfileSettings } from '@/core/cms/adp/js/profileSettings.js'
 import { fetchAdminProfileChangeRequests } from '@/core/cms/adp/admin/js/profileChangeRequestService.js'
@@ -331,9 +332,7 @@ const getItemKey = (item) => item.user_id
         <div class="content-card">
         <div class="table-header users-toolbar">
           <div class="filters-wrapper">
-            <div class="search-wrapper">
-              <input id="users-search" type="search" class="form-control search-input" placeholder="Поиск по пользователям..." @input="handleSearchQuery($event.target.value)"/>
-            </div>
+            <SearchInput id="users-search" :model-value="searchQuery" layout="fixed" placeholder="Поиск по пользователям..." :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
             <div class="presence-filter">
               <HoverTooltip text="Фильтрация">
                 <SelectBox id="users-presence-filter" v-model="presenceFilter" :options="PRESENCE_FILTER_OPTIONS" value-key="id" label-key="name" :include-all-option="false"/>
@@ -486,15 +485,6 @@ const getItemKey = (item) => item.user_id
     min-width: 0;
   }
 
-  .search-wrapper {
-    min-width: 0;
-  }
-
-  .search-wrapper .search-input {
-    width: 100%;
-    box-sizing: border-box;
-  }
-
   .presence-filter {
     width: 220px;
   }
@@ -522,10 +512,6 @@ const getItemKey = (item) => item.user_id
   &:hover {
     background-color: var(--color-hover-background);
   }
-}
-
-.search-wrapper .search-input {
-  min-height: 38px;
 }
 
 .presence-filter {

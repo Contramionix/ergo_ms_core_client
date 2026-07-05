@@ -8,6 +8,7 @@ import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import SelectBox from '@/components/SelectBox.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
+import SearchInput from '@/components/SearchInput.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import { runWithConfirm, confirmAction } from '@/js/utils/confirm.js'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
@@ -304,9 +305,7 @@ const openClearConfirm = async (scope) => {
 
       <div class="table-header invitations-toolbar">
         <div class="filters-wrapper">
-          <div class="search-wrapper">
-            <input id="invitations-search" type="search" class="form-control search-input" placeholder="Email, примечание, кто пригласил..." @input="handleSearchQuery($event.target.value)"/>
-          </div>
+          <SearchInput id="invitations-search" :model-value="searchQuery" layout="fixed" placeholder="Email, примечание, кто пригласил..." :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
           <div class="status-filter">
             <HoverTooltip text="Статус приглашений">
               <SelectBox id="invitations-status" v-model="statusFilter" :options="STATUS_OPTIONS" value-key="id" label-key="name" :include-all-option="false" @update:model-value="handleStatusFilterChange"/>
@@ -504,15 +503,6 @@ const openClearConfirm = async (scope) => {
     min-width: 0;
   }
 
-  .search-wrapper {
-    min-width: 0;
-  }
-
-  .search-wrapper .search-input {
-    width: 100%;
-    box-sizing: border-box;
-  }
-
   .status-filter {
     width: 220px;
   }
@@ -524,10 +514,6 @@ const openClearConfirm = async (scope) => {
       flex: 0 0 auto;
     }
   }
-}
-
-.search-wrapper .search-input {
-  min-height: 38px;
 }
 
 .status-filter {
