@@ -9,6 +9,7 @@ import { moduleManager } from '@/modules/index.js'
 import { useToast } from '@/js/utils/toast.js'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { logError } from '@/js/utils/logError.js'
+import { buildActorNameVariants, parseErgoFullNameParts } from '@/js/userAvatar.js'
 import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import DataTable from '@/components/DataTable.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
@@ -37,6 +38,7 @@ const auditFilters = ref({
   module: '',
   action: '',
   severity: '',
+  actor: '',
   dateFrom: '',
   dateTo: '',
 })
@@ -44,6 +46,7 @@ const auditFilters = ref({
 const modules = ref([])
 const actionsCatalog = ref([])
 const severities = ref([])
+const actors = ref([])
 const selectedEvent = ref(null)
 const showDetailsModal = ref(false)
 
@@ -66,6 +69,32 @@ const actionOptions = computed(() => {
 
 const severityOptions = computed(() =>
   severities.value.map((s) => ({ value: s.value, label: s.label })),
+)
+
+function formatActorFilterLabel(fullLabel) {
+  const label = (fullLabel || '').trim()
+  if (!label) return ''
+  const variants = buildActorNameVariants({
+    ...parseErgoFullNameParts(label),
+    fallbackLabel: label,
+  })
+  return variants.compactDisplay || variants.expandedDisplay || label
+}
+
+const actorOptions = computed(() =>
+  actors.value.map((actor) => {
+    const fullLabel = (actor.label || '').trim()
+    const nameParts = parseErgoFullNameParts(fullLabel)
+    const isOrphan = String(actor.value || '').startsWith('label:')
+    return {
+      value: actor.value,
+      label: formatActorFilterLabel(fullLabel),
+      searchLabel: fullLabel,
+      userRef: isOrphan ? null : actor.value,
+      firstName: nameParts.firstName,
+      lastName: nameParts.lastName,
+    }
+  }),
 )
 
 const auditFilterFields = computed(() => [
@@ -101,6 +130,18 @@ const auditFilterFields = computed(() => [
     labelKey: 'label',
     includeAllOption: true,
     allLabel: 'Любая важность',
+  },
+  {
+    type: 'select',
+    key: 'actor',
+    label: 'Инициатор',
+    options: actorOptions.value,
+    valueKey: 'value',
+    labelKey: 'label',
+    includeAllOption: true,
+    allLabel: 'Все инициаторы',
+    searchable: true,
+    showOptionAvatars: true,
   },
   { type: 'heading', label: 'Период' },
   { type: 'date', key: 'dateFrom', label: 'С' },
@@ -178,6 +219,19 @@ function hasDetails(event) {
 
 const getItemKey = (item) => item.id
 
+function resolveActorQueryParams(actorValue) {
+  const value = (actorValue || '').trim()
+  if (!value) return {}
+  if (value.startsWith('label:')) {
+    try {
+      return { actor_label: decodeURIComponent(value.slice(6)) }
+    } catch {
+      return { actor_label: value.slice(6) }
+    }
+  }
+  return { actor_ref: value }
+}
+
 async function loadCatalog() {
   try {
     const result = await apiClient.get(auditEndpoints.audit.catalog, {}, true)
@@ -185,6 +239,7 @@ async function loadCatalog() {
     modules.value = data.modules || []
     actionsCatalog.value = data.actions || []
     severities.value = data.severities || []
+    actors.value = data.actors || []
   } catch (error) {
     logError('Аудит: не удалось загрузить каталог', error)
   }
@@ -198,6 +253,7 @@ async function loadEvents({ spinRefresh = false } = {}) {
     if (auditFilters.value.module) params.source_module = auditFilters.value.module
     if (auditFilters.value.action) params.action = auditFilters.value.action
     if (auditFilters.value.severity) params.severity = auditFilters.value.severity
+    Object.assign(params, resolveActorQueryParams(auditFilters.value.actor))
     if (searchQuery.value.trim()) params.q = searchQuery.value.trim()
     if (auditFilters.value.dateFrom) params.date_from = auditFilters.value.dateFrom
     if (auditFilters.value.dateTo) params.date_to = auditFilters.value.dateTo
@@ -255,6 +311,7 @@ async function exportCsv() {
   if (auditFilters.value.module) params.source_module = auditFilters.value.module
   if (auditFilters.value.action) params.action = auditFilters.value.action
   if (auditFilters.value.severity) params.severity = auditFilters.value.severity
+  Object.assign(params, resolveActorQueryParams(auditFilters.value.actor))
   if (searchQuery.value.trim()) params.q = searchQuery.value.trim()
   if (auditFilters.value.dateFrom) params.date_from = auditFilters.value.dateFrom
   if (auditFilters.value.dateTo) params.date_to = auditFilters.value.dateTo

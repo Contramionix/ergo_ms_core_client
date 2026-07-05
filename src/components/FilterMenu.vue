@@ -16,7 +16,19 @@
             <li v-else-if="isInteractiveField(field)">
               <button type="button" class="filter-menu__row" :class="{ 'filter-menu__row--active': activeFlyoutKey === field.key }" :data-field-key="field.key" @mouseenter="onRowEnter(field.key, $event.currentTarget)" @mouseleave="onRowLeave" @click.stop="onRowClick(field, $event)">
                 <span class="filter-menu__row-label">{{ field.label }}</span>
-                <span class="filter-menu__row-value text-muted">{{ getFieldDisplayValue(field) }}</span>
+                <span class="filter-menu__row-value text-muted">
+                  <span
+                    v-if="field.showOptionAvatars && getOptionAvatarProps(getSelectedOption(field))"
+                    class="filter-menu__row-value-with-avatar"
+                  >
+                    <UserAvatar
+                      v-bind="getOptionAvatarProps(getSelectedOption(field))"
+                      :size="18"
+                    />
+                    <span>{{ getFieldDisplayValue(field) }}</span>
+                  </span>
+                  <template v-else>{{ getFieldDisplayValue(field) }}</template>
+                </span>
                 <ChevronRight class="filter-menu__row-chevron" :size="16" />
               </button>
             </li>
@@ -40,8 +52,13 @@
               </a>
             </li>
             <li v-for="opt in filteredFlyoutOptions" :key="opt.key">
-              <a href="#" class="dropdown-item" :class="{ active: isSelectValueActive(activeField, opt.value) }" @click.prevent="chooseSelectValue(activeField, opt.value)">
-                {{ opt.label }}
+              <a href="#" class="dropdown-item" :class="{ active: isSelectValueActive(activeField, opt.value), 'filter-menu__option-with-avatar': activeField.showOptionAvatars && getOptionAvatarProps(opt) }" @click.prevent="chooseSelectValue(activeField, opt.value)">
+                <UserAvatar
+                  v-if="activeField.showOptionAvatars && getOptionAvatarProps(opt)"
+                  v-bind="getOptionAvatarProps(opt)"
+                  :size="24"
+                />
+                <span class="filter-menu__option-label">{{ opt.label }}</span>
               </a>
             </li>
           </ul>
@@ -66,6 +83,7 @@
 <script setup>
 import { computed, ref, watch, nextTick } from 'vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
+import UserAvatar from '@/components/UserAvatar.vue'
 import { useFilterMenuFlyout } from '@/composables/useFilterMenuFlyout.js'
 
 const props = defineProps({
@@ -144,7 +162,13 @@ const filteredFlyoutOptions = computed(() => {
   const options = normalizeSelectOptions(field)
   const query = flyoutSearchQuery.value.trim().toLowerCase()
   if (!query) return options
-  return options.filter((opt) => (opt.label || '').toLowerCase().includes(query))
+  return options.filter((opt) => {
+    const raw = opt.raw
+    const haystack = String(
+      (typeof raw === 'object' && raw !== null && raw.searchLabel) || opt.label || '',
+    ).toLowerCase()
+    return haystack.includes(query)
+  })
 })
 
 watch(activeFlyoutKey, (key) => {
@@ -191,6 +215,27 @@ function normalizeSelectOptions(field) {
     const label = isObject ? (raw[labelKey] ?? String(value ?? '')) : String(raw ?? '')
     return { key: toOptionKey(value), value, label, raw }
   })
+}
+
+function getSelectedOption(field) {
+  if (!field || field.type !== 'select' || isEmptyValue(field.key)) return null
+  const value = props.modelValue[field.key]
+  return normalizeSelectOptions(field).find((opt) => valuesAreEqual(opt.value, value)) || null
+}
+
+function getOptionAvatarProps(opt) {
+  const raw = opt?.raw
+  if (!raw || typeof raw !== 'object') return null
+  const userRef = raw.userRef ?? null
+  const firstName = raw.firstName || ''
+  const lastName = raw.lastName || ''
+  if (!userRef && !firstName && !lastName) return null
+  return {
+    userRef,
+    firstName,
+    lastName,
+    title: raw.searchLabel || raw.label || opt.label || '',
+  }
 }
 
 function getFieldDisplayValue(field) {
@@ -480,6 +525,35 @@ function handleReset() {
   &.active {
     background-color: color-mix(in srgb, var(--color-accent, #0d6efd) 12%, transparent);
     color: var(--color-accent, #0d6efd);
+  }
+
+  &.filter-menu__option-with-avatar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+.filter-menu__option-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-menu__row-value-with-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  max-width: 100%;
+  min-width: 0;
+
+  > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
