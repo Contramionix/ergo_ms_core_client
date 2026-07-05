@@ -17,6 +17,7 @@ import SearchInput from '@/components/SearchInput.vue'
 import FilterMenu from '@/components/FilterMenu.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import AuditEventDetailsModal from '@/core/cms/adp/admin/AuditLogComponents/AuditEventDetailsModal.vue'
+import AuditActorCell from '@/core/cms/adp/admin/AuditLogComponents/AuditActorCell.vue'
 
 const router = useRouter()
 const toast = useToast()
@@ -351,7 +352,14 @@ onMounted(async () => {
           </template>
 
           <template #cell-actor_label="{ item }">
-            {{ item.actor_label || '—' }}
+            <AuditActorCell
+              :actor-label="item.actor_label"
+              :actor-ref="item.actor_ref"
+              :actor-id="item.actor"
+              :actor-first-name="item.actor_first_name"
+              :actor-last-name="item.actor_last_name"
+              :actor-middle-name="item.actor_middle_name"
+            />
           </template>
 
           <template #cell-entity_label="{ item }">

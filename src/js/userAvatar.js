@@ -64,20 +64,85 @@ function indexInfo(info) {
   }
 }
 
+function trimNamePart(value) {
+  return (value || '').trim()
+}
+
 /**
  * Разбирает ФИО формата «Фамилия Имя [Отчество]» для UserAvatar без запроса public-info.
  */
 export function parseFullNameParts(fullName) {
+  const { firstName, lastName } = parseErgoFullNameParts(fullName)
+  return { firstName, lastName }
+}
+
+/**
+ * Разбирает ERGO-ФИО «Фамилия Имя [Отчество]» в части имени.
+ */
+export function parseErgoFullNameParts(fullName) {
   const parts = (fullName || '').trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) {
-    return { firstName: '', lastName: '' }
+    return { lastName: '', firstName: '', middleName: '' }
   }
   if (parts.length === 1) {
-    return { firstName: parts[0], lastName: parts[0] }
+    return { lastName: parts[0], firstName: parts[0], middleName: '' }
+  }
+  if (parts.length === 2) {
+    return { lastName: parts[0], firstName: parts[1], middleName: '' }
   }
   return {
-    firstName: parts[1] || parts[0],
     lastName: parts[0],
+    firstName: parts[1],
+    middleName: parts.slice(2).join(' '),
+  }
+}
+
+/**
+ * Варианты отображения имени инициатора (как get_full_name / get_initials_name на бэкенде).
+ */
+export function buildActorNameVariants({ lastName, firstName, middleName, fallbackLabel }) {
+  const ln = trimNamePart(lastName)
+  const fn = trimNamePart(firstName)
+  const mn = trimNamePart(middleName)
+  const hasMiddleName = Boolean(mn)
+
+  const parts = [ln, fn, mn].filter(Boolean)
+  let fullName = parts.join(' ')
+  if (!fullName) {
+    fullName = trimNamePart(fallbackLabel)
+  }
+
+  let expandedDisplay = fullName
+  if (!hasMiddleName) {
+    if (ln && fn) {
+      expandedDisplay = `${ln} ${fn}`
+    } else if (ln) {
+      expandedDisplay = ln
+    } else if (fn) {
+      expandedDisplay = fn
+    }
+  }
+
+  let compactDisplay = null
+  if (hasMiddleName) {
+    const initialsParts = []
+    if (fn) initialsParts.push(`${fn[0].toUpperCase()}.`)
+    if (mn) initialsParts.push(`${mn[0].toUpperCase()}.`)
+    const initialsBlock = initialsParts.join('')
+    if (ln && initialsBlock) {
+      compactDisplay = `${ln} ${initialsBlock}`
+    } else if (ln) {
+      compactDisplay = ln
+    } else {
+      compactDisplay = initialsBlock || fullName
+    }
+  }
+
+  return {
+    fullName,
+    expandedDisplay: expandedDisplay || fullName,
+    compactDisplay,
+    hasMiddleName,
   }
 }
 
