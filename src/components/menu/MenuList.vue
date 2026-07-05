@@ -6,7 +6,6 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useToast } from '@/js/utils/toast.js'
 
 import SiteWordmark from '@/components/SiteWordmark.vue'
-import { useSiteName } from '@/composables/useSiteName.js'
 
 import {
   getUserMenu,
@@ -72,7 +71,6 @@ const allowMenuTransitions = ref(false)
 const isLayoutTransitionActive = ref(false)
 const isVisibilityTransitionActive = ref(false)
 const isWordmarkHiding = ref(false)
-const { siteName, ensureSiteNameLoaded } = useSiteName()
 const menuRef = ref(null)
 
 function onWindowResize() {
@@ -270,7 +268,6 @@ const updateWidth = () => {
 
   updateMenuWidth(
     menuSections.value,
-    siteName.value,
     userStore,
     getSeparator,
     shouldShowSeparator,
@@ -282,7 +279,6 @@ const updateWidth = () => {
 function applyInitialMenuLayout() {
   initializeMenuWidth(
     menuSections.value,
-    siteName.value,
     userStore,
     getSeparator,
     shouldShowSeparator,
@@ -438,11 +434,6 @@ watch(menuSections, () => {
     updateWidth()
   }
 }, { deep: true })
-watch(siteName, () => {
-  if (allowMenuTransitions.value) {
-    updateWidth()
-  }
-})
 
 // Следим за изменениями имени пользователя (только имя, не весь объект)
 watch(() => userStore.fullName, (newName, oldName) => {
@@ -488,10 +479,9 @@ const handleMenuUpdate = () => loadMenu(true)
 onMounted(async () => {
   window.addEventListener('menu-updated', handleMenuUpdate)
 
-  await Promise.all([
-    ensureSiteNameLoaded(),
-    userStore.isInitialized ? Promise.resolve(true) : userStore.initializeUser(),
-  ])
+  if (!userStore.isInitialized) {
+    await userStore.initializeUser()
+  }
 
   if (!isMenuReady.value) {
     await loadMenu()

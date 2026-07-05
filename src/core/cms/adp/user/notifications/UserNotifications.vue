@@ -169,9 +169,7 @@ onMounted(async () => {
             :options="sourceSelectOptions"
             value-key="id"
             label-key="name"
-            all-label="Все"
-            fixed-trigger-label-font-size
-            :full-width="false"
+            all-label="Все" :full-width="false"
           />
         </div>
       </div>

@@ -108,9 +108,7 @@ onMounted(async () => {
         value-key="id"
         label-key="name"
         all-label="Все группы"
-        cast-to-number
-        fixed-trigger-label-font-size
-        :full-width="false"
+        cast-to-number :full-width="false"
       />
     </div>
 
@@ -154,9 +152,7 @@ onMounted(async () => {
               value-key="id"
               label-key="name"
               all-label="Группа"
-              cast-to-number
-              fixed-trigger-label-font-size
-            />
+              cast-to-number />
             <div v-if="showErrors.role_group" class="invalid-feedback d-block">Выберите группу</div>
           </div>
         </div>

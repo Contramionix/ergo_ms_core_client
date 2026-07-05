@@ -1,14 +1,12 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { Bot, Boxes, Cloud, Code2, GitBranch, Layers } from 'lucide-vue-next'
 
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { useSiteName } from '@/composables/useSiteName.js'
 import { formatWeekdayDate } from '@/js/utils/timeUtils.js'
 
 const userStore = useUserStore()
-const { ensureSiteNameLoaded } = useSiteName()
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -62,11 +60,6 @@ const highlights = [
   },
 ]
 
-async function loadSiteName() {
-  await ensureSiteNameLoaded()
-}
-
-onMounted(loadSiteName)
 </script>
 
 <template>

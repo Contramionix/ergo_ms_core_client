@@ -61,7 +61,7 @@ export function useMenuWidth() {
     }
   }
 
-  const calculateOptimalWidth = (menuSections, siteName, userStore, getSeparator, shouldShowSeparator) => {
+  const calculateOptimalWidth = (menuSections, userStore, getSeparator, shouldShowSeparator) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
       return minMenuWidth
     }
@@ -72,7 +72,7 @@ export function useMenuWidth() {
     let maxWidth = 0
 
     context.font = SITE_BRAND_MEASURE_FONT
-    const siteNameWidth = context.measureText(getSiteWordmarkText(siteName)).width + 100
+    const siteNameWidth = context.measureText(getSiteWordmarkText()).width + 100
     maxWidth = Math.max(maxWidth, siteNameWidth)
 
     context.font = MENU_ITEM_MEASURE_FONT
@@ -113,14 +113,14 @@ export function useMenuWidth() {
     return Math.max(capped, minMenuWidth)
   }
 
-  const updateMenuWidth = (menuSections, siteName, userStore, getSeparator, shouldShowSeparator, onChange, isCollapsed) => {
+  const updateMenuWidth = (menuSections, userStore, getSeparator, shouldShowSeparator, onChange, isCollapsed) => {
     if (typeof window !== 'undefined') {
       if (widthUpdateTimeout) {
         clearTimeout(widthUpdateTimeout)
       }
 
       widthUpdateTimeout = setTimeout(() => {
-        const newWidth = calculateOptimalWidth(menuSections, siteName, userStore, getSeparator, shouldShowSeparator)
+        const newWidth = calculateOptimalWidth(menuSections, userStore, getSeparator, shouldShowSeparator)
         if (newWidth !== menuWidth.value) {
           menuWidth.value = newWidth
           onChange?.(isCollapsed, menuWidth.value)
@@ -129,14 +129,13 @@ export function useMenuWidth() {
     }
   }
 
-  const initializeMenuWidth = (menuSections, siteName, userStore, getSeparator, shouldShowSeparator, onChange, isCollapsed) => {
+  const initializeMenuWidth = (menuSections, userStore, getSeparator, shouldShowSeparator, onChange, isCollapsed) => {
     if (typeof window === 'undefined') {
       return
     }
 
     const newWidth = calculateOptimalWidth(
       menuSections,
-      siteName,
       userStore,
       getSeparator,
       shouldShowSeparator,

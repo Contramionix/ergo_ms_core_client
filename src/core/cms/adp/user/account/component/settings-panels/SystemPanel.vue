@@ -20,7 +20,7 @@ const {
       <div class="settings-card__row">
         <label class="settings-card__label" for="system-theme">Тема оформления</label>
         <div class="settings-card__control">
-          <SelectBox id="system-theme" v-model="theme" :options="THEME_OPTIONS" :include-all-option="false" fixed-trigger-label-font-size>
+          <SelectBox id="system-theme" v-model="theme" :options="THEME_OPTIONS" :include-all-option="false" >
             <template #selected="{ option, label }">
               <span class="settings-card__option">
                 <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
@@ -40,7 +40,7 @@ const {
       <div class="settings-card__row">
         <label class="settings-card__label" for="system-action-button">Кнопка действия</label>
         <div class="settings-card__control">
-          <SelectBox id="system-action-button" v-model="actionButton" :options="ACTION_BUTTON_OPTIONS" :include-all-option="false" fixed-trigger-label-font-size>
+          <SelectBox id="system-action-button" v-model="actionButton" :options="ACTION_BUTTON_OPTIONS" :include-all-option="false" >
             <template #selected="{ option, label }">
               <span class="settings-card__option">
                 <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
@@ -60,7 +60,7 @@ const {
       <div class="settings-card__row settings-card__row--last">
         <label class="settings-card__label" for="system-language">Язык интерфейса</label>
         <div class="settings-card__control">
-          <SelectBox id="system-language" v-model="language" :options="LANGUAGE_OPTIONS" :include-all-option="false" fixed-trigger-label-font-size disabled>
+          <SelectBox id="system-language" v-model="language" :options="LANGUAGE_OPTIONS" :include-all-option="false" disabled>
             <template #selected="{ option, label }">
               <span class="settings-card__option">
                 <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />

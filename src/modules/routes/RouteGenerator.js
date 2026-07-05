@@ -1,163 +1,14 @@
 /**
  * ГЕНЕРАТОР РОУТОВ
- * 
+ *
  * Класс для генерации роутов Vue Router из routes.js файлов модулей
  */
 
+import { logError } from '@/js/utils/logError.js'
 
 export class RouteGenerator {
   constructor(routeManager) {
     this.routeManager = routeManager
-  }
-
-  /**
-   * Преобразует элемент меню в роут
-   * @param {Object} item - элемент меню
-   * @returns {Object|Array|null}
-   */
-  transformMenuItem(item) {
-    // Пропускаем offcanvas элементы
-    if (item.isOffcanvas) {
-      return null
-    }
-
-    // Если это группа без маршрута (только children)
-    if (!item.routeName && (item.children || item.list)) {
-      return this.transformChildrenGroup(item)
-    }
-
-    // Получаем конфигурацию роута
-    const routeConfig = this.routeManager.getRouteConfig(item.routeName || item.path)
-    if (!routeConfig) {
-      return null
-    }
-
-    const route = this.routeManager.createRoute(
-      item.routeName || item.path,
-      routeConfig,
-      {
-        title: item.name || item.title,
-        meta: routeConfig.meta
-      }
-    )
-
-    // Обрабатываем дочерние элементы
-    const childRoutes = this.transformChildren(item)
-    if (childRoutes.length > 0) {
-      route.children = childRoutes
-    }
-
-    return route
-  }
-
-  /**
-   * Преобразует группу дочерних элементов без родительского роута
-   * @param {Object} item - элемент меню
-   * @returns {Array}
-   */
-  transformChildrenGroup(item) {
-    const childRoutes = []
-
-    if (item.children && item.children.length > 0) {
-      const transformedChildren = item.children
-        .map(child => this.transformMenuItem(child))
-        .filter(child => child !== null)
-      childRoutes.push(...this.flattenRoutes(transformedChildren))
-    }
-
-    if (item.list && item.list.length > 0) {
-      const transformedList = item.list
-        .map(child => this.transformMenuItem(child))
-        .filter(child => child !== null)
-      childRoutes.push(...this.flattenRoutes(transformedList))
-    }
-
-    return childRoutes.length > 0 ? childRoutes : null
-  }
-
-  /**
-   * Преобразует дочерние элементы
-   * @param {Object} item - родительский элемент
-   * @returns {Array}
-   */
-  transformChildren(item) {
-    const childRoutes = []
-
-    if (item.children && item.children.length > 0) {
-      const transformedChildren = item.children
-        .map(child => this.transformMenuItem(child))
-        .filter(child => child !== null)
-      childRoutes.push(...this.flattenRoutes(transformedChildren))
-    }
-
-    if (item.list && item.list.length > 0) {
-      const transformedList = item.list
-        .map(child => this.transformMenuItem(child))
-        .filter(child => child !== null)
-      childRoutes.push(...this.flattenRoutes(transformedList))
-    }
-
-    return childRoutes
-  }
-
-  /**
-   * Разворачивает массивы роутов
-   * @param {Array} routes - массив роутов
-   * @returns {Array}
-   */
-  flattenRoutes(routes) {
-    const result = []
-    routes.forEach(route => {
-      if (Array.isArray(route)) {
-        result.push(...route)
-      } else {
-        result.push(route)
-      }
-    })
-    return result
-  }
-
-  /**
-   * Преобразует секцию меню в роут
-   * @param {Object} section - секция меню
-   * @returns {Object|null}
-   */
-  transformMenuSection(section) {
-    const routeConfig = this.routeManager.getRouteConfig(section.routeName)
-    if (!routeConfig) {
-      return null
-    }
-
-    const route = this.routeManager.createRoute(
-      section.routeName,
-      routeConfig,
-      {
-        title: section.title,
-        meta: routeConfig.meta
-      }
-    )
-
-    // Обрабатываем дочерние элементы
-    const childRoutes = this.transformChildren(section)
-    if (childRoutes.length > 0) {
-      route.children = childRoutes
-    }
-
-    return route
-  }
-
-  /**
-   * Генерирует роуты из конфигурации меню
-   * @returns {Array}
-   */
-  generateRoutesFromMenu() {
-    const menuConfig = this.menuManager.generateMenuConfig()
-    
-    const routes = menuConfig.menuSections
-      .map(section => this.transformMenuSection(section))
-      .filter(route => route !== null)
-
-    return routes
   }
 
   /**
@@ -258,4 +109,3 @@ export class RouteGenerator {
 }
 
 export default RouteGenerator
-

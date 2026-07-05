@@ -118,7 +118,7 @@ onMounted(() => {
       <div class="settings-card__row">
         <label class="settings-card__label" for="security-privacy">Приватность профиля</label>
         <div class="settings-card__control">
-          <SelectBox id="security-privacy" v-model="privacyLockedValue" :options="PROFILE_VISIBILITY_OPTIONS" :include-all-option="false" disabled fixed-trigger-label-font-size />
+          <SelectBox id="security-privacy" v-model="privacyLockedValue" :options="PROFILE_VISIBILITY_OPTIONS" :include-all-option="false" disabled />
         </div>
       </div>
 

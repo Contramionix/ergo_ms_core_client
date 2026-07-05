@@ -231,7 +231,7 @@ const handleReject = async (item) => {
         <div class="filters-wrapper">
           <SearchInput id="profile-change-requests-search" :model-value="searchQuery" label="Поиск" layout="fixed" placeholder="Пользователь, email, ФИО, телефон..." :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
           <div class="status-filter">
-            <SelectBox id="profile-change-requests-status" v-model="statusFilter" label="Статус" :options="STATUS_OPTIONS" value-key="id" label-key="name" :include-all-option="false" fixed-trigger-label-font-size @update:model-value="handleStatusFilterChange"/>
+            <SelectBox id="profile-change-requests-status" v-model="statusFilter" label="Статус" :options="STATUS_OPTIONS" value-key="id" label-key="name" :include-all-option="false" @update:model-value="handleStatusFilterChange"/>
           </div>
         </div>
       </div>

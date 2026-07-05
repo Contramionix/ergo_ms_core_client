@@ -6,7 +6,6 @@ import {
   getDepartmentId,
   getOrganizationId,
   getPayload,
-  getRefresh,
   getUserId,
   hasActiveOrganization,
   setTokens,
@@ -15,7 +14,6 @@ import {
 
 export const tokenService = {
   getAccess,
-  getRefresh,
   getAccessExp,
   setTokens,
   clear: clearTokens,

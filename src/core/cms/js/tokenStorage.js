@@ -30,11 +30,6 @@ export function getAccess() {
   return _accessToken || null
 }
 
-/** @deprecated Refresh доступен только через HttpOnly cookie на сервере */
-export function getRefresh() {
-  return null
-}
-
 export function getAccessExp() {
   const token = getAccess()
   const payload = token ? decodePayload(token) : null

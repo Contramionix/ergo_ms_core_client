@@ -161,9 +161,7 @@ const submitForm = async () => {
             :options="POLICY_TYPE_OPTIONS"
             value-key="id"
             label-key="name"
-            :include-all-option="false"
-            fixed-trigger-label-font-size
-          />
+            :include-all-option="false" />
         </div>
         <div class="col-md-6">
           <SelectBox
@@ -173,9 +171,7 @@ const submitForm = async () => {
             :options="POLICY_ACTION_OPTIONS"
             value-key="id"
             label-key="name"
-            :include-all-option="false"
-            fixed-trigger-label-font-size
-          />
+            :include-all-option="false" />
         </div>
       </div>
 
@@ -238,9 +234,7 @@ const submitForm = async () => {
           value-key="id"
           label-key="name"
           all-label="Выберите роль"
-          cast-to-number
-          fixed-trigger-label-font-size
-        />
+          cast-to-number />
 
         <SelectBox
           v-else
@@ -249,9 +243,7 @@ const submitForm = async () => {
           value-key="id"
           label-key="name"
           all-label="Выберите ролевую группу"
-          cast-to-number
-          fixed-trigger-label-font-size
-        />
+          cast-to-number />
 
         <div v-if="showErrorTarget" class="invalid-feedback d-block">
           Необходимо выбрать цель политики.

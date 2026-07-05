@@ -223,9 +223,7 @@ const requestDelete = async () => {
               value-key="id"
               label-key="name"
               all-label="Без роли"
-              cast-to-number
-              fixed-trigger-label-font-size
-            />
+              cast-to-number />
             <small class="text-muted">Роль можно назначить позже. Профиль сохраняется независимо от роли.</small>
           </div>
         </div>
@@ -244,9 +242,7 @@ const requestDelete = async () => {
               show-checkboxes-when-multiple
               multiple-label-format="count"
               cast-to-number
-              :disabled="!selectedRoleId"
-              fixed-trigger-label-font-size
-            />
+              :disabled="!selectedRoleId" />
             <small class="text-muted">Доступно после выбора роли.</small>
           </div>
         </div>

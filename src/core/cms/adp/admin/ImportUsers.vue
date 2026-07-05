@@ -19,6 +19,7 @@ import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { cmsEndpoints } from '@/core/cms/js/endpoints'
 import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import { downloadImportUsersTemplate } from '@/core/cms/adp/admin/js/importUsersExcel.js'
+import { downloadBlob, extractFilenameFromHeaders, formatFileSize } from '@/js/utils/file-helpers.js'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 const router = useRouter()
@@ -571,14 +572,6 @@ const startImport = async () => {
   }
 }
 
-const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 Б'
-  const k = 1024
-  const sizes = ['Б', 'КБ', 'МБ', 'ГБ']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
 const getLogIcon = (level) => {
   switch (level) {
     case 'success': return CheckCircle
@@ -600,22 +593,7 @@ const getLogClass = (level) => {
 }
 
 function extractFilenameFromContentDisposition(headers, defaultName) {
-  const contentDisposition = headers?.['content-disposition']
-  if (!contentDisposition) return defaultName
-
-  const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
-  return match?.[1]?.replace(/['"]/g, '') || defaultName
-}
-
-function downloadBlobAsFile(blob, filename) {
-  const url = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.setAttribute('download', filename)
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  window.URL.revokeObjectURL(url)
+  return extractFilenameFromHeaders(headers, defaultName)
 }
 
 async function extractDownloadErrorMessage(result, fallback = 'Не удалось скачать файл с паролями') {
@@ -672,7 +650,7 @@ const downloadPasswords = async () => {
       result.headers,
       'import-users-passwords.xlsx',
     )
-    downloadBlobAsFile(result.data, filename)
+    downloadBlob(result.data, filename)
     markPasswordsDownloaded(taskId)
     toast.success('Файл с паролями скачан. Повторная загрузка недоступна.')
   } catch (error) {

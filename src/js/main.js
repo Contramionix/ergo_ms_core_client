@@ -23,7 +23,7 @@ import { createPinia } from 'pinia'
 
 import App from '@/App.vue'
 import { initEndpoints } from '@/js/api/endpoints.js'
-import { ensureSiteNameLoaded } from '@/composables/useSiteName.js'
+import { DEFAULT_SITE_NAME } from '@/js/siteWordmark.js'
 import { getUserMenu } from '@/core/cms/js/menuService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import tokenService from '@/core/cms/js/tokenService.js'
@@ -59,7 +59,10 @@ app.use(setupCalendar, {
 })
 
 await initEndpoints()
-await ensureSiteNameLoaded()
+
+if (typeof document !== 'undefined') {
+  document.title = DEFAULT_SITE_NAME
+}
 
 const { syncSiteThemeFromApi } = await import('@/js/theme-service.js')
 await syncSiteThemeFromApi()

@@ -787,9 +787,7 @@ onMounted(() => {
                   :model-value="currentTheme.base_theme"
                   :options="BASE_THEME_OPTIONS"
                   :include-all-option="false"
-                  :disabled="currentTheme.is_system"
-                  fixed-trigger-label-font-size
-                  @update:model-value="changeBaseTheme"
+                  :disabled="currentTheme.is_system" @update:model-value="changeBaseTheme"
                 >
                   <template #selected="{ option, label }">
                     <span class="theme-editor__select-option">

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/js/utils/toast.js'
-import { MailPlus, Copy, Mail, Ban, AlertCircle, FileSpreadsheet, Trash2, Eraser, } from 'lucide-vue-next'
+import { MailPlus, Copy, Mail, Ban, FileSpreadsheet, Trash2, Eraser, } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
@@ -51,8 +51,15 @@ const STATUS_OPTIONS = [
   { id: 'revoked', name: 'Отозваны' },
 ]
 
-// TODO: вернуть registrationMode.value === 'invitation'
-const invitationModeEnabled = computed(() => true)
+const REGISTRATION_MODE_LABELS = {
+  open: 'Открытая',
+  invitation: 'Только по приглашениям',
+  closed: 'Закрыта',
+}
+
+const registrationModeLabel = computed(
+  () => REGISTRATION_MODE_LABELS[registrationMode.value] || registrationMode.value,
+)
 
 const tableEmptyText = computed(() => {
   if (searchQuery.value.trim() || statusFilter.value !== 'all') {
@@ -290,8 +297,10 @@ const openClearConfirm = async (scope) => {
       <Breadcrumbs :items="breadcrumbItems" class="invitations-breadcrumbs" />
 
       <div class="content-card">
-      <template v-if="invitationModeEnabled">
       <div class="invitations-stats">
+        <span class="invitations-stat">
+          Режим регистрации: <strong>{{ registrationModeLabel }}</strong>
+        </span>
         <span class="invitations-stat">
           Всего в системе: <strong>{{ totalAll }}</strong>
         </span>
@@ -316,28 +325,28 @@ const openClearConfirm = async (scope) => {
         <div class="actions-wrapper">
           <HoverTooltip text="Одно приглашение">
             <span class="invitations-icon-btn-wrap">
-              <button type="button" class="btn invitations-toolbar-icon-btn" aria-label="Одно приглашение" :disabled="!invitationModeEnabled" @click="openCreateModal">
+              <button type="button" class="btn invitations-toolbar-icon-btn" aria-label="Одно приглашение" :disabled="isLoading" @click="openCreateModal">
                 <MailPlus :size="20" aria-hidden="true" />
               </button>
             </span>
           </HoverTooltip>
           <HoverTooltip text="Загрузить из Excel">
             <span class="invitations-icon-btn-wrap">
-              <button type="button" class="btn invitations-toolbar-icon-btn" aria-label="Загрузить из Excel" :disabled="!invitationModeEnabled" @click="openBulkModal">
+              <button type="button" class="btn invitations-toolbar-icon-btn" aria-label="Загрузить из Excel" :disabled="isLoading" @click="openBulkModal">
                 <FileSpreadsheet :size="20" aria-hidden="true" />
               </button>
             </span>
           </HoverTooltip>
           <HoverTooltip text="Очистить неактивные">
             <span class="invitations-icon-btn-wrap">
-              <button type="button" class="btn invitations-toolbar-icon-btn" aria-label="Очистить неактивные" :disabled="!invitationModeEnabled || isLoading || inactiveCount === 0" @click="openClearConfirm('inactive')">
+              <button type="button" class="btn invitations-toolbar-icon-btn" aria-label="Очистить неактивные" :disabled="isLoading || inactiveCount === 0" @click="openClearConfirm('inactive')">
                 <Eraser :size="20" aria-hidden="true" />
               </button>
             </span>
           </HoverTooltip>
           <HoverTooltip text="Очистить все">
             <span class="invitations-icon-btn-wrap">
-              <button type="button" class="btn invitations-toolbar-icon-btn invitations-toolbar-icon-btn--danger" aria-label="Очистить все" :disabled="!invitationModeEnabled || isLoading || totalAll === 0" @click="openClearConfirm('all')">
+              <button type="button" class="btn invitations-toolbar-icon-btn invitations-toolbar-icon-btn--danger" aria-label="Очистить все" :disabled="isLoading || totalAll === 0" @click="openClearConfirm('all')">
                 <Trash2 :size="20" aria-hidden="true" />
               </button>
             </span>
@@ -392,20 +401,9 @@ const openClearConfirm = async (scope) => {
         </template>
         </DataTable>
       </LoadingContentArea>
-      </template>
 
-      <div v-else class="invitations-disabled-state" role="status">
-        <AlertCircle :size="48" class="invitations-disabled-state__icon" aria-hidden="true" />
-        <p class="invitations-disabled-state__title">
-          Режим регистрации по приглашениям не включён.
-        </p>
-        <p class="invitations-disabled-state__text">
-          Включите его в настройках сервера, чтобы создавать и отправлять приглашения.
-        </p>
-      </div>
-
-      <InvitationCreateModal :visible="showCreateModal" :disabled="!invitationModeEnabled" @close="showCreateModal = false" @created="handleInvitationCreated"/>
-      <InvitationBulkModal :visible="showBulkModal" :disabled="!invitationModeEnabled" @close="showBulkModal = false" @completed="handleBulkCompleted"/>
+      <InvitationCreateModal :visible="showCreateModal" @close="showCreateModal = false" @created="handleInvitationCreated"/>
+      <InvitationBulkModal :visible="showBulkModal" @close="showBulkModal = false" @completed="handleBulkCompleted"/>
       </div>
     </div>
   </div>
@@ -426,36 +424,6 @@ const openClearConfirm = async (scope) => {
 
 :deep(.invitations-breadcrumbs) {
   margin-bottom: 0;
-}
-
-.invitations-disabled-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 0.75rem;
-  min-height: 320px;
-  padding: 2rem 1.5rem;
-
-  &__icon {
-    color: var(--color-accent);
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--color-primary-text);
-  }
-
-  &__text {
-    margin: 0;
-    max-width: 28rem;
-    font-size: 0.875rem;
-    line-height: 1.45;
-    color: var(--color-secondary-text);
-  }
 }
 
 .invitations-stats {

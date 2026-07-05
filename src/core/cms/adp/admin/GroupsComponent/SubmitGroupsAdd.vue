@@ -203,9 +203,7 @@ const submitForm = async () => {
           label-key="name"
           all-label="Выберите роль"
           cast-to-number
-          :disabled="availableRoles.length === 0"
-          fixed-trigger-label-font-size
-        />
+          :disabled="availableRoles.length === 0" />
         <div v-if="availableRoles.length === 0" class="form-text text-danger">
           Нет доступных ролей для привязки. Сначала создайте пользовательскую роль.
         </div>

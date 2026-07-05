@@ -38,9 +38,7 @@ function openUserSettings() {
           <SelectBox
             v-model="theme"
             :options="THEME_OPTIONS"
-            :include-all-option="false"
-            fixed-trigger-label-font-size
-            open-on-hover
+            :include-all-option="false" open-on-hover
             placement="right"
             :placement-gap="0"
             placement-align="center"

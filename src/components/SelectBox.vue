@@ -139,8 +139,6 @@ const props = defineProps({
     virtualized: { type: Boolean, default: false },
     itemHeight: { type: Number, default: 36 },
     overscan: { type: Number, default: 6 },
-    /** @deprecated Подпись триггера больше не уменьшается; prop оставлен для совместимости */
-    fixedTriggerLabelFontSize: { type: Boolean, default: true },
     /** Минимальная ширина выпадающего меню (может быть шире триггера) */
     dropdownMinWidth: { type: Number, default: 0 },
     /** Доп. класс на выпадающее меню (teleport в body — для стилей с :global у потребителя) */

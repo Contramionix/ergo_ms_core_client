@@ -25,6 +25,7 @@ import {
 } from '@/core/cms/adp/admin/js/invitationService'
 import { copyTextToClipboard } from '@/js/utils/clipboard.js'
 import { extractApiError } from '@/js/utils/extractApiError.js'
+import { formatFileSize } from '@/js/utils/file-helpers.js'
 import { logError } from '@/js/utils/logError.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 
@@ -260,16 +261,6 @@ const copyInviteLink = async (inviteUrl) => {
   } catch {
     toast.error('Не удалось скопировать ссылку')
   }
-}
-
-const formatFileSize = (bytes) => {
-  if (bytes === 0) {
-    return '0 Б'
-  }
-  const k = 1024
-  const sizes = ['Б', 'КБ', 'МБ', 'ГБ']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`
 }
 
 const previewStatusClass = {

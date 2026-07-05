@@ -34,14 +34,12 @@ import { Menu as IconMenu } from 'lucide-vue-next'
 
 import { initEndpoints } from '@/js/api/endpoints.js'
 import SiteWordmark from '@/components/SiteWordmark.vue'
-import { useSiteName } from '@/composables/useSiteName.js'
 
 const layoutPluginGlob = import.meta.glob('../../../modules/*/client/LayoutPlugin.vue')
 const layoutPlugins = shallowRef([])
 
 const userStore = useUserStore()
 const route = useRoute()
-const { ensureSiteNameLoaded } = useSiteName()
 
 let resizeTimeout = null
 
@@ -131,10 +129,7 @@ function onHamburgerClick() {
 onMounted(async () => {
   updateMenuVisibilityImmediate()
   window.addEventListener('resize', updateMenuVisibility)
-  await Promise.all([
-    userStore.initializeUser(),
-    ensureSiteNameLoaded(),
-  ])
+  await userStore.initializeUser()
   if (userStore.isAuthenticated) {
     ensurePresenceConnected()
   }

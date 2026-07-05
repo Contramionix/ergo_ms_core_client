@@ -262,9 +262,7 @@ const handleCreate = async () => {
             value-key="id"
             label-key="name"
             all-label="Пользователь (по умолчанию)"
-            cast-to-number
-            fixed-trigger-label-font-size
-          />
+            cast-to-number />
           <small class="text-muted">Если не выбрана — назначается роль «Пользователь».</small>
         </div>
       </div>
@@ -283,9 +281,7 @@ const handleCreate = async () => {
             show-checkboxes-when-multiple
             multiple-label-format="count"
             cast-to-number
-            :disabled="!selectedRoleId"
-            fixed-trigger-label-font-size
-          />
+            :disabled="!selectedRoleId" />
           <small class="text-muted">Доступно после выбора роли.</small>
         </div>
       </div>

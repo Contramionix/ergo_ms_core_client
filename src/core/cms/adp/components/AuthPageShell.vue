@@ -1,8 +1,5 @@
 <script setup>
-import { onMounted } from 'vue'
-
 import SiteWordmark from '@/components/SiteWordmark.vue'
-import { useSiteName } from '@/composables/useSiteName.js'
 
 defineProps({
   wide: {
@@ -14,10 +11,6 @@ defineProps({
     default: true,
   },
 })
-
-const { ensureSiteNameLoaded } = useSiteName()
-
-onMounted(ensureSiteNameLoaded)
 </script>
 
 <template>

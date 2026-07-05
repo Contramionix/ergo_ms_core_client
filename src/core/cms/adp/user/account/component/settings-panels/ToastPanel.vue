@@ -82,9 +82,7 @@ function previewToast(button) {
             id="toast-position"
             v-model="settings.position"
             :options="TOAST_POSITION_OPTIONS"
-            :include-all-option="false"
-            fixed-trigger-label-font-size
-            :disabled="!settings.enabled"
+            :include-all-option="false" :disabled="!settings.enabled"
           />
         </div>
       </div>
@@ -96,9 +94,7 @@ function previewToast(button) {
             id="toast-duration"
             v-model="settings.durationPreset"
             :options="TOAST_DURATION_PRESET_OPTIONS"
-            :include-all-option="false"
-            fixed-trigger-label-font-size
-            :disabled="!settings.enabled"
+            :include-all-option="false" :disabled="!settings.enabled"
           />
         </div>
       </div>
@@ -111,9 +107,7 @@ function previewToast(button) {
             v-model="settings.maxToasts"
             :options="TOAST_MAX_OPTIONS"
             :include-all-option="false"
-            cast-to-number
-            fixed-trigger-label-font-size
-            :disabled="!settings.enabled"
+            cast-to-number :disabled="!settings.enabled"
           />
         </div>
       </div>
