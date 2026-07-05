@@ -6,6 +6,7 @@ import LayoutMenu from '@/LayoutMenu.vue'
 import LayoutStart from '@/LayoutStart.vue'
 import LayoutPublic from '@/LayoutPublic.vue'
 import NotificationProvider from '@/components/NotificationProvider.vue'
+import HoverTooltipLayer from '@/components/HoverTooltipLayer.vue'
 import { hideBootstrapMask } from '@/js/bootstrapMask.js'
 
 const route = useRoute()
@@ -41,5 +42,6 @@ const currentLayout = computed(() => {
   <div v-if="isReady">
     <component :is="currentLayout" />
     <NotificationProvider />
+    <HoverTooltipLayer />
   </div>
 </template>

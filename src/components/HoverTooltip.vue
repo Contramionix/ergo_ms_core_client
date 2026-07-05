@@ -1,5 +1,11 @@
 <script setup>
-import { ref, onBeforeUnmount } from 'vue'
+import { ref, onBeforeUnmount, onMounted, watch, nextTick } from 'vue'
+import {
+  hideHoverTooltip,
+  hideHoverTooltipForOwner,
+  showHoverTooltip,
+  scheduleHideHoverTooltip,
+} from '@/js/utils/hoverTooltipLayer.js'
 
 const props = defineProps({
   text: { type: String, default: '' },
@@ -8,64 +14,85 @@ const props = defineProps({
     default: 'default',
     validator: (value) => ['default', 'error'].includes(value),
   },
+  wrap: { type: Boolean, default: false },
 })
 
-const triggerEl = ref(null)
-const visible = ref(false)
-const popupStyle = ref({})
-let hideTimeout = null
+const wrapperEl = ref(null)
+let triggerTarget = null
 
-function updatePosition() {
-  const el = triggerEl.value
-  if (!el) return
-  const rect = el.getBoundingClientRect()
-  popupStyle.value = {
-    position: 'fixed',
-    top: `${rect.top - 6}px`,
-    left: `${rect.left + rect.width / 2}px`,
-    transform: 'translate(-50%, -100%)',
+function resolveTriggerTarget() {
+  const wrapper = wrapperEl.value
+  if (!wrapper) {
+    return null
   }
+  const child = wrapper.firstElementChild
+  return child instanceof Element ? child : wrapper
+}
+
+function hideNow() {
+  hideHoverTooltip(hideNow)
 }
 
 function onEnter() {
   if (!props.text) return
-  if (hideTimeout) {
-    clearTimeout(hideTimeout)
-    hideTimeout = null
-  }
-  updatePosition()
-  visible.value = true
+
+  const el = triggerTarget || resolveTriggerTarget()
+  if (!el) return
+
+  showHoverTooltip({
+    ownerHide: hideNow,
+    text: props.text,
+    variant: props.variant,
+    wrap: props.wrap,
+    triggerRect: el.getBoundingClientRect(),
+  })
 }
 
 function onLeave() {
-  hideTimeout = setTimeout(() => {
-    visible.value = false
-  }, 100)
+  scheduleHideHoverTooltip(hideNow, 100)
 }
 
+function bindEvents() {
+  unbindEvents()
+  triggerTarget = resolveTriggerTarget()
+  if (!triggerTarget) {
+    return
+  }
+  triggerTarget.addEventListener('mouseenter', onEnter)
+  triggerTarget.addEventListener('mouseleave', onLeave)
+}
+
+function unbindEvents() {
+  if (!triggerTarget) {
+    return
+  }
+  triggerTarget.removeEventListener('mouseenter', onEnter)
+  triggerTarget.removeEventListener('mouseleave', onLeave)
+  triggerTarget = null
+}
+
+onMounted(() => {
+  nextTick(bindEvents)
+})
+
+watch(
+  () => props.text,
+  () => nextTick(bindEvents),
+)
+
 onBeforeUnmount(() => {
-  if (hideTimeout) clearTimeout(hideTimeout)
+  unbindEvents()
+  hideHoverTooltipForOwner(hideNow)
 })
 </script>
 
 <template>
   <span
-    ref="triggerEl"
+    ref="wrapperEl"
     class="hover-tooltip"
     :class="{ 'hover-tooltip--enabled': Boolean(text) }"
-    @mouseenter="onEnter"
-    @mouseleave="onLeave"
   >
     <slot />
-    <Teleport to="body">
-      <span
-        v-if="visible && text"
-        class="hover-tooltip__popup"
-        :class="`hover-tooltip__popup--${variant}`"
-        :style="popupStyle"
-        role="tooltip"
-      >{{ text }}</span>
-    </Teleport>
   </span>
 </template>
 
@@ -74,30 +101,5 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   vertical-align: middle;
-
-  &--enabled {
-    cursor: default;
-  }
-}
-
-.hover-tooltip__popup {
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  line-height: 1.2;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 10000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-
-  &--default {
-    background-color: var(--bs-tooltip-bg, rgba(0, 0, 0, 0.85));
-    color: var(--bs-tooltip-color, #fff);
-  }
-
-  &--error {
-    background-color: var(--bs-danger, #dc3545);
-    color: #fff;
-  }
 }
 </style>

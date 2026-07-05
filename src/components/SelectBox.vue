@@ -10,7 +10,7 @@
             <button class="btn btn-light w-100 d-flex align-items-center justify-content-between select-trigger" :class="{ 'select-trigger--open': isOpen }" type="button" :disabled="disabled" @click="toggle" @blur="$emit('blur')">
                 <span class="select-trigger-slot d-flex align-items-center flex-grow-1 me-2">
                     <slot name="selected" :option="selectedOption" :label="currentLabel">
-                        <span ref="valueTextEl" class="value-text" :style="valueTextInlineStyle">{{ currentLabel }}</span>
+                        <span class="value-text">{{ currentLabel }}</span>
                     </slot>
                 </span>
                 <span v-if="!hideChevron" class="d-inline-flex align-items-center select-trigger-chevron" :class="{ 'select-trigger-chevron--open': isOpen }"><ChevronDown class="icon-center" /></span>
@@ -139,8 +139,8 @@ const props = defineProps({
     virtualized: { type: Boolean, default: false },
     itemHeight: { type: Number, default: 36 },
     overscan: { type: Number, default: 6 },
-    /** Не подстраивать размер подписи под ширину и computed-style триггера (для компактных тулбаров) */
-    fixedTriggerLabelFontSize: { type: Boolean, default: false },
+    /** @deprecated Подпись триггера больше не уменьшается; prop оставлен для совместимости */
+    fixedTriggerLabelFontSize: { type: Boolean, default: true },
     /** Минимальная ширина выпадающего меню (может быть шире триггера) */
     dropdownMinWidth: { type: Number, default: 0 },
     /** Доп. класс на выпадающее меню (teleport в body — для стилей с :global у потребителя) */
@@ -529,7 +529,6 @@ function handleClickOutside(e) {
 
 const rootEl = ref(null)
 const menuEl = ref(null)
-const valueTextEl = ref(null)
 const listContainerRef = ref(null)
 const listScrollTop = ref(0)
 const listViewportHeight = ref(260)
@@ -571,56 +570,12 @@ function updateVisibleRange() {
 function onListScroll() {
     updateVisibleRange()
 }
-const currentFontSize = ref('')
-const valueTextInlineStyle = computed(() => {
-    if (props.fixedTriggerLabelFontSize) return undefined
-    if (!currentFontSize.value) return undefined
-    return { fontSize: currentFontSize.value }
-})
-const baseFontSize = 16
-const minFontSize = 12
-function adjustFontSize() {
-    if (props.fixedTriggerLabelFontSize) return
-    if (typeof props.maxSelectedChars === 'number' && props.maxSelectedChars > 0) return
-    const el = valueTextEl.value
-    if (!el) return
-    el.style.fontSize = ''
-    currentFontSize.value = ''
-    const parent = el.parentElement
-    if (!parent) return
-    const trigger = rootEl.value?.querySelector('.select-trigger')
-    const root = rootEl.value
-    const rootStyle = root ? getComputedStyle(root) : null
-    const containerFontSizePx = trigger ? (parseFloat(getComputedStyle(trigger).fontSize) || baseFontSize) : baseFontSize
-    const iconSizeVar = rootStyle?.getPropertyValue('--select-box-icon-size').trim() || '1em'
-    let iconPx = containerFontSizePx
-    if (iconSizeVar.endsWith('em')) {
-        iconPx = (parseFloat(iconSizeVar) || 1) * containerFontSizePx
-    } else {
-        iconPx = parseFloat(iconSizeVar) || containerFontSizePx
-    }
-    const iconWidth = props.hideChevron ? 0 : iconPx + 8
-    const available = parent.clientWidth - iconWidth - 8
-    if (available <= 0) return
-    const effectiveMinSize = Math.max(minFontSize, Math.round(containerFontSizePx * 0.75))
-    let size = Math.round(containerFontSizePx)
-    el.style.fontSize = size + 'px'
-    el.style.whiteSpace = 'nowrap'
-    while (el.scrollWidth > available && size > effectiveMinSize) {
-        size -= 1
-        el.style.fontSize = size + 'px'
-    }
-    if (size < Math.round(containerFontSizePx)) {
-        currentFontSize.value = el.style.fontSize
-    }
-}
+
 const onResize = () => {
-    adjustFontSize()
     updateMenuPosition()
 }
 onMounted(() => {
     document.addEventListener('click', handleClickOutside, true)
-    nextTick(adjustFontSize)
     window.addEventListener('resize', onResize)
     window.addEventListener('scroll', updateMenuPosition, true)
 })
@@ -629,11 +584,6 @@ onBeforeUnmount(() => {
     document.removeEventListener('click', handleClickOutside, true)
     window.removeEventListener('resize', onResize)
     window.removeEventListener('scroll', updateMenuPosition, true)
-})
-
-watch(() => props.modelValue, async () => {
-    await nextTick()
-    adjustFontSize()
 })
 
 watch([() => (props.virtualized ? effectiveOptionsForVirtual.value.length : filteredOptions.value.length), isOpen], () => {
@@ -720,9 +670,12 @@ watch(searchQuery, () => {
 }
 .select-trigger .value-text {
     display: block;
+    flex: 1 1 auto;
+    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-size: 1em;
 }
 .dropdown-menu {
     position: absolute;

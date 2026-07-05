@@ -11,7 +11,12 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(item, idx) in displayItems" :key="getItemKey(item, idx)" :class="getRowClass(item, idx)" @click="handleRowClick(item, idx)">
+          <tr v-if="!displayItems.length" class="data-table-empty-row">
+            <td :colspan="totalColumnCount" class="data-table-empty-cell">
+              <slot name="empty">{{ emptyText }}</slot>
+            </td>
+          </tr>
+          <tr v-for="(item, idx) in displayItems" v-else :key="getItemKey(item, idx)" :class="getRowClass(item, idx)" @click="handleRowClick(item, idx)">
             <td v-if="showNumberColumn" class="text-muted">{{ displayNumberOffset + idx + 1 }}</td>
             <td v-for="column in columns" :key="column.key" :class="column.cellClass" :style="column.cellStyle">
               <slot :name="`cell-${column.key}`" :item="item" :index="idx" :column="column">
@@ -105,7 +110,11 @@ const props = defineProps({
   totalItems: {
     type: Number,
     default: null
-  }
+  },
+  emptyText: {
+    type: String,
+    default: 'Нет данных',
+  },
 })
 
 const emit = defineEmits(['rowClick', 'update:currentPage', 'pageChange'])
@@ -143,6 +152,10 @@ function handleRowClick(item, idx) {
 // Пагинация
 const totalItemsCount = computed(() => {
   return props.totalItems !== null ? props.totalItems : props.items.length
+})
+
+const totalColumnCount = computed(() => {
+  return props.columns.length + (props.showNumberColumn ? 1 : 0)
 })
 
 const totalPages = computed(() => {
@@ -240,6 +253,12 @@ const nextPage = () => {
   &:hover {
     background-color: var(--color-hover-background);
   }
+}
+
+.data-table-empty-cell {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--color-secondary-text);
 }
 
 @media (max-width: 768px) {

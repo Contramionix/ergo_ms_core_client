@@ -24,6 +24,9 @@
           {{ separator }}
         </li>
       </template>
+      <li v-if="trailingSeparator" class="breadcrumb-separator" aria-hidden="true">
+        {{ separator }}
+      </li>
     </ol>
   </nav>
 </template>
@@ -43,6 +46,10 @@ const props = defineProps({
   separator: {
     type: String,
     default: '/',
+  },
+  trailingSeparator: {
+    type: Boolean,
+    default: false,
   },
 })
 

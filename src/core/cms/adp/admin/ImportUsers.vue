@@ -9,7 +9,6 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  ArrowLeft,
   Download,
   Info,
   Users,
@@ -21,8 +20,14 @@ import { cmsEndpoints } from '@/core/cms/js/endpoints'
 import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
 import { downloadImportUsersTemplate } from '@/core/cms/adp/admin/js/importUsersExcel.js'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import Breadcrumbs from '@/components/Breadcrumbs.vue'
 const router = useRouter()
 const toast = useToast()
+
+const breadcrumbItems = [
+  { label: 'Пользователи', to: { name: 'UsersPanel' } },
+  { label: 'Загрузка пользователей' },
+]
 
 const fileInput = ref(null)
 const selectedFile = ref(null)
@@ -274,10 +279,6 @@ onBeforeUnmount(() => {
   // Очищаем таймауты при уничтожении компонента
   stopPolling()
 })
-
-const goBack = () => {
-  router.push({ name: 'UsersPanel' })
-}
 
 const triggerFileInput = () => {
   fileInput.value?.click()
@@ -697,19 +698,11 @@ const downloadPasswords = async () => {
       <p class="page-subtitle">Массовое создание учётных записей из файла Excel или CSV</p>
     </div>
 
-    <div class="content-card">
-      <div class="iu-body">
-        <div class="iu-toolbar">
-          <button
-            type="button"
-            class="btn btn-primary d-inline-flex align-items-center gap-2"
-            @click="goBack"
-          >
-            <ArrowLeft :size="16" />
-            <span>К пользователям</span>
-          </button>
-        </div>
+    <div class="import-users-shell">
+      <Breadcrumbs :items="breadcrumbItems" class="import-users-breadcrumbs" />
 
+      <div class="content-card">
+      <div class="iu-body">
         <div
           v-if="savedTaskId && !isImporting && !importResults"
           class="iu-alert iu-alert--warning d-flex align-items-center justify-content-between flex-wrap gap-3"
@@ -1050,6 +1043,7 @@ const downloadPasswords = async () => {
         </section>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -1059,5 +1053,15 @@ const downloadPasswords = async () => {
 
 .loading-container {
   min-height: 400px;
+}
+
+.import-users-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+:deep(.import-users-breadcrumbs) {
+  margin-bottom: 0;
 }
 </style>

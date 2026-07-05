@@ -2,35 +2,28 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/js/utils/toast.js'
-import {
-  MailPlus,
-  Copy,
-  Mail,
-  Ban,
-  AlertCircle,
-  FileSpreadsheet,
-  ArrowLeft,
-  Trash2,
-} from 'lucide-vue-next'
+import { MailPlus, Copy, Mail, Ban, AlertCircle, FileSpreadsheet, Trash2, Eraser, } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import SelectBox from '@/components/SelectBox.vue'
+import Breadcrumbs from '@/components/Breadcrumbs.vue'
+import HoverTooltip from '@/components/HoverTooltip.vue'
 import { runWithConfirm, confirmAction } from '@/js/utils/confirm.js'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
-import {
-  fetchInvitations,
-  revokeInvitation,
-  resendInvitation,
-  clearInvitations,
-} from '@/core/cms/adp/admin/js/invitationService'
+import { fetchInvitations, revokeInvitation, resendInvitation, clearInvitations, } from '@/core/cms/adp/admin/js/invitationService'
 import { copyTextToClipboard } from '@/js/utils/clipboard.js'
 import InvitationCreateModal from '@/core/cms/adp/admin/InvitationsComponents/InvitationCreateModal.vue'
 import InvitationBulkModal from '@/core/cms/adp/admin/InvitationsComponents/InvitationBulkModal.vue'
 
 const router = useRouter()
 const toast = useToast()
+
+const breadcrumbItems = [
+  { label: 'Пользователи', to: { name: 'UsersPanel' } },
+  { label: 'Управление приглашениями' },
+]
 
 const hasAdminAccess = ref(false)
 const isCheckingAccess = ref(true)
@@ -57,19 +50,14 @@ const STATUS_OPTIONS = [
   { id: 'revoked', name: 'Отозваны' },
 ]
 
-const invitationModeEnabled = computed(() => registrationMode.value === 'invitation')
-const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / rowsPerPage.value)))
+// TODO: вернуть registrationMode.value === 'invitation'
+const invitationModeEnabled = computed(() => true)
 
-const listSummary = computed(() => {
-  if (!totalItems.value && statusFilter.value === 'all' && !searchQuery.value.trim()) {
-    return 'Нет приглашений'
+const tableEmptyText = computed(() => {
+  if (searchQuery.value.trim() || statusFilter.value !== 'all') {
+    return 'Приглашения не найдены'
   }
-
-  const parts = [`Найдено: ${totalItems.value}`]
-  if (totalPages.value > 1) {
-    parts.push(`страница ${currentPage.value} из ${totalPages.value}`)
-  }
-  return parts.join(' · ')
+  return 'Нет приглашений'
 })
 
 const statusLabels = {
@@ -261,10 +249,6 @@ const handleRevoke = async (item) => {
   }
 }
 
-const goBack = () => {
-  router.push({ name: 'UsersPanel' })
-}
-
 const openClearConfirm = async (scope) => {
   const options = {
     title: 'Очистка приглашений',
@@ -301,27 +285,12 @@ const openClearConfirm = async (scope) => {
       </p>
     </div>
 
-    <div class="content-card">
-      <button
-        type="button"
-        class="btn btn-primary d-inline-flex align-items-center gap-2 align-self-start"
-        @click="goBack"
-      >
-        <ArrowLeft :size="16" />
-        <span>К пользователям</span>
-      </button>
+    <div class="invitations-shell">
+      <Breadcrumbs :items="breadcrumbItems" class="invitations-breadcrumbs" />
 
-      <div v-if="!invitationModeEnabled" class="invitations-notice">
-        <AlertCircle :size="18" class="invitations-notice__icon" />
-        <div>
-          <strong>Режим регистрации по приглашениям не включён.</strong>
-          <span class="invitations-notice__text">
-            Включите его в настройках сервера, чтобы создавать и отправлять приглашения.
-          </span>
-        </div>
-      </div>
-
-      <div v-if="invitationModeEnabled" class="invitations-stats">
+      <div class="content-card">
+      <template v-if="invitationModeEnabled">
+      <div class="invitations-stats">
         <span class="invitations-stat">
           Всего в системе: <strong>{{ totalAll }}</strong>
         </span>
@@ -333,106 +302,57 @@ const openClearConfirm = async (scope) => {
         </span>
       </div>
 
-      <p v-if="invitationModeEnabled" class="invitations-summary">
-        {{ listSummary }} · {{ rowsPerPage }} на странице
-      </p>
-
       <div class="table-header invitations-toolbar">
         <div class="filters-wrapper">
           <div class="search-wrapper">
-            <label for="invitations-search" class="form-label mb-1">Поиск</label>
-            <input
-              id="invitations-search"
-              type="search"
-              class="form-control search-input"
-              placeholder="Email, примечание, кто пригласил..."
-              @input="handleSearchQuery($event.target.value)"
-            />
+            <input id="invitations-search" type="search" class="form-control search-input" placeholder="Email, примечание, кто пригласил..." @input="handleSearchQuery($event.target.value)"/>
           </div>
           <div class="status-filter">
-            <SelectBox
-              id="invitations-status"
-              v-model="statusFilter"
-              label="Статус"
-              :options="STATUS_OPTIONS"
-              value-key="id"
-              label-key="name"
-              :include-all-option="false"
-              fixed-trigger-label-font-size
-              @update:model-value="handleStatusFilterChange"
-            />
+            <HoverTooltip text="Статус приглашений">
+              <SelectBox id="invitations-status" v-model="statusFilter" :options="STATUS_OPTIONS" value-key="id" label-key="name" :include-all-option="false" @update:model-value="handleStatusFilterChange"/>
+            </HoverTooltip>
           </div>
         </div>
 
-        <div class="actions-wrapper invitations-actions">
-          <div class="invitations-actions__group invitations-actions__group--primary">
-            <button
-              type="button"
-              class="btn btn-primary d-flex align-items-center gap-2"
-              :disabled="!invitationModeEnabled"
-              @click="openCreateModal"
-            >
-              <MailPlus :size="16" />
-              <span>Одно приглашение</span>
-            </button>
-            <button
-              type="button"
-              class="btn btn-primary d-flex align-items-center gap-2"
-              :disabled="!invitationModeEnabled"
-              @click="openBulkModal"
-            >
-              <FileSpreadsheet :size="16" />
-              <span>Загрузить из Excel</span>
-            </button>
-          </div>
-
-          <div class="invitations-actions__group invitations-actions__group--secondary">
-            <button
-              type="button"
-              class="btn btn-outline-secondary d-flex align-items-center gap-2"
-              :disabled="!invitationModeEnabled || isLoading || inactiveCount === 0"
-              title="Удалить использованные, истёкшие и отозванные приглашения"
-              @click="openClearConfirm('inactive')"
-            >
-              <Trash2 :size="16" />
-              <span>Очистить неактивные</span>
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline-danger d-flex align-items-center gap-2"
-              :disabled="!invitationModeEnabled || isLoading || totalAll === 0"
-              title="Удалить все приглашения, включая ожидающие"
-              @click="openClearConfirm('all')"
-            >
-              <Trash2 :size="16" />
-              <span>Очистить все</span>
-            </button>
-          </div>
+        <div class="actions-wrapper">
+          <HoverTooltip text="Одно приглашение">
+            <span class="invitations-icon-btn-wrap">
+              <button type="button" class="btn invitations-toolbar-icon-btn" aria-label="Одно приглашение" :disabled="!invitationModeEnabled" @click="openCreateModal">
+                <MailPlus :size="20" aria-hidden="true" />
+              </button>
+            </span>
+          </HoverTooltip>
+          <HoverTooltip text="Загрузить из Excel">
+            <span class="invitations-icon-btn-wrap">
+              <button type="button" class="btn invitations-toolbar-icon-btn" aria-label="Загрузить из Excel" :disabled="!invitationModeEnabled" @click="openBulkModal">
+                <FileSpreadsheet :size="20" aria-hidden="true" />
+              </button>
+            </span>
+          </HoverTooltip>
+          <HoverTooltip text="Очистить неактивные">
+            <span class="invitations-icon-btn-wrap">
+              <button type="button" class="btn invitations-toolbar-icon-btn" aria-label="Очистить неактивные" :disabled="!invitationModeEnabled || isLoading || inactiveCount === 0" @click="openClearConfirm('inactive')">
+                <Eraser :size="20" aria-hidden="true" />
+              </button>
+            </span>
+          </HoverTooltip>
+          <HoverTooltip text="Очистить все">
+            <span class="invitations-icon-btn-wrap">
+              <button type="button" class="btn invitations-toolbar-icon-btn invitations-toolbar-icon-btn--danger" aria-label="Очистить все" :disabled="!invitationModeEnabled || isLoading || totalAll === 0" @click="openClearConfirm('all')">
+                <Trash2 :size="20" aria-hidden="true" />
+              </button>
+            </span>
+          </HoverTooltip>
         </div>
       </div>
 
       <LoadingContentArea :loading="isLoading">
-        <DataTable
-          :items="rows"
-          :columns="columns"
-          :items-per-page="rowsPerPage"
-          :current-page="currentPage"
-          :total-items="totalItems"
-          :get-item-key="getItemKey"
-          :enable-pagination="true"
-          @update:current-page="handlePageChange"
-        >
+        <DataTable :items="rows" :columns="columns" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalItems" :empty-text="tableEmptyText" :get-item-key="getItemKey" :enable-pagination="true" @update:current-page="handlePageChange">
         <template #cell-email="{ item }">
           <div class="invitations-email-cell">
             <div class="d-flex align-items-center gap-2">
               <span class="invitations-email-text">{{ item.email }}</span>
-              <button
-                type="button"
-                class="btn-action"
-                title="Скопировать email"
-                aria-label="Скопировать email"
-                @click.stop="copyEmail(item.email)"
-              >
+              <button type="button" class="btn-action" title="Скопировать email" aria-label="Скопировать email" @click.stop="copyEmail(item.email)">
                 <Copy :size="15" />
               </button>
             </div>
@@ -460,54 +380,34 @@ const openClearConfirm = async (scope) => {
 
         <template #cell-actions="{ item }">
           <div class="actions-cell">
-            <button
-              type="button"
-              class="btn-action"
-              :disabled="item.status === 'revoked'"
-              :title="item.status === 'revoked' ? 'Ссылка недоступна: приглашение отозвано' : 'Скопировать ссылку на регистрацию'"
-              aria-label="Скопировать ссылку"
-              @click.stop="copyInviteLink(item)"
-            >
+            <button type="button" class="btn-action" :disabled="item.status === 'revoked'" :title="item.status === 'revoked' ? 'Ссылка недоступна: приглашение отозвано' : 'Скопировать ссылку на регистрацию'" aria-label="Скопировать ссылку" @click.stop="copyInviteLink(item)">
               <Copy :size="15" />
             </button>
-            <button
-              v-if="item.status === 'pending'"
-              type="button"
-              class="btn-action"
-              title="Отправить письмо с приглашением"
-              aria-label="Отправить письмо"
-              @click.stop="handleResend(item)"
-            >
+            <button v-if="item.status === 'pending'" type="button" class="btn-action" title="Отправить письмо с приглашением" aria-label="Отправить письмо" @click.stop="handleResend(item)">
               <Mail :size="15" />
             </button>
-            <button
-              v-if="item.status === 'pending'"
-              type="button"
-              class="btn-action btn-action--delete"
-              title="Отозвать приглашение"
-              aria-label="Отозвать приглашение"
-              @click.stop="handleRevoke(item)"
-            >
+            <button v-if="item.status === 'pending'" type="button" class="btn-action btn-action--delete" title="Отозвать приглашение" aria-label="Отозвать приглашение" @click.stop="handleRevoke(item)">
               <Ban :size="15" />
             </button>
           </div>
         </template>
         </DataTable>
       </LoadingContentArea>
+      </template>
 
-      <InvitationCreateModal
-        :visible="showCreateModal"
-        :disabled="!invitationModeEnabled"
-        @close="showCreateModal = false"
-        @created="handleInvitationCreated"
-      />
+      <div v-else class="invitations-disabled-state" role="status">
+        <AlertCircle :size="48" class="invitations-disabled-state__icon" aria-hidden="true" />
+        <p class="invitations-disabled-state__title">
+          Режим регистрации по приглашениям не включён.
+        </p>
+        <p class="invitations-disabled-state__text">
+          Включите его в настройках сервера, чтобы создавать и отправлять приглашения.
+        </p>
+      </div>
 
-      <InvitationBulkModal
-        :visible="showBulkModal"
-        :disabled="!invitationModeEnabled"
-        @close="showBulkModal = false"
-        @completed="handleBulkCompleted"
-      />
+      <InvitationCreateModal :visible="showCreateModal" :disabled="!invitationModeEnabled" @close="showCreateModal = false" @created="handleInvitationCreated"/>
+      <InvitationBulkModal :visible="showBulkModal" :disabled="!invitationModeEnabled" @close="showBulkModal = false" @completed="handleBulkCompleted"/>
+      </div>
     </div>
   </div>
 </template>
@@ -519,26 +419,42 @@ const openClearConfirm = async (scope) => {
   min-height: 400px;
 }
 
-.invitations-notice {
+.invitations-shell {
   display: flex;
-  align-items: flex-start;
-  gap: 0.625rem;
-  padding: 0.75rem 0.875rem;
-  border: 1px solid color-mix(in srgb, var(--bs-warning, #ffc107) 35%, var(--color-border));
-  border-radius: 0.625rem;
-  background: color-mix(in srgb, var(--bs-warning, #ffc107) 10%, var(--color-primary-background));
-  color: var(--color-primary-text);
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+:deep(.invitations-breadcrumbs) {
+  margin-bottom: 0;
+}
+
+.invitations-disabled-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.75rem;
+  min-height: 320px;
+  padding: 2rem 1.5rem;
 
   &__icon {
-    flex-shrink: 0;
-    margin-top: 0.125rem;
-    color: var(--bs-warning-text-emphasis, #997404);
+    color: var(--color-accent);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-primary-text);
   }
 
   &__text {
-    display: block;
-    margin-top: 0.125rem;
-    font-size: 0.8125rem;
+    margin: 0;
+    max-width: 28rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
     color: var(--color-secondary-text);
   }
 }
@@ -566,12 +482,6 @@ const openClearConfirm = async (scope) => {
   }
 }
 
-.invitations-summary {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--color-secondary-text);
-}
-
 .filters-wrapper {
   display: flex;
   align-items: flex-end;
@@ -582,15 +492,38 @@ const openClearConfirm = async (scope) => {
 }
 
 .invitations-toolbar {
-  align-items: flex-end;
-}
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
 
-.search-wrapper {
-  flex: 1 1 220px;
-  min-width: 180px;
-  max-width: 320px;
-  display: flex;
-  flex-direction: column;
+  .filters-wrapper {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) 220px;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .search-wrapper {
+    min-width: 0;
+  }
+
+  .search-wrapper .search-input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .status-filter {
+    width: 220px;
+  }
+
+  .actions-wrapper {
+    flex-shrink: 0;
+
+    :deep(.hover-tooltip) {
+      flex: 0 0 auto;
+    }
+  }
 }
 
 .search-wrapper .search-input {
@@ -598,34 +531,59 @@ const openClearConfirm = async (scope) => {
 }
 
 .status-filter {
-  flex: 0 1 220px;
-  min-width: 180px;
+  width: 220px;
+  max-width: 220px;
+  box-sizing: border-box;
 
-  :deep(.select-box) {
-    --select-box-font-size: 0.875rem;
+  :deep(.hover-tooltip) {
+    display: contents;
+  }
+
+  :deep(.select-box),
+  :deep(.dropdown) {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  :deep(.select-trigger) {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-height: 38px;
+    box-sizing: border-box;
   }
 }
 
-.invitations-actions {
-  align-items: flex-end;
-  flex-direction: column;
-  gap: 0.5rem;
+.invitations-icon-btn-wrap {
+  display: inline-flex;
+}
 
-  @media (width >= 992px) {
-    flex-direction: row;
-    align-items: flex-end;
+.invitations-toolbar-icon-btn {
+  display: inline-flex;
+  background-color: transparent;
+  border-radius: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+
+  &:hover:not(:disabled) {
+    background-color: var(--color-hover-background);
   }
 
-  &__group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
   }
 
-  &__group--primary,
-  &__group--secondary {
-    .btn {
-      min-height: 38px;
+  &--danger {
+    color: var(--bs-danger, #dc3545);
+
+    &:hover:not(:disabled) {
+      background-color: rgba(var(--bs-danger-rgb, 220, 53, 69), 0.08);
     }
   }
 }

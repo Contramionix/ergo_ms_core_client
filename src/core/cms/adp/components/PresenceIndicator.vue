@@ -52,6 +52,9 @@ const tooltipText = computed(() => formatPresenceTooltip(props.isOnline, props.l
   border: 2px solid var(--color-primary-background, #fff);
   box-sizing: content-box;
   pointer-events: none;
+  flex-shrink: 0;
+  max-width: none;
+  max-height: none;
 
   &--online {
     background-color: var(--bs-success, #198754);

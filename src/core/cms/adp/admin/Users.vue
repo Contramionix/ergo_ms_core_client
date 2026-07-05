@@ -14,12 +14,19 @@ import { GetAdminUsers, GetRoles, GetRoleGroupOptions, CheckAccessToAdminPanel }
 import { presenceStore, seedFromUsers } from '@/core/cms/adp/js/presence/presenceStore.js'
 import { useAdminPresenceFeed } from '@/core/cms/adp/admin/js/useAdminPresenceFeed.js'
 import SelectBox from '@/components/SelectBox.vue'
+import Breadcrumbs from '@/components/Breadcrumbs.vue'
+import HoverTooltip from '@/components/HoverTooltip.vue'
 import { PRESENCE_FILTER_OPTIONS } from '@/core/cms/js/adminSelectOptions.js'
 import { fetchProfileSettings } from '@/core/cms/adp/js/profileSettings.js'
 import { fetchAdminProfileChangeRequests } from '@/core/cms/adp/admin/js/profileChangeRequestService.js'
 
 const router = useRouter()
 const toast = useToast()
+
+const breadcrumbItems = [
+  { label: 'Пользователи' },
+]
+
 const { connect: connectAdminPresenceFeed, disconnect: disconnectAdminPresenceFeed } = useAdminPresenceFeed()
 const rows = ref([])
 const totalUsers = ref(0)
@@ -40,6 +47,12 @@ const profileSelfEditEnabled = ref(true)
 const pendingProfileChangeCount = ref(0)
 
 const isOnlineFilter = computed(() => presenceFilter.value === 'online')
+
+const profileChangeRequestsTooltip = computed(() => {
+  const label = 'Заявки на изменение данных'
+  const count = pendingProfileChangeCount.value
+  return count > 0 ? `${label} (${count})` : label
+})
 
 let searchDebounceTimer = null
 let presenceReloadTimer = null
@@ -293,6 +306,11 @@ const loadProfileChangeMeta = async () => {
   }
 }
 
+function formatRoleGroupsTooltip(groups) {
+  if (!groups?.length) return ''
+  return groups.map((group) => group.name).join(', ')
+}
+
 const getItemKey = (item) => item.user_id
 </script>
 
@@ -307,57 +325,42 @@ const getItemKey = (item) => item.user_id
         <p class="page-subtitle">Управление учётными записями, ролями и группами пользователей системы</p>
       </div>
 
-      <div class="content-card">
+      <div class="users-shell">
+        <Breadcrumbs :items="breadcrumbItems" trailing-separator class="users-breadcrumbs" />
+
+        <div class="content-card">
         <div class="table-header users-toolbar">
           <div class="filters-wrapper">
             <div class="search-wrapper">
-              <label for="users-search" class="form-label mb-1">Поиск</label>
-              <input
-                id="users-search"
-                type="search"
-                class="form-control search-input"
-                placeholder="Поиск по пользователям..."
-                @input="handleSearchQuery($event.target.value)"
-              />
+              <input id="users-search" type="search" class="form-control search-input" placeholder="Поиск по пользователям..." @input="handleSearchQuery($event.target.value)"/>
             </div>
             <div class="presence-filter">
-              <SelectBox
-                id="users-presence-filter"
-                v-model="presenceFilter"
-                label="Фильтрация"
-                :options="PRESENCE_FILTER_OPTIONS"
-                value-key="id"
-                label-key="name"
-                :include-all-option="false"
-                fixed-trigger-label-font-size
-              />
+              <HoverTooltip text="Фильтрация">
+                <SelectBox id="users-presence-filter" v-model="presenceFilter" :options="PRESENCE_FILTER_OPTIONS" value-key="id" label-key="name" :include-all-option="false"/>
+              </HoverTooltip>
             </div>
           </div>
           <div class="actions-wrapper">
-            <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @click="openUserCreate">
-              <UserPlus :size="16" />
-              <span>Создать пользователя</span>
-            </button>
-            <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @click="goToInvitations">
-              <MailPlus :size="16" />
-              <span>Управление приглашениями</span>
-            </button>
-            <button
-              v-if="!profileSelfEditEnabled"
-              type="button"
-              class="btn btn-primary d-flex align-items-center gap-2"
-              @click="goToProfileChangeRequests"
-            >
-              <FilePenLine :size="16" />
-              <span>
-                Заявки на изменение данных
-                <span v-if="pendingProfileChangeCount > 0">({{ pendingProfileChangeCount }})</span>
-              </span>
-            </button>
-            <button type="button" class="btn btn-primary d-flex align-items-center gap-2" @click="goToImport">
-              <Upload :size="16" />
-              <span>Загрузка пользователей</span>
-            </button>
+            <HoverTooltip text="Создать пользователя">
+              <button type="button" class="btn users-toolbar-icon-btn" aria-label="Создать пользователя" @click="openUserCreate">
+                <UserPlus :size="20" aria-hidden="true" />
+              </button>
+            </HoverTooltip>
+            <HoverTooltip text="Управление приглашениями">
+              <button type="button" class="btn users-toolbar-icon-btn" aria-label="Управление приглашениями" @click="goToInvitations">
+                <MailPlus :size="20" aria-hidden="true" />
+              </button>
+            </HoverTooltip>
+            <HoverTooltip v-if="!profileSelfEditEnabled" :text="profileChangeRequestsTooltip">
+              <button type="button" class="btn users-toolbar-icon-btn" :aria-label="profileChangeRequestsTooltip" @click="goToProfileChangeRequests">
+                <FilePenLine :size="20" aria-hidden="true" />
+              </button>
+            </HoverTooltip>
+            <HoverTooltip text="Загрузка пользователей">
+              <button type="button" class="btn users-toolbar-icon-btn" aria-label="Загрузка пользователей" @click="goToImport">
+                <Upload :size="20" aria-hidden="true" />
+              </button>
+            </HoverTooltip>
           </div>
         </div>
 
@@ -388,22 +391,17 @@ const getItemKey = (item) => item.user_id
       </template>
 
       <template #cell-role_groups="{ item }">
-        <div class="d-flex flex-wrap gap-2 justify-content-center">
-          <small v-for="group in item.role_groups" :key="group.id" class="bg-primary-subtle text-primary rounded px-2 py-1">
-            {{ group.name }}
-          </small>
-          <span v-if="item.role_groups.length === 0" class="text-muted">—</span>
-        </div>
+        <span v-if="!item.role_groups?.length" class="text-muted">—</span>
+        <HoverTooltip v-else wrap :text="formatRoleGroupsTooltip(item.role_groups)">
+          <span class="role-groups-count" :aria-label="formatRoleGroupsTooltip(item.role_groups)">
+            {{ item.role_groups.length }}
+          </span>
+        </HoverTooltip>
       </template>
 
       <template #cell-actions="{ item }">
         <div class="actions-cell">
-          <button
-            type="button"
-            class="btn-action btn-action--edit"
-            aria-label="Настройки пользователя"
-            @click="openUserSettings(item)"
-          >
+          <button type="button" class="btn-action btn-action--edit" aria-label="Настройки пользователя" @click="openUserSettings(item)">
             <Settings :size="15" />
           </button>
         </div>
@@ -413,6 +411,7 @@ const getItemKey = (item) => item.user_id
 
     <AdminUserSettingsModal v-model:show="showUserSettings" :user-id="selectedUserId" :roles="roles" :role-groups="roleGroups" @saved="handleUserSaved" @deleted="handleUserDeleted"/>
     <AdminUserCreateModal v-model:show="showUserCreate" :roles="roles" :role-groups="roleGroups" @created="handleUserCreated"/>
+        </div>
       </div>
   </div>
 </template>
@@ -422,6 +421,31 @@ const getItemKey = (item) => item.user_id
 
 .loading-container {
   min-height: 400px;
+}
+
+.users-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+:deep(.users-breadcrumbs) {
+  margin-bottom: 0;
+}
+
+.role-groups-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.25rem;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  background: var(--bs-secondary-bg-subtle, var(--color-secondary-background));
+  color: var(--color-primary-text);
 }
 
 .presence-online {
@@ -450,23 +474,54 @@ const getItemKey = (item) => item.user_id
 }
 
 .users-toolbar {
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+
+  .filters-wrapper {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) 220px;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .search-wrapper {
+    min-width: 0;
+  }
+
+  .search-wrapper .search-input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .presence-filter {
+    width: 220px;
+  }
 }
 
 .users-toolbar .actions-wrapper {
   align-items: flex-end;
+  flex-shrink: 0;
+
+  :deep(.hover-tooltip) {
+    flex: 0 0 auto;
+  }
 }
 
-.users-toolbar .actions-wrapper .btn {
-  min-height: 38px;
-}
+.users-toolbar-icon-btn {
+  display: inline-flex;
+  background-color: transparent;
+  border-radius: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
 
-.search-wrapper {
-  flex: 1 1 220px;
-  min-width: 180px;
-  max-width: 320px;
-  display: flex;
-  flex-direction: column;
+  &:hover {
+    background-color: var(--color-hover-background);
+  }
 }
 
 .search-wrapper .search-input {
@@ -474,7 +529,27 @@ const getItemKey = (item) => item.user_id
 }
 
 .presence-filter {
-  flex: 0 1 220px;
-  min-width: 180px;
+  width: 220px;
+  max-width: 220px;
+  box-sizing: border-box;
+
+  :deep(.hover-tooltip) {
+    display: contents;
+  }
+
+  :deep(.select-box),
+  :deep(.dropdown) {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  :deep(.select-trigger) {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    min-height: 38px;
+    box-sizing: border-box;
+  }
 }
 </style>
