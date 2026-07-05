@@ -684,6 +684,62 @@ onBeforeUnmount(() => {
 
   &.collapsed:not(.hovering) {
     inline-size: 84px;
+
+    .side-menu__logo {
+      padding-inline: 0;
+      justify-content: center;
+    }
+
+    .side-header__title {
+      justify-content: center;
+    }
+
+    .side-menu__list {
+      padding-inline: 0;
+    }
+
+    .side-divider {
+      padding-inline: 0;
+      gap: 0;
+      justify-content: center;
+    }
+
+    :deep(.nav-btn) {
+      padding-inline: 0;
+      justify-content: center;
+    }
+
+    :deep(.side-title__label),
+    :deep(.menu-item__label) {
+      flex: 0;
+      justify-content: center;
+      gap: 0;
+    }
+
+    :deep(.side-title__name.hidden),
+    :deep(.menu-item__name.hidden),
+    :deep(.side-divider__name.hidden),
+    :deep(.nav-icon.hidden) {
+      display: none;
+    }
+
+    :deep(.menu-item__content) {
+      padding-left: 0 !important;
+    }
+
+    :deep(.menu-toolbar) {
+      margin-inline: 0;
+      padding-inline: 6px;
+
+      .tools {
+        justify-content: center;
+      }
+
+      .toolbar__user {
+        flex: 0 0 auto;
+        justify-content: center;
+      }
+    }
   }
 }
 
