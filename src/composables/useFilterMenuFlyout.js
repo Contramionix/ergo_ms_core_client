@@ -1,8 +1,11 @@
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
+import {
+  OVERLAY_MENU_FLYOUT_Z_INDEX,
+  OVERLAY_MENU_Z_INDEX,
+} from '@/js/utils/overlayZIndex.js'
+
 const VIEWPORT_PADDING = 8
-const MAIN_Z_INDEX = 100002
-const FLYOUT_Z_INDEX = 100003
 
 /**
  * Позиционирование главной панели и бокового flyout для FilterMenu.
@@ -20,8 +23,8 @@ export function useFilterMenuFlyout(options = {}) {
   const activeFlyoutKey = ref(null)
   const pinnedFlyoutKey = ref(null)
 
-  const mainPanelStyle = ref({ top: '0px', left: '0px', width: '0px', zIndex: MAIN_Z_INDEX })
-  const flyoutPanelStyle = ref({ top: '0px', left: '0px', width: '0px', zIndex: FLYOUT_Z_INDEX })
+  const mainPanelStyle = ref({ top: '0px', left: '0px', width: '0px', zIndex: OVERLAY_MENU_Z_INDEX })
+  const flyoutPanelStyle = ref({ top: '0px', left: '0px', width: '0px', zIndex: OVERLAY_MENU_FLYOUT_Z_INDEX })
 
   let hoverCloseTimer = null
   let suppressOutsideClick = false
@@ -87,7 +90,7 @@ export function useFilterMenuFlyout(options = {}) {
       left: `${left}px`,
       width: `${width}px`,
       maxWidth: `${maxWidth}px`,
-      zIndex: MAIN_Z_INDEX,
+      zIndex: OVERLAY_MENU_Z_INDEX,
       fontSize: menuFontSize,
       lineHeight: '1.5',
       '--select-box-font-size': menuFontSize,
@@ -129,7 +132,7 @@ export function useFilterMenuFlyout(options = {}) {
       left: `${left}px`,
       width: `${width}px`,
       maxWidth: `${maxWidth}px`,
-      zIndex: FLYOUT_Z_INDEX,
+      zIndex: OVERLAY_MENU_FLYOUT_Z_INDEX,
       fontSize: menuFontSize,
       lineHeight: '1.5',
       '--select-box-font-size': menuFontSize,

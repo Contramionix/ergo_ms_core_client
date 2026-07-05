@@ -67,7 +67,7 @@ onBeforeUnmount(() => {
   line-height: 1.2;
   white-space: nowrap;
   pointer-events: none;
-  z-index: 10000;
+  z-index: var(--ui-z-overlay-hover-tooltip);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 
   &--default {

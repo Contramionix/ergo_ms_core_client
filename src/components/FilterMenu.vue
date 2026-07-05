@@ -17,17 +17,20 @@
               <button type="button" class="filter-menu__row" :class="{ 'filter-menu__row--active': activeFlyoutKey === field.key }" :data-field-key="field.key" @mouseenter="onRowEnter(field.key, $event.currentTarget)" @mouseleave="onRowLeave" @click.stop="onRowClick(field, $event)">
                 <span class="filter-menu__row-label">{{ field.label }}</span>
                 <span class="filter-menu__row-value text-muted">
-                  <span
-                    v-if="field.showOptionAvatars && getOptionAvatarProps(getSelectedOption(field))"
-                    class="filter-menu__row-value-with-avatar"
-                  >
-                    <UserAvatar
-                      v-bind="getOptionAvatarProps(getSelectedOption(field))"
-                      :size="18"
-                    />
-                    <span>{{ getFieldDisplayValue(field) }}</span>
+                  <span v-if="field.showOptionAvatars && getOptionAvatarProps(getSelectedOption(field))" class="filter-menu__row-value-with-avatar">
+                    <UserAvatar v-bind="getOptionAvatarProps(getSelectedOption(field))" :size="18"/>
+                    <span
+                      class="filter-menu__row-value-text"
+                      @mouseenter="onTruncatedLabelEnter($event, getFieldDisplayValue(field))"
+                      @mouseleave="onTruncatedLabelLeave"
+                    >{{ getFieldDisplayValue(field) }}</span>
                   </span>
-                  <template v-else>{{ getFieldDisplayValue(field) }}</template>
+                  <span
+                    v-else
+                    class="filter-menu__row-value-text"
+                    @mouseenter="onTruncatedLabelEnter($event, getFieldDisplayValue(field))"
+                    @mouseleave="onTruncatedLabelLeave"
+                  >{{ getFieldDisplayValue(field) }}</span>
                 </span>
                 <ChevronRight class="filter-menu__row-chevron" :size="16" />
               </button>
@@ -46,19 +49,20 @@
         <template v-if="activeField.type === 'select'">
           <input v-if="activeField.searchable" ref="flyoutSearchEl" v-model="flyoutSearchQuery" type="text" class="filter-menu__search select-box-search" placeholder="Поиск..." autocomplete="off" @mousedown.stop/>
           <ul class="dropdown-menu-list">
-            <li v-if="activeField.includeAllOption !== false && !flyoutSearchActive">
+            <li v-if="!activeField.multiple && activeField.includeAllOption !== false && !flyoutSearchActive">
               <a href="#" class="dropdown-item" :class="{ active: isEmptyValue(activeField.key) }" @click.prevent="chooseSelectValue(activeField, null)">
                 {{ activeField.allLabel || 'Все' }}
               </a>
             </li>
             <li v-for="opt in filteredFlyoutOptions" :key="opt.key">
-              <a href="#" class="dropdown-item" :class="{ active: isSelectValueActive(activeField, opt.value), 'filter-menu__option-with-avatar': activeField.showOptionAvatars && getOptionAvatarProps(opt) }" @click.prevent="chooseSelectValue(activeField, opt.value)">
-                <UserAvatar
-                  v-if="activeField.showOptionAvatars && getOptionAvatarProps(opt)"
-                  v-bind="getOptionAvatarProps(opt)"
-                  :size="24"
-                />
-                <span class="filter-menu__option-label">{{ opt.label }}</span>
+              <a href="#" class="dropdown-item" :class="{ active: isSelectValueActive(activeField, opt.value), 'filter-menu__option--multiple': activeField.multiple, 'filter-menu__option-with-avatar': activeField.showOptionAvatars && getOptionAvatarProps(opt) }" @click.prevent="chooseSelectValue(activeField, opt.value)">
+                <input v-if="activeField.multiple && activeField.showCheckboxesWhenMultiple !== false" type="checkbox" class="form-check-input filter-menu__option-checkbox" :checked="isSelectValueActive(activeField, opt.value)" tabindex="-1" @click.prevent/>
+                <UserAvatar v-if="activeField.showOptionAvatars && getOptionAvatarProps(opt)" v-bind="getOptionAvatarProps(opt)" :size="24"/>
+                <span
+                  class="filter-menu__option-label"
+                  @mouseenter="onTruncatedLabelEnter($event, opt.label)"
+                  @mouseleave="onTruncatedLabelLeave"
+                >{{ opt.label }}</span>
               </a>
             </li>
           </ul>
@@ -81,9 +85,13 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import UserAvatar from '@/components/UserAvatar.vue'
+import {
+  hideHoverTooltipForOwner,
+  showHoverTooltip,
+} from '@/js/utils/hoverTooltipLayer.js'
 import { useFilterMenuFlyout } from '@/composables/useFilterMenuFlyout.js'
 
 const props = defineProps({
@@ -190,8 +198,31 @@ function isInteractiveField(field) {
   return field.type === 'select' || field.type === 'date'
 }
 
+function getFieldByKey(key) {
+  return props.fields.find((field) => field.key === key) || null
+}
+
+function isFieldMultiple(field) {
+  return Boolean(field?.type === 'select' && field.multiple)
+}
+
+function normalizeStoredSelectValue(field, value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+  if (field?.castToNumber) {
+    const num = Number(value)
+    return Number.isNaN(num) ? value : num
+  }
+  return value
+}
+
 function isEmptyValue(key) {
   const value = props.modelValue?.[key]
+  const field = getFieldByKey(key)
+  if (isFieldMultiple(field)) {
+    return !Array.isArray(value) || value.length === 0
+  }
   return value === null || value === undefined || value === ''
 }
 
@@ -252,6 +283,19 @@ function getFieldDisplayValue(field) {
 
   if (field.type === 'select') {
     const value = props.modelValue[field.key]
+    if (isFieldMultiple(field)) {
+      if (!Array.isArray(value) || value.length === 0) {
+        return field.allLabel || 'Все'
+      }
+      if (field.multipleLabelFormat === 'count') {
+        return `${value.length} выбрано`
+      }
+      const labels = value.map((item) => {
+        const found = normalizeSelectOptions(field).find((opt) => valuesAreEqual(opt.value, item))
+        return found?.label || String(item)
+      })
+      return labels.join(', ')
+    }
     const found = normalizeSelectOptions(field).find((opt) => valuesAreEqual(opt.value, value))
     return found?.label || String(value)
   }
@@ -268,6 +312,11 @@ function valuesAreEqual(a, b) {
 function isSelectValueActive(field, value) {
   if (value === null || value === undefined) {
     return isEmptyValue(field.key)
+  }
+  if (isFieldMultiple(field)) {
+    const current = props.modelValue[field.key]
+    if (!Array.isArray(current)) return false
+    return current.some((item) => valuesAreEqual(item, value))
   }
   return valuesAreEqual(props.modelValue[field.key], value)
 }
@@ -286,6 +335,30 @@ function emitApplyIfNeeded() {
 }
 
 function chooseSelectValue(field, value) {
+  if (isFieldMultiple(field)) {
+    if (value === null || value === undefined) {
+      patchModelValue(field.key, [])
+      emitApplyIfNeeded()
+      return
+    }
+
+    const current = Array.isArray(props.modelValue[field.key])
+      ? [...props.modelValue[field.key]]
+      : []
+    const normalized = normalizeStoredSelectValue(field, value)
+    const existingIndex = current.findIndex((item) => valuesAreEqual(item, normalized))
+
+    if (existingIndex >= 0) {
+      current.splice(existingIndex, 1)
+    } else if (normalized !== null) {
+      current.push(normalized)
+    }
+
+    patchModelValue(field.key, current)
+    emitApplyIfNeeded()
+    return
+  }
+
   const nextValue = value === null || value === undefined ? '' : value
   patchModelValue(field.key, nextValue)
   closeFlyout()
@@ -311,7 +384,7 @@ function handleReset() {
   const cleared = { ...props.modelValue }
   for (const field of props.fields) {
     if (field.type === 'heading') continue
-    cleared[field.key] = ''
+    cleared[field.key] = isFieldMultiple(field) ? [] : ''
   }
   emit('update:modelValue', cleared)
   emit('reset')
@@ -319,6 +392,37 @@ function handleReset() {
     emit('apply')
   }
 }
+
+function hideTruncatedLabelTooltip() {
+  hideHoverTooltipForOwner(hideTruncatedLabelTooltip)
+}
+
+function isLabelTruncated(el) {
+  return el instanceof HTMLElement && el.scrollWidth > el.clientWidth + 1
+}
+
+function onTruncatedLabelEnter(event, text) {
+  const el = event.currentTarget
+  if (!isLabelTruncated(el)) {
+    hideTruncatedLabelTooltip()
+    return
+  }
+  showHoverTooltip({
+    ownerHide: hideTruncatedLabelTooltip,
+    text,
+    variant: 'default',
+    wrap: false,
+    triggerRect: el.getBoundingClientRect(),
+  })
+}
+
+function onTruncatedLabelLeave() {
+  hideTruncatedLabelTooltip()
+}
+
+onBeforeUnmount(() => {
+  hideTruncatedLabelTooltip()
+})
 </script>
 
 <style scoped lang="scss">
@@ -527,19 +631,46 @@ function handleReset() {
     color: var(--color-accent, #0d6efd);
   }
 
-  &.filter-menu__option-with-avatar {
+  &.filter-menu__option-with-avatar,
+  &.filter-menu__option--multiple {
     display: flex;
     align-items: center;
     gap: 0.5rem;
   }
 }
 
+.filter-menu__row-value-text,
 .filter-menu__option-label {
-  flex: 1 1 auto;
+  display: block;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.filter-menu__option-label {
+  flex: 1 1 auto;
+}
+
+.filter-menu__option-checkbox {
+  flex: 0 0 auto;
+  width: 1em;
+  height: 1em;
+  min-width: 1em;
+  margin: 0;
+  pointer-events: none;
+  cursor: pointer;
+  border-color: var(--color-border, var(--bs-border-color));
+  background-color: var(--color-primary-background, var(--bs-body-bg));
+
+  &:checked {
+    background-color: var(--color-accent, var(--bs-primary));
+    border-color: var(--color-accent, var(--bs-primary));
+  }
+
+  &:focus {
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--color-accent, var(--bs-primary)) 25%, transparent);
+  }
 }
 
 .filter-menu__row-value-with-avatar {
@@ -549,12 +680,6 @@ function handleReset() {
   gap: 0.375rem;
   max-width: 100%;
   min-width: 0;
-
-  > span:last-child {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
 }
 
 .filter-menu__search.select-box-search {

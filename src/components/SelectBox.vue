@@ -683,7 +683,7 @@ watch(searchQuery, () => {
     right: 0;
     top: 100%;
     margin-top: .25rem;
-    z-index: 100002;
+    z-index: var(--ui-z-overlay-menu);
     width: auto;
     min-width: 100%;
     max-width: 100vw;
@@ -748,7 +748,7 @@ watch(searchQuery, () => {
 
 .fixed-menu {
     position: fixed;
-    z-index: 100002;
+    z-index: var(--ui-z-overlay-menu);
     left: auto;
     right: auto;
     top: auto;
