@@ -19,6 +19,13 @@ const iconMap = {
 const DeviceIcon = computed(() => iconMap[props.device.deviceType] || Globe)
 
 const canRevoke = computed(() => !props.device.isCurrent)
+
+const ipAddressDisplay = computed(() => {
+  const ip = (props.device.ipAddress || '').trim()
+  if (!ip) return '—'
+  const location = (props.device.locationLine || '').trim()
+  return location ? `${ip} (${location})` : ip
+})
 </script>
 
 <template>
@@ -39,11 +46,7 @@ const canRevoke = computed(() => !props.device.isCurrent)
         <dl class="session-card__meta">
           <div class="session-card__meta-row">
             <dt>IP-адрес</dt>
-            <dd>{{ device.ipAddress || '—' }}</dd>
-          </div>
-          <div v-if="device.locationLine" class="session-card__meta-row">
-            <dt>Местоположение</dt>
-            <dd>{{ device.locationLine }}</dd>
+            <dd>{{ ipAddressDisplay }}</dd>
           </div>
           <div class="session-card__meta-row">
             <dt>Последняя активность</dt>

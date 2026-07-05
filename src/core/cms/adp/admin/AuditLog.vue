@@ -217,6 +217,17 @@ function hasDetails(event) {
     || (event.meta && Object.keys(event.meta).length > 0)
 }
 
+function ipLocationTooltip(item) {
+  const ip = (item?.ip_address || '').trim()
+  if (!ip) return ''
+  const location = (item?.ip_location || '').trim()
+  return location || 'Местоположение неизвестно'
+}
+
+function hasIpLocationTooltip(item) {
+  return Boolean((item?.ip_address || '').trim())
+}
+
 const getItemKey = (item) => item.id
 
 function resolveActorQueryParams(actorValue) {
@@ -430,7 +441,14 @@ onMounted(async () => {
           </template>
 
           <template #cell-ip_address="{ item }">
-            <span class="text-muted">{{ item.ip_address || '—' }}</span>
+            <HoverTooltip :text="ipLocationTooltip(item)" wrap>
+              <span
+                class="text-muted audit-ip"
+                :class="{ 'audit-ip--has-location': hasIpLocationTooltip(item) }"
+              >
+                {{ item.ip_address || '—' }}
+              </span>
+            </HoverTooltip>
           </template>
 
           <template #cell-actions="{ item }">
@@ -534,6 +552,12 @@ onMounted(async () => {
 .audit-time {
   white-space: nowrap;
   color: var(--color-secondary-text);
+}
+
+.audit-ip--has-location {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
 }
 
 .audit-action {

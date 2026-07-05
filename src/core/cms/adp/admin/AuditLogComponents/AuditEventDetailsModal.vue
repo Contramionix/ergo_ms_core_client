@@ -1,5 +1,6 @@
 <script setup>
 import ModalCenter from '@/components/ModalCenter.vue'
+import HoverTooltip from '@/components/HoverTooltip.vue'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 
 defineProps({
@@ -13,6 +14,13 @@ function formatValue(value) {
   if (value === null || value === undefined || value === '') return '—'
   if (typeof value === 'object') return JSON.stringify(value)
   return String(value)
+}
+
+function ipLocationTooltip(event) {
+  const ip = (event?.ip_address || '').trim()
+  if (!ip) return ''
+  const location = (event?.ip_location || '').trim()
+  return location || 'Местоположение неизвестно'
 }
 </script>
 
@@ -32,8 +40,11 @@ function formatValue(value) {
         <div v-if="event.entity_label">
           <span class="text-muted">Объект:</span> {{ event.entity_label }}
         </div>
-        <div v-if="event.ip_address">
-          <span class="text-muted">IP:</span> {{ event.ip_address }}
+        <div v-if="event.ip_address" class="audit-detail-meta__ip">
+          <span class="text-muted">IP:</span>
+          <HoverTooltip :text="ipLocationTooltip(event)" wrap>
+            <span class="audit-detail-ip">{{ event.ip_address }}</span>
+          </HoverTooltip>
         </div>
       </div>
 
@@ -79,6 +90,18 @@ function formatValue(value) {
   margin-bottom: 1rem;
   font-size: 0.875rem;
   color: var(--color-primary-text);
+
+  &__ip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+}
+
+.audit-detail-ip {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
 }
 
 .audit-detail-heading {
