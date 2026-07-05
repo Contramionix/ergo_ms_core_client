@@ -1,7 +1,7 @@
 <template>
   <div ref="rootEl" class="filter-menu">
     <label v-if="label" class="form-label mb-1">{{ label }}</label>
-    <button type="button" class="btn btn-light w-100 d-flex align-items-center justify-content-between filter-menu__trigger" :class="{ 'filter-menu__trigger--open': isMainOpen }" :disabled="disabled" @click="toggleMain">
+    <button type="button" class="btn w-100 d-flex align-items-center justify-content-between filter-menu__trigger" :class="{ 'filter-menu__trigger--open': isMainOpen }" :disabled="disabled" @click="toggleMain">
       <span class="filter-menu__trigger-label">{{ triggerText }}</span>
       <ChevronDown class="filter-menu__trigger-chevron" :class="{ 'filter-menu__trigger-chevron--open': isMainOpen }" />
     </button>
@@ -297,6 +297,10 @@ function handleReset() {
   color: var(--color-primary-text);
   font-size: var(--filter-menu-trigger-font-size);
   line-height: 1.5;
+  text-shadow: none;
+  box-shadow: none;
+  --bs-btn-box-shadow: none;
+  --bs-btn-focus-box-shadow: none;
   --bs-btn-font-size: var(--filter-menu-trigger-font-size);
   --bs-btn-line-height: 1.5;
   --bs-btn-padding-y: var(--select-box-item-padding-y);
@@ -305,12 +309,19 @@ function handleReset() {
   text-align: left;
   transition:
     background-color 0.3s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
+    border-color 0.3s ease;
 
   &:hover:not(:disabled),
   &.filter-menu__trigger--open {
     background-color: var(--color-hover-background);
+    box-shadow: none;
+  }
+
+  &:focus,
+  &:focus-visible,
+  &:active,
+  &.show {
+    box-shadow: none;
   }
 }
 
@@ -378,15 +389,15 @@ function handleReset() {
 </style>
 
 <style lang="scss">
-.filter-menu__panel.fixed-menu,
-.filter-menu__flyout.fixed-menu {
+.filter-menu__panel.fixed-menu.dropdown-menu,
+.filter-menu__flyout.fixed-menu.dropdown-menu {
   position: fixed;
   margin-top: 0;
   padding: 0;
   background-color: var(--color-primary-background);
   border: 1px solid var(--color-border);
   border-radius: 0.375rem;
-  box-shadow: 0 0.25rem 0.75rem rgba(34, 48, 62, 0.14);
+  box-shadow: var(--ui-shadow-lg);
   overflow: hidden;
   box-sizing: border-box;
   font-size: var(--select-box-font-size, 1rem);
