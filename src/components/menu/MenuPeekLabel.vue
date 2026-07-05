@@ -19,10 +19,15 @@ const props = defineProps({
 
 const peekState = inject(MENU_PEEK_STATE_KEY, null)
 
-// В свёрнутом режиме текст не прячем через opacity: он раскрывается
-// физически из-под правого края меню по мере роста ширины (clipping),
-// поэтому появление всегда синхронно с шириной панели.
-const usePeekReveal = computed(() => peekState?.value?.collapsed === true)
+// Peek-reveal только при hover или анимации ширины. В устойчивом collapsed
+// без hover текст прячем через .hidden — иначе flex оставляет место под 1-й символ.
+const usePeekReveal = computed(() => {
+  const state = peekState?.value
+  if (!state?.collapsed) {
+    return false
+  }
+  return state.peekActive === true || state.layoutSync === true
+})
 const labelTitle = computed(() => props.title || props.text)
 </script>
 

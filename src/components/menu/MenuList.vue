@@ -250,6 +250,7 @@ provide(MENU_ICON_SIZES_KEY, menuIconSizes)
 const menuPeekState = computed(() => ({
   collapsed: isCollapsed.value,
   peekActive: isCollapsed.value && isHovering.value,
+  layoutSync: isLayoutTransitionActive.value,
 }))
 provide(MENU_PEEK_STATE_KEY, menuPeekState)
 

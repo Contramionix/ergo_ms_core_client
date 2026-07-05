@@ -34,9 +34,12 @@ const emit = defineEmits(['close'])
 
 const isClosing = ref(false)
 const isPanelOpen = ref(false)
+const wasEverOpened = ref(false)
 const titleId = useId()
 
-const isRendered = computed(() => props.visible || isClosing.value)
+// Панель остаётся в DOM после первого открытия — иначе при каждом open
+// элемент создаётся заново и браузер не успевает отрисовать translateX(-100%).
+const isRendered = computed(() => wasEverOpened.value || props.visible || isClosing.value)
 
 const panelStyle = computed(() => ({
   '--side-drawer-left': props.left,
@@ -60,9 +63,11 @@ async function openPanel() {
   isPanelOpen.value = false
   await nextTick()
   requestAnimationFrame(() => {
-    if (props.visible && !isClosing.value) {
-      isPanelOpen.value = true
-    }
+    requestAnimationFrame(() => {
+      if (props.visible && !isClosing.value) {
+        isPanelOpen.value = true
+      }
+    })
   })
 }
 
@@ -82,6 +87,9 @@ function onKeydown(event) {
 watch(
   () => props.visible,
   (isVisible) => {
+    if (isVisible) {
+      wasEverOpened.value = true
+    }
     if (!isVisible) {
       isPanelOpen.value = false
       isClosing.value = false
@@ -90,6 +98,7 @@ watch(
     isClosing.value = false
     openPanel()
   },
+  { immediate: true },
 )
 
 watch(
@@ -118,7 +127,10 @@ defineExpose({ requestClose })
     <template v-if="isRendered">
       <div
         class="side-drawer-backdrop"
-        :class="{ 'side-drawer-backdrop--visible': isPanelOpen }"
+        :class="{
+          'side-drawer-backdrop--visible': isPanelOpen,
+          'side-drawer-backdrop--latent': !visible && !isClosing,
+        }"
         :style="panelStyle"
         @click="onBackdropClick"
       />
@@ -127,10 +139,12 @@ defineExpose({ requestClose })
         class="side-drawer"
         :class="{
           'side-drawer--open': isPanelOpen,
+          'side-drawer--latent': !visible && !isClosing,
         }"
         :style="panelStyle"
         role="dialog"
         aria-modal="true"
+        :aria-hidden="!isPanelOpen && !isClosing"
         :aria-labelledby="title ? titleId : undefined"
         tabindex="-1"
       >
@@ -180,6 +194,14 @@ $drawer-anchor-transition: 0.3s ease-in-out;
   &--visible {
     opacity: 1;
   }
+
+  &:not(.side-drawer-backdrop--visible) {
+    pointer-events: none;
+  }
+
+  &--latent {
+    visibility: hidden;
+  }
 }
 
 .side-drawer {
@@ -202,6 +224,16 @@ $drawer-anchor-transition: 0.3s ease-in-out;
 
   &--open {
     transform: translateX(0);
+  }
+
+  &:not(.side-drawer--open) {
+    pointer-events: none;
+  }
+
+  // translateX(-100%) оставляет правый край у меню — часть панели всё ещё над ним.
+  // После завершения анимации закрытия прячем как старый offcanvas BI.
+  &--latent {
+    visibility: hidden;
   }
 }
 
