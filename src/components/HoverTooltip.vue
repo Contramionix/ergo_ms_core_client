@@ -1,10 +1,9 @@
 <script setup>
 import { ref, onBeforeUnmount, onMounted, watch, nextTick } from 'vue'
 import {
-  hideHoverTooltip,
   hideHoverTooltipForOwner,
+  hideAllHoverTooltips,
   showHoverTooltip,
-  scheduleHideHoverTooltip,
 } from '@/js/utils/hoverTooltipLayer.js'
 
 const props = defineProps({
@@ -30,11 +29,14 @@ function resolveTriggerTarget() {
 }
 
 function hideNow() {
-  hideHoverTooltip(hideNow)
+  hideHoverTooltipForOwner(hideNow)
 }
 
 function onEnter() {
-  if (!props.text) return
+  if (!props.text) {
+    hideAllHoverTooltips()
+    return
+  }
 
   const el = triggerTarget || resolveTriggerTarget()
   if (!el) return
@@ -49,7 +51,7 @@ function onEnter() {
 }
 
 function onLeave() {
-  scheduleHideHoverTooltip(hideNow, 100)
+  hideHoverTooltipForOwner(hideNow)
 }
 
 function bindEvents() {
