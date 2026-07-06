@@ -1,19 +1,18 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { CircleUserRound, Power, Building2 } from 'lucide-vue-next'
+import { CircleUserRound, Power } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { apiClient } from '@/js/api/manager'
 import { logout as authLogout } from '@/core/cms/adp/js/auth-index'
 import { useDropdown } from '@/composables/useDropdown.js'
-import { tokenService } from '@/core/cms/js/tokenService.js'
-import { hasAnyModulePermission } from '@/core/cms/adp/js/accessControl.js'
+import { collectVisibleHeaderUserMenuItems } from '@/integrations/headerUserMenu.js'
 
 const userStore = useUserStore()
 const emit = defineEmits(['dropdown-toggle'])
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 
-const canShowOrganizationTab = ref(false)
+const extensionItems = ref([])
 
 const userName = computed(() => userStore.menuUserName)
 
@@ -23,54 +22,30 @@ const userEmail = computed(() => {
 
 const baseMenuItems = [
   {
-    id: 1,
+    id: 'profile',
+    order: 10,
     title: 'Профиль',
     icon: CircleUserRound,
     link: { name: 'User' },
   },
   {
-    id: 3,
+    id: 'logout',
+    order: 100,
     title: 'Выход',
     icon: Power,
     link: { name: 'logout' },
   },
 ]
 
-const organizationMenuItem = {
-  id: 2,
-  title: 'Организация',
-  icon: Building2,
-  link: { name: 'OrganizationSettingsMain' },
-}
-
 const menuItems = computed(() => {
   const items = baseMenuItems.slice()
-  if (canShowOrganizationTab.value) {
-    items.splice(1, 0, organizationMenuItem)
-  }
+  const logoutIndex = items.findIndex((item) => item.link?.name === 'logout')
+  items.splice(logoutIndex, 0, ...extensionItems.value)
   return items
 })
 
-/**
- * Проверяет, должна ли отображаться вкладка "Организация".
- * Вкладка отображается только если:
- * 1. Пользователь авторизован в организацию (есть organization_id в JWT)
- * 2. Пользователь имеет права на настройки организации (org_settings или org_manage)
- */
-const checkOrganizationTabVisibility = async () => {
-  const hasActiveOrg = tokenService.hasActiveOrganization()
-  
-  if (!hasActiveOrg) {
-    canShowOrganizationTab.value = false
-    return
-  }
-  
-  const hasOrgPermissions = await hasAnyModulePermission('organizations', [
-    'org_settings',
-    'org_manage'
-  ])
-  
-  canShowOrganizationTab.value = hasOrgPermissions
+const refreshExtensionItems = async () => {
+  extensionItems.value = await collectVisibleHeaderUserMenuItems()
 }
 
 defineExpose({
@@ -99,12 +74,12 @@ onMounted(async () => {
     await userStore.initializeUser()
   }
 
-  await checkOrganizationTabVisibility()
+  await refreshExtensionItems()
 })
 
 watch(isOpen, async (newValue) => {
   if (newValue) {
-    await checkOrganizationTabVisibility()
+    await refreshExtensionItems()
   }
 })
 </script>
