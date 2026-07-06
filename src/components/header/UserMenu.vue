@@ -3,6 +3,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { CircleUserRound, Power } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import UserAvatar from '@/components/UserAvatar.vue'
+import HoverTooltip from '@/components/HoverTooltip.vue'
 import { apiClient } from '@/js/api/manager'
 import { logout as authLogout } from '@/core/cms/adp/js/auth-index'
 import { useDropdown } from '@/composables/useDropdown.js'
@@ -69,6 +70,20 @@ const handleLogout = async () => {
   closeDropdown()
 }
 
+async function handleTrailingAction(item) {
+  if (!item.trailingAction?.onClick) {
+    return
+  }
+
+  try {
+    await item.trailingAction.onClick()
+  } catch (error) {
+    logError('Ошибка действия пункта меню:', error)
+  }
+
+  closeDropdown()
+}
+
 onMounted(async () => {
   if (!userStore.isInitialized) {
     await userStore.initializeUser()
@@ -114,6 +129,24 @@ watch(isOpen, async (newValue) => {
           </span>
           <span>{{ item.title }}</span>
         </button>
+        <div v-else-if="item.trailingAction" class="user-menu-item-row" :style="{ transitionDelay: `${(index + 1) * 50}ms` }">
+          <RouterLink :to="item.link" class="dropdown-item header-dropdown-item user-menu-item-row__link" active-class="active" @click="closeDropdown">
+            <span class="icon-flex">
+              <component :is="item.icon" :size="22" />
+            </span>
+            <span>{{ item.title }}</span>
+          </RouterLink>
+          <HoverTooltip :text="item.trailingAction.title">
+            <button
+              type="button"
+              class="user-menu-item-trailing"
+              :aria-label="item.trailingAction.title"
+              @click.stop="handleTrailingAction(item)"
+            >
+              <component :is="item.trailingAction.icon" :size="18" />
+            </button>
+          </HoverTooltip>
+        </div>
         <RouterLink v-else :to="item.link" class="dropdown-item header-dropdown-item" active-class="active" :style="{ transitionDelay: `${(index + 1) * 50}ms` }" @click="closeDropdown">
           <span class="icon-flex">
             <component :is="item.icon" :size="22" />
@@ -174,6 +207,45 @@ watch(isOpen, async (newValue) => {
 
 .dropdown-header :deep(.user-avatar-image) {
   border-width: 1px;
+}
+
+.user-menu-item-row {
+  display: flex;
+  align-items: stretch;
+
+  :deep(.hover-tooltip) {
+    flex-shrink: 0;
+    align-self: stretch;
+  }
+}
+
+.user-menu-item-row__link {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-menu-item-trailing {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: var(--bs-secondary-color);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+
+  &:hover {
+    background-color: var(--bs-danger-bg-subtle, #f8d7da);
+    color: var(--bs-danger);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--bs-danger-bg-subtle, #f8d7da);
+  }
 }
 </style>
 

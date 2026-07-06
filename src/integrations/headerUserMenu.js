@@ -11,6 +11,13 @@ import { moduleManager } from '@/modules/index.js'
 export const HEADER_USER_MENU_ITEMS_GROUP = 'header.userMenu.items'
 
 /**
+ * @typedef {Object} HeaderUserMenuTrailingAction
+ * @property {import('vue').Component} icon
+ * @property {string} title — aria-label / tooltip
+ * @property {() => void | Promise<void>} onClick
+ */
+
+/**
  * @typedef {Object} HeaderUserMenuItem
  * @property {string} id
  * @property {number} order
@@ -18,6 +25,7 @@ export const HEADER_USER_MENU_ITEMS_GROUP = 'header.userMenu.items'
  * @property {import('vue').Component} icon
  * @property {import('vue-router').RouteLocationRaw} link
  * @property {() => boolean | Promise<boolean>} [isVisible]
+ * @property {HeaderUserMenuTrailingAction} [trailingAction]
  */
 
 /**
