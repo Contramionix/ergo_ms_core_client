@@ -1,3 +1,5 @@
+import { parseApiErrorData } from '@/js/utils/apiErrorMessage.js'
+
 const SENSITIVE_KEYS = new Set([
   'password',
   'password_confirm',
@@ -46,18 +48,9 @@ function extractMessageFromData(data) {
     return String(data)
   }
 
-  const directKeys = ['error', 'message', 'detail', 'non_field_errors']
-  for (const key of directKeys) {
-    const value = data[key]
-    if (value == null) {
-      continue
-    }
-    if (typeof value === 'string') {
-      return truncate(value)
-    }
-    if (Array.isArray(value) && value.length) {
-      return truncate(String(value[0]))
-    }
+  const directMessage = parseApiErrorData(data, { fallback: '', mode: 'first' })
+  if (directMessage) {
+    return truncate(directMessage)
   }
 
   const fieldMessages = []

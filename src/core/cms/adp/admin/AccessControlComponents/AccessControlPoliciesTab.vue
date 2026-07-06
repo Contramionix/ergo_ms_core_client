@@ -2,7 +2,7 @@
 import PermissionTableHeader from '@/core/cms/adp/admin/PermissionsComponents/PermissionTableHeader.vue'
 import PermissionTable from '@/core/cms/adp/admin/PermissionsComponents/PermissionTable.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
-import { GetPolicies, GetRoles, GetRoleGroups } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { getPolicies, getRoles, getRoleGroups } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { ref, onMounted } from 'vue'
 
 const rows = ref([])
@@ -11,7 +11,7 @@ const roleGroups = ref([])
 const isLoading = ref(false)
 
 const loadPolicies = async () => {
-  const policies = await GetPolicies()
+  const policies = await getPolicies()
   rows.value = policies.map((policy) => ({
     id: policy.id,
     name: policy.name,
@@ -39,8 +39,8 @@ const updatePermissions = async () => {
 }
 
 const loadRefs = async () => {
-  roles.value = await GetRoles()
-  roleGroups.value = await GetRoleGroups()
+  roles.value = await getRoles()
+  roleGroups.value = await getRoleGroups()
 }
 
 onMounted(async () => {

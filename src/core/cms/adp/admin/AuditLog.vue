@@ -10,7 +10,7 @@ import { useToast } from '@/js/utils/toast.js'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { logError } from '@/js/utils/logError.js'
 import { buildActorNameVariants, parseErgoFullNameParts } from '@/js/userAvatar.js'
-import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import DataTable from '@/components/DataTable.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
@@ -349,7 +349,7 @@ async function exportCsv() {
 
 onMounted(async () => {
   try {
-    const accessData = await CheckAccessToAdminPanel()
+    const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
       toast.error('У вас нет доступа к административной панели')
       router.push({ name: 'AccessDenied' })
@@ -502,6 +502,9 @@ onMounted(async () => {
 
 .audit-filter-menu {
   min-width: 150px;
+
+  --filter-menu-trigger-font-size: 1rem;
+  --select-box-font-size: 0.875rem;
 }
 
 .audit-toolbar .actions-wrapper {

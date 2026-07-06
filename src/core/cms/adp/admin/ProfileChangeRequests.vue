@@ -10,7 +10,7 @@ import SearchInput from '@/components/SearchInput.vue'
 import SelectBox from '@/components/SelectBox.vue'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { confirmAction } from '@/js/utils/confirm.js'
-import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import {
   fetchAdminProfileChangeRequests,
   approveProfileChangeRequest,
@@ -107,7 +107,7 @@ const loadRequests = async () => {
 
 onMounted(async () => {
   try {
-    const accessData = await CheckAccessToAdminPanel()
+    const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
       toast.error('У вас нет доступа к административной панели')
       router.push({ name: 'AccessDenied' })

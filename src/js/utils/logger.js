@@ -1,21 +1,9 @@
 /**
- * Система логирования с уровнями
- * 
- * Переопределяет стандартные методы console на основе уровня логирования
- * 
- * Уровни логирования (от самого низкого к самому высокому):
- * - debug: console.log, console.debug (только для разработки)
- * - info: console.info
- * - warn: console.warn
- * - error: console.error
- * - critical: только console.error (production по умолчанию)
- * - silent: отключить все логи
- * 
- * В production по умолчанию работает уровень 'critical' (только console.error)
- * В development работают все уровни
+ * Система логирования с уровнями.
  */
 
-// Уровни логирования (от самого низкого к самому высокому)
+import { clientEnv } from '@/js/clientEnv.js'
+
 const LOG_LEVELS = {
   debug: 0,    // console.log, console.debug
   info: 1,     // console.info
@@ -39,7 +27,7 @@ class ConsoleLogger {
     // Определяем текущий уровень логирования из переменных окружения
     // По умолчанию: development = debug, production = critical
     const isDev = import.meta.env.DEV
-    const envLogLevel = import.meta.env.VITE_LOG_LEVEL
+    const envLogLevel = clientEnv.logLevel
     
     this.currentLevel = LOG_LEVELS[envLogLevel] ?? (isDev ? LOG_LEVELS.debug : LOG_LEVELS.critical)
     this.isProd = import.meta.env.PROD

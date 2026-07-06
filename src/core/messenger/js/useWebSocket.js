@@ -1,99 +1,102 @@
 import { ref, onUnmounted } from 'vue'
-import { buildWebSocketUrl } from '@/js/api/baseUrl.js'
-import { isHttpPollingMode } from '@/js/realtime/config.js'
-
-const RECONNECT_DELAYS = [1000, 2000, 4000]
-const MAX_RECONNECT_ATTEMPTS = 3
+import { createWebSocketTransport } from '@/js/realtime/transports/websocket.js'
+import { getRealtimeClient, messengerTopic } from '@/js/realtime/RealtimeClient.js'
+import { isHttpPollingMode, isSseMode } from '@/js/realtime/config.js'
 
 export function useWebSocket() {
-  const socket = ref(null)
   const connected = ref(false)
 
-  let reconnectAttempt = 0
-  let reconnectTimer = null
-  let currentUrl = null
+  let wsConnection = null
+  let sseUnsubscribers = []
+  let currentContentType = null
+  let currentObjectId = null
   let messageHandler = null
   let intentionalClose = false
-
-  function buildWsUrl(contentType, objectId) {
-    return buildWebSocketUrl(`/ws/messenger/${contentType}/${objectId}/`)
-  }
 
   function connect(contentType, objectId, onMessage) {
     disconnect()
     messageHandler = onMessage
+    currentContentType = contentType
+    currentObjectId = objectId
 
-    if (isHttpPollingMode()) {
-      connected.value = false
+    if (isHttpPollingMode() || isSseMode()) {
+      if (isSseMode()) {
+        setupSse(contentType, objectId)
+      } else {
+        connected.value = false
+      }
       return
     }
 
     intentionalClose = false
-    currentUrl = buildWsUrl(contentType, objectId)
-    _open()
-  }
-
-  function _open() {
-    if (!currentUrl) return
-    try {
-      const openedAt = Date.now()
-      socket.value = new WebSocket(currentUrl)
-
-      socket.value.onopen = () => {
+    const path = `/ws/messenger/${contentType}/${objectId}/`
+    wsConnection = createWebSocketTransport(path, {
+      onAuthenticated: () => {
         connected.value = true
-        reconnectAttempt = 0
-      }
-
-      socket.value.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (messageHandler) messageHandler(data)
-        } catch { /* ignore parse errors */ }
-      }
-
-      socket.value.onclose = () => {
+      },
+      onMessage: (_event, data) => {
+        messageHandler?.(data)
+      },
+      onClose: (_event, wasIntentional) => {
         connected.value = false
-        const elapsed = Date.now() - openedAt
-        if (!intentionalClose && elapsed > 500) _scheduleReconnect()
-      }
-
-      socket.value.onerror = () => {
+        if (wasIntentional) {
+          wsConnection = null
+        }
+      },
+      onError: () => {
         connected.value = false
-      }
-    } catch {
-      connected.value = false
-    }
+      },
+    })
   }
 
-  function _scheduleReconnect() {
-    if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) return
-    if (reconnectTimer) clearTimeout(reconnectTimer)
-    const delay = RECONNECT_DELAYS[Math.min(reconnectAttempt, RECONNECT_DELAYS.length - 1)]
-    reconnectAttempt++
-    reconnectTimer = setTimeout(_open, delay)
+  function setupSse(contentType, objectId) {
+    const client = getRealtimeClient()
+    const topic = messengerTopic(contentType, objectId)
+    void client.subscribe(topic)
+    client.ensureConnected({
+      onAuthenticated: () => {
+        connected.value = true
+      },
+      onClose: () => {
+        connected.value = false
+      },
+    })
+
+    const eventTypes = ['new_message', 'message_edited', 'message_deleted', 'typing_indicator']
+    for (const eventType of eventTypes) {
+      const off = client.on(eventType, (_event, data) => {
+        messageHandler?.(data)
+      })
+      sseUnsubscribers.push(off)
+    }
   }
 
   function send(data) {
-    if (isHttpPollingMode()) {
+    if (isHttpPollingMode() || isSseMode()) {
       return
     }
-    if (socket.value && socket.value.readyState === WebSocket.OPEN) {
-      socket.value.send(JSON.stringify(data))
+    const socket = wsConnection?.getSocket?.()
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(data))
     }
   }
 
-  function disconnect() {
+  async function disconnect() {
     intentionalClose = true
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer)
-      reconnectTimer = null
+    if (isSseMode() && currentContentType && currentObjectId) {
+      const client = getRealtimeClient()
+      await client.unsubscribe(messengerTopic(currentContentType, currentObjectId))
     }
-    if (socket.value) {
-      socket.value.close()
-      socket.value = null
+    for (const off of sseUnsubscribers) {
+      off?.()
     }
+    sseUnsubscribers = []
+    wsConnection?.close?.()
+    wsConnection = null
     connected.value = false
-    currentUrl = null
+    currentContentType = null
+    currentObjectId = null
+    intentionalClose = false
   }
 
   onUnmounted(disconnect)

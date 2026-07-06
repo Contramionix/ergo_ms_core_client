@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import ModalCenter from '@/components/ModalCenter.vue'
-import { CreateRole } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { createRole } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -38,7 +38,7 @@ const submitForm = async () => {
 
   try {
     isSubmitting.value = true
-    await CreateRole({
+    await createRole({
       name: name.value.trim(),
       role_type: DEFAULT_ROLE_TYPE,
       description: description.value || '',

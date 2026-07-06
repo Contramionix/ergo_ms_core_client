@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { Settings, Trash2 } from 'lucide-vue-next'
 import ChangeCategoryForm from '@/core/cms/adp/admin/CategoriesComponents/SubmitCategoryChange.vue'
-import { DeleteRole } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { deleteRole } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 
 const props = defineProps({
   headers: { type: Array, required: true },
@@ -62,8 +62,8 @@ const openEditModal = row => {
   showEditModal.value = true
 }
 
-const deleteRole = async (roleId) => {
-  await DeleteRole(roleId)
+const removeRole = async (roleId) => {
+  await deleteRole(roleId)
   emit('updateCategories')
 }
 </script>
@@ -105,7 +105,7 @@ const deleteRole = async (roleId) => {
                 <button
                   class="btn-action btn-action--delete"
                   :disabled="row.is_system"
-                  @click="deleteRole(row.id)"
+                  @click="removeRole(row.id)"
                   type="button"
                   aria-label="Удалить роль"
                 >

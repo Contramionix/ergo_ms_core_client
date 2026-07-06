@@ -22,7 +22,7 @@ import {
   buildUserProfilePayload,
   applyProfileApiErrors,
 } from '@/core/cms/adp/js/userProfileForm.js'
-import { AssignRoleToUser } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { assignRoleToUser } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import SelectBox from '@/components/SelectBox.vue'
 import { mapRoleSelectOptions, mapRoleGroupSelectOptions } from '@/core/cms/js/adminSelectOptions.js'
 
@@ -145,7 +145,7 @@ const handleSave = async () => {
     await updateAdminUser(props.userId, dataToSend)
 
     if (selectedRoleId.value) {
-      await AssignRoleToUser({
+      await assignRoleToUser({
         user_id: props.userId,
         role_id: selectedRoleId.value,
         role_group_ids: selectedGroupIds.value,

@@ -11,7 +11,7 @@ import fs from 'fs'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
-const { applyNginxViteEnv } = require('../deployment/nginx/nginx-env.cjs')
+const { applyNginxClientEnv, nginxEnabled } = require('../deployment/nginx/nginx-env.cjs')
 
 // Получение абсолютного пути к файлу .env в корне проекта
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -38,13 +38,9 @@ if (fs.existsSync(mainEnvPath)) {
   console.warn('⚠️  Файл .env не найден в корне проекта:', mainEnvPath)
 }
 
-const runtimeEnv = applyNginxViteEnv(process.env)
+const runtimeEnv = applyNginxClientEnv(process.env)
 
-function resolvePollIntervalMs(viteKey, serverKey, defaultMs) {
-  const viteValue = runtimeEnv[viteKey]
-  if (viteValue !== undefined && viteValue !== '') {
-    return String(viteValue)
-  }
+function resolvePollIntervalMs(serverKey, defaultMs) {
   const serverValue = runtimeEnv[serverKey]
   if (serverValue !== undefined && serverValue !== '') {
     const seconds = Number.parseInt(String(serverValue), 10)
@@ -53,6 +49,42 @@ function resolvePollIntervalMs(viteKey, serverKey, defaultMs) {
     }
   }
   return String(defaultMs)
+}
+
+function buildClientEnvDefines(env) {
+  const useRelativeApi = env.CLIENT_USE_RELATIVE_API
+    || (nginxEnabled(env) ? 'true' : '')
+  const logLevel = env.CLIENT_LOG_LEVEL
+    || (env.CLIENT_DEPLOY_TYPE === 'production' ? 'critical' : 'debug')
+
+  const values = {
+    CLIENT_API_HOST: env.API_HOST || 'localhost',
+    CLIENT_API_PORT: env.API_PORT || '8000',
+    CLIENT_USE_RELATIVE_API: useRelativeApi,
+    CLIENT_DEFAULT_THEME: env.CLIENT_DEFAULT_THEME || 'light',
+    CLIENT_LOG_LEVEL: logLevel,
+    CLIENT_DISABLED_MODULES: env.DISABLED_MODULES || '',
+    CLIENT_PASSWORD_MIN_LENGTH: env.API_PASSWORD_MIN_LENGTH || '8',
+    CLIENT_PASSWORD_MAX_LENGTH: env.API_PASSWORD_MAX_LENGTH || '128',
+    CLIENT_PASSWORD_REQUIRE_LOWERCASE: env.API_PASSWORD_REQUIRE_LOWERCASE ?? 'true',
+    CLIENT_PASSWORD_REQUIRE_UPPERCASE: env.API_PASSWORD_REQUIRE_UPPERCASE ?? 'false',
+    CLIENT_PASSWORD_REQUIRE_DIGIT: env.API_PASSWORD_REQUIRE_DIGIT ?? 'true',
+    CLIENT_PASSWORD_REQUIRE_SPECIAL: env.API_PASSWORD_REQUIRE_SPECIAL ?? 'false',
+    CLIENT_REALTIME_TRANSPORT: env.REALTIME_TRANSPORT || 'websocket',
+    CLIENT_REALTIME_POLL_PRESENCE_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_PRESENCE_INTERVAL', 45000),
+    CLIENT_REALTIME_POLL_NOTIFICATIONS_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_NOTIFICATIONS_INTERVAL', 15000),
+    CLIENT_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_ADMIN_PRESENCE_INTERVAL', 10000),
+    CLIENT_REALTIME_POLL_MESSENGER_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_MESSENGER_INTERVAL', 5000),
+    CLIENT_BI_PREVIEW_ITEMS_PER_PAGE: env.CLIENT_BI_PREVIEW_ITEMS_PER_PAGE || '20',
+    CLIENT_TASKS_MAX_ATTACHMENT_SIZE_MB: env.CLIENT_TASKS_MAX_ATTACHMENT_SIZE_MB || '25',
+  }
+
+  return Object.fromEntries(
+    Object.entries(values).map(([key, value]) => [
+      `import.meta.env.${key}`,
+      JSON.stringify(String(value ?? '')),
+    ]),
+  )
 }
 
 
@@ -172,57 +204,8 @@ export default defineConfig({
   },
 
 
-  // Экспорт переменных окружения в клиентский код
-  define: {
-    'import.meta.env.VITE_API_HOST': JSON.stringify(runtimeEnv.API_HOST),
-    'import.meta.env.VITE_API_PORT': JSON.stringify(runtimeEnv.API_PORT),
-    'import.meta.env.VITE_DEFAULT_THEME': JSON.stringify(runtimeEnv.VITE_DEFAULT_THEME || 'light'),
-    'import.meta.env.VITE_LOG_LEVEL': JSON.stringify(
-      runtimeEnv.VITE_LOG_LEVEL
-        || (runtimeEnv.CLIENT_DEPLOY_TYPE === 'production' ? 'critical' : 'debug'),
-    ),
-    'import.meta.env.VITE_USE_RELATIVE_API': JSON.stringify(
-      runtimeEnv.VITE_USE_RELATIVE_API
-        || (runtimeEnv.NGINX_ENABLED === 'true' ? 'true' : ''),
-    ),
-    'import.meta.env.VITE_REALTIME_TRANSPORT': JSON.stringify(
-      runtimeEnv.VITE_REALTIME_TRANSPORT || runtimeEnv.REALTIME_TRANSPORT || 'websocket',
-    ),
-    'import.meta.env.VITE_REALTIME_POLL_PRESENCE_INTERVAL': JSON.stringify(
-      resolvePollIntervalMs(
-        'VITE_REALTIME_POLL_PRESENCE_INTERVAL',
-        'REALTIME_POLL_PRESENCE_INTERVAL',
-        45000,
-      ),
-    ),
-    'import.meta.env.VITE_REALTIME_POLL_NOTIFICATIONS_INTERVAL': JSON.stringify(
-      resolvePollIntervalMs(
-        'VITE_REALTIME_POLL_NOTIFICATIONS_INTERVAL',
-        'REALTIME_POLL_NOTIFICATIONS_INTERVAL',
-        15000,
-      ),
-    ),
-    'import.meta.env.VITE_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL': JSON.stringify(
-      resolvePollIntervalMs(
-        'VITE_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL',
-        'REALTIME_POLL_ADMIN_PRESENCE_INTERVAL',
-        10000,
-      ),
-    ),
-    'import.meta.env.VITE_REALTIME_POLL_MESSENGER_INTERVAL': JSON.stringify(
-      resolvePollIntervalMs(
-        'VITE_REALTIME_POLL_MESSENGER_INTERVAL',
-        'REALTIME_POLL_MESSENGER_INTERVAL',
-        5000,
-      ),
-    ),
-    'import.meta.env.VITE_PASSWORD_MIN_LENGTH': JSON.stringify(process.env.API_PASSWORD_MIN_LENGTH || '8'),
-    'import.meta.env.VITE_PASSWORD_MAX_LENGTH': JSON.stringify(process.env.API_PASSWORD_MAX_LENGTH || '128'),
-    'import.meta.env.VITE_PASSWORD_REQUIRE_LOWERCASE': JSON.stringify(process.env.API_PASSWORD_REQUIRE_LOWERCASE || 'true'),
-    'import.meta.env.VITE_PASSWORD_REQUIRE_UPPERCASE': JSON.stringify(process.env.API_PASSWORD_REQUIRE_UPPERCASE || 'false'),
-    'import.meta.env.VITE_PASSWORD_REQUIRE_DIGIT': JSON.stringify(process.env.API_PASSWORD_REQUIRE_DIGIT || 'true'),
-    'import.meta.env.VITE_PASSWORD_REQUIRE_SPECIAL': JSON.stringify(process.env.API_PASSWORD_REQUIRE_SPECIAL || 'false'),
-  },
+  // Настройки клиента из .env (CLIENT_*, API_*, DISABLED_MODULES, REALTIME_*)
+  define: buildClientEnvDefines(runtimeEnv),
 
   // Оптимизация зависимостей
   optimizeDeps: {

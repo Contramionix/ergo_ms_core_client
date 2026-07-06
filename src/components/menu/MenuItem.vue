@@ -176,19 +176,21 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
         <ChevronRight :size="iconSizes.chevronNested" :class="{ rotated: isOpen }" />
       </div>
     </div>
-    <ul v-if="isGroup" class="menu-item__children" :class="{ 'is-open': isOpen }">
-      <MenuItem
-        v-for="(child, index) in allChildren"
-        :key="index"
-        :item="child"
-        :level="level + 1"
-        :isHovering="isHovering"
-        :openStates="openStates"
-        :style="{ transitionDelay: `${index * 30}ms` }"
-        @navigate="$emit('navigate', $event)"
-        @toggle-group="$emit('toggle-group', $event)"
-      />
-    </ul>
+    <div v-if="isGroup" class="menu-item__children-wrap" :class="{ 'is-open': isOpen }">
+      <ul class="menu-item__children">
+        <MenuItem
+          v-for="(child, index) in allChildren"
+          :key="index"
+          :item="child"
+          :level="level + 1"
+          :isHovering="isHovering"
+          :openStates="openStates"
+          :style="{ transitionDelay: `${index * 30}ms` }"
+          @navigate="$emit('navigate', $event)"
+          @toggle-group="$emit('toggle-group', $event)"
+        />
+      </ul>
+    </div>
   </li>
 </template>
 
@@ -235,7 +237,7 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
-  line-height: 1;
+  line-height: var(--menu-label-line-height, 1.25);
 }
 
 .menu-item__chevron svg {
@@ -270,34 +272,39 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
 }
 
 // Дочерние элементы
-.menu-item__children {
-  overflow: hidden;
-  max-height: 0;
+.menu-item__children-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
   opacity: 0;
-  padding: 0;
-  margin: 0;
-  list-style: none;
   transition:
-    max-height 0.5s ease,
-    opacity 0.5s ease-in-out;
-    
+    grid-template-rows $transition,
+    opacity $transition;
+
   &.is-open {
-    max-height: none;
+    grid-template-rows: 1fr;
     opacity: 1;
   }
 }
 
-// Анимация появления дочерних элементов
-.menu-item__children .menu-item {
-  opacity: 0;
-  transform: translateY(-10px);
-  transition:
-    opacity 0.3s ease,
-    transform 0.3s ease;
+.menu-item__children {
+  overflow: hidden;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
 }
 
-.menu-item__children.is-open .menu-item {
+// Анимация появления дочерних элементов
+.menu-item__children-wrap:not(.is-open) .menu-item {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.menu-item__children-wrap.is-open .menu-item {
   opacity: 1;
   transform: translateY(0);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
 }
 </style> 

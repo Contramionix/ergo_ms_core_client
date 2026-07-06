@@ -2,7 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SelectBox from '@/components/SelectBox.vue'
-import { UpdatePolicy } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { updatePolicy } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import {
   POLICY_TYPE_OPTIONS,
   POLICY_ACTION_OPTIONS,
@@ -109,7 +109,7 @@ const submitForm = async () => {
 
   try {
     isSubmitting.value = true
-    await UpdatePolicy(policyId.value, {
+    await updatePolicy(policyId.value, {
       name: name.value.trim(),
       policy_type: policyType.value,
       action: action.value,

@@ -5,7 +5,7 @@ import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useModulePagePermissions } from '@/core/cms/adp/admin/js/useModulePagePermissions'
 import { useToast } from '@/js/utils/toast.js'
 import { apiClient } from '@/js/api/manager'
-import { CreatePolicy, UpdatePolicy, DeletePolicy } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { createPolicy, updatePolicy, deletePolicy } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 
 const {
   modules,
@@ -146,11 +146,11 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
 
     if (state === 'inherit') {
       if (current?.id) {
-        await DeletePolicy(current.id)
+        await deletePolicy(current.id)
       }
     } else if (state === 'allow') {
       if (current) {
-        await UpdatePolicy(current.id, {
+        await updatePolicy(current.id, {
           name: current.name || defaultName,
           policy_type: 'url',
           action: 'allow',
@@ -161,7 +161,7 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
           role_group: roleGroup.id,
         })
       } else {
-        await CreatePolicy({
+        await createPolicy({
           name: defaultName,
           policy_type: 'url',
           action: 'allow',
@@ -174,7 +174,7 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
       }
     } else if (state === 'deny') {
       if (current) {
-        await UpdatePolicy(current.id, {
+        await updatePolicy(current.id, {
           name: current.name || defaultName,
           policy_type: 'url',
           action: 'deny',
@@ -185,7 +185,7 @@ const setPageAccessStateForGroup = async (roleGroup, state) => {
           role_group: roleGroup.id,
         })
       } else {
-        await CreatePolicy({
+        await createPolicy({
           name: defaultName,
           policy_type: 'url',
           action: 'deny',
@@ -222,11 +222,11 @@ const setPageAccessStateForRole = async (role, state) => {
 
     if (state === 'inherit') {
       if (current?.id) {
-        await DeletePolicy(current.id)
+        await deletePolicy(current.id)
       }
     } else if (state === 'allow') {
       if (current) {
-        await UpdatePolicy(current.id, {
+        await updatePolicy(current.id, {
           name: current.name || defaultName,
           policy_type: 'url',
           action: 'allow',
@@ -237,7 +237,7 @@ const setPageAccessStateForRole = async (role, state) => {
           role_group: null,
         })
       } else {
-        await CreatePolicy({
+        await createPolicy({
           name: defaultName,
           policy_type: 'url',
           action: 'allow',
@@ -250,7 +250,7 @@ const setPageAccessStateForRole = async (role, state) => {
       }
     } else if (state === 'deny') {
       if (current) {
-        await UpdatePolicy(current.id, {
+        await updatePolicy(current.id, {
           name: current.name || defaultName,
           policy_type: 'url',
           action: 'deny',
@@ -261,7 +261,7 @@ const setPageAccessStateForRole = async (role, state) => {
           role_group: null,
         })
       } else {
-        await CreatePolicy({
+        await createPolicy({
           name: defaultName,
           policy_type: 'url',
           action: 'deny',

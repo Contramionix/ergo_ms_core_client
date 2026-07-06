@@ -29,6 +29,7 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 import tokenService from '@/core/cms/js/tokenService.js'
 import { restoreSession } from '@/core/cms/js/tokenRefresh.js'
 import { hideBootstrapMask } from '@/js/bootstrapMask.js'
+import { initRealtimeConfig } from '@/js/realtime/config.js'
 
 async function restoreSessionIfNeeded() {
   return restoreSession()
@@ -74,6 +75,7 @@ if (hasSession) {
   await Promise.all([
     useUserStore().ensureUserReady(),
     getUserMenu(),
+    initRealtimeConfig(),
   ])
 }
 

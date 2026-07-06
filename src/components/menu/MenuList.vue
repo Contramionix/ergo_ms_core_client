@@ -554,7 +554,12 @@ onBeforeUnmount(() => {
         </li>
         </ul>
       </div>
-      <MenuToolbar :is-collapsed="isCollapsed" :is-hovering="showMenuLabels" @dropdown-state-change="setToolbarDropdownActive"/>
+      <MenuToolbar
+        :is-collapsed="isCollapsed"
+        :is-hovering="showMenuLabels"
+        :is-layout-sync="isLayoutTransitionActive"
+        @dropdown-state-change="setToolbarDropdownActive"
+      />
     </div>
   </aside>
 </template>
@@ -585,6 +590,7 @@ onBeforeUnmount(() => {
 }
 
 .side-menu {
+  --menu-label-line-height: 1.25;
   position: fixed;
   display: flex;
   flex-direction: column;
@@ -625,8 +631,8 @@ onBeforeUnmount(() => {
       border-radius $transition;
 
     &:not(.hovering) {
-      :deep(.side-group__list),
-      :deep(.menu-item__children) {
+      :deep(.side-group__list-wrap),
+      :deep(.menu-item__children-wrap) {
         transition: none !important;
       }
     }
@@ -835,7 +841,7 @@ onBeforeUnmount(() => {
   color: var(--color-primary-text);
   font-size: $font-size-h1;
   font-weight: bold;
-  line-height: 1;
+  line-height: var(--menu-label-line-height, 1.25);
   white-space: nowrap;
   text-overflow: ellipsis;
   user-select: none;
@@ -921,6 +927,7 @@ onBeforeUnmount(() => {
     overflow: hidden;
     flex: 1;
     min-width: 0;
+    line-height: var(--menu-label-line-height, 1.25);
   }
 }
 

@@ -2,14 +2,14 @@
 import CategoryTableHeader from '@/core/cms/adp/admin/CategoriesComponents/CategoryTableHeader.vue'
 import CategoryTable from '@/core/cms/adp/admin/CategoriesComponents/CategoryTable.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
-import { GetRoles } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { getRoles } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { ref, onMounted } from 'vue'
 
 const rows = ref([])
 const isLoading = ref(false)
 
 const loadRoles = async () => {
-  const roles = await GetRoles()
+  const roles = await getRoles()
   rows.value = roles.map(role => ({
     id: role.id,
     name: role.name,

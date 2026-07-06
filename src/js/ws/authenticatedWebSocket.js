@@ -1,12 +1,20 @@
 import tokenService from '@/core/cms/js/tokenService'
 import { buildWebSocketUrl } from '@/js/api/baseUrl.js'
+import {
+  WS_AUTH_EVENT,
+  WS_AUTH_OK_EVENT,
+  WS_CONTROL_TOPIC,
+  buildClientEnvelope,
+  isRealtimeEnvelope,
+} from '@/js/realtime/envelope.js'
+import { MAX_RECONNECT_ATTEMPTS, reconnectDelayMs } from '@/js/realtime/reconnect.js'
 
-export const WS_AUTH_MESSAGE = 'auth'
-export const WS_AUTH_OK_MESSAGE = 'auth_ok'
 const WS_AUTH_TIMEOUT_MS = 10000
 
+export { WS_AUTH_EVENT, WS_AUTH_OK_EVENT, WS_CONTROL_TOPIC }
+
 /**
- * WebSocket с JWT в первом JSON-сообщении (не в URL — не попадает в логи ошибок и прокси).
+ * WebSocket с JWT в первом envelope (не в URL — не попадает в логи и Referer).
  */
 export function openAuthenticatedWebSocket(path, handlers = {}) {
   const {
@@ -20,6 +28,8 @@ export function openAuthenticatedWebSocket(path, handlers = {}) {
   let socket = null
   let authenticated = false
   let authTimer = null
+  let reconnectTimer = null
+  let reconnectAttempt = 0
   let intentionalClose = false
 
   function clearAuthTimer() {
@@ -29,25 +39,48 @@ export function openAuthenticatedWebSocket(path, handlers = {}) {
     }
   }
 
+  function clearReconnectTimer() {
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+  }
+
   function cleanup() {
     clearAuthTimer()
     socket = null
     authenticated = false
   }
 
+  function scheduleReconnect() {
+    if (intentionalClose || reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
+      return
+    }
+    clearReconnectTimer()
+    const delay = reconnectDelayMs(reconnectAttempt)
+    reconnectAttempt += 1
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      connect()
+    }, delay)
+  }
+
   function connect() {
     const token = tokenService.getAccess()
     if (!token) {
+      scheduleReconnect()
       return null
     }
 
     intentionalClose = false
     authenticated = false
+    clearReconnectTimer()
 
     try {
       socket = new WebSocket(url)
     } catch {
       onError?.()
+      scheduleReconnect()
       return null
     }
 
@@ -63,7 +96,9 @@ export function openAuthenticatedWebSocket(path, handlers = {}) {
 
     socket.onopen = () => {
       try {
-        socket.send(JSON.stringify({ type: WS_AUTH_MESSAGE, token }))
+        socket.send(JSON.stringify(
+          buildClientEnvelope(WS_AUTH_EVENT, { token }, WS_CONTROL_TOPIC),
+        ))
       } catch {
         onError?.()
       }
@@ -78,8 +113,9 @@ export function openAuthenticatedWebSocket(path, handlers = {}) {
       }
 
       if (!authenticated) {
-        if (data?.type === WS_AUTH_OK_MESSAGE) {
+        if (isRealtimeEnvelope(data) && data.type === WS_AUTH_OK_EVENT) {
           authenticated = true
+          reconnectAttempt = 0
           clearAuthTimer()
           onAuthenticated?.(socket)
         }
@@ -93,6 +129,9 @@ export function openAuthenticatedWebSocket(path, handlers = {}) {
       const wasIntentional = intentionalClose
       cleanup()
       onClose?.(event, wasIntentional)
+      if (!wasIntentional) {
+        scheduleReconnect()
+      }
     }
 
     socket.onerror = () => {
@@ -104,6 +143,7 @@ export function openAuthenticatedWebSocket(path, handlers = {}) {
 
   function close() {
     intentionalClose = true
+    clearReconnectTimer()
     clearAuthTimer()
     if (socket) {
       try {
@@ -112,6 +152,7 @@ export function openAuthenticatedWebSocket(path, handlers = {}) {
         // ignore
       }
     }
+    cleanup()
   }
 
   function getSocket() {
@@ -122,12 +163,26 @@ export function openAuthenticatedWebSocket(path, handlers = {}) {
     return authenticated && socket?.readyState === WebSocket.OPEN
   }
 
+  function reconnect() {
+    intentionalClose = false
+    reconnectAttempt = 0
+    clearReconnectTimer()
+    if (socket) {
+      try {
+        socket.close()
+      } catch {
+        // ignore
+      }
+    }
+    connect()
+  }
+
   connect()
 
   return {
     close,
     getSocket,
     isAuthenticated,
-    reconnect: connect,
+    reconnect,
   }
 }

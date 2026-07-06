@@ -2,21 +2,22 @@
  * Реестр отключённых модулей (client-side).
  *
  * Загружает список из API при первом обращении и кэширует.
- * До загрузки с сервера использует значение из переменной окружения Vite
- * (VITE_DISABLED_MODULES), что позволяет фильтровать модули даже без сети.
+ * До загрузки с сервера использует DISABLED_MODULES из .env.
  */
+
+import { clientEnv } from '@/js/clientEnv.js'
 
 let disabledSet = null
 let fetchPromise = null
 
 function parseFromEnv() {
-  const raw = import.meta.env.VITE_DISABLED_MODULES || ''
+  const raw = clientEnv.disabledModules
   return new Set(raw.split(',').map(s => s.trim()).filter(Boolean))
 }
 
 /**
  * Возвращает Set отключённых модулей (синхронно).
- * Если API ещё не ответил — используется значение из VITE_DISABLED_MODULES.
+ * Если API ещё не ответил — используется DISABLED_MODULES из .env.
  */
 export function getDisabledModulesSync() {
   if (disabledSet !== null) return disabledSet
@@ -46,7 +47,6 @@ export async function fetchDisabledModules(apiClient) {
 }
 
 /**
- * Проверяет, отключён ли модуль.
  * @param {string} moduleName
  * @returns {boolean}
  */

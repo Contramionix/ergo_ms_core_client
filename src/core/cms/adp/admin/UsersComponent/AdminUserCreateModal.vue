@@ -139,7 +139,7 @@ const handleCreate = async () => {
       if (createdUser.email_sent) {
         message += '. На email отправлено уведомление для входа'
       } else if (createdUser.email_warning) {
-        message += `. ${createdUser.email_warning}`
+        message += '. Уведомление на email не отправлено'
       } else {
         message += '. Пароль сгенерирован автоматически'
       }

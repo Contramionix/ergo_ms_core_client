@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import { Copy, Mail } from 'lucide-vue-next'
 import { createInvitation } from '@/core/cms/adp/admin/js/invitationService'
 import { copyTextToClipboard } from '@/js/utils/clipboard.js'
-import { extractApiError } from '@/js/utils/extractApiError.js'
+import { extractApiError } from '@/js/utils/apiErrorMessage.js'
 import { logError } from '@/js/utils/logError.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 

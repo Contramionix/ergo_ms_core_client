@@ -1,99 +1,82 @@
-import { openAuthenticatedWebSocket } from '@/js/ws/authenticatedWebSocket.js'
-import { isHttpPollingMode, pollIntervalMs } from '@/js/realtime/config.js'
-import { notificationsApi } from '@/core/notifications/js/notifications-api'
+import { getRealtimeClient } from '@/js/realtime/RealtimeClient.js'
+import { isHttpPollingMode, isSseMode } from '@/js/realtime/config.js'
+import { createWebSocketTransport } from '@/js/realtime/transports/websocket.js'
+import {
+  isSyncPollingAuthenticated,
+  registerSyncChannel,
+  setSyncLastNotificationId,
+} from '@/js/realtime/syncPollingHub.js'
 
 const WS_PATH = '/ws/notifications/'
 
 function connectNotificationsWebSocket(handlers) {
-  return openAuthenticatedWebSocket(WS_PATH, handlers)
+  return createWebSocketTransport(WS_PATH, handlers)
 }
 
-function connectNotificationsHttpPolling(handlers) {
-  let pollTimer = null
-  let authenticated = false
-  let lastNotificationId = 0
-  const intervalMs = pollIntervalMs('notifications')
+function connectNotificationsSse(handlers) {
+  const client = getRealtimeClient()
 
-  async function pollNotifications() {
-    try {
-      const params = { page_size: 50 }
-      if (lastNotificationId > 0) {
-        params.after_id = lastNotificationId
-      }
-
-      const requests = [notificationsApi.unreadCount()]
-      if (lastNotificationId > 0) {
-        requests.push(notificationsApi.list(params))
-      }
-
-      const results = await Promise.all(requests)
-      const countResp = results[0]
-      const listResp = lastNotificationId > 0 ? results[1] : null
-
-      if (!authenticated) {
-        authenticated = true
-        handlers.onAuthenticated?.()
-      }
-
-      handlers.onPollMeta?.({
-        unreadCount: Number(countResp?.data?.count ?? 0),
-      })
-
-      if (listResp) {
-        const list = listResp?.data?.results ?? listResp?.data ?? []
-        const items = Array.isArray(list) ? list : []
-        for (const notification of items) {
-          if (notification?.id > lastNotificationId) {
-            lastNotificationId = notification.id
-          }
-          handlers.onMessage?.(null, {
-            type: 'notification_new',
-            notification,
-          })
-        }
-      }
-    } catch {
-      authenticated = false
+  client.ensureConnected({
+    onAuthenticated: () => {
+      handlers.onAuthenticated?.()
+    },
+    onError: () => {
       handlers.onError?.()
-    }
-  }
+    },
+    onClose: (event, intentional) => {
+      handlers.onClose?.(event, intentional)
+    },
+  })
 
-  function startPolling() {
-    if (pollTimer) {
-      clearInterval(pollTimer)
-    }
-    void pollNotifications()
-    pollTimer = setInterval(() => {
-      void pollNotifications()
-    }, intervalMs)
-  }
-
-  startPolling()
+  const off = client.on('notification_new', (event, data) => {
+    handlers.onMessage?.(event, data)
+  })
 
   return {
     close() {
-      if (pollTimer) {
-        clearInterval(pollTimer)
-        pollTimer = null
-      }
-      authenticated = false
+      off?.()
       handlers.onClose?.({}, true)
     },
     getSocket() {
       return null
     },
     isAuthenticated() {
-      return authenticated
+      return client.isConnected()
     },
     reconnect() {
-      authenticated = false
-      startPolling()
+      client.reconnectStream()
     },
     setLastNotificationId(id) {
-      const parsed = Number.parseInt(String(id ?? ''), 10)
-      if (Number.isFinite(parsed) && parsed > lastNotificationId) {
-        lastNotificationId = parsed
-      }
+      setSyncLastNotificationId(id)
+    },
+  }
+}
+
+function connectNotificationsHttpPolling(handlers) {
+  const handler = {
+    onAuthenticated: () => handlers.onAuthenticated?.(),
+    onError: () => handlers.onError?.(),
+    onPollMeta: (meta) => handlers.onPollMeta?.(meta),
+    onMessage: (event, data) => handlers.onMessage?.(event, data),
+  }
+  const unregister = registerSyncChannel('notifications', handler)
+
+  return {
+    close() {
+      unregister()
+      handlers.onClose?.({}, true)
+    },
+    getSocket() {
+      return null
+    },
+    isAuthenticated() {
+      return isSyncPollingAuthenticated()
+    },
+    reconnect() {
+      handler.onAuthenticated = () => handlers.onAuthenticated?.()
+    },
+    setLastNotificationId(id) {
+      setSyncLastNotificationId(id)
     },
   }
 }
@@ -101,6 +84,9 @@ function connectNotificationsHttpPolling(handlers) {
 export function connectNotificationsTransport(handlers = {}) {
   if (isHttpPollingMode()) {
     return connectNotificationsHttpPolling(handlers)
+  }
+  if (isSseMode()) {
+    return connectNotificationsSse(handlers)
   }
   return connectNotificationsWebSocket(handlers)
 }

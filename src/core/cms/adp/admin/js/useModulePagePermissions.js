@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
-import { GetPages, GetPolicies, GetRoles, GetRoleGroups } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { getPages, getPolicies, getRoles, getRoleGroups } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 
 const ROOT_SUBMODULE_KEY = '__root__'
 const ROOT_SUBMODULE_TITLE = 'Общее'
@@ -230,10 +230,10 @@ export function useModulePagePermissions() {
       errorMessage.value = ''
 
       const [pagesResponse, rolesResponse, roleGroupsResponse, policiesResponse] = await Promise.all([
-        GetPages(),
-        GetRoles(),
-        GetRoleGroups(),
-        GetPolicies()
+        getPages(),
+        getRoles(),
+        getRoleGroups(),
+        getPolicies()
       ])
 
       const pages = (pagesResponse && pagesResponse.pages) || []

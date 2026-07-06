@@ -175,17 +175,25 @@ onBeforeUnmount(() => {
         <template v-if="route.meta?.fullPage">
           <AccessDenied v-if="accessDeniedState.active" bordered :title="accessDeniedState.title" :message="accessDeniedState.message"/>
           <RouterView v-else v-slot="{ Component, route: activeRoute }">
-            <KeepAlive :max="15">
-              <component :is="Component" v-if="Component" :key="cachedRouteKey(activeRoute)" />
-            </KeepAlive>
+            <Transition name="layout-route" mode="out-in">
+              <div :key="cachedRouteKey(activeRoute)" class="layout-route-view">
+                <KeepAlive :max="15">
+                  <component :is="Component" v-if="Component" />
+                </KeepAlive>
+              </div>
+            </Transition>
           </RouterView>
         </template>
         <div v-else :class="route.meta?.flushContent ? 'layout-content--flush' : 'py-4 container-xxl'">
           <AccessDenied v-if="accessDeniedState.active" bordered :title="accessDeniedState.title" :message="accessDeniedState.message"/>
           <RouterView v-else v-slot="{ Component, route: activeRoute }">
-            <KeepAlive :max="15">
-              <component :is="Component" v-if="Component" :key="cachedRouteKey(activeRoute)" />
-            </KeepAlive>
+            <Transition name="layout-route" mode="out-in">
+              <div :key="cachedRouteKey(activeRoute)" class="layout-route-view">
+                <KeepAlive :max="15">
+                  <component :is="Component" v-if="Component" />
+                </KeepAlive>
+              </div>
+            </Transition>
           </RouterView>
         </div>
       </div>
@@ -253,6 +261,20 @@ onBeforeUnmount(() => {
   position: relative;
   z-index: 1;
   min-height: inherit;
+}
+
+.layout-route-view {
+  min-height: inherit;
+}
+
+.layout-route-enter-active,
+.layout-route-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.layout-route-enter-from,
+.layout-route-leave-to {
+  opacity: 0;
 }
 
 .layout-container--full-page {

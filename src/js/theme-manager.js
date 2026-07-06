@@ -3,6 +3,7 @@
  * Начальные значения — из bootstrap-variables.js (синхронизированы с _theme.scss).
  */
 
+import { clientEnv } from '@/js/clientEnv.js'
 import {
   COLOR_DESCRIPTIONS,
   BOOTSTRAP_VARIABLES,
@@ -89,7 +90,7 @@ export function readThemePreference() {
     return stored
   }
 
-  const envDefault = (import.meta?.env?.VITE_DEFAULT_THEME || '').toString().toLowerCase()
+  const envDefault = clientEnv.defaultTheme.toLowerCase()
   if (envDefault && THEME_MODES.includes(envDefault)) {
     return envDefault
   }

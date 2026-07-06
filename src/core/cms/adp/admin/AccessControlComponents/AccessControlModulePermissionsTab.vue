@@ -2,14 +2,14 @@
 import { ref, onMounted } from 'vue'
 import ModulePermissionManager from '@/core/cms/adp/admin/PermissionsComponents/ModulePermissionManager.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
-import { GetRoleGroups } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { getRoleGroups } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 
 const roleGroups = ref([])
 const isLoading = ref(true)
 
 onMounted(async () => {
   try {
-    roleGroups.value = await GetRoleGroups()
+    roleGroups.value = await getRoleGroups()
   } catch (error) {
     logError('Ошибка загрузки ролевых групп', error)
   } finally {

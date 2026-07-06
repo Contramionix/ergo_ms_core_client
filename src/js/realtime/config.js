@@ -1,38 +1,151 @@
+import { clientEnv } from '@/js/clientEnv.js'
+import { realtimeApi } from '@/js/realtime/realtimeApi.js'
+
 const DEFAULT_INTERVALS_MS = {
   presence: 45000,
-  notifications: 15000,
+  notifications: 10000,
   adminPresence: 10000,
-  messenger: 5000,
+  messenger: 3000,
 }
 
-const ENV_INTERVAL_KEYS = {
-  presence: 'VITE_REALTIME_POLL_PRESENCE_INTERVAL',
-  notifications: 'VITE_REALTIME_POLL_NOTIFICATIONS_INTERVAL',
-  adminPresence: 'VITE_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL',
-  messenger: 'VITE_REALTIME_POLL_MESSENGER_INTERVAL',
+const ACTIVE_INTERVALS_MS = {
+  presence: 45000,
+  notifications: 8000,
+  adminPresence: 8000,
+  messenger: 2000,
+}
+
+const BUILD_POLL_MS = {
+  presence: clientEnv.realtimePollPresenceMs,
+  notifications: clientEnv.realtimePollNotificationsMs,
+  adminPresence: clientEnv.realtimePollAdminPresenceMs,
+  messenger: clientEnv.realtimePollMessengerMs,
+}
+
+const API_POLL_KEY_TO_CHANNEL = {
+  presence: 'presence',
+  notifications: 'notifications',
+  admin_presence: 'adminPresence',
+  messenger: 'messenger',
+}
+
+/** @type {'websocket' | 'sse' | 'http_polling' | null} */
+let runtimeTransport = null
+/** @type {Record<string, number>} */
+let runtimePollIntervalsMs = {}
+/** @type {Record<string, boolean> | null} */
+let runtimeCapabilities = null
+
+function normalizeTransport(mode) {
+  const value = String(mode || 'websocket').trim().toLowerCase()
+  if (value === 'http_polling' || value === 'sse') {
+    return value
+  }
+  return 'websocket'
+}
+
+function readBuildTransport() {
+  return normalizeTransport(clientEnv.realtimeTransport)
+}
+
+function readBuildIntervalMs(channel) {
+  const ms = BUILD_POLL_MS[channel]
+  return Number.isFinite(ms) && ms > 0 ? ms : null
 }
 
 /**
- * @returns {'websocket' | 'http_polling'}
+ * @param {object} data
+ */
+export function applyRealtimeConfigFromApi(data) {
+  if (!data || typeof data !== 'object') {
+    return
+  }
+  if (data.transport) {
+    runtimeTransport = normalizeTransport(data.transport)
+  }
+  if (data.capabilities && typeof data.capabilities === 'object') {
+    runtimeCapabilities = { ...data.capabilities }
+  }
+  if (data.poll_intervals && typeof data.poll_intervals === 'object') {
+    for (const [apiKey, seconds] of Object.entries(data.poll_intervals)) {
+      const channel = API_POLL_KEY_TO_CHANNEL[apiKey]
+      const parsed = Number.parseInt(String(seconds ?? ''), 10)
+      if (channel && Number.isFinite(parsed) && parsed > 0) {
+        runtimePollIntervalsMs[channel] = parsed * 1000
+      }
+    }
+  }
+}
+
+let initPromise = null
+
+export function initRealtimeConfig() {
+  if (initPromise) {
+    return initPromise
+  }
+  initPromise = (async () => {
+    try {
+      const resp = await realtimeApi.config()
+      applyRealtimeConfigFromApi(resp?.data ?? resp)
+    } catch {
+      // REALTIME_* из .env
+    }
+  })()
+  return initPromise
+}
+
+/**
+ * @returns {'websocket' | 'sse' | 'http_polling'}
  */
 export function getRealtimeTransport() {
-  const mode = String(import.meta.env.VITE_REALTIME_TRANSPORT || 'websocket').trim().toLowerCase()
-  return mode === 'http_polling' ? 'http_polling' : 'websocket'
+  return runtimeTransport ?? readBuildTransport()
+}
+
+export function getRealtimeCapabilities() {
+  return runtimeCapabilities ?? {}
+}
+
+export function isWebSocketMode() {
+  return getRealtimeTransport() === 'websocket'
+}
+
+export function isSseMode() {
+  return getRealtimeTransport() === 'sse'
 }
 
 export function isHttpPollingMode() {
   return getRealtimeTransport() === 'http_polling'
 }
 
+function resolveIntervalMs(channel) {
+  if (runtimePollIntervalsMs[channel]) {
+    return runtimePollIntervalsMs[channel]
+  }
+  const fromBuild = readBuildIntervalMs(channel)
+  if (fromBuild !== null) {
+    return fromBuild
+  }
+  return null
+}
+
 /**
  * @param {'presence' | 'notifications' | 'adminPresence' | 'messenger'} channel
  */
 export function pollIntervalMs(channel) {
-  const envKey = ENV_INTERVAL_KEYS[channel]
-  const raw = envKey ? import.meta.env[envKey] : undefined
-  const parsed = Number.parseInt(String(raw ?? ''), 10)
-  if (Number.isFinite(parsed) && parsed > 0) {
-    return parsed
+  return resolveIntervalMs(channel) ?? DEFAULT_INTERVALS_MS[channel] ?? 10000
+}
+
+/**
+ * @param {'presence' | 'notifications' | 'adminPresence' | 'messenger'} channel
+ */
+export function activePollIntervalMs(channel) {
+  const resolved = resolveIntervalMs(channel)
+  if (resolved !== null) {
+    return resolved
   }
-  return DEFAULT_INTERVALS_MS[channel] ?? 15000
+  return ACTIVE_INTERVALS_MS[channel] ?? pollIntervalMs(channel)
+}
+
+export function isPushTransport() {
+  return isWebSocketMode() || isSseMode()
 }

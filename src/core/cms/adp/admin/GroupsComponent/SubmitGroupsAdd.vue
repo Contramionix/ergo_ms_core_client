@@ -3,8 +3,9 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SelectBox from '@/components/SelectBox.vue'
-import { CreateRoleGroup, GetRoles, UpdateRoleGroup } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { createRoleGroup, getRoles, updateRoleGroup } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { mapRoleSelectOptions } from '@/core/cms/js/adminSelectOptions.js'
+import { extractApiError } from '@/js/utils/apiErrorMessage.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -39,7 +40,7 @@ const groupId = ref(null)
 const showErrorName = ref(false)
 const showErrorRole = ref(false)
 
-const availableRoles = computed(() => roles.value)
+const availableRoles = computed(() => roles.value.filter(role => !role.is_system))
 const roleSelectOptions = computed(() => mapRoleSelectOptions(availableRoles.value))
 const submitButtonText = computed(() => {
   if (isSubmitting.value) {
@@ -52,11 +53,11 @@ const formId = computed(() => `${props.modalId}-form`)
 
 const loadRoles = async () => {
   try {
-    const response = await GetRoles()
+    const response = await getRoles()
     roles.value = response
   } catch (error) {
     toast.error('Не удалось загрузить список ролей')
-    logError('GetRoles error:', error)
+    logError('getRoles error:', error)
   }
 }
 
@@ -140,7 +141,7 @@ const submitForm = async () => {
     }
 
     if (isEditMode.value) {
-      await UpdateRoleGroup(groupId.value, payload)
+      await updateRoleGroup(groupId.value, payload)
       toast.success('Ролевая группа успешно обновлена')
       emit('changeGroup')
       syncWithGroup({
@@ -148,7 +149,7 @@ const submitForm = async () => {
         id: groupId.value,
       })
     } else {
-      await CreateRoleGroup(payload)
+      await createRoleGroup(payload)
       toast.success('Ролевая группа успешно создана')
       emit('addGroup')
       resetForm()
@@ -156,12 +157,10 @@ const submitForm = async () => {
 
     emit('update:visible', false)
   } catch (error) {
-    const responseData = error?.response?.data
     const defaultMessage = isEditMode.value
       ? 'Не удалось обновить ролевую группу'
       : 'Не удалось создать ролевую группу'
-    const message = responseData?.error || responseData?.detail || defaultMessage
-    toast.error(message)
+    toast.error(extractApiError(error, defaultMessage))
     logError('SubmitRoleGroup error:', error)
   } finally {
     isSubmitting.value = false

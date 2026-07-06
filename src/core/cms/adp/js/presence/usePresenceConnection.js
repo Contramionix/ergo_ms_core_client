@@ -1,14 +1,15 @@
 import tokenService from '@/core/cms/js/tokenService'
 import { connectPresenceTransport } from '@/js/realtime/presenceTransport.js'
+import {
+  PRESENCE_PING_EVENT,
+  PRESENCE_USER_TOPIC,
+  buildClientEnvelope,
+} from '@/js/realtime/envelope.js'
 
-const RECONNECT_DELAYS = [1000, 2000, 4000, 8000]
-const MAX_RECONNECT_ATTEMPTS = 10
 const PING_INTERVAL_MS = 45000
 
 let wsConnection = null
-let reconnectTimer = null
 let pingTimer = null
-let reconnectAttempt = 0
 let intentionalClose = false
 let connectionPromise = null
 
@@ -25,7 +26,9 @@ function startPingTimer() {
     const socket = wsConnection?.getSocket()
     if (socket?.readyState === WebSocket.OPEN) {
       try {
-        socket.send(JSON.stringify({ type: 'ping' }))
+        socket.send(JSON.stringify(
+          buildClientEnvelope(PRESENCE_PING_EVENT, {}, PRESENCE_USER_TOPIC),
+        ))
       } catch {
         // ignore
       }
@@ -33,40 +36,26 @@ function startPingTimer() {
   }, PING_INTERVAL_MS)
 }
 
-function scheduleReconnect() {
-  if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
-    return
-  }
-
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-  }
-
-  const delay = RECONNECT_DELAYS[Math.min(reconnectAttempt, RECONNECT_DELAYS.length - 1)]
-  reconnectAttempt += 1
-  reconnectTimer = setTimeout(openSocket, delay)
-}
-
 function openSocket() {
   if (!tokenService.getAccess()) {
     return
   }
 
-  wsConnection?.close()
+  if (wsConnection && !intentionalClose) {
+    return
+  }
+
   intentionalClose = false
-  const openedAt = Date.now()
+  wsConnection?.close()
 
   wsConnection = connectPresenceTransport({
     onAuthenticated: () => {
-      reconnectAttempt = 0
       startPingTimer()
     },
     onClose: (_event, wasIntentional) => {
       clearPingTimer()
-      wsConnection = null
-      const elapsed = Date.now() - openedAt
-      if (!wasIntentional && !intentionalClose && elapsed > 500) {
-        scheduleReconnect()
+      if (wasIntentional || intentionalClose) {
+        wsConnection = null
       }
     },
     onError: () => {
@@ -84,6 +73,10 @@ export function ensurePresenceConnected() {
     return Promise.resolve()
   }
 
+  if (wsConnection && !intentionalClose) {
+    return Promise.resolve()
+  }
+
   if (connectionPromise) {
     return connectionPromise
   }
@@ -98,16 +91,9 @@ export function ensurePresenceConnected() {
 
 export function disconnectPresenceConnection() {
   intentionalClose = true
-
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-    reconnectTimer = null
-  }
-
   clearPingTimer()
   wsConnection?.close()
   wsConnection = null
-  reconnectAttempt = 0
 }
 
 export function resetPresenceConnection() {

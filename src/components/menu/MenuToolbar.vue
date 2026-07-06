@@ -56,6 +56,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isLayoutSync: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['dropdown-state-change'])
@@ -83,12 +87,13 @@ const shouldShowFullInfo = computed(() => {
 })
 
 // В peek-режиме колонка 0fr→1fr анимируется: overflow:visible показывал кнопки раньше слота.
-// Разрешаем overflow только в развёрнутом меню или при открытом dropdown.
+// Разрешаем overflow только когда меню полностью развёрнуто (без layout-sync) или открыт dropdown.
 const actionsAllowOverflow = computed(() => {
-  if (!props.isCollapsed) {
+  if (hasActiveDropdown.value) {
     return true
   }
-  return hasActiveDropdown.value
+
+  return !props.isCollapsed && !props.isLayoutSync
 })
 
 const setDropdownActive = (dropdownId, active) => {

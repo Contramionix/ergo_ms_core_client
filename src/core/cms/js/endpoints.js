@@ -29,12 +29,6 @@ export const cmsEndpoints = {
         checkAccessToAdminPanel: 'cms/check_access_to_admin_panel/',
 
         getpages: 'cms/get-cms-pages',
-        putpages: 'cms/put-cms-pages',
-
-        addPageComponent: 'cms/add-page-component/',
-        removePageComponent: 'cms/remove-page-component/',
-        updatePageComponent: 'cms/update-page-component/',
-        getPageComponents: 'cms/get-page-components/',
 
         roles: {
             list: 'cms/adp/roles/',

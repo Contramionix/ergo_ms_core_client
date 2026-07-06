@@ -2,11 +2,10 @@ import { ref, computed } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import tokenService from '@/core/cms/js/tokenService'
 import { connectNotificationsTransport } from '@/js/realtime/notificationsTransport.js'
-import { isHttpPollingMode } from '@/js/realtime/config.js'
+import { isHttpPollingMode, isSseMode } from '@/js/realtime/config.js'
+import { isRealtimeEnvelope } from '@/js/realtime/envelope.js'
 import { notificationsApi } from './notifications-api'
 
-const RECONNECT_DELAYS = [1000, 2000, 4000, 8000]
-const MAX_RECONNECT_ATTEMPTS = 10
 const SIDEBAR_WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
 const items = ref([])
@@ -17,8 +16,6 @@ const sidebarLoading = ref(false)
 const connected = ref(false)
 
 let wsConnection = null
-let reconnectTimer = null
-let reconnectAttempt = 0
 let intentionalClose = false
 let initialized = false
 
@@ -39,7 +36,7 @@ function findNotification(id) {
 }
 
 function syncPollingCursorFromItems() {
-  if (!isHttpPollingMode() || !wsConnection?.setLastNotificationId) {
+  if (!(isHttpPollingMode() || isSseMode()) || !wsConnection?.setLastNotificationId) {
     return
   }
   const maxId = items.value.reduce((max, item) => Math.max(max, item?.id ?? 0), 0)
@@ -51,14 +48,14 @@ function syncPollingCursorFromItems() {
 function openSocket() {
   if (!tokenService.getAccess()) return
 
-  wsConnection?.close()
+  if (wsConnection && !intentionalClose) return
+
   intentionalClose = false
-  const openedAt = Date.now()
+  wsConnection?.close()
 
   wsConnection = connectNotificationsTransport({
     onAuthenticated: () => {
       connected.value = true
-      reconnectAttempt = 0
       syncPollingCursorFromItems()
     },
     onMessage: handleSocketMessage,
@@ -69,9 +66,9 @@ function openSocket() {
     },
     onClose: (_event, wasIntentional) => {
       connected.value = false
-      wsConnection = null
-      const elapsed = Date.now() - openedAt
-      if (!wasIntentional && !intentionalClose && elapsed > 500) scheduleReconnect()
+      if (wasIntentional || intentionalClose) {
+        wsConnection = null
+      }
     },
     onError: () => {
       connected.value = false
@@ -125,8 +122,9 @@ async function executeAction(id, actionId) {
   try {
     const resp = await notificationsApi.executeAction(id, actionId)
     const data = resp?.data ?? resp
-    if (data?.success && data.notification) {
-      applyNotificationUpdate(data.notification)
+    const envelope = data?.envelope
+    if (data?.success && isRealtimeEnvelope(envelope)) {
+      applyNotificationUpdate(envelope.payload)
       if (typeof data.unread_count === 'number') {
         unreadCount.value = data.unread_count
       }
@@ -195,40 +193,44 @@ function showIncomingToast(notification) {
 }
 
 function handleSocketMessage(_event, data) {
-  if (data.type === 'notification_new' && data.notification) {
-    const { notification } = data
-    const existsInItems = items.value.find((n) => n.id === notification.id)
-    if (!existsInItems) {
-      items.value.unshift(notification)
-      if (!notification.is_read) unreadCount.value += 1
-      showIncomingToast(notification)
-    }
-    const existsInSidebar = sidebarItems.value.find((n) => n.id === notification.id)
-    if (!existsInSidebar && matchesSidebarFilter(notification)) {
-      sidebarItems.value.unshift(notification)
-    }
-    wsConnection?.setLastNotificationId?.(notification.id)
+  if (!isRealtimeEnvelope(data)) {
+    return
+  }
+  if (data.type === 'notification_new' || data.type === 'notification_updated') {
+    applyIncomingNotification(data.payload)
   }
 }
 
-function scheduleReconnect() {
-  if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) return
-  if (reconnectTimer) clearTimeout(reconnectTimer)
-  const delay = RECONNECT_DELAYS[Math.min(reconnectAttempt, RECONNECT_DELAYS.length - 1)]
-  reconnectAttempt++
-  reconnectTimer = setTimeout(openSocket, delay)
+function applyIncomingNotification(notification) {
+  if (!notification?.id) {
+    return
+  }
+  const existsInItems = items.value.find((n) => n.id === notification.id)
+  if (existsInItems) {
+    const wasUnread = !existsInItems.is_read
+    Object.assign(existsInItems, notification)
+    if (wasUnread && notification.is_read && unreadCount.value > 0) {
+      unreadCount.value -= 1
+    }
+  } else {
+    items.value.unshift(notification)
+    if (!notification.is_read) unreadCount.value += 1
+    showIncomingToast(notification)
+  }
+  const existsInSidebar = sidebarItems.value.find((n) => n.id === notification.id)
+  if (existsInSidebar) {
+    Object.assign(existsInSidebar, notification)
+  } else if (matchesSidebarFilter(notification)) {
+    sidebarItems.value.unshift(notification)
+  }
+  wsConnection?.setLastNotificationId?.(notification.id)
 }
 
 function disconnect() {
   intentionalClose = true
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-    reconnectTimer = null
-  }
   wsConnection?.close()
   wsConnection = null
   connected.value = false
-  reconnectAttempt = 0
 }
 
 async function ensureInitialized() {

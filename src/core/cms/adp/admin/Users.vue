@@ -10,7 +10,7 @@ import AdminUserSettingsModal from '@/core/cms/adp/admin/UsersComponent/AdminUse
 import AdminUserCreateModal from '@/core/cms/adp/admin/UsersComponent/AdminUserCreateModal.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { formatDateShort, formatDateTime } from '@/js/utils/timeUtils.js'
-import { GetAdminUsers, GetRoles, GetRoleGroupOptions, CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { getAdminUsers, getRoles, getRoleGroupOptions, checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { presenceStore, seedFromUsers } from '@/core/cms/adp/js/presence/presenceStore.js'
 import { useAdminPresenceFeed } from '@/core/cms/adp/admin/js/useAdminPresenceFeed.js'
 import SelectBox from '@/components/SelectBox.vue'
@@ -139,7 +139,7 @@ const mapUserToRow = (user) => ({
 const loadUsers = async () => {
   isLoadingUsers.value = true
   try {
-    const data = await GetAdminUsers({
+    const data = await getAdminUsers({
       page: currentPage.value,
       page_size: rowsPerPage.value,
       search: searchQuery.value.trim() || undefined,
@@ -160,13 +160,13 @@ const loadUsers = async () => {
 }
 
 const loadRefs = async () => {
-  roles.value = await GetRoles()
-  roleGroups.value = await GetRoleGroupOptions()
+  roles.value = await getRoles()
+  roleGroups.value = await getRoleGroupOptions()
 }
 
 onMounted(async () => {
   try {
-    const accessData = await CheckAccessToAdminPanel()
+    const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
       toast.error('У вас нет доступа к административной панели')
       router.push({ name: 'AccessDenied' })

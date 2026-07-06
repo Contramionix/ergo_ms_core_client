@@ -210,19 +210,25 @@ function routeClick(event) {
       </div>
     </div>
 
-    <ul v-if="hasMenuItems" class="side-group__list" :class="(isCollapsed || isHovering) && isOpen ? 'is-open' : ''">
-      <MenuItem
-        v-for="(item, index) in menuItems"
-        :key="index"
-        :item="item"
-        :level="0"
-        :isHovering="isHovering"
-        :openStates="nestedOpenStates"
-        :style="{ transitionDelay: `${index * 50}ms` }"
-        @navigate="handleNestedNavigate"
-        @toggle-group="handleToggleNested"
-      />
-    </ul>
+    <div
+      v-if="hasMenuItems"
+      class="side-group__list-wrap"
+      :class="{ 'is-open': (isCollapsed || isHovering) && isOpen }"
+    >
+      <ul class="side-group__list">
+        <MenuItem
+          v-for="(item, index) in menuItems"
+          :key="index"
+          :item="item"
+          :level="0"
+          :isHovering="isHovering"
+          :openStates="nestedOpenStates"
+          :style="{ transitionDelay: `${index * 40}ms` }"
+          @navigate="handleNestedNavigate"
+          @toggle-group="handleToggleNested"
+        />
+      </ul>
+    </div>
   </li>
 </template>
 
@@ -284,7 +290,7 @@ function routeClick(event) {
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
-  line-height: 1;
+  line-height: var(--menu-label-line-height, 1.25);
 }
 
 .side-icon {
@@ -308,34 +314,38 @@ function routeClick(event) {
   transform: rotate(90deg);
 }
 
+.side-group__list-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows $transition,
+    opacity $transition;
+
+  &.is-open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
 .side-group__list {
   overflow: hidden;
-  max-height: 0;
-  opacity: 0;
-  padding: 0;
+  min-height: 0;
   margin: 0;
+  padding: 0;
   list-style: none;
-
-  transition:
-    max-height 0.5s ease,
-    opacity 0.5s ease-in-out;
 }
 
-.side-group__list.is-open {
-  max-height: none;
-  opacity: 1;
-}
-
-.side-group__list-item {
+.side-group__list-wrap:not(.is-open) :deep(.menu-item) {
   opacity: 0;
-  transform: translateY(-10px);
-  transition:
-    opacity 0.3s ease,
-    transform 0.3s ease;
+  transform: translateY(-6px);
 }
 
-.side-group__list.is-open .side-group__list-item {
+.side-group__list-wrap.is-open :deep(.menu-item) {
   opacity: 1;
   transform: translateY(0);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
 }
 </style>

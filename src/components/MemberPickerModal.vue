@@ -1,13 +1,17 @@
+<!--
+  MemberPickerModal — multi-select выбор участников для project_ed и др.
+  Не путать с organizations/client/components/AddMemberModal.vue (форма участника организации).
+-->
 <template>
   <ModalCenter standalone :visible="show" :modal-id="modalId" :title="title" :dialog-class="'modal-md'" @close="close">
-    <div class="add-member-modal-content">
+    <div class="member-picker-modal-content">
       <div class="pb-2 search-container">
-        <div class="input-group border-0">
-          <span class="input-group-text bg-transparent border-0">
-            <Search :size="18" class="text-muted" />
-          </span>
-          <input v-model.trim="searchQuery" type="text" class="form-control border-0" placeholder="Поиск" @input="handleSearch"/>
-        </div>
+        <SearchInput
+          v-model="searchQuery"
+          placeholder="Поиск"
+          :show-icon="true"
+          @update:model-value="handleSearch"
+        />
       </div>
 
       <div class="px-3 pb-2 border-bottom tabs-container">
@@ -71,8 +75,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { Search, Check } from 'lucide-vue-next'
+import { Check } from 'lucide-vue-next'
 import ModalCenter from '@/components/ModalCenter.vue'
+import SearchInput from '@/components/SearchInput.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { apiClient } from '@/js/api/manager'
@@ -128,7 +133,7 @@ const emit = defineEmits(['close', 'selected', 'selectedMultiple', 'deselected']
 
 const toast = useToast()
 
-const modalId = 'addMemberModal'
+const modalId = 'memberPickerModal'
 
 const searchQuery = ref('')
 const activeTab = ref('all')
@@ -292,7 +297,7 @@ async function loadOrganizationMembers() {
 
 async function loadCandidates() {
   if (!props.organizationId) {
-    logWarn('AddMemberModal: organizationId не передан')
+    logWarn('MemberPickerModal: organizationId не передан')
     users.value = []
     return
   }
@@ -390,7 +395,7 @@ watch(resolvedTabs, () => {
 </script>
 
 <style lang="scss" scoped>
-.add-member-modal-content {
+.member-picker-modal-content {
   display: flex;
   flex-direction: column;
   height: 70vh;
@@ -507,47 +512,9 @@ watch(resolvedTabs, () => {
 }
 
 .search-container {
-  .input-group {
-    border: none !important;
-  }
-
-  .form-control {
-    background-color: var(--color-primary-background);
-    border: none !important;
-    border-color: transparent !important;
-    box-shadow: none !important;
-
-    &:focus {
-      border: none !important;
-      border-color: transparent !important;
-      box-shadow: none !important;
-      outline: none !important;
-    }
-  }
-
-  .input-group-text {
-    border: none !important;
-    border-color: transparent !important;
-    padding-right: 0.5rem !important;
-
-    &:focus,
-    &:focus-within {
-      border: none !important;
-      border-color: transparent !important;
-      box-shadow: none !important;
-    }
-  }
-
-  .input-group:focus-within {
-    border: none !important;
-
-    .form-control,
-    .input-group-text {
-      border: none !important;
-      border-color: transparent !important;
-      box-shadow: none !important;
-      outline: none !important;
-    }
+  :deep(.search-input) {
+    --search-input-border-radius: 0;
+    --search-input-height: 38px;
   }
 }
 
@@ -566,7 +533,7 @@ watch(resolvedTabs, () => {
 }
 
 @media (max-width: 768px) {
-  .add-member-modal-content {
+  .member-picker-modal-content {
     height: 80vh;
     min-height: 500px;
     max-height: 600px;

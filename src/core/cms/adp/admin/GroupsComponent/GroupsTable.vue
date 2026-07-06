@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { Settings, Trash2 } from 'lucide-vue-next'
 import GroupForm from '@/core/cms/adp/admin/GroupsComponent/SubmitGroupsAdd.vue'
-import { DeleteRoleGroup } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { deleteRoleGroup } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 
 const props = defineProps({
   headers: { type: Array, required: true },
@@ -64,7 +64,7 @@ const openEditModal = row => {
 }
 
 const deleteGroup = async groupId => {
-  await DeleteRoleGroup(groupId)
+  await deleteRoleGroup(groupId)
   emit('updateGroups')
 }
 </script>

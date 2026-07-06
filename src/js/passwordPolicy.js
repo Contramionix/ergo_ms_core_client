@@ -1,22 +1,12 @@
-function parseBool(value, defaultValue) {
-  if (value === undefined || value === null || value === '') {
-    return defaultValue
-  }
-  return String(value).toLowerCase() === 'true'
-}
-
-function parseIntOr(value, defaultValue) {
-  const parsed = parseInt(value, 10)
-  return Number.isFinite(parsed) ? parsed : defaultValue
-}
+import { clientEnv } from '@/js/clientEnv.js'
 
 export const passwordPolicy = {
-  minLength: parseIntOr(import.meta.env.VITE_PASSWORD_MIN_LENGTH, 8),
-  maxLength: parseIntOr(import.meta.env.VITE_PASSWORD_MAX_LENGTH, 128),
-  requireLowercase: parseBool(import.meta.env.VITE_PASSWORD_REQUIRE_LOWERCASE, true),
-  requireUppercase: parseBool(import.meta.env.VITE_PASSWORD_REQUIRE_UPPERCASE, false),
-  requireDigit: parseBool(import.meta.env.VITE_PASSWORD_REQUIRE_DIGIT, true),
-  requireSpecial: parseBool(import.meta.env.VITE_PASSWORD_REQUIRE_SPECIAL, false),
+  minLength: clientEnv.passwordMinLength,
+  maxLength: clientEnv.passwordMaxLength,
+  requireLowercase: clientEnv.passwordRequireLowercase,
+  requireUppercase: clientEnv.passwordRequireUppercase,
+  requireDigit: clientEnv.passwordRequireDigit,
+  requireSpecial: clientEnv.passwordRequireSpecial,
 }
 
 export function getPasswordRequirementHints() {

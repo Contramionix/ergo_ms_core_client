@@ -17,7 +17,7 @@ import { apiClient } from '@/js/api/manager'
 import { logError } from '@/js/utils/logError.js'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { cmsEndpoints } from '@/core/cms/js/endpoints'
-import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { downloadImportUsersTemplate } from '@/core/cms/adp/admin/js/importUsersExcel.js'
 import { downloadBlob, extractFilenameFromHeaders, formatFileSize } from '@/js/utils/file-helpers.js'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
@@ -253,7 +253,7 @@ const restorePasswordsDownloadState = async () => {
 
 onMounted(async () => {
   try {
-    const accessData = await CheckAccessToAdminPanel()
+    const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
       toast.error('У вас нет доступа к административной панели')
       router.push({ name: 'AccessDenied' })

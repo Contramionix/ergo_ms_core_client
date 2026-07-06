@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import ModalCenter from '@/components/ModalCenter.vue'
-import { UpdateRole } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { updateRole } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -65,7 +65,7 @@ const submitForm = async () => {
 
   try {
     isSubmitting.value = true
-    await UpdateRole(roleId.value, {
+    await updateRole(roleId.value, {
       name: name.value.trim(),
       role_type: roleType.value,
       description: description.value || '',

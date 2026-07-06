@@ -3,10 +3,10 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { Trash2 } from 'lucide-vue-next'
 import SelectBox from '@/components/SelectBox.vue'
 import {
-  GetModulePermissions,
-  CreateModulePermission,
-  DeleteModulePermission
-} from '@/core/cms/adp/admin/js/GroupsPolitics'
+  getModulePermissions,
+  createModulePermission,
+  deleteModulePermission
+} from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { mapRoleGroupSelectOptions } from '@/core/cms/js/adminSelectOptions.js'
 
 const props = defineProps({
@@ -38,7 +38,7 @@ const showErrors = ref({
 
 const loadPermissions = async () => {
   const roleGroupId = selectedRoleGroup.value || null
-  const data = await GetModulePermissions(roleGroupId)
+  const data = await getModulePermissions(roleGroupId)
   permissions.value = Array.isArray(data) ? data : (data.results || [])
 }
 
@@ -63,7 +63,7 @@ const submitForm = async () => {
     return
   }
 
-  await CreateModulePermission({
+  await createModulePermission({
     module_name: form.value.module_name.trim(),
     permission_key: form.value.permission_key.trim(),
     permission_name: form.value.permission_name.trim(),
@@ -84,7 +84,7 @@ const submitForm = async () => {
 }
 
 const deletePermission = async permissionId => {
-  await DeleteModulePermission(permissionId)
+  await deleteModulePermission(permissionId)
   await loadPermissions()
 }
 

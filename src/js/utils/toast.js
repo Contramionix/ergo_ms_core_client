@@ -10,6 +10,7 @@ import {
   isToastEnabled,
   subscribeToastSettingsChange,
 } from '@/js/utils/toastSettings.js'
+import { extractApiError } from '@/js/utils/apiErrorMessage.js'
 
 export const TOAST_TIMEOUT = {
   success: 3000,
@@ -252,15 +253,7 @@ subscribeToastSettingsChange(() => {
 })
 
 export async function handleApiError(error, defaultMessage = 'Произошла ошибка') {
-  const errorMessage =
-    error?.response?.data?.error ||
-    error?.response?.data?.message ||
-    error?.response?.data?.detail ||
-    (typeof error?.response?.data === 'object'
-      ? Object.values(error.response.data).flat().join(', ')
-      : defaultMessage)
-
-  showError(normalizeToastMessage(errorMessage, defaultMessage))
+  showError(extractApiError(error, defaultMessage))
 }
 
 export function showValidationError(message = 'Проверьте правильность заполнения полей') {

@@ -2,14 +2,14 @@
 import GroupTableHeader from '@/core/cms/adp/admin/GroupsComponent/GroupsTableHeader.vue'
 import GroupTable from '@/core/cms/adp/admin/GroupsComponent/GroupsTable.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
-import { GetRoleGroups } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { getRoleGroups } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { ref, onMounted } from 'vue'
 
 const rows = ref([])
 const isLoading = ref(false)
 
 const loadGroups = async () => {
-  const groups = await GetRoleGroups()
+  const groups = await getRoleGroups()
   rows.value = groups.map(group => ({
     id: group.id,
     name: group.name,

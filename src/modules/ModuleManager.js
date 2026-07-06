@@ -204,7 +204,7 @@ export class ModuleManager {
         await fetchDisabledModules(apiClient)
       }
     } catch {
-      // Если API недоступен — используется значение из VITE_DISABLED_MODULES
+      // Если API недоступен — используется DISABLED_MODULES из .env
     }
   }
 

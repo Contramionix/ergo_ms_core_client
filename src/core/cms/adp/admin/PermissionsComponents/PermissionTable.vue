@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { Pencil, Trash2 } from 'lucide-vue-next'
 import ChangePermissionForm from '@/core/cms/adp/admin/PermissionsComponents/SubmitPermissionChange.vue'
-import { DeletePolicy } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { deletePolicy } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 
 const props = defineProps({
   headers: { type: Array, required: true },
@@ -53,7 +53,7 @@ const changePermission = () => {
 }
 
 const deletePermission = async (policyId) => {
-  await DeletePolicy(policyId)
+  await deletePolicy(policyId)
   emit('updatePermissions')
 }
 

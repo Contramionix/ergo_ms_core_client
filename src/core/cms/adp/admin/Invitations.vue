@@ -12,7 +12,7 @@ import SearchInput from '@/components/SearchInput.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import { runWithConfirm, confirmAction } from '@/js/utils/confirm.js'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
-import { CheckAccessToAdminPanel } from '@/core/cms/adp/admin/js/GroupsPolitics'
+import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { fetchInvitations, revokeInvitation, resendInvitation, clearInvitations, } from '@/core/cms/adp/admin/js/invitationService'
 import { copyTextToClipboard } from '@/js/utils/clipboard.js'
 import InvitationCreateModal from '@/core/cms/adp/admin/InvitationsComponents/InvitationCreateModal.vue'
@@ -128,7 +128,7 @@ const loadInvitations = async () => {
 
 onMounted(async () => {
   try {
-    const accessData = await CheckAccessToAdminPanel()
+    const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
       toast.error('У вас нет доступа к административной панели')
       router.push({ name: 'AccessDenied' })
@@ -180,7 +180,7 @@ const openBulkModal = () => {
 
 const handleInvitationCreated = ({ sendEmail, emailWarning }) => {
   if (emailWarning) {
-    toast.warning(`Приглашение создано, но письмо не отправлено: ${emailWarning}`)
+    toast.warning('Приглашение создано, но письмо не отправлено')
   } else if (sendEmail) {
     toast.success('Приглашение создано и отправлено на email')
   } else {

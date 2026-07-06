@@ -1,4 +1,5 @@
-import { CheckAccess } from '@/core/cms/js/cms'
+import { checkUrlAccess, getMyPermissions } from '@/core/cms/js/cms.js'
+import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 
 const PERMISSIONS_CACHE_TTL = 60 * 1000
 let cachedPermissionsSnapshot = null
@@ -14,7 +15,7 @@ async function ensurePermissionsSnapshot() {
   }
 
   try {
-    const response = await CheckAccess.GetMyPermissions()
+    const response = await getMyPermissions()
     cachedPermissionsSnapshot = response?.data || response
     permissionsSnapshotFetchedAt = now
   } catch (error) {
@@ -30,8 +31,7 @@ export async function getPermissionsSnapshot() {
 }
 
 export async function checkGlobalAdminAccess() {
-  const { CheckAccessToAdminPanel } = await import('@/core/cms/adp/admin/js/GroupsPolitics')
-  const access = await CheckAccessToAdminPanel()
+  const access = await checkAccessToAdminPanel()
   return Boolean(access?.access_to_panel)
 }
 
@@ -45,7 +45,7 @@ export async function checkRouteAdpAccess(path) {
     return false
   }
 
-  const response = await CheckAccess.CheckURLAccess(path)
+  const response = await checkUrlAccess(path)
   const allowed = Boolean(
     response?.data?.has_access ?? response?.data?.access ?? response?.data?.allowed,
   )
@@ -73,13 +73,11 @@ export async function hasAnyModulePermission(moduleName, permissionKeys = []) {
   const permissionsSnapshot = await ensurePermissionsSnapshot()
   const modulePermissions = permissionsSnapshot?.module_permissions || []
 
-  // Фильтруем права только для указанного модуля
   const modulePerms = modulePermissions.filter((perm) => {
     const permModuleName = perm.module_name || perm.moduleName
     return permModuleName === moduleName
   })
 
-  // Проверяем, есть ли хотя бы одно из запрошенных прав с is_granted=true
   return permissionKeys.some((key) => {
     return modulePerms.some((perm) => {
       const permKey = perm.permission_key || perm.permissionKey
@@ -88,5 +86,3 @@ export async function hasAnyModulePermission(moduleName, permissionKeys = []) {
     })
   })
 }
-
-

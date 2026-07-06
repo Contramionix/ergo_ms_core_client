@@ -2,7 +2,10 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/core/cms/js/userStore'
 import { messengerApi } from './messenger-api'
 import { useWebSocket } from './useWebSocket'
-import { isHttpPollingMode, pollIntervalMs } from '@/js/realtime/config.js'
+import { isHttpPollingMode, isPushTransport, pollIntervalMs } from '@/js/realtime/config.js'
+import { buildClientEnvelope } from '@/js/realtime/envelope.js'
+import { messengerTopic } from '@/js/realtime/RealtimeClient.js'
+import { registerPollJob } from '@/js/realtime/pollCoordinator.js'
 
 export function useMessenger(contentType, objectId) {
   const messages = ref([])
@@ -11,10 +14,37 @@ export function useMessenger(contentType, objectId) {
   const userStore = useUserStore()
   const { connected, connect, disconnect, send } = useWebSocket()
 
-  let pollTimer = null
+  let pollUnregister = null
 
   function pollInterval() {
     return pollIntervalMs('messenger')
+  }
+
+  async function pollIncremental() {
+    if (document.visibilityState === 'hidden') {
+      return
+    }
+    await loadMessages(true, { silent: true })
+  }
+
+  function startPolling() {
+    stopPolling()
+    if (isHttpPollingMode() || !connected.value) {
+      pollUnregister = registerPollJob('messenger-messages', pollIncremental, pollInterval())
+    }
+  }
+
+  function stopPolling() {
+    pollUnregister?.()
+    pollUnregister = null
+  }
+
+  function handleConnectionChange(isConnected) {
+    if (isPushTransport() && isConnected) {
+      stopPolling()
+      return
+    }
+    startPolling()
   }
 
   function lastMessageId() {
@@ -48,24 +78,6 @@ export function useMessenger(contentType, objectId) {
       if (!incremental && !silent) {
         loading.value = false
       }
-    }
-  }
-
-  function startPolling() {
-    stopPolling()
-    pollTimer = setInterval(() => {
-      if (isHttpPollingMode()) {
-        loadMessages(false, { silent: true })
-      } else if (!connected.value) {
-        loadMessages(true)
-      }
-    }, pollInterval())
-  }
-
-  function stopPolling() {
-    if (pollTimer) {
-      clearInterval(pollTimer)
-      pollTimer = null
     }
   }
 
@@ -134,23 +146,33 @@ export function useMessenger(contentType, objectId) {
   }
 
   function handleWsMessage(data) {
-    if (data.type === 'new_message' && data.message) {
-      const existing = messages.value.find((m) => m.id === data.message.id)
+    if (!data?.type || !('payload' in data)) {
+      return
+    }
+    const { type, payload } = data
+    if (type === 'new_message') {
+      const existing = messages.value.find((m) => m.id === payload.id)
       if (!existing) {
-        messages.value.push(data.message)
+        messages.value.push(payload)
       }
-    } else if (data.type === 'message_edited' && data.message) {
-      const idx = messages.value.findIndex((m) => m.id === data.message.id)
-      if (idx !== -1) messages.value.splice(idx, 1, data.message)
-    } else if (data.type === 'message_deleted' && data.message_id) {
-      messages.value = messages.value.filter((m) => m.id !== data.message_id)
+    } else if (type === 'message_edited') {
+      const idx = messages.value.findIndex((m) => m.id === payload.id)
+      if (idx !== -1) messages.value.splice(idx, 1, payload)
+    } else if (type === 'message_deleted') {
+      messages.value = messages.value.filter((m) => m.id !== payload)
+    } else if (type === 'typing_indicator' && payload?.user_id) {
+      // typing только в websocket-режиме (capabilities)
     }
   }
 
   function sendTyping() {
     const user = userStore.user
-    if (user) {
-      send({ type: 'typing', user_id: user.id, username: user.username || '' })
+    if (user && contentType.value && objectId.value) {
+      send(buildClientEnvelope(
+        'typing_indicator',
+        { user_id: user.id, username: user.username || '' },
+        messengerTopic(contentType.value, objectId.value),
+      ))
     }
   }
 
@@ -163,6 +185,10 @@ export function useMessenger(contentType, objectId) {
   watch([contentType, objectId], () => {
     loadMessages()
     connectWs()
+  })
+
+  watch(connected, (isConnected) => {
+    handleConnectionChange(isConnected)
   })
 
   onMounted(() => {

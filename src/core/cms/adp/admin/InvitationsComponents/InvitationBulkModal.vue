@@ -24,7 +24,7 @@ import {
   bulkSendInvitations,
 } from '@/core/cms/adp/admin/js/invitationService'
 import { copyTextToClipboard } from '@/js/utils/clipboard.js'
-import { extractApiError } from '@/js/utils/extractApiError.js'
+import { extractApiError } from '@/js/utils/apiErrorMessage.js'
 import { formatFileSize } from '@/js/utils/file-helpers.js'
 import { logError } from '@/js/utils/logError.js'
 import ModalCenter from '@/components/ModalCenter.vue'

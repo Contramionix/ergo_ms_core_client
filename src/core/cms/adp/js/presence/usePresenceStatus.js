@@ -4,7 +4,7 @@ import { enqueueFetch, getStatus, hasStatus, presenceStore } from './presenceSto
 
 /**
  * Composable для отображения онлайн-статуса пользователя.
- * Будущая интеграция с UserAvatar: usePresenceStatus(userId) + PresenceIndicator.
+ * Используется с UserAvatar (prop presence) и PresenceIndicator.
  */
 export function usePresenceStatus(userIdSource) {
   const isLoading = ref(false)
