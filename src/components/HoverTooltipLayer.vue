@@ -82,7 +82,7 @@ onBeforeUnmount(() => {
 
   &--wrap {
     max-width: min(20rem, calc(100vw - 16px));
-    white-space: normal;
+    white-space: pre-line;
     text-align: center;
   }
 }
