@@ -7,6 +7,8 @@ import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll, getPermissionRules } from '@/modules/index.js'
 import { checkRouteAdpAccess, hasAnyModulePermission, checkGlobalAdminAccess } from '@/core/cms/adp/js/accessControl'
 import tokenService from '@/core/cms/js/tokenService'
+import { useUserStore } from '@/core/cms/js/userStore.js'
+import { isExpired } from '@/core/cms/js/tokenStorage.js'
 import { accessDeniedState } from './accessDeniedState'
 import { logWarn } from '@/js/utils/logError.js'
 
@@ -121,6 +123,17 @@ async function checkRouteAccess(to) {
 }
 
 async function runCheckToken() {
+  const access = tokenService.getAccess()
+  if (access && !isExpired(access)) {
+    try {
+      const userStore = useUserStore()
+      if (userStore.isInitialized && userStore.isAuthenticated) {
+        return true
+      }
+    } catch (_) {
+      /* pinia ещё не готов */
+    }
+  }
   return checkToken()
 }
 

@@ -6,14 +6,10 @@ import { preloadPasswordResetSettings } from '@/core/cms/adp/js/passwordResetSet
 import '@/js/utils/logger.js'
 
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
-import '@he-tree/vue/style/default.css'
-import '@he-tree/vue/style/material-design.css'
 
 import '@/scss/styles.scss'
 
-import { PerfectScrollbarPlugin } from 'vue3-perfect-scrollbar'
 import { autoAnimatePlugin } from '@formkit/auto-animate/vue'
-import { setupCalendar } from 'v-calendar'
 import { plugin as Slicksort } from 'vue-slicksort'
 import Toast from 'vue-toastification'
 import { getToastPluginOptions, syncToastPluginWithSettings } from '@/js/utils/toast.js'
@@ -24,12 +20,11 @@ import { createPinia } from 'pinia'
 import App from '@/App.vue'
 import { initEndpoints } from '@/js/api/endpoints.js'
 import { DEFAULT_SITE_NAME } from '@/js/siteWordmark.js'
-import { getUserMenu } from '@/core/cms/js/menuService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import tokenService from '@/core/cms/js/tokenService.js'
 import { restoreSession } from '@/core/cms/js/tokenRefresh.js'
 import { hideBootstrapMask } from '@/js/bootstrapMask.js'
-import { initRealtimeConfig } from '@/js/realtime/config.js'
+import { initTheme } from '@/js/theme-manager.js'
 
 async function restoreSessionIfNeeded() {
   return restoreSession()
@@ -48,46 +43,42 @@ app.directive('tooltip', {
 
 app.use(pinia)
 
-app.use(PerfectScrollbarPlugin)
 app.use(autoAnimatePlugin)
 app.use(Slicksort)
 
 app.use(Toast, getToastPluginOptions())
 syncToastPluginWithSettings()
 
-app.use(setupCalendar, {
-  color: 'red',
-})
-
-await initEndpoints()
-
 if (typeof document !== 'undefined') {
   document.title = DEFAULT_SITE_NAME
 }
 
-const { syncSiteThemeFromApi } = await import('@/js/theme-service.js')
-await syncSiteThemeFromApi()
+// Тема из localStorage сразу; актуальная тема с API — после mount
+initTheme()
 
-const hasSession = await restoreSessionIfNeeded()
+const [, hasSession] = await Promise.all([
+  initEndpoints(),
+  restoreSessionIfNeeded(),
+])
+
 if (hasSession) {
-  // Полностью готовим пользователя (данные + профиль + кеш аватарки) и меню до
-  // монтирования — иначе данные приходят поэтапно и аватар/иконки дёргаются.
-  await Promise.all([
-    useUserStore().ensureUserReady(),
-    getUserMenu(),
-    initRealtimeConfig(),
-  ])
+  await useUserStore().loadSessionBootstrap()
 }
 
 const router = await initRouter()
 app.use(router)
 
-await Promise.all([
+app.mount('#app')
+
+useUserStore().warmupAvatar()
+
+const { syncSiteThemeFromApi } = await import('@/js/theme-service.js')
+syncSiteThemeFromApi().catch(() => {})
+
+Promise.all([
   preloadRegistrationSettings(),
   preloadPasswordResetSettings(),
-])
-
-app.mount('#app')
+]).catch(() => {})
 
 // Защитный таймаут: если по какой-то причине App.vue не снял маску загрузки
 // (ошибка роутера и т.п.), всё равно показываем интерфейс.

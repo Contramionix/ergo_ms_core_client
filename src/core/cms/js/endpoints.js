@@ -17,6 +17,7 @@ export const cmsEndpoints = {
         profileChangeRequests: 'cms/adp/profile-change-requests/',
         validateInvitation: 'cms/adp/invitations/validate/',
         protected: 'cms/adp/protected/',
+        sessionBootstrap: 'cms/adp/session-bootstrap/',
         changePassword: 'cms/adp/change-password/',
         devices: 'cms/adp/devices/',
         deleteDevice: id => `cms/adp/devices/${id}/`,

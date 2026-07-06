@@ -99,6 +99,23 @@ export default defineConfig({
       treeshake: {
         preset: 'recommended',
       },
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return undefined
+          }
+          if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) {
+            return 'vendor_vue'
+          }
+          if (id.includes('bootstrap') || id.includes('vue-toastification')) {
+            return 'vendor_ui'
+          }
+          if (id.includes('exceljs') || id.includes('pdfjs-dist')) {
+            return 'vendor_heavy'
+          }
+          return undefined
+        },
+      },
     },
     chunkSizeWarningLimit: 500, // Возвращаем стандартный лимит
   },

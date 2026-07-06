@@ -22,24 +22,25 @@ const asyncModulesCache = new Map()
 // ============================================================================
 const sharedGlobs = {
   // Core модули - routes, endpoints, permission-rules
-  coreRoutes: import.meta.glob('../../core/**/js/routes.js', { eager: true }),
-  coreEndpoints: import.meta.glob('../../core/**/js/endpoints.js', { eager: true }),
-  corePermissionRules: import.meta.glob('../../core/**/js/permission-rules.js', { eager: true }),
-  corePermissionSections: import.meta.glob('../../core/**/js/permission-sections.js', { eager: true }),
+  // routes и endpoints — lazy (как permission-rules), чтобы не раздувать initial chunk
+  coreRoutes: import.meta.glob('../../core/**/js/routes.js'),
+  coreEndpoints: import.meta.glob('../../core/**/js/endpoints.js'),
+  corePermissionRules: import.meta.glob('../../core/**/js/permission-rules.js'),
+  corePermissionSections: import.meta.glob('../../core/**/js/permission-sections.js'),
   
   // Core компоненты (lazy loading)
   coreComponents: import.meta.glob('../../**/*.vue'),
   
   // External модули - routes (в т.ч. вложенные, например client/edu-space-tasks/js/routes.js)
   modulesRoutes: {
-    ...import.meta.glob('../../../../../modules/*/client/js/routes.js', { eager: true }),
-    ...import.meta.glob('../../../../../modules/*/client/**/js/routes.js', { eager: true })
+    ...import.meta.glob('../../../../../modules/*/client/js/routes.js'),
+    ...import.meta.glob('../../../../../modules/*/client/**/js/routes.js')
   },
-  modulesEndpoints: import.meta.glob('../../../../../modules/*/client/js/endpoints.js', { eager: true }),
-  modulesPermissionRules: import.meta.glob('../../../../../modules/*/client/js/permission-rules.js', { eager: true }),
+  modulesEndpoints: import.meta.glob('../../../../../modules/*/client/js/endpoints.js'),
+  modulesPermissionRules: import.meta.glob('../../../../../modules/*/client/js/permission-rules.js'),
   modulesPermissionSections: {
-    ...import.meta.glob('../../../../../modules/*/client/js/permission-sections.js', { eager: true }),
-    ...import.meta.glob('../../../../../modules/*/client/**/js/permission-sections.js', { eager: true })
+    ...import.meta.glob('../../../../../modules/*/client/js/permission-sections.js'),
+    ...import.meta.glob('../../../../../modules/*/client/**/js/permission-sections.js')
   },
   // Интеграции с ModuleBridge (регистрация capabilities/events модуля)
   //
@@ -158,25 +159,9 @@ export class ModuleLoader {
     
     const modules = this.loadAllModules(pattern)
     const loaded = {}
-    
-    // Для eager модулей (routes.js, endpoints.js) они уже загружены
-    // Проверяем паттерн, чтобы определить, нужны ли промисы
-    const isEagerPattern = ['js/routes.js', 'js/endpoints.js', 'js/permission-rules.js', 'js/permission-sections.js'].includes(pattern)
-    
-    if (isEagerPattern) {
-      // Для eager-модулей они уже загружены, просто извлекаем данные синхронно
-      Object.entries(modules).forEach(([path, module]) => {
-        loaded[path] = module?.default ?? module
-      })
-      // Кешируем результат
-      asyncModulesCache.set(pattern, loaded)
-      return loaded
-    }
 
-    // Для lazy модулей (компоненты) используем асинхронную загрузку
     await Promise.all(
       Object.entries(modules).map(async ([path, loader]) => {
-        // Проверяем, является ли loader функцией (lazy) или уже загруженным модулем (eager)
         if (typeof loader === 'function') {
           const module = await loader()
           loaded[path] = module?.default ?? module

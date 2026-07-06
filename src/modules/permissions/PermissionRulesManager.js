@@ -9,7 +9,7 @@
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
 
-import { logWarn } from '@/js/utils/logError.js'
+import { logError, logWarn } from '@/js/utils/logError.js'
 
 export class PermissionRulesManager extends ModuleLoader {
   constructor() {
@@ -26,19 +26,19 @@ export class PermissionRulesManager extends ModuleLoader {
       return
     }
 
-    this.loadPermissionRules()
+    await this.loadPermissionRules()
     this.initialized = true
   }
 
   /**
    * Загружает все permission-rules.js из модулей
    */
-  loadPermissionRules() {
-    const rulesModules = this.loadAllModules('js/permission-rules.js', true)
+  async loadPermissionRules() {
+    const rulesModules = await this.loadAllModulesAsync('js/permission-rules.js')
 
     Object.entries(rulesModules).forEach(([path, module]) => {
-      // Получаем default экспорт или первый экспорт
-      const moduleRules = module.default || Object.values(module)[0]
+      // loadAllModulesAsync уже разворачивает default; поддерживаем оба формата
+      const moduleRules = module?.default ?? module
 
       if (Array.isArray(moduleRules)) {
         moduleRules.forEach((rule) => {

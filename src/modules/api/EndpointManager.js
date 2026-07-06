@@ -24,7 +24,7 @@ export class EndpointManager extends ModuleLoader {
       return
     }
 
-    this.loadEndpoints()
+    await this.loadEndpoints()
     this.initialized = true
   }
 
@@ -87,8 +87,8 @@ export class EndpointManager extends ModuleLoader {
   /**
    * Загружает все endpoints.js из модулей
    */
-  loadEndpoints() {
-    const endpointsModules = this.loadAllModules('js/endpoints.js', true)
+  async loadEndpoints() {
+    const endpointsModules = await this.loadAllModulesAsync('js/endpoints.js')
 
     Object.entries(endpointsModules).forEach(([path, module]) => {
       // Получаем первый экспорт из модуля (например, biEndpoints, cmsEndpoints)

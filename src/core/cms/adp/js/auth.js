@@ -2,9 +2,17 @@ import { apiClient } from '@/js/api/manager.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import tokenService from '@/core/cms/js/tokenService'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
+import { useUserStore } from '@/core/cms/js/userStore.js'
 import { performServerLogout, restoreSession, invalidateSessionRestoreCache } from '@/core/cms/js/tokenRefresh.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
+
+const TOKEN_CHECK_TTL_MS = 60 * 1000
+let tokenCheckCache = { at: 0, result: false }
+
+function resetTokenCheckCache() {
+  tokenCheckCache = { at: 0, result: false }
+}
 
 export const authService = {
     async login(username, password, rememberMe = false) {
@@ -65,28 +73,50 @@ export const authService = {
         }, false);
     },
     
-    async checkToken() {
+    async checkToken({ force = false } = {}) {
         const access = tokenService.getAccess()
         if (access && !isExpired(access)) {
+            if (!force) {
+                try {
+                    const userStore = useUserStore()
+                    if (userStore.isInitialized && userStore.isAuthenticated) {
+                        const now = Date.now()
+                        if (now - tokenCheckCache.at < TOKEN_CHECK_TTL_MS) {
+                            return tokenCheckCache.result
+                        }
+                    }
+                } catch (_) {
+                    /* store ещё не готов */
+                }
+            }
+
             try {
                 const response = await apiClient.get(endpoints.auth.protected)
+                tokenCheckCache = { at: Date.now(), result: response.success }
                 return response.success
             } catch (error) {
                 if (error.response?.status === 401) {
                     await this.logout()
                 }
+                resetTokenCheckCache()
                 return false
             }
         }
 
         try {
-            return await restoreSession()
+            const restored = await restoreSession()
+            if (restored) {
+                tokenCheckCache = { at: Date.now(), result: true }
+            }
+            return restored
         } catch {
+            resetTokenCheckCache()
             return false
         }
     },
     
     async logout() {
+        resetTokenCheckCache()
         resetPresenceConnection()
         resetPresenceStore()
         await performServerLogout()

@@ -213,8 +213,32 @@ function severityMeta(value) {
 }
 
 function hasDetails(event) {
-  return (Array.isArray(event.changes) && event.changes.length > 0)
-    || (event.meta && Object.keys(event.meta).length > 0)
+  return Boolean(event?.id)
+}
+
+async function openDetails(event) {
+  if (!event?.id) return
+  showDetailsModal.value = true
+  selectedEvent.value = event
+  try {
+    const result = await apiClient.get(`${auditEndpoints.audit.events}${event.id}/`, {}, true)
+    const full = result?.data
+    if (
+      !full
+      || (!(Array.isArray(full.changes) && full.changes.length > 0)
+        && !(full.meta && Object.keys(full.meta).length > 0))
+    ) {
+      showDetailsModal.value = false
+      selectedEvent.value = null
+      return
+    }
+    selectedEvent.value = full
+  } catch (error) {
+    logError('Аудит: не удалось загрузить детали события', error)
+    toast.error('Не удалось загрузить детали события')
+    showDetailsModal.value = false
+    selectedEvent.value = null
+  }
 }
 
 function ipLocationTooltip(item) {
@@ -272,7 +296,13 @@ async function loadEvents({ spinRefresh = false } = {}) {
     const result = await apiClient.get(auditEndpoints.audit.events, params, true)
     const data = result?.data || {}
     events.value = data.results || []
-    totalItems.value = data.count ?? events.value.length
+    if (typeof data.has_next === 'boolean') {
+      totalItems.value = data.has_next
+        ? currentPage.value * rowsPerPage.value + rowsPerPage.value + 1
+        : (currentPage.value - 1) * rowsPerPage.value + events.value.length
+    } else {
+      totalItems.value = data.count ?? events.value.length
+    }
     if (data.page) {
       currentPage.value = data.page
     }
@@ -304,12 +334,6 @@ function handleSearchQuery(query) {
 function handlePageChange(page) {
   currentPage.value = page
   loadEvents()
-}
-
-function openDetails(event) {
-  if (!hasDetails(event)) return
-  selectedEvent.value = event
-  showDetailsModal.value = true
 }
 
 function closeDetails() {

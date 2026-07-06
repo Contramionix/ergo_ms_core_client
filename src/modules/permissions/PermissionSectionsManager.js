@@ -10,6 +10,8 @@
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
 
+import { logWarn } from '@/js/utils/logError.js'
+
 export class PermissionSectionsManager extends ModuleLoader {
   constructor() {
     super()
@@ -23,15 +25,15 @@ export class PermissionSectionsManager extends ModuleLoader {
       return
     }
 
-    this.loadPermissionSections()
+    await this.loadPermissionSections()
     this.initialized = true
   }
 
-  loadPermissionSections() {
-    const modules = this.loadAllModules('js/permission-sections.js', true)
+  async loadPermissionSections() {
+    const modules = await this.loadAllModulesAsync('js/permission-sections.js')
 
     Object.entries(modules).forEach(([path, module]) => {
-      const exported = module.default || Object.values(module)[0]
+      const exported = module?.default ?? module
       if (!exported) {
         return
       }

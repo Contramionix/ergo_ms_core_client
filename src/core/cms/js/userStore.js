@@ -5,6 +5,14 @@ import { apiClient } from '@/js/api/manager.js'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import { profileService } from '@/core/cms/js/profileService.js'
+import { applyMenuBootstrap } from '@/core/cms/js/menuService.js'
+import { applyPermissionsBootstrap, invalidatePermissionsSnapshot } from '@/core/cms/adp/js/accessControl.js'
+import {
+  clearSessionBootstrapCache,
+  setSessionBootstrapCache,
+} from '@/core/cms/js/sessionBootstrapCache.js'
+import { invalidateAdminAccessCache } from '@/core/cms/adp/admin/js/adminAccessApi.js'
+import { applyRealtimeConfigFromApi } from '@/js/realtime/config.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
 import {
@@ -26,7 +34,9 @@ export const useUserStore = defineStore('userStore', () => {
   const avatarUrl = ref(null) // null означает использование стандартного аватара
   const isLoading = ref(false)
   const isInitialized = ref(false)
+  const accessToPanel = ref(false)
   let initializationPromise = null // Промис текущей инициализации для предотвращения гонки условий
+  let bootstrapPromise = null
   let loadProfilePromise = null // Промис текущей загрузки профиля для предотвращения гонки условий
 
 
@@ -111,6 +121,10 @@ export const useUserStore = defineStore('userStore', () => {
     user.value = null
     profile.value = null
     avatarUrl.value = null
+    accessToPanel.value = false
+    clearSessionBootstrapCache()
+    invalidateAdminAccessCache()
+    invalidatePermissionsSnapshot()
   }
 
   // Обновление базовой информации пользователя
@@ -123,7 +137,64 @@ export const useUserStore = defineStore('userStore', () => {
     }
   }
   
-  // Инициализация пользователя
+  // Агрегированная загрузка сессии (session-bootstrap)
+  const loadSessionBootstrap = async () => {
+    if (isInitialized.value) {
+      return true
+    }
+    if (bootstrapPromise) {
+      return bootstrapPromise
+    }
+
+    bootstrapPromise = (async () => {
+      try {
+        isLoading.value = true
+        const response = await apiClient.get(endpoints.auth.sessionBootstrap)
+        if (!response?.success) {
+          throw new Error('Не удалось загрузить данные сессии')
+        }
+
+        const data = response.data || response
+        setSessionBootstrapCache(data)
+
+        if (data.user) {
+          updateUserData(data.user)
+        }
+        if (data.profile) {
+          profile.value = profileService.formatProfileData(data.profile)
+        }
+        if (data.avatar_url) {
+          avatarUrl.value = data.avatar_url
+        } else {
+          avatarUrl.value = null
+        }
+        if (data.menu) {
+          await applyMenuBootstrap(data.menu)
+        }
+        if (data.realtime) {
+          applyRealtimeConfigFromApi(data.realtime)
+        }
+        if (data.permissions) {
+          applyPermissionsBootstrap(data.permissions)
+        }
+        accessToPanel.value = Boolean(data.access_to_panel)
+
+        isInitialized.value = true
+        return true
+      } catch (error) {
+        logError('Ошибка загрузки session-bootstrap:', error)
+        resetUserState()
+        return false
+      } finally {
+        isLoading.value = false
+        bootstrapPromise = null
+      }
+    })()
+
+    return bootstrapPromise
+  }
+
+  // Инициализация пользователя (legacy / fallback)
   const initializeUser = async () => {
     // Если уже инициализирован, возвращаем успех
     if (isInitialized.value) return true
@@ -342,20 +413,7 @@ export const useUserStore = defineStore('userStore', () => {
   // Гарантирует полную готовность пользователя перед входом в интерфейс:
   // базовые данные, профиль (first_name/last_name для стабильных инициалов) и
   // прогретый кеш аватарки. Идемпотентна — вызывается при входе и при загрузке.
-  const ensureUserReady = async () => {
-    await Promise.all([
-      initializeUser(),
-      loadProfile(),
-    ])
-
-    if (avatarUrl.value) {
-      try {
-        await ensureAvatarDisplaySrc(avatarUrl.value)
-      } catch {
-        // прогрев кеша не критичен
-      }
-    }
-  }
+  const ensureUserReady = async () => loadSessionBootstrap()
 
   // Принудительная перезагрузка данных пользователя
   const refreshUserData = async () => {
@@ -380,6 +438,13 @@ export const useUserStore = defineStore('userStore', () => {
     }
   }
 
+  const warmupAvatar = () => {
+    if (!avatarUrl.value) {
+      return
+    }
+    ensureAvatarDisplaySrc(avatarUrl.value).catch(() => {})
+  }
+
   return {
     // States
     user,
@@ -387,6 +452,7 @@ export const useUserStore = defineStore('userStore', () => {
     avatarUrl,
     isLoading,
     isInitialized,
+    accessToPanel,
     
     // Getters
     isAuthenticated,
@@ -401,6 +467,7 @@ export const useUserStore = defineStore('userStore', () => {
     
     // Actions
     initializeUser,
+    loadSessionBootstrap,
     loadProfile,
     loadAvatar,
     updateProfile,
@@ -409,6 +476,7 @@ export const useUserStore = defineStore('userStore', () => {
     logout,
     ensureUserReady,
     refreshUserData,
-    refreshAllData
+    refreshAllData,
+    warmupAvatar,
   }
 }) 

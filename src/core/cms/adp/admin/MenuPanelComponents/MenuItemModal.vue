@@ -35,10 +35,10 @@
 
       <div class="mb-3">
         <label class="form-label">Иконка</label>
-        <SelectBox :model-value="form.icon || null" :options="LUCIDE_ICON_NAMES" searchable search-placeholder="Поиск иконки..." :include-all-option="true" all-label="Не выбрана" :virtualized="true" :item-height="36" :overscan="8" @update:model-value="v => form.icon = v ?? ''">
+        <SelectBox :model-value="form.icon || null" :options="lucideIconOptions" searchable search-placeholder="Поиск иконки..." :include-all-option="true" all-label="Не выбрана" :virtualized="true" :item-height="36" :overscan="8" @update:model-value="v => form.icon = v ?? ''">
           <template #option="{ value, label }">
             <span class="d-inline-flex align-items-center gap-2">
-              <component v-if="LucideIcons[value]" :is="LucideIcons[value]" :size="18"/>
+              <component v-if="lucideIcons[value]" :is="lucideIcons[value]" :size="18"/>
               <span>{{ label }}</span>
             </span>
           </template>
@@ -103,14 +103,28 @@
 
 <script setup>
 import { ref, computed, watch, shallowRef, onMounted } from 'vue'
-import * as LucideIcons from 'lucide-vue-next'
 import { getAvailableRouteOptions } from '@/modules/index.js'
+import {
+  getLucideIconAsync,
+  getLucideIconNames,
+  preloadLucideIcons,
+} from '@/js/lucideIconLoader.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SelectBox from '@/components/SelectBox.vue'
 
-const LUCIDE_ICON_NAMES = Object.keys(LucideIcons)
-  .filter(key => key !== 'default' && !key.endsWith('Icon') && /^[A-Z]/.test(key) && (typeof LucideIcons[key] === 'function' || (typeof LucideIcons[key] === 'object' && LucideIcons[key] !== null)))
-  .sort()
+const lucideIcons = shallowRef({})
+const lucideIconOptions = ref([])
+
+onMounted(async () => {
+  const [module, names, opts] = await Promise.all([
+    preloadLucideIcons(),
+    getLucideIconNames(),
+    getAvailableRouteOptions(),
+  ])
+  lucideIcons.value = module
+  lucideIconOptions.value = names.map((name) => ({ id: name, name }))
+  routeOptions.value = opts
+})
 
 const itemTypeOptions = [
   { id: 'route', name: 'Маршрут Vue' },
@@ -141,10 +155,6 @@ const emit = defineEmits(['save', 'close'])
 
 const routeOptions = ref([])
 const useManualRouteInput = ref(false)
-
-onMounted(() => {
-  getAvailableRouteOptions().then(opts => { routeOptions.value = opts })
-})
 
 const isEditing = computed(() => !!props.item?.id)
 
@@ -204,12 +214,8 @@ const filteredParentOptions = computed(() => {
 
 const iconComponent = shallowRef(null)
 
-watch(() => form.value.icon, (iconName) => {
-  if (iconName && LucideIcons[iconName]) {
-    iconComponent.value = LucideIcons[iconName]
-  } else {
-    iconComponent.value = null
-  }
+watch(() => form.value.icon, async (iconName) => {
+  iconComponent.value = iconName ? await getLucideIconAsync(iconName) : null
 }, { immediate: true })
 
 const isFormValid = computed(() => {

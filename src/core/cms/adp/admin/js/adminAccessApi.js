@@ -4,10 +4,33 @@
  */
 import { apiClient } from '@/js/api/manager.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
+import { getSessionBootstrapCache } from '@/core/cms/js/sessionBootstrapCache.js'
+
+const ADMIN_ACCESS_CACHE_TTL = 60 * 1000
+
+let cachedAdminAccess = null
+let adminAccessFetchedAt = 0
+
+export function invalidateAdminAccessCache() {
+  cachedAdminAccess = null
+  adminAccessFetchedAt = 0
+}
 
 export async function checkAccessToAdminPanel() {
+  const bootstrap = getSessionBootstrapCache()
+  if (bootstrap && typeof bootstrap.access_to_panel === 'boolean') {
+    return { access_to_panel: bootstrap.access_to_panel }
+  }
+
+  const now = Date.now()
+  if (cachedAdminAccess && now - adminAccessFetchedAt < ADMIN_ACCESS_CACHE_TTL) {
+    return cachedAdminAccess
+  }
+
   const response = await apiClient.get(endpoints.cms.checkAccessToAdminPanel, {}, true)
-  return response.data
+  cachedAdminAccess = response.data
+  adminAccessFetchedAt = now
+  return cachedAdminAccess
 }
 
 export async function getPages() {

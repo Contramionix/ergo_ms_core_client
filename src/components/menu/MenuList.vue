@@ -10,6 +10,7 @@ import SiteWordmark from '@/components/SiteWordmark.vue'
 import {
   getUserMenu,
   peekCachedMenu,
+  isMenuCacheFresh,
   transformMenuData,
   transformSeparators,
   shouldShowSeparatorAt,
@@ -481,6 +482,17 @@ onMounted(async () => {
 
   if (!userStore.isInitialized) {
     await userStore.initializeUser()
+  }
+
+  if (isMenuReady.value && isMenuCacheFresh()) {
+    await finishMenuBootstrap()
+    scheduleLayoutOffsetSync()
+    if (isCollapsed.value) {
+      isHovering.value = false
+    }
+    setupWidthTracking(onWindowResize)
+    menuRef.value?.addEventListener('transitionend', onMenuTransitionEnd)
+    return
   }
 
   if (!isMenuReady.value) {

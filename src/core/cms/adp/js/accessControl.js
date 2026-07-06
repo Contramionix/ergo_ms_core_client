@@ -1,9 +1,34 @@
 import { checkUrlAccess, getMyPermissions } from '@/core/cms/js/cms.js'
 import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
+import { getSessionBootstrapCache } from '@/core/cms/js/sessionBootstrapCache.js'
+import { logError } from '@/js/utils/logError.js'
 
 const PERMISSIONS_CACHE_TTL = 60 * 1000
+const URL_ACCESS_CACHE_TTL = 60 * 1000
+
 let cachedPermissionsSnapshot = null
 let permissionsSnapshotFetchedAt = 0
+const urlAccessCache = new Map()
+
+function readPermissionsFromBootstrap() {
+  const bootstrap = getSessionBootstrapCache()
+  const permissions = bootstrap?.permissions
+  if (!permissions || typeof permissions !== 'object') {
+    return null
+  }
+  return permissions
+}
+
+/** Прогревает snapshot прав из session-bootstrap (без сетевого запроса). */
+export function applyPermissionsBootstrap(permissionsData) {
+  if (!permissionsData || typeof permissionsData !== 'object') {
+    return null
+  }
+  cachedPermissionsSnapshot = permissionsData
+  permissionsSnapshotFetchedAt = Date.now()
+  urlAccessCache.clear()
+  return cachedPermissionsSnapshot
+}
 
 async function ensurePermissionsSnapshot() {
   const now = Date.now()
@@ -14,16 +39,32 @@ async function ensurePermissionsSnapshot() {
     return cachedPermissionsSnapshot
   }
 
+  const fromBootstrap = readPermissionsFromBootstrap()
+  if (fromBootstrap) {
+    return applyPermissionsBootstrap(fromBootstrap)
+  }
+
   try {
     const response = await getMyPermissions()
     cachedPermissionsSnapshot = response?.data || response
     permissionsSnapshotFetchedAt = now
+    urlAccessCache.clear()
   } catch (error) {
     logError('[ensurePermissionsSnapshot] Ошибка загрузки snapshot:', error)
     cachedPermissionsSnapshot = null
   }
 
   return cachedPermissionsSnapshot
+}
+
+export function invalidatePermissionsSnapshot() {
+  cachedPermissionsSnapshot = null
+  permissionsSnapshotFetchedAt = 0
+  urlAccessCache.clear()
+}
+
+export function invalidateUrlAccessCache() {
+  urlAccessCache.clear()
 }
 
 export async function getPermissionsSnapshot() {
@@ -36,12 +77,22 @@ export async function checkGlobalAdminAccess() {
 }
 
 export async function checkRouteAdpAccess(path) {
+  const now = Date.now()
+  const cached = urlAccessCache.get(path)
+  if (cached && now < cached.expiresAt) {
+    return cached.allowed
+  }
+
   const permissionsSnapshot = await ensurePermissionsSnapshot()
 
-  const deniedUrlsSnapshot = permissionsSnapshot?.denied_urls || []
-  const explicitlyDenied = deniedUrlsSnapshot.includes(path)
+  if (permissionsSnapshot?.is_global_admin) {
+    urlAccessCache.set(path, { allowed: true, expiresAt: now + URL_ACCESS_CACHE_TTL })
+    return true
+  }
 
-  if (explicitlyDenied) {
+  const deniedUrlsSnapshot = permissionsSnapshot?.denied_urls || []
+  if (deniedUrlsSnapshot.includes(path)) {
+    urlAccessCache.set(path, { allowed: false, expiresAt: now + URL_ACCESS_CACHE_TTL })
     return false
   }
 
@@ -50,6 +101,7 @@ export async function checkRouteAdpAccess(path) {
     response?.data?.has_access ?? response?.data?.access ?? response?.data?.allowed,
   )
 
+  urlAccessCache.set(path, { allowed, expiresAt: now + URL_ACCESS_CACHE_TTL })
   return allowed
 }
 

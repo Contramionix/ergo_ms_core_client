@@ -34,7 +34,7 @@ export class RouteManager extends ModuleLoader {
    * Загружает все routes.js из модулей
    */
   async loadRoutes() {
-    const routesModules = this.loadAllModules('js/routes.js', true)
+    const routesModules = await this.loadAllModulesAsync('js/routes.js')
 
     Object.entries(routesModules).forEach(([path, module]) => {
       const routes = module.default || module

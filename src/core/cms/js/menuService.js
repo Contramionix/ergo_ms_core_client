@@ -7,7 +7,7 @@
 
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
-import { getIcon } from '@/config/icons-mapping.js'
+import { getIcon, preloadMenuIconsFromData } from '@/config/icons-mapping.js'
 import { markRaw } from 'vue'
 import { logError, logWarn } from '@/js/utils/logError.js'
 
@@ -31,6 +31,17 @@ export function peekCachedMenu() {
 }
 
 /**
+ * Проверяет, актуален ли in-memory кэш меню (без сетевого запроса).
+ * @returns {boolean}
+ */
+export function isMenuCacheFresh() {
+  if (!menuCache || !cacheTimestamp) {
+    return false
+  }
+  return Date.now() - cacheTimestamp < CACHE_TTL
+}
+
+/**
  * Получает меню для текущего пользователя
  * @param {boolean} forceRefresh - Принудительно обновить кеш
  * @returns {Promise<Object>} - Объект с menu_items и separators
@@ -48,6 +59,7 @@ export async function getUserMenu(forceRefresh = false) {
     const response = await apiClient.get(endpoints.cms.menu.userMenu)
     
     if (response.success) {
+      await preloadMenuIconsFromData(response.data)
       persistMenuCache(response.data)
       return response.data
     }
@@ -66,6 +78,23 @@ export async function getUserMenu(forceRefresh = false) {
 export function clearMenuCache() {
   menuCache = null
   cacheTimestamp = null
+}
+
+/**
+ * Прогревает кэш меню из session-bootstrap (без сетевого запроса).
+ * @param {object} menuData - { menu_items, separators }
+ */
+export async function applyMenuBootstrap(menuData) {
+  if (!menuData || typeof menuData !== 'object') {
+    return { menu_items: [], separators: [] }
+  }
+  const payload = {
+    menu_items: menuData.menu_items || [],
+    separators: menuData.separators || [],
+  }
+  await preloadMenuIconsFromData(payload)
+  persistMenuCache(payload)
+  return menuCache
 }
 
 /**
@@ -415,6 +444,7 @@ export async function logMenuAccess(menuItemId) {
 
 export default {
   getUserMenu,
+  applyMenuBootstrap,
   peekCachedMenu,
   clearMenuCache,
   transformMenuData,

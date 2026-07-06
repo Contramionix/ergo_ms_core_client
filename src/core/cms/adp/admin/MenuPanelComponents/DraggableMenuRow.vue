@@ -124,7 +124,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-vue-next'
-import * as LucideIcons from 'lucide-vue-next'
+import { getLucideIconAsync } from '@/js/lucideIconLoader.js'
 
 const props = defineProps({
   item: {
@@ -186,12 +186,8 @@ watch(
 // Динамическая загрузка иконки
 const iconComponent = shallowRef(null)
 
-watch(() => props.item.icon, (iconName) => {
-  if (iconName && LucideIcons[iconName]) {
-    iconComponent.value = LucideIcons[iconName]
-  } else {
-    iconComponent.value = null
-  }
+watch(() => props.item.icon, async (iconName) => {
+  iconComponent.value = iconName ? await getLucideIconAsync(iconName) : null
 }, { immediate: true })
 
 // Метки типов элементов
