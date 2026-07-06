@@ -502,9 +502,6 @@ onMounted(async () => {
 
 .audit-filter-menu {
   min-width: 150px;
-
-  --filter-menu-trigger-font-size: 1rem;
-  --select-box-font-size: 0.875rem;
 }
 
 .audit-toolbar .actions-wrapper {

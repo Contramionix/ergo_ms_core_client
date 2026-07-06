@@ -428,13 +428,12 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .filter-menu {
   --filter-menu-trigger-font-size: 1rem;
-  --select-box-font-size: 1rem;
+  --select-box-font-size: 0.875rem;
   --select-box-item-padding-y: 0.375rem;
   --select-box-item-padding-x: 0.75rem;
   --select-box-trigger-min-height: 38px;
   position: relative;
   min-width: 170px;
-  font-size: var(--select-box-font-size);
   line-height: 1.5;
 }
 
@@ -456,6 +455,7 @@ onBeforeUnmount(() => {
   --bs-btn-padding-x: var(--select-box-item-padding-x);
   white-space: nowrap;
   text-align: left;
+  flex-shrink: 0;
   transition:
     background-color 0.3s ease,
     border-color 0.3s ease;
@@ -475,13 +475,13 @@ onBeforeUnmount(() => {
 }
 
 .filter-menu__trigger-label {
-  flex: 1 1 auto;
+  flex: 1 0 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--filter-menu-trigger-font-size);
-  line-height: 1.5;
+  font-size: inherit;
+  line-height: inherit;
 }
 
 .filter-menu__trigger-chevron {
@@ -549,7 +549,7 @@ onBeforeUnmount(() => {
   box-shadow: var(--ui-shadow-lg);
   overflow: hidden;
   box-sizing: border-box;
-  font-size: var(--select-box-font-size, 1rem);
+  font-size: var(--select-box-font-size, 0.875rem);
   line-height: 1.5;
 }
 
