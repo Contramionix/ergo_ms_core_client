@@ -102,6 +102,22 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) {
+            // Файлы endpoints.js — дескрипторы модульной системы: их грузит
+            // EndpointManager динамически через import.meta.glob. Одновременно
+            // многие из них (например core/cms/js/endpoints.js) статически
+            // импортируются кодом из графа входного чанка (userStore, auth,
+            // registrationSettings и т.п.). Без явного разделения Rollup вшивает
+            // такой файл во входной чанк, и динамический import() указывает на
+            // сам входной чанк. Пока main.js ждёт initEndpoints() на верхнем
+            // уровне, входной чанк ещё не завершил вычисление — import() никогда
+            // не резолвится, и приложение зависает с пустым экраном (только в
+            // production-сборке; в dev каждый модуль отдаётся отдельным URL).
+            // Отдельный чанк гарантирует, что динамический импорт резолвится в
+            // уже загруженный не-входной чанк.
+            const normalizedId = id.replace(/\\/g, '/')
+            if (/\/js\/endpoints\.js$/.test(normalizedId)) {
+              return 'module_endpoints'
+            }
             return undefined
           }
           if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) {
