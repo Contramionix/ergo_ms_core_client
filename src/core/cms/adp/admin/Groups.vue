@@ -94,5 +94,8 @@ const handleSearchQuery = query => (searchQuery.value = query)
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 </style>
