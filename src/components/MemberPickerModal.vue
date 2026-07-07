@@ -1,20 +1,16 @@
 <!--
-  MemberPickerModal — multi-select выбор участников для project_ed и др.
+  MemberPickerModal — универсальная UI-оболочка multi-select выбора пользователей.
+  Загрузка данных — через prop fetchUsers (доменная логика в модулях).
   Не путать с organizations/client/components/AddMemberModal.vue (форма участника организации).
 -->
 <template>
   <ModalCenter standalone :visible="show" :modal-id="modalId" :title="title" :dialog-class="'modal-md'" @close="close">
     <div class="member-picker-modal-content">
       <div class="pb-2 search-container">
-        <SearchInput
-          v-model="searchQuery"
-          placeholder="Поиск"
-          :show-icon="true"
-          @update:model-value="handleSearch"
-        />
+        <SearchInput v-model="searchQuery" placeholder="Поиск" :show-icon="true" @update:model-value="handleSearch"/>
       </div>
 
-      <div class="px-3 pb-2 border-bottom tabs-container">
+      <div v-if="resolvedTabs.length > 1" class="px-3 pb-2 border-bottom tabs-container">
         <div class="d-flex gap-2 tabs-scroll">
           <button v-for="tab in resolvedTabs" :key="tab.key" type="button" class="btn btn-sm border-0 px-3 py-1 filter-tab text-nowrap"
             :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
@@ -24,19 +20,14 @@
       </div>
 
       <div class="users-list-container">
-        <LoadingContentArea
-          :loading="isLoading"
-          :reset-key="show ? `${organizationId}-${activeTab}` : null"
-          min-height="10rem"
-          loading-text="Загрузка пользователей..."
-        >
+        <LoadingContentArea :loading="isLoading" :reset-key="show ? listResetKey ?? activeTab : null" min-height="10rem" loading-text="Загрузка пользователей...">
           <div v-if="filteredUsers.length === 0" class="empty-state">
             <div class="text-muted">Пользователи не найдены</div>
           </div>
 
           <div v-else class="users-list">
-          <div v-for="user in filteredUsers" :key="user.id" class="user-item" 
-            :class="{ 
+          <div v-for="user in filteredUsers" :key="user.id" class="user-item"
+            :class="{
               'user-item-assigned': isAssigned(user.id),
               'user-item-selected': isSelected(user.id)
             }"
@@ -44,7 +35,7 @@
           >
             <div class="d-flex align-items-center gap-3 p-3">
               <div class="avatar-wrapper">
-                <UserAvatar :userId="user.id" :user-ref="user.public_id" :size="48" :title="user.full_name || user.username" :avatar-url="user.avatar_url" :first-name="user.first_name" :last-name="user.last_name" />
+                <UserAvatar :user-ref="user.public_id" :size="48" :title="user.full_name || user.username" :avatar-url="user.avatar_url" :first-name="user.first_name" :last-name="user.last_name" />
                 <div v-if="isSelected(user.id) || isAssigned(user.id)" class="check-badge" :class="{ 'check-badge-assigned': isAssigned(user.id) && !isSelected(user.id) }">
                   <Check :size="12" stroke-width="3" />
                 </div>
@@ -80,61 +71,38 @@ import ModalCenter from '@/components/ModalCenter.vue'
 import SearchInput from '@/components/SearchInput.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
-import { apiClient } from '@/js/api/manager'
-import { endpoints } from '@/js/api/endpoints'
 import { useToast } from '@/js/utils/toast.js'
+import { logError, logWarn } from '@/js/utils/logError.js'
 import { parseFullNameParts, seedUserPublicInfoCache } from '@/js/userAvatar'
 
 const props = defineProps({
   show: {
     type: Boolean,
-    default: false
+    default: false,
   },
   title: {
     type: String,
-    default: 'Назначить эксперта'
-  },
-  projectId: {
-    type: Number,
-    default: null
-  },
-  organizationId: {
-    type: Number,
-    default: null
+    default: 'Назначить',
   },
   tabs: {
     type: Array,
     default: () => [{ key: 'all', label: 'Все' }],
   },
-  assignedExpertIds: {
+  assignedUserIds: {
     type: Array,
     default: () => [],
   },
-  /**
-   * Режим работы модального окна:
-   * - 'experts' - загрузка только экспертов с правом project_ed_expert (по умолчанию)
-   * - 'members' - сотрудники организации (worker), включая подразделения; студенты не показываются
-   */
-  mode: {
-    type: String,
-    default: 'experts',
-    validator: (value) => ['experts', 'members'].includes(value)
-  },
-  /**
-   * Глобальная роль участника для режима 'members' (query global_role_type).
-   * По умолчанию для members — 'worker'.
-   */
-  globalRoleType: {
-    type: String,
-    default: null,
-    validator: (value) => value == null || ['worker', 'student', 'employee'].includes(value),
-  },
-  /**
-   * Массив ID пользователей, которых нужно исключить из списка доступных для выбора
-   */
   excludedUserIds: {
     type: Array,
-    default: () => []
+    default: () => [],
+  },
+  listResetKey: {
+    type: [String, Number],
+    default: null,
+  },
+  fetchUsers: {
+    type: Function,
+    required: true,
   },
 })
 
@@ -163,15 +131,8 @@ const activeRoleGroupId = computed(() => {
   return tab?.roleGroupId ?? tab?.role_group_id ?? tab?.role_group ?? null
 })
 
-const resolvedGlobalRoleType = computed(() => {
-  if (props.globalRoleType != null && props.globalRoleType !== '') {
-    return props.globalRoleType
-  }
-  return props.mode === 'members' ? 'worker' : null
-})
-
-const assignedExpertIdsSet = computed(() => {
-  const ids = Array.isArray(props.assignedExpertIds) ? props.assignedExpertIds : []
+const assignedUserIdsSet = computed(() => {
+  const ids = Array.isArray(props.assignedUserIds) ? props.assignedUserIds : []
   return new Set(ids.map(id => Number(id)).filter(id => Number.isFinite(id)))
 })
 
@@ -179,7 +140,7 @@ function isAssigned(userId) {
   if (!userId) return false
   const numId = Number(userId)
   if (deselectedAssignedIds.value.has(numId)) return false
-  return assignedExpertIdsSet.value.has(numId)
+  return assignedUserIdsSet.value.has(numId)
 }
 
 function isSelected(userId) {
@@ -194,7 +155,7 @@ const hasChanges = computed(() => {
 const buttonText = computed(() => {
   const selectedCount = selectedUsers.value.length
   const deselectedCount = deselectedAssignedIds.value.size
-  
+
   if (deselectedCount > 0 && selectedCount === 0) {
     return `Изменить (${deselectedCount})`
   } else if (deselectedCount > 0 && selectedCount > 0) {
@@ -210,27 +171,14 @@ const excludedUserIdsSet = computed(() => {
 })
 
 const filteredUsers = computed(() => {
-  let filtered = users.value
-
-  // Исключаем пользователей из excludedUserIds
-  if (excludedUserIdsSet.value.size > 0) {
-    filtered = filtered.filter(user => {
-      if (!user?.id) return true
-      const userId = Number(user.id)
-      return !excludedUserIdsSet.value.has(userId)
-    })
+  if (excludedUserIdsSet.value.size === 0) {
+    return users.value
   }
-
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(user => {
-      const fullName = (user.full_name || '').toLowerCase()
-      const username = (user.username || '').toLowerCase()
-      return fullName.includes(query) || username.includes(query)
-    })
-  }
-
-  return filtered
+  return users.value.filter(user => {
+    if (!user?.id) return true
+    const userId = Number(user.id)
+    return !excludedUserIdsSet.value.has(userId)
+  })
 })
 
 function normalizeModalUser(raw) {
@@ -258,80 +206,23 @@ function applyLoadedUsers(list) {
   seedUserPublicInfoCache(normalized)
 }
 
-/**
- * Загружает кандидатов-экспертов (режим 'experts')
- */
-async function loadExpertCandidates() {
-  const params = {
-    organization_id: props.organizationId,
-    q: searchQuery.value || '',
-    limit: 200,
-  }
-  if (activeRoleGroupId.value) {
-    params.role_group_id = activeRoleGroupId.value
-  }
-  const resp = await apiClient.get(endpoints.project_ed.expert_candidates.list, params)
-  return resp.data?.candidates || []
-}
-
-/**
- * Загружает сотрудников организации (режим 'members', view=picker).
- * Включает участников из всех подразделений организации.
- * Исключает проректоров из списка.
- */
-async function loadOrganizationMembers() {
-  const params = {
-    organization_id: props.organizationId,
-    view: 'picker',
-    search: searchQuery.value || '',
-    limit: 200,
-  }
-  if (resolvedGlobalRoleType.value) {
-    params.global_role_type = resolvedGlobalRoleType.value
-  }
-  const resp = await apiClient.get('/organizations/members/', params)
-
-  const members = resp.data?.results || resp.data || []
-
-  const filteredMembers = members.filter((member) => {
-    const roleName = (member.role?.name || '').trim()
-    if (roleName.toLowerCase().startsWith('проректор')) {
-      return false
-    }
-    return true
-  })
-
-  return filteredMembers.map((member) => {
-    const user = member.user || {}
-    return {
-      id: user.id || member.id,
-      username: user.username || member.username || '',
-      full_name: user.full_name || member.full_name || '',
-      position: user.position_name || member.role?.name || member.position || '',
-      role_group_name: member.role?.name || '',
-      avatar_url: user.avatar_url || member.avatar_url || null,
-      department_name: member.department?.name || null,
-    }
-  })
-}
-
 async function loadCandidates() {
-  if (!props.organizationId) {
-    logWarn('MemberPickerModal: organizationId не передан')
+  if (typeof props.fetchUsers !== 'function') {
+    logWarn('MemberPickerModal: fetchUsers не передан')
     users.value = []
     return
   }
   try {
     isLoading.value = true
-
-    const list = props.mode === 'members'
-      ? await loadOrganizationMembers()
-      : await loadExpertCandidates()
-
+    const list = await props.fetchUsers({
+      search: searchQuery.value || '',
+      activeTab: activeTab.value,
+      roleGroupId: activeRoleGroupId.value,
+    })
     applyLoadedUsers(list)
   } catch (e) {
     logError('Ошибка загрузки пользователей:', e)
-    const msg = e.response?.data?.error || 'Ошибка загрузки пользователей'
+    const msg = e.response?.data?.error || e.message || 'Ошибка загрузки пользователей'
     toast.error(msg)
     users.value = []
   } finally {
@@ -345,12 +236,12 @@ function handleSearch() {
 
 function selectUser(user) {
   if (!user?.id) return
-  
+
   const userId = user.id
   const numId = Number(userId)
-  const isCurrentlyAssigned = assignedExpertIdsSet.value.has(numId)
+  const isCurrentlyAssigned = assignedUserIdsSet.value.has(numId)
   const isDeselected = deselectedAssignedIds.value.has(numId)
-  
+
   if (isCurrentlyAssigned) {
     if (isDeselected) {
       deselectedAssignedIds.value.delete(numId)
@@ -359,9 +250,9 @@ function selectUser(user) {
     }
     return
   }
-  
+
   const index = selectedUsers.value.findIndex(u => u.id === userId)
-  
+
   if (index >= 0) {
     selectedUsers.value.splice(index, 1)
   } else {
@@ -371,11 +262,11 @@ function selectUser(user) {
 
 function assignSelected() {
   if (!hasChanges.value) return
-  
+
   if (deselectedAssignedIds.value.size > 0) {
     emit('deselected', Array.from(deselectedAssignedIds.value))
   }
-  
+
   if (selectedUsers.value.length > 0) {
     if (selectedUsers.value.length === 1) {
       emit('selected', selectedUsers.value[0])
@@ -383,7 +274,7 @@ function assignSelected() {
       emit('selectedMultiple', selectedUsers.value)
     }
   }
-  
+
   close()
 }
 
@@ -560,4 +451,3 @@ watch(resolvedTabs, () => {
   }
 }
 </style>
-
