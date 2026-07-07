@@ -113,12 +113,21 @@ const props = defineProps({
   /**
    * Режим работы модального окна:
    * - 'experts' - загрузка только экспертов с правом project_ed_expert (по умолчанию)
-   * - 'members' - загрузка всех участников организации (включая подразделения)
+   * - 'members' - сотрудники организации (worker), включая подразделения; студенты не показываются
    */
   mode: {
     type: String,
     default: 'experts',
     validator: (value) => ['experts', 'members'].includes(value)
+  },
+  /**
+   * Глобальная роль участника для режима 'members' (query global_role_type).
+   * По умолчанию для members — 'worker'.
+   */
+  globalRoleType: {
+    type: String,
+    default: null,
+    validator: (value) => value == null || ['worker', 'student', 'employee'].includes(value),
   },
   /**
    * Массив ID пользователей, которых нужно исключить из списка доступных для выбора
@@ -152,6 +161,13 @@ const activeRoleGroupId = computed(() => {
   if (activeTab.value === 'all') return null
   const tab = resolvedTabs.value.find((t) => t?.key === activeTab.value)
   return tab?.roleGroupId ?? tab?.role_group_id ?? tab?.role_group ?? null
+})
+
+const resolvedGlobalRoleType = computed(() => {
+  if (props.globalRoleType != null && props.globalRoleType !== '') {
+    return props.globalRoleType
+  }
+  return props.mode === 'members' ? 'worker' : null
 })
 
 const assignedExpertIdsSet = computed(() => {
@@ -259,40 +275,44 @@ async function loadExpertCandidates() {
 }
 
 /**
- * Загружает всех участников организации (режим 'members')
- * Включает участников из всех подразделений организации
- * Исключает всех проректоров из списка
+ * Загружает сотрудников организации (режим 'members', view=picker).
+ * Включает участников из всех подразделений организации.
+ * Исключает проректоров из списка.
  */
 async function loadOrganizationMembers() {
   const params = {
     organization_id: props.organizationId,
+    view: 'picker',
     search: searchQuery.value || '',
     limit: 200,
   }
+  if (resolvedGlobalRoleType.value) {
+    params.global_role_type = resolvedGlobalRoleType.value
+  }
   const resp = await apiClient.get('/organizations/members/', params)
-  
-  // Преобразуем формат ответа под формат компонента
+
   const members = resp.data?.results || resp.data || []
-  
-  // Фильтруем проректоров - исключаем всех, у кого роль начинается с "Проректор"
-  const filteredMembers = members.filter(member => {
+
+  const filteredMembers = members.filter((member) => {
     const roleName = (member.role?.name || '').trim()
-    // Исключаем проректоров (роль начинается с "Проректор", но не "Проректор по...")
     if (roleName.toLowerCase().startsWith('проректор')) {
       return false
     }
     return true
   })
-  
-  return filteredMembers.map((member) => ({
-    id: member.user?.id || member.id,
-    username: member.user?.username || member.username || '',
-    full_name: member.user?.full_name || member.full_name || '',
-    position: member.role?.name || member.position || '',
-    role_group_name: member.role?.name || '',
-    avatar_url: member.user?.avatar_url || member.avatar_url || null,
-    department_name: member.department?.name || null,
-  }))
+
+  return filteredMembers.map((member) => {
+    const user = member.user || {}
+    return {
+      id: user.id || member.id,
+      username: user.username || member.username || '',
+      full_name: user.full_name || member.full_name || '',
+      position: user.position_name || member.role?.name || member.position || '',
+      role_group_name: member.role?.name || '',
+      avatar_url: user.avatar_url || member.avatar_url || null,
+      department_name: member.department?.name || null,
+    }
+  })
 }
 
 async function loadCandidates() {

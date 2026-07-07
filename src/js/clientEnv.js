@@ -44,5 +44,5 @@ export const clientEnv = {
   realtimePollAdminPresenceMs: readInt('CLIENT_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL', 10000),
   realtimePollMessengerMs: readInt('CLIENT_REALTIME_POLL_MESSENGER_INTERVAL', 5000),
   biPreviewItemsPerPage: readInt('CLIENT_BI_PREVIEW_ITEMS_PER_PAGE', 20),
-  tasksMaxAttachmentSizeMb: readInt('CLIENT_TASKS_MAX_ATTACHMENT_SIZE_MB', 25),
+  tasksMaxAttachmentSizeMb: readInt('CLIENT_TASKS_MAX_ATTACHMENT_SIZE_MB', 600),
 }
