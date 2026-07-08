@@ -62,6 +62,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  presenceUserId: {
+    type: [Number, String, null],
+    default: null,
+  },
 })
 
 const loadedPublicInfo = ref(null)
@@ -89,6 +93,11 @@ const isCurrentUser = computed(() => {
 const presenceUserId = computed(() => {
   if (!props.showOnlineStatus) {
     return null
+  }
+
+  const explicit = Number(props.presenceUserId)
+  if (Number.isFinite(explicit)) {
+    return Math.trunc(explicit)
   }
 
   if (isCurrentUser.value) {
