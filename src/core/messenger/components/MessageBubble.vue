@@ -1,7 +1,7 @@
 <template>
   <div class="msng-bubble" :class="{ 'msng-bubble--own': isOwn }" @contextmenu.prevent="onContextMenu">
     <div v-if="!isOwn" class="msng-bubble__avatar">
-      <UserAvatar v-if="showAvatar" :user-id="message.author" :user-ref="message.author_data?.public_id || null" :avatar-url="message.author_data?.avatar_url || null" :size="32" :title="authorName" />
+      <UserAvatar v-if="showAvatar" :user-ref="message.author_data?.public_id || null" :avatar-url="message.author_data?.avatar_url || null" :size="32" :title="authorName" />
     </div>
 
     <div class="msng-bubble__body">

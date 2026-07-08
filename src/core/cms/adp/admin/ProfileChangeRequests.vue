@@ -266,51 +266,20 @@ const handleReject = async (item) => {
 
         <div class="table-header profile-change-toolbar">
           <div class="filters-wrapper">
-            <SearchInput
-              id="profile-change-requests-search"
-              :model-value="searchQuery"
-              layout="fixed"
-              placeholder="Пользователь, email, ФИО, телефон..."
-              :show-icon="true"
-              background="primary"
-              focus-border="primary"
-              @update:model-value="handleSearchQuery"
-            />
+            <SearchInput id="profile-change-requests-search" :model-value="searchQuery" layout="fixed" placeholder="Пользователь, email, ФИО, телефон..." :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
             <div class="status-filter">
               <HoverTooltip text="Статус заявки">
-                <SelectBox
-                  id="profile-change-requests-status"
-                  v-model="statusFilter"
-                  :options="STATUS_OPTIONS"
-                  value-key="id"
-                  label-key="name"
-                  :include-all-option="false"
-                  @update:model-value="handleStatusFilterChange"
-                />
+                <SelectBox id="profile-change-requests-status" v-model="statusFilter" :options="STATUS_OPTIONS" value-key="id" label-key="name" :include-all-option="false" @update:model-value="handleStatusFilterChange"/>
               </HoverTooltip>
             </div>
           </div>
         </div>
 
         <LoadingContentArea :loading="isLoading">
-          <DataTable
-            :items="rows"
-            :columns="columns"
-            :items-per-page="rowsPerPage"
-            :current-page="currentPage"
-            :total-items="totalItems"
-            :empty-text="tableEmptyText"
-            :get-item-key="getItemKey"
-            :enable-pagination="true"
-            @update:current-page="handlePageChange"
-          >
+          <DataTable :items="rows" :columns="columns" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalItems" :empty-text="tableEmptyText" :get-item-key="getItemKey" :enable-pagination="true" @update:current-page="handlePageChange">
             <template #cell-user="{ item }">
               <div class="d-flex align-items-center gap-3">
-                <UserAvatar
-                  :user-id="item.user_id"
-                  :title="item.current_full_name || item.username"
-                  :size="32"
-                />
+                <UserAvatar :user-ref="item.public_id" :title="item.current_full_name || item.username" :size="32"/>
                 <div class="d-flex flex-column min-w-0">
                   <span class="fw-semibold">{{ item.current_full_name || item.username }}</span>
                   <small class="text-muted">{{ item.username }} · {{ item.user_email || '—' }}</small>
@@ -373,22 +342,12 @@ const handleReject = async (item) => {
             <template #cell-actions="{ item }">
               <div v-if="item.status === 'pending'" class="actions-cell">
                 <HoverTooltip text="Одобрить заявку">
-                  <button
-                    type="button"
-                    class="btn-action"
-                    aria-label="Одобрить заявку"
-                    @click.stop="handleApprove(item)"
-                  >
+                  <button type="button" class="btn-action" aria-label="Одобрить заявку" @click.stop="handleApprove(item)">
                     <Check :size="15" />
                   </button>
                 </HoverTooltip>
                 <HoverTooltip text="Отклонить заявку">
-                  <button
-                    type="button"
-                    class="btn-action btn-action--delete"
-                    aria-label="Отклонить заявку"
-                    @click.stop="handleReject(item)"
-                  >
+                  <button type="button" class="btn-action btn-action--delete" aria-label="Отклонить заявку" @click.stop="handleReject(item)">
                     <X :size="15" />
                   </button>
                 </HoverTooltip>

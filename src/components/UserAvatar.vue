@@ -1,31 +1,11 @@
 <template>
   <div class="user-avatar-wrap" :style="avatarStyle">
     <div class="user-avatar" :class="{ 'user-avatar--clickable': clickable }" :title="title">
-      <img
-        v-if="showPhoto"
-        :src="readyPhotoSrc"
-        :alt="title"
-        class="user-avatar-image"
-        @error="onImageError"
-      />
+      <img v-if="showPhoto" :src="readyPhotoSrc" :alt="title" class="user-avatar-image" @error="onImageError"/>
       <div v-else-if="isAvatarPending" class="user-avatar-placeholder" aria-hidden="true" />
-      <DefaultAvatar
-        v-else
-        :size="size"
-        :clickable="clickable"
-        :title="title"
-        :first-name="effectiveFirstName"
-        :last-name="effectiveLastName"
-      />
+      <DefaultAvatar v-else :size="size" :clickable="clickable" :title="title" :first-name="effectiveFirstName" :last-name="effectiveLastName" :color-key="avatarColorKey"/>
     </div>
-    <PresenceIndicator
-      v-if="showOnlineStatus"
-      :visible="isKnown"
-      :is-online="isOnline"
-      :last-seen="lastSeen"
-      :show-tooltip="showPresenceTooltip"
-      :size="size"
-    />
+    <PresenceIndicator v-if="showOnlineStatus" :visible="isKnown" :is-online="isOnline" :last-seen="lastSeen" :show-tooltip="showPresenceTooltip" :size="size"/>
   </div>
 </template>
 
@@ -35,18 +15,8 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 import DefaultAvatar from './DefaultAvatar.vue'
 import PresenceIndicator from '@/core/cms/adp/components/PresenceIndicator.vue'
 import { usePresenceStatus } from '@/core/cms/adp/js/presence/usePresenceStatus.js'
-import {
-  getCachedUserPublicInfo,
-  getUserPublicInfoByRef,
-  getCachedUserPublicInfoByRef,
-  invalidateUserPublicInfoByRef,
-} from '@/js/userAvatar'
-import {
-  avatarCacheKey,
-  ensureAvatarDisplaySrc,
-  invalidateAvatar,
-  peekAvatarDisplaySrc,
-} from '@/js/avatarCache.js'
+import { getUserPublicInfoByRef, getCachedUserPublicInfoByRef, invalidateUserPublicInfoByRef, } from '@/js/userAvatar'
+import { avatarCacheKey, ensureAvatarDisplaySrc, invalidateAvatar, peekAvatarDisplaySrc, } from '@/js/avatarCache.js'
 import { logError } from '@/js/utils/logError.js'
 
 const userStore = useUserStore()
@@ -71,10 +41,6 @@ const props = defineProps({
   customAvatarUrl: {
     type: [String, null],
     default: undefined
-  },
-  userId: {
-    type: [Number, String, null],
-    default: null
   },
   userRef: {
     type: [String, null],
@@ -110,20 +76,14 @@ const avatarStyle = computed(() => ({
   height: `${props.size}px`
 }))
 
-const normalizedUserId = computed(() => {
-  if (props.userId == null) return null
-  const parsed = Number(props.userId)
-  return Number.isFinite(parsed) ? Math.trunc(parsed) : null
-})
+const avatarColorKey = computed(() => (props.userRef ? String(props.userRef) : null))
 
 const isCurrentUser = computed(() => {
   if (props.userRef) {
     const storeRef = userStore.user?.public_id
     return Boolean(storeRef) && String(storeRef) === String(props.userRef)
   }
-  if (normalizedUserId.value === null) return true
-  const storeUserId = Number(userStore.user?.id)
-  return Number.isFinite(storeUserId) && storeUserId === normalizedUserId.value
+  return !props.userRef
 })
 
 const presenceUserId = computed(() => {
@@ -131,13 +91,14 @@ const presenceUserId = computed(() => {
     return null
   }
 
-  if (normalizedUserId.value !== null) {
-    return normalizedUserId.value
-  }
-
   if (isCurrentUser.value) {
     const storeUserId = Number(userStore.user?.id)
     return Number.isFinite(storeUserId) ? storeUserId : null
+  }
+
+  const fromLoaded = loadedPublicInfo.value?.userId
+  if (fromLoaded != null && Number.isFinite(Number(fromLoaded))) {
+    return Math.trunc(Number(fromLoaded))
   }
 
   return null
@@ -221,7 +182,7 @@ watch(displayAvatarUrl, refreshAvatarSrc, { immediate: true })
 
 const needsPublicInfoLoad = computed(() => {
   if (isCurrentUser.value) return false
-  if (normalizedUserId.value === null && !props.userRef) return false
+  if (!props.userRef) return false
   const hasNames = Boolean(props.firstName) && Boolean(props.lastName)
   const hasExplicitAvatar = props.avatarUrl !== undefined || props.customAvatarUrl !== undefined
   return !hasNames || !hasExplicitAvatar
@@ -245,12 +206,7 @@ async function loadUserInfo() {
       logError('Ошибка загрузки публичных данных пользователя по ref', error)
       loadedPublicInfo.value = null
     }
-    return
   }
-
-  // Без userRef сетевой загрузки нет (числовой enumeration-эндпоинт убран) —
-  // используем только то, что уже осело в кеше из ранее загруженных списков.
-  loadedPublicInfo.value = getCachedUserPublicInfo(normalizedUserId.value)
 }
 
 onMounted(async () => {
@@ -261,7 +217,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => [props.avatarUrl, props.customAvatarUrl, props.userId, props.userRef, props.firstName, props.lastName],
+  () => [props.avatarUrl, props.customAvatarUrl, props.userRef, props.firstName, props.lastName],
   loadUserInfo
 )
 
@@ -297,7 +253,6 @@ async function onImageError() {
       // остаётся DefaultAvatar
     }
   }
-  // Без userRef переретраить нечем (числового эндпоинта больше нет) — остаётся DefaultAvatar.
 }
 </script>
 

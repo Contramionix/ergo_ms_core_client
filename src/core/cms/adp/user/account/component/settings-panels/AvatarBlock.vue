@@ -173,7 +173,6 @@ onBeforeUnmount(() => {
       <div ref="avatarRef" class="avatar-preview" tabindex="0" :class="{ 'avatar-preview--loading': avatarLoading }">
         <UserAvatar
           :size="200"
-          :user-id="isAdminMode ? userId : null"
           :user-ref="isAdminMode ? userRef : null"
           :avatar-url="avatarExplicitUrl"
           :first-name="isAdminMode ? firstName : null"

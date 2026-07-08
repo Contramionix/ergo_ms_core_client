@@ -148,7 +148,6 @@ onBeforeUnmount(() => {
   <div v-if="hasDisplay" class="audit-actor">
     <UserAvatar
       :user-ref="actorRef"
-      :user-id="actorRef ? null : actorId"
       :title="variants.fullName"
       :first-name="nameParts.firstName"
       :last-name="nameParts.lastName"
