@@ -5,15 +5,21 @@ import SelectBox from '@/components/SelectBox.vue'
 import {
   getModulePermissions,
   createModulePermission,
-  deleteModulePermission
+  deleteModulePermission,
+  getModuleCatalog,
 } from '@/core/cms/adp/admin/js/adminAccessApi.js'
-import { mapRoleGroupSelectOptions } from '@/core/cms/js/adminSelectOptions.js'
+import {
+  mapRoleGroupSelectOptions,
+  mapModuleCatalogSelectOptions,
+  mapModulePermissionSelectOptions,
+} from '@/core/cms/js/adminSelectOptions.js'
 
 const props = defineProps({
   roleGroups: { type: Array, required: true }
 })
 
 const permissions = ref([])
+const moduleCatalog = ref([])
 const selectedRoleGroup = ref(null)
 
 const form = ref({
@@ -29,12 +35,36 @@ const roleGroupSelectOptions = computed(() =>
   mapRoleGroupSelectOptions(props.roleGroups, { withParent: false }),
 )
 
+const moduleSelectOptions = computed(() =>
+  mapModuleCatalogSelectOptions(moduleCatalog.value),
+)
+
+const selectedModuleEntry = computed(() =>
+  moduleCatalog.value.find((item) => item.module_name === form.value.module_name) || null,
+)
+
+const permissionSelectOptions = computed(() => {
+  const permissionsMap = selectedModuleEntry.value?.permissions || {}
+  return mapModulePermissionSelectOptions(permissionsMap)
+})
+
+const useCustomPermissionKey = ref(false)
+
+const canPickPermissionFromCatalog = computed(
+  () => permissionSelectOptions.value.length > 0 && !useCustomPermissionKey.value,
+)
+
 const showErrors = ref({
   module_name: false,
   permission_key: false,
   permission_name: false,
   role_group: false
 })
+
+const loadModuleCatalog = async () => {
+  const data = await getModuleCatalog()
+  moduleCatalog.value = Array.isArray(data?.modules) ? data.modules : []
+}
 
 const loadPermissions = async () => {
   const roleGroupId = selectedRoleGroup.value || null
@@ -45,6 +75,25 @@ const loadPermissions = async () => {
 watch(selectedRoleGroup, async () => {
   await loadPermissions()
 })
+
+watch(
+  () => form.value.module_name,
+  () => {
+    form.value.permission_key = ''
+    form.value.permission_name = ''
+    useCustomPermissionKey.value = false
+  },
+)
+
+watch(
+  () => form.value.permission_key,
+  (key) => {
+    const permissionsMap = selectedModuleEntry.value?.permissions || {}
+    if (key && permissionsMap[key]) {
+      form.value.permission_name = permissionsMap[key]
+    }
+  },
+)
 
 const submitForm = async () => {
   showErrors.value = {
@@ -73,6 +122,7 @@ const submitForm = async () => {
   })
 
   await loadPermissions()
+  await loadModuleCatalog()
   form.value = {
     module_name: '',
     permission_key: '',
@@ -91,7 +141,7 @@ const deletePermission = async permissionId => {
 const filteredPermissions = computed(() => permissions.value)
 
 onMounted(async () => {
-  await loadPermissions()
+  await Promise.all([loadModuleCatalog(), loadPermissions()])
 })
 </script>
 
@@ -100,7 +150,7 @@ onMounted(async () => {
     <div class="module-permission-manager__header">
       <div>
         <h5 class="mb-0">Права модулей</h5>
-        <small class="text-secondary-custom">Управление доступом к функционалу модулей по ролевым группам</small>
+        <small class="text-secondary-custom">Модули подхватываются из папки modules/. Права можно выбрать из списка или задать вручную.</small>
       </div>
       <SelectBox
         v-model="selectedRoleGroup"
@@ -116,24 +166,47 @@ onMounted(async () => {
       <form class="module-permission-manager__form" @submit.prevent="submitForm">
         <div class="row g-2">
           <div class="col-md-3">
-            <input
-              type="text"
-              class="form-control form-control-sm"
+            <SelectBox
               v-model="form.module_name"
+              :options="moduleSelectOptions"
+              value-key="id"
+              label-key="name"
+              all-label="Модуль"
+              searchable
+              :include-all-option="false"
               :class="{ 'is-invalid': showErrors.module_name }"
-              placeholder="Модуль"
             />
-            <div v-if="showErrors.module_name" class="invalid-feedback">Укажите модуль</div>
+            <div v-if="showErrors.module_name" class="invalid-feedback d-block">Выберите модуль</div>
           </div>
           <div class="col-md-3">
+            <SelectBox
+              v-if="canPickPermissionFromCatalog"
+              v-model="form.permission_key"
+              :options="permissionSelectOptions"
+              value-key="id"
+              label-key="name"
+              all-label="Ключ права"
+              searchable
+              :include-all-option="false"
+              :class="{ 'is-invalid': showErrors.permission_key }"
+            />
             <input
+              v-else
               type="text"
               class="form-control form-control-sm"
               v-model="form.permission_key"
               :class="{ 'is-invalid': showErrors.permission_key }"
               placeholder="Ключ (view_dashboard)"
             />
-            <div v-if="showErrors.permission_key" class="invalid-feedback">Укажите ключ</div>
+            <div v-if="showErrors.permission_key" class="invalid-feedback d-block">Укажите ключ</div>
+            <button
+              v-if="permissionSelectOptions.length > 0"
+              type="button"
+              class="btn btn-link btn-sm px-0 mt-1 module-permission-manager__toggle-key"
+              @click="useCustomPermissionKey = !useCustomPermissionKey"
+            >
+              {{ useCustomPermissionKey ? 'Выбрать из списка' : 'Ввести новый ключ' }}
+            </button>
           </div>
           <div class="col-md-3">
             <input
@@ -142,6 +215,7 @@ onMounted(async () => {
               v-model="form.permission_name"
               :class="{ 'is-invalid': showErrors.permission_name }"
               placeholder="Название"
+              :readonly="canPickPermissionFromCatalog && !!form.permission_key"
             />
             <div v-if="showErrors.permission_name" class="invalid-feedback">Укажите название</div>
           </div>
@@ -292,5 +366,10 @@ onMounted(async () => {
 .text-monospace {
   font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
   font-size: 0.8125rem;
+}
+
+.module-permission-manager__toggle-key {
+  font-size: 0.75rem;
+  text-decoration: none;
 }
 </style>

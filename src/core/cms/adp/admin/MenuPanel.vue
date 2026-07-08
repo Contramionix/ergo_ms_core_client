@@ -69,7 +69,7 @@ import {
   restoreMenuFromMigrations
 } from '@/core/cms/js/menuService.js'
 import { apiClient } from '@/js/api/manager'
-import { endpoints } from '@/js/api/endpoints'
+import { endpoints, initEndpoints } from '@/js/api/endpoints'
 import Cookies from 'js-cookie'
 
 const toast = useToast()
@@ -621,6 +621,7 @@ function loadExpandAllGroupsFromCookie() {
 
 onMounted(async () => {
   loadExpandAllGroupsFromCookie()
+  await initEndpoints()
   await Promise.all([
     loadMenuItems(),
     loadSeparators(),

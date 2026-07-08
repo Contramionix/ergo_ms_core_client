@@ -1,13 +1,11 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AccessControlPagesTab from '@/core/cms/adp/admin/AccessControlComponents/AccessControlPagesTab.vue'
 import AccessControlPoliciesTab from '@/core/cms/adp/admin/AccessControlComponents/AccessControlPoliciesTab.vue'
 import AccessControlModulePermissionsTab from '@/core/cms/adp/admin/AccessControlComponents/AccessControlModulePermissionsTab.vue'
 
 const TABS = [
-  { id: 'pages', label: 'Страницы' },
-  { id: 'policies', label: 'URL-политики' },
+  { id: 'policies', label: 'Доступ к маршрутам' },
   { id: 'modules', label: 'Модульные права' },
 ]
 
@@ -15,8 +13,9 @@ const route = useRoute()
 const router = useRouter()
 
 const activeTab = computed(() => {
-  const tab = typeof route.query.tab === 'string' ? route.query.tab : 'pages'
-  return TABS.some((item) => item.id === tab) ? tab : 'pages'
+  const tab = typeof route.query.tab === 'string' ? route.query.tab : 'policies'
+  const normalizedTab = tab === 'pages' ? 'policies' : tab
+  return TABS.some((item) => item.id === normalizedTab) ? normalizedTab : 'policies'
 })
 
 function selectTab(tabId) {
@@ -36,7 +35,7 @@ function selectTab(tabId) {
     <div class="access-control__header">
       <h2 class="access-control__title">Доступ и права</h2>
       <p class="access-control__subtitle">
-        Настройка доступа к страницам, URL-политик и прав модулей для ролей и ролевых групп.
+        Настройка доступа к маршрутам и прав модулей для ролей и ролевых групп.
       </p>
     </div>
 
@@ -56,8 +55,7 @@ function selectTab(tabId) {
     </ul>
 
     <div class="access-control__panel" role="tabpanel">
-      <AccessControlPagesTab v-if="activeTab === 'pages'" />
-      <AccessControlPoliciesTab v-else-if="activeTab === 'policies'" />
+      <AccessControlPoliciesTab v-if="activeTab === 'policies'" />
       <AccessControlModulePermissionsTab v-else-if="activeTab === 'modules'" />
     </div>
   </div>

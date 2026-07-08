@@ -135,7 +135,7 @@ export default {
     "path": "/admin-panel/module-page-permissions",
     "redirect": {
       "path": "/admin-panel/access",
-      "query": { "tab": "pages" }
+      "query": { "tab": "policies" }
     },
     "meta": {
       "requiresAuth": true,
@@ -146,7 +146,7 @@ export default {
     "path": "/admin-panel/limitations",
     "redirect": {
       "path": "/admin-panel/access",
-      "query": { "tab": "pages" }
+      "query": { "tab": "policies" }
     },
     "meta": {
       "requiresAuth": true,

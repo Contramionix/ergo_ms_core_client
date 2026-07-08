@@ -133,3 +133,8 @@ export async function deleteModulePermission(permissionId) {
   const response = await apiClient.delete(`${endpoints.cms.modulePermissions}${permissionId}/`, {}, true)
   return response.data
 }
+
+export async function getModuleCatalog(params = {}) {
+  const response = await apiClient.get(endpoints.cms.moduleCatalog, params, true)
+  return response.data
+}

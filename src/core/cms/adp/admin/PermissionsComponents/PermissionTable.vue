@@ -10,7 +10,12 @@ const props = defineProps({
   rowsPerPage: { type: Number, default: 5 },
   searchQuery: { type: String, default: '' },
   roles: { type: Array, required: true },
-  roleGroups: { type: Array, required: true }
+  roleGroups: { type: Array, required: true },
+  pages: { type: Array, default: () => [] },
+  modulePageGroups: { type: Array, default: () => [] },
+  moduleCatalog: { type: Array, default: () => [] },
+  getPageLabel: { type: Function, default: null },
+  getPageTitle: { type: Function, default: null },
 })
 
 const emit = defineEmits(['updatePermissions'])
@@ -18,28 +23,38 @@ const data = ref(props.rows)
 const rowSelected = ref({})
 const showEditModal = ref(false)
 
-const changingRow = row => {
+const changingRow = (row) => {
   rowSelected.value = { ...row }
 }
 
-const openEditModal = row => {
+const openEditModal = (row) => {
   changingRow(row)
   showEditModal.value = true
 }
 
 watch(
   () => props.rows,
-  newRows => {
+  (newRows) => {
     data.value = [...newRows]
-  }
+  },
 )
 
 const currentPage = ref(1)
 
 const filteredRows = computed(() => {
-  return data.value.filter(row =>
-    row.name.toLowerCase().includes(props.searchQuery.toLowerCase())
-  )
+  const query = props.searchQuery.trim().toLowerCase()
+  if (!query) {
+    return data.value
+  }
+
+  return data.value.filter((row) => {
+    const resourceLabel = resolveResourceLabel(row.resource_path).toLowerCase()
+    return (
+      row.name.toLowerCase().includes(query) ||
+      (row.resource_path || '').toLowerCase().includes(query) ||
+      resourceLabel.includes(query)
+    )
+  })
 })
 
 const paginatedRows = computed(() => {
@@ -57,7 +72,7 @@ const deletePermission = async (policyId) => {
   emit('updatePermissions')
 }
 
-const getActionBadgeClass = action => {
+const getActionBadgeClass = (action) => {
   const normalized = (action || '').toLowerCase()
   if (normalized === 'allow' || normalized === 'разрешить') {
     return 'badge bg-success-subtle text-success'
@@ -66,6 +81,20 @@ const getActionBadgeClass = action => {
     return 'badge bg-danger-subtle text-danger'
   }
   return 'badge bg-secondary-subtle text-secondary'
+}
+
+const resolveResourceLabel = (path) => {
+  if (typeof props.getPageLabel === 'function') {
+    return props.getPageLabel(path)
+  }
+  return path || ''
+}
+
+const resolveResourceTitle = (path) => {
+  if (typeof props.getPageTitle === 'function') {
+    return props.getPageTitle(path)
+  }
+  return ''
 }
 </script>
 
@@ -86,7 +115,12 @@ const getActionBadgeClass = action => {
           <td>
             <span :class="getActionBadgeClass(row.action)">{{ row.action }}</span>
           </td>
-          <td class="text-monospace small">{{ row.resource_path }}</td>
+          <td>
+            <div v-if="resolveResourceTitle(row.resource_path)" class="fw-medium">
+              {{ resolveResourceTitle(row.resource_path) }}
+            </div>
+            <div class="text-monospace small text-muted">{{ row.resource_path }}</div>
+          </td>
           <td>{{ row.role_name || row.role_group_name || '—' }}</td>
           <td>
             <span :class="row.is_pattern ? 'badge bg-info-subtle text-info' : 'badge bg-light text-muted'">
@@ -114,7 +148,17 @@ const getActionBadgeClass = action => {
     </table>
   </div>
 
-  <ChangePermissionForm v-model:visible="showEditModal" modal-id="policyEdit" :row="rowSelected" :roles="roles" :role-groups="roleGroups" @change-permission="changePermission()"/>
+  <ChangePermissionForm
+    v-model:visible="showEditModal"
+    modal-id="policyEdit"
+    :row="rowSelected"
+    :roles="roles"
+    :role-groups="roleGroups"
+    :pages="pages"
+    :module-page-groups="modulePageGroups"
+    :module-catalog="moduleCatalog"
+    @change-permission="changePermission()"
+  />
 </template>
 
 <style scoped lang="scss">

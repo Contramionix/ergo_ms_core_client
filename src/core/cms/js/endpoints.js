@@ -44,6 +44,7 @@ export const cmsEndpoints = {
             detail: 'cms/adp/policies/',
         },
         modulePermissions: 'cms/adp/module-permissions/',
+        moduleCatalog: 'cms/adp/module-catalog/',
         assignRole: 'cms/adp/assign-role/',
         adminUsers: 'cms/adp/admin-users/',
         adminUserDetail: (userId) => `cms/adp/admin-users/${userId}/`,

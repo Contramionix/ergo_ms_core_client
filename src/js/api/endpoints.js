@@ -8,10 +8,28 @@
 
 import { getEndpoints } from '@/modules/index.js'
 
-let endpointsCache = null
-let endpointsPromise = null
+const hot = import.meta.hot
+
+let endpointsCache = hot?.data?.endpointsCache ?? null
+let endpointsPromise = hot?.data?.endpointsPromise ?? null
+
+function restoreEndpointsFromHotData() {
+  if (endpointsCache) {
+    return true
+  }
+
+  const hotCache = hot?.data?.endpointsCache
+  if (!hotCache) {
+    return false
+  }
+
+  endpointsCache = hotCache
+  endpointsPromise = hot?.data?.endpointsPromise ?? endpointsPromise
+  return true
+}
 
 async function loadEndpoints() {
+  restoreEndpointsFromHotData()
   if (endpointsCache !== null) {
     return endpointsCache
   }
@@ -23,6 +41,10 @@ async function loadEndpoints() {
   endpointsPromise = getEndpoints()
     .then((result) => {
       endpointsCache = result
+      if (hot) {
+        hot.data.endpointsCache = endpointsCache
+        hot.data.endpointsPromise = endpointsPromise
+      }
       return result
     })
     .catch((err) => {
@@ -42,6 +64,7 @@ export async function initEndpoints() {
 }
 
 export function isEndpointsReady() {
+  restoreEndpointsFromHotData()
   return endpointsCache !== null
 }
 
@@ -49,6 +72,7 @@ export const endpoints = new Proxy(
   {},
   {
     get(_, prop) {
+      restoreEndpointsFromHotData()
       if (!endpointsCache) {
         throw new Error(
           `Endpoints not initialized (accessed: ${String(prop)}). Call initEndpoints() first.`,
@@ -59,18 +83,14 @@ export const endpoints = new Proxy(
   },
 )
 
-if (import.meta.hot) {
-  import.meta.hot.dispose((data) => {
+if (hot) {
+  hot.dispose((data) => {
     data.endpointsCache = endpointsCache
     data.endpointsPromise = endpointsPromise
   })
 
-  if (import.meta.hot.data?.endpointsCache) {
-    endpointsCache = import.meta.hot.data.endpointsCache
-    endpointsPromise = import.meta.hot.data.endpointsPromise ?? null
-  }
-
-  import.meta.hot.accept(async () => {
+  hot.accept(async () => {
+    restoreEndpointsFromHotData()
     if (!endpointsCache) {
       await loadEndpoints()
     }
