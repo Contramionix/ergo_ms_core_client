@@ -88,6 +88,10 @@ const props = defineProps({
     type: Array,
     default: () => [{ key: 'all', label: 'Все' }],
   },
+  includeAllTab: {
+    type: Boolean,
+    default: true,
+  },
   assignedUserIds: {
     type: Array,
     default: () => [],
@@ -103,6 +107,10 @@ const props = defineProps({
   fetchUsers: {
     type: Function,
     required: true,
+  },
+  autoCloseOnAssign: {
+    type: Boolean,
+    default: true,
   },
 })
 
@@ -121,9 +129,19 @@ const deselectedAssignedIds = ref(new Set())
 
 const resolvedTabs = computed(() => {
   const raw = Array.isArray(props.tabs) ? props.tabs : []
+  if (!props.includeAllTab) {
+    return raw.length > 0 ? raw : [{ key: 'all', label: 'Все' }]
+  }
   const hasAll = raw.some((t) => (t?.key || '') === 'all')
   return hasAll ? raw : [{ key: 'all', label: 'Все' }, ...raw]
 })
+
+function getDefaultTabKey() {
+  if (props.includeAllTab) {
+    return 'all'
+  }
+  return resolvedTabs.value[0]?.key || 'all'
+}
 
 const activeRoleGroupId = computed(() => {
   if (activeTab.value === 'all') return null
@@ -260,6 +278,13 @@ function selectUser(user) {
   }
 }
 
+function resetPickerState() {
+  searchQuery.value = ''
+  activeTab.value = getDefaultTabKey()
+  selectedUsers.value = []
+  deselectedAssignedIds.value = new Set()
+}
+
 function assignSelected() {
   if (!hasChanges.value) return
 
@@ -275,20 +300,22 @@ function assignSelected() {
     }
   }
 
-  close()
+  if (props.autoCloseOnAssign) {
+    close()
+  }
 }
 
 function close() {
   emit('close')
-  searchQuery.value = ''
-  activeTab.value = 'all'
-  selectedUsers.value = []
-  deselectedAssignedIds.value = new Set()
+  resetPickerState()
 }
 
 watch(() => props.show, (newVal) => {
   if (newVal) {
+    activeTab.value = getDefaultTabKey()
     loadCandidates()
+  } else {
+    resetPickerState()
   }
 }, { immediate: true })
 
@@ -300,9 +327,22 @@ watch(activeTab, () => {
 
 watch(resolvedTabs, () => {
   if (!resolvedTabs.value.some((t) => t?.key === activeTab.value)) {
-    activeTab.value = 'all'
+    activeTab.value = getDefaultTabKey()
   }
 })
+
+watch(
+  () => [...(Array.isArray(props.assignedUserIds) ? props.assignedUserIds : [])]
+    .map((id) => Number(id))
+    .filter((id) => Number.isFinite(id))
+    .sort((a, b) => a - b)
+    .join(','),
+  () => {
+    if (!props.show) return
+    deselectedAssignedIds.value = new Set()
+    selectedUsers.value = []
+  },
+)
 </script>
 
 <style lang="scss" scoped>
