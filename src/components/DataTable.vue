@@ -27,14 +27,19 @@
         </tbody>
       </table>
     </div>
-    <div v-if="enablePagination && totalItemsCount > itemsPerPage" class="d-flex justify-content-between align-items-center mt-3">
+    <div v-if="enablePagination && showPaginationControls" class="d-flex justify-content-between align-items-center mt-3">
       <div class="text-muted small">
-        Показано {{ startIndex + 1 }} - {{ endIndex }} из {{ totalItemsCount }}
+        <template v-if="useServerPagination">
+          Показано {{ startIndex + 1 }} – {{ startIndex + displayItems.length }}
+        </template>
+        <template v-else>
+          Показано {{ startIndex + 1 }} - {{ endIndex }} из {{ totalItemsCount }}
+        </template>
       </div>
       <nav aria-label="Навигация по страницам">
         <ul class="pagination pagination-sm mb-0">
-          <li class="page-item" :class="{ disabled: currentPage === 1 }">
-            <button class="page-link" @click="prevPage" :disabled="currentPage === 1">
+          <li class="page-item" :class="{ disabled: isPrevDisabled }">
+            <button class="page-link" @click="prevPage" :disabled="isPrevDisabled">
               <ChevronLeft :size="16" />
             </button>
           </li>
@@ -44,8 +49,8 @@
             </button>
             <span v-else class="page-link">...</span>
           </li>
-          <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-            <button class="page-link" @click="nextPage" :disabled="currentPage === totalPages">
+          <li class="page-item" :class="{ disabled: isNextDisabled }">
+            <button class="page-link" @click="nextPage" :disabled="isNextDisabled">
               <ChevronRight :size="16" />
             </button>
           </li>
@@ -111,6 +116,15 @@ const props = defineProps({
     type: Number,
     default: null
   },
+  /** Серверная пагинация без общего count: только флаги has_next / has_previous */
+  hasNextPage: {
+    type: Boolean,
+    default: null,
+  },
+  hasPreviousPage: {
+    type: Boolean,
+    default: null,
+  },
   emptyText: {
     type: String,
     default: 'Нет данных',
@@ -150,6 +164,10 @@ function handleRowClick(item, idx) {
 }
 
 // Пагинация
+const useServerPagination = computed(
+  () => props.hasNextPage !== null && props.hasPreviousPage !== null,
+)
+
 const totalItemsCount = computed(() => {
   return props.totalItems !== null ? props.totalItems : props.items.length
 })
@@ -159,14 +177,38 @@ const totalColumnCount = computed(() => {
 })
 
 const totalPages = computed(() => {
+  if (useServerPagination.value) {
+    return props.hasNextPage ? props.currentPage + 1 : Math.max(props.currentPage, 1)
+  }
   return Math.ceil(totalItemsCount.value / props.itemsPerPage) || 1
+})
+
+const showPaginationControls = computed(() => {
+  if (useServerPagination.value) {
+    return props.hasNextPage || props.hasPreviousPage
+  }
+  return totalItemsCount.value > props.itemsPerPage
+})
+
+const isPrevDisabled = computed(() => {
+  if (useServerPagination.value) {
+    return !props.hasPreviousPage
+  }
+  return props.currentPage === 1
+})
+
+const isNextDisabled = computed(() => {
+  if (useServerPagination.value) {
+    return !props.hasNextPage
+  }
+  return props.currentPage === totalPages.value
 })
 
 const displayItems = computed(() => {
   if (!props.enablePagination) {
     return props.items
   }
-  if (props.totalItems !== null) {
+  if (props.totalItems !== null || useServerPagination.value) {
     return props.items
   }
   const start = (props.currentPage - 1) * props.itemsPerPage
@@ -226,7 +268,7 @@ const goToPage = (page) => {
 }
 
 const prevPage = () => {
-  if (props.currentPage > 1) {
+  if (!isPrevDisabled.value) {
     const newPage = props.currentPage - 1
     emit('update:currentPage', newPage)
     emit('pageChange', newPage)
@@ -234,7 +276,7 @@ const prevPage = () => {
 }
 
 const nextPage = () => {
-  if (props.currentPage < totalPages.value) {
+  if (!isNextDisabled.value) {
     const newPage = props.currentPage + 1
     emit('update:currentPage', newPage)
     emit('pageChange', newPage)

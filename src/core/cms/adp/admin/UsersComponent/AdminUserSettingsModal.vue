@@ -52,7 +52,7 @@ const username = ref('')
 const passwordResetMode = ref('system')
 
 const displayName = computed(() => {
-  const parts = [formData.value.last_name, formData.value.first_name, formData.value.middle_name]
+  const parts = [formData.value.first_name, formData.value.middle_name, formData.value.last_name]
     .map((part) => (part || '').trim())
     .filter(Boolean)
   return parts.join(' ') || username.value || 'Пользователь'

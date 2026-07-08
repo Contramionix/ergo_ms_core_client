@@ -69,7 +69,7 @@ function trimNamePart(value) {
 }
 
 /**
- * Разбирает ФИО формата «Фамилия Имя [Отчество]» для UserAvatar без запроса public-info.
+ * Разбирает ФИО формата «Имя Отчество Фамилия» для UserAvatar без запроса public-info.
  */
 export function parseFullNameParts(fullName) {
   const { firstName, lastName } = parseErgoFullNameParts(fullName)
@@ -77,7 +77,7 @@ export function parseFullNameParts(fullName) {
 }
 
 /**
- * Разбирает ERGO-ФИО «Фамилия Имя [Отчество]» в части имени.
+ * Разбирает ERGO-ФИО «Имя Отчество Фамилия» в части имени.
  */
 export function parseErgoFullNameParts(fullName) {
   const parts = (fullName || '').trim().split(/\s+/).filter(Boolean)
@@ -88,12 +88,12 @@ export function parseErgoFullNameParts(fullName) {
     return { lastName: parts[0], firstName: parts[0], middleName: '' }
   }
   if (parts.length === 2) {
-    return { lastName: parts[0], firstName: parts[1], middleName: '' }
+    return { lastName: parts[1], firstName: parts[0], middleName: '' }
   }
   return {
-    lastName: parts[0],
-    firstName: parts[1],
-    middleName: parts.slice(2).join(' '),
+    lastName: parts[parts.length - 1],
+    firstName: parts[0],
+    middleName: parts.slice(1, -1).join(' '),
   }
 }
 
@@ -106,7 +106,7 @@ export function buildActorNameVariants({ lastName, firstName, middleName, fallba
   const mn = trimNamePart(middleName)
   const hasMiddleName = Boolean(mn)
 
-  const parts = [ln, fn, mn].filter(Boolean)
+  const parts = [fn, mn, ln].filter(Boolean)
   let fullName = parts.join(' ')
   if (!fullName) {
     fullName = trimNamePart(fallbackLabel)
@@ -114,8 +114,8 @@ export function buildActorNameVariants({ lastName, firstName, middleName, fallba
 
   let expandedDisplay = fullName
   if (!hasMiddleName) {
-    if (ln && fn) {
-      expandedDisplay = `${ln} ${fn}`
+    if (fn && ln) {
+      expandedDisplay = `${fn} ${ln}`
     } else if (ln) {
       expandedDisplay = ln
     } else if (fn) {

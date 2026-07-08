@@ -302,26 +302,6 @@ const showSuccessMessage = () => {
           </div>
 
           <form v-if="canShowForm" @submit.prevent="submitForm" novalidate>
-          <!-- Фамилия -->
-          <div class="form-floating mb-3" v-auto-animate>
-            <input
-              type="text"
-              id="lastName"
-              class="form-control"
-              :class="{ 'is-invalid': errors.lastName }"
-              v-model="form.lastName"
-              placeholder="Фамилия"
-              :disabled="isLoading"
-              autocomplete="family-name"
-            />
-            <label for="lastName">
-              <i class="bi bi-person me-2"></i>Фамилия
-            </label>
-            <div v-if="errors.lastName" class="invalid-feedback">
-              {{ errors.lastName }}
-            </div>
-          </div>
-
           <!-- Имя -->
           <div class="form-floating mb-3" v-auto-animate>
             <input
@@ -359,6 +339,26 @@ const showSuccessMessage = () => {
             </label>
             <div v-if="errors.middleName" class="invalid-feedback">
               {{ errors.middleName }}
+            </div>
+          </div>
+
+          <!-- Фамилия -->
+          <div class="form-floating mb-3" v-auto-animate>
+            <input
+              type="text"
+              id="lastName"
+              class="form-control"
+              :class="{ 'is-invalid': errors.lastName }"
+              v-model="form.lastName"
+              placeholder="Фамилия"
+              :disabled="isLoading"
+              autocomplete="family-name"
+            />
+            <label for="lastName">
+              <i class="bi bi-person me-2"></i>Фамилия
+            </label>
+            <div v-if="errors.lastName" class="invalid-feedback">
+              {{ errors.lastName }}
             </div>
           </div>
 

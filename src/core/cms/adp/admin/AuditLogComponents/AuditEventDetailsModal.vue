@@ -74,6 +74,13 @@ function ipLocationTooltip(event) {
         <h6 class="audit-detail-heading">Метаданные</h6>
         <pre class="audit-meta__pre">{{ JSON.stringify(event.meta, null, 2) }}</pre>
       </div>
+
+      <p
+        v-if="!(event.changes?.length) && !(event.meta && Object.keys(event.meta).length)"
+        class="audit-detail-empty text-muted mb-0"
+      >
+        Дополнительных сведений об этом событии нет.
+      </p>
     </template>
 
     <template #footer>
