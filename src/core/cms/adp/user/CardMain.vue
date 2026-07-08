@@ -37,21 +37,29 @@ const displayUserInfo = computed(() => {
   }
 
   const profile = profileData.value
-  const user = userStore.user
 
   return {
     username: profile?.fullName || userStore.fullName || 'Гость',
     profession: profile?.bio || '',
-    registration: user?.date_joined
-      ? formatRegistrationDate(user.date_joined)
-      : 'Неизвестно',
+    registration: formatRegistrationDate(resolveRegistrationDateRaw()),
   }
 })
+
+function resolveRegistrationDateRaw() {
+  const profile = profileData.value || userStore.profile
+  return (
+    userStore.user?.date_joined
+    || profile?.dateJoined
+    || null
+  )
+}
 
 function formatRegistrationDate(dateString) {
   if (!dateString) return 'Неизвестно'
 
   const date = new Date(dateString)
+  if (Number.isNaN(date.getTime())) return 'Неизвестно'
+
   const options = { year: 'numeric', month: 'long' }
   return date.toLocaleDateString('ru-RU', options)
 }
