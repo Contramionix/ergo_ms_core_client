@@ -27,33 +27,56 @@
         </tbody>
       </table>
     </div>
-    <div v-if="enablePagination && showPaginationControls" class="d-flex justify-content-between align-items-center mt-3">
+    <div v-if="enablePagination && showPaginationControls" class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
       <div class="text-muted small">
-        <template v-if="useServerPagination">
-          Показано {{ startIndex + 1 }} – {{ startIndex + displayItems.length }}
+        <template v-if="useFullPagination || hasKnownTotal">
+          Показано {{ startIndex + 1 }} – {{ endIndex }} из {{ totalItemsCount }}
+        </template>
+        <template v-else-if="useSimpleServerPagination">
+          <template v-if="displayItems.length">
+            Показано {{ startIndex + 1 }} – {{ startIndex + displayItems.length }}
+          </template>
+          <template v-else>Записей на странице нет</template>
+          <span class="data-table-page-label">· Страница {{ currentPage }}</span>
         </template>
         <template v-else>
-          Показано {{ startIndex + 1 }} - {{ endIndex }} из {{ totalItemsCount }}
+          Показано {{ startIndex + 1 }} – {{ endIndex }} из {{ totalItemsCount }}
         </template>
       </div>
       <nav aria-label="Навигация по страницам">
         <ul class="pagination pagination-sm mb-0">
+          <template v-if="useFullPagination">
+            <li class="page-item" :class="{ disabled: isFirstDisabled }">
+              <button type="button" class="page-link" aria-label="Первая страница" :disabled="isFirstDisabled" @click="firstPage">
+                <ChevronsLeft :size="16" />
+              </button>
+            </li>
+          </template>
           <li class="page-item" :class="{ disabled: isPrevDisabled }">
-            <button class="page-link" @click="prevPage" :disabled="isPrevDisabled">
+            <button type="button" class="page-link" aria-label="Предыдущая страница" :disabled="isPrevDisabled" @click="prevPage">
               <ChevronLeft :size="16" />
             </button>
           </li>
-          <li v-for="(page, idx) in visiblePages" :key="idx" class="page-item" :class="{ active: page === currentPage, disabled: page === '...' }">
-            <button v-if="page !== '...'" class="page-link" @click="goToPage(page)">
-              {{ page }}
-            </button>
-            <span v-else class="page-link">...</span>
-          </li>
+          <template v-if="useFullPagination">
+            <li v-for="(page, idx) in visiblePages" :key="idx" class="page-item" :class="{ active: page === currentPage, disabled: page === '...' }">
+              <button v-if="page !== '...'" type="button" class="page-link" @click="goToPage(page)">
+                {{ page }}
+              </button>
+              <span v-else class="page-link">...</span>
+            </li>
+          </template>
           <li class="page-item" :class="{ disabled: isNextDisabled }">
-            <button class="page-link" @click="nextPage" :disabled="isNextDisabled">
+            <button type="button" class="page-link" aria-label="Следующая страница" :disabled="isNextDisabled" @click="nextPage">
               <ChevronRight :size="16" />
             </button>
           </li>
+          <template v-if="useFullPagination">
+            <li class="page-item" :class="{ disabled: isLastDisabled }">
+              <button type="button" class="page-link" aria-label="Последняя страница" :disabled="isLastDisabled" @click="lastPage">
+                <ChevronsRight :size="16" />
+              </button>
+            </li>
+          </template>
         </ul>
       </nav>
     </div>
@@ -62,7 +85,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-vue-next'
 
 const props = defineProps({
   items: {
@@ -116,7 +139,7 @@ const props = defineProps({
     type: Number,
     default: null
   },
-  /** Серверная пагинация без общего count: только флаги has_next / has_previous */
+  /** Серверная пагинация: has_next / has_previous; при totalItems — полный блок страниц */
   hasNextPage: {
     type: Boolean,
     default: null,
@@ -168,8 +191,19 @@ const useServerPagination = computed(
   () => props.hasNextPage !== null && props.hasPreviousPage !== null,
 )
 
+const hasKnownTotal = computed(
+  () => props.totalItems !== null && props.totalItems >= 0,
+)
+
+const useSimpleServerPagination = computed(
+  () => useServerPagination.value && !hasKnownTotal.value,
+)
+
 const totalItemsCount = computed(() => {
-  return props.totalItems !== null ? props.totalItems : props.items.length
+  if (props.totalItems !== null) {
+    return props.totalItems
+  }
+  return props.items.length
 })
 
 const totalColumnCount = computed(() => {
@@ -177,31 +211,45 @@ const totalColumnCount = computed(() => {
 })
 
 const totalPages = computed(() => {
-  if (useServerPagination.value) {
-    return props.hasNextPage ? props.currentPage + 1 : Math.max(props.currentPage, 1)
+  return Math.max(1, Math.ceil(totalItemsCount.value / props.itemsPerPage) || 1)
+})
+
+const useFullPagination = computed(() => {
+  if (!props.enablePagination) {
+    return false
   }
-  return Math.ceil(totalItemsCount.value / props.itemsPerPage) || 1
+  if (useServerPagination.value) {
+    return hasKnownTotal.value && totalPages.value > 1
+  }
+  return totalPages.value > 1
 })
 
 const showPaginationControls = computed(() => {
-  if (useServerPagination.value) {
-    return props.hasNextPage || props.hasPreviousPage
+  if (useFullPagination.value) {
+    return true
+  }
+  if (useSimpleServerPagination.value) {
+    return props.hasNextPage || props.hasPreviousPage || props.currentPage > 1
   }
   return totalItemsCount.value > props.itemsPerPage
 })
 
+const isFirstDisabled = computed(() => props.currentPage <= 1)
+
+const isLastDisabled = computed(() => props.currentPage >= totalPages.value)
+
 const isPrevDisabled = computed(() => {
-  if (useServerPagination.value) {
+  if (useSimpleServerPagination.value) {
     return !props.hasPreviousPage
   }
-  return props.currentPage === 1
+  return props.currentPage <= 1
 })
 
 const isNextDisabled = computed(() => {
-  if (useServerPagination.value) {
+  if (useSimpleServerPagination.value) {
     return !props.hasNextPage
   }
-  return props.currentPage === totalPages.value
+  return props.currentPage >= totalPages.value
 })
 
 const displayItems = computed(() => {
@@ -261,10 +309,20 @@ const visiblePages = computed(() => {
 })
 
 const goToPage = (page) => {
-  if (page >= 1 && page <= totalPages.value) {
-    emit('update:currentPage', page)
-    emit('pageChange', page)
+  const target = Number(page)
+  if (!Number.isFinite(target) || target < 1 || target > totalPages.value || target === props.currentPage) {
+    return
   }
+  emit('update:currentPage', target)
+  emit('pageChange', target)
+}
+
+const firstPage = () => {
+  goToPage(1)
+}
+
+const lastPage = () => {
+  goToPage(totalPages.value)
 }
 
 const prevPage = () => {
@@ -341,5 +399,9 @@ const nextPage = () => {
 .pagination .page-link:hover:not(.disabled) {
   background-color: var(--color-hover-background);
   border-color: var(--color-border);
+}
+
+.data-table-page-label {
+  margin-left: 0.25rem;
 }
 </style>

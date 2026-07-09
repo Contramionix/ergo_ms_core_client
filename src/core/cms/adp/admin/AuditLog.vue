@@ -29,6 +29,7 @@ const isLoading = ref(false)
 const isRefreshing = ref(false)
 
 const events = ref([])
+const totalEvents = ref(0)
 const hasNextPage = ref(false)
 const hasPreviousPage = ref(false)
 const currentPage = ref(1)
@@ -289,17 +290,17 @@ async function loadEvents({ spinRefresh = false } = {}) {
     const result = await apiClient.get(auditEndpoints.audit.events, params, true)
     const data = result?.data || {}
     events.value = data.results || []
+    totalEvents.value = typeof data.count === 'number' ? data.count : 0
     hasNextPage.value = Boolean(data.has_next)
     hasPreviousPage.value = Boolean(data.has_previous)
+
+    if (typeof data.page === 'number' && data.page >= 1) {
+      currentPage.value = data.page
+    }
 
     if (events.value.length === 0 && currentPage.value > 1) {
       currentPage.value = 1
       await loadEvents({ spinRefresh })
-      return
-    }
-
-    if (data.page) {
-      currentPage.value = data.page
     }
   } catch (error) {
     logError('Аудит: не удалось загрузить журнал', error)
@@ -327,7 +328,11 @@ function handleSearchQuery(query) {
 }
 
 function handlePageChange(page) {
-  currentPage.value = page
+  const nextPage = Number(page)
+  if (!Number.isFinite(nextPage) || nextPage < 1 || nextPage === currentPage.value) {
+    return
+  }
+  currentPage.value = nextPage
   loadEvents()
 }
 
@@ -423,7 +428,7 @@ onMounted(async () => {
       </div>
 
       <LoadingContentArea :loading="isLoading">
-        <DataTable :items="events" :columns="columns" :show-number-column="false" :items-per-page="rowsPerPage" :current-page="currentPage" :has-next-page="hasNextPage" :has-previous-page="hasPreviousPage" :get-item-key="getItemKey" :enable-pagination="true" empty-text="Записи не найдены" @update:current-page="handlePageChange">
+        <DataTable :items="events" :columns="columns" :show-number-column="false" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalEvents" :has-next-page="hasNextPage" :has-previous-page="hasPreviousPage" :get-item-key="getItemKey" :enable-pagination="true" empty-text="Записи не найдены" @update:current-page="handlePageChange">
           <template #cell-created_at="{ item }">
             <span class="audit-time">{{ formatDateTime(item.created_at) }}</span>
           </template>
