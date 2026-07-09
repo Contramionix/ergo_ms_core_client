@@ -7,12 +7,20 @@
     <title>ERGOMS</title>
     <style>
       html.app-bootstrapping #app {
-        visibility: hidden;
+        opacity: 0;
+      }
+      html #app {
+        transition: opacity 0.28s ease;
       }
       html.app-bootstrapping #app,
       html.app-bootstrapping #app * {
         transition: none !important;
         animation: none !important;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html #app {
+          transition: none;
+        }
       }
     </style>
     <script src="/js/bootstrap-early.js"></script>

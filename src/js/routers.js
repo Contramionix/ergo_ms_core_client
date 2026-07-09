@@ -2,7 +2,7 @@
  * КОНФИГУРАЦИЯ МАРШРУТИЗАЦИИ ПРИЛОЖЕНИЯ ERGO MS
  */
 
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, START_LOCATION } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll, getPermissionRules } from '@/modules/index.js'
 import { checkRouteAdpAccess, hasAnyModulePermission, checkGlobalAdminAccess } from '@/core/cms/adp/js/accessControl'
@@ -11,6 +11,7 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
 import { accessDeniedState } from './accessDeniedState'
 import { logWarn } from '@/js/utils/logError.js'
+import { finishRouteProgress, startRouteProgress } from '@/js/routeProgressState.js'
 
 const organizationGuardModules = import.meta.glob(
   '../../../../modules/organizations/client/js/organizationGuard.js',
@@ -139,6 +140,10 @@ async function runCheckToken() {
 
 function setupRouterGuards(router) {
   router.beforeEach(async (to, from, next) => {
+    if (from !== START_LOCATION && to.path !== from.path) {
+      startRouteProgress()
+    }
+
     try {
       const safeNext = (params) => {
         accessDeniedState.active = false
@@ -183,6 +188,16 @@ function setupRouterGuards(router) {
       accessDeniedState.active = false
       next({ name: 'StartPage' })
     }
+  })
+
+  router.afterEach((to, from) => {
+    if (from !== START_LOCATION && to.path !== from.path) {
+      finishRouteProgress()
+    }
+  })
+
+  router.onError(() => {
+    finishRouteProgress()
   })
 }
 

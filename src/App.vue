@@ -7,6 +7,7 @@ import LayoutStart from '@/LayoutStart.vue'
 import LayoutPublic from '@/LayoutPublic.vue'
 import NotificationProvider from '@/components/NotificationProvider.vue'
 import HoverTooltipLayer from '@/components/HoverTooltipLayer.vue'
+import RouteProgressBar from '@/components/RouteProgressBar.vue'
 import { hideBootstrapMask } from '@/js/bootstrapMask.js'
 
 const route = useRoute()
@@ -43,5 +44,6 @@ const currentLayout = computed(() => {
     <component :is="currentLayout" />
     <NotificationProvider />
     <HoverTooltipLayer />
+    <RouteProgressBar />
   </div>
 </template>

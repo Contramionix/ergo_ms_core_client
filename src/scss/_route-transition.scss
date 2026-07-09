@@ -1,0 +1,105 @@
+// Плавная смена страниц (RouterView + Transition name="layout-route")
+
+.layout-route-view {
+  min-height: inherit;
+  width: 100%;
+}
+
+.layout-route-enter-active,
+.layout-route-leave-active {
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+.layout-route-leave-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.layout-route-enter-active {
+  z-index: 1;
+}
+
+.layout-route-enter-from,
+.layout-route-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.route-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+
+  &--active {
+    opacity: 1;
+  }
+
+  &__bar {
+    height: 100%;
+    width: 100%;
+    background: var(--bs-primary, #0d6efd);
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+
+  &--start .route-progress__bar {
+    animation: route-progress-start 6s ease-out forwards;
+  }
+
+  &--finish .route-progress__bar {
+    animation: route-progress-finish 0.28s ease-out forwards;
+  }
+}
+
+@keyframes route-progress-start {
+  0% {
+    transform: scaleX(0);
+  }
+
+  25% {
+    transform: scaleX(0.4);
+  }
+
+  100% {
+    transform: scaleX(0.88);
+  }
+}
+
+@keyframes route-progress-finish {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-progress {
+    display: none;
+  }
+
+  .layout-route-enter-active,
+  .layout-route-leave-active {
+    transition: none;
+  }
+
+  .layout-route-leave-active {
+    position: static;
+  }
+
+  .layout-route-enter-from,
+  .layout-route-leave-to {
+    opacity: 1;
+    transform: none;
+  }
+}

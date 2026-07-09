@@ -1,12 +1,13 @@
 <script setup>
 import LayoutBackdrop from '@/components/LayoutBackdrop.vue'
+import RouteViewAnimated from '@/components/RouteViewAnimated.vue'
 </script>
 
 <template>
   <div class="layout-start">
     <LayoutBackdrop />
     <div class="layout-start__content">
-      <RouterView :key="$route.path" />
+      <RouteViewAnimated :use-keep-alive="false" />
     </div>
   </div>
 </template>
@@ -27,5 +28,6 @@ import LayoutBackdrop from '@/components/LayoutBackdrop.vue'
   align-items: center;
   width: 100%;
   min-height: inherit;
+  overflow: clip;
 }
 </style>

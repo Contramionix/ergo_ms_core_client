@@ -34,6 +34,7 @@ import { Menu as IconMenu } from 'lucide-vue-next'
 
 import { initEndpoints } from '@/js/api/endpoints.js'
 import SiteWordmark from '@/components/SiteWordmark.vue'
+import RouteViewAnimated from '@/components/RouteViewAnimated.vue'
 
 const layoutPluginGlob = import.meta.glob('../../../modules/*/client/LayoutPlugin.vue')
 const layoutPlugins = shallowRef([])
@@ -42,10 +43,6 @@ const userStore = useUserStore()
 const route = useRoute()
 
 let resizeTimeout = null
-
-function cachedRouteKey(activeRoute) {
-  return activeRoute.name ?? activeRoute.path
-}
 
 const leftPadding = ref('279px')
 const menuRightEdge = ref('260px')
@@ -174,27 +171,11 @@ onBeforeUnmount(() => {
       <div class="layout-page__content">
         <template v-if="route.meta?.fullPage">
           <AccessDenied v-if="accessDeniedState.active" bordered :title="accessDeniedState.title" :message="accessDeniedState.message"/>
-          <RouterView v-else v-slot="{ Component, route: activeRoute }">
-            <Transition name="layout-route" mode="out-in">
-              <div :key="cachedRouteKey(activeRoute)" class="layout-route-view">
-                <KeepAlive :max="15">
-                  <component :is="Component" v-if="Component" />
-                </KeepAlive>
-              </div>
-            </Transition>
-          </RouterView>
+          <RouteViewAnimated v-else />
         </template>
         <div v-else :class="route.meta?.flushContent ? 'layout-content--flush' : 'py-4 container-xxl'">
           <AccessDenied v-if="accessDeniedState.active" bordered :title="accessDeniedState.title" :message="accessDeniedState.message"/>
-          <RouterView v-else v-slot="{ Component, route: activeRoute }">
-            <Transition name="layout-route" mode="out-in">
-              <div :key="cachedRouteKey(activeRoute)" class="layout-route-view">
-                <KeepAlive :max="15">
-                  <component :is="Component" v-if="Component" />
-                </KeepAlive>
-              </div>
-            </Transition>
-          </RouterView>
+          <RouteViewAnimated v-else />
         </div>
       </div>
     </div>
@@ -261,20 +242,7 @@ onBeforeUnmount(() => {
   position: relative;
   z-index: 1;
   min-height: inherit;
-}
-
-.layout-route-view {
-  min-height: inherit;
-}
-
-.layout-route-enter-active,
-.layout-route-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.layout-route-enter-from,
-.layout-route-leave-to {
-  opacity: 0;
+  overflow: clip;
 }
 
 .layout-container--full-page {
