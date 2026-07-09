@@ -9,6 +9,7 @@ import dotenv from 'dotenv'
 import path from 'path'
 import fs from 'fs'
 import { createRequire } from 'node:module'
+import { mergeModuleEnv } from './scripts/lib/module-env.js'
 
 const require = createRequire(import.meta.url)
 const { applyNginxClientEnv, nginxEnabled } = require('../deployment/nginx/nginx-env.cjs')
@@ -38,7 +39,8 @@ if (fs.existsSync(mainEnvPath)) {
   console.warn('⚠️  Файл .env не найден в корне проекта:', mainEnvPath)
 }
 
-const runtimeEnv = applyNginxClientEnv(process.env)
+const env = mergeModuleEnv(modulesRoot, process.env)
+const runtimeEnv = applyNginxClientEnv(env)
 
 function resolvePollIntervalMs(serverKey, defaultMs) {
   const serverValue = runtimeEnv[serverKey]
