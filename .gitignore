@@ -27,3 +27,6 @@ coverage
 *.tsbuildinfo
 
 /node_modules
+
+# ergoms maintenance-on/off — генерируется скриптом, не коммитить
+public/maintenance.json
