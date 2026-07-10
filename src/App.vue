@@ -16,6 +16,7 @@ import {
   useMaintenanceMode,
 } from '@/composables/useMaintenanceMode.js'
 import { hideBootstrapMask } from '@/js/bootstrapMask.js'
+import { clientEnv } from '@/js/clientEnv.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -41,7 +42,9 @@ onMounted(() => {
   ]).then(() => {
     isReady.value = true
     revealApp()
-    startMaintenancePolling()
+    if (clientEnv.maintenancePollEnabled) {
+      startMaintenancePolling()
+    }
   })
 })
 
