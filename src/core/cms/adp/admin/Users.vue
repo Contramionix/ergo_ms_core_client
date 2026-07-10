@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import { useToast } from '@/js/utils/toast.js'
 import { Settings, Upload, MailPlus, UserPlus, FilePenLine } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
@@ -41,11 +42,24 @@ const showUserCreate = ref(false)
 const selectedUserId = ref(null)
 
 const rowsPerPage = ref(12)
-const searchQuery = ref('')
-const currentPage = ref(1)
-const presenceFilter = ref('all')
 const profileSelfEditEnabled = ref(true)
+
+const { state: listState, patchState, watchState } = useRouteQueryState({
+  q: { default: '' },
+  page: { default: 1, type: 'number' },
+  presence: { default: 'all', enum: ['all', 'online', 'offline'] },
+}, { debounceKeys: ['q'] })
+
+const searchQuery = computed(() => listState.value.q)
+const currentPage = computed(() => listState.value.page)
+const presenceFilter = computed({
+  get: () => listState.value.presence,
+  set: (value) => {
+    patchState({ presence: value }, { immediate: true })
+  },
+})
 const pendingProfileChangeCount = ref(0)
+const isQueryWatchReady = ref(false)
 
 const isOnlineFilter = computed(() => presenceFilter.value === 'online')
 
@@ -55,7 +69,6 @@ const profileChangeRequestsTooltip = computed(() => {
   return count > 0 ? `${label} (${count})` : label
 })
 
-let searchDebounceTimer = null
 let presenceReloadTimer = null
 
 const schedulePresenceReload = () => {
@@ -149,8 +162,8 @@ const loadUsers = async () => {
     rows.value = (data.users || []).map(mapUserToRow)
     seedFromUsers(data.users || [])
     totalUsers.value = data.total ?? rows.value.length
-    if (data.page) {
-      currentPage.value = data.page
+    if (data.page && data.page !== listState.value.page) {
+      await patchState({ page: data.page }, { immediate: true, silent: true })
     }
   } catch (error) {
     logError('Ошибка загрузки пользователей:', error)
@@ -174,6 +187,7 @@ onMounted(async () => {
       return
     }
     hasAdminAccess.value = true
+    isCheckingAccess.value = false
     await Promise.all([loadRefs(), loadUsers(), loadProfileChangeMeta()])
     connectAdminPresenceFeed()
   } catch (error) {
@@ -183,44 +197,31 @@ onMounted(async () => {
       router.push({ name: 'AccessDenied' })
     }
   } finally {
-    isCheckingAccess.value = false
+    isQueryWatchReady.value = true
   }
 })
 
 onUnmounted(() => {
   disconnectAdminPresenceFeed()
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
-  }
   if (presenceReloadTimer) {
     clearTimeout(presenceReloadTimer)
   }
 })
 
-const handlePageChange = (page) => {
-  currentPage.value = page
-  loadUsers()
-}
-
-const handleSearchQuery = (query) => {
-  searchQuery.value = query
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
-  }
-  searchDebounceTimer = setTimeout(() => {
-    if (currentPage.value !== 1) {
-      currentPage.value = 1
-    }
-    loadUsers()
-  }, 300)
-}
-
-watch(presenceFilter, () => {
-  if (currentPage.value !== 1) {
-    currentPage.value = 1
+watchState(() => {
+  if (!isQueryWatchReady.value || !hasAdminAccess.value) {
+    return
   }
   loadUsers()
 })
+
+const handlePageChange = (page) => {
+  patchState({ page: Number(page) }, { immediate: true })
+}
+
+const handleSearchQuery = (query) => {
+  patchState({ q: query })
+}
 
 const columns = [
   {
@@ -277,8 +278,11 @@ const openUserCreate = () => {
 }
 
 const handleUserCreated = async () => {
-  currentPage.value = 1
-  await loadUsers()
+  if (listState.value.page !== 1) {
+    await patchState({ page: 1 }, { immediate: true })
+  } else {
+    await loadUsers()
+  }
 }
 
 const goToImport = () => {

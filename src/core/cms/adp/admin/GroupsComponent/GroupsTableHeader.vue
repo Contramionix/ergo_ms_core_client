@@ -7,6 +7,10 @@ import { ref } from 'vue'
 const emit = defineEmits(['updateGroups', 'searchRowData'])
 const showAddModal = ref(false)
 
+defineProps({
+  searchQuery: { type: String, default: '' },
+})
+
 const updateGroups = () => {
   emit('updateGroups')
 }
@@ -14,7 +18,7 @@ const updateGroups = () => {
 
 <template>
   <div class="table-header">
-    <SearchInput layout="fixed" placeholder="Поиск по группам..." :show-icon="true" background="secondary" focus-border="primary" @update:model-value="$emit('searchRowData', $event)"/>
+    <SearchInput :model-value="searchQuery" layout="fixed" placeholder="Поиск по группам..." :show-icon="true" background="secondary" focus-border="primary" @update:model-value="$emit('searchRowData', $event)"/>
     <div class="actions-wrapper">
       <button class="btn btn-primary d-flex align-items-center gap-2" type="button" @click="showAddModal = true">
         <Plus :size="16" />

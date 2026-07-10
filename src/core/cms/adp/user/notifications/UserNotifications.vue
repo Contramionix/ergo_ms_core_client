@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import { Bell, BellOff, Check, CheckCheck, ExternalLink, RefreshCw } from 'lucide-vue-next'
 import { moduleManager } from '@/modules/index.js'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
@@ -28,8 +29,24 @@ const {
   markAllRead,
 } = useNotificationsInbox()
 
-const showOnlyUnread = ref(false)
-const sourceFilter = ref(null)
+const { state: filterState, patchState } = useRouteQueryState({
+  unread: { default: '', enum: ['', '1'] },
+  source: { default: '' },
+})
+
+const showOnlyUnread = computed({
+  get: () => filterState.value.unread === '1',
+  set: (value) => {
+    patchState({ unread: value ? '1' : '' }, { immediate: true })
+  },
+})
+
+const sourceFilter = computed({
+  get: () => filterState.value.source || null,
+  set: (value) => {
+    patchState({ source: value || '' }, { immediate: true })
+  },
+})
 
 const sourceSelectOptions = computed(() => mapStringOptions(availableSources.value))
 

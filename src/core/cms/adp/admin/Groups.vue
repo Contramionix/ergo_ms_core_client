@@ -3,7 +3,8 @@ import GroupTableHeader from '@/core/cms/adp/admin/GroupsComponent/GroupsTableHe
 import GroupTable from '@/core/cms/adp/admin/GroupsComponent/GroupsTable.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { getRoleGroups } from '@/core/cms/adp/admin/js/adminAccessApi.js'
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 
 const rows = ref([])
 const isLoading = ref(false)
@@ -36,8 +37,15 @@ onMounted(updateGroups)
 const rowsPerPage = ref(30)
 const handleChangeRows = newRowsPerPage => (rowsPerPage.value = newRowsPerPage)
 
-const searchQuery = ref('')
-const handleSearchQuery = query => (searchQuery.value = query)
+const { state: listState, patchState } = useRouteQueryState({
+  q: { default: '' },
+  page: { default: 1, type: 'number' },
+}, { debounceKeys: ['q'] })
+
+const searchQuery = computed(() => listState.value.q)
+const handleSearchQuery = (query) => {
+  patchState({ q: query })
+}
 </script>
 
 <template>
@@ -49,6 +57,7 @@ const handleSearchQuery = query => (searchQuery.value = query)
 
     <div class="content-card">
       <GroupTableHeader
+        :search-query="searchQuery"
         @changeRowsPerPage="handleChangeRows"
         @searchRowData="handleSearchQuery"
         @updateGroups="updateGroups"

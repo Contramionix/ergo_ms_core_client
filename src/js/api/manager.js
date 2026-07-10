@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 import tokenService from '@/core/cms/js/tokenService'
+import { applyMaintenanceFromResponse } from '@/composables/useMaintenanceMode.js'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
 
 /**
@@ -42,6 +43,9 @@ class ApiClient {
       (response) => response,
       async (error) => {
         const originalRequest = error.config
+        if (applyMaintenanceFromResponse(error)) {
+          return Promise.reject(error)
+        }
         if (error.response?.status === 401 && !originalRequest?._retry) {
           originalRequest._retry = true
           const access = await tokenService.tryRefresh()

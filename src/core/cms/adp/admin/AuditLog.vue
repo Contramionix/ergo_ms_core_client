@@ -1,6 +1,11 @@
 <script setup>
 import { ref, computed, watch, onMounted, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  useRouteQueryState,
+  filtersObjectFromState,
+  filtersObjectToPatch,
+} from '@/composables/useRouteQueryState.js'
 import { Download, RefreshCw, Eye } from 'lucide-vue-next'
 
 import { apiClient } from '@/js/api/manager'
@@ -27,22 +32,41 @@ const isCheckingAccess = ref(true)
 const hasAdminAccess = ref(false)
 const isLoading = ref(false)
 const isRefreshing = ref(false)
+const isQueryWatchReady = ref(false)
 
 const events = ref([])
 const totalEvents = ref(0)
 const hasNextPage = ref(false)
 const hasPreviousPage = ref(false)
-const currentPage = ref(1)
 const rowsPerPage = ref(12)
 
-const searchQuery = ref('')
-const auditFilters = ref({
-  module: '',
-  action: '',
-  severity: '',
-  actor: '',
-  dateFrom: '',
-  dateTo: '',
+const AUDIT_FILTER_MAP = {
+  module: 'module',
+  action: 'action',
+  severity: 'severity',
+  actor: 'actor',
+  date_from: 'dateFrom',
+  date_to: 'dateTo',
+}
+
+const { state: listState, patchState, watchState } = useRouteQueryState({
+  q: { default: '' },
+  page: { default: 1, type: 'number' },
+  module: { default: '' },
+  action: { default: '' },
+  severity: { default: '' },
+  actor: { default: '' },
+  date_from: { default: '' },
+  date_to: { default: '' },
+}, { debounceKeys: ['q'] })
+
+const searchQuery = computed(() => listState.value.q)
+const currentPage = computed(() => listState.value.page)
+const auditFilters = computed({
+  get: () => filtersObjectFromState(listState.value, AUDIT_FILTER_MAP),
+  set: (filters) => {
+    patchState(filtersObjectToPatch(filters, AUDIT_FILTER_MAP), { immediate: true })
+  },
 })
 
 const modules = ref([])
@@ -178,15 +202,10 @@ const auditFiltersTooltip = computed(() => {
 })
 
 watch(
-  () => auditFilters.value.module,
+  () => listState.value.module,
   (nextModule, prevModule) => {
-    if (nextModule === prevModule) return
-    const hadAction = Boolean(auditFilters.value.action)
-    auditFilters.value = {
-      ...auditFilters.value,
-      action: '',
-    }
-    if (hadAction) applyFilters()
+    if (nextModule === prevModule || !listState.value.action) return
+    patchState({ action: '' }, { immediate: true })
   },
 )
 
@@ -294,13 +313,15 @@ async function loadEvents({ spinRefresh = false } = {}) {
     hasNextPage.value = Boolean(data.has_next)
     hasPreviousPage.value = Boolean(data.has_previous)
 
-    if (typeof data.page === 'number' && data.page >= 1) {
-      currentPage.value = data.page
+    if (typeof data.page === 'number' && data.page >= 1 && data.page !== listState.value.page) {
+      await patchState({ page: data.page }, { immediate: true, silent: true })
+      return
     }
 
-    if (events.value.length === 0 && currentPage.value > 1) {
-      currentPage.value = 1
+    if (events.value.length === 0 && listState.value.page > 1) {
+      await patchState({ page: 1 }, { immediate: true, silent: true })
       await loadEvents({ spinRefresh })
+      return
     }
   } catch (error) {
     logError('Аудит: не удалось загрузить журнал', error)
@@ -315,25 +336,16 @@ function refreshEvents() {
   loadEvents({ spinRefresh: true })
 }
 
-function applyFilters() {
-  currentPage.value = 1
-  loadEvents()
-}
-
-let searchTimer = null
 function handleSearchQuery(query) {
-  searchQuery.value = query
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(applyFilters, 350)
+  patchState({ q: query })
 }
 
 function handlePageChange(page) {
   const nextPage = Number(page)
-  if (!Number.isFinite(nextPage) || nextPage < 1 || nextPage === currentPage.value) {
+  if (!Number.isFinite(nextPage) || nextPage < 1 || nextPage === listState.value.page) {
     return
   }
-  currentPage.value = nextPage
-  loadEvents()
+  patchState({ page: nextPage }, { immediate: true })
 }
 
 function closeDetails() {
@@ -380,14 +392,22 @@ onMounted(async () => {
       return
     }
     hasAdminAccess.value = true
+    isCheckingAccess.value = false
     await loadCatalog()
     await loadEvents()
   } catch (error) {
     logError('Аудит: ошибка проверки прав', error)
     router.push({ name: 'AccessDenied' })
   } finally {
-    isCheckingAccess.value = false
+    isQueryWatchReady.value = true
   }
+})
+
+watchState(() => {
+  if (!isQueryWatchReady.value || !hasAdminAccess.value) {
+    return
+  }
+  loadEvents()
 })
 </script>
 
@@ -408,7 +428,7 @@ onMounted(async () => {
           <SearchInput id="audit-search" :model-value="searchQuery" layout="grow" placeholder="Инициатор или объект..." :show-icon="true" background="primary" focus-border="primary" class="audit-search-input" @update:model-value="handleSearchQuery"/>
           <div class="audit-filter-menu-wrap">
             <HoverTooltip :text="auditFiltersTooltip" wrap>
-              <FilterMenu v-model="auditFilters" :fields="auditFilterFields" trigger-label="Фильтры" apply-on-change class="audit-filter-menu" @apply="applyFilters"/>
+              <FilterMenu v-model="auditFilters" :fields="auditFilterFields" trigger-label="Фильтры" apply-on-change class="audit-filter-menu"/>
             </HoverTooltip>
           </div>
         </div>

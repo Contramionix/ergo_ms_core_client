@@ -4,7 +4,8 @@ import PermissionTable from '@/core/cms/adp/admin/PermissionsComponents/Permissi
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { getPolicies, getRoles, getRoleGroups } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { useCmsPageCatalog } from '@/core/cms/adp/admin/js/useCmsPageCatalog.js'
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 
 const {
   pages,
@@ -79,9 +80,14 @@ const handleChangeRows = (newRowsPerPage) => {
   rowsPerPage.value = newRowsPerPage
 }
 
-const searchQuery = ref('')
+const { state: listState, patchState } = useRouteQueryState({
+  q: { default: '' },
+  page: { default: 1, type: 'number' },
+}, { debounceKeys: ['q'], preserveKeys: ['tab'] })
+
+const searchQuery = computed(() => listState.value.q)
 const handleSearchQuery = (query) => {
-  searchQuery.value = query
+  patchState({ q: query })
 }
 </script>
 
@@ -116,6 +122,7 @@ const handleSearchQuery = (query) => {
           :pages="pages"
           :module-page-groups="modulePageGroups"
           :module-catalog="moduleCatalog"
+          :search-query="searchQuery"
           @changeRowsPerPage="handleChangeRows"
           @searchRowData="handleSearchQuery"
           @updatePermissions="updatePermissions"

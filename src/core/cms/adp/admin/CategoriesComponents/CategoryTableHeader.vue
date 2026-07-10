@@ -7,6 +7,10 @@ import { ref } from 'vue'
 const showAddModal = ref(false)
 const emit = defineEmits(['updateCategories', 'searchRowData'])
 
+defineProps({
+  searchQuery: { type: String, default: '' },
+})
+
 const updateCategories = () => {
   emit('updateCategories')
 }
@@ -14,7 +18,7 @@ const updateCategories = () => {
 
 <template>
   <div class="table-header">
-    <SearchInput layout="fixed" placeholder="Поиск по ролям..." :show-icon="true" background="secondary" focus-border="primary" @update:model-value="$emit('searchRowData', $event)"/>
+    <SearchInput :model-value="searchQuery" layout="fixed" placeholder="Поиск по ролям..." :show-icon="true" background="secondary" focus-border="primary" @update:model-value="$emit('searchRowData', $event)"/>
     <div class="actions-wrapper">
       <button class="btn btn-primary d-flex align-items-center gap-2" type="button" @click="showAddModal = true">
         <Plus :size="16" />

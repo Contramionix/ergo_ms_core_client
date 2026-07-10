@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import { useToast } from '@/js/utils/toast.js'
 import { Check, X, AlertCircle } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
@@ -35,10 +36,23 @@ const rows = ref([])
 const totalItems = ref(0)
 const pendingCount = ref(0)
 const profileSelfEditEnabled = ref(true)
-const currentPage = ref(1)
 const rowsPerPage = ref(12)
-const searchQuery = ref('')
-const statusFilter = ref('pending')
+const isQueryWatchReady = ref(false)
+
+const { state: listState, patchState, watchState } = useRouteQueryState({
+  q: { default: '' },
+  page: { default: 1, type: 'number' },
+  status: { default: 'pending', enum: ['all', 'pending', 'approved', 'rejected'] },
+}, { debounceKeys: ['q'] })
+
+const searchQuery = computed(() => listState.value.q)
+const currentPage = computed(() => listState.value.page)
+const statusFilter = computed({
+  get: () => listState.value.status,
+  set: (value) => {
+    patchState({ status: value }, { immediate: true })
+  },
+})
 
 const STATUS_OPTIONS = [
   { id: 'all', name: 'Все статусы' },
@@ -84,8 +98,6 @@ const columns = [
   { key: 'actions', label: 'Действия', headerStyle: { textAlign: 'right' }, cellStyle: { textAlign: 'right' } },
 ]
 
-let searchDebounceTimer = null
-
 const getItemKey = (item) => item.id
 
 const formatValue = (value) => {
@@ -112,8 +124,8 @@ const loadRequests = async () => {
     totalItems.value = data.total ?? rows.value.length
     pendingCount.value = data.pending_count ?? 0
     profileSelfEditEnabled.value = data.profile_self_edit_enabled !== false
-    if (data.page) {
-      currentPage.value = data.page
+    if (data.page && data.page !== listState.value.page) {
+      await patchState({ page: data.page }, { immediate: true, silent: true })
     }
   } catch (error) {
     logError('Ошибка загрузки заявок на изменение данных профиля:', error)
@@ -132,45 +144,34 @@ onMounted(async () => {
       return
     }
     hasAdminAccess.value = true
+    isCheckingAccess.value = false
     await loadRequests()
   } catch (error) {
     logError('Ошибка проверки прав доступа:', error)
     toast.error('Ошибка проверки прав доступа')
     router.push({ name: 'AccessDenied' })
   } finally {
-    isCheckingAccess.value = false
+    isQueryWatchReady.value = true
   }
 })
 
-onUnmounted(() => {
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
+watchState(() => {
+  if (!isQueryWatchReady.value || !hasAdminAccess.value) {
+    return
   }
+  loadRequests()
 })
 
 const handlePageChange = (page) => {
-  currentPage.value = page
-  loadRequests()
+  patchState({ page: Number(page) }, { immediate: true })
 }
 
 const handleSearchQuery = (query) => {
-  searchQuery.value = query
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
-  }
-  searchDebounceTimer = setTimeout(() => {
-    if (currentPage.value !== 1) {
-      currentPage.value = 1
-    }
-    loadRequests()
-  }, 300)
+  patchState({ q: query })
 }
 
 const handleStatusFilterChange = () => {
-  if (currentPage.value !== 1) {
-    currentPage.value = 1
-  }
-  loadRequests()
+  patchState({ status: statusFilter.value }, { immediate: true })
 }
 
 const handleApprove = async (item) => {

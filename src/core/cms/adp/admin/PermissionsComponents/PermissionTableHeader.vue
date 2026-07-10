@@ -10,19 +10,18 @@ const props = defineProps({
   pages: { type: Array, default: () => [] },
   modulePageGroups: { type: Array, default: () => [] },
   moduleCatalog: { type: Array, default: () => [] },
+  searchQuery: { type: String, default: '' },
 })
 
 const emit = defineEmits(['updatePermissions', 'changeRowsPerPage', 'searchRowData'])
 
 const showAddModal = ref(false)
-const searchQuery = ref('')
 
 const updatePermissions = () => {
   emit('updatePermissions')
 }
 
 const handleSearchQuery = (query) => {
-  searchQuery.value = query
   emit('searchRowData', query)
 }
 </script>
@@ -30,7 +29,7 @@ const handleSearchQuery = (query) => {
 <template>
   <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
     <SearchInput
-      v-model="searchQuery"
+      :model-value="searchQuery"
       placeholder="Поиск по названию или пути..."
       layout="fixed"
       :show-icon="true"

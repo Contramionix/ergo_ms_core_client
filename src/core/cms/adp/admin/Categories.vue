@@ -3,7 +3,8 @@ import CategoryTableHeader from '@/core/cms/adp/admin/CategoriesComponents/Categ
 import CategoryTable from '@/core/cms/adp/admin/CategoriesComponents/CategoryTable.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { getRoles } from '@/core/cms/adp/admin/js/adminAccessApi.js'
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 
 const rows = ref([])
 const isLoading = ref(false)
@@ -36,8 +37,15 @@ onMounted(updateCategories)
 const rowsPerPage = ref(30)
 const handleChangeRows = (newRowsPerPage) => (rowsPerPage.value = newRowsPerPage)
 
-const searchQuery = ref('')
-const handleSearchQuery = (query) => (searchQuery.value = query)
+const { state: listState, patchState } = useRouteQueryState({
+  q: { default: '' },
+  page: { default: 1, type: 'number' },
+}, { debounceKeys: ['q'] })
+
+const searchQuery = computed(() => listState.value.q)
+const handleSearchQuery = (query) => {
+  patchState({ q: query })
+}
 </script>
 
 <template>
@@ -49,6 +57,7 @@ const handleSearchQuery = (query) => (searchQuery.value = query)
 
     <div class="content-card">
       <CategoryTableHeader
+        :search-query="searchQuery"
         @changeRowsPerPage="handleChangeRows"
         @searchRowData="handleSearchQuery"
         @updateCategories="updateCategories"

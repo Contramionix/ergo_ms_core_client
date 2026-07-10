@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { Pencil, Trash2 } from 'lucide-vue-next'
 import ChangePermissionForm from '@/core/cms/adp/admin/PermissionsComponents/SubmitPermissionChange.vue'
 import { deletePolicy } from '@/core/cms/adp/admin/js/adminAccessApi.js'
+import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 
 const props = defineProps({
   headers: { type: Array, required: true },
@@ -39,7 +40,16 @@ watch(
   },
 )
 
-const currentPage = ref(1)
+const { state: listState, patchState } = useRouteQueryState({
+  q: { default: '' },
+  page: { default: 1, type: 'number' },
+}, { preserveKeys: ['tab'] })
+
+const currentPage = computed(() => listState.value.page)
+
+const goToPage = (page) => {
+  patchState({ page }, { immediate: true })
+}
 
 const filteredRows = computed(() => {
   const query = props.searchQuery.trim().toLowerCase()
@@ -55,6 +65,10 @@ const filteredRows = computed(() => {
       resourceLabel.includes(query)
     )
   })
+})
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredRows.value.length / props.rowsPerPage))
 })
 
 const paginatedRows = computed(() => {
@@ -148,6 +162,26 @@ const resolveResourceTitle = (path) => {
     </table>
   </div>
 
+  <div v-if="totalPages > 1" class="pagination-wrapper">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      :disabled="currentPage <= 1"
+      @click="goToPage(currentPage - 1)"
+    >
+      Назад
+    </button>
+    <span class="pagination-info">{{ currentPage }} / {{ totalPages }}</span>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      :disabled="currentPage >= totalPages"
+      @click="goToPage(currentPage + 1)"
+    >
+      Далее
+    </button>
+  </div>
+
   <ChangePermissionForm
     v-model:visible="showEditModal"
     modal-id="policyEdit"
@@ -205,5 +239,19 @@ const resolveResourceTitle = (path) => {
 
 .text-monospace {
   font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+}
+
+.pagination-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.pagination-info {
+  font-size: 0.8125rem;
+  color: var(--color-secondary-text);
 }
 </style>

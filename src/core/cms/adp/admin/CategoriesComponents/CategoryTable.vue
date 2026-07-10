@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { Settings, Trash2 } from 'lucide-vue-next'
 import ChangeCategoryForm from '@/core/cms/adp/admin/CategoriesComponents/SubmitCategoryChange.vue'
 import { deleteRole } from '@/core/cms/adp/admin/js/adminAccessApi.js'
+import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 
 const props = defineProps({
   headers: { type: Array, required: true },
@@ -21,7 +22,16 @@ watch(
   }
 )
 
-const currentPage = ref(1)
+const { state: listState, patchState } = useRouteQueryState({
+  q: { default: '' },
+  page: { default: 1, type: 'number' },
+})
+
+const currentPage = computed(() => listState.value.page)
+
+const goToPage = (page) => {
+  patchState({ page }, { immediate: true })
+}
 
 const rowSelected = ref({
   id: null,
@@ -126,7 +136,7 @@ const removeRole = async (roleId) => {
       <button
         class="btn btn-sm btn-outline-secondary"
         :disabled="currentPage <= 1"
-        @click="currentPage--"
+        @click="goToPage(currentPage - 1)"
       >
         Назад
       </button>
@@ -134,7 +144,7 @@ const removeRole = async (roleId) => {
       <button
         class="btn btn-sm btn-outline-secondary"
         :disabled="currentPage >= totalPages"
-        @click="currentPage++"
+        @click="goToPage(currentPage + 1)"
       >
         Далее
       </button>

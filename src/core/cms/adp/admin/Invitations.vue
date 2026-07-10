@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import { useToast } from '@/js/utils/toast.js'
 import { MailPlus, Copy, Mail, Ban, FileSpreadsheet, Trash2, Eraser, } from 'lucide-vue-next'
 import DataTable from '@/components/DataTable.vue'
@@ -35,13 +36,26 @@ const totalAll = ref(0)
 const inactiveCount = ref(0)
 const pendingCount = ref(0)
 const registrationMode = ref('open')
-const currentPage = ref(1)
 const rowsPerPage = ref(12)
-const searchQuery = ref('')
-const statusFilter = ref('all')
+
+const { state: listState, patchState, watchState } = useRouteQueryState({
+  q: { default: '' },
+  page: { default: 1, type: 'number' },
+  status: { default: 'all', enum: ['all', 'pending', 'used', 'expired', 'revoked'] },
+}, { debounceKeys: ['q'] })
+
+const searchQuery = computed(() => listState.value.q)
+const currentPage = computed(() => listState.value.page)
+const statusFilter = computed({
+  get: () => listState.value.status,
+  set: (value) => {
+    patchState({ status: value }, { immediate: true })
+  },
+})
 
 const showCreateModal = ref(false)
 const showBulkModal = ref(false)
+const isQueryWatchReady = ref(false)
 
 const STATUS_OPTIONS = [
   { id: 'all', name: 'Все статусы' },
@@ -82,8 +96,6 @@ const statusClass = {
   revoked: 'invitations-status--revoked',
 }
 
-let searchDebounceTimer = null
-
 const columns = [
   { key: 'email', label: 'Email' },
   { key: 'status', label: 'Статус', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
@@ -115,8 +127,8 @@ const loadInvitations = async () => {
     inactiveCount.value = data.inactive_count ?? 0
     pendingCount.value = data.pending_count ?? 0
     registrationMode.value = data.registration_mode || 'open'
-    if (data.page) {
-      currentPage.value = data.page
+    if (data.page && data.page !== listState.value.page) {
+      await patchState({ page: data.page }, { immediate: true, silent: true })
     }
   } catch (error) {
     logError('Ошибка загрузки приглашений:', error)
@@ -135,39 +147,34 @@ onMounted(async () => {
       return
     }
     hasAdminAccess.value = true
+    isCheckingAccess.value = false
     await loadInvitations()
   } catch (error) {
     logError('Ошибка проверки прав доступа:', error)
     toast.error('Ошибка проверки прав доступа')
     router.push({ name: 'AccessDenied' })
   } finally {
-    isCheckingAccess.value = false
+    isQueryWatchReady.value = true
   }
 })
 
-const handlePageChange = (page) => {
-  currentPage.value = page
+watchState(() => {
+  if (!isQueryWatchReady.value || !hasAdminAccess.value) {
+    return
+  }
   loadInvitations()
+})
+
+const handlePageChange = (page) => {
+  patchState({ page: Number(page) }, { immediate: true })
 }
 
 const handleSearchQuery = (query) => {
-  searchQuery.value = query
-  if (searchDebounceTimer) {
-    clearTimeout(searchDebounceTimer)
-  }
-  searchDebounceTimer = setTimeout(() => {
-    if (currentPage.value !== 1) {
-      currentPage.value = 1
-    }
-    loadInvitations()
-  }, 300)
+  patchState({ q: query })
 }
 
 const handleStatusFilterChange = () => {
-  if (currentPage.value !== 1) {
-    currentPage.value = 1
-  }
-  loadInvitations()
+  patchState({ status: statusFilter.value }, { immediate: true })
 }
 
 const openCreateModal = () => {
@@ -274,8 +281,10 @@ const openClearConfirm = async (scope) => {
     } else {
       toast.info(result.message || 'Нет приглашений для удаления')
     }
-    currentPage.value = 1
-    await loadInvitations()
+    await patchState({ page: 1 }, { immediate: true })
+    if (listState.value.page === 1) {
+      await loadInvitations()
+    }
   })
 }
 </script>
