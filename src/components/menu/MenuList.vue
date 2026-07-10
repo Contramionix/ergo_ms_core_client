@@ -533,7 +533,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'side-menu--collapsed-settled': isCollapsedSettled, 'side-menu--labels-hidden': isCollapsedLabelsHidden, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen, 'side-menu--visibility-transition': isVisibilityTransitionActive, 'side-menu--layout-transition': isLayoutTransitionActive || isCollapsed, 'wordmark-hiding': isWordmarkHiding }" :style="{ '--menu-width': `${menuWidth}px`, '--menu-item-height': `${menuIconSizes.item + 16}px`, '--menu-icon-inset': `calc((100% - ${menuIconSizes.item}px) / 2)`, '--menu-avatar-inset': 'calc((100% - 40px) / 2)' }" @mouseleave="handleMouseLeave">
+  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'side-menu--collapsed-settled': isCollapsedSettled, 'side-menu--labels-hidden': isCollapsedLabelsHidden, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen, 'side-menu--visibility-transition': isVisibilityTransitionActive, 'side-menu--layout-transition': isLayoutTransitionActive || isCollapsed, 'wordmark-hiding': isWordmarkHiding }" :style="{ '--menu-width': `${menuWidth}px`, '--menu-item-height': `${menuIconSizes.item + 16}px`, '--menu-icon-inset': `calc((100% - ${menuIconSizes.item}px) / 2)`, '--menu-avatar-inset': 'calc((100% - 40px) / 2)' }" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
     <div class="side-menu__header side-header">
       <div class="side-header__brand-row">
         <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">
@@ -548,7 +548,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-    <div class="side-menu__body" @mouseenter="handleMouseEnter">
+    <div class="side-menu__body">
       <div class="side-header__shadow" aria-hidden="true"></div>
       <div class="side-menu__scroll">
         <ul v-show="isMenuReady" class="side-menu__list p-2" :class="{ short: isCollapsed && !isHovering }">
@@ -658,7 +658,8 @@ onBeforeUnmount(() => {
       overflow-x: hidden;
     }
 
-    .side-header__title {
+    .side-header__title,
+    .side-menu__logo {
       overflow: hidden;
     }
 
@@ -672,14 +673,11 @@ onBeforeUnmount(() => {
   }
 
   // Логотип ERGOMS: полный вордмарк раскрывается слева направо за всю
-  // длительность анимации ширины (clip-path), а не мгновенно.
+  // длительность анимации ширины (clip-path), в пределах текущей ширины панели.
   // Peek по наведению на свёрнутое меню.
-  &.collapsed.hovering .side-header__title :deep(.ergoms-logo:not(.ergoms-logo--compact)) {
+  &.collapsed.hovering:not(.wordmark-hiding) .side-header__title :deep(.ergoms-logo:not(.ergoms-logo--compact)) {
+    clip-path: inset(0 100% 0 0);
     animation: menu-wordmark-reveal $menu-collapsed-peek-transition forwards;
-  }
-
-  &.collapsed.hovering .side-header__title {
-    overflow: visible;
   }
 
   // Разворот кнопкой: класс .collapsed уже снят, ловим момент перехода layout.
