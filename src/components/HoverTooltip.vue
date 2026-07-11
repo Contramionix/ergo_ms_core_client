@@ -14,6 +14,7 @@ const props = defineProps({
     validator: (value) => ['default', 'error'].includes(value),
   },
   wrap: { type: Boolean, default: false },
+  onlyWhenTruncated: { type: Boolean, default: false },
 })
 
 const wrapperEl = ref(null)
@@ -40,6 +41,11 @@ function onEnter() {
 
   const el = triggerTarget || resolveTriggerTarget()
   if (!el) return
+
+  if (props.onlyWhenTruncated && el.scrollWidth <= el.clientWidth + 1) {
+    hideAllHoverTooltips()
+    return
+  }
 
   showHoverTooltip({
     ownerHide: hideNow,
