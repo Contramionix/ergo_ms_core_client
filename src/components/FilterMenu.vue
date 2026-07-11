@@ -15,22 +15,13 @@
             </li>
             <li v-else-if="isInteractiveField(field)">
               <button type="button" class="filter-menu__row" :class="{ 'filter-menu__row--active': activeFlyoutKey === field.key }" :data-field-key="field.key" @mouseenter="onRowEnter(field.key, $event.currentTarget)" @mouseleave="onRowLeave" @click.stop="onRowClick(field, $event)">
-                <span class="filter-menu__row-label">{{ field.label }}</span>
+                <span class="filter-menu__row-label" @mouseenter="onTruncatedLabelEnter($event, field.label)" @mouseleave="onTruncatedLabelLeave">{{ field.label }}</span>
                 <span class="filter-menu__row-value text-muted">
                   <span v-if="field.showOptionAvatars && getOptionAvatarProps(getSelectedOption(field))" class="filter-menu__row-value-with-avatar">
                     <UserAvatar v-bind="getOptionAvatarProps(getSelectedOption(field))" :size="18"/>
-                    <span
-                      class="filter-menu__row-value-text"
-                      @mouseenter="onTruncatedLabelEnter($event, getFieldDisplayValue(field))"
-                      @mouseleave="onTruncatedLabelLeave"
-                    >{{ getFieldDisplayValue(field) }}</span>
+                    <span class="filter-menu__row-value-text" @mouseenter="onTruncatedLabelEnter($event, getFieldDisplayValue(field))" @mouseleave="onTruncatedLabelLeave">{{ getFieldDisplayValue(field) }}</span>
                   </span>
-                  <span
-                    v-else
-                    class="filter-menu__row-value-text"
-                    @mouseenter="onTruncatedLabelEnter($event, getFieldDisplayValue(field))"
-                    @mouseleave="onTruncatedLabelLeave"
-                  >{{ getFieldDisplayValue(field) }}</span>
+                  <span v-else class="filter-menu__row-value-text" @mouseenter="onTruncatedLabelEnter($event, getFieldDisplayValue(field))" @mouseleave="onTruncatedLabelLeave">{{ getFieldDisplayValue(field) }}</span>
                 </span>
                 <ChevronRight class="filter-menu__row-chevron" :size="16" />
               </button>
@@ -58,11 +49,7 @@
               <a href="#" class="dropdown-item" :class="{ active: isSelectValueActive(activeField, opt.value), 'filter-menu__option--multiple': activeField.multiple, 'filter-menu__option-with-avatar': activeField.showOptionAvatars && getOptionAvatarProps(opt) }" @click.prevent="chooseSelectValue(activeField, opt.value)">
                 <input v-if="activeField.multiple && activeField.showCheckboxesWhenMultiple !== false" type="checkbox" class="form-check-input filter-menu__option-checkbox" :checked="isSelectValueActive(activeField, opt.value)" tabindex="-1" @click.prevent/>
                 <UserAvatar v-if="activeField.showOptionAvatars && getOptionAvatarProps(opt)" v-bind="getOptionAvatarProps(opt)" :size="24"/>
-                <span
-                  class="filter-menu__option-label"
-                  @mouseenter="onTruncatedLabelEnter($event, opt.label)"
-                  @mouseleave="onTruncatedLabelLeave"
-                >{{ opt.label }}</span>
+                <span class="filter-menu__option-label" @mouseenter="onTruncatedLabelEnter($event, opt.label)" @mouseleave="onTruncatedLabelLeave">{{ opt.label }}</span>
               </a>
             </li>
           </ul>
@@ -88,10 +75,7 @@
 import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import UserAvatar from '@/components/UserAvatar.vue'
-import {
-  hideHoverTooltipForOwner,
-  showHoverTooltip,
-} from '@/js/utils/hoverTooltipLayer.js'
+import { hideHoverTooltipForOwner, showHoverTooltip, } from '@/js/utils/hoverTooltipLayer.js'
 import { useFilterMenuFlyout } from '@/composables/useFilterMenuFlyout.js'
 
 const props = defineProps({
@@ -578,13 +562,17 @@ onBeforeUnmount(() => {
 }
 
 .filter-menu__panel .filter-menu__row-label {
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  min-width: 0;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .filter-menu__panel .filter-menu__row-value {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  max-width: 45%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
