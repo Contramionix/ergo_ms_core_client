@@ -267,7 +267,7 @@ onMounted(async () => {
 
 .notifications-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.75rem;
   padding: 0.875rem 1rem;
   border: 1px solid var(--color-border, #dee2e6);
@@ -400,7 +400,7 @@ onMounted(async () => {
   flex: 0 0 auto;
   display: flex;
   gap: 0.25rem;
-  align-items: flex-start;
+  align-items: center;
 }
 
 @media (max-width: 575px) {

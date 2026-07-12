@@ -289,9 +289,9 @@ function goToFullList() {
 
 .notifications-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.625rem;
-  padding: 0.75rem 1rem 0.75rem 1.25rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--color-border, #dee2e6);
   cursor: pointer;
   transition: background-color 0.15s ease;
