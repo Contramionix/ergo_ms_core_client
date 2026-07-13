@@ -14,6 +14,7 @@ import { IconManager } from './icons/IconManager.js'
 import { RouteGenerator } from './routes/RouteGenerator.js'
 import { PermissionRulesManager } from './permissions/PermissionRulesManager.js'
 import { PermissionSectionsManager } from './permissions/PermissionSectionsManager.js'
+import { RouteGuardsManager } from './routing/RouteGuardsManager.js'
 import { IntegrationsManager } from './integrations/IntegrationsManager.js'
 
 export class ModuleManager {
@@ -23,6 +24,7 @@ export class ModuleManager {
     this.iconManager = new IconManager()
     this.permissionRulesManager = new PermissionRulesManager()
     this.permissionSectionsManager = new PermissionSectionsManager()
+    this.routeGuardsManager = new RouteGuardsManager()
     this.integrationsManager = new IntegrationsManager()
     this.routeGenerator = null
 
@@ -42,7 +44,8 @@ export class ModuleManager {
       this.routeManager.initialize(),
       this.endpointManager.initialize(),
       this.permissionRulesManager.initialize(),
-      this.permissionSectionsManager.initialize()
+      this.permissionSectionsManager.initialize(),
+      this.routeGuardsManager.initialize(),
     ])
 
     this.routeGenerator = new RouteGenerator(this.routeManager)
@@ -80,6 +83,15 @@ export class ModuleManager {
   async getPermissionRules() {
     await this.ensureInitialized()
     return this.permissionRulesManager.getAllRules()
+  }
+
+  /**
+   * Получает все route guards модулей и ядра (в алфавитном порядке по модулю)
+   * @returns {Function[]}
+   */
+  async getRouteGuards() {
+    await this.ensureInitialized()
+    return this.routeGuardsManager.getAllGuards()
   }
 
   /**
@@ -162,6 +174,7 @@ export class ModuleManager {
       icons: this.iconManager.getStatistics(),
       permissionRules: this.permissionRulesManager.getStatistics(),
       permissionSections: this.permissionSectionsManager.getStatistics(),
+      routeGuards: this.routeGuardsManager.getStatistics(),
       integrations: this.integrationsManager.getStatistics()
     }
   }
@@ -174,6 +187,7 @@ export class ModuleManager {
     this.endpointManager.clearCache()
     this.permissionRulesManager.clearCache()
     this.permissionSectionsManager.clearCache()
+    this.routeGuardsManager.clearCache()
     this.integrationsManager.clearCache()
     this.initialized = false
     this._initPromise = null
@@ -226,6 +240,10 @@ export class ModuleManager {
 
   get permissionSections() {
     return this.permissionSectionsManager
+  }
+
+  get routeGuards() {
+    return this.routeGuardsManager
   }
 
   get integrations() {

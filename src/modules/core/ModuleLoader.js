@@ -27,7 +27,8 @@ const sharedGlobs = {
   coreEndpoints: import.meta.glob('../../core/**/js/endpoints.js'),
   corePermissionRules: import.meta.glob('../../core/**/js/permission-rules.js'),
   corePermissionSections: import.meta.glob('../../core/**/js/permission-sections.js'),
-  
+  coreRouteGuards: import.meta.glob('../../core/**/js/routeGuard.js'),
+
   // Core компоненты (lazy loading)
   coreComponents: import.meta.glob('../../**/*.vue'),
   
@@ -42,6 +43,7 @@ const sharedGlobs = {
     ...import.meta.glob('../../../../../modules/*/client/js/permission-sections.js'),
     ...import.meta.glob('../../../../../modules/*/client/**/js/permission-sections.js')
   },
+  modulesRouteGuards: import.meta.glob('../../../../../modules/*/client/js/routeGuard.js'),
   // Интеграции с ModuleBridge (регистрация capabilities/events модуля)
   //
   // ВАЖНО: загружаем лениво (без eager), чтобы integrations.js-файлы не
@@ -79,6 +81,7 @@ export class ModuleLoader {
       'js/endpoints.js': ['coreEndpoints', 'modulesEndpoints'],
       'js/permission-rules.js': ['corePermissionRules', 'modulesPermissionRules'],
       'js/permission-sections.js': ['corePermissionSections', 'modulesPermissionSections'],
+      'js/routeGuard.js': ['coreRouteGuards', 'modulesRouteGuards'],
       'js/integrations.js': ['coreIntegrations', 'modulesIntegrations'],
       'components': ['coreComponents', 'modulesComponents']
     }

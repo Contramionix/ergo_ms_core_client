@@ -59,7 +59,7 @@ watch(sections, () => {
 onMounted(async () => {
   if (!userStore.isInitialized) {
     try {
-      await userStore.initializeUser()
+      await userStore.ensureUserReady()
     } catch { /* email в заголовке опционален */ }
   }
   await load()

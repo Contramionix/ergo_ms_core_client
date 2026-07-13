@@ -6,7 +6,7 @@ import { resetAdminUserPassword } from '@/core/cms/adp/admin/js/adminUserService
 import { validatePasswordValue } from '@/js/passwordPolicy.js'
 
 const props = defineProps({
-  userId: { type: Number, default: null },
+  userRef: { type: String, default: null },
   username: { type: String, default: '' },
   passwordResetMode: { type: String, default: 'system' },
 })
@@ -44,7 +44,7 @@ const validateManualPassword = () => {
 }
 
 const requestSystemReset = () => {
-  if (!props.userId) return
+  if (!props.userRef) return
   showResetConfirm.value = true
 }
 
@@ -55,11 +55,11 @@ const closeResetConfirm = () => {
 }
 
 const confirmSystemReset = async () => {
-  if (!props.userId || resetting.value) return
+  if (!props.userRef || resetting.value) return
 
   resetting.value = true
   try {
-    await resetAdminUserPassword(props.userId)
+    await resetAdminUserPassword(props.userRef)
     toast.success('Пароль сброшен')
     showResetConfirm.value = false
   } catch (error) {
@@ -72,12 +72,12 @@ const confirmSystemReset = async () => {
 }
 
 const handleManualSet = async () => {
-  if (!props.userId || !validateManualPassword()) return
+  if (!props.userRef || !validateManualPassword()) return
 
   resetting.value = true
   passwordError.value = ''
   try {
-    const result = await resetAdminUserPassword(props.userId, {
+    const result = await resetAdminUserPassword(props.userRef, {
       new_password: newPassword.value,
       confirm_password: newPassword.value,
     })

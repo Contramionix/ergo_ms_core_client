@@ -47,9 +47,9 @@ export const cmsEndpoints = {
         moduleCatalog: 'cms/adp/module-catalog/',
         assignRole: 'cms/adp/assign-role/',
         adminUsers: 'cms/adp/admin-users/',
-        adminUserDetail: (userId) => `cms/adp/admin-users/${userId}/`,
-        adminUserAvatar: (userId) => `cms/adp/admin-users/${userId}/avatar/`,
-        adminUserResetPassword: (userId) => `cms/adp/admin-users/${userId}/reset-password/`,
+        adminUserDetail: (userRef) => `cms/adp/admin-users/by-ref/${userRef}/`,
+        adminUserAvatar: (userRef) => `cms/adp/admin-users/by-ref/${userRef}/avatar/`,
+        adminUserResetPassword: (userRef) => `cms/adp/admin-users/by-ref/${userRef}/reset-password/`,
         presence: {
             batch: 'cms/adp/presence/',
             heartbeat: 'cms/adp/presence/heartbeat/',

@@ -71,7 +71,7 @@ async function fetchProfile({ showLoading = false } = {}) {
     }
 
     if (!userStore.isInitialized) {
-      await userStore.initializeUser()
+      await userStore.ensureUserReady()
     }
 
     if (userStore.profile) {

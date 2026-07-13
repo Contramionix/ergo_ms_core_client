@@ -66,29 +66,33 @@
 
       <div class="mb-3">
         <label class="form-label">Разрешённые роли</label>
-        <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
-          <div v-for="role in roles" :key="role.id" class="form-check">
-            <input v-model="form.allowed_roles" type="checkbox" class="form-check-input" :id="`role-${role.id}`" :value="role.id"/>
-            <label class="form-check-label" :for="`role-${role.id}`">
-              {{ role.name }}
-            </label>
-          </div>
-          <div v-if="roles.length === 0" class="text-muted">Роли не найдены</div>
-        </div>
+        <SelectBox
+          v-model="form.allowed_roles"
+          :options="roleSelectOptions"
+          value-key="id"
+          label-key="name"
+          :include-all-option="false"
+          multiple
+          show-checkboxes-when-multiple
+          multiple-label-format="count"
+          cast-to-number
+        />
         <div class="form-text">Если не выбрано ни одной роли, доступно всем пользователям</div>
       </div>
 
       <div class="mb-3">
         <label class="form-label">Разрешённые ролевые группы</label>
-        <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
-          <div v-for="group in roleGroups" :key="group.id" class="form-check">
-            <input v-model="form.allowed_role_groups" type="checkbox" class="form-check-input" :id="`group-${group.id}`" :value="group.id"/>
-            <label class="form-check-label" :for="`group-${group.id}`">
-              {{ group.name }} ({{ group.parent_role_name }})
-            </label>
-          </div>
-          <div v-if="roleGroups.length === 0" class="text-muted">Ролевые группы не найдены</div>
-        </div>
+        <SelectBox
+          v-model="form.allowed_role_groups"
+          :options="roleGroupSelectOptions"
+          value-key="id"
+          label-key="name"
+          :include-all-option="false"
+          multiple
+          show-checkboxes-when-multiple
+          multiple-label-format="count"
+          cast-to-number
+        />
       </div>
     </form>
 
@@ -211,6 +215,17 @@ const filteredParentOptions = computed(() => {
   }
   return props.parentOptions.filter(opt => opt.id !== props.item.id)
 })
+
+const roleSelectOptions = computed(() =>
+  props.roles.map((role) => ({ id: role.id, name: role.name })),
+)
+
+const roleGroupSelectOptions = computed(() =>
+  props.roleGroups.map((group) => ({
+    id: group.id,
+    name: `${group.name} (${group.parent_role_name})`,
+  })),
+)
 
 const iconComponent = shallowRef(null)
 

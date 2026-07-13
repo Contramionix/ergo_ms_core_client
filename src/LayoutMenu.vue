@@ -126,7 +126,7 @@ function onHamburgerClick() {
 onMounted(async () => {
   updateMenuVisibilityImmediate()
   window.addEventListener('resize', updateMenuVisibility)
-  await userStore.initializeUser()
+  await userStore.ensureUserReady()
   if (userStore.isAuthenticated) {
     ensurePresenceConnected()
   }

@@ -59,7 +59,7 @@ async function fetchProfile() {
     loading.value = true
 
     if (!userStore.isInitialized) {
-      await userStore.initializeUser()
+      await userStore.ensureUserReady()
     }
 
     if (userStore.profile) {

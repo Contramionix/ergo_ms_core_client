@@ -13,17 +13,13 @@ import {
 } from '@/core/cms/js/sessionBootstrapCache.js'
 import { invalidateAdminAccessCache } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { applyRealtimeConfigFromApi } from '@/js/realtime/config.js'
-import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
-import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
 import {
   ensureAvatarDisplaySrc,
   invalidateAvatar,
   clearAvatarCache,
   avatarCacheKey,
 } from '@/js/avatarCache.js'
-import { showBootstrapMask } from '@/js/bootstrapMask.js'
 import { logError, logWarn } from '@/js/utils/logError.js'
-import Cookies from 'js-cookie'
 
 export const useUserStore = defineStore('userStore', () => {
   const toast = useToast()
@@ -35,7 +31,6 @@ export const useUserStore = defineStore('userStore', () => {
   const isLoading = ref(false)
   const isInitialized = ref(false)
   const accessToPanel = ref(false)
-  let initializationPromise = null // Промис текущей инициализации для предотвращения гонки условий
   let bootstrapPromise = null
   let loadProfilePromise = null // Промис текущей загрузки профиля для предотвращения гонки условий
 
@@ -194,50 +189,6 @@ export const useUserStore = defineStore('userStore', () => {
     return bootstrapPromise
   }
 
-  // Инициализация пользователя (legacy / fallback)
-  const initializeUser = async () => {
-    // Если уже инициализирован, возвращаем успех
-    if (isInitialized.value) return true
-    
-    // Если инициализация уже идет, ждем её завершения
-    if (initializationPromise) {
-      return await initializationPromise
-    }
-
-    // Создаем новый промис инициализации
-    initializationPromise = (async () => {
-      try {
-        isLoading.value = true
-        
-        // Проверяем авторизацию (успешный ответ означает валидный токен)
-        const authResponse = await apiClient.get(endpoints.auth.protected)
-        if (!authResponse?.success) {
-          throw new Error('Пользователь не авторизован')
-        }
-
-        // Загружаем минимальные данные для меню (id, username, email, full_name, initials_name)
-        // full_name и initials_name доступны только через эндпоинт меню, не в профиле
-        await loadMenuData()
-        
-        // Загружаем аватар
-        await loadAvatar()
-        
-        isInitialized.value = true
-        return true
-
-      } catch (error) {
-        logError('Ошибка инициализации пользователя:', error)
-        resetUserState()
-        return false
-      } finally {
-        isLoading.value = false
-        initializationPromise = null // Очищаем промис после завершения
-      }
-    })()
-
-    return await initializationPromise
-  }
-
   // Загрузка минимальных данных для меню
   const loadMenuData = async () => {
     try {
@@ -394,31 +345,23 @@ export const useUserStore = defineStore('userStore', () => {
     }
   }
 
-  // Выход из системы
-  const logout = () => {
-    // Скрываем интерфейс до сброса состояния, иначе аватарка на миг
-    // схлопывается в гостевую иконку перед полным переходом на /login.
-    showBootstrapMask()
-    resetPresenceConnection()
-    resetPresenceStore()
+  const finalizeSession = () => {
     clearAvatarCache()
     resetUserState()
     isInitialized.value = false
-    
-    Cookies.remove('csrftoken')
-
-    window.location.href = '/login'
   }
 
-  // Гарантирует полную готовность пользователя перед входом в интерфейс:
-  // базовые данные, профиль (first_name/last_name для стабильных инициалов) и
-  // прогретый кеш аватарки. Идемпотентна — вызывается при входе и при загрузке.
+  const logout = async () => {
+    const { authService } = await import('@/core/cms/adp/js/auth.js')
+    await authService.logout()
+  }
+
   const ensureUserReady = async () => loadSessionBootstrap()
 
   // Принудительная перезагрузка данных пользователя
   const refreshUserData = async () => {
     isInitialized.value = false
-    return await initializeUser()
+    return loadSessionBootstrap()
   }
 
   // Обновление всех данных (профиль + аватар) для реактивности компонентов
@@ -466,7 +409,6 @@ export const useUserStore = defineStore('userStore', () => {
     hasCustomAvatar,
     
     // Actions
-    initializeUser,
     loadSessionBootstrap,
     loadProfile,
     loadAvatar,
@@ -474,6 +416,7 @@ export const useUserStore = defineStore('userStore', () => {
     updateAvatar,
     resetAvatar,
     logout,
+    finalizeSession,
     ensureUserReady,
     refreshUserData,
     refreshAllData,

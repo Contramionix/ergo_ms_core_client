@@ -4,52 +4,45 @@
 
 import { createRouter, createWebHistory, START_LOCATION } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
-import { generateAllRoutes, validateAll, getPermissionRules } from '@/modules/index.js'
+import { generateAllRoutes, validateAll, getPermissionRules, getRouteGuards } from '@/modules/index.js'
 import { checkRouteAdpAccess, hasAnyModulePermission, checkGlobalAdminAccess } from '@/core/cms/adp/js/accessControl'
 import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
 import { accessDeniedState } from './accessDeniedState'
-import { logWarn } from '@/js/utils/logError.js'
 import { finishRouteProgress, startRouteProgress } from '@/js/routeProgressState.js'
 
-const organizationGuardModules = import.meta.glob(
-  '../../../../modules/organizations/client/js/organizationGuard.js',
-)
-
 let cachedPermissionRules = null
-let organizationGuard = null
-let organizationGuardPromise = null
+let cachedRouteGuards = null
 
 /** @type {import('vue-router').Router|null} */
 export let router = null
 
-async function resolveOrganizationGuard() {
-  if (organizationGuard !== null) {
-    return organizationGuard
+async function getCachedRouteGuards() {
+  if (cachedRouteGuards === null) {
+    cachedRouteGuards = await getRouteGuards()
   }
-  if (!organizationGuardPromise) {
-    organizationGuardPromise = loadOrganizationGuard()
-  }
-  organizationGuard = await organizationGuardPromise
-  return organizationGuard
+  return cachedRouteGuards
 }
 
-async function loadOrganizationGuard() {
-  if (Object.keys(organizationGuardModules).length === 0) {
-    logWarn('[Router] Модуль organizations не установлен, organizationGuard отключен')
-    return null
+/**
+ * Вызывает route guards всех модулей по порядку (алфавит по имени модуля).
+ * @returns {Promise<object|null>} redirect для router или null
+ */
+async function runModuleRouteGuards(to, from) {
+  const guards = await getCachedRouteGuards()
+  for (let i = 0; i < guards.length; i++) {
+    let redirect = null
+    await guards[i](to, from, (redirectTo) => {
+      if (redirectTo && typeof redirectTo === 'object') {
+        redirect = redirectTo
+      }
+    })
+    if (redirect) {
+      return redirect
+    }
   }
-
-  try {
-    const loadGuardModule =
-      organizationGuardModules[Object.keys(organizationGuardModules)[0]]
-    const orgGuardModule = await loadGuardModule()
-    return orgGuardModule.organizationGuard
-  } catch (e) {
-    logWarn('[Router] Ошибка загрузки organizationGuard из модуля organizations', e)
-    return null
-  }
+  return null
 }
 
 async function getCachedPermissionRules() {
@@ -161,18 +154,9 @@ function setupRouterGuards(router) {
         return safeNext({ name: 'StartPage' })
       }
 
-      const guard = await resolveOrganizationGuard()
-      if (guard) {
-        let organizationRedirect = null
-        await guard(to, from, (redirectTo) => {
-          if (redirectTo && typeof redirectTo === 'object') {
-            organizationRedirect = redirectTo
-          }
-        })
-
-        if (organizationRedirect) {
-          return safeNext(organizationRedirect)
-        }
+      const moduleRedirect = await runModuleRouteGuards(to, from)
+      if (moduleRedirect) {
+        return safeNext(moduleRedirect)
       }
 
       const accessResult = await checkRouteAccess(to)

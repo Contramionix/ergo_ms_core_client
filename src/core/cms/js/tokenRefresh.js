@@ -1,5 +1,4 @@
 import axios from 'axios'
-import Cookies from 'js-cookie'
 
 import { resolveApiClientBaseUrl } from '@/js/api/baseUrl.js'
 import {
@@ -7,7 +6,6 @@ import {
   clearSessionHintCookie,
   getAccess,
   hasSessionHintCookie,
-  hasLegacyRefreshCookie,
   isExpired,
   setTokens,
 } from '@/core/cms/js/tokenStorage.js'
@@ -22,14 +20,8 @@ let sessionRestorePromise = null
 /** @type {boolean | null} null — ещё не проверяли, false — сессии нет, true — есть */
 let sessionRestoreResolved = null
 
-/** Legacy refresh из js-cookie (до перехода на HttpOnly) — только для миграции сессии. */
-function getLegacyRefreshPayload() {
-  const legacyRefresh = Cookies.get('refresh')
-  return legacyRefresh ? { refresh: legacyRefresh } : {}
-}
-
 export function canAttemptTokenRefresh() {
-  return hasLegacyRefreshCookie() || hasSessionHintCookie()
+  return hasSessionHintCookie()
 }
 
 export function invalidateSessionRestoreCache() {
@@ -96,7 +88,7 @@ export async function performTokenRefresh() {
     try {
       const response = await axios.post(
         `${resolveApiClientBaseUrl()}${AUTH_REFRESH_PATH}`,
-        getLegacyRefreshPayload(),
+        {},
         {
           headers: { 'Content-Type': 'application/json' },
           withCredentials: true,

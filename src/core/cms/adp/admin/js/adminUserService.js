@@ -1,7 +1,7 @@
 import { apiClient } from '@/js/api/manager.js'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
-import { invalidateUserAvatar } from '@/js/userAvatar.js'
+import { invalidateUserPublicInfoByRef } from '@/js/userAvatar.js'
 import {
   mapUserProfileToFormData,
   validateUserProfileData,
@@ -9,38 +9,38 @@ import {
 
 export const mapAdminUserToFormData = mapUserProfileToFormData
 
-export async function fetchAdminUser(userId) {
-  const response = await apiClient.get(endpoints.cms.adminUserDetail(userId), {}, true)
+export async function fetchAdminUser(userRef) {
+  const response = await apiClient.get(endpoints.cms.adminUserDetail(userRef), {}, true)
   return response.data
 }
 
-export async function updateAdminUser(userId, data) {
-  const response = await apiClient.put(endpoints.cms.adminUserDetail(userId), data, true)
+export async function updateAdminUser(userRef, data) {
+  const response = await apiClient.put(endpoints.cms.adminUserDetail(userRef), data, true)
   return response.data
 }
 
-export async function deleteAdminUser(userId) {
-  await apiClient.delete(endpoints.cms.adminUserDetail(userId), {}, true)
+export async function deleteAdminUser(userRef) {
+  await apiClient.delete(endpoints.cms.adminUserDetail(userRef), {}, true)
 }
 
-export async function uploadAdminUserAvatar(userId, file) {
+export async function uploadAdminUserAvatar(userRef, file) {
   const uploadResult = await mediaApiClient.upload(file, {
     targetDir: 'avatars/',
     allowedTypes: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
     maxSize: 5 * 1024 * 1024,
   })
   const response = await apiClient.post(
-    endpoints.cms.adminUserAvatar(userId),
+    endpoints.cms.adminUserAvatar(userRef),
     { image_path: uploadResult.path },
     true,
   )
-  invalidateUserAvatar(userId)
+  invalidateUserPublicInfoByRef(userRef)
   return response.data
 }
 
-export async function deleteAdminUserAvatar(userId) {
-  await apiClient.delete(endpoints.cms.adminUserAvatar(userId), {}, true)
-  invalidateUserAvatar(userId)
+export async function deleteAdminUserAvatar(userRef) {
+  await apiClient.delete(endpoints.cms.adminUserAvatar(userRef), {}, true)
+  invalidateUserPublicInfoByRef(userRef)
 }
 
 export function validateAdminProfileData(data) {
@@ -52,7 +52,7 @@ export async function createAdminUser(data) {
   return response.data
 }
 
-export async function resetAdminUserPassword(userId, payload = {}) {
-  const response = await apiClient.post(endpoints.cms.adminUserResetPassword(userId), payload, true)
+export async function resetAdminUserPassword(userRef, payload = {}) {
+  const response = await apiClient.post(endpoints.cms.adminUserResetPassword(userRef), payload, true)
   return response.data
 }

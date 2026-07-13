@@ -220,7 +220,7 @@ async function loadUserInfo() {
 
 onMounted(async () => {
   if (!userStore.isInitialized) {
-    await userStore.initializeUser()
+    await userStore.ensureUserReady()
   }
   await loadUserInfo()
 })

@@ -1,0 +1,491 @@
+@import '../admin-page.scss';
+
+.ibm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ibm-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.ibm-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+}
+
+.ibm-header__title {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--color-primary-text);
+}
+
+.ibm-header__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-primary-background));
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.ibm-header__subtitle {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--color-secondary-text);
+}
+
+.ibm-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-secondary-background);
+}
+
+.ibm-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-secondary-text);
+  min-width: 0;
+
+  &--active {
+    color: var(--color-primary-text);
+
+    .ibm-step__num {
+      border-color: var(--color-accent);
+      background: var(--color-accent);
+      color: #fff;
+    }
+  }
+
+  &--done {
+    color: var(--color-primary-text);
+
+    .ibm-step__num {
+      border-color: var(--color-accent);
+      background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+      color: var(--color-accent);
+    }
+  }
+}
+
+.ibm-step__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ibm-step__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ibm-step__line {
+  flex: 1;
+  height: 2px;
+  min-width: 1rem;
+  margin: 0 0.5rem;
+  background: var(--color-border);
+  border-radius: 1px;
+
+  &--done {
+    background: var(--color-accent);
+  }
+}
+
+.ibm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.ibm-section__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ibm-section__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-primary-text);
+}
+
+.ibm-section__desc {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--color-secondary-text);
+
+  code {
+    font-size: 0.8125rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background: var(--color-secondary-background);
+    border: 1px solid var(--color-border);
+  }
+}
+
+.ibm-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 148px;
+  padding: 1.5rem;
+  border: 2px dashed var(--color-border);
+  border-radius: 12px;
+  background: var(--color-secondary-background);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover:not(.ibm-upload--disabled):not(.ibm-upload--filled) {
+    border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 6%, var(--color-secondary-background));
+  }
+
+  &--filled {
+    border-style: solid;
+    border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+    cursor: default;
+  }
+
+  &--disabled {
+    opacity: 0.75;
+    cursor: wait;
+  }
+}
+
+.ibm-upload__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin-bottom: 0.75rem;
+  border-radius: 12px;
+  background: var(--color-primary-background);
+  color: var(--color-accent);
+  border: 1px solid var(--color-border);
+}
+
+.ibm-upload__title {
+  font-weight: 600;
+  color: var(--color-primary-text);
+}
+
+.ibm-upload__hint {
+  font-size: 0.8125rem;
+  color: var(--color-secondary-text);
+}
+
+.ibm-upload__loader {
+  margin-bottom: 0.75rem;
+  color: var(--color-accent);
+  animation: ibm-spin 0.75s linear infinite;
+}
+
+.ibm-file-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  text-align: left;
+}
+
+.ibm-file-row__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-primary-background));
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.ibm-file-row__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ibm-file-row__name {
+  font-weight: 600;
+  color: var(--color-primary-text);
+  word-break: break-all;
+}
+
+.ibm-file-row__meta {
+  font-size: 0.8125rem;
+  color: var(--color-secondary-text);
+}
+
+.ibm-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+.ibm-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.625rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-secondary-background);
+
+  &--success .ibm-stat__value { color: #198754; }
+  &--warning .ibm-stat__value { color: #ca8a04; }
+  &--danger .ibm-stat__value { color: #dc3545; }
+}
+
+.ibm-stat__value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-primary-text);
+}
+
+.ibm-stat__label {
+  font-size: 0.75rem;
+  color: var(--color-secondary-text);
+}
+
+.ibm-table-wrap {
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-primary-background);
+}
+
+.ibm-table {
+  color: var(--color-primary-text);
+
+  thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--color-secondary-background);
+
+    th {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--color-secondary-text);
+      border-bottom: 1px solid var(--color-border);
+      padding: 0.625rem 0.875rem;
+    }
+  }
+
+  tbody td {
+    padding: 0.625rem 0.875rem;
+    border-color: var(--color-border);
+    vertical-align: middle;
+  }
+
+  tbody tr:hover {
+    background: var(--color-hover-background, color-mix(in srgb, var(--color-accent) 4%, transparent));
+  }
+}
+
+.ibm-table__email {
+  word-break: break-all;
+  user-select: text;
+}
+
+.ibm-table__status-col {
+  width: 160px;
+}
+
+.ibm-table__action-col {
+  width: 140px;
+}
+
+.ibm-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+
+  &--ready {
+    background: color-mix(in srgb, #198754 16%, transparent);
+    color: #198754;
+  }
+
+  &--duplicate {
+    background: color-mix(in srgb, #ca8a04 16%, transparent);
+    color: #ca8a04;
+  }
+
+  &--invalid {
+    background: color-mix(in srgb, #dc3545 16%, transparent);
+    color: #dc3545;
+  }
+
+  &--muted {
+    background: var(--color-secondary-background);
+    color: var(--color-secondary-text);
+  }
+}
+
+.ibm-email-option {
+  padding: 0.875rem 1rem;
+  border: 2px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-secondary-background);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &--active {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 16%, transparent);
+  }
+}
+
+.ibm-email-option__input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.2rem;
+  cursor: pointer;
+  border: 2px solid var(--color-secondary-text);
+
+  &:checked {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+}
+
+.ibm-email-option__label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  cursor: pointer;
+  color: var(--color-primary-text);
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    color: var(--color-accent);
+  }
+
+  span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  small {
+    font-weight: 400;
+    color: var(--color-secondary-text);
+  }
+}
+
+.ibm-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+
+  &--danger {
+    border: 1px solid color-mix(in srgb, #dc3545 35%, var(--color-border));
+    background: color-mix(in srgb, #dc3545 8%, var(--color-primary-background));
+    color: var(--color-primary-text);
+  }
+
+  &--warning {
+    border: 1px solid color-mix(in srgb, #ca8a04 35%, var(--color-border));
+    background: color-mix(in srgb, #ca8a04 8%, var(--color-primary-background));
+    color: var(--color-primary-text);
+  }
+
+  &--success {
+    border: 1px solid color-mix(in srgb, #198754 35%, var(--color-border));
+    background: color-mix(in srgb, #198754 8%, var(--color-primary-background));
+    color: var(--color-primary-text);
+  }
+}
+
+.ibm-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  color: var(--color-accent);
+}
+
+.ibm-footer-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+@keyframes ibm-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 576px) {
+  .ibm-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ibm-step__label {
+    display: none;
+  }
+
+  .ibm-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ibm-footer-actions {
+    margin-left: 0;
+    width: 100%;
+
+    .btn {
+      flex: 1;
+    }
+  }
+}

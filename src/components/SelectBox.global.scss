@@ -1,0 +1,27 @@
+.fixed-menu {
+    .select-box-nested-option {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .select-box-nested-option__secondary {
+        font-size: var(--select-box-nested-secondary-font-size, 1em);
+        color: var(--color-secondary-text, #6c757d);
+        line-height: 1.35;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .select-box-nested-option__primary {
+        font-size: var(--select-box-nested-font-size, 1em);
+        line-height: 1.35;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        word-break: break-word;
+    }
+}

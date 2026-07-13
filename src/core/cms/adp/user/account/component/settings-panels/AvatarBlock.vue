@@ -33,7 +33,7 @@ const avatarPreviewUrl = ref('')
 const showCropModal = ref(false)
 const cropImageSrc = ref(null)
 
-const isAdminMode = computed(() => props.userId != null)
+const isAdminMode = computed(() => typeof props.onUpload === 'function')
 
 const avatarExplicitUrl = computed(() => {
   if (avatarPreviewUrl.value) return avatarPreviewUrl.value

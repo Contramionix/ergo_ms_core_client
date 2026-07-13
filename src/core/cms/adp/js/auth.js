@@ -6,6 +6,7 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 import { performServerLogout, restoreSession, invalidateSessionRestoreCache } from '@/core/cms/js/tokenRefresh.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
+import { showBootstrapMask } from '@/js/bootstrapMask.js'
 
 const TOKEN_CHECK_TTL_MS = 60 * 1000
 let tokenCheckCache = { at: 0, result: false }
@@ -117,10 +118,17 @@ export const authService = {
     
     async logout() {
         resetTokenCheckCache()
+        showBootstrapMask()
         resetPresenceConnection()
         resetPresenceStore()
         await performServerLogout()
         invalidateSessionRestoreCache()
         tokenService.clear()
+        try {
+            useUserStore().finalizeSession()
+        } catch {
+            /* store ещё не готов */
+        }
+        window.location.href = '/login'
     }
 };

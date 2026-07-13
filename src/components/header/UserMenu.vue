@@ -4,8 +4,6 @@ import { CircleUserRound, Power } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
-import { apiClient } from '@/js/api/manager'
-import { logout as authLogout } from '@/core/cms/adp/js/auth-index'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { collectVisibleHeaderUserMenuItems } from '@/integrations/headerUserMenu.js'
 
@@ -54,20 +52,8 @@ defineExpose({
 })
 
 const handleLogout = async () => {
-  try {
-    await authLogout()
-  } catch (error) {
-    logError('Ошибка при logout через auth сервис:', error)
-  }
-
-  try {
-    apiClient.logout()
-  } catch (error) {
-    logError('Ошибка при logout через apiClient:', error)
-  }
-
-  userStore.logout()
   closeDropdown()
+  await userStore.logout()
 }
 
 async function handleTrailingAction(item) {
@@ -86,7 +72,7 @@ async function handleTrailingAction(item) {
 
 onMounted(async () => {
   if (!userStore.isInitialized) {
-    await userStore.initializeUser()
+    await userStore.ensureUserReady()
   }
 
   await refreshExtensionItems()

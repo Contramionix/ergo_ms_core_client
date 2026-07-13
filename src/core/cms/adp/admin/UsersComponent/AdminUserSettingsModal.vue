@@ -28,7 +28,7 @@ import { mapRoleSelectOptions, mapRoleGroupSelectOptions } from '@/core/cms/js/a
 
 const props = defineProps({
   show: { type: Boolean, default: false },
-  userId: { type: Number, default: null },
+  userRef: { type: String, default: null },
   roles: { type: Array, default: () => [] },
   roleGroups: { type: Array, default: () => [] },
 })
@@ -50,6 +50,7 @@ const selectedRoleId = ref(null)
 const selectedGroupIds = ref([])
 const username = ref('')
 const passwordResetMode = ref('system')
+const loadedUserId = ref(null)
 
 const displayName = computed(() => {
   const parts = [formData.value.first_name, formData.value.middle_name, formData.value.last_name]
@@ -62,7 +63,9 @@ const modalTitle = computed(() =>
   username.value ? `Настройки пользователя: ${username.value}` : 'Настройки пользователя',
 )
 
-const isCurrentUser = computed(() => props.userId != null && props.userId === userStore.user?.id)
+const isCurrentUser = computed(
+  () => loadedUserId.value != null && loadedUserId.value === userStore.user?.id,
+)
 
 const roleSelectOptions = computed(() => mapRoleSelectOptions(props.roles))
 const roleGroupSelectOptions = computed(() => mapRoleGroupSelectOptions(props.roleGroups))
@@ -75,20 +78,22 @@ const resetState = () => {
   selectedGroupIds.value = []
   username.value = ''
   passwordResetMode.value = 'system'
+  loadedUserId.value = null
   errors.value = {}
 }
 
 const loadUser = async () => {
-  if (!props.userId) return
+  if (!props.userRef) return
 
   loading.value = true
   errors.value = {}
   try {
-    const data = await fetchAdminUser(props.userId)
+    const data = await fetchAdminUser(props.userRef)
     username.value = data.username || ''
     formData.value = mapAdminUserToFormData(data)
     avatarUrl.value = data.avatar_url || null
     userPublicId.value = data.public_id || null
+    loadedUserId.value = data.user_id ?? null
     selectedRoleId.value = data.role?.id ?? null
     selectedGroupIds.value = data.role_groups?.map((group) => group.id) || []
     passwordResetMode.value = data.password_reset_mode || 'system'
@@ -102,9 +107,9 @@ const loadUser = async () => {
 }
 
 watch(
-  () => [props.show, props.userId],
-  ([isOpen, userId]) => {
-    if (isOpen && userId) {
+  () => [props.show, props.userRef],
+  ([isOpen, userRef]) => {
+    if (isOpen && userRef) {
       loadUser()
     } else if (!isOpen) {
       resetState()
@@ -121,15 +126,15 @@ const handleAvatarUpdated = (payload) => {
   emit('saved')
 }
 
-const handleAvatarUpload = async (file) => uploadAdminUserAvatar(props.userId, file)
+const handleAvatarUpload = async (file) => uploadAdminUserAvatar(props.userRef, file)
 
 const handleAvatarRemove = async () => {
-  await deleteAdminUserAvatar(props.userId)
+  await deleteAdminUserAvatar(props.userRef)
   return { avatar_url: null }
 }
 
 const handleSave = async () => {
-  if (!props.userId) return
+  if (!props.userRef) return
 
   saving.value = true
   errors.value = {}
@@ -142,11 +147,11 @@ const handleSave = async () => {
     }
 
     const dataToSend = buildUserProfilePayload(formData.value, PROFILE_FIELDS)
-    await updateAdminUser(props.userId, dataToSend)
+    await updateAdminUser(props.userRef, dataToSend)
 
-    if (selectedRoleId.value) {
+    if (selectedRoleId.value && loadedUserId.value) {
       await assignRoleToUser({
-        user_id: props.userId,
+        user_id: loadedUserId.value,
         role_id: selectedRoleId.value,
         role_group_ids: selectedGroupIds.value,
       })
@@ -166,7 +171,7 @@ const handleSave = async () => {
 }
 
 const requestDelete = async () => {
-  if (!props.userId || isCurrentUser.value) {
+  if (!props.userRef || isCurrentUser.value) {
     return
   }
 
@@ -181,7 +186,7 @@ const requestDelete = async () => {
 
   deleting.value = true
   try {
-    await deleteAdminUser(props.userId)
+    await deleteAdminUser(props.userRef)
     toast.success('Пользователь удалён')
     emit('deleted')
     handleClose()
@@ -197,9 +202,9 @@ const requestDelete = async () => {
 
 <template>
   <ModalCenter modal-id="adminUserSettings" standalone :visible="show" :title="modalTitle" size="lg" scrollable @closemodal="handleClose">
-    <LoadingContentArea :loading="loading" :reset-key="userId" min-height="16rem">
-    <template v-if="userId">
-      <AvatarBlock :user-id="userId" :user-ref="userPublicId" :avatar-url="avatarUrl" :display-name="displayName" :first-name="formData.first_name" :last-name="formData.last_name" :saving="saving" :on-upload="handleAvatarUpload" :on-remove="handleAvatarRemove" @avatar-updated="handleAvatarUpdated"/>
+    <LoadingContentArea :loading="loading" :reset-key="userRef" min-height="16rem">
+    <template v-if="userRef">
+      <AvatarBlock :user-ref="userPublicId || userRef" :avatar-url="avatarUrl" :display-name="displayName" :first-name="formData.first_name" :last-name="formData.last_name" :saving="saving" :on-upload="handleAvatarUpload" :on-remove="handleAvatarRemove" @avatar-updated="handleAvatarUpdated"/>
 
       <h2 class="admin-user-modal__section-title">Профиль</h2>
       <div class="profile-card">
@@ -248,7 +253,7 @@ const requestDelete = async () => {
         </div>
       </div>
 
-      <AdminUserSecuritySection :user-id="userId" :username="username" :password-reset-mode="passwordResetMode"/>
+      <AdminUserSecuritySection :user-ref="userRef" :username="username" :password-reset-mode="passwordResetMode"/>
 
       <h2 class="admin-user-modal__section-title admin-user-modal__section-title--danger">Опасная зона</h2>
       <div class="profile-card profile-card--danger">

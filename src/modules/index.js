@@ -38,6 +38,14 @@ export async function getPermissionRules() {
 }
 
 /**
+ * Получает все route guards для Vue Router beforeEach
+ * @returns {Promise<Function[]>}
+ */
+export async function getRouteGuards() {
+  return await moduleManager.getRouteGuards()
+}
+
+/**
  * Получает все секции прав модулей
  * @returns {Promise<Array>}
  */
@@ -144,5 +152,6 @@ export { CoreRoutesManager } from './routes/CoreRoutesManager.js'
 export { ModuleLoader } from './core/ModuleLoader.js'
 export { PermissionRulesManager } from './permissions/PermissionRulesManager.js'
 export { PermissionSectionsManager } from './permissions/PermissionSectionsManager.js'
+export { RouteGuardsManager } from './routing/RouteGuardsManager.js'
 
 export default moduleManager

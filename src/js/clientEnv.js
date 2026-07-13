@@ -48,4 +48,8 @@ export const clientEnv = {
   biPreviewItemsPerPage: readInt('CLIENT_BI_PREVIEW_ITEMS_PER_PAGE', 20),
   tasksMaxAttachmentSizeMb: readInt('CLIENT_TASKS_MAX_ATTACHMENT_SIZE_MB', 600),
   systemVersion: readEnv('CLIENT_SYSTEM_VERSION', '2.1.0'),
+  /** Vite: режим разработки (сборка dev). */
+  isDev: import.meta.env.DEV === true,
+  /** Vite: production-сборка. */
+  isProd: import.meta.env.PROD === true,
 }

@@ -39,7 +39,7 @@ const isCheckingAccess = ref(true)
 const isLoadingUsers = ref(false)
 const showUserSettings = ref(false)
 const showUserCreate = ref(false)
-const selectedUserId = ref(null)
+const selectedUserRef = ref(null)
 
 const rowsPerPage = ref(12)
 const profileSelfEditEnabled = ref(true)
@@ -261,7 +261,7 @@ const columns = [
 ]
 
 const openUserSettings = (item) => {
-  selectedUserId.value = item.user_id
+  selectedUserRef.value = item.public_id
   showUserSettings.value = true
 }
 
@@ -413,7 +413,7 @@ const getItemKey = (item) => item.user_id
     </DataTable>
     </LoadingContentArea>
 
-    <AdminUserSettingsModal v-model:show="showUserSettings" :user-id="selectedUserId" :roles="roles" :role-groups="roleGroups" @saved="handleUserSaved" @deleted="handleUserDeleted"/>
+    <AdminUserSettingsModal v-model:show="showUserSettings" :user-ref="selectedUserRef" :roles="roles" :role-groups="roleGroups" @saved="handleUserSaved" @deleted="handleUserDeleted"/>
     <AdminUserCreateModal v-model:show="showUserCreate" :roles="roles" :role-groups="roleGroups" @created="handleUserCreated"/>
         </div>
       </div>

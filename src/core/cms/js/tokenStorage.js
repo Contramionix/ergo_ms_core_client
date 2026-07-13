@@ -1,4 +1,5 @@
 import Cookies from 'js-cookie'
+import bridge from '@/integrations/ModuleBridge.js'
 
 const SESSION_HINT_COOKIE_NAME = 'ergo_session'
 
@@ -76,8 +77,7 @@ export function clearTokens() {
   clearSessionHintCookie()
 
   try {
-    localStorage.removeItem('crm_active_organization')
-    localStorage.removeItem('lms_active_organization_id')
+    bridge.emit('core.auth.clear_legacy_storage')
   } catch {
     // ignore
   }

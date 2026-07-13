@@ -26,11 +26,11 @@ class ConsoleLogger {
   constructor() {
     // Определяем текущий уровень логирования из переменных окружения
     // По умолчанию: development = debug, production = critical
-    const isDev = import.meta.env.DEV
+    const isDev = clientEnv.isDev
     const envLogLevel = clientEnv.logLevel
     
     this.currentLevel = LOG_LEVELS[envLogLevel] ?? (isDev ? LOG_LEVELS.debug : LOG_LEVELS.critical)
-    this.isProd = import.meta.env.PROD
+    this.isProd = clientEnv.isProd
     this.originalConsole = originalConsole
   }
 

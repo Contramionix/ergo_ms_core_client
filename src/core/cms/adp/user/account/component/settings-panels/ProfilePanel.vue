@@ -42,7 +42,7 @@ const fetchProfile = async () => {
     profileSelfEditEnabled.value = settings.profile_self_edit_enabled !== false
 
     if (!userStore.isInitialized) {
-      await userStore.initializeUser()
+      await userStore.ensureUserReady()
     }
 
     if (userStore.profile) {
