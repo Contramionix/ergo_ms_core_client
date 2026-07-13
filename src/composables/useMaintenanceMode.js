@@ -98,11 +98,8 @@ async function fetchStaticMaintenanceStatus() {
     const response = await axios.get(STATIC_STATUS_URL, {
       headers: { Accept: 'application/json' },
       params: { _: Date.now() },
-      validateStatus: (status) => status === 200 || status === 404,
+      validateStatus: (status) => status === 200,
     })
-    if (response.status === 404) {
-      return { maintenance: false }
-    }
     return response.data
   } catch {
     return null

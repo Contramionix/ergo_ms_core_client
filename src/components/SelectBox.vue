@@ -1,13 +1,24 @@
 <template>
-    <div class="select-box" ref="rootEl" :style="rootCssVars">
-        <label v-if="label" class="form-label mb-1">{{ label }}</label>
+    <div class="select-box" ref="rootEl" :style="rootCssVars" v-bind="$attrs">
+        <label v-if="label" class="form-label mb-1" :for="triggerId">{{ label }}</label>
         <div
             class="dropdown"
             :class="{ 'is-open': isOpen }"
             @mouseenter="onHoverZoneEnter"
             @mouseleave="onHoverZoneLeave"
         >
-            <button class="btn btn-light w-100 d-flex align-items-center justify-content-between select-trigger" :class="{ 'select-trigger--open': isOpen }" type="button" :disabled="disabled" @click="toggle" @blur="$emit('blur')">
+            <button
+                :id="triggerId"
+                class="btn btn-light w-100 d-flex align-items-center justify-content-between select-trigger"
+                :class="{ 'select-trigger--open': isOpen }"
+                type="button"
+                :disabled="disabled"
+                :aria-label="triggerAriaLabel"
+                :aria-expanded="isOpen"
+                aria-haspopup="listbox"
+                @click="toggle"
+                @blur="$emit('blur')"
+            >
                 <span class="select-trigger-slot d-flex align-items-center flex-grow-1 me-2">
                     <slot name="selected" :option="selectedOption" :label="currentLabel">
                         <span class="value-text">{{ currentLabel }}</span>
@@ -108,15 +119,19 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick, useId } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
+
+defineOptions({ inheritAttrs: false })
 
 const NULL_VALUE = 'null'
 
 const props = defineProps({
     modelValue: { type: [String, Number, Boolean, Object, Array, null], default: null },
     options: { type: Array, default: () => [] },
+    id: { type: String, default: '' },
     label: { type: String, default: '' },
+    ariaLabel: { type: String, default: '' },
     disabled: { type: Boolean, default: false },
     clearable: { type: Boolean, default: false },
     includeAllOption: { type: Boolean, default: true },
@@ -168,6 +183,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'change', 'blur'])
+
+const generatedId = useId()
+const triggerId = computed(() => props.id || generatedId)
+const triggerAriaLabel = computed(() => (props.label ? undefined : (props.ariaLabel || undefined)))
 
 const rootCssVars = computed(() => {
     const vars = {

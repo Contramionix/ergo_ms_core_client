@@ -1,7 +1,7 @@
 <template>
   <div ref="rootEl" class="filter-menu">
-    <label v-if="label" class="form-label mb-1">{{ label }}</label>
-    <button type="button" class="btn w-100 d-flex align-items-center justify-content-between filter-menu__trigger" :class="{ 'filter-menu__trigger--open': isMainOpen }" :disabled="disabled" @click="toggleMain">
+    <label v-if="label" class="form-label mb-1" :for="triggerId">{{ label }}</label>
+    <button :id="triggerId" type="button" class="btn w-100 d-flex align-items-center justify-content-between filter-menu__trigger" :class="{ 'filter-menu__trigger--open': isMainOpen }" :disabled="disabled" :aria-label="label || triggerText" :aria-expanded="isMainOpen" aria-haspopup="menu" @click="toggleMain">
       <span class="filter-menu__trigger-label">{{ triggerText }}</span>
       <ChevronDown class="filter-menu__trigger-chevron" :class="{ 'filter-menu__trigger-chevron--open': isMainOpen }" />
     </button>
@@ -72,7 +72,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, nextTick, onBeforeUnmount, useId } from 'vue'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { hideHoverTooltipForOwner, showHoverTooltip, } from '@/js/utils/hoverTooltipLayer.js'
@@ -106,6 +106,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'apply', 'reset'])
+
+const triggerId = useId()
 
 const {
   rootEl,

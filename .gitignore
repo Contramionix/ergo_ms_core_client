@@ -10,6 +10,8 @@ lerna-debug.log*
 .DS_Store
 dist
 dist-ssr
+# ergoms maintenance-on/off перезаписывает runtime-статус (dist/ уже игнорируется целиком)
+public/maintenance.json
 coverage
 *.local
 
@@ -27,6 +29,3 @@ coverage
 *.tsbuildinfo
 
 /node_modules
-
-# ergoms maintenance-on/off — генерируется скриптом, не коммитить
-public/maintenance.json

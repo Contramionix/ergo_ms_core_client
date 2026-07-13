@@ -1,4 +1,5 @@
 import { parseApiErrorData } from '@/js/utils/apiErrorMessage.js'
+import { sendBrowserError } from '@/js/utils/clientBrowserLog.js'
 
 const SENSITIVE_KEYS = new Set([
   'password',
@@ -122,18 +123,27 @@ function writeLog(level, context, error, options = {}) {
   if (error === undefined) {
     if (typeof context === 'string') {
       writer(`${context} [no response]:`, context)
+      if (level === 'error') {
+        sendBrowserError(context, context)
+      }
       return
     }
 
     const sanitized = sanitizeError(context)
     const label = level === 'warn' ? 'Предупреждение' : 'Ошибка'
     writer(`${label} ${formatStatus(sanitized.status, sanitized.statusText)}:`, sanitized.message)
+    if (level === 'error') {
+      sendBrowserError(sanitized.message, label)
+    }
     return
   }
 
   const { status, statusText, message } = sanitizeError(error)
   const prefix = options.endpoint ? `${context} (${options.endpoint})` : context
   writer(`${prefix} ${formatStatus(status, statusText)}:`, message)
+  if (level === 'error') {
+    sendBrowserError(message, context, options)
+  }
 }
 
 /**

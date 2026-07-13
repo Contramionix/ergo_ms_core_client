@@ -283,6 +283,16 @@ class ApiClient {
    * Обработка ошибок
    */
   handleError(error) {
+    const requestUrl = String(error?.config?.url || '')
+    if (requestUrl.includes('client-log')) {
+      return {
+        success: false,
+        message: error.message,
+        status: error.response?.status,
+        errors: error.response?.data,
+      }
+    }
+
     const { status, message } = sanitizeError(error)
 
     logError('API Error', error)

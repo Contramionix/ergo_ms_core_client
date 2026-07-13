@@ -31,6 +31,7 @@ export const clientEnv = {
   useRelativeApi: readBool('CLIENT_USE_RELATIVE_API', false),
   defaultTheme: readEnv('CLIENT_DEFAULT_THEME', 'light'),
   logLevel: readEnv('CLIENT_LOG_LEVEL', 'debug'),
+  browserLogEnabled: readBool('CLIENT_BROWSER_LOG_ENABLED', true),
   maintenancePollEnabled: readBool('CLIENT_MAINTENANCE_POLL_ENABLED', false),
   disabledModules: readEnv('CLIENT_DISABLED_MODULES', ''),
   passwordMinLength: readInt('CLIENT_PASSWORD_MIN_LENGTH', 8),
@@ -46,4 +47,5 @@ export const clientEnv = {
   realtimePollMessengerMs: readInt('CLIENT_REALTIME_POLL_MESSENGER_INTERVAL', 5000),
   biPreviewItemsPerPage: readInt('CLIENT_BI_PREVIEW_ITEMS_PER_PAGE', 20),
   tasksMaxAttachmentSizeMb: readInt('CLIENT_TASKS_MAX_ATTACHMENT_SIZE_MB', 600),
+  systemVersion: readEnv('CLIENT_SYSTEM_VERSION', '2.1.0'),
 }
