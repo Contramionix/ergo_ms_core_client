@@ -1,35 +1,14 @@
 import { clientEnv } from '@/js/clientEnv.js'
 
-function normalizeOrigin(value) {
-  if (!value) {
-    return ''
-  }
-  try {
-    const url = new URL(value.includes('://') ? value : `http://${value}`)
-    const host = url.hostname === '127.0.0.1' ? 'localhost' : url.hostname
-    const port = url.port || (url.protocol === 'https:' ? '443' : '80')
-    return `${url.protocol}//${host}:${port}`
-  } catch {
-    return String(value).replace(/\/$/, '')
-  }
-}
-
-function configuredDirectApiOrigin() {
-  return normalizeOrigin(`http://${clientEnv.apiHost}:${clientEnv.apiPort}`)
-}
-
 /**
- * Запросы к API через тот же origin, что и SPA (nginx проксирует /api/).
- * Нужно для CSP connect-src 'self' и reverse proxy.
+ * Запросы к API через тот же origin, что и SPA (nginx проксирует /api/ и /ws/).
+ * Включено явно через CLIENT_USE_RELATIVE_API (при NGINX_ENABLED выставляется автоматически).
+ *
+ * Не сравниваем порты SPA и API: в dev (Vite :8001, API :8000) это ломало WebSocket
+ * и гоняло весь трафик через прокси Vite без гарантии, что API уже слушает порт.
  */
 export function shouldUseSameOriginApi() {
-  if (clientEnv.useRelativeApi) {
-    return true
-  }
-  if (typeof window === 'undefined' || !window.location?.origin) {
-    return false
-  }
-  return normalizeOrigin(window.location.origin) !== configuredDirectApiOrigin()
+  return clientEnv.useRelativeApi
 }
 
 /**
@@ -53,7 +32,8 @@ export function resolveApiClientBaseUrl() {
 }
 
 /**
- * Абсолютный URL WebSocket (при same-origin API — тот же host, что и SPA).
+ * Абсолютный URL WebSocket.
+ * same-origin (nginx) — host страницы; иначе — API_HOST:API_PORT напрямую (dev без nginx).
  */
 export function buildWebSocketUrl(path) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`

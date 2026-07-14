@@ -266,13 +266,14 @@ export default defineConfig({
     port: parseInt(process.env.CLIENT_PORT, 10) || 8001,
     host: process.env.CLIENT_HOST || 'localhost',
     https: false,
+    // Прокси для CLIENT_USE_RELATIVE_API=true без nginx (редко) и ручных запросов к /api на origin Vite.
     proxy: {
       '/api': {
-        target: `http://${runtimeEnv.API_HOST || '127.0.0.1'}:${runtimeEnv.API_PORT || '8000'}`,
+        target: `http://${runtimeEnv.API_HOST || 'localhost'}:${runtimeEnv.API_PORT || '8000'}`,
         changeOrigin: true,
       },
       '/ws': {
-        target: `http://${runtimeEnv.API_HOST || '127.0.0.1'}:${runtimeEnv.API_PORT || '8000'}`,
+        target: `http://${runtimeEnv.API_HOST || 'localhost'}:${runtimeEnv.API_PORT || '8000'}`,
         ws: true,
         changeOrigin: true,
       },
