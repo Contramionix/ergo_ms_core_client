@@ -271,6 +271,11 @@ export default defineConfig({
         target: `http://${runtimeEnv.API_HOST || '127.0.0.1'}:${runtimeEnv.API_PORT || '8000'}`,
         changeOrigin: true,
       },
+      '/ws': {
+        target: `http://${runtimeEnv.API_HOST || '127.0.0.1'}:${runtimeEnv.API_PORT || '8000'}`,
+        ws: true,
+        changeOrigin: true,
+      },
     },
     fs: {
       allow: [
