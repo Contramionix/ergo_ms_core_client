@@ -7,6 +7,7 @@ import {
   normalizeModuleThemeSetPayload,
   saveModuleThemeSetToCache,
 } from '@/js/module-theme-manager.js'
+import { isModuleThemeRegistered } from '@/modules/themes/ThemeDefaultsManager.js'
 
 /**
  * @param {string|null} moduleKey
@@ -17,24 +18,27 @@ export async function syncModuleThemeFromApi(moduleKey) {
     return null
   }
 
+  if (!await isModuleThemeRegistered(moduleKey)) {
+    clearModuleTheme()
+    return null
+  }
+
   await initEndpoints()
 
-  try {
-    const res = await apiClient.get(
-      endpoints.themes.active,
-      { module: moduleKey },
-      false,
-    )
-    if (res.success && res.data && !res.data.detail) {
-      const themeSet = normalizeModuleThemeSetPayload(res.data)
-      if (themeSet) {
-        saveModuleThemeSetToCache(moduleKey, themeSet)
-        applyModuleThemeSet(moduleKey, themeSet)
-        return themeSet
-      }
+  const res = await apiClient.get(
+    endpoints.themes.active,
+    { module: moduleKey },
+    false,
+    { quietStatuses: [404] },
+  )
+
+  if (res.success && res.data && !res.data.detail) {
+    const themeSet = normalizeModuleThemeSetPayload(res.data)
+    if (themeSet) {
+      saveModuleThemeSetToCache(moduleKey, themeSet)
+      applyModuleThemeSet(moduleKey, themeSet)
+      return themeSet
     }
-  } catch (e) {
-    logWarn(`Не удалось загрузить тему модуля ${moduleKey}`, e)
   }
 
   const cached = getCachedModuleThemeSet(moduleKey)

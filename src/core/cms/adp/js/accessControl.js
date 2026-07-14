@@ -1,10 +1,51 @@
 import { checkUrlAccess, getMyPermissions } from '@/core/cms/js/cms.js'
 import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { getSessionBootstrapCache } from '@/core/cms/js/sessionBootstrapCache.js'
+import tokenService from '@/core/cms/js/tokenService.js'
 import { logError } from '@/js/utils/logError.js'
 
 const PERMISSIONS_CACHE_TTL = 60 * 1000
 const URL_ACCESS_CACHE_TTL = 60 * 1000
+
+/** Совпадает с PermissionService.DEFAULT_ROLE_NAME на сервере. */
+const DEFAULT_ROLE_NAME = 'Пользователь'
+
+function getActiveRoleGroups(snapshot) {
+  const groups = snapshot?.role_groups || []
+  return groups.filter((group) => group?.is_active !== false)
+}
+
+function hasExplicitModulePermission(snapshot, moduleName, permissionKey) {
+  const modulePermissions = snapshot?.module_permissions || []
+
+  return modulePermissions.some((perm) => {
+    const permModuleName = perm.module_name || perm.moduleName
+    const permKey = perm.permission_key || perm.permissionKey
+    const isGranted = perm.is_granted ?? perm.isGranted ?? false
+    return permModuleName === moduleName && permKey === permissionKey && isGranted
+  })
+}
+
+/**
+ * Проверка права модуля — зеркало PermissionService.check_module_permission (клиент, UX).
+ */
+function isModulePermissionGranted(snapshot, moduleName, permissionKey) {
+  if (snapshot?.is_global_admin) {
+    return true
+  }
+
+  const activeGroups = getActiveRoleGroups(snapshot)
+
+  if (activeGroups.length > 0) {
+    return hasExplicitModulePermission(snapshot, moduleName, permissionKey)
+  }
+
+  if (snapshot?.role?.name === DEFAULT_ROLE_NAME && permissionKey.endsWith('_view')) {
+    return true
+  }
+
+  return false
+}
 
 let cachedPermissionsSnapshot = null
 let permissionsSnapshotFetchedAt = 0
@@ -30,6 +71,14 @@ export function applyPermissionsBootstrap(permissionsData) {
   return cachedPermissionsSnapshot
 }
 
+function isExpectedGuestAuthError(error) {
+  const status = error?.response?.status ?? error?.status
+  if (status !== 401) {
+    return false
+  }
+  return !tokenService.getAccess()
+}
+
 async function ensurePermissionsSnapshot() {
   const now = Date.now()
   if (
@@ -37,6 +86,11 @@ async function ensurePermissionsSnapshot() {
     now - permissionsSnapshotFetchedAt < PERMISSIONS_CACHE_TTL
   ) {
     return cachedPermissionsSnapshot
+  }
+
+  if (!tokenService.getAccess()) {
+    cachedPermissionsSnapshot = null
+    return null
   }
 
   const fromBootstrap = readPermissionsFromBootstrap()
@@ -50,7 +104,9 @@ async function ensurePermissionsSnapshot() {
     permissionsSnapshotFetchedAt = now
     urlAccessCache.clear()
   } catch (error) {
-    logError('[ensurePermissionsSnapshot] Ошибка загрузки snapshot:', error)
+    if (!isExpectedGuestAuthError(error)) {
+      logError('[ensurePermissionsSnapshot] Ошибка загрузки snapshot:', error)
+    }
     cachedPermissionsSnapshot = null
   }
 
@@ -107,14 +163,11 @@ export async function checkRouteAdpAccess(path) {
 
 export async function hasModulePermission(moduleName, permissionKey) {
   const permissionsSnapshot = await ensurePermissionsSnapshot()
-  const modulePermissions = permissionsSnapshot?.module_permissions || []
+  if (!permissionsSnapshot) {
+    return false
+  }
 
-  return modulePermissions.some((perm) => {
-    const permModuleName = perm.module_name || perm.moduleName
-    const permKey = perm.permission_key || perm.permissionKey
-    const isGranted = perm.is_granted ?? perm.isGranted ?? false
-    return permModuleName === moduleName && permKey === permissionKey && isGranted
-  })
+  return isModulePermissionGranted(permissionsSnapshot, moduleName, permissionKey)
 }
 
 export async function hasAnyModulePermission(moduleName, permissionKeys = []) {
@@ -123,18 +176,11 @@ export async function hasAnyModulePermission(moduleName, permissionKeys = []) {
   }
 
   const permissionsSnapshot = await ensurePermissionsSnapshot()
-  const modulePermissions = permissionsSnapshot?.module_permissions || []
+  if (!permissionsSnapshot) {
+    return false
+  }
 
-  const modulePerms = modulePermissions.filter((perm) => {
-    const permModuleName = perm.module_name || perm.moduleName
-    return permModuleName === moduleName
-  })
-
-  return permissionKeys.some((key) => {
-    return modulePerms.some((perm) => {
-      const permKey = perm.permission_key || perm.permissionKey
-      const isGranted = perm.is_granted ?? perm.isGranted ?? false
-      return permKey === key && isGranted === true
-    })
-  })
+  return permissionKeys.some((key) =>
+    isModulePermissionGranted(permissionsSnapshot, moduleName, key),
+  )
 }

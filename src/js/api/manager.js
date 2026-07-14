@@ -69,18 +69,18 @@ class ApiClient {
   /**
    * Базовый метод для выполнения HTTP запросов
    */
-  async _request(method, endpoint, dataOrParams = {}, needToken = true, config = {}) {
+  async _request(method, endpoint, dataOrParams = {}, needToken = true, requestConfig = {}, options = {}) {
     try {
-      const requestConfig = { ...config }
+      const config = { ...requestConfig }
       
       if (needToken) {
-        this._addAuthToken(requestConfig)
+        this._addAuthToken(config)
       }
 
       // Обработка FormData
       if (dataOrParams instanceof FormData) {
-        requestConfig.headers = {
-          ...requestConfig.headers,
+        config.headers = {
+          ...config.headers,
           'Content-Type': undefined
         }
       }
@@ -89,23 +89,34 @@ class ApiClient {
       switch (method.toUpperCase()) {
         case 'GET':
         case 'DELETE':
-          requestConfig.params = dataOrParams
-          response = await this.client[method.toLowerCase()](endpoint, requestConfig)
+          config.params = dataOrParams
+          response = await this.client[method.toLowerCase()](endpoint, config)
           break
         default: // POST, PUT, PATCH
-          response = await this.client[method.toLowerCase()](endpoint, dataOrParams, requestConfig)
+          response = await this.client[method.toLowerCase()](endpoint, dataOrParams, config)
       }
 
       return this.handleResponse(response)
     } catch (error) {
+      const status = error.response?.status
+      if (options.quietStatuses?.includes(status)) {
+        return {
+          success: false,
+          status,
+          data: error.response?.data ?? null,
+          message: error.response?.data?.detail
+            || error.response?.data?.message
+            || error.message,
+        }
+      }
       this.handleError(error)
       throw error
     }
   }
 
   // HTTP методы
-  async get(endpoint, params = {}, needToken = true) {
-    return this._request('GET', endpoint, params, needToken)
+  async get(endpoint, params = {}, needToken = true, options = {}) {
+    return this._request('GET', endpoint, params, needToken, {}, options)
   }
 
   async post(endpoint, data = {}, needToken = true) {
@@ -213,8 +224,6 @@ class ApiClient {
         config.headers = {}
       }
       config.headers.Authorization = `Bearer ${token}`
-    } else {
-      logWarn('Токен доступа отсутствует в памяти сессии')
     }
     return config
   }
@@ -293,7 +302,21 @@ class ApiClient {
       }
     }
 
-    const { status, message } = sanitizeError(error)
+    const status = error.response?.status
+    const hadAuthHeader = Boolean(error?.config?.headers?.Authorization)
+
+    // Гость без Bearer — ожидаемый 401, интерцептор уже обработал сессию.
+    if (status === 401 && !hadAuthHeader) {
+      const { message } = sanitizeError(error)
+      return {
+        success: false,
+        message,
+        status,
+        errors: error.response?.data,
+      }
+    }
+
+    const { message } = sanitizeError(error)
 
     logError('API Error', error)
 

@@ -69,3 +69,12 @@ export function getThemeDefaultsManager() {
 export async function preloadModuleThemeManifests() {
   return getThemeDefaultsManager().loadRegistry()
 }
+
+/** Модуль объявил hook theme-defaults.js — для него есть отдельная палитра. */
+export async function isModuleThemeRegistered(moduleKey) {
+  if (!moduleKey) {
+    return false
+  }
+  const manager = getThemeDefaultsManager()
+  return Boolean(await manager.getByModuleKey(moduleKey))
+}

@@ -381,7 +381,7 @@ const {
             <div class="row">
               <div
                 v-for="(desc, key) in colorDescriptions"
-                :key="key"
+                :key="key || `color-${desc.label}`"
                 class="col-12 col-md-6"
               >
                 <ColorPicker
@@ -427,7 +427,7 @@ const {
                 <div class="row">
                   <div
                     v-for="(varConfig, key) in category.variables"
-                    :key="key"
+                    :key="key || `${categoryKey}-${varConfig.label}`"
                     class="col-12 col-md-6"
                   >
                     <ColorPicker

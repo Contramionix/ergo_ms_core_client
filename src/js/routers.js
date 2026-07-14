@@ -5,7 +5,12 @@
 import { createRouter, createWebHistory, START_LOCATION } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll, getPermissionRules, getRouteGuards } from '@/modules/index.js'
-import { checkRouteAdpAccess, hasAnyModulePermission, checkGlobalAdminAccess } from '@/core/cms/adp/js/accessControl'
+import {
+  checkRouteAdpAccess,
+  hasAnyModulePermission,
+  checkGlobalAdminAccess,
+  getPermissionsSnapshot,
+} from '@/core/cms/adp/js/accessControl'
 import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
@@ -53,11 +58,20 @@ async function getCachedPermissionRules() {
 }
 
 async function checkRouteAccess(to) {
+  const hasAccessToken = Boolean(tokenService.getAccess())
+
+  if (!hasAccessToken && !to.meta?.requiresAuth && !to.meta?.requiresGlobalAdmin) {
+    accessDeniedState.active = false
+    return { allowed: true }
+  }
+
   const MODULE_PERMISSION_RULES = await getCachedPermissionRules()
+  const permissionsSnapshot = await getPermissionsSnapshot()
+  const isGlobalAdmin = Boolean(permissionsSnapshot?.is_global_admin)
 
   if (to.meta?.requiresGlobalAdmin) {
-    const isGlobalAdmin = await checkGlobalAdminAccess()
-    if (!isGlobalAdmin) {
+    const canAccessAdminPanel = await checkGlobalAdminAccess()
+    if (!canAccessAdminPanel) {
       accessDeniedState.active = true
       accessDeniedState.title = 'Доступ запрещён'
       accessDeniedState.message = 'Требуются права администратора.'
@@ -65,37 +79,39 @@ async function checkRouteAccess(to) {
     }
   }
 
-  for (let i = 0; i < MODULE_PERMISSION_RULES.length; i++) {
-    const rule = MODULE_PERMISSION_RULES[i]
-    const ruleMatches = rule.match(to)
+  if (!isGlobalAdmin) {
+    for (let i = 0; i < MODULE_PERMISSION_RULES.length; i++) {
+      const rule = MODULE_PERMISSION_RULES[i]
+      const ruleMatches = rule.match(to)
 
-    if (ruleMatches) {
-      if (rule.skipWithoutOrganization && !tokenService.getOrganizationId()) {
-        continue
-      }
+      if (ruleMatches) {
+        if (rule.skipWithoutOrganization && !tokenService.getOrganizationId()) {
+          continue
+        }
 
-      const hasAccess = await hasAnyModulePermission(rule.module, rule.permissions)
+        const hasAccess = await hasAnyModulePermission(rule.module, rule.permissions)
 
-      if (!hasAccess) {
-        accessDeniedState.active = true
-        accessDeniedState.title = rule.title
-        accessDeniedState.message = rule.message
-        return { allowed: false, redirect: 'AccessDenied' }
-      }
-
-      if (
-        Array.isArray(rule.denyIfHasAnyPermission) &&
-        rule.denyIfHasAnyPermission.length > 0
-      ) {
-        const isDenied = await hasAnyModulePermission(
-          rule.module,
-          rule.denyIfHasAnyPermission,
-        )
-        if (isDenied) {
+        if (!hasAccess) {
           accessDeniedState.active = true
-          accessDeniedState.title = rule.denyTitle || rule.title
-          accessDeniedState.message = rule.denyMessage || rule.message
+          accessDeniedState.title = rule.title
+          accessDeniedState.message = rule.message
           return { allowed: false, redirect: 'AccessDenied' }
+        }
+
+        if (
+          Array.isArray(rule.denyIfHasAnyPermission) &&
+          rule.denyIfHasAnyPermission.length > 0
+        ) {
+          const isDenied = await hasAnyModulePermission(
+            rule.module,
+            rule.denyIfHasAnyPermission,
+          )
+          if (isDenied) {
+            accessDeniedState.active = true
+            accessDeniedState.title = rule.denyTitle || rule.title
+            accessDeniedState.message = rule.denyMessage || rule.message
+            return { allowed: false, redirect: 'AccessDenied' }
+          }
         }
       }
     }

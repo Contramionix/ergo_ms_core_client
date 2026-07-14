@@ -63,6 +63,55 @@ export function useThemeEditor() {
   const isModuleScope = computed(() => selectedScope.value !== 'site')
   const previewModuleKey = computed(() => (isModuleScope.value ? selectedScope.value : null))
 
+  function normalizedModulePairKey(value, fallback = 'default') {
+    const text = String(value ?? '').trim()
+    return text || fallback
+  }
+
+  function groupFlatThemesToPairs(flatList) {
+    const byPair = new Map()
+    for (const theme of flatList) {
+      const pairKey = normalizedModulePairKey(theme.module_pair)
+      if (!byPair.has(pairKey)) {
+        byPair.set(pairKey, {
+          module_key: theme.module_key,
+          module_pair: pairKey,
+          name: theme.name,
+          description: theme.description || '',
+          is_active: false,
+          is_default: false,
+          variants: { light: null, dark: null },
+        })
+      }
+      const pair = byPair.get(pairKey)
+      const slot = theme.base_theme === 'dark' ? 'dark' : 'light'
+      pair.variants[slot] = theme
+      if (theme.is_active) {
+        pair.is_active = true
+      }
+      if (theme.is_default) {
+        pair.is_default = true
+      }
+      if (theme.name) {
+        pair.name = theme.name
+      }
+    }
+    return Array.from(byPair.values())
+  }
+
+  function normalizeModuleThemesResponse(data) {
+    if (!Array.isArray(data) || !data.length) {
+      return []
+    }
+    if (data[0]?.variants) {
+      return data.map((pair) => ({
+        ...pair,
+        module_pair: normalizedModulePairKey(pair.module_pair),
+      }))
+    }
+    return groupFlatThemesToPairs(data)
+  }
+
   function buildModuleSetForPreview() {
     const pair = themes.value.find((p) => p.module_pair === selectedPairKey.value)
     const currentSnapshot = snapshotTheme(currentTheme)
@@ -160,17 +209,20 @@ export function useThemeEditor() {
 
   const displayThemes = computed(() => {
     if (isModuleScope.value) {
-      const pairs = themes.value.map((pair) => ({
-        id: pair.module_pair,
-        module_pair: pair.module_pair,
-        name: pair.name || pair.module_pair,
-        description: pair.variants?.light?.description || pair.variants?.dark?.description || '',
-        is_active: pair.is_active,
-        is_system: Boolean(pair.variants?.light?.is_system || pair.variants?.dark?.is_system),
-        is_draft_pair: !pair.variants?.light?.id && !pair.variants?.dark?.id,
-        variants: pair.variants,
-        is_pair: true,
-      }))
+      const pairs = themes.value.map((pair, index) => {
+        const pairKey = normalizedModulePairKey(pair.module_pair, `pair-${index}`)
+        return {
+          id: `${selectedScope.value}-${pairKey}`,
+          module_pair: pairKey,
+          name: pair.name || pairKey,
+          description: pair.variants?.light?.description || pair.variants?.dark?.description || '',
+          is_active: pair.is_active,
+          is_system: Boolean(pair.variants?.light?.is_system || pair.variants?.dark?.is_system),
+          is_draft_pair: !pair.variants?.light?.id && !pair.variants?.dark?.id,
+          variants: pair.variants,
+          is_pair: true,
+        }
+      })
       return pairs
     }
 
@@ -294,7 +346,9 @@ export function useThemeEditor() {
         : { module: selectedScope.value, as_pairs: 'true' }
       const res = await apiClient.get(endpoints.themes.list, params)
       if (res.success) {
-        themes.value = res.data || []
+        themes.value = isModuleScope.value
+          ? normalizeModuleThemesResponse(res.data || [])
+          : (res.data || [])
 
         if (themes.value.length === 0 && selectedScope.value === 'site') {
           await createSystemThemes()
@@ -335,7 +389,7 @@ export function useThemeEditor() {
           as_pairs: 'true',
         })
         if (listRes.success) {
-          themes.value = listRes.data || []
+          themes.value = normalizeModuleThemesResponse(listRes.data || [])
         }
       }
     } catch (e) {
@@ -474,9 +528,9 @@ export function useThemeEditor() {
   const selectModulePair = (pair, variant = 'light', { preview = true } = {}) => {
     persistCurrentVariantToPair()
 
-    const pairKey = pair.module_pair || pair.id
+    const pairKey = normalizedModulePairKey(pair.module_pair)
     selectedPairKey.value = pairKey
-    selectedThemeId.value = pairKey
+    selectedThemeId.value = `${selectedScope.value}-${pairKey}`
     editingVariant.value = variant
 
     const variantData = pair.variants?.[variant]
@@ -612,7 +666,7 @@ export function useThemeEditor() {
       themes.value = [draftPair, ...themes.value]
       selectModulePair({
         ...draftPair,
-        id: draftPair.module_pair,
+        module_pair: draftPair.module_pair,
         is_pair: true,
         is_draft_pair: true,
       }, 'light')
@@ -717,11 +771,13 @@ export function useThemeEditor() {
 
   const moduleTokenEntries = computed(() => {
     const tokens = currentTheme.module_tokens || {}
-    return Object.keys(tokens).map((key) => ({
-      key,
-      label: key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()),
-      value: tokens[key],
-    }))
+    return Object.keys(tokens)
+      .filter((key) => key)
+      .map((key) => ({
+        key,
+        label: key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()),
+        value: tokens[key],
+      }))
   })
 
   // Получить значение по умолчанию для Bootstrap переменной
