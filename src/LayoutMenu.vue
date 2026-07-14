@@ -19,28 +19,32 @@
 -->
 
 <script setup>
-import { ref, computed, shallowRef, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   closeOffcanvasSidebar,
 } from '@/js/useOffcanvasSidebarStore.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { ensurePresenceConnected } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
+import { useAppBootstrap } from '@/composables/useAppBootstrap.js'
+import { getSessionBootstrapCache } from '@/core/cms/js/sessionBootstrapCache.js'
+import {
+  layoutPluginsRef,
+  scheduleLayoutPluginsFromBootstrap,
+} from '@/js/layoutPlugins.js'
 import MenuList from '@/components/menu/MenuList.vue'
 import LayoutBackdrop from '@/components/LayoutBackdrop.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
+import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 import LucideIcon from '@/components/LucideIcon.vue'
 
-import { initEndpoints } from '@/js/api/endpoints.js'
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import RouteViewAnimated from '@/components/RouteViewAnimated.vue'
 
-const layoutPluginGlob = import.meta.glob('../../../modules/*/client/LayoutPlugin.vue')
-const layoutPlugins = shallowRef([])
-
 const userStore = useUserStore()
 const route = useRoute()
+const { bootstrapping: sessionBootstrapping, whenSessionReady } = useAppBootstrap()
 
 let resizeTimeout = null
 
@@ -52,6 +56,10 @@ const isOverlayVisible = ref(false)
 const isMenuCollapsed = ref(false)
 const menuWidth = ref(260)
 const isMenuLayoutTransitioning = ref(false)
+
+const showMenuSkeleton = computed(
+  () => sessionBootstrapping.value && !userStore.isInitialized,
+)
 
 // Полноэкранный режим (без меню и ограничений контейнера)
 const isFullPage = computed(() => route.meta?.fullPage === true)
@@ -123,26 +131,28 @@ function onHamburgerClick() {
   toggleMenu(!isMenuVisible.value)
 }
 
+watch(
+  () => userStore.isInitialized,
+  (initialized) => {
+    if (initialized) {
+      scheduleLayoutPluginsFromBootstrap(getSessionBootstrapCache())
+    }
+  },
+)
+
 onMounted(async () => {
   updateMenuVisibilityImmediate()
   window.addEventListener('resize', updateMenuVisibility)
-  await userStore.ensureUserReady()
+
+  await whenSessionReady()
+
   if (userStore.isAuthenticated) {
     ensurePresenceConnected()
   }
 
-  await initEndpoints()
-
-  const plugins = []
-  for (const loadPlugin of Object.values(layoutPluginGlob)) {
-    try {
-      const module = await loadPlugin()
-      plugins.push(module.default)
-    } catch (e) {
-      logError('Ошибка загрузки layout-плагина модуля', e)
-    }
+  if (userStore.isInitialized) {
+    scheduleLayoutPluginsFromBootstrap(getSessionBootstrapCache())
   }
-  layoutPlugins.value = plugins
 })
 
 onBeforeUnmount(() => {
@@ -165,7 +175,21 @@ onBeforeUnmount(() => {
     </div>
   </Teleport>
   <div class="layout-container" :class="{ 'layout-container--full-page': isFullPage }">
-    <MenuList v-if="!isFullPage" @left-padding="leftToggle" @menu-right-edge="handleMenuRightEdge" @layout-sync-transition="handleMenuLayoutSyncTransition" :is-visible="isMenuVisible" @menu-state-change="handleMenuStateChange"/>
+    <aside
+      v-if="!isFullPage && showMenuSkeleton"
+      class="menu-skeleton side-menu"
+      aria-hidden="true"
+    >
+      <SpinnerLoading color="primary" />
+    </aside>
+    <MenuList
+      v-else-if="!isFullPage"
+      @left-padding="leftToggle"
+      @menu-right-edge="handleMenuRightEdge"
+      @layout-sync-transition="handleMenuLayoutSyncTransition"
+      :is-visible="isMenuVisible"
+      @menu-state-change="handleMenuStateChange"
+    />
     <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage, 'layout-page--menu-sync-transition': isMenuLayoutTransitioning }">
       <LayoutBackdrop v-if="!isFullPage && showShellBackdrop" />
       <div class="layout-page__content">
@@ -182,10 +206,31 @@ onBeforeUnmount(() => {
   </div>
 
   <div @click="closeMenu" class="layout-overlay" :class="{ active: isOverlayVisible }" />
-  <component v-for="(plugin, index) in layoutPlugins" :key="index" :is="plugin" :isMenuCollapsed="isMenuCollapsed" :menuWidth="menuWidth" :menuRightEdge="menuRightEdge"/>
+  <component
+    v-for="(plugin, index) in layoutPluginsRef"
+    :key="index"
+    :is="plugin"
+    :isMenuCollapsed="isMenuCollapsed"
+    :menuWidth="menuWidth"
+    :menuRightEdge="menuRightEdge"
+  />
 </template>
 
 <style scoped lang="scss">
+.menu-skeleton {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1003;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 260px;
+  height: 100dvh;
+  background: var(--color-header-background);
+  border-right: 1px solid var(--color-border);
+}
+
 .mobile-header {
   position: fixed;
   top: 0;
@@ -270,6 +315,10 @@ onBeforeUnmount(() => {
 }
 
 @media (width < 1200px) {
+  .menu-skeleton {
+    display: none;
+  }
+
   .layout-container {
     height: 100dvh;
     overflow: hidden;

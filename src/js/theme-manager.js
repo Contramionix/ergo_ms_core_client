@@ -9,8 +9,15 @@ import {
   BOOTSTRAP_VARIABLES,
   getThemeScssColors,
   getBootstrapByCategories as getBootstrapCategories,
-  valuesToCss,
 } from './bootstrap-variables.js'
+import {
+  buildThemeCss,
+  hasCustomColors,
+  COLOR_VAR_MAP,
+  BOOTSTRAP_BRIDGE_FROM_COLORS,
+} from './theme-css-builder.js'
+
+export { COLOR_VAR_MAP, BOOTSTRAP_BRIDGE_FROM_COLORS, hasCustomColors }
 
 const THEME_STORAGE_KEY = 'theme'
 const ACTIVE_THEME_STORAGE_KEY = 'activeTheme'
@@ -28,60 +35,6 @@ function notifyThemeChange() {
       mode: getCurrentThemeMode(),
     },
   }))
-}
-
-const COLOR_VAR_MAP = {
-  headerBackground: '--color-header-background',
-  authBackground: '--color-auth-background',
-  background: '--color-background',
-  border: '--color-border',
-  primaryText: '--color-primary-text',
-  secondaryText: '--color-secondary-text',
-  primaryBackground: '--color-primary-background',
-  secondaryBackground: '--color-secondary-background',
-  hoverBackground: '--color-hover-background',
-  accent: '--color-accent',
-}
-
-const BOOTSTRAP_BRIDGE_FROM_COLORS = {
-  background: ['--bs-body-bg'],
-  primaryText: ['--bs-body-color', '--bs-emphasis-color', '--bs-heading-color', '--bs-card-color'],
-  secondaryText: ['--bs-secondary-color', '--bs-tertiary-color'],
-  border: ['--bs-border-color'],
-  primaryBackground: ['--bs-card-bg'],
-  secondaryBackground: ['--bs-secondary-bg', '--bs-tertiary-bg'],
-  accent: ['--bs-primary', '--bs-link-color', '--bs-link-hover-color'],
-}
-
-function hasCustomColors(colors) {
-  return colors && Object.keys(colors).some((key) => colors[key])
-}
-
-function parseAccentRgb(accent) {
-  if (!accent || typeof accent !== 'string') {
-    return null
-  }
-
-  const hex = accent.trim()
-  if (hex.startsWith('#') && hex.length >= 7) {
-    const raw = hex.replace('#', '')
-    return {
-      r: parseInt(raw.substring(0, 2), 16),
-      g: parseInt(raw.substring(2, 4), 16),
-      b: parseInt(raw.substring(4, 6), 16),
-    }
-  }
-
-  const rgbMatch = hex.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i)
-  if (rgbMatch) {
-    return {
-      r: Number(rgbMatch[1]),
-      g: Number(rgbMatch[2]),
-      b: Number(rgbMatch[3]),
-    }
-  }
-
-  return null
 }
 
 export function readThemePreference() {
@@ -193,84 +146,11 @@ export function applyTheme(theme, saveToStorage = true) {
     document.body.appendChild(styleElement)
   }
 
-  const hasColors = hasCustomColors(colors)
-  const hasBootstrap = bootstrapColors && Object.keys(bootstrapColors).some((key) => bootstrapColors[key])
-
-  if (!hasColors && !hasBootstrap) {
-    styleElement.textContent = ''
-    if (saveToStorage) {
-      saveThemeToLocalStorage(theme)
-    }
-    notifyThemeChange()
-    return
-  }
-
-  let cssRules = `
-    html[data-bs-theme='${baseTheme}'],
-    [data-bs-theme='${baseTheme}'] {
-  `
-
-  for (const [key, varName] of Object.entries(COLOR_VAR_MAP)) {
-    if (colors[key]) {
-      cssRules += `  ${varName}: ${colors[key]} !important;\n`
-      const bridgeVars = BOOTSTRAP_BRIDGE_FROM_COLORS[key]
-      if (bridgeVars) {
-        for (const bsVar of bridgeVars) {
-          cssRules += `  ${bsVar}: ${colors[key]} !important;\n`
-        }
-      }
-    }
-  }
-
-  if (hasBootstrap) {
-    cssRules += valuesToCss(bootstrapColors)
-  }
-
-  if (colors.accent) {
-    const rgb = parseAccentRgb(colors.accent)
-    if (rgb) {
-      cssRules += `
-      --bs-primary: ${colors.accent} !important;
-      --bs-primary-rgb: ${rgb.r}, ${rgb.g}, ${rgb.b} !important;
-      --bs-link-color: ${colors.accent} !important;
-      --bs-link-color-rgb: ${rgb.r}, ${rgb.g}, ${rgb.b} !important;
-      --bs-link-hover-color: ${colors.accent} !important;
-    `
-    }
-  }
-
-  cssRules += '}\n'
-
-  if (colors.accent) {
-    cssRules += `
-    .btn-primary {
-      --bs-btn-bg: ${colors.accent} !important;
-      --bs-btn-border-color: ${colors.accent} !important;
-      --bs-btn-hover-bg: ${colors.accent} !important;
-      --bs-btn-hover-border-color: ${colors.accent} !important;
-      --bs-btn-active-bg: ${colors.accent} !important;
-      --bs-btn-active-border-color: ${colors.accent} !important;
-    }
-    .btn-outline-primary {
-      --bs-btn-color: ${colors.accent} !important;
-      --bs-btn-border-color: ${colors.accent} !important;
-      --bs-btn-hover-bg: ${colors.accent} !important;
-      --bs-btn-hover-border-color: ${colors.accent} !important;
-      --bs-btn-active-bg: ${colors.accent} !important;
-      --bs-btn-active-border-color: ${colors.accent} !important;
-    }
-    .text-primary {
-      color: ${colors.accent} !important;
-    }
-    a {
-      color: ${colors.accent};
-    }
-    a:hover {
-      color: ${colors.accent};
-      filter: brightness(0.85);
-    }
-    `
-  }
+  const cssRules = buildThemeCss({
+    baseTheme,
+    colors,
+    bootstrapColors,
+  })
 
   styleElement.textContent = cssRules
 

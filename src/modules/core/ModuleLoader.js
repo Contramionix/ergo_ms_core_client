@@ -44,6 +44,7 @@ const sharedGlobs = {
     ...generatedGlobs.modulesIntegrations,
     ...generatedGlobs.modulesIntegrationsNested,
   },
+  modulesThemeDefaults: generatedGlobs.modulesThemeDefaults,
   modulesComponents: generatedGlobs.modulesComponents,
 }
 
@@ -68,6 +69,7 @@ export class ModuleLoader {
       'js/permission-sections.js': ['corePermissionSections', 'modulesPermissionSections'],
       'js/routeGuard.js': ['coreRouteGuards', 'modulesRouteGuards'],
       'js/integrations.js': ['coreIntegrations', 'modulesIntegrations'],
+      'js/theme-defaults.js': ['modulesThemeDefaults'],
       'components': ['coreComponents', 'modulesComponents']
     }
 

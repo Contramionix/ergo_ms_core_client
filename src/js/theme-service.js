@@ -14,9 +14,11 @@ function normalizeThemePayload(data) {
   return {
     id: data.id,
     name: data.name,
+    module_key: data.module_key || null,
     base_theme: data.base_theme || 'light',
     colors: data.colors || {},
     bootstrap_colors: data.bootstrap_colors || {},
+    module_tokens: data.module_tokens || {},
     is_active: data.is_active,
     is_default: data.is_default,
     is_system: data.is_system,
@@ -49,5 +51,7 @@ export async function syncSiteThemeFromApi() {
 
 /** Восстанавливает активную тему сайта после редактора (превью не сохраняется). */
 export async function restoreSiteThemeAfterEditor() {
+  const { clearModuleTheme } = await import('@/js/module-theme-manager.js')
+  clearModuleTheme()
   return syncSiteThemeFromApi()
 }

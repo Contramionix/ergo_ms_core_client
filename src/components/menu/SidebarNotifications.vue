@@ -194,6 +194,12 @@ function goToFullList() {
 .tools__notifications-wrapper {
   position: relative;
   display: inline-block;
+  // Бейдж выходит за кнопку (top/right: -4px); в peek-режиме тулбар
+  // держит overflow:hidden — даём место внутри обёртки, без сдвига сетки.
+  padding-top: 4px;
+  padding-right: 4px;
+  margin-top: -4px;
+  margin-right: -4px;
 }
 
 .notifications-btn {

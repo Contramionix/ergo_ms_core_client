@@ -57,6 +57,7 @@ export const modulesPermissionSectionsNested = ${buildModuleGlobBlock('client/**
 export const modulesRouteGuards = ${buildModuleGlobBlock('client/js/routeGuard.js')}
 export const modulesIntegrations = ${buildModuleGlobBlock('client/js/integrations.js')}
 export const modulesIntegrationsNested = ${buildModuleGlobBlock('client/**/js/integrations.js')}
+export const modulesThemeDefaults = ${buildModuleGlobBlock('client/js/theme-defaults.js')}
 export const modulesComponents = ${buildModuleGlobBlock('client/**/*.vue')}
 `
 

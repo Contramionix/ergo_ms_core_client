@@ -18,72 +18,42 @@ import { useThemeEditor } from './useThemeEditor.js'
 
 const {
   BASE_THEME_OPTIONS,
-  DRAFT_THEME_ID,
+  VARIANT_OPTIONS,
   activateTheme,
-  active,
-  applyThemeToCurrent,
-  base,
-  blob,
   bootstrapCategories,
-  byId,
-  byMode,
-  categories,
-  category,
   changeBaseTheme,
+  changeEditingVariant,
+  changeScope,
+  selectedScope,
+  scopeOptions,
+  isModuleScope,
   colorDescriptions,
-  colors,
-  createEmptyDraft,
   createNewTheme,
-  createSystemThemes,
   currentTheme,
-  data,
-  defaultKey,
-  defaults,
   deleteTheme,
   discardDraft,
   displayThemes,
-  draft,
-  draftTheme,
   duplicateTheme,
   exportTheme,
-  fallback,
-  file,
   fileInput,
   getDefaultValue,
   handleFileImport,
   importTheme,
-  initialTheme,
-  isDraftSelected,
   isNewTheme,
-  link,
-  loadThemes,
   loading,
-  mode,
-  ok,
-  pickInitialTheme,
-  res,
+  moduleTokenEntries,
   resetSystemTheme,
-  resetTheme,
   resetToDefaults,
   resettingThemeId,
   saveTheme,
-  saved,
-  savedId,
-  savedTheme,
   saving,
   selectTheme,
   selectedThemeId,
+  editingVariant,
   showBootstrapColors,
-  snapshotTheme,
-  source,
-  syncCurrentToDraft,
-  themes,
-  toast,
   updateBootstrapColor,
   updateColor,
-  uploadResult,
-  url,
-  wasSelected,
+  updateModuleToken,
 } = useThemeEditor()
 </script>
 
@@ -114,6 +84,18 @@ const {
             </div>
           </div>
 
+          <div class="mb-3">
+            <label class="form-label small text-muted mb-1">Область</label>
+            <SelectBox
+              :model-value="selectedScope"
+              :options="scopeOptions"
+              value-key="id"
+              label-key="name"
+              :include-all-option="false"
+              @update:model-value="changeScope"
+            />
+          </div>
+
           <div class="content-card content-card--flush">
             <LoadingContentArea :loading="loading" min-height="8rem">
               <div class="theme-list">
@@ -130,7 +112,12 @@ const {
                 >
                   <div class="theme-info">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <template v-if="theme.is_pair">
+                        <Sun :size="14" class="theme-icon" />
+                        <Moon :size="14" class="theme-icon" />
+                      </template>
                       <component
+                        v-else
                         :is="theme.base_theme === 'dark' ? Moon : Sun"
                         :size="16"
                         class="theme-icon"
@@ -145,11 +132,11 @@ const {
 
                   <div class="theme-actions actions-cell">
                     <button
-                      v-if="theme.is_system"
+                      v-if="theme.is_system || theme.is_pair"
                       type="button"
                       class="btn-action"
                       title="Сбросить к начальным значениям"
-                      :disabled="resettingThemeId === theme.id"
+                      :disabled="resettingThemeId === theme.id || resettingThemeId === theme.module_pair"
                       @click.stop="resetSystemTheme(theme)"
                     >
                       <RotateCcw :size="15" />
@@ -164,7 +151,7 @@ const {
                       <Check :size="15" />
                     </button>
                     <button
-                      v-if="!theme.is_draft"
+                      v-if="!theme.is_draft && !isModuleScope"
                       type="button"
                       class="btn-action btn-action--edit"
                       title="Дублировать"
@@ -182,7 +169,7 @@ const {
                       <Trash2 :size="15" />
                     </button>
                     <button
-                      v-if="!theme.is_system && !theme.is_draft"
+                      v-if="!theme.is_system && !theme.is_draft && !theme.is_pair"
                       type="button"
                       class="btn-action btn-action--delete"
                       title="Удалить"
@@ -269,12 +256,14 @@ const {
               </div>
               <div class="col-12 col-md-4">
                 <SelectBox
-                  id="theme-base"
-                  label="Базовая тема"
-                  :model-value="currentTheme.base_theme"
-                  :options="BASE_THEME_OPTIONS"
+                  v-if="isModuleScope"
+                  id="theme-variant"
+                  label="Вариант пары"
+                  :model-value="editingVariant"
+                  :options="VARIANT_OPTIONS"
                   :include-all-option="false"
-                  :disabled="currentTheme.is_system" @update:model-value="changeBaseTheme"
+                  :disabled="currentTheme.is_system"
+                  @update:model-value="changeEditingVariant"
                 >
                   <template #selected="{ option, label }">
                     <span class="theme-editor__select-option">
@@ -289,6 +278,32 @@ const {
                     </span>
                   </template>
                 </SelectBox>
+                <SelectBox
+                  v-else
+                  id="theme-base"
+                  label="Базовая тема"
+                  :model-value="currentTheme.base_theme"
+                  :options="BASE_THEME_OPTIONS"
+                  :include-all-option="false"
+                  :disabled="currentTheme.is_system"
+                  @update:model-value="changeBaseTheme"
+                >
+                  <template #selected="{ option, label }">
+                    <span class="theme-editor__select-option">
+                      <component v-if="option?.icon" :is="option.icon" :size="16" />
+                      <span>{{ label }}</span>
+                    </span>
+                  </template>
+                  <template #option="{ option, label }">
+                    <span class="theme-editor__select-option">
+                      <component v-if="option?.icon" :is="option.icon" :size="16" />
+                      <span>{{ label }}</span>
+                    </span>
+                  </template>
+                </SelectBox>
+                <p v-if="isModuleScope" class="form-text small text-muted mb-0 mt-1">
+                  Режим светлая/тёмная на сайте задаётся глобально; модуль переключает вариант пары автоматически.
+                </p>
               </div>
               <div class="col-12">
                 <label class="form-label" for="theme-description">Описание</label>
@@ -331,6 +346,27 @@ const {
                 />
               </div>
             </div>
+
+            <template v-if="isModuleScope && moduleTokenEntries.length">
+              <hr class="theme-editor__divider" />
+              <h3 class="admin-section-heading mb-3">Токены модуля</h3>
+              <div class="row g-3">
+                <div
+                  v-for="entry in moduleTokenEntries"
+                  :key="entry.key"
+                  class="col-12 col-md-6"
+                >
+                  <label class="form-label">{{ entry.label }}</label>
+                  <input
+                    type="text"
+                    class="form-control theme-editor__input"
+                    :value="entry.value"
+                    :disabled="currentTheme.is_system"
+                    @input="updateModuleToken(entry.key, $event.target.value)"
+                  />
+                </div>
+              </div>
+            </template>
 
             <template v-if="showBootstrapColors">
               <template v-for="(category, categoryKey) in bootstrapCategories" :key="categoryKey">

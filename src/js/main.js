@@ -1,5 +1,4 @@
 import { initRouter } from '@/js/routers.js'
-import { authGuard } from '@/core/cms/js/authGuard.js'
 
 import '@/js/utils/logger.js'
 
@@ -16,13 +15,8 @@ import App from '@/App.vue'
 import { initEndpoints } from '@/js/api/endpoints.js'
 import { DEFAULT_SITE_NAME } from '@/js/siteWordmark.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { restoreSession } from '@/core/cms/js/tokenRefresh.js'
-import { hideBootstrapMask } from '@/js/bootstrapMask.js'
+import { bootstrapAppSession } from '@/js/bootstrapSession.js'
 import { initTheme } from '@/js/theme-manager.js'
-
-async function restoreSessionIfNeeded() {
-  return restoreSession()
-}
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -38,27 +32,18 @@ if (typeof document !== 'undefined') {
 
 initTheme()
 
-const [, hasSession] = await Promise.all([
-  initEndpoints(),
-  restoreSessionIfNeeded(),
-])
-
-if (hasSession) {
-  await useUserStore().loadSessionBootstrap()
-}
-
-const router = await initRouter()
-app.use(router)
+await Promise.all([initEndpoints(), initRouter()]).then(([, router]) => {
+  app.use(router)
+})
 
 app.mount('#app')
+
+void bootstrapAppSession()
 
 useUserStore().warmupAvatar()
 
 const { syncSiteThemeFromApi } = await import('@/js/theme-service.js')
 syncSiteThemeFromApi().catch(() => {})
 
-setTimeout(hideBootstrapMask, 4000)
-
-if (authGuard.isAuthenticated()) {
-  authGuard.startTokenValidation()
-}
+const { preloadModuleThemeManifests } = await import('@/modules/themes/ThemeDefaultsManager.js')
+preloadModuleThemeManifests().catch(() => {})

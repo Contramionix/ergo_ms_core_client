@@ -38,13 +38,19 @@ export class RouteManager extends ModuleLoader {
 
     Object.entries(routesModules).forEach(([path, module]) => {
       const routes = module.default || module
-      
+      const isExternal = this.isExternalModule(path)
+      const autoModuleKey = isExternal ? this.extractModuleName(path, true) : null
+
       if (routes && typeof routes === 'object') {
         Object.entries(routes).forEach(([routeName, routeConfig]) => {
           if (!this.routes.has(routeName)) {
             this.routes.set(routeName, {
               ...routeConfig,
-              _modulePath: path
+              _modulePath: path,
+              meta: {
+                ...(routeConfig.meta || {}),
+                moduleKey: routeConfig.meta?.moduleKey || autoModuleKey || undefined,
+              },
             })
           }
         })
@@ -191,12 +197,14 @@ export class RouteManager extends ModuleLoader {
     }
     if (childrenArray && childrenArray.length > 0) {
       route.children = childrenArray.map(childConfig => {
+        const parentModuleKey = routeConfig.meta?.moduleKey
         const childRoute = {
           path: childConfig.path,
           name: childConfig.name,
           meta: {
             title: childConfig.meta?.title,
-            ...childConfig.meta
+            ...childConfig.meta,
+            moduleKey: childConfig.meta?.moduleKey || parentModuleKey || undefined,
           }
         }
 

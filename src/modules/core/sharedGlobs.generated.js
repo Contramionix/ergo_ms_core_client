@@ -192,6 +192,26 @@ export const modulesIntegrationsNested = {
   ...import.meta.glob('../../../../../modules/video_analysis/client/**/js/integrations.js'),
   ...import.meta.glob('../../../../../modules/workers/client/**/js/integrations.js'),
 }
+export const modulesThemeDefaults = {
+  ...import.meta.glob('../../../../../modules/ai_assistant/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/bi_analysis/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/competence_core/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/crm_remastered/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/impuls_analysis/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/learning_analytics/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/lms/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/module_template/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/neural_networks_hub/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/organizations/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/porosity_analysis/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/project_ed/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/projects/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/students/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/tasks/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/technical_process_analysis/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/video_analysis/client/js/theme-defaults.js'),
+  ...import.meta.glob('../../../../../modules/workers/client/js/theme-defaults.js'),
+}
 export const modulesComponents = {
   ...import.meta.glob('../../../../../modules/ai_assistant/client/**/*.vue'),
   ...import.meta.glob('../../../../../modules/bi_analysis/client/**/*.vue'),

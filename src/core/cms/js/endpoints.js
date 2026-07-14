@@ -97,5 +97,6 @@ export const cmsEndpoints = {
         resetDefaults: (id) => `settings/themes/${id}/reset-defaults/`,
         import: 'settings/themes/import/',
         createSystemThemes: 'settings/themes/create-system-themes/',
+        syncModuleDefaults: 'settings/themes/sync-module-defaults/',
     },
 };
