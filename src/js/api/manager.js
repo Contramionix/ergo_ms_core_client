@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 import tokenService from '@/core/cms/js/tokenService'
+import { performServerLogout } from '@/core/cms/js/tokenRefresh.js'
 import { applyMaintenanceFromResponse } from '@/composables/useMaintenanceMode.js'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
 
@@ -225,7 +226,6 @@ class ApiClient {
    * Выход из системы
    */
   async logout() {
-    const { performServerLogout } = await import('@/core/cms/js/tokenRefresh.js')
     await performServerLogout()
     tokenService.clear()
   }

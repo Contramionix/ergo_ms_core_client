@@ -18,20 +18,23 @@ import { useThemeEditor } from './useThemeEditor.js'
 
 const {
   BASE_THEME_OPTIONS,
-  VARIANT_OPTIONS,
   activateTheme,
   bootstrapCategories,
   changeBaseTheme,
+  canEditCurrentTheme,
   changeEditingVariant,
   changeScope,
   selectedScope,
   scopeOptions,
   isModuleScope,
+  isEditingModulePair,
+  modulePairHasUnsavedVariant,
   colorDescriptions,
   createNewTheme,
   currentTheme,
   deleteTheme,
   discardDraft,
+  discardModulePairDraft,
   displayThemes,
   duplicateTheme,
   exportTheme,
@@ -46,6 +49,7 @@ const {
   resetToDefaults,
   resettingThemeId,
   saveTheme,
+  saveModulePair,
   saving,
   selectTheme,
   selectedThemeId,
@@ -124,6 +128,7 @@ const {
                       />
                       <span class="theme-name">{{ theme.name }}</span>
                       <span v-if="theme.is_draft" class="theme-badge theme-badge--draft">Черновик</span>
+                      <span v-if="theme.is_draft_pair" class="theme-badge theme-badge--draft">Черновик пары</span>
                       <span v-if="theme.is_system" class="theme-badge theme-badge--muted">Системная</span>
                       <span v-if="theme.is_active" class="theme-badge theme-badge--active">Активна</span>
                     </div>
@@ -132,7 +137,7 @@ const {
 
                   <div class="theme-actions actions-cell">
                     <button
-                      v-if="theme.is_system || theme.is_pair"
+                      v-if="theme.is_system && !theme.is_draft_pair"
                       type="button"
                       class="btn-action"
                       title="Сбросить к начальным значениям"
@@ -142,7 +147,7 @@ const {
                       <RotateCcw :size="15" />
                     </button>
                     <button
-                      v-if="!theme.is_active && !theme.is_draft"
+                      v-if="!theme.is_active && !theme.is_draft && !theme.is_draft_pair"
                       type="button"
                       class="btn-action"
                       title="Активировать"
@@ -158,6 +163,15 @@ const {
                       @click.stop="duplicateTheme(theme)"
                     >
                       <Copy :size="15" />
+                    </button>
+                    <button
+                      v-if="theme.is_draft_pair"
+                      type="button"
+                      class="btn-action btn-action--delete"
+                      title="Удалить черновик пары"
+                      @click.stop="discardModulePairDraft"
+                    >
+                      <Trash2 :size="15" />
                     </button>
                     <button
                       v-if="theme.is_draft"
@@ -189,14 +203,32 @@ const {
         <section class="theme-editor__section">
           <div class="table-header mb-3">
             <h2 class="admin-section-heading mb-0">
-              {{ isNewTheme ? 'Новая тема' : 'Редактирование' }}
+              <template v-if="isEditingModulePair">
+                Редактирование пары
+                <span class="theme-editor__variant-label">
+                  ({{ editingVariant === 'dark' ? 'тёмный' : 'светлый' }} вариант)
+                </span>
+              </template>
+              <template v-else>
+                {{ isNewTheme ? 'Новая тема' : 'Редактирование' }}
+              </template>
             </h2>
             <div class="actions-wrapper">
               <button
+                v-if="isEditingModulePair"
+                type="button"
+                class="btn btn-outline-primary d-inline-flex align-items-center gap-2"
+                :disabled="saving || !canEditCurrentTheme"
+                @click="saveModulePair"
+              >
+                <Save :size="16" />
+                <span>{{ saving ? 'Сохранение...' : 'Сохранить пару' }}</span>
+              </button>
+              <button
                 type="button"
                 class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
-                :disabled="currentTheme.is_system"
-                title="Сбросить цвета"
+                :disabled="!canEditCurrentTheme"
+                title="Сбросить цвета текущего варианта"
                 @click="resetToDefaults"
               >
                 <RotateCcw :size="16" />
@@ -221,25 +253,62 @@ const {
               <button
                 type="button"
                 class="btn btn-primary d-inline-flex align-items-center gap-2"
-                :disabled="saving || currentTheme.is_system"
+                :disabled="saving || !canEditCurrentTheme"
                 @click="saveTheme"
               >
                 <Save :size="16" />
-                <span>{{ saving ? 'Сохранение...' : 'Сохранить' }}</span>
+                <span>
+                  {{
+                    saving
+                      ? 'Сохранение...'
+                      : (isEditingModulePair ? 'Сохранить вариант' : 'Сохранить')
+                  }}
+                </span>
               </button>
             </div>
           </div>
 
           <div class="content-card">
+            <div v-if="isEditingModulePair" class="theme-editor__variant-tabs mb-4">
+              <span class="theme-editor__variant-tabs-label">Редактируемый вариант</span>
+              <div class="theme-editor__variant-tabs-group" role="tablist">
+                <button
+                  type="button"
+                  class="theme-editor__variant-tab"
+                  :class="{ active: editingVariant === 'light' }"
+                  role="tab"
+                  :aria-selected="editingVariant === 'light'"
+                  @click="changeEditingVariant('light')"
+                >
+                  <Sun :size="16" />
+                  <span>Светлый</span>
+                </button>
+                <button
+                  type="button"
+                  class="theme-editor__variant-tab"
+                  :class="{ active: editingVariant === 'dark' }"
+                  role="tab"
+                  :aria-selected="editingVariant === 'dark'"
+                  @click="changeEditingVariant('dark')"
+                >
+                  <Moon :size="16" />
+                  <span>Тёмный</span>
+                </button>
+              </div>
+              <p class="form-text small text-muted mb-0">
+                Цвета и токены задаются отдельно для каждого варианта. На сайте показывается вариант по глобальной теме пользователя.
+              </p>
+            </div>
+
             <div class="row g-3 mb-4">
               <div class="col-12 col-md-4">
-                <label class="form-label" for="theme-name">Название</label>
+                <label class="form-label" for="theme-name">Название пары</label>
                 <input
                   id="theme-name"
                   v-model="currentTheme.name"
                   type="text"
                   class="form-control theme-editor__input"
-                  :disabled="currentTheme.is_system"
+                  :disabled="!canEditCurrentTheme"
                   placeholder="Название темы"
                 />
               </div>
@@ -250,42 +319,18 @@ const {
                   v-model="currentTheme.author"
                   type="text"
                   class="form-control theme-editor__input"
-                  :disabled="currentTheme.is_system"
+                  :disabled="!canEditCurrentTheme"
                   placeholder="Автор"
                 />
               </div>
-              <div class="col-12 col-md-4">
+              <div v-if="!isModuleScope" class="col-12 col-md-4">
                 <SelectBox
-                  v-if="isModuleScope"
-                  id="theme-variant"
-                  label="Вариант пары"
-                  :model-value="editingVariant"
-                  :options="VARIANT_OPTIONS"
-                  :include-all-option="false"
-                  :disabled="currentTheme.is_system"
-                  @update:model-value="changeEditingVariant"
-                >
-                  <template #selected="{ option, label }">
-                    <span class="theme-editor__select-option">
-                      <component v-if="option?.icon" :is="option.icon" :size="16" />
-                      <span>{{ label }}</span>
-                    </span>
-                  </template>
-                  <template #option="{ option, label }">
-                    <span class="theme-editor__select-option">
-                      <component v-if="option?.icon" :is="option.icon" :size="16" />
-                      <span>{{ label }}</span>
-                    </span>
-                  </template>
-                </SelectBox>
-                <SelectBox
-                  v-else
                   id="theme-base"
                   label="Базовая тема"
                   :model-value="currentTheme.base_theme"
                   :options="BASE_THEME_OPTIONS"
                   :include-all-option="false"
-                  :disabled="currentTheme.is_system"
+                  :disabled="!canEditCurrentTheme"
                   @update:model-value="changeBaseTheme"
                 >
                   <template #selected="{ option, label }">
@@ -301,9 +346,6 @@ const {
                     </span>
                   </template>
                 </SelectBox>
-                <p v-if="isModuleScope" class="form-text small text-muted mb-0 mt-1">
-                  Режим светлая/тёмная на сайте задаётся глобально; модуль переключает вариант пары автоматически.
-                </p>
               </div>
               <div class="col-12">
                 <label class="form-label" for="theme-description">Описание</label>
@@ -312,7 +354,7 @@ const {
                   v-model="currentTheme.description"
                   type="text"
                   class="form-control theme-editor__input"
-                  :disabled="currentTheme.is_system"
+                  :disabled="!canEditCurrentTheme"
                   placeholder="Описание темы"
                 />
               </div>
@@ -330,7 +372,12 @@ const {
               </label>
             </div>
 
-            <h3 class="admin-section-heading mb-3">Основные цвета</h3>
+            <h3 class="admin-section-heading mb-3">
+              Основные цвета
+              <span v-if="isEditingModulePair" class="theme-editor__variant-label">
+                — {{ editingVariant === 'dark' ? 'тёмный' : 'светлый' }} вариант
+              </span>
+            </h3>
             <div class="row">
               <div
                 v-for="(desc, key) in colorDescriptions"
@@ -341,7 +388,7 @@ const {
                   :label="desc.label"
                   :value="currentTheme.colors[key] || ''"
                   :description="desc.description"
-                  :disabled="currentTheme.is_system"
+                  :disabled="!canEditCurrentTheme"
                   @update:value="updateColor(key, $event)"
                 />
               </div>
@@ -349,7 +396,12 @@ const {
 
             <template v-if="isModuleScope && moduleTokenEntries.length">
               <hr class="theme-editor__divider" />
-              <h3 class="admin-section-heading mb-3">Токены модуля</h3>
+              <h3 class="admin-section-heading mb-3">
+                Токены модуля
+                <span class="theme-editor__variant-label">
+                  — {{ editingVariant === 'dark' ? 'тёмный' : 'светлый' }} вариант
+                </span>
+              </h3>
               <div class="row g-3">
                 <div
                   v-for="entry in moduleTokenEntries"
@@ -361,7 +413,7 @@ const {
                     type="text"
                     class="form-control theme-editor__input"
                     :value="entry.value"
-                    :disabled="currentTheme.is_system"
+                    :disabled="!canEditCurrentTheme"
                     @input="updateModuleToken(entry.key, $event.target.value)"
                   />
                 </div>
@@ -382,7 +434,7 @@ const {
                       :label="varConfig.label"
                       :value="currentTheme.bootstrap_colors[key] || getDefaultValue(key)"
                       :description="varConfig.variable"
-                      :disabled="currentTheme.is_system"
+                      :disabled="!canEditCurrentTheme"
                       @update:value="updateBootstrapColor(key, $event)"
                     />
                   </div>
@@ -404,6 +456,52 @@ const {
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--color-primary-text);
+  }
+
+  .theme-editor__variant-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-secondary-text);
+  }
+
+  .theme-editor__variant-tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .theme-editor__variant-tabs-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-primary-text);
+  }
+
+  .theme-editor__variant-tabs-group {
+    display: inline-flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .theme-editor__variant-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-secondary-background);
+    color: var(--color-primary-text);
+    font-size: 0.875rem;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+      background: var(--color-hover-background);
+    }
+
+    &.active {
+      border-color: var(--color-accent);
+      background: color-mix(in srgb, var(--color-accent) 12%, var(--color-primary-background));
+    }
   }
 
   .content-card--flush {

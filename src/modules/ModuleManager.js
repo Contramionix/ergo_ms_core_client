@@ -16,6 +16,7 @@ import { PermissionRulesManager } from './permissions/PermissionRulesManager.js'
 import { PermissionSectionsManager } from './permissions/PermissionSectionsManager.js'
 import { RouteGuardsManager } from './routing/RouteGuardsManager.js'
 import { IntegrationsManager } from './integrations/IntegrationsManager.js'
+import { fetchDisabledModules } from './core/disabledModules.js'
 
 export class ModuleManager {
   constructor() {
@@ -220,7 +221,6 @@ export class ModuleManager {
    */
   async refreshDisabledModules(apiClient) {
     try {
-      const { fetchDisabledModules } = await import('./core/disabledModules.js')
       if (apiClient) {
         await fetchDisabledModules(apiClient)
       }

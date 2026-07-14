@@ -137,6 +137,27 @@ export function useThemeEditor() {
   const isDraftSelected = computed(() => selectedThemeId.value === DRAFT_THEME_ID)
   const isNewTheme = computed(() => isDraftSelected.value)
 
+  /** Системные темы сайта — только активация; модульные — палитра редактируется. */
+  const canEditCurrentTheme = computed(() => {
+    if (isModuleScope.value) {
+      return Boolean(selectedPairKey.value)
+    }
+    return !currentTheme.is_system
+  })
+
+  const isEditingModulePair = computed(() => isModuleScope.value && Boolean(selectedPairKey.value))
+
+  const modulePairHasUnsavedVariant = computed(() => {
+    if (!isModuleScope.value || !selectedPairKey.value) {
+      return false
+    }
+    const pair = themes.value.find((p) => p.module_pair === selectedPairKey.value)
+    if (!pair?.variants) {
+      return true
+    }
+    return !pair.variants.light?.id || !pair.variants.dark?.id
+  })
+
   const displayThemes = computed(() => {
     if (isModuleScope.value) {
       const pairs = themes.value.map((pair) => ({
@@ -146,6 +167,7 @@ export function useThemeEditor() {
         description: pair.variants?.light?.description || pair.variants?.dark?.description || '',
         is_active: pair.is_active,
         is_system: Boolean(pair.variants?.light?.is_system || pair.variants?.dark?.is_system),
+        is_draft_pair: !pair.variants?.light?.id && !pair.variants?.dark?.id,
         variants: pair.variants,
         is_pair: true,
       }))
@@ -172,15 +194,24 @@ export function useThemeEditor() {
 
   function createEmptyDraft(baseTheme = 'light') {
     const manifest = activeModuleManifest.value
-    const colors = manifest?.colors && Object.keys(manifest.colors).length
-      ? { ...manifest.colors }
-      : { ...getDefaultColors(baseTheme) }
+    const lightSpec = manifest?.systemThemes?.find((s) => s.base_theme === 'light')
+    const darkSpec = manifest?.systemThemes?.find((s) => s.base_theme === 'dark')
+    let colors
+    if (baseTheme === 'light' && lightSpec?.colors) {
+      colors = { ...lightSpec.colors }
+    } else if (baseTheme === 'dark' && darkSpec?.colors) {
+      colors = { ...darkSpec.colors }
+    } else if (baseTheme === (manifest?.baseTheme || 'light') && manifest?.colors && Object.keys(manifest.colors).length) {
+      colors = { ...manifest.colors }
+    } else {
+      colors = { ...getDefaultColors(baseTheme) }
+    }
     return {
       id: DRAFT_THEME_ID,
       name: 'Новая тема',
       description: '',
       author: '',
-      base_theme: manifest?.baseTheme || baseTheme,
+      base_theme: baseTheme,
       module_key: isModuleScope.value ? selectedScope.value : null,
       module_pair: 'default',
       colors,
@@ -189,6 +220,35 @@ export function useThemeEditor() {
       is_active: false,
       is_default: false,
       is_system: false,
+    }
+  }
+
+  function createEmptyModulePairDraft() {
+    const pairKey = `pair_${Date.now()}`
+    const displayName = activeModuleManifest.value?.displayName || selectedScope.value
+    return {
+      module_key: selectedScope.value,
+      module_pair: pairKey,
+      name: `Новая пара (${displayName})`,
+      description: '',
+      is_active: false,
+      is_system: false,
+      variants: {
+        light: {
+          ...createEmptyDraft('light'),
+          id: null,
+          module_pair: pairKey,
+          name: `Новая пара (${displayName})`,
+          is_draft_variant: true,
+        },
+        dark: {
+          ...createEmptyDraft('dark'),
+          id: null,
+          module_pair: pairKey,
+          name: `Новая пара (${displayName})`,
+          is_draft_variant: true,
+        },
+      },
     }
   }
 
@@ -423,6 +483,7 @@ export function useThemeEditor() {
     if (variantData) {
       applyThemeToCurrent(variantData)
       currentTheme.module_pair = pairKey
+      currentTheme.base_theme = variant
       if (pair.name) {
         currentTheme.name = pair.name
       }
@@ -499,10 +560,62 @@ export function useThemeEditor() {
     }
   }
 
+  async function syncPairMetadataToSibling() {
+    if (!isModuleScope.value || !selectedPairKey.value) {
+      return
+    }
+    const pair = themes.value.find((p) => p.module_pair === selectedPairKey.value)
+    if (!pair?.variants) {
+      return
+    }
+    const otherVariant = editingVariant.value === 'light' ? 'dark' : 'light'
+    const sibling = pair.variants[otherVariant]
+    if (!sibling?.id) {
+      return
+    }
+    await apiClient.put(endpoints.themes.update(sibling.id), {
+      name: currentTheme.name,
+      description: currentTheme.description,
+      author: currentTheme.author,
+      base_theme: otherVariant,
+      module_key: currentTheme.module_key || selectedScope.value,
+      module_pair: currentTheme.module_pair || selectedPairKey.value,
+      colors: sibling.colors || {},
+      bootstrap_colors: sibling.bootstrap_colors || {},
+      module_tokens: sibling.module_tokens || {},
+    })
+  }
+
+  async function persistVariantRecord(variantKey, variantData) {
+    const payload = {
+      name: variantData.name || currentTheme.name,
+      description: variantData.description ?? currentTheme.description,
+      author: variantData.author ?? currentTheme.author,
+      base_theme: variantKey,
+      module_key: variantData.module_key || selectedScope.value,
+      module_pair: variantData.module_pair || selectedPairKey.value,
+      colors: variantData.colors || {},
+      bootstrap_colors: variantData.bootstrap_colors || {},
+      module_tokens: variantData.module_tokens || {},
+    }
+
+    if (variantData.id) {
+      return apiClient.put(endpoints.themes.update(variantData.id), payload)
+    }
+    return apiClient.post(endpoints.themes.create, payload)
+  }
+
   // Создание новой темы
   const createNewTheme = () => {
     if (isModuleScope.value) {
-      toast.info('Новые пары модульных тем создаются через синхронизацию manifest модуля')
+      const draftPair = createEmptyModulePairDraft()
+      themes.value = [draftPair, ...themes.value]
+      selectModulePair({
+        ...draftPair,
+        id: draftPair.module_pair,
+        is_pair: true,
+        is_draft_pair: true,
+      }, 'light')
       return
     }
     if (draftTheme.value) {
@@ -512,6 +625,30 @@ export function useThemeEditor() {
 
     draftTheme.value = createEmptyDraft()
     selectTheme({ id: DRAFT_THEME_ID })
+  }
+
+  const discardModulePairDraft = async () => {
+    if (!isModuleScope.value || !modulePairHasUnsavedVariant.value) {
+      return
+    }
+    const ok = await confirmAction({
+      title: 'Удаление черновика',
+      message: 'Удалить несохранённую пару тем?',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена',
+      variant: 'danger',
+    })
+    if (!ok) {
+      return
+    }
+    themes.value = themes.value.filter((p) => p.module_pair !== selectedPairKey.value)
+    const fallback = themes.value[0]
+    if (fallback) {
+      selectModulePair(fallback, 'light', { preview: false })
+      return
+    }
+    selectedPairKey.value = null
+    selectedThemeId.value = null
   }
 
   const discardDraft = async () => {
@@ -589,9 +726,9 @@ export function useThemeEditor() {
 
   // Получить значение по умолчанию для Bootstrap переменной
   const getDefaultValue = (key) => {
-    // Ищем в категориях Bootstrap переменных
     const categories = getBootstrapByCategories()
-    const defaultKey = currentTheme.base_theme === 'dark' ? 'darkDefault' : 'lightDefault'
+    const base = isModuleScope.value ? editingVariant.value : currentTheme.base_theme
+    const defaultKey = base === 'dark' ? 'darkDefault' : 'lightDefault'
   
     for (const category of Object.values(categories)) {
       if (category.variables && category.variables[key]) {
@@ -603,15 +740,18 @@ export function useThemeEditor() {
 
   // Сброс к начальным значениям из _theme.scss (только превью редактора)
   const resetToDefaults = () => {
-    const base = currentTheme.base_theme
+    if (!canEditCurrentTheme.value) {
+      return
+    }
+    const base = isModuleScope.value ? editingVariant.value : currentTheme.base_theme
     const defaults = resetPreviewToDefaults(base)
     currentTheme.colors = { ...defaults.colors }
     currentTheme.bootstrap_colors = {}
     applyEditorPreview()
-    toast.success('Тема сброшена к начальным значениям')
+    toast.success(`Вариант «${base === 'dark' ? 'тёмный' : 'светлый'}» сброшен к начальным значениям`)
   }
 
-  // Сохранение темы
+  // Сохранение текущего варианта (модуль) или темы (сайт)
   const saveTheme = async () => {
     if (!currentTheme.name.trim()) {
       toast.error('Укажите название темы')
@@ -620,6 +760,43 @@ export function useThemeEditor() {
   
     saving.value = true
     try {
+      persistCurrentVariantToPair()
+
+      if (isModuleScope.value) {
+        const pair = themes.value.find((p) => p.module_pair === selectedPairKey.value)
+        const variantSnapshot = snapshotTheme(currentTheme)
+        variantSnapshot.base_theme = editingVariant.value
+        const res = await persistVariantRecord(editingVariant.value, variantSnapshot)
+        if (!res.success) {
+          toast.error(res.message || 'Ошибка сохранения')
+          return
+        }
+
+        if (pair?.variants) {
+          pair.variants[editingVariant.value] = {
+            ...(pair.variants[editingVariant.value] || {}),
+            ...res.data,
+          }
+          pair.name = currentTheme.name
+        }
+
+        await syncPairMetadataToSibling()
+        toast.success(
+          `Сохранён ${editingVariant.value === 'dark' ? 'тёмный' : 'светлый'} вариант`,
+        )
+
+        const savedPairKey = currentTheme.module_pair || selectedPairKey.value
+        await loadThemes()
+        const savedPair = themes.value.find((p) => p.module_pair === savedPairKey)
+        if (savedPair) {
+          selectModulePair(savedPair, editingVariant.value)
+          if (savedPair.is_active) {
+            applyActivatedTheme(savedPair)
+          }
+        }
+        return
+      }
+
       const data = {
         name: currentTheme.name,
         description: currentTheme.description,
@@ -671,6 +848,60 @@ export function useThemeEditor() {
       }
     } catch (e) {
       toast.error(e.message || 'Ошибка сохранения темы')
+    } finally {
+      saving.value = false
+    }
+  }
+
+  const saveModulePair = async () => {
+    if (!isModuleScope.value || !selectedPairKey.value) {
+      return
+    }
+    if (!currentTheme.name.trim()) {
+      toast.error('Укажите название темы')
+      return
+    }
+
+    saving.value = true
+    try {
+      persistCurrentVariantToPair()
+      const pair = themes.value.find((p) => p.module_pair === selectedPairKey.value)
+      if (!pair?.variants) {
+        toast.error('Пара тем не найдена')
+        return
+      }
+
+      for (const variantKey of ['light', 'dark']) {
+        const source = variantKey === editingVariant.value
+          ? snapshotTheme(currentTheme)
+          : snapshotTheme(pair.variants[variantKey] || createEmptyDraft(variantKey))
+        source.name = currentTheme.name
+        source.description = currentTheme.description
+        source.author = currentTheme.author
+        source.module_key = selectedScope.value
+        source.module_pair = selectedPairKey.value
+        source.base_theme = variantKey
+
+        const res = await persistVariantRecord(variantKey, source)
+        if (!res.success) {
+          toast.error(res.message || `Ошибка сохранения ${variantKey}-варианта`)
+          return
+        }
+        pair.variants[variantKey] = res.data
+      }
+
+      toast.success('Светлый и тёмный варианты сохранены')
+      const savedPairKey = selectedPairKey.value
+      await loadThemes()
+      const savedPair = themes.value.find((p) => p.module_pair === savedPairKey)
+      if (savedPair) {
+        selectModulePair(savedPair, editingVariant.value)
+        if (savedPair.is_active) {
+          applyActivatedTheme(savedPair)
+        }
+      }
+    } catch (e) {
+      toast.error(e.message || 'Ошибка сохранения пары')
     } finally {
       saving.value = false
     }
@@ -848,6 +1079,7 @@ export function useThemeEditor() {
     bootstrapCategories,
     changeBaseTheme,
     changeEditingVariant,
+    canEditCurrentTheme,
     changeScope,
     selectedScope,
     scopeOptions,
@@ -857,6 +1089,7 @@ export function useThemeEditor() {
     currentTheme,
     deleteTheme,
     discardDraft,
+    discardModulePairDraft,
     displayThemes,
     duplicateTheme,
     exportTheme,
@@ -867,10 +1100,13 @@ export function useThemeEditor() {
     isNewTheme,
     loading,
     moduleTokenEntries,
+    isEditingModulePair,
+    modulePairHasUnsavedVariant,
     resetSystemTheme,
     resetToDefaults,
     resettingThemeId,
     saveTheme,
+    saveModulePair,
     saving,
     selectTheme,
     selectedThemeId,
