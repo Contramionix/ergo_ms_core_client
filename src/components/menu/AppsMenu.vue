@@ -1,10 +1,11 @@
 <script setup>
-import { Grid3x3 } from 'lucide-vue-next'
+import LucideIcon from '@/components/LucideIcon.vue'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { moduleManager } from '@/modules/index.js'
 import { useDropdown } from '@/composables/useDropdown.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
+import HoverTooltip from '@/components/HoverTooltip.vue'
 
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
@@ -47,9 +48,11 @@ onMounted(async () => {
 
 <template>
   <div ref="dropdownRef" class="apps-menu-wrapper">
-    <div @click.stop="toggleDropdown" class="header-btn" v-tooltip title="Приложения">
-      <Grid3x3 :size="20" />
-    </div>
+    <HoverTooltip text="Приложения">
+      <div @click.stop="toggleDropdown" class="header-btn">
+        <LucideIcon name="Grid3x3" :size="20" />
+      </div>
+    </HoverTooltip>
     <Transition name="dropdown">
       <div v-if="isOpen" class="apps-dropdown-menu">
         <LoadingContentArea :loading="isLoading" min-height="6rem">

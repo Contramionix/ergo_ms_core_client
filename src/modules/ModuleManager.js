@@ -44,7 +44,6 @@ export class ModuleManager {
       this.routeManager.initialize(),
       this.endpointManager.initialize(),
       this.permissionRulesManager.initialize(),
-      this.permissionSectionsManager.initialize(),
       this.routeGuardsManager.initialize(),
     ])
 
@@ -100,6 +99,7 @@ export class ModuleManager {
    */
   async getPermissionSections() {
     await this.ensureInitialized()
+    await this.ensurePermissionSectionsInitialized()
     return this.permissionSectionsManager.getAllSections()
   }
 
@@ -110,6 +110,7 @@ export class ModuleManager {
    */
   async buildInitialPermissionState(sections) {
     await this.ensureInitialized()
+    await this.ensurePermissionSectionsInitialized()
     return this.permissionSectionsManager.buildInitialPermissionState(sections)
   }
 
@@ -204,6 +205,12 @@ export class ModuleManager {
       this._initPromise = this.initialize()
     }
     await this._initPromise
+  }
+
+  async ensurePermissionSectionsInitialized() {
+    if (!this.permissionSectionsManager.initialized) {
+      await this.permissionSectionsManager.initialize()
+    }
   }
 
   /**

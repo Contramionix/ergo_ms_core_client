@@ -192,7 +192,9 @@ function setupRouterGuards(router) {
 export async function initRouter() {
   const routes = await generateAllRoutes()
 
-  void validateAll()
+  if (import.meta.env.DEV) {
+    void validateAll()
+  }
 
   routes.forEach((route) => {
     if (!route.meta || !Object.prototype.hasOwnProperty.call(route.meta, 'startRoute')) {

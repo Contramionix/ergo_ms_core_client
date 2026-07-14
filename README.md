@@ -21,6 +21,7 @@
 | Компоненты UI | [`.cursor/rules/components.mdc`](../../.cursor/rules/components.mdc) |
 | Боковое меню | [`.cursor/rules/menu.mdc`](../../.cursor/rules/menu.mdc) |
 | Realtime / WebSocket | [`.cursor/rules/realtime.mdc`](../../.cursor/rules/realtime.mdc) |
+| Redis, nginx (prod) | [`.cursor/rules/deployment-infra.mdc`](../../.cursor/rules/deployment-infra.mdc) |
 | Стиль Vue, toast, confirm | [`.cursor/rules/client_code.mdc`](../../.cursor/rules/client_code.mdc) |
 | Темы и шрифты | [`.cursor/rules/themes.mdc`](../../.cursor/rules/themes.mdc) |
 | Безопасность (public_id, токены) | [`.cursor/rules/security.mdc`](../../.cursor/rules/security.mdc) |

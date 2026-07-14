@@ -1,6 +1,8 @@
 <script setup>
 import { Settings, Cog, Contrast, ChevronRight } from 'lucide-vue-next'
 import SelectBox from '@/components/SelectBox.vue'
+import HoverTooltip from '@/components/HoverTooltip.vue'
+import LucideIcon from '@/components/LucideIcon.vue'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { useUiSettings } from '@/core/cms/js/uiSettings.js'
 
@@ -21,9 +23,11 @@ function openUserSettings() {
 
 <template>
   <div ref="dropdownRef" class="settings-menu-wrapper">
-    <div @click.stop="toggleDropdown" class="header-btn" v-tooltip title="Настройки">
-      <Settings :size="20" />
-    </div>
+    <HoverTooltip text="Настройки">
+      <div @click.stop="toggleDropdown" class="header-btn">
+        <LucideIcon name="Settings" :size="20" />
+      </div>
+    </HoverTooltip>
     <Transition name="dropdown">
       <ul v-if="isOpen" class="settings-dropdown-menu">
         <li>

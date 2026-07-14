@@ -1,10 +1,10 @@
 <script setup>
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import LayoutMenu from '@/LayoutMenu.vue'
-import LayoutStart from '@/LayoutStart.vue'
-import LayoutPublic from '@/LayoutPublic.vue'
+const LayoutMenu = defineAsyncComponent(() => import('@/LayoutMenu.vue'))
+const LayoutStart = defineAsyncComponent(() => import('@/LayoutStart.vue'))
+const LayoutPublic = defineAsyncComponent(() => import('@/LayoutPublic.vue'))
 import MaintenancePage from '@/components/MaintenancePage.vue'
 import NotificationProvider from '@/components/NotificationProvider.vue'
 import HoverTooltipLayer from '@/components/HoverTooltipLayer.vue'

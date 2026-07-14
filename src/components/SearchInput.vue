@@ -10,11 +10,12 @@
   >
     <label v-if="label" :for="inputId" class="form-label mb-1">{{ label }}</label>
     <div class="search-input__wrap">
-      <Search
+      <LucideIcon
         v-if="showIcon"
+        name="Search"
         :size="iconSize"
         class="search-input__icon"
-        aria-hidden="true"
+        icon-class="search-input__icon"
       />
       <input
         :id="inputId"
@@ -34,7 +35,7 @@
 
 <script setup>
 import { computed, useId } from 'vue'
-import { Search } from 'lucide-vue-next'
+import LucideIcon from '@/components/LucideIcon.vue'
 
 const props = defineProps({
   modelValue: {

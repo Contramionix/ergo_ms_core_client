@@ -12,54 +12,39 @@
  */
 
 import { getDisabledModulesSync } from './disabledModules.js'
+import * as generatedGlobs from './sharedGlobs.generated.js'
 
 // Глобальный кеш для результатов loadAllModulesAsync
 const asyncModulesCache = new Map()
 
 // ============================================================================
-// ЗАГРУЗКА ВСЕХ ГЛОБОВ ОДИН РАЗ ПРИ ИМПОРТЕ МОДУЛЯ (TOP-LEVEL)
-// Это гарантирует, что все файлы загружаются одним пакетом
+// Globs: core — статически; modules — из sharedGlobs.generated.js (prebuild)
 // ============================================================================
 const sharedGlobs = {
-  // Core модули - routes, endpoints, permission-rules
-  // routes и endpoints — lazy (как permission-rules), чтобы не раздувать initial chunk
-  coreRoutes: import.meta.glob('../../core/**/js/routes.js'),
-  coreEndpoints: import.meta.glob('../../core/**/js/endpoints.js'),
-  corePermissionRules: import.meta.glob('../../core/**/js/permission-rules.js'),
-  corePermissionSections: import.meta.glob('../../core/**/js/permission-sections.js'),
-  coreRouteGuards: import.meta.glob('../../core/**/js/routeGuard.js'),
+  coreRoutes: generatedGlobs.coreRoutes,
+  coreEndpoints: generatedGlobs.coreEndpoints,
+  corePermissionRules: generatedGlobs.corePermissionRules,
+  corePermissionSections: generatedGlobs.corePermissionSections,
+  coreRouteGuards: generatedGlobs.coreRouteGuards,
+  coreIntegrations: generatedGlobs.coreIntegrations,
+  coreComponents: generatedGlobs.coreComponents,
 
-  // Core компоненты (lazy loading)
-  coreComponents: import.meta.glob('../../**/*.vue'),
-  
-  // External модули - routes (в т.ч. вложенные, например client/edu-space-tasks/js/routes.js)
   modulesRoutes: {
-    ...import.meta.glob('../../../../../modules/*/client/js/routes.js'),
-    ...import.meta.glob('../../../../../modules/*/client/**/js/routes.js')
+    ...generatedGlobs.modulesRoutes,
+    ...generatedGlobs.modulesRoutesNested,
   },
-  modulesEndpoints: import.meta.glob('../../../../../modules/*/client/js/endpoints.js'),
-  modulesPermissionRules: import.meta.glob('../../../../../modules/*/client/js/permission-rules.js'),
+  modulesEndpoints: generatedGlobs.modulesEndpoints,
+  modulesPermissionRules: generatedGlobs.modulesPermissionRules,
   modulesPermissionSections: {
-    ...import.meta.glob('../../../../../modules/*/client/js/permission-sections.js'),
-    ...import.meta.glob('../../../../../modules/*/client/**/js/permission-sections.js')
+    ...generatedGlobs.modulesPermissionSections,
+    ...generatedGlobs.modulesPermissionSectionsNested,
   },
-  modulesRouteGuards: import.meta.glob('../../../../../modules/*/client/js/routeGuard.js'),
-  // Интеграции с ModuleBridge (регистрация capabilities/events модуля)
-  //
-  // ВАЖНО: загружаем лениво (без eager), чтобы integrations.js-файлы не
-  // исполнялись на стадии импорта ModuleLoader.js. Это ломает циклическую
-  // цепочку `@/modules/index.js` -> ModuleManager -> IntegrationsManager ->
-  // ModuleLoader -> integrations.js -> tokenService/endpoints -> `@/modules/index.js`.
-  // integrations.js грузится асинхронно в IntegrationsManager.initialize(),
-  // когда moduleManager уже полностью инициализирован.
-  coreIntegrations: import.meta.glob('../../core/**/js/integrations.js'),
+  modulesRouteGuards: generatedGlobs.modulesRouteGuards,
   modulesIntegrations: {
-    ...import.meta.glob('../../../../../modules/*/client/js/integrations.js'),
-    ...import.meta.glob('../../../../../modules/*/client/**/js/integrations.js')
+    ...generatedGlobs.modulesIntegrations,
+    ...generatedGlobs.modulesIntegrationsNested,
   },
-
-  // External компоненты (lazy loading)
-  modulesComponents: import.meta.glob('../../../../../modules/**/client/**/*.vue')
+  modulesComponents: generatedGlobs.modulesComponents,
 }
 
 export class ModuleLoader {

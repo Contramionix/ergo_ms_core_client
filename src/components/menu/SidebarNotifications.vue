@@ -7,6 +7,8 @@ import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsI
 import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
 import NotificationActions from '@/core/notifications/components/NotificationActions.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
+import HoverTooltip from '@/components/HoverTooltip.vue'
+import LucideIcon from '@/components/LucideIcon.vue'
 import { moduleManager } from '@/modules/index.js'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 
@@ -138,10 +140,12 @@ function goToFullList() {
 
 <template>
   <div ref="dropdownRef" class="tools__notifications-wrapper">
-    <div @click.stop="handleToggle" class="header-btn notifications-btn" :class="{ 'has-unread': hasUnread }" v-tooltip title="Уведомления">
-      <Bell :size="20" />
-      <span v-if="hasUnread" class="notifications-badge">{{ formatBadge(unreadCount) }}</span>
-    </div>
+    <HoverTooltip text="Уведомления">
+      <div @click.stop="handleToggle" class="header-btn notifications-btn" :class="{ 'has-unread': hasUnread }">
+        <LucideIcon name="Bell" :size="20" />
+        <span v-if="hasUnread" class="notifications-badge">{{ formatBadge(unreadCount) }}</span>
+      </div>
+    </HoverTooltip>
 
     <Transition name="dropdown">
       <div v-if="isOpen" class="notifications-dropdown">
@@ -173,7 +177,9 @@ function goToFullList() {
                   <span v-if="item.source_module" class="notifications-item__source">
                     {{ item.source_module }}
                   </span>
-                  <span class="notifications-item__date" v-tooltip :title="readAtTooltip(item)">{{ formatNotificationDate(item.created_at) }}</span>
+                  <HoverTooltip :text="readAtTooltip(item)">
+                    <span class="notifications-item__date">{{ formatNotificationDate(item.created_at) }}</span>
+                  </HoverTooltip>
                 </div>
               </div>
             </li>

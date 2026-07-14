@@ -2,7 +2,15 @@
 import { ref } from 'vue'
 import { Eye, EyeOff } from 'lucide-vue-next'
 
+defineOptions({
+  inheritAttrs: false,
+})
+
 defineProps({
+  id: {
+    type: String,
+    default: 'password',
+  },
   modelValue: {
     type: String,
     default: ''
@@ -47,12 +55,12 @@ const updateValue = (event) => {
 </script>
 
 <template>
-  <div class="password-input" v-auto-animate>
+  <div class="password-input" v-auto-animate v-bind="$attrs">
     <div class="password-input__field position-relative">
       <div class="form-floating">
         <input
           :type="showPassword ? 'text' : 'password'"
-          :id="$attrs.id || 'password'"
+          :id="id"
           class="form-control pe-5"
           :class="{ 'is-invalid': error }"
           :value="modelValue"
@@ -60,9 +68,8 @@ const updateValue = (event) => {
           placeholder=" "
           :disabled="disabled"
           :autocomplete="autocomplete"
-          :aria-label="label"
         />
-        <label :for="$attrs.id || 'password'">
+        <label :for="id">
           <i :class="`bi ${icon} me-2`"></i>{{ label }}
         </label>
       </div>

@@ -30,7 +30,7 @@ import MenuList from '@/components/menu/MenuList.vue'
 import LayoutBackdrop from '@/components/LayoutBackdrop.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
 import { accessDeniedState } from './js/accessDeniedState'
-import { Menu as IconMenu } from 'lucide-vue-next'
+import LucideIcon from '@/components/LucideIcon.vue'
 
 import { initEndpoints } from '@/js/api/endpoints.js'
 import SiteWordmark from '@/components/SiteWordmark.vue'
@@ -157,7 +157,7 @@ onBeforeUnmount(() => {
   <Teleport to="body">
     <div v-if="!isFullPage" class="mobile-header d-xl-none">
       <button class="btn btn-link d-flex align-items-center justify-content-center mobile-header__btn" type="button" :aria-label="isMenuVisible ? 'Закрыть меню' : 'Открыть меню'" :title="isMenuVisible ? 'Закрыть меню' : 'Открыть меню'" @click="onHamburgerClick">
-        <IconMenu :size="24" />
+        <LucideIcon name="Menu" :size="24" />
       </button>
       <RouterLink :to="{ name: 'AppHome' }" class="mobile-header__brand text-decoration-none">
         <SiteWordmark class="site-wordmark--mobile site-wordmark--centered" />

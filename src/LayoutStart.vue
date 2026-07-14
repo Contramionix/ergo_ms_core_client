@@ -1,6 +1,12 @@
 <script setup>
 import LayoutBackdrop from '@/components/LayoutBackdrop.vue'
 import RouteViewAnimated from '@/components/RouteViewAnimated.vue'
+import { preloadAuthSettings } from '@/composables/useAuthSettingsPreload.js'
+import { onMounted } from 'vue'
+
+onMounted(() => {
+  preloadAuthSettings()
+})
 </script>
 
 <template>

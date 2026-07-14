@@ -48,13 +48,13 @@
           <template v-if="useFullPagination">
             <li class="page-item" :class="{ disabled: isFirstDisabled }">
               <button type="button" class="page-link" aria-label="Первая страница" :disabled="isFirstDisabled" @click="firstPage">
-                <ChevronsLeft :size="16" />
+                <LucideIcon name="ChevronsLeft" :size="16" />
               </button>
             </li>
           </template>
           <li class="page-item" :class="{ disabled: isPrevDisabled }">
             <button type="button" class="page-link" aria-label="Предыдущая страница" :disabled="isPrevDisabled" @click="prevPage">
-              <ChevronLeft :size="16" />
+              <LucideIcon name="ChevronLeft" :size="16" />
             </button>
           </li>
           <template v-if="useFullPagination">
@@ -67,13 +67,13 @@
           </template>
           <li class="page-item" :class="{ disabled: isNextDisabled }">
             <button type="button" class="page-link" aria-label="Следующая страница" :disabled="isNextDisabled" @click="nextPage">
-              <ChevronRight :size="16" />
+              <LucideIcon name="ChevronRight" :size="16" />
             </button>
           </li>
           <template v-if="useFullPagination">
             <li class="page-item" :class="{ disabled: isLastDisabled }">
               <button type="button" class="page-link" aria-label="Последняя страница" :disabled="isLastDisabled" @click="lastPage">
-                <ChevronsRight :size="16" />
+                <LucideIcon name="ChevronsRight" :size="16" />
               </button>
             </li>
           </template>
@@ -85,7 +85,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-vue-next'
+import LucideIcon from '@/components/LucideIcon.vue'
 
 const props = defineProps({
   items: {

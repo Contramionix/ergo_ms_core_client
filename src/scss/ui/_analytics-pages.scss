@@ -1,57 +1,78 @@
 // Общие layout/карточки для porosity / impuls / video_analysis.
 
-.va-module-layout {
-  min-height: 100vh;
-  background: var(--va-bg);
-  color: var(--va-text);
+.filters-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+
+  .search-input {
+    flex: 1 1 240px;
+    min-width: 200px;
+  }
+
+  .filter-menu {
+    flex: 0 0 auto;
+  }
 }
 
-.va-analyses-page {
+.va-module-layout,
+.ui-module-layout {
+  min-height: 100vh;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
+
+.va-analyses-page,
+.ui-analyses-page {
   padding: 2rem;
   min-height: 100vh;
-  background: var(--va-bg);
-  color: var(--va-text);
+  background: var(--ui-bg);
+  color: var(--ui-text);
 
   @media (max-width: 768px) {
     padding: 1rem;
   }
 }
 
-.va-surface-card {
-  background: var(--va-surface);
-  border: 1px solid var(--va-border);
-  border-radius: var(--va-radius-lg);
-  box-shadow: var(--va-shadow-sm);
+.va-surface-card,
+.ui-surface-card {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow-sm);
 }
 
-.va-filters-card {
-  @extend .va-surface-card;
+.va-filters-card,
+.ui-filters-card {
+  @extend .ui-surface-card;
   margin-bottom: 2rem;
 
   .form-label {
-    color: var(--va-text);
+    color: var(--ui-text);
     font-weight: 600;
   }
 
   .form-control,
   .form-select {
-    background: var(--va-surface);
-    color: var(--va-text);
-    border-color: var(--va-border);
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    border-color: var(--ui-border);
 
     &:focus {
-      border-color: var(--bs-primary, var(--va-accent));
+      border-color: var(--bs-primary, var(--ui-accent));
       box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
     }
   }
 }
 
-.va-statistics-card {
-  background: var(--va-surface);
-  border: 1px solid var(--va-border);
-  border-radius: var(--va-radius-lg);
+.va-statistics-card,
+.ui-statistics-card {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
   padding: 1.5rem;
-  box-shadow: var(--va-shadow-sm);
+  box-shadow: var(--ui-shadow-sm);
   position: relative;
   overflow: hidden;
 

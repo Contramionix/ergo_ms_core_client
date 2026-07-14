@@ -24,7 +24,7 @@
                         <span class="value-text">{{ currentLabel }}</span>
                     </slot>
                 </span>
-                <span v-if="!hideChevron" class="d-inline-flex align-items-center select-trigger-chevron" :class="{ 'select-trigger-chevron--open': isOpen }"><ChevronDown class="icon-center" /></span>
+                <span v-if="!hideChevron" class="d-inline-flex align-items-center select-trigger-chevron" :class="{ 'select-trigger-chevron--open': isOpen }"><LucideIcon name="ChevronDown" class="icon-center" /></span>
             </button>
             <teleport to="body">
                 <div
@@ -120,7 +120,7 @@
 
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick, useId } from 'vue'
-import { ChevronDown } from 'lucide-vue-next'
+import LucideIcon from '@/components/LucideIcon.vue'
 
 defineOptions({ inheritAttrs: false })
 

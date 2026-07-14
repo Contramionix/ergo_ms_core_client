@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import {
   pushModal,
   popModal,
@@ -148,45 +148,11 @@ watch(
   },
 )
 
-let applyBackdropStyle = null
-let resetBackdropStyle = null
-
-onMounted(() => {
-  if (props.standalone || props.backdropEffect === 'dim') return
-
-  const el = document.getElementById(props.modalId)
-  if (!el) return
-
-  applyBackdropStyle = () => {
-    requestAnimationFrame(() => {
-      const bd = document.querySelector('.modal-backdrop')
-      if (!bd) return
-      if (props.backdropEffect === 'blur') bd.style.background = 'transparent'
-      bd.style.backdropFilter = `blur(${props.backdropBlur}px)`
-    })
-  }
-
-  resetBackdropStyle = () => {
-    const bd = document.querySelector('.modal-backdrop')
-    if (!bd) return
-    bd.style.backdropFilter = ''
-    bd.style.background = ''
-  }
-
-  el.addEventListener('show.bs.modal', applyBackdropStyle)
-  el.addEventListener('hide.bs.modal', resetBackdropStyle)
-})
-
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown)
   if (props.standalone) {
     unregisterFromStack()
   }
-  if (!applyBackdropStyle) return
-  const el = document.getElementById(props.modalId)
-  if (!el) return
-  el.removeEventListener('show.bs.modal', applyBackdropStyle)
-  el.removeEventListener('hide.bs.modal', resetBackdropStyle)
 })
 </script>
 
@@ -231,38 +197,6 @@ onBeforeUnmount(() => {
       </div>
     </div>
   </Teleport>
-
-  <div
-    v-else-if="!standalone"
-    class="modal fade"
-    :class="customClass"
-    :id="modalId"
-    tabindex="-1"
-    :aria-labelledby="rootAriaLabelledby"
-    :aria-label="rootAriaLabel"
-    aria-hidden="true"
-    :data-bs-backdrop="backdrop"
-    :data-bs-keyboard="keyboard"
-  >
-    <div class="modal-dialog" :class="dialogComputedClass" :style="dialogStyle">
-      <div class="modal-content">
-        <div v-if="showTitle" class="modal-header">
-          <h1 class="modal-title fs-5 d-flex align-items-center gap-2" :id="titleId">
-            <slot name="title">{{ title }}</slot>
-          </h1>
-          <button v-if="showCloseButton" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть" @click.stop="handleClose"></button>
-        </div>
-        <button v-else-if="!showTitle && showCloseButton" type="button" class="modal-content__floating-close btn-close" data-bs-dismiss="modal" aria-label="Закрыть" @click.stop="handleClose"></button>
-        <div class="modal-body" :class="bodyClass">
-          <slot></slot>
-        </div>
-
-        <div v-if="$slots.footer" class="modal-footer">
-          <slot name="footer" />
-        </div>
-      </div>
-    </div>
-  </div>
 </template>
 
 <style lang="scss" scoped>
