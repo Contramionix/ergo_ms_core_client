@@ -29,3 +29,6 @@ coverage
 *.tsbuildinfo
 
 /node_modules
+
+# Генерируется перед dev/build (scripts/generate-module-globs.js)
+src/modules/core/sharedGlobs.generated.js
