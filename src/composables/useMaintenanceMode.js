@@ -2,7 +2,7 @@ import { ref } from 'vue'
 
 import axios from 'axios'
 
-import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
+import { resolveApiClientBaseUrl, shouldUseSameOriginApi } from '@/js/api/baseUrl.js'
 import {
   MAINTENANCE_POLL_INTERVAL_MS,
   normalizeMaintenancePollIntervalMs,
@@ -36,9 +36,13 @@ function applyPollIntervalFromPayload(payload) {
 }
 
 function buildApiStatusUrl() {
-  const base = resolveApiBaseUrl()
-  const prefix = base ? `${base}/api/` : '/api/'
-  return `${prefix}system/maintenance-status/`
+  return `${resolveApiClientBaseUrl()}system/maintenance-status/`
+}
+
+function shouldProbeStaticMaintenance() {
+  // maintenance.json создаётся ergoms maintenance-on/off и раздаётся nginx из dist/public.
+  // В dev (Vite :8001, API :8000) файла обычно нет — опрос API достаточен.
+  return shouldUseSameOriginApi()
 }
 
 export function isMaintenanceResponse(errorOrResponse) {
@@ -94,12 +98,19 @@ export function clearMaintenanceMode() {
 }
 
 async function fetchStaticMaintenanceStatus() {
+  if (!shouldProbeStaticMaintenance()) {
+    return null
+  }
+
   try {
     const response = await axios.get(STATIC_STATUS_URL, {
       headers: { Accept: 'application/json' },
       params: { _: Date.now() },
-      validateStatus: (status) => status === 200,
+      validateStatus: (status) => status === 200 || status === 404,
     })
+    if (response.status === 404) {
+      return null
+    }
     return response.data
   } catch {
     return null
@@ -112,7 +123,15 @@ async function fetchApiMaintenanceStatus() {
       withCredentials: true,
       headers: { Accept: 'application/json' },
       timeout: 5000,
+      validateStatus: (status) =>
+        (status >= 200 && status < 300) || status === 503 || status === 404,
     })
+    if (response.status === 404) {
+      return null
+    }
+    if (applyMaintenanceFromResponse(response)) {
+      return { maintenance: true, detail: maintenanceDetail.value }
+    }
     return response.data
   } catch (error) {
     if (applyMaintenanceFromResponse(error)) {
