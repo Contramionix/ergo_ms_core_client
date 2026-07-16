@@ -43,36 +43,39 @@
           Показано {{ startIndex + 1 }} – {{ endIndex }} из {{ totalItemsCount }}
         </template>
       </div>
-      <nav aria-label="Навигация по страницам">
+      <nav class="data-table-pagination" aria-label="Навигация по страницам">
         <ul class="pagination pagination-sm mb-0">
           <template v-if="useFullPagination">
             <li class="page-item" :class="{ disabled: isFirstDisabled }">
-              <button type="button" class="page-link" aria-label="Первая страница" :disabled="isFirstDisabled" @click="firstPage">
+              <button type="button" class="page-link page-link--icon" aria-label="Первая страница" :disabled="isFirstDisabled" @click="firstPage">
                 <LucideIcon name="ChevronsLeft" :size="16" />
               </button>
             </li>
           </template>
           <li class="page-item" :class="{ disabled: isPrevDisabled }">
-            <button type="button" class="page-link" aria-label="Предыдущая страница" :disabled="isPrevDisabled" @click="prevPage">
+            <button type="button" class="page-link page-link--icon" aria-label="Предыдущая страница" :disabled="isPrevDisabled" @click="prevPage">
               <LucideIcon name="ChevronLeft" :size="16" />
             </button>
           </li>
           <template v-if="useFullPagination">
             <li v-for="(page, idx) in visiblePages" :key="idx" class="page-item" :class="{ active: page === currentPage, disabled: page === '...' }">
-              <button v-if="page !== '...'" type="button" class="page-link" @click="goToPage(page)">
+              <button v-if="page !== '...'" type="button" class="page-link page-link--number" @click="goToPage(page)">
                 {{ page }}
               </button>
-              <span v-else class="page-link">...</span>
+              <span v-else class="page-link page-link--ellipsis">…</span>
             </li>
           </template>
+          <li v-else-if="useSimpleServerPagination" class="page-item active" aria-current="page">
+            <span class="page-link page-link--number">{{ currentPage }}</span>
+          </li>
           <li class="page-item" :class="{ disabled: isNextDisabled }">
-            <button type="button" class="page-link" aria-label="Следующая страница" :disabled="isNextDisabled" @click="nextPage">
+            <button type="button" class="page-link page-link--icon" aria-label="Следующая страница" :disabled="isNextDisabled" @click="nextPage">
               <LucideIcon name="ChevronRight" :size="16" />
             </button>
           </li>
           <template v-if="useFullPagination">
             <li class="page-item" :class="{ disabled: isLastDisabled }">
-              <button type="button" class="page-link" aria-label="Последняя страница" :disabled="isLastDisabled" @click="lastPage">
+              <button type="button" class="page-link page-link--icon" aria-label="Последняя страница" :disabled="isLastDisabled" @click="lastPage">
                 <LucideIcon name="ChevronsRight" :size="16" />
               </button>
             </li>
@@ -367,38 +370,95 @@ const nextPage = () => {
   }
 }
 
-.pagination {
-  gap: 0.25rem;
+.data-table-pagination {
+  flex-shrink: 0;
 }
 
-.pagination .page-link {
-  border-radius: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  color: var(--color-primary-text);
-  border-color: var(--color-border);
-  min-width: 36px;
-  height: 31px;
-  text-align: center;
+.data-table-pagination .pagination {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.data-table-pagination .page-item {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &::marker {
+    content: none;
+  }
+}
+
+.data-table-pagination .page-link {
+  position: static;
+  float: none;
+  margin-left: 0 !important;
+  border-radius: 0.375rem;
+  padding: 0;
+  color: var(--color-primary-text);
+  background-color: var(--color-primary-background);
+  border: 1px solid var(--color-border);
+  min-width: 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  line-height: 1;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   box-shadow: none !important;
 }
 
-.pagination .page-item.active .page-link {
+.data-table-pagination .page-link--number {
+  min-width: 2.25rem;
+  width: auto;
+  padding: 0 0.5rem;
+}
+
+.data-table-pagination .page-link--ellipsis {
+  border-color: transparent;
+  background-color: transparent;
+  cursor: default;
+  min-width: 1.5rem;
+  width: auto;
+  padding: 0 0.125rem;
+}
+
+.data-table-pagination button.page-link {
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+.data-table-pagination .page-item.active .page-link {
   background-color: var(--color-accent);
   border-color: var(--color-accent);
   color: var(--color-primary-background);
+  font-weight: 600;
 }
 
-.pagination .page-item.disabled .page-link {
+.data-table-pagination .page-item.disabled .page-link {
   color: var(--color-secondary-text);
+  opacity: 0.5;
   pointer-events: none;
 }
 
-.pagination .page-link:hover:not(.disabled) {
+.data-table-pagination .page-item:not(.disabled):not(.active) button.page-link:hover {
   background-color: var(--color-hover-background);
   border-color: var(--color-border);
+  color: var(--color-primary-text);
 }
 
 .data-table-page-label {

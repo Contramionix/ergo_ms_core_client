@@ -36,8 +36,6 @@ const isQueryWatchReady = ref(false)
 
 const events = ref([])
 const totalEvents = ref(0)
-const hasNextPage = ref(false)
-const hasPreviousPage = ref(false)
 const rowsPerPage = ref(12)
 
 const AUDIT_FILTER_MAP = {
@@ -310,8 +308,6 @@ async function loadEvents({ spinRefresh = false } = {}) {
     const data = result?.data || {}
     events.value = data.results || []
     totalEvents.value = typeof data.count === 'number' ? data.count : 0
-    hasNextPage.value = Boolean(data.has_next)
-    hasPreviousPage.value = Boolean(data.has_previous)
 
     if (typeof data.page === 'number' && data.page >= 1 && data.page !== listState.value.page) {
       await patchState({ page: data.page }, { immediate: true, silent: true })
@@ -448,7 +444,7 @@ watchState(() => {
       </div>
 
       <LoadingContentArea :loading="isLoading">
-        <DataTable :items="events" :columns="columns" :show-number-column="false" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalEvents" :has-next-page="hasNextPage" :has-previous-page="hasPreviousPage" :get-item-key="getItemKey" :enable-pagination="true" empty-text="Записи не найдены" @update:current-page="handlePageChange">
+        <DataTable :items="events" :columns="columns" :show-number-column="false" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalEvents" :get-item-key="getItemKey" :enable-pagination="true" empty-text="Записи не найдены" @update:current-page="handlePageChange">
           <template #cell-created_at="{ item }">
             <span class="audit-time">{{ formatDateTime(item.created_at) }}</span>
           </template>
