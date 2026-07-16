@@ -30,11 +30,17 @@ $card-bg: var(--color-primary-background);
   transition: background-color $transition;
 }
 
-// Кнопка
+// Кнопка: тень от accent темы, не от Sass $primary (#d0322d)
 @each $color, $value in $theme-colors {
-  .btn-#{$color} {
-    box-shadow: 0 0.125rem 0.25rem 0 rgba($value, 0.4);
+  @if $color != primary {
+    .btn-#{$color} {
+      box-shadow: 0 0.125rem 0.25rem 0 rgba($value, 0.4);
+    }
   }
+}
+
+.btn-primary {
+  box-shadow: 0 0.125rem 0.25rem 0 color-mix(in srgb, var(--color-accent, var(--bs-primary)) 40%, transparent);
 }
 
 // Канвас
@@ -90,7 +96,7 @@ $progress-height: 0.5rem;
   overflow: initial !important;
 }
 .progress-bar {
-  box-shadow: 0 2px 4px 0 rgba($primary, 0.4) !important;
+  box-shadow: 0 2px 4px 0 color-mix(in srgb, var(--color-accent, var(--bs-primary)) 40%, transparent) !important;
 }
 
 // Выпадающее окно

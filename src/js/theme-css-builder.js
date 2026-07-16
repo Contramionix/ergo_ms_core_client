@@ -138,10 +138,17 @@ export function buildThemeCss({
   if (colors.accent) {
     const rgb = parseAccentRgb(colors.accent)
     if (rgb) {
+      const { r, g, b } = rgb
+      // subtle-токены Bootstrap иначе остаются от дефолтного accent сборки (красное «свечение» меню)
+      const bgAlpha = baseTheme === 'dark' ? 0.18 : 0.12
+      const borderAlpha = baseTheme === 'dark' ? 0.35 : 0.25
       cssRules += `  --bs-primary: ${colors.accent} !important;\n`
-      cssRules += `  --bs-primary-rgb: ${rgb.r}, ${rgb.g}, ${rgb.b} !important;\n`
+      cssRules += `  --bs-primary-rgb: ${r}, ${g}, ${b} !important;\n`
+      cssRules += `  --bs-primary-bg-subtle: rgba(${r}, ${g}, ${b}, ${bgAlpha}) !important;\n`
+      cssRules += `  --bs-primary-border-subtle: rgba(${r}, ${g}, ${b}, ${borderAlpha}) !important;\n`
+      cssRules += `  --bs-primary-text-emphasis: ${colors.accent} !important;\n`
       cssRules += `  --bs-link-color: ${colors.accent} !important;\n`
-      cssRules += `  --bs-link-color-rgb: ${rgb.r}, ${rgb.g}, ${rgb.b} !important;\n`
+      cssRules += `  --bs-link-color-rgb: ${r}, ${g}, ${b} !important;\n`
       cssRules += `  --bs-link-hover-color: ${colors.accent} !important;\n`
     }
   }
@@ -151,6 +158,8 @@ export function buildThemeCss({
   if (includeAccentComponentRules && colors.accent) {
     const accentScope = scopeSelector || ''
     const prefix = accentScope ? `${accentScope} ` : ''
+    const rgb = parseAccentRgb(colors.accent)
+    const focusShadowRgb = rgb ? `${rgb.r}, ${rgb.g}, ${rgb.b}` : 'var(--bs-primary-rgb)'
 
     cssRules += `
 ${prefix}.btn-primary {
@@ -160,6 +169,9 @@ ${prefix}.btn-primary {
   --bs-btn-hover-border-color: ${colors.accent} !important;
   --bs-btn-active-bg: ${colors.accent} !important;
   --bs-btn-active-border-color: ${colors.accent} !important;
+  --bs-btn-disabled-bg: ${colors.accent} !important;
+  --bs-btn-disabled-border-color: ${colors.accent} !important;
+  --bs-btn-focus-shadow-rgb: ${focusShadowRgb} !important;
 }
 ${prefix}.btn-outline-primary {
   --bs-btn-color: ${colors.accent} !important;
@@ -168,6 +180,7 @@ ${prefix}.btn-outline-primary {
   --bs-btn-hover-border-color: ${colors.accent} !important;
   --bs-btn-active-bg: ${colors.accent} !important;
   --bs-btn-active-border-color: ${colors.accent} !important;
+  --bs-btn-focus-shadow-rgb: ${focusShadowRgb} !important;
 }
 ${prefix}.text-primary {
   color: ${colors.accent} !important;

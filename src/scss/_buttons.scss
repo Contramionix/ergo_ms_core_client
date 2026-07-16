@@ -126,6 +126,103 @@
   }
 }
 
+// Bootstrap btn-primary — всегда accent темы (не Sass $primary #d0322d)
+.btn-primary {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--color-accent, var(--bs-primary));
+  --bs-btn-border-color: var(--color-accent, var(--bs-primary));
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--color-accent, var(--bs-primary));
+  --bs-btn-hover-border-color: var(--color-accent, var(--bs-primary));
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--color-accent, var(--bs-primary));
+  --bs-btn-active-border-color: var(--color-accent, var(--bs-primary));
+  --bs-btn-disabled-color: #fff;
+  --bs-btn-disabled-bg: var(--color-accent, var(--bs-primary));
+  --bs-btn-disabled-border-color: var(--color-accent, var(--bs-primary));
+  --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+
+  color: #fff;
+  background-color: var(--color-accent, var(--bs-primary));
+  border-color: var(--color-accent, var(--bs-primary));
+
+  &:hover:not(:disabled):not(.disabled) {
+    color: #fff;
+    background-color: var(--color-accent, var(--bs-primary));
+    border-color: var(--color-accent, var(--bs-primary));
+    filter: brightness(0.94);
+  }
+
+  &:focus-visible {
+    color: #fff;
+    background-color: var(--color-accent, var(--bs-primary));
+    border-color: var(--color-accent, var(--bs-primary));
+    box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--color-accent, var(--bs-primary)) 35%, transparent);
+  }
+
+  &:active,
+  &.active,
+  &.show,
+  &:first-child:active,
+  :not(.btn-check) + &:active {
+    color: #fff;
+    background-color: var(--color-accent, var(--bs-primary));
+    border-color: var(--color-accent, var(--bs-primary));
+    filter: brightness(0.9);
+    box-shadow: none;
+  }
+
+  &:disabled,
+  &.disabled,
+  fieldset:disabled & {
+    color: #fff;
+    background-color: var(--color-accent, var(--bs-primary));
+    border-color: var(--color-accent, var(--bs-primary));
+    opacity: 0.65;
+    filter: none;
+  }
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--color-accent, var(--bs-primary));
+  --bs-btn-border-color: var(--color-accent, var(--bs-primary));
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--color-accent, var(--bs-primary));
+  --bs-btn-hover-border-color: var(--color-accent, var(--bs-primary));
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--color-accent, var(--bs-primary));
+  --bs-btn-active-border-color: var(--color-accent, var(--bs-primary));
+  --bs-btn-disabled-color: var(--color-accent, var(--bs-primary));
+  --bs-btn-disabled-bg: transparent;
+  --bs-btn-disabled-border-color: var(--color-accent, var(--bs-primary));
+  --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+
+  color: var(--color-accent, var(--bs-primary));
+  border-color: var(--color-accent, var(--bs-primary));
+  background-color: transparent;
+
+  &:hover:not(:disabled):not(.disabled) {
+    color: #fff;
+    background-color: var(--color-accent, var(--bs-primary));
+    border-color: var(--color-accent, var(--bs-primary));
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--color-accent, var(--bs-primary)) 35%, transparent);
+  }
+
+  &:active,
+  &.active,
+  &.show,
+  &:first-child:active,
+  :not(.btn-check) + &:active {
+    color: #fff;
+    background-color: var(--color-accent, var(--bs-primary));
+    border-color: var(--color-accent, var(--bs-primary));
+    box-shadow: none;
+  }
+}
+
 // Вторичные outline-кнопки (Отмена, Назад и т.п.)
 // Bootstrap по умолчанию использует $secondary (#ccc) — на светлом фоне почти не видно.
 
