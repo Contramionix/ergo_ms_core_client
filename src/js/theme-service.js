@@ -1,5 +1,6 @@
 import { apiClient } from '@/js/api/manager'
 import { endpoints, initEndpoints } from '@/js/api/endpoints.js'
+import { isMaintenanceResponse } from '@/composables/useMaintenanceMode.js'
 import {
   applyThemeModePreference,
   initTheme,
@@ -42,7 +43,9 @@ export async function syncSiteThemeFromApi() {
       }
     }
   } catch (e) {
-    logWarn('Не удалось загрузить активную тему с сервера', e)
+    if (!isMaintenanceResponse(e)) {
+      logWarn('Не удалось загрузить активную тему с сервера', e)
+    }
   }
 
   initTheme()

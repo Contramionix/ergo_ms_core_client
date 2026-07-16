@@ -2,7 +2,7 @@ import axios from 'axios'
 
 import tokenService from '@/core/cms/js/tokenService'
 import { performServerLogout } from '@/core/cms/js/tokenRefresh.js'
-import { applyMaintenanceFromResponse } from '@/composables/useMaintenanceMode.js'
+import { applyMaintenanceFromResponse, isMaintenanceResponse } from '@/composables/useMaintenanceMode.js'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
 
 /**
@@ -304,6 +304,17 @@ class ApiClient {
 
     const status = error.response?.status
     const hadAuthHeader = Boolean(error?.config?.headers?.Authorization)
+
+    // Ожидаемый 503 режима технических works — оверлей уже показан, без шума в консоли.
+    if (isMaintenanceResponse(error)) {
+      const { message } = sanitizeError(error)
+      return {
+        success: false,
+        message,
+        status,
+        errors: error.response?.data,
+      }
+    }
 
     // Гость без Bearer — ожидаемый 401, интерцептор уже обработал сессию.
     if (status === 401 && !hadAuthHeader) {

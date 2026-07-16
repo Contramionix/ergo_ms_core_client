@@ -39,10 +39,12 @@ onMounted(() => {
   Promise.all([
     router.isReady(),
     checkMaintenanceStatus({ reloadOnChange: false }),
-  ]).then(() => {
+  ]).then(([, maintenanceOn]) => {
     isReady.value = true
     revealApp()
-    if (clientEnv.maintenancePollEnabled) {
+    // Dev (Vite) — всегда опрашиваем, иначе live on/off не работает при
+    // CLIENT_MAINTENANCE_POLL_ENABLED=false в .env. Prod — флаг или уже ON.
+    if (clientEnv.maintenancePollEnabled || clientEnv.isDev || maintenanceOn) {
       startMaintenancePolling()
     }
   })
@@ -63,10 +65,8 @@ const currentLayout = computed(() => {
 <template>
   <div v-if="isReady" class="app-root">
     <div
+      v-if="!maintenanceActive"
       class="app-root__main"
-      :class="{ 'app-root__main--behind-maintenance': maintenanceActive }"
-      :aria-hidden="maintenanceActive ? 'true' : undefined"
-      :inert="maintenanceActive"
     >
       <component :is="currentLayout" />
       <NotificationProvider />
@@ -92,24 +92,5 @@ const currentLayout = computed(() => {
 
 .app-root__main {
   min-height: inherit;
-  transition:
-    filter 0.35s ease,
-    opacity 0.35s ease;
-}
-
-.app-root__main--behind-maintenance {
-  pointer-events: none;
-  user-select: none;
-  opacity: 0.45;
-  filter: blur(3px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-root__main,
-  .app-root__main--behind-maintenance {
-    transition: none;
-    opacity: 1;
-    filter: none;
-  }
 }
 </style>

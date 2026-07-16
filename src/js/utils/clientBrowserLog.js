@@ -1,6 +1,7 @@
 import { clientEnv } from '@/js/clientEnv.js'
 import { apiClient } from '@/js/api/manager.js'
 import tokenService from '@/core/cms/js/tokenService.js'
+import { useMaintenanceMode } from '@/composables/useMaintenanceMode.js'
 
 /** Относительно baseURL apiClient (`…/api/`). */
 const CLIENT_LOG_ENDPOINT = 'cms/client-log/'
@@ -9,7 +10,14 @@ const DEDUPE_WINDOW_MS = 5000
 const recentMessages = new Map()
 
 function shouldSendBrowserLog() {
-  return clientEnv.browserLogEnabled
+  if (!clientEnv.browserLogEnabled) {
+    return false
+  }
+  const { maintenanceActive } = useMaintenanceMode()
+  if (maintenanceActive.value) {
+    return false
+  }
+  return true
 }
 
 function isDuplicateMessage(message) {

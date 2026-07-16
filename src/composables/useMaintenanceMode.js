@@ -2,7 +2,7 @@ import { ref } from 'vue'
 
 import axios from 'axios'
 
-import { resolveApiClientBaseUrl, shouldUseSameOriginApi } from '@/js/api/baseUrl.js'
+import { resolveApiClientBaseUrl } from '@/js/api/baseUrl.js'
 import {
   MAINTENANCE_POLL_INTERVAL_MS,
   normalizeMaintenancePollIntervalMs,
@@ -17,6 +17,8 @@ let checkPromise = null
 let pollTimer = null
 let pollIntervalMs = MAINTENANCE_POLL_INTERVAL_MS
 let visibilityListenerAttached = false
+/** Пользователь явно вызвал stop — не перезапускать опрос из applyMaintenanceFromResponse. */
+let pollingStoppedByCaller = false
 
 function applyDetail(detail) {
   if (typeof detail === 'string' && detail.trim()) {
@@ -37,12 +39,6 @@ function applyPollIntervalFromPayload(payload) {
 
 function buildApiStatusUrl() {
   return `${resolveApiClientBaseUrl()}system/maintenance-status/`
-}
-
-function shouldProbeStaticMaintenance() {
-  // maintenance.json создаётся ergoms maintenance-on/off и раздаётся nginx из dist/public.
-  // В dev (Vite :8001, API :8000) файла обычно нет — опрос API достаточен.
-  return shouldUseSameOriginApi()
 }
 
 export function isMaintenanceResponse(errorOrResponse) {
@@ -89,7 +85,12 @@ export function applyMaintenanceFromResponse(response) {
   }
 
   applyDetail(response.data?.detail)
+  const wasActive = maintenanceActive.value
   maintenanceActive.value = true
+  // 503 мог включить оверлей без фонового опроса — иначе maintenance-off не заметим.
+  if (!wasActive) {
+    ensureMaintenancePolling()
+  }
   return true
 }
 
@@ -98,10 +99,7 @@ export function clearMaintenanceMode() {
 }
 
 async function fetchStaticMaintenanceStatus() {
-  if (!shouldProbeStaticMaintenance()) {
-    return null
-  }
-
+  // ergoms maintenance-on/off пишет public/ и dist/; Vite и nginx отдают /maintenance.json.
   try {
     const response = await axios.get(STATIC_STATUS_URL, {
       headers: { Accept: 'application/json' },
@@ -199,7 +197,12 @@ function restartMaintenancePollingTimer() {
 }
 
 export function startMaintenancePolling() {
-  if (typeof window === 'undefined') {
+  pollingStoppedByCaller = false
+  ensureMaintenancePolling()
+}
+
+function ensureMaintenancePolling() {
+  if (typeof window === 'undefined' || pollingStoppedByCaller) {
     return
   }
 
@@ -217,6 +220,7 @@ export function startMaintenancePolling() {
 }
 
 export function stopMaintenancePolling() {
+  pollingStoppedByCaller = true
   detachVisibilityListener()
 
   if (pollTimer === null || typeof window === 'undefined') {
