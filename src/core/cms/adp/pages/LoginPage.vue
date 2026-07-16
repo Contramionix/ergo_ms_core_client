@@ -65,7 +65,9 @@ const submitForm = async () => {
 
       // Запускаем проверку токена после успешной авторизации
       authGuard.startTokenValidation()
-      router.push({ name: 'AppHome' })
+      // replace — чтобы Back не возвращал на /login (guard всё равно
+      // отправит на AppHome и раньше зависала полоска загрузки).
+      router.replace({ name: 'AppHome' })
     } else {
       // Обработка ошибок от сервера
       if (authResult.errors && typeof authResult.errors === 'object') {

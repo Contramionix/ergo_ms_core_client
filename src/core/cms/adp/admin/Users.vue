@@ -261,6 +261,10 @@ const columns = [
 ]
 
 const openUserSettings = (item) => {
+  if (!item?.public_id) {
+    toast.error('Не удалось открыть настройки: отсутствует публичный идентификатор пользователя')
+    return
+  }
   selectedUserRef.value = item.public_id
   showUserSettings.value = true
 }

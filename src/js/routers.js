@@ -190,10 +190,10 @@ function setupRouterGuards(router) {
     }
   })
 
-  router.afterEach((to, from) => {
-    if (from !== START_LOCATION && to.path !== from.path) {
-      finishRouteProgress()
-    }
+  router.afterEach(() => {
+    // Всегда гасим полоску: при редиректе guard'а обратно на тот же path
+    // (Back на /login → AppHome) to.path === from.path, иначе зависает.
+    finishRouteProgress()
   })
 
   router.onError(() => {

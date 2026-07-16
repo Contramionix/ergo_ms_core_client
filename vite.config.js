@@ -55,6 +55,10 @@ function resolvePollIntervalMs(serverKey, defaultMs) {
 function buildClientEnvDefines(envValues) {
   const useRelativeApi = envValues.CLIENT_USE_RELATIVE_API
     || (nginxEnabled(envValues) ? 'true' : '')
+  // Live-оверлей после ergoms maintenance-on: опрос /maintenance.json.
+  // При nginx включается автоматически (как CLIENT_USE_RELATIVE_API).
+  const maintenancePollEnabled = envValues.CLIENT_MAINTENANCE_POLL_ENABLED
+    || (nginxEnabled(envValues) ? 'true' : '')
   const logLevel = envValues.CLIENT_LOG_LEVEL
     || (envValues.CLIENT_DEPLOY_TYPE === 'production' ? 'critical' : 'debug')
 
@@ -65,7 +69,7 @@ function buildClientEnvDefines(envValues) {
     CLIENT_DEFAULT_THEME: envValues.CLIENT_DEFAULT_THEME || 'light',
     CLIENT_LOG_LEVEL: logLevel,
     CLIENT_BROWSER_LOG_ENABLED: envValues.CLIENT_BROWSER_LOG_ENABLED ?? 'true',
-    CLIENT_MAINTENANCE_POLL_ENABLED: envValues.CLIENT_MAINTENANCE_POLL_ENABLED ?? 'false',
+    CLIENT_MAINTENANCE_POLL_ENABLED: maintenancePollEnabled || 'false',
     CLIENT_DISABLED_MODULES: envValues.DISABLED_MODULES || '',
     CLIENT_PASSWORD_MIN_LENGTH: envValues.API_PASSWORD_MIN_LENGTH || '8',
     CLIENT_PASSWORD_MAX_LENGTH: envValues.API_PASSWORD_MAX_LENGTH || '128',

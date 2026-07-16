@@ -383,7 +383,7 @@ const toggleMenu = () => {
   syncMenuRightEdgeWithTransition({ updateContentPadding: true })
 }
 
-// Обработка наведения
+// Peek только с body: шапка (wordmark / кнопка) не должна раскрывать свёрнутое меню
 const handleMouseEnter = () => {
   if (isCollapsed.value) {
     cancelWordmarkHide()
@@ -533,7 +533,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'side-menu--collapsed-settled': isCollapsedSettled, 'side-menu--labels-hidden': isCollapsedLabelsHidden, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen, 'side-menu--visibility-transition': isVisibilityTransitionActive, 'side-menu--layout-transition': isLayoutTransitionActive || isCollapsed, 'wordmark-hiding': isWordmarkHiding }" :style="{ '--menu-width': `${menuWidth}px`, '--menu-item-height': `${menuIconSizes.item + 16}px`, '--menu-icon-inset': `calc((100% - ${menuIconSizes.item}px) / 2)`, '--menu-avatar-inset': 'calc((100% - 40px) / 2)' }" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'side-menu--collapsed-settled': isCollapsedSettled, 'side-menu--labels-hidden': isCollapsedLabelsHidden, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen, 'side-menu--visibility-transition': isVisibilityTransitionActive, 'side-menu--layout-transition': isLayoutTransitionActive || isCollapsed, 'wordmark-hiding': isWordmarkHiding }" :style="{ '--menu-width': `${menuWidth}px`, '--menu-item-height': `${menuIconSizes.item + 16}px`, '--menu-icon-inset': `calc((100% - ${menuIconSizes.item}px) / 2)`, '--menu-avatar-inset': 'calc((100% - 40px) / 2)' }" @mouseleave="handleMouseLeave">
     <div class="side-menu__header side-header">
       <div class="side-header__brand-row">
         <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">
@@ -548,7 +548,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-    <div class="side-menu__body">
+    <div class="side-menu__body" @mouseenter="handleMouseEnter">
       <div class="side-header__shadow" aria-hidden="true"></div>
       <div class="side-menu__scroll">
         <ul v-show="isMenuReady" class="side-menu__list p-2" :class="{ short: isCollapsed && !isHovering }">
