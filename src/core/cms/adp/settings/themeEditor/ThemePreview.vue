@@ -16,10 +16,6 @@ const {
   currentTheme,
 } = useThemeEditor()
 
-const scopeAttr = computed(() => (
-  previewMeta.value.isModule ? previewMeta.value.moduleKey : undefined
-))
-
 const canvasTheme = computed(() => (
   previewMeta.value.variant === 'dark' ? 'dark' : 'light'
 ))
@@ -30,9 +26,6 @@ const colors = computed(() => currentTheme.colors || {})
 <template>
   <div class="theme-preview">
     <div class="theme-preview__meta">
-      <span class="theme-preview__meta-label">Область</span>
-      <strong>{{ previewMeta.scopeLabel }}</strong>
-      <span class="theme-preview__meta-sep" aria-hidden="true">·</span>
       <span class="theme-preview__meta-label">Вариант</span>
       <strong>{{ previewMeta.variantLabel }}</strong>
     </div>
@@ -40,7 +33,6 @@ const colors = computed(() => currentTheme.colors || {})
     <div class="content-card content-card--flush">
       <div
         class="theme-preview__canvas"
-        :data-ergo-module-theme="scopeAttr"
         :data-bs-theme="canvasTheme"
       >
         <div

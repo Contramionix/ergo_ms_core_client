@@ -128,8 +128,8 @@ export function createThemeEditor() {
     { id: 'dark', name: 'Тёмный вариант', icon: markRaw(Moon) },
   ]
 
-  const isModuleScope = computed(() => selectedScope.value !== 'site')
-  const previewModuleKey = computed(() => (isModuleScope.value ? selectedScope.value : null))
+  const isModuleScope = computed(() => false)
+  const previewModuleKey = computed(() => null)
 
   function normalizedModulePairKey(value, fallback = 'default') {
     const text = String(value ?? '').trim()
@@ -504,27 +504,13 @@ export function createThemeEditor() {
     loading.value = true
     try {
       await initEndpoints()
-      const params = selectedScope.value === 'site'
-        ? { module: 'site' }
-        : { module: selectedScope.value, as_pairs: 'true' }
+      const params = { module: 'site' }
       const res = await apiClient.get(endpoints.themes.list, params)
       if (res.success) {
-        themes.value = isModuleScope.value
-          ? normalizeModuleThemesResponse(res.data || [])
-          : (res.data || [])
+        themes.value = res.data || []
 
-        if (themes.value.length === 0 && selectedScope.value === 'site') {
+        if (themes.value.length === 0) {
           await createSystemThemes()
-        } else if (themes.value.length === 0 && isModuleScope.value) {
-          await syncModuleDefaults()
-        }
-
-        if (isModuleScope.value) {
-          const initialPair = themes.value.find((p) => p.is_active) || themes.value[0]
-          if (initialPair) {
-            selectModulePair(initialPair, 'light', { preview: false })
-          }
-          return
         }
 
         const initialTheme = pickInitialTheme(themes.value)
@@ -560,18 +546,13 @@ export function createThemeEditor() {
     }
   }
 
-  const changeScope = async (scopeId) => {
-    selectedScope.value = scopeId || 'site'
+  const changeScope = async () => {
+    selectedScope.value = 'site'
     draftTheme.value = null
     selectedThemeId.value = null
     selectedPairKey.value = null
     editingVariant.value = 'light'
-    if (isModuleScope.value) {
-      const manager = getThemeDefaultsManager()
-      activeModuleManifest.value = await manager.getByModuleKey(selectedScope.value)
-    } else {
-      activeModuleManifest.value = null
-    }
+    activeModuleManifest.value = null
     await loadThemes()
   }
 
@@ -1289,9 +1270,8 @@ export function createThemeEditor() {
   }
 
   async function init() {
-    await preloadModuleThemeManifests()
-    const manager = getThemeDefaultsManager()
-    scopeOptions.value = await manager.getScopeOptions()
+    selectedScope.value = 'site'
+    scopeOptions.value = [{ id: 'site', name: 'Сайт' }]
     await loadThemes()
   }
 

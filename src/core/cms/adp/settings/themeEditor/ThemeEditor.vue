@@ -6,9 +6,6 @@ import {
   Upload,
   RotateCcw,
   Plus,
-  Copy,
-  Trash2,
-  Check,
   Sun,
   Moon,
   AlertCircle,
@@ -17,7 +14,9 @@ import SelectBox from '@/components/SelectBox.vue'
 import SearchInput from '@/components/SearchInput.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import ColorPicker from './ColorPicker.vue'
+import ThemePickerCard from './ThemePickerCard.vue'
 import { useThemeEditor, isColorLikeToken } from './useThemeEditor.js'
+import { isAccessibilityTheme, resolveThemePresentation } from './themeCategories.js'
 
 const {
   BASE_THEME_OPTIONS,
@@ -26,9 +25,6 @@ const {
   changeBaseTheme,
   canEditCurrentTheme,
   changeEditingVariant,
-  changeScope,
-  selectedScope,
-  scopeOptions,
   isModuleScope,
   isDirty,
   colorDescriptions,
@@ -65,55 +61,59 @@ const {
 } = useThemeEditor()
 
 const listSearch = ref('')
+const modeFilter = ref('all')
+
+const MODE_FILTER_OPTIONS = [
+  { id: 'all', label: 'Все' },
+  { id: 'light', label: 'Светлые' },
+  { id: 'dark', label: 'Тёмные' },
+  { id: 'a11y', label: 'Доступность' },
+]
+
+function themeMatchesMode(theme, mode) {
+  if (mode === 'all') {
+    return true
+  }
+  if (mode === 'a11y') {
+    return isAccessibilityTheme(theme.name)
+  }
+  if (theme.is_pair) {
+    return true
+  }
+  return theme.base_theme === mode
+}
 
 const filteredThemes = computed(() => {
   const q = listSearch.value.trim().toLowerCase()
-  if (!q) {
-    return displayThemes.value
-  }
+  const mode = modeFilter.value
   return displayThemes.value.filter((theme) => {
+    if (!themeMatchesMode(theme, mode)) {
+      return false
+    }
+    if (!q) {
+      return true
+    }
     const name = String(theme.name || '').toLowerCase()
     const desc = String(theme.description || '').toLowerCase()
     return name.includes(q) || desc.includes(q)
   })
 })
 
+const themePresentations = computed(() => {
+  const selectedId = selectedThemeId.value
+  const fallback = currentTheme.colors || null
+  const map = new Map()
+  for (const theme of filteredThemes.value) {
+    const colors = selectedId === theme.id ? fallback : null
+    map.set(theme.id, resolveThemePresentation(theme, colors))
+  }
+  return map
+})
+
 const showListSearch = computed(() => displayThemes.value.length > 4)
 
-function themeSwatches(theme) {
-  if (theme.is_pair && theme.variants) {
-    const light = theme.variants.light?.colors || {}
-    const dark = theme.variants.dark?.colors || {}
-    return {
-      dual: true,
-      light: [
-        light.accent || '#888',
-        light.background || '#f5f5f5',
-        light.primaryText || '#222',
-        light.primaryBackground || '#fff',
-      ],
-      dark: [
-        dark.accent || '#888',
-        dark.background || '#1a1a1a',
-        dark.primaryText || '#eee',
-        dark.primaryBackground || '#2a2a2a',
-      ],
-    }
-  }
-  let colors = theme.colors
-  if ((!colors || !Object.keys(colors).length) && theme.id === selectedThemeId.value) {
-    colors = currentTheme.colors || {}
-  }
-  colors = colors || {}
-  return {
-    dual: false,
-    colors: [
-      colors.accent || '#888',
-      colors.background || '#f5f5f5',
-      colors.primaryText || '#222',
-      colors.primaryBackground || '#fff',
-    ],
-  }
+function isThemeResetting(theme) {
+  return resettingThemeId.value === theme.id || resettingThemeId.value === theme.module_pair
 }
 
 function onVariantTabKeydown(event) {
@@ -154,8 +154,40 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
     <div class="theme-editor__workspace">
       <section class="theme-editor__section theme-editor__section--list">
           <div class="theme-editor__section-head">
-            <div class="table-header mb-3">
-              <h2 class="admin-section-heading mb-0">Список тем</h2>
+            <h2 class="admin-section-heading theme-editor__list-title">Список тем</h2>
+
+            <div class="table-header theme-list-toolbar">
+              <div class="theme-list-toolbar__filters">
+                <div
+                  class="theme-editor__mode-filter"
+                  role="group"
+                  aria-label="Фильтр по режиму темы"
+                >
+                  <button
+                    v-for="option in MODE_FILTER_OPTIONS"
+                    :key="option.id"
+                    type="button"
+                    class="theme-editor__mode-filter-btn"
+                    :class="{ 'is-active': modeFilter === option.id }"
+                    :aria-pressed="modeFilter === option.id ? 'true' : 'false'"
+                    @click="modeFilter = option.id"
+                  >
+                    {{ option.label }}
+                  </button>
+                </div>
+                <div
+                  class="theme-editor__search-slot"
+                  :class="{ 'theme-editor__search-slot--empty': !showListSearch }"
+                >
+                  <SearchInput
+                    v-if="showListSearch"
+                    v-model="listSearch"
+                    placeholder="Поиск по названию..."
+                    layout="grow"
+                    :show-icon="true"
+                  />
+                </div>
+              </div>
               <div class="actions-wrapper">
                 <button
                   type="button"
@@ -167,29 +199,6 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                 </button>
               </div>
             </div>
-
-            <div class="mb-3">
-              <label class="form-label small text-muted mb-1" for="theme-scope">Область</label>
-              <SelectBox
-                id="theme-scope"
-                :model-value="selectedScope"
-                :options="scopeOptions"
-                value-key="id"
-                label-key="name"
-                :include-all-option="false"
-                @update:model-value="changeScope"
-              />
-            </div>
-
-            <div class="mb-3 theme-editor__search-slot">
-              <SearchInput
-                v-if="showListSearch"
-                v-model="listSearch"
-                placeholder="Поиск по названию..."
-                layout="grow"
-                :show-icon="true"
-              />
-            </div>
           </div>
 
           <div class="content-card content-card--flush theme-editor__list-card">
@@ -200,10 +209,14 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                   class="theme-editor__empty"
                 >
                   <p class="mb-2">
-                    {{ listSearch.trim() ? 'Ничего не найдено по запросу.' : 'В этой области пока нет тем.' }}
+                    {{
+                      listSearch.trim() || modeFilter !== 'all'
+                        ? 'Ничего не найдено по фильтру.'
+                        : 'Тем пока нет.'
+                    }}
                   </p>
                   <button
-                    v-if="!listSearch.trim()"
+                    v-if="!listSearch.trim() && modeFilter === 'all'"
                     type="button"
                     class="btn btn-outline-primary btn-sm"
                     @click="createNewTheme"
@@ -211,134 +224,26 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                     Создать тему
                   </button>
                 </div>
-                <div v-else class="theme-list">
-                  <div
+                <div
+                  v-else
+                  class="theme-gallery"
+                >
+                  <ThemePickerCard
                     v-for="theme in filteredThemes"
                     :key="theme.id"
-                    class="theme-item"
-                    :class="{
-                      active: selectedThemeId === theme.id,
-                      'is-active-theme': theme.is_active,
-                      'is-draft-theme': theme.is_draft,
-                    }"
-                    @click="selectTheme(theme)"
-                  >
-                  <div class="theme-info">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                      <template v-if="theme.is_pair">
-                        <Sun :size="14" class="theme-icon" aria-hidden="true" />
-                        <Moon :size="14" class="theme-icon" aria-hidden="true" />
-                      </template>
-                      <component
-                        :is="theme.base_theme === 'dark' ? Moon : Sun"
-                        v-else
-                        :size="16"
-                        class="theme-icon"
-                        aria-hidden="true"
-                      />
-                      <span class="theme-name">{{ theme.name }}</span>
-                      <span v-if="theme.is_draft" class="theme-badge theme-badge--draft">Черновик</span>
-                      <span v-if="theme.is_draft_pair" class="theme-badge theme-badge--draft">Черновик пары</span>
-                      <span v-if="theme.is_system" class="theme-badge theme-badge--muted">Системная</span>
-                      <span v-if="theme.is_active" class="theme-badge theme-badge--active">Активна</span>
-                    </div>
-                    <div class="theme-swatches" aria-hidden="true">
-                      <template v-if="themeSwatches(theme).dual">
-                        <div class="theme-swatches__row">
-                          <Sun :size="10" class="theme-swatches__mode" />
-                          <span
-                            v-for="(c, i) in themeSwatches(theme).light"
-                            :key="`l-${i}`"
-                            class="theme-swatch"
-                            :style="{ background: c }"
-                          />
-                        </div>
-                        <div class="theme-swatches__row">
-                          <Moon :size="10" class="theme-swatches__mode" />
-                          <span
-                            v-for="(c, i) in themeSwatches(theme).dark"
-                            :key="`d-${i}`"
-                            class="theme-swatch"
-                            :style="{ background: c }"
-                          />
-                        </div>
-                      </template>
-                      <div v-else class="theme-swatches__row">
-                        <span
-                          v-for="(c, i) in themeSwatches(theme).colors"
-                          :key="i"
-                          class="theme-swatch"
-                          :style="{ background: c }"
-                        />
-                      </div>
-                    </div>
-                    <small>{{ theme.description || 'Без описания' }}</small>
-                  </div>
-
-                  <div class="theme-actions actions-cell">
-                    <button
-                      v-if="theme.is_system && !theme.is_draft_pair"
-                      type="button"
-                      class="btn-action"
-                      title="Сбросить к начальным значениям"
-                      aria-label="Сбросить к начальным значениям"
-                      :disabled="resettingThemeId === theme.id || resettingThemeId === theme.module_pair"
-                      @click.stop="resetSystemTheme(theme)"
-                    >
-                      <RotateCcw :size="15" />
-                    </button>
-                    <button
-                      v-if="!theme.is_active && !theme.is_draft && !theme.is_draft_pair"
-                      type="button"
-                      class="btn-action"
-                      title="Активировать"
-                      aria-label="Активировать тему"
-                      @click.stop="activateTheme(theme)"
-                    >
-                      <Check :size="15" />
-                    </button>
-                    <button
-                      v-if="!theme.is_draft && !isModuleScope"
-                      type="button"
-                      class="btn-action btn-action--edit"
-                      title="Дублировать"
-                      aria-label="Дублировать тему"
-                      @click.stop="duplicateTheme(theme)"
-                    >
-                      <Copy :size="15" />
-                    </button>
-                    <button
-                      v-if="theme.is_draft_pair"
-                      type="button"
-                      class="btn-action btn-action--delete"
-                      title="Удалить черновик пары"
-                      aria-label="Удалить черновик пары"
-                      @click.stop="discardModulePairDraft"
-                    >
-                      <Trash2 :size="15" />
-                    </button>
-                    <button
-                      v-if="theme.is_draft"
-                      type="button"
-                      class="btn-action btn-action--delete"
-                      title="Удалить черновик"
-                      aria-label="Удалить черновик"
-                      @click.stop="discardDraft"
-                    >
-                      <Trash2 :size="15" />
-                    </button>
-                    <button
-                      v-if="!theme.is_system && !theme.is_draft && !theme.is_pair"
-                      type="button"
-                      class="btn-action btn-action--delete"
-                      title="Удалить"
-                      aria-label="Удалить тему"
-                      @click.stop="deleteTheme(theme)"
-                    >
-                      <Trash2 :size="15" />
-                    </button>
-                  </div>
-                  </div>
+                    :theme="theme"
+                    :presentation="themePresentations.get(theme.id)"
+                    :selected="selectedThemeId === theme.id"
+                    :resetting="isThemeResetting(theme)"
+                    :is-module-scope="isModuleScope"
+                    @select="selectTheme"
+                    @activate="activateTheme"
+                    @reset="resetSystemTheme"
+                    @duplicate="duplicateTheme"
+                    @delete="deleteTheme"
+                    @discard-draft="discardDraft"
+                    @discard-pair-draft="discardModulePairDraft"
+                  />
                 </div>
               </LoadingContentArea>
             </div>
@@ -597,6 +502,7 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                 </div>
               </div>
 
+              <template v-if="selectedThemeId">
               <div class="form-check form-switch mb-4">
                 <input
                   id="showBootstrap"
@@ -690,6 +596,7 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                   </div>
                 </template>
               </template>
+              </template>
               </div>
             </Transition>
           </div>
@@ -731,9 +638,74 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
 
   .theme-editor__section-head {
     flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .theme-editor__list-title {
+    margin: 0;
+  }
+
+  .theme-list-toolbar {
+    width: 100%;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .theme-list-toolbar__filters {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .theme-editor__mode-filter {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.625rem;
+    background: var(--color-secondary-background);
+    flex: 0 0 auto;
+  }
+
+  .theme-editor__mode-filter-btn {
+    padding: 0.4rem 0.85rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--color-primary-text);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background-color var(--theme-editor-motion) var(--theme-editor-ease),
+      box-shadow var(--theme-editor-motion) var(--theme-editor-ease);
+
+    &:hover {
+      background: var(--color-hover-background);
+    }
+
+    &.is-active {
+      background: var(--color-primary-background);
+      box-shadow: 0 0 0 1px var(--color-border);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+    }
   }
 
   .theme-editor__search-slot {
+    flex: 1 1 12rem;
+    min-width: 10rem;
+    max-width: 20rem;
     min-height: 2.5rem;
 
     &--empty {
@@ -1031,136 +1003,14 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
     opacity: 1;
   }
 
-  .theme-list {
+  .theme-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+    gap: 0.85rem;
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
-  }
-
-  .theme-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.875rem 1rem;
-    border-bottom: 1px solid var(--color-border);
-    border-left: 3px solid transparent;
-    cursor: pointer;
-    transition:
-      background-color var(--theme-editor-motion) var(--theme-editor-ease),
-      border-left-color var(--theme-editor-motion) var(--theme-editor-ease);
-
-    &:last-child {
-      border-bottom: none;
-    }
-
-    &:hover {
-      background-color: var(--color-hover-background);
-    }
-
-    &.active {
-      background-color: color-mix(in srgb, var(--color-accent) 14%, var(--color-primary-background));
-      border-left-color: var(--color-accent);
-    }
-
-    &.is-active-theme:not(.active) {
-      border-left-color: var(--bs-success, #198754);
-    }
-  }
-
-  .theme-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    overflow: hidden;
-    min-width: 0;
-
-    small {
-      color: color-mix(in srgb, var(--ui-text) 88%, var(--ui-text-muted));
-      font-size: 0.8125rem;
-    }
-  }
-
-  .theme-swatches {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .theme-swatches__row {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .theme-swatches__mode {
-    color: var(--ui-text-muted);
-    flex-shrink: 0;
-  }
-
-  .theme-swatch {
-    width: 0.875rem;
-    height: 0.875rem;
-    border-radius: 0.2rem;
-    border: 1px solid color-mix(in srgb, var(--ui-text) 12%, transparent);
-    flex-shrink: 0;
-    transition: background-color var(--theme-editor-motion) var(--theme-editor-ease);
-  }
-
-  .theme-name {
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--color-primary-text);
-  }
-
-  .theme-icon {
-    flex-shrink: 0;
-    color: var(--ui-text);
-  }
-
-  .theme-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.125rem 0.5rem;
-    border-radius: 999px;
-    font-size: 0.6875rem;
-    font-weight: 500;
-    line-height: 1.4;
-
-    &--muted {
-      background: var(--ui-surface-2);
-      color: var(--ui-text);
-    }
-
-    &--active {
-      background: rgba(var(--bs-success-rgb, 25, 135, 84), 0.12);
-      color: var(--bs-success, #198754);
-    }
-
-    &--draft {
-      background: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
-      color: var(--color-accent, var(--bs-primary, #0d6efd));
-    }
-  }
-
-  .theme-item.is-draft-theme.active {
-    border-left-color: var(--color-accent, var(--bs-primary, #0d6efd));
-  }
-
-  .theme-actions {
-    opacity: 1;
-    transition: opacity var(--theme-editor-motion) var(--theme-editor-ease);
-    flex-shrink: 0;
-
-    :deep(.btn-action) {
-      color: var(--ui-text);
-
-      &:hover:not(:disabled) {
-        color: var(--ui-text);
-      }
-    }
+    padding: 0.85rem;
   }
 }
 
@@ -1226,10 +1076,8 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
   .theme-editor {
     --theme-editor-motion: 0ms;
 
-    .theme-item,
+    .theme-editor__mode-filter-btn,
     .theme-editor__variant-tab,
-    .theme-actions,
-    .theme-swatch,
     .theme-editor__live-header,
     .theme-editor__live-body,
     .theme-editor__live-card,

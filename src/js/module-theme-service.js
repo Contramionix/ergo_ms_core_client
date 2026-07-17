@@ -1,63 +1,21 @@
-import { apiClient } from '@/js/api/manager'
-import { endpoints, initEndpoints } from '@/js/api/endpoints.js'
-import {
-  applyModuleThemeSet,
-  clearModuleTheme,
-  getCachedModuleThemeSet,
-  normalizeModuleThemeSetPayload,
-  saveModuleThemeSetToCache,
-} from '@/js/module-theme-manager.js'
-import { isModuleThemeRegistered } from '@/modules/themes/ThemeDefaultsManager.js'
+import { clearModuleTheme } from '@/js/module-theme-manager.js'
 
 /**
- * @param {string|null} moduleKey
+ * Модульные палитры отключены: активная тема всегда глобальная (сайт).
+ * Обёртка ModuleThemeScope сохраняет data-ergo-module-theme для SCSS-алиасов,
+ * но отдельный #module-theme-styles не подгружается.
+ *
+ * @param {string|null} _moduleKey
  */
-export async function syncModuleThemeFromApi(moduleKey) {
-  if (!moduleKey) {
-    clearModuleTheme()
-    return null
-  }
-
-  if (!await isModuleThemeRegistered(moduleKey)) {
-    clearModuleTheme()
-    return null
-  }
-
-  await initEndpoints()
-
-  const res = await apiClient.get(
-    endpoints.themes.active,
-    { module: moduleKey },
-    false,
-    { quietStatuses: [404] },
-  )
-
-  if (res.success && res.data && !res.data.detail) {
-    const themeSet = normalizeModuleThemeSetPayload(res.data)
-    if (themeSet) {
-      saveModuleThemeSetToCache(moduleKey, themeSet)
-      applyModuleThemeSet(moduleKey, themeSet)
-      return themeSet
-    }
-  }
-
-  const cached = getCachedModuleThemeSet(moduleKey)
-  if (cached) {
-    applyModuleThemeSet(moduleKey, cached)
-    return cached
-  }
-
+export async function syncModuleThemeFromApi(_moduleKey) {
   clearModuleTheme()
   return null
 }
 
 /**
- * @param {string|null} moduleKey — из route.meta.moduleKey
+ * @param {string|null} _moduleKey — из route.meta.moduleKey (игнорируется)
  */
-export async function handleRouteModuleTheme(moduleKey) {
-  if (!moduleKey) {
-    clearModuleTheme()
-    return null
-  }
-  return syncModuleThemeFromApi(moduleKey)
+export async function handleRouteModuleTheme(_moduleKey) {
+  clearModuleTheme()
+  return null
 }
