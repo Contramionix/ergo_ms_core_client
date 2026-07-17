@@ -1,4 +1,4 @@
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import {
   fetchRegistrationSettings,
   getRegistrationSettingsSync,
@@ -6,13 +6,14 @@ import {
 } from '@/core/cms/adp/js/registrationSettings.js'
 
 export function useRegistrationSettings() {
-  const settings = ref(getRegistrationSettingsSync())
-  const ready = ref(Boolean(settings.value))
+  const initial = getRegistrationSettingsSync()
+  const settings = ref(initial)
+  const ready = ref(initial !== null)
 
   const showRegisterLink = computed(() => ready.value && isOpenRegistrationMode(settings.value))
 
-  onMounted(async () => {
-    settings.value = await fetchRegistrationSettings()
+  void fetchRegistrationSettings().then((next) => {
+    settings.value = next
     ready.value = true
   })
 

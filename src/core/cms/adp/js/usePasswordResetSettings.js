@@ -1,19 +1,22 @@
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import {
   fetchPasswordResetSettings,
   getPasswordResetSettingsSync,
 } from '@/core/cms/adp/js/passwordResetSettings.js'
 
 export function usePasswordResetSettings() {
-  const settings = ref(getPasswordResetSettingsSync())
-  const ready = ref(Boolean(settings.value))
+  const initial = getPasswordResetSettingsSync()
+  const settings = ref(initial)
+  // Показываем ссылку только после известного ответа (память после preload/fetch).
+  const ready = ref(initial !== null)
 
   const showForgotPasswordLink = computed(
-    () => ready.value && settings.value?.password_reset_enabled !== false,
+    () => ready.value && settings.value?.password_reset_enabled === true,
   )
 
-  onMounted(async () => {
-    settings.value = await fetchPasswordResetSettings()
+  // В setup, не в onMounted: успеваем присоединиться к preload до первой отрисовки.
+  void fetchPasswordResetSettings().then((next) => {
+    settings.value = next
     ready.value = true
   })
 

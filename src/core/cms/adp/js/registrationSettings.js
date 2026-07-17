@@ -1,8 +1,6 @@
 import { apiClient } from '@/js/api/manager'
 import { cmsEndpoints } from '@/core/cms/js/endpoints'
 
-const STORAGE_KEY = 'ergo_registration_settings'
-
 const DEFAULT_SETTINGS = Object.freeze({
   mode: 'closed',
   registration_enabled: false,
@@ -11,30 +9,6 @@ const DEFAULT_SETTINGS = Object.freeze({
 
 let cachedSettings = null
 let settingsPromise = null
-
-function readStorageCache() {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
-    if (!raw) {
-      return null
-    }
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed.mode !== 'string') {
-      return null
-    }
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-function writeStorageCache(settings) {
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-  } catch {
-    // ignore quota / private mode errors
-  }
-}
 
 function normalizeSettings(data) {
   if (!data || typeof data.mode !== 'string') {
@@ -48,17 +22,7 @@ function normalizeSettings(data) {
 }
 
 export function getRegistrationSettingsSync() {
-  if (cachedSettings) {
-    return cachedSettings
-  }
-
-  const stored = readStorageCache()
-  if (stored) {
-    cachedSettings = normalizeSettings(stored)
-    return cachedSettings
-  }
-
-  return null
+  return cachedSettings
 }
 
 export function isOpenRegistrationMode(settings) {
@@ -77,10 +41,13 @@ export async function fetchRegistrationSettings(force = false) {
     .get(cmsEndpoints.auth.registrationSettings, {}, false)
     .then((response) => {
       cachedSettings = normalizeSettings(response.data)
-      writeStorageCache(cachedSettings)
       return cachedSettings
     })
-    .catch(() => getRegistrationSettingsSync() || { ...DEFAULT_SETTINGS })
+    .catch(() => {
+      const fallback = cachedSettings || { ...DEFAULT_SETTINGS }
+      cachedSettings = fallback
+      return fallback
+    })
     .finally(() => {
       settingsPromise = null
     })

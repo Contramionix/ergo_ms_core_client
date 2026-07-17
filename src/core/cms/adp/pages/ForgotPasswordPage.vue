@@ -9,7 +9,7 @@ const router = useRouter()
 const isLoading = ref(false)
 const isSuccess = ref(false)
 const isBootstrapping = ref(true)
-const passwordResetSettings = ref({ password_reset_enabled: true })
+const passwordResetSettings = ref({ password_reset_enabled: false })
 
 const form = reactive({
   email: '',
