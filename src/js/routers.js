@@ -159,6 +159,13 @@ function setupRouterGuards(router) {
         return next(params)
       }
 
+      if (to.meta?.startRoute === true) {
+        // Раньше LayoutStart/LoginPage: к моменту отрисовки настройки уже в памяти.
+        import('@/composables/useAuthSettingsPreload.js').then(({ preloadAuthSettings }) => {
+          preloadAuthSettings()
+        })
+      }
+
       if (to.meta?.startRoute === true && (await runCheckToken())) {
         return safeNext({ name: 'AppHome' })
       }

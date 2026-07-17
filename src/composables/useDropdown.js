@@ -1,14 +1,27 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 
 /**
- * Композабл для управления состоянием dropdown меню
+ * Композабл для управления состоянием dropdown меню.
  * @param {Function} emit - функция emit из defineEmits
- * @returns {Object} объект с состоянием и методами dropdown
+ * @param {Object} [options]
+ * @param {() => (HTMLElement|null|undefined)[]} [options.getExtraNodes] - узлы вне корня (teleport)
  */
-export function useDropdown(emit) {
+export function useDropdown(emit, options = {}) {
+  const getExtraNodes = options.getExtraNodes ?? (() => [])
+
   const dropdownRef = ref(null)
   const isOpen = ref(false)
   let suppressOutsideClick = false
+
+  function containsTarget(target) {
+    if (!(target instanceof Node)) {
+      return false
+    }
+    if (dropdownRef.value?.contains(target)) {
+      return true
+    }
+    return getExtraNodes().some((node) => node?.contains?.(target))
+  }
 
   const toggleDropdown = () => {
     const willOpen = !isOpen.value
@@ -35,7 +48,7 @@ export function useDropdown(emit) {
     if (suppressOutsideClick || !isOpen.value) {
       return
     }
-    if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
+    if (!containsTarget(event.target)) {
       closeDropdown()
     }
   }
@@ -52,6 +65,7 @@ export function useDropdown(emit) {
     dropdownRef,
     isOpen,
     toggleDropdown,
-    closeDropdown
+    closeDropdown,
+    containsTarget,
   }
 }
