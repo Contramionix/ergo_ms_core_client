@@ -1,6 +1,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { Droplet } from 'lucide-vue-next'
+import { logError } from '@/js/utils/logError.js'
+import {
+  normalizeColorToHex,
+  toOpaqueHexForNativeInput,
+  applyRgbKeepingAlpha,
+  parseCssColor,
+} from './colorFormat.js'
 
 const props = defineProps({
   label: {
@@ -25,28 +32,47 @@ const emit = defineEmits(['update:value'])
 
 const colorInput = ref(null)
 const hasEyeDropper = ref(false)
+const draftText = ref(null)
 
 onMounted(() => {
   hasEyeDropper.value = typeof window !== 'undefined' && 'EyeDropper' in window
 })
 
-const hexValue = computed(() => {
-  const val = props.value || ''
-  if (val.startsWith('#') && (val.length === 7 || val.length === 4)) {
-    return val
+const displayValue = computed(() => {
+  if (draftText.value != null) {
+    return draftText.value
   }
-  const rgbaMatch = val.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
-  if (rgbaMatch) {
-    const r = parseInt(rgbaMatch[1], 10).toString(16).padStart(2, '0')
-    const g = parseInt(rgbaMatch[2], 10).toString(16).padStart(2, '0')
-    const b = parseInt(rgbaMatch[3], 10).toString(16).padStart(2, '0')
-    return `#${r}${g}${b}`
-  }
-  return '#000000'
+  return normalizeColorToHex(props.value)
 })
 
-const updateColor = (newColor) => {
-  emit('update:value', newColor)
+const hexValue = computed(() => toOpaqueHexForNativeInput(props.value))
+
+const updateColor = (newColor, { keepAlpha = false } = {}) => {
+  draftText.value = null
+  const next = keepAlpha
+    ? applyRgbKeepingAlpha(newColor, props.value)
+    : normalizeColorToHex(newColor)
+  emit('update:value', next)
+}
+
+const onTextInput = (event) => {
+  draftText.value = event.target.value
+}
+
+const onTextBlur = () => {
+  if (draftText.value == null) {
+    return
+  }
+  const raw = draftText.value.trim()
+  draftText.value = null
+  if (!raw) {
+    return
+  }
+  if (parseCssColor(raw)) {
+    emit('update:value', normalizeColorToHex(raw))
+    return
+  }
+  emit('update:value', raw)
 }
 
 const openEyeDropper = async () => {
@@ -57,7 +83,7 @@ const openEyeDropper = async () => {
   try {
     const eyeDropper = new window.EyeDropper()
     const result = await eyeDropper.open()
-    updateColor(result.sRGBHex)
+    updateColor(result.sRGBHex, { keepAlpha: true })
   } catch (e) {
     if (e.name !== 'AbortError') {
       logError('Ошибка EyeDropper:', e)
@@ -76,7 +102,7 @@ const openEyeDropper = async () => {
       <div
         class="color-picker__preview"
         :class="{ 'color-picker__preview--disabled': disabled }"
-        :style="{ backgroundColor: value }"
+        :style="{ backgroundColor: displayValue }"
         @click="!disabled && colorInput?.click()"
       >
         <input
@@ -85,16 +111,19 @@ const openEyeDropper = async () => {
           :value="hexValue"
           :disabled="disabled"
           class="color-picker__native-input"
-          @input="updateColor($event.target.value)"
+          @input="updateColor($event.target.value, { keepAlpha: true })"
         />
       </div>
       <input
         type="text"
-        :value="value"
+        :value="displayValue"
         :disabled="disabled"
         class="form-control color-picker__text-input"
-        placeholder="#000000 или rgba(...)"
-        @input="updateColor($event.target.value)"
+        placeholder="#rrggbb или #rrggbbaa"
+        spellcheck="false"
+        @input="onTextInput"
+        @blur="onTextBlur"
+        @keydown.enter.prevent="onTextBlur"
       />
       <button
         v-if="hasEyeDropper"
@@ -102,6 +131,7 @@ const openEyeDropper = async () => {
         class="btn-action"
         :disabled="disabled"
         title="Пипетка"
+        aria-label="Пипетка"
         @click="openEyeDropper"
       >
         <Droplet :size="16" />

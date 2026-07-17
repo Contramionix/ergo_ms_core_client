@@ -11,9 +11,9 @@
  */
 export const THEME_SCSS_COLORS = {
   light: {
-    // Светлая тема из _theme.scss
-    headerBackground: 'rgba(255, 255, 255, 0.85)',
-    authBackground: 'rgba(255, 255, 255, 0.7)',
+    // Светлая тема из _theme.scss (единый hex: #rrggbb / #rrggbbaa)
+    headerBackground: '#ffffffd9',
+    authBackground: '#ffffffb3',
     background: '#f2f2f2',
     border: '#e0e0e0',
     primaryText: '#101223',
@@ -25,8 +25,8 @@ export const THEME_SCSS_COLORS = {
   },
   dark: {
     // Тёмная тема из _theme.scss
-    headerBackground: 'rgba(30, 30, 30, 0.85)',
-    authBackground: 'rgba(30, 30, 30, 0.7)',
+    headerBackground: '#1e1e1ed9',
+    authBackground: '#1e1e1eb3',
     background: '#111112',
     border: '#555555',
     primaryText: '#c9cccf',

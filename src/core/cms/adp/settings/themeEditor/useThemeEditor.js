@@ -1,19 +1,7 @@
-import { ref, reactive, computed, onMounted, markRaw } from 'vue'
+import { ref, reactive, computed, markRaw, inject } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import { confirmAction } from '@/js/utils/confirm.js'
 import { logError } from '@/js/utils/logError.js'
-import {
-  Save,
-  Download,
-  Upload,
-  RotateCcw,
-  Plus,
-  Copy,
-  Trash2,
-  Check,
-  Sun,
-  Moon,
-} from 'lucide-vue-next'
 import { apiClient } from '@/js/api/manager'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { endpoints, initEndpoints } from '@/js/api/endpoints.js'
@@ -22,15 +10,95 @@ import {
   getColorDescriptions,
   getBootstrapByCategories,
   previewTheme,
-  applyTheme,
+  applyThemeModePreference,
   resetPreviewToDefaults,
   getCurrentThemeMode,
   loadThemeFromLocalStorage,
+  saveThemeToLocalStorage,
 } from '@/js/theme-manager'
-import { previewModuleThemeSet, applyModuleThemeSet, normalizeModuleThemeSetPayload } from '@/js/module-theme-manager.js'
+import { previewModuleThemeSet, applyModuleThemeSet, normalizeModuleThemeSetPayload, clearModuleTheme } from '@/js/module-theme-manager.js'
 import { getThemeDefaultsManager, preloadModuleThemeManifests } from '@/modules/themes/ThemeDefaultsManager.js'
+import { syncUiSettingsFromStorage } from '@/core/cms/js/uiSettings.js'
+import { Sun, Moon } from 'lucide-vue-next'
+import { normalizeColorMapToHex, normalizeColorToHex } from './colorFormat.js'
 
-export function useThemeEditor() {
+export const THEME_EDITOR_KEY = 'ergoThemeEditor'
+
+function parseCssColorToRgb(value) {
+  const raw = String(value || '').trim()
+  if (!raw) {
+    return null
+  }
+  if (raw.startsWith('#')) {
+    let hex = raw.slice(1)
+    if (hex.length === 3) {
+      hex = hex.split('').map((c) => c + c).join('')
+    }
+    if (hex.length !== 6) {
+      return null
+    }
+    const n = Number.parseInt(hex, 16)
+    if (Number.isNaN(n)) {
+      return null
+    }
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
+  }
+  const rgba = raw.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i)
+  if (!rgba) {
+    return null
+  }
+  return {
+    r: Number.parseInt(rgba[1], 10),
+    g: Number.parseInt(rgba[2], 10),
+    b: Number.parseInt(rgba[3], 10),
+  }
+}
+
+function relativeLuminance({ r, g, b }) {
+  const toLinear = (c) => {
+    const s = c / 255
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
+}
+
+function contrastRatio(fg, bg) {
+  const a = parseCssColorToRgb(fg)
+  const b = parseCssColorToRgb(bg)
+  if (!a || !b) {
+    return null
+  }
+  const l1 = relativeLuminance(a)
+  const l2 = relativeLuminance(b)
+  const lighter = Math.max(l1, l2)
+  const darker = Math.min(l1, l2)
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
+export function isColorLikeToken(value) {
+  const v = String(value || '').trim()
+  if (!v) {
+    return false
+  }
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) {
+    return true
+  }
+  return /^rgba?\(/i.test(v)
+}
+
+function pickEditableFields(source) {
+  return {
+    name: source?.name || '',
+    description: source?.description || '',
+    author: source?.author || '',
+    base_theme: source?.base_theme || 'light',
+    colors: normalizeColorMapToHex(source?.colors || {}),
+    bootstrap_colors: normalizeColorMapToHex(source?.bootstrap_colors || {}),
+    module_tokens: { ...(source?.module_tokens || {}) },
+  }
+}
+
+export function createThemeEditor() {
   const toast = useToast()
 
   const BASE_THEME_OPTIONS = [
@@ -142,10 +210,97 @@ export function useThemeEditor() {
 
   function applyEditorPreview() {
     if (previewModuleKey.value) {
-      previewModuleThemeSet(previewModuleKey.value, buildModuleSetForPreview())
+      previewModuleThemeSet(previewModuleKey.value, buildModuleSetForPreview(), {
+        forceMode: editingVariant.value,
+      })
       return
     }
+    clearModuleTheme()
     previewTheme(buildPreviewPayload())
+  }
+
+  const baselineJson = ref(null)
+
+  function serializeEditableState() {
+    if (isModuleScope.value) {
+      const pair = themes.value.find((p) => p.module_pair === selectedPairKey.value)
+      const lightSource = editingVariant.value === 'light'
+        ? currentTheme
+        : (pair?.variants?.light || null)
+      const darkSource = editingVariant.value === 'dark'
+        ? currentTheme
+        : (pair?.variants?.dark || null)
+      return JSON.stringify({
+        name: currentTheme.name || '',
+        description: currentTheme.description || '',
+        author: currentTheme.author || '',
+        light: pickEditableFields(lightSource),
+        dark: pickEditableFields(darkSource),
+      })
+    }
+    return JSON.stringify(pickEditableFields(currentTheme))
+  }
+
+  function captureBaseline() {
+    baselineJson.value = serializeEditableState()
+  }
+
+  const isDirty = computed(() => {
+    if (isDraftSelected.value) {
+      return true
+    }
+    if (isModuleScope.value && modulePairHasUnsavedVariant.value) {
+      return true
+    }
+    if (!baselineJson.value || !selectedThemeId.value) {
+      return false
+    }
+    return serializeEditableState() !== baselineJson.value
+  })
+
+  const scopeLabel = computed(() => {
+    const opt = scopeOptions.value.find((o) => o.id === selectedScope.value)
+    return opt?.name || (isModuleScope.value ? selectedScope.value : 'Сайт')
+  })
+
+  const previewMeta = computed(() => ({
+    scopeId: selectedScope.value,
+    scopeLabel: scopeLabel.value,
+    isModule: isModuleScope.value,
+    moduleKey: previewModuleKey.value,
+    variant: isModuleScope.value ? editingVariant.value : currentTheme.base_theme,
+    variantLabel: (isModuleScope.value ? editingVariant.value : currentTheme.base_theme) === 'dark'
+      ? 'Тёмный'
+      : 'Светлый',
+  }))
+
+  const textContrast = computed(() => {
+    const ratio = contrastRatio(
+      currentTheme.colors?.primaryText,
+      currentTheme.colors?.background,
+    )
+    if (ratio == null) {
+      return { ratio: null, ok: null, label: '—' }
+    }
+    const ok = ratio >= 4.5
+    return {
+      ratio: Math.round(ratio * 10) / 10,
+      ok,
+      label: ok ? 'Контраст OK' : 'Слабый контраст',
+    }
+  })
+
+  async function confirmLeaveIfDirty() {
+    if (!isDirty.value) {
+      return true
+    }
+    return confirmAction({
+      title: 'Несохранённые изменения',
+      message: 'Есть несохранённые изменения темы. Уйти без сохранения?',
+      confirmText: 'Уйти',
+      cancelText: 'Остаться',
+      variant: 'warning',
+    })
   }
 
   function applyActivatedTheme(themeData) {
@@ -154,11 +309,19 @@ export function useThemeEditor() {
       applyModuleThemeSet(normalized.module_key, normalized)
       return
     }
-    applyTheme({
-      base_theme: themeData.base_theme,
+    // Палитра темы + режим шестерёнки: при активации «тёмной» темы
+    // нужно выставить preference=dark, иначе restore/sync снова применит light.
+    const base = themeData.base_theme === 'dark' ? 'dark' : 'light'
+    saveThemeToLocalStorage({
+      id: themeData.id,
+      name: themeData.name,
+      base_theme: base,
       colors: themeData.colors || {},
       bootstrap_colors: themeData.bootstrap_colors || {},
-    }, true)
+      module_tokens: themeData.module_tokens || {},
+    })
+    applyThemeModePreference(base)
+    syncUiSettingsFromStorage()
   }
 
   // Текущая редактируемая тема
@@ -313,8 +476,8 @@ export function useThemeEditor() {
       base_theme: source.base_theme,
       module_key: source.module_key || null,
       module_pair: source.module_pair || 'default',
-      colors: { ...(source.colors || {}) },
-      bootstrap_colors: { ...(source.bootstrap_colors || {}) },
+      colors: normalizeColorMapToHex(source.colors || {}),
+      bootstrap_colors: normalizeColorMapToHex(source.bootstrap_colors || {}),
       module_tokens: { ...(source.module_tokens || {}) },
       is_active: Boolean(source.is_active),
       is_default: Boolean(source.is_default),
@@ -525,7 +688,7 @@ export function useThemeEditor() {
     pair.name = currentTheme.name || pair.name
   }
 
-  const selectModulePair = (pair, variant = 'light', { preview = true } = {}) => {
+  const selectModulePair = (pair, variant = 'light', { preview = true, resetBaseline = true } = {}) => {
     persistCurrentVariantToPair()
 
     const pairKey = normalizedModulePairKey(pair.module_pair)
@@ -552,6 +715,9 @@ export function useThemeEditor() {
     if (preview) {
       applyEditorPreview()
     }
+    if (resetBaseline) {
+      captureBaseline()
+    }
   }
 
   const changeEditingVariant = (variant) => {
@@ -562,7 +728,7 @@ export function useThemeEditor() {
     if (!pair) {
       return
     }
-    selectModulePair(pair, variant)
+    selectModulePair(pair, variant, { resetBaseline: false })
   }
 
   // Выбор темы для редактирования
@@ -601,8 +767,8 @@ export function useThemeEditor() {
       base_theme: theme.base_theme,
       module_key: theme.module_key || null,
       module_pair: theme.module_pair || 'default',
-      colors,
-      bootstrap_colors: theme.bootstrap_colors ? { ...theme.bootstrap_colors } : {},
+      colors: normalizeColorMapToHex(colors),
+      bootstrap_colors: normalizeColorMapToHex(theme.bootstrap_colors || {}),
       module_tokens: theme.module_tokens ? { ...theme.module_tokens } : {},
       is_active: theme.is_active,
       is_default: theme.is_default,
@@ -612,6 +778,7 @@ export function useThemeEditor() {
     if (preview) {
       applyEditorPreview()
     }
+    captureBaseline()
   }
 
   async function syncPairMetadataToSibling() {
@@ -749,7 +916,7 @@ export function useThemeEditor() {
   }
 
   const updateColor = (key, value) => {
-    currentTheme.colors[key] = value
+    currentTheme.colors[key] = normalizeColorToHex(value)
     applyEditorPreview()
   }
 
@@ -757,7 +924,7 @@ export function useThemeEditor() {
     if (!currentTheme.bootstrap_colors) {
       currentTheme.bootstrap_colors = {}
     }
-    currentTheme.bootstrap_colors[key] = value
+    currentTheme.bootstrap_colors[key] = normalizeColorToHex(value)
     applyEditorPreview()
   }
 
@@ -765,7 +932,11 @@ export function useThemeEditor() {
     if (!currentTheme.module_tokens) {
       currentTheme.module_tokens = {}
     }
-    currentTheme.module_tokens[key] = value
+    // Цветоподобные токены — к hex; тени и прочее оставляем как есть
+    const trimmed = String(value || '').trim()
+    currentTheme.module_tokens[key] = isColorLikeToken(trimmed)
+      ? normalizeColorToHex(trimmed)
+      : value
     applyEditorPreview()
   }
 
@@ -1117,29 +1288,29 @@ export function useThemeEditor() {
     event.target.value = ''
   }
 
-  // Следим за изменениями и применяем превью
-  // Watch удалён - превью применяется только при явном изменении цвета
-
-  onMounted(async () => {
+  async function init() {
     await preloadModuleThemeManifests()
     const manager = getThemeDefaultsManager()
     scopeOptions.value = await manager.getScopeOptions()
     await loadThemes()
-  })
+  }
 
-  // При выходе из редактора - ничего не сбрасываем, активная тема сохранена в localStorage
   return {
     BASE_THEME_OPTIONS,
     VARIANT_OPTIONS,
     activateTheme,
+    applyEditorPreview,
     bootstrapCategories,
     changeBaseTheme,
     changeEditingVariant,
     canEditCurrentTheme,
     changeScope,
+    confirmLeaveIfDirty,
     selectedScope,
     scopeOptions,
+    scopeLabel,
     isModuleScope,
+    isDirty,
     colorDescriptions,
     createNewTheme,
     currentTheme,
@@ -1153,11 +1324,14 @@ export function useThemeEditor() {
     getDefaultValue,
     handleFileImport,
     importTheme,
+    init,
     isNewTheme,
     loading,
     moduleTokenEntries,
     isEditingModulePair,
     modulePairHasUnsavedVariant,
+    previewMeta,
+    previewModuleKey,
     resetSystemTheme,
     resetToDefaults,
     resettingThemeId,
@@ -1169,8 +1343,17 @@ export function useThemeEditor() {
     selectedPairKey,
     editingVariant,
     showBootstrapColors,
+    textContrast,
     updateBootstrapColor,
     updateColor,
     updateModuleToken,
   }
+}
+
+export function useThemeEditor() {
+  const editor = inject(THEME_EDITOR_KEY, null)
+  if (!editor) {
+    throw new Error('useThemeEditor: ParentLayout должен предоставить createThemeEditor()')
+  }
+  return editor
 }

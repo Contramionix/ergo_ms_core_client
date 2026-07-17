@@ -1,49 +1,108 @@
 <script setup>
-import { 
-  Home, 
-  Settings, 
-  User, 
-  Bell, 
-  Search, 
-  Menu,
+import { computed } from 'vue'
+import {
+  Home,
+  User,
+  Bell,
+  Search,
   ChevronRight,
   FileText,
-  Image,
-  Video,
-  Music,
-  Folder,
-  Download,
-  Share2,
   MoreVertical,
 } from 'lucide-vue-next'
+import { useThemeEditor } from './useThemeEditor.js'
+
+const {
+  previewMeta,
+  currentTheme,
+} = useThemeEditor()
+
+const scopeAttr = computed(() => (
+  previewMeta.value.isModule ? previewMeta.value.moduleKey : undefined
+))
+
+const canvasTheme = computed(() => (
+  previewMeta.value.variant === 'dark' ? 'dark' : 'light'
+))
+
+const colors = computed(() => currentTheme.colors || {})
 </script>
 
 <template>
   <div class="theme-preview">
+    <div class="theme-preview__meta">
+      <span class="theme-preview__meta-label">Область</span>
+      <strong>{{ previewMeta.scopeLabel }}</strong>
+      <span class="theme-preview__meta-sep" aria-hidden="true">·</span>
+      <span class="theme-preview__meta-label">Вариант</span>
+      <strong>{{ previewMeta.variantLabel }}</strong>
+    </div>
+
     <div class="content-card content-card--flush">
-      <div class="theme-preview__canvas">
-        <!-- Шапка -->
-        <div class="preview-header" style="background: var(--color-header-background);">
+      <div
+        class="theme-preview__canvas"
+        :data-ergo-module-theme="scopeAttr"
+        :data-bs-theme="canvasTheme"
+      >
+        <div
+          class="preview-header"
+          :style="{ background: colors.headerBackground || 'var(--color-header-background)' }"
+        >
           <div class="container-fluid px-4 py-3">
             <div class="d-flex align-items-center justify-content-between">
               <div class="d-flex align-items-center gap-3">
-                <div class="preview-logo">
+                <div
+                  class="preview-logo"
+                  :style="{
+                    background: colors.secondaryBackground || 'var(--color-secondary-background)',
+                    color: colors.accent || 'var(--color-accent)',
+                  }"
+                >
                   <Home :size="24" />
                 </div>
                 <nav class="d-flex gap-3">
-                  <a href="#" class="preview-nav-link" style="color: var(--color-primary-text);">Главная</a>
-                  <a href="#" class="preview-nav-link" style="color: var(--color-primary-text);">О нас</a>
-                  <a href="#" class="preview-nav-link" style="color: var(--color-primary-text);">Контакты</a>
+                  <a
+                    href="#"
+                    class="preview-nav-link"
+                    :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
+                    @click.prevent
+                  >Главная</a>
+                  <a
+                    href="#"
+                    class="preview-nav-link"
+                    :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
+                    @click.prevent
+                  >О нас</a>
+                  <a
+                    href="#"
+                    class="preview-nav-link"
+                    :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
+                    @click.prevent
+                  >Контакты</a>
                 </nav>
               </div>
               <div class="d-flex align-items-center gap-2">
-                <button class="preview-btn-icon" style="color: var(--color-primary-text);">
+                <button
+                  type="button"
+                  class="preview-btn-icon"
+                  :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
+                  aria-label="Поиск"
+                >
                   <Search :size="20" />
                 </button>
-                <button class="preview-btn-icon" style="color: var(--color-primary-text);">
+                <button
+                  type="button"
+                  class="preview-btn-icon"
+                  :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
+                  aria-label="Уведомления"
+                >
                   <Bell :size="20" />
                 </button>
-                <button class="preview-btn-icon" style="color: var(--color-primary-text);">
+                <button
+                  type="button"
+                  class="preview-btn-icon"
+                  :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
+                  aria-label="Профиль"
+                >
                   <User :size="20" />
                 </button>
               </div>
@@ -51,19 +110,40 @@ import {
           </div>
         </div>
 
-        <!-- Основной контент -->
-        <div class="preview-content" style="background: var(--color-background); min-height: 600px;">
+        <div
+          class="preview-content"
+          :style="{
+            background: colors.background || 'var(--color-background)',
+            minHeight: '600px',
+          }"
+        >
           <div class="container-fluid px-4 py-4">
-            <!-- Карточки -->
             <div class="row g-4 mb-4">
               <div class="col-12 col-md-6 col-lg-4">
-                <div class="preview-card" style="background: var(--color-primary-background); border-color: var(--color-border);">
-                  <div class="preview-card-header" style="border-color: var(--color-border);">
-                    <h5 style="color: var(--color-primary-text);">Карточка 1</h5>
+                <div
+                  class="preview-card"
+                  :style="{
+                    background: colors.primaryBackground || 'var(--color-primary-background)',
+                    borderColor: colors.border || 'var(--color-border)',
+                  }"
+                >
+                  <div
+                    class="preview-card-header"
+                    :style="{ borderColor: colors.border || 'var(--color-border)' }"
+                  >
+                    <h5 :style="{ color: colors.primaryText || 'var(--color-primary-text)' }">
+                      Карточка 1
+                    </h5>
                   </div>
                   <div class="preview-card-body">
-                    <p style="color: var(--color-secondary-text);">Пример текста в карточке. Здесь может быть любой контент.</p>
-                    <button class="preview-btn" style="background: var(--color-accent); color: white;">
+                    <p :style="{ color: colors.secondaryText || 'var(--color-secondary-text)' }">
+                      Пример текста в карточке. Здесь может быть любой контент.
+                    </p>
+                    <button
+                      type="button"
+                      class="preview-btn"
+                      :style="{ background: colors.accent || 'var(--color-accent)', color: '#fff' }"
+                    >
                       Действие
                     </button>
                   </div>
@@ -71,13 +151,33 @@ import {
               </div>
 
               <div class="col-12 col-md-6 col-lg-4">
-                <div class="preview-card" style="background: var(--color-primary-background); border-color: var(--color-border);">
-                  <div class="preview-card-header" style="border-color: var(--color-border);">
-                    <h5 style="color: var(--color-primary-text);">Карточка 2</h5>
+                <div
+                  class="preview-card"
+                  :style="{
+                    background: colors.primaryBackground || 'var(--color-primary-background)',
+                    borderColor: colors.border || 'var(--color-border)',
+                  }"
+                >
+                  <div
+                    class="preview-card-header"
+                    :style="{ borderColor: colors.border || 'var(--color-border)' }"
+                  >
+                    <h5 :style="{ color: colors.primaryText || 'var(--color-primary-text)' }">
+                      Карточка 2
+                    </h5>
                   </div>
                   <div class="preview-card-body">
-                    <p style="color: var(--color-secondary-text);">Еще одна карточка с контентом для демонстрации темы.</p>
-                    <button class="preview-btn-secondary" style="border-color: var(--color-border); color: var(--color-primary-text);">
+                    <p :style="{ color: colors.secondaryText || 'var(--color-secondary-text)' }">
+                      Ещё одна карточка с контентом для демонстрации темы.
+                    </p>
+                    <button
+                      type="button"
+                      class="preview-btn-secondary"
+                      :style="{
+                        borderColor: colors.border || 'var(--color-border)',
+                        color: colors.primaryText || 'var(--color-primary-text)',
+                      }"
+                    >
                       Вторичная кнопка
                     </button>
                   </div>
@@ -85,44 +185,71 @@ import {
               </div>
 
               <div class="col-12 col-md-6 col-lg-4">
-                <div class="preview-card" style="background: var(--color-secondary-background); border-color: var(--color-border);">
-                  <div class="preview-card-header" style="border-color: var(--color-border);">
-                    <h5 style="color: var(--color-primary-text);">Карточка 3</h5>
+                <div
+                  class="preview-card"
+                  :style="{
+                    background: colors.secondaryBackground || 'var(--color-secondary-background)',
+                    borderColor: colors.border || 'var(--color-border)',
+                  }"
+                >
+                  <div
+                    class="preview-card-header"
+                    :style="{ borderColor: colors.border || 'var(--color-border)' }"
+                  >
+                    <h5 :style="{ color: colors.primaryText || 'var(--color-primary-text)' }">
+                      Карточка 3
+                    </h5>
                   </div>
                   <div class="preview-card-body">
-                    <p style="color: var(--color-secondary-text);">Карточка с вторичным фоном для разнообразия.</p>
+                    <p :style="{ color: colors.secondaryText || 'var(--color-secondary-text)' }">
+                      Карточка с вторичным фоном для разнообразия.
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Форма -->
             <div class="row mb-4">
               <div class="col-12 col-lg-6">
-                <div class="preview-card" style="background: var(--color-primary-background); border-color: var(--color-border);">
-                  <div class="preview-card-header" style="border-color: var(--color-border);">
-                    <h5 style="color: var(--color-primary-text);">Форма</h5>
+                <div
+                  class="preview-card"
+                  :style="{
+                    background: colors.primaryBackground || 'var(--color-primary-background)',
+                    borderColor: colors.border || 'var(--color-border)',
+                  }"
+                >
+                  <div
+                    class="preview-card-header"
+                    :style="{ borderColor: colors.border || 'var(--color-border)' }"
+                  >
+                    <h5 :style="{ color: colors.primaryText || 'var(--color-primary-text)' }">
+                      Форма
+                    </h5>
                   </div>
                   <div class="preview-card-body">
                     <div class="mb-3">
-                      <label class="form-label" style="color: var(--color-primary-text);">Имя</label>
-                      <input 
-                        type="text" 
+                      <label
+                        class="form-label"
+                        for="preview-name"
+                        :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
+                      >Имя</label>
+                      <input
+                        id="preview-name"
+                        type="text"
                         class="form-control preview-input"
-                        style="background: var(--color-secondary-background); border-color: var(--color-border); color: var(--color-primary-text);"
+                        :style="{
+                          background: colors.secondaryBackground || 'var(--color-secondary-background)',
+                          borderColor: colors.border || 'var(--color-border)',
+                          color: colors.primaryText || 'var(--color-primary-text)',
+                        }"
                         placeholder="Введите имя"
                       />
                     </div>
-                    <div class="mb-3">
-                      <label class="form-label" style="color: var(--color-primary-text);">Email</label>
-                      <input 
-                        type="email" 
-                        class="form-control preview-input"
-                        style="background: var(--color-secondary-background); border-color: var(--color-border); color: var(--color-primary-text);"
-                        placeholder="email@example.com"
-                      />
-                    </div>
-                    <button class="preview-btn" style="background: var(--color-accent); color: white;">
+                    <button
+                      type="button"
+                      class="preview-btn"
+                      :style="{ background: colors.accent || 'var(--color-accent)', color: '#fff' }"
+                    >
                       Отправить
                     </button>
                   </div>
@@ -130,27 +257,64 @@ import {
               </div>
 
               <div class="col-12 col-lg-6">
-                <div class="preview-card" style="background: var(--color-primary-background); border-color: var(--color-border);">
-                  <div class="preview-card-header" style="border-color: var(--color-border);">
-                    <h5 style="color: var(--color-primary-text);">Список элементов</h5>
+                <div
+                  class="preview-card"
+                  :style="{
+                    background: colors.primaryBackground || 'var(--color-primary-background)',
+                    borderColor: colors.border || 'var(--color-border)',
+                  }"
+                >
+                  <div
+                    class="preview-card-header"
+                    :style="{ borderColor: colors.border || 'var(--color-border)' }"
+                  >
+                    <h5 :style="{ color: colors.primaryText || 'var(--color-primary-text)' }">
+                      Список элементов
+                    </h5>
                   </div>
                   <div class="preview-list">
-                    <div 
-                      v-for="i in 5" 
+                    <div
+                      v-for="i in 4"
                       :key="i"
                       class="preview-list-item"
-                      style="border-color: var(--color-border); background: var(--color-primary-background);"
-                      :style="{ '--hover-bg': 'var(--color-hover-background)' }"
+                      :style="{
+                        borderColor: colors.border || 'var(--color-border)',
+                        background: colors.primaryBackground || 'var(--color-primary-background)',
+                        '--hover-bg': colors.hoverBackground || 'var(--color-hover-background)',
+                      }"
                     >
                       <div class="d-flex align-items-center gap-3">
-                        <div class="preview-icon" style="background: var(--color-secondary-background); color: var(--color-accent);">
+                        <div
+                          class="preview-icon"
+                          :style="{
+                            background: colors.secondaryBackground || 'var(--color-secondary-background)',
+                            color: colors.accent || 'var(--color-accent)',
+                          }"
+                        >
                           <FileText :size="20" />
                         </div>
                         <div class="flex-grow-1">
-                          <div style="color: var(--color-primary-text); font-weight: 500;">Элемент списка {{ i }}</div>
-                          <div style="color: var(--color-secondary-text); font-size: 0.875rem;">Описание элемента</div>
+                          <div
+                            :style="{
+                              color: colors.primaryText || 'var(--color-primary-text)',
+                              fontWeight: 500,
+                            }"
+                          >
+                            Элемент списка {{ i }}
+                          </div>
+                          <div
+                            :style="{
+                              color: colors.secondaryText || 'var(--color-secondary-text)',
+                              fontSize: '0.875rem',
+                            }"
+                          >
+                            Описание элемента
+                          </div>
                         </div>
-                        <ChevronRight :size="20" style="color: var(--color-secondary-text);" />
+                        <ChevronRight
+                          :size="20"
+                          :style="{ color: colors.secondaryText || 'var(--color-secondary-text)' }"
+                        />
                       </div>
                     </div>
                   </div>
@@ -158,67 +322,48 @@ import {
               </div>
             </div>
 
-            <!-- Таблица -->
-            <div class="preview-card mb-4" style="background: var(--color-primary-background); border-color: var(--color-border);">
-              <div class="preview-card-header" style="border-color: var(--color-border);">
-                <h5 style="color: var(--color-primary-text);">Таблица данных</h5>
-              </div>
-              <div class="table-responsive">
-                <table class="table preview-table">
-                  <thead>
-                    <tr style="background: var(--color-secondary-background);">
-                      <th style="color: var(--color-primary-text); border-color: var(--color-border);">ID</th>
-                      <th style="color: var(--color-primary-text); border-color: var(--color-border);">Название</th>
-                      <th style="color: var(--color-primary-text); border-color: var(--color-border);">Статус</th>
-                      <th style="color: var(--color-primary-text); border-color: var(--color-border);">Действия</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="i in 3" :key="i" style="border-color: var(--color-border);">
-                      <td style="color: var(--color-primary-text);">{{ i }}</td>
-                      <td style="color: var(--color-primary-text);">Элемент {{ i }}</td>
-                      <td>
-                        <span class="badge" style="background: var(--color-accent);">Активен</span>
-                      </td>
-                      <td>
-                        <button class="preview-btn-icon-sm" style="color: var(--color-primary-text);">
-                          <MoreVertical :size="16" />
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Кнопки -->
-            <div class="preview-card" style="background: var(--color-primary-background); border-color: var(--color-border);">
-              <div class="preview-card-header" style="border-color: var(--color-border);">
-                <h5 style="color: var(--color-primary-text);">Кнопки и элементы управления</h5>
+            <div
+              class="preview-card"
+              :style="{
+                background: colors.primaryBackground || 'var(--color-primary-background)',
+                borderColor: colors.border || 'var(--color-border)',
+              }"
+            >
+              <div
+                class="preview-card-header"
+                :style="{ borderColor: colors.border || 'var(--color-border)' }"
+              >
+                <h5 :style="{ color: colors.primaryText || 'var(--color-primary-text)' }">
+                  Кнопки и элементы управления
+                </h5>
               </div>
               <div class="preview-card-body">
                 <div class="d-flex flex-wrap gap-3 align-items-center">
-                  <button class="preview-btn" style="background: var(--color-accent); color: white;">
+                  <button
+                    type="button"
+                    class="preview-btn"
+                    :style="{ background: colors.accent || 'var(--color-accent)', color: '#fff' }"
+                  >
                     Основная кнопка
                   </button>
-                  <button class="preview-btn-secondary" style="border-color: var(--color-border); color: var(--color-primary-text);">
+                  <button
+                    type="button"
+                    class="preview-btn-secondary"
+                    :style="{
+                      borderColor: colors.border || 'var(--color-border)',
+                      color: colors.primaryText || 'var(--color-primary-text)',
+                    }"
+                  >
                     Вторичная кнопка
                   </button>
-                  <button class="preview-btn-link" style="color: var(--color-accent);">
-                    Ссылка-кнопка
+                  <button
+                    type="button"
+                    class="preview-btn-icon-sm"
+                    :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
+                    aria-label="Ещё"
+                  >
+                    <MoreVertical :size="16" />
                   </button>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="preview-check" checked />
-                    <label class="form-check-label" for="preview-check" style="color: var(--color-primary-text);">
-                      Чекбокс
-                    </label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="preview-radio" id="preview-radio1" checked />
-                    <label class="form-check-label" for="preview-radio1" style="color: var(--color-primary-text);">
-                      Радио 1
-                    </label>
-                  </div>
                 </div>
               </div>
             </div>
@@ -233,6 +378,27 @@ import {
 @import '@/core/cms/adp/admin/admin-page.scss';
 
 .theme-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  .theme-preview__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--ui-text);
+  }
+
+  .theme-preview__meta-label {
+    color: var(--ui-text-muted);
+  }
+
+  .theme-preview__meta-sep {
+    color: var(--ui-text-muted);
+  }
+
   .content-card--flush {
     padding: 0;
     overflow: hidden;
@@ -244,7 +410,6 @@ import {
   }
 
   .preview-header {
-    backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--color-border, #e0e0e0);
   }
 
@@ -255,14 +420,12 @@ import {
     width: 40px;
     height: 40px;
     border-radius: 8px;
-    background: var(--color-secondary-background, #f1f1f1);
-    color: var(--color-accent, #d0322d);
   }
 
   .preview-nav-link {
     text-decoration: none;
     font-weight: 500;
-    transition: color 0.2s;
+    transition: color 0.15s ease;
 
     &:hover {
       color: var(--color-accent, #d0322d) !important;
@@ -275,7 +438,7 @@ import {
     padding: 8px;
     border-radius: 6px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.15s ease;
 
     &:hover {
       background: var(--color-hover-background, #e1e1e1);
@@ -291,6 +454,11 @@ import {
   .preview-card-header {
     padding: 1rem;
     border-bottom: 1px solid;
+
+    h5 {
+      margin: 0;
+      font-size: 1rem;
+    }
   }
 
   .preview-card-body {
@@ -303,7 +471,7 @@ import {
     border-radius: 6px;
     font-weight: 500;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: opacity 0.15s ease;
 
     &:hover {
       opacity: 0.9;
@@ -317,35 +485,16 @@ import {
     background: transparent;
     font-weight: 500;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.15s ease;
 
     &:hover {
       background: var(--color-hover-background, #e1e1e1);
     }
   }
 
-  .preview-btn-link {
-    background: transparent;
-    border: none;
-    padding: 0.5rem 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: underline;
-    transition: opacity 0.2s;
-
-    &:hover {
-      opacity: 0.8;
-    }
-  }
-
   .preview-input {
     &::placeholder {
       color: var(--color-secondary-text, #6e6e6e);
-    }
-
-    &:focus {
-      border-color: var(--color-accent, #d0322d);
-      box-shadow: 0 0 0 0.2rem rgba(208, 50, 45, 0.25);
     }
   }
 
@@ -357,7 +506,7 @@ import {
     padding: 1rem;
     border-bottom: 1px solid;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.15s ease;
 
     &:hover {
       background: var(--hover-bg, var(--color-hover-background, #e1e1e1)) !important;
@@ -375,22 +524,7 @@ import {
     width: 40px;
     height: 40px;
     border-radius: 8px;
-  }
-
-  .preview-table {
-    margin: 0;
-
-    th, td {
-      padding: 0.75rem;
-    }
-
-    tbody tr {
-      transition: background 0.2s;
-
-      &:hover {
-        background: var(--color-hover-background, #e1e1e1);
-      }
-    }
+    flex-shrink: 0;
   }
 
   .preview-btn-icon-sm {
@@ -399,19 +533,18 @@ import {
     padding: 4px;
     border-radius: 4px;
     cursor: pointer;
-    transition: background 0.2s;
-
-    &:hover {
-      background: var(--color-hover-background, #e1e1e1);
-    }
   }
+}
 
-  .badge {
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 500;
+@media (prefers-reduced-motion: reduce) {
+  .theme-preview {
+    .preview-nav-link,
+    .preview-btn-icon,
+    .preview-btn,
+    .preview-btn-secondary,
+    .preview-list-item {
+      transition: none;
+    }
   }
 }
 </style>
-

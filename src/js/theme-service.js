@@ -6,6 +6,7 @@ import {
   initTheme,
   readThemePreference,
   saveThemeToLocalStorage,
+  THEME_MODES,
 } from '@/js/theme-manager.js'
 
 function normalizeThemePayload(data) {
@@ -29,6 +30,10 @@ function normalizeThemePayload(data) {
 /**
  * Загружает активную тему сайта с API и применяет её.
  * Публичный endpoint — работает и на странице входа.
+ *
+ * Режим — из шестерёнки (localStorage `theme`). Палитра активной темы
+ * подстраивается под него. Явной записи в localStorage ещё нет — берём
+ * base_theme активной темы, чтобы тёмная активная тема не схлопывалась в light.
  */
 export async function syncSiteThemeFromApi() {
   await initEndpoints()
@@ -38,7 +43,11 @@ export async function syncSiteThemeFromApi() {
       const theme = normalizeThemePayload(res.data)
       if (theme) {
         saveThemeToLocalStorage(theme)
-        applyThemeModePreference(readThemePreference())
+        const stored = localStorage.getItem('theme')
+        const preference = (stored && THEME_MODES.includes(stored))
+          ? stored
+          : (theme.base_theme === 'dark' ? 'dark' : readThemePreference())
+        applyThemeModePreference(preference)
         return theme
       }
     }

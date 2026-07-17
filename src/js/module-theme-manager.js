@@ -21,6 +21,8 @@ export const MODULE_THEME_CHANGE_EVENT = 'ergo:module-theme-change'
 let activeModuleKey = null
 let cachedModuleSet = null
 let themeChangeListenerAttached = false
+/** Только для превью в редакторе: принудительный light|dark вместо глобального режима. */
+let previewForceMode = null
 
 function notifyModuleThemeChange(moduleKey, baseTheme) {
   if (typeof window === 'undefined') {
@@ -148,8 +150,15 @@ export function getCachedModuleThemeSetForActive() {
   return activeModuleKey ? getCachedModuleThemeSet(activeModuleKey) : null
 }
 
+function resolvePreviewMode() {
+  if (previewForceMode === 'light' || previewForceMode === 'dark') {
+    return previewForceMode
+  }
+  return getCurrentThemeMode()
+}
+
 function applyResolvedVariant(moduleKey, themeSet) {
-  const mode = getCurrentThemeMode()
+  const mode = resolvePreviewMode()
   const variant = resolveVariantFromSet(themeSet, mode)
   const styleEl = getOrCreateStyleElement()
 
@@ -187,9 +196,18 @@ function attachGlobalThemeListener() {
 }
 
 /**
- * Применить пару модульных тем; отображаемый вариант — по глобальному light/dark/auto.
+ * Применить пару модульных тем; отображаемый вариант — по глобальному light/dark/auto
+ * (или previewForceMode, если задан через previewModuleThemeSet).
  */
-export function applyModuleThemeSet(moduleKey, themeSet) {
+export function applyModuleThemeSet(moduleKey, themeSet, options = {}) {
+  if (Object.prototype.hasOwnProperty.call(options, 'forceMode')) {
+    previewForceMode = options.forceMode === 'light' || options.forceMode === 'dark'
+      ? options.forceMode
+      : null
+  } else if (!options.keepForceMode) {
+    previewForceMode = null
+  }
+
   attachGlobalThemeListener()
   activeModuleKey = moduleKey || null
   cachedModuleSet = themeSet ? normalizeModuleThemeSetPayload(themeSet) : null
@@ -203,7 +221,9 @@ export function applyModuleThemeSet(moduleKey, themeSet) {
     return
   }
 
-  saveModuleThemeSetToCache(moduleKey, cachedModuleSet)
+  if (!previewForceMode) {
+    saveModuleThemeSetToCache(moduleKey, cachedModuleSet)
+  }
   applyResolvedVariant(moduleKey, cachedModuleSet)
 }
 
@@ -217,6 +237,7 @@ export function applyModuleTheme(moduleKey, themeOrSet) {
 }
 
 export function clearModuleTheme() {
+  previewForceMode = null
   activeModuleKey = null
   cachedModuleSet = null
   const styleEl = document.getElementById(MODULE_THEME_STYLE_ID)
@@ -226,8 +247,14 @@ export function clearModuleTheme() {
   notifyModuleThemeChange(null, null)
 }
 
-export function previewModuleThemeSet(moduleKey, themeSet) {
-  applyModuleThemeSet(moduleKey, themeSet)
+/**
+ * Превью в редакторе. forceMode: 'light'|'dark' — показать вариант вкладки, а не глобальный режим.
+ */
+export function previewModuleThemeSet(moduleKey, themeSet, options = {}) {
+  applyModuleThemeSet(moduleKey, themeSet, {
+    forceMode: options.forceMode ?? null,
+    keepForceMode: Boolean(options.forceMode),
+  })
 }
 
 export function previewModuleTheme(moduleKey, themeOrSet) {
