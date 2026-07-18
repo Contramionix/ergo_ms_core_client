@@ -10,15 +10,22 @@ import {
 
 const STATIC_STATUS_URL = '/maintenance.json'
 const DEFAULT_DETAIL = 'Система временно недоступна. Мы проводим обновление и скоро вернёмся.'
+const BROADCAST_CHANNEL_NAME = 'ergo-maintenance'
+/** В покое (OFF) не дёргать статус чаще этого интервала. */
+const IDLE_EVENT_CHECK_MIN_INTERVAL_MS = 30000
 
 const maintenanceActive = ref(false)
 const maintenanceDetail = ref(DEFAULT_DETAIL)
 let checkPromise = null
 let pollTimer = null
 let pollIntervalMs = MAINTENANCE_POLL_INTERVAL_MS
-let visibilityListenerAttached = false
+let watchersAttached = false
 /** Пользователь явно вызвал stop — не перезапускать опрос из applyMaintenanceFromResponse. */
-let pollingStoppedByCaller = false
+let watchingStoppedByCaller = false
+let broadcastChannel = null
+/** Не зацикливать BroadcastChannel при локальном apply. */
+let applyingFromBroadcast = false
+let lastEventCheckAt = 0
 
 function applyDetail(detail) {
   if (typeof detail === 'string' && detail.trim()) {
@@ -33,7 +40,7 @@ function applyPollIntervalFromPayload(payload) {
   }
   pollIntervalMs = nextInterval
   if (pollTimer !== null) {
-    restartMaintenancePollingTimer()
+    restartActivePollingTimer()
   }
 }
 
@@ -63,7 +70,36 @@ function handleMaintenanceTransition(wasActive, enabled) {
   }
 }
 
-function applyMaintenanceState(payload, { reloadOnChange = true } = {}) {
+function syncActivePolling(enabled) {
+  if (watchingStoppedByCaller) {
+    return
+  }
+  if (enabled) {
+    startActivePolling()
+  } else {
+    stopActivePolling()
+  }
+}
+
+function publishMaintenanceBroadcast(payload) {
+  if (applyingFromBroadcast || typeof BroadcastChannel === 'undefined') {
+    return
+  }
+  try {
+    if (!broadcastChannel) {
+      broadcastChannel = new BroadcastChannel(BROADCAST_CHANNEL_NAME)
+    }
+    broadcastChannel.postMessage({
+      maintenance: Boolean(payload?.maintenance),
+      detail: payload?.detail,
+      pollIntervalMs: payload?.pollIntervalMs ?? pollIntervalMs,
+    })
+  } catch {
+    // BroadcastChannel недоступен — игнор
+  }
+}
+
+function applyMaintenanceState(payload, { reloadOnChange = true, fromBroadcast = false } = {}) {
   const enabled = Boolean(payload?.maintenance)
   const wasActive = maintenanceActive.value
 
@@ -73,6 +109,16 @@ function applyMaintenanceState(payload, { reloadOnChange = true } = {}) {
   }
 
   maintenanceActive.value = enabled
+  syncActivePolling(enabled)
+
+  if (!fromBroadcast) {
+    publishMaintenanceBroadcast({
+      maintenance: enabled,
+      detail: maintenanceDetail.value,
+      pollIntervalMs,
+    })
+  }
+
   if (reloadOnChange) {
     handleMaintenanceTransition(wasActive, enabled)
   }
@@ -87,17 +133,26 @@ export function applyMaintenanceFromResponse(response) {
   applyDetail(response.data?.detail)
   const wasActive = maintenanceActive.value
   maintenanceActive.value = true
-  // 503 мог включить оверлей без фонового опроса — иначе maintenance-off не заметим.
+  // 503 включил оверлей — опрашиваем только пока ON, чтобы поймать maintenance-off.
+  syncActivePolling(true)
   if (!wasActive) {
-    ensureMaintenancePolling()
+    publishMaintenanceBroadcast({
+      maintenance: true,
+      detail: maintenanceDetail.value,
+      pollIntervalMs,
+    })
   }
   return true
 }
 
 export function clearMaintenanceMode() {
   maintenanceActive.value = false
+  stopActivePolling()
 }
 
+/**
+ * @returns {{ ok: true, data: object } | { ok: false, missing: boolean }}
+ */
 async function fetchStaticMaintenanceStatus() {
   // ergoms maintenance-on/off пишет public/ и dist/; Vite и nginx отдают /maintenance.json.
   try {
@@ -107,11 +162,11 @@ async function fetchStaticMaintenanceStatus() {
       validateStatus: (status) => status === 200 || status === 404,
     })
     if (response.status === 404) {
-      return null
+      return { ok: false, missing: true }
     }
-    return response.data
+    return { ok: true, data: response.data }
   } catch {
-    return null
+    return { ok: false, missing: false }
   }
 }
 
@@ -145,9 +200,13 @@ export async function checkMaintenanceStatus({ reloadOnChange = true } = {}) {
   }
 
   checkPromise = (async () => {
-    const staticStatus = await fetchStaticMaintenanceStatus()
-    if (staticStatus !== null) {
-      return applyMaintenanceState(staticStatus, { reloadOnChange })
+    const staticResult = await fetchStaticMaintenanceStatus()
+    if (staticResult.ok) {
+      return applyMaintenanceState(staticResult.data, { reloadOnChange })
+    }
+    // Нет файла — режим OFF (не долбим API ради 404). Сеть упала — запасной API.
+    if (staticResult.missing) {
+      return applyMaintenanceState({ maintenance: false }, { reloadOnChange })
     }
 
     const apiStatus = await fetchApiMaintenanceStatus()
@@ -163,30 +222,72 @@ export async function checkMaintenanceStatus({ reloadOnChange = true } = {}) {
   return checkPromise
 }
 
+function requestEventCheck() {
+  const now = Date.now()
+  const minInterval = maintenanceActive.value
+    ? pollIntervalMs
+    : IDLE_EVENT_CHECK_MIN_INTERVAL_MS
+  if (now - lastEventCheckAt < minInterval) {
+    return
+  }
+  lastEventCheckAt = now
+  void checkMaintenanceStatus({ reloadOnChange: true })
+}
+
 function onDocumentVisibilityChange() {
   if (typeof document === 'undefined' || document.visibilityState !== 'visible') {
     return
   }
-  void checkMaintenanceStatus({ reloadOnChange: true })
+  requestEventCheck()
 }
 
-function attachVisibilityListener() {
-  if (visibilityListenerAttached || typeof document === 'undefined') {
+function onBroadcastMessage(event) {
+  const payload = event?.data
+  if (!payload || typeof payload !== 'object') {
+    return
+  }
+  applyingFromBroadcast = true
+  try {
+    applyMaintenanceState(payload, { reloadOnChange: true, fromBroadcast: true })
+  } finally {
+    applyingFromBroadcast = false
+  }
+}
+
+function attachWatchers() {
+  if (watchersAttached || typeof window === 'undefined') {
     return
   }
   document.addEventListener('visibilitychange', onDocumentVisibilityChange)
-  visibilityListenerAttached = true
+  if (typeof BroadcastChannel !== 'undefined') {
+    try {
+      broadcastChannel = new BroadcastChannel(BROADCAST_CHANNEL_NAME)
+      broadcastChannel.addEventListener('message', onBroadcastMessage)
+    } catch {
+      broadcastChannel = null
+    }
+  }
+  watchersAttached = true
 }
 
-function detachVisibilityListener() {
-  if (!visibilityListenerAttached || typeof document === 'undefined') {
+function detachWatchers() {
+  if (!watchersAttached || typeof window === 'undefined') {
     return
   }
   document.removeEventListener('visibilitychange', onDocumentVisibilityChange)
-  visibilityListenerAttached = false
+  if (broadcastChannel) {
+    try {
+      broadcastChannel.removeEventListener('message', onBroadcastMessage)
+      broadcastChannel.close()
+    } catch {
+      // ignore
+    }
+    broadcastChannel = null
+  }
+  watchersAttached = false
 }
 
-function restartMaintenancePollingTimer() {
+function restartActivePollingTimer() {
   if (pollTimer === null || typeof window === 'undefined') {
     return
   }
@@ -196,38 +297,45 @@ function restartMaintenancePollingTimer() {
   }, pollIntervalMs)
 }
 
-export function startMaintenancePolling() {
-  pollingStoppedByCaller = false
-  ensureMaintenancePolling()
-}
-
-function ensureMaintenancePolling() {
-  if (typeof window === 'undefined' || pollingStoppedByCaller) {
+function startActivePolling() {
+  if (typeof window === 'undefined' || watchingStoppedByCaller) {
     return
   }
-
-  attachVisibilityListener()
-
-  if (pollTimer === null) {
+  if (pollTimer !== null) {
+    restartActivePollingTimer()
+    return
+  }
+  pollTimer = window.setInterval(() => {
     void checkMaintenanceStatus({ reloadOnChange: true })
-    pollTimer = window.setInterval(() => {
-      void checkMaintenanceStatus({ reloadOnChange: true })
-    }, pollIntervalMs)
-    return
-  }
-
-  restartMaintenancePollingTimer()
+  }, pollIntervalMs)
 }
 
-export function stopMaintenancePolling() {
-  pollingStoppedByCaller = true
-  detachVisibilityListener()
-
+function stopActivePolling() {
   if (pollTimer === null || typeof window === 'undefined') {
     return
   }
   window.clearInterval(pollTimer)
   pollTimer = null
+}
+
+/**
+ * Событийный режим: visibility + BroadcastChannel между вкладками.
+ * Интервал /maintenance.json — только пока maintenance уже ON (ожидание off).
+ */
+export function startMaintenancePolling() {
+  watchingStoppedByCaller = false
+  attachWatchers()
+  if (maintenanceActive.value) {
+    startActivePolling()
+  } else {
+    stopActivePolling()
+  }
+}
+
+export function stopMaintenancePolling() {
+  watchingStoppedByCaller = true
+  detachWatchers()
+  stopActivePolling()
 }
 
 export function useMaintenanceMode() {

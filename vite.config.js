@@ -41,6 +41,22 @@ if (fs.existsSync(mainEnvPath)) {
 const env = mergeModuleEnv(modulesRoot, process.env)
 const runtimeEnv = applyNginxClientEnv(env)
 
+/** Runtime-статус для SPA; gitignore — создаём OFF по умолчанию, чтобы не было 404. */
+function ensureMaintenanceJson() {
+  const filePath = path.resolve(__dirname, 'public/maintenance.json')
+  if (fs.existsSync(filePath)) {
+    return
+  }
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+  fs.writeFileSync(
+    filePath,
+    `${JSON.stringify({ maintenance: false, pollIntervalMs: 3000 }, null, 2)}\n`,
+    'utf8',
+  )
+}
+
+ensureMaintenanceJson()
+
 function resolvePollIntervalMs(serverKey, defaultMs) {
   const serverValue = runtimeEnv[serverKey]
   if (serverValue !== undefined && serverValue !== '') {
@@ -52,17 +68,9 @@ function resolvePollIntervalMs(serverKey, defaultMs) {
   return String(defaultMs)
 }
 
-function buildClientEnvDefines(envValues, { viteServe = false } = {}) {
+function buildClientEnvDefines(envValues) {
   const useRelativeApi = envValues.CLIENT_USE_RELATIVE_API
     || (nginxEnabled(envValues) ? 'true' : '')
-  // Live-оверлей: явный CLIENT_MAINTENANCE_POLL_ENABLED; иначе auto — Vite serve и nginx.
-  const pollRaw = envValues.CLIENT_MAINTENANCE_POLL_ENABLED
-  let maintenancePollEnabled = 'false'
-  if (pollRaw !== undefined && pollRaw !== null && String(pollRaw).trim() !== '') {
-    maintenancePollEnabled = String(pollRaw).toLowerCase() === 'true' ? 'true' : 'false'
-  } else if (nginxEnabled(envValues) || viteServe) {
-    maintenancePollEnabled = 'true'
-  }
   const logLevel = envValues.CLIENT_LOG_LEVEL
     || (envValues.CLIENT_DEPLOY_TYPE === 'production' ? 'critical' : 'debug')
 
@@ -73,7 +81,6 @@ function buildClientEnvDefines(envValues, { viteServe = false } = {}) {
     CLIENT_DEFAULT_THEME: envValues.CLIENT_DEFAULT_THEME || 'light',
     CLIENT_LOG_LEVEL: logLevel,
     CLIENT_BROWSER_LOG_ENABLED: envValues.CLIENT_BROWSER_LOG_ENABLED ?? 'true',
-    CLIENT_MAINTENANCE_POLL_ENABLED: maintenancePollEnabled,
     CLIENT_DISABLED_MODULES: envValues.DISABLED_MODULES || '',
     CLIENT_PASSWORD_MIN_LENGTH: envValues.API_PASSWORD_MIN_LENGTH || '8',
     CLIENT_PASSWORD_MAX_LENGTH: envValues.API_PASSWORD_MAX_LENGTH || '128',
@@ -235,7 +242,7 @@ if (analyzeBuild) {
   )
 }
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(() => ({
   build: {
     target: 'esnext',
     minify: 'esbuild',
@@ -293,7 +300,7 @@ export default defineConfig(({ command }) => ({
       ],
     },
   },
-  define: buildClientEnvDefines(runtimeEnv, { viteServe: command === 'serve' }),
+  define: buildClientEnvDefines(runtimeEnv),
   optimizeDeps: {
     exclude: ['@vite-ignore', 'vue3-apexcharts'],
     include: [

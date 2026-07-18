@@ -32,7 +32,6 @@ export const clientEnv = {
   defaultTheme: readEnv('CLIENT_DEFAULT_THEME', 'light'),
   logLevel: readEnv('CLIENT_LOG_LEVEL', 'debug'),
   browserLogEnabled: readBool('CLIENT_BROWSER_LOG_ENABLED', true),
-  maintenancePollEnabled: readBool('CLIENT_MAINTENANCE_POLL_ENABLED', false),
   disabledModules: readEnv('CLIENT_DISABLED_MODULES', ''),
   passwordMinLength: readInt('CLIENT_PASSWORD_MIN_LENGTH', 8),
   passwordMaxLength: readInt('CLIENT_PASSWORD_MAX_LENGTH', 128),

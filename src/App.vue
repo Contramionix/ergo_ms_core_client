@@ -16,7 +16,6 @@ import {
   useMaintenanceMode,
 } from '@/composables/useMaintenanceMode.js'
 import { hideBootstrapMask } from '@/js/bootstrapMask.js'
-import { clientEnv } from '@/js/clientEnv.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,14 +38,11 @@ onMounted(() => {
   Promise.all([
     router.isReady(),
     checkMaintenanceStatus({ reloadOnChange: false }),
-  ]).then(([, maintenanceOn]) => {
+  ]).then(() => {
     isReady.value = true
     revealApp()
-    // Dev (Vite) — всегда опрашиваем, иначе live on/off не работает при
-    // CLIENT_MAINTENANCE_POLL_ENABLED=false в .env. Prod — флаг или уже ON.
-    if (clientEnv.maintenancePollEnabled || clientEnv.isDev || maintenanceOn) {
-      startMaintenancePolling()
-    }
+    // События (visibility) + опрос /maintenance.json только пока режим ON.
+    startMaintenancePolling()
   })
 })
 
