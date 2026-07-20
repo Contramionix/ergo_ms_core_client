@@ -57,6 +57,9 @@ function ensureMaintenanceJson() {
 
 ensureMaintenanceJson()
 
+/** Bind-адреса сервера — браузер по ним не ходит (ERR_ADDRESS_INVALID). */
+const BIND_ALL_HOSTS = new Set(['0.0.0.0', '*', '::', '[::]'])
+
 function resolvePollIntervalMs(serverKey, defaultMs) {
   const serverValue = runtimeEnv[serverKey]
   if (serverValue !== undefined && serverValue !== '') {
@@ -68,6 +71,41 @@ function resolvePollIntervalMs(serverKey, defaultMs) {
   return String(defaultMs)
 }
 
+/**
+ * Хост API для запросов из браузера.
+ * API_HOST=0.0.0.0 в Docker — только bind; для SPA нужен localhost / CLIENT_API_HOST.
+ */
+function resolveBrowserApiHost(envValues) {
+  const explicit = String(envValues.CLIENT_API_HOST || '').trim()
+  if (explicit && !BIND_ALL_HOSTS.has(explicit)) {
+    return explicit
+  }
+  const host = String(envValues.API_HOST || 'localhost').trim() || 'localhost'
+  if (BIND_ALL_HOSTS.has(host)) {
+    return 'localhost'
+  }
+  return host
+}
+
+/**
+ * Upstream для Vite proxy /api и /ws.
+ * В Docker при bind 0.0.0.0 — имя сервиса compose; на хосте — loopback.
+ */
+function resolveApiProxyHost(envValues) {
+  const host = String(envValues.API_HOST || 'localhost').trim() || 'localhost'
+  if (!BIND_ALL_HOSTS.has(host)) {
+    return host
+  }
+  if (envValues.DOCKER_ENABLED === 'true' || envValues.ERGO_DOCKER_SERVICE_API) {
+    return String(
+      envValues.ERGO_DOCKER_SERVICE_API
+      || envValues.DOCKER_SERVICE_API
+      || 'api',
+    ).trim() || 'api'
+  }
+  return '127.0.0.1'
+}
+
 function buildClientEnvDefines(envValues) {
   const useRelativeApi = envValues.CLIENT_USE_RELATIVE_API
     || (nginxEnabled(envValues) ? 'true' : '')
@@ -75,7 +113,7 @@ function buildClientEnvDefines(envValues) {
     || (envValues.CLIENT_DEPLOY_TYPE === 'production' ? 'critical' : 'debug')
 
   const values = {
-    CLIENT_API_HOST: envValues.API_HOST || 'localhost',
+    CLIENT_API_HOST: resolveBrowserApiHost(envValues),
     CLIENT_API_PORT: envValues.API_PORT || '8000',
     CLIENT_USE_RELATIVE_API: useRelativeApi,
     CLIENT_DEFAULT_THEME: envValues.CLIENT_DEFAULT_THEME || 'light',
@@ -284,11 +322,11 @@ export default defineConfig(() => ({
     // Прокси для CLIENT_USE_RELATIVE_API=true без nginx (редко) и ручных запросов к /api на origin Vite.
     proxy: {
       '/api': {
-        target: `http://${runtimeEnv.API_HOST || 'localhost'}:${runtimeEnv.API_PORT || '8000'}`,
+        target: `http://${resolveApiProxyHost(runtimeEnv)}:${runtimeEnv.API_PORT || '8000'}`,
         changeOrigin: true,
       },
       '/ws': {
-        target: `http://${runtimeEnv.API_HOST || 'localhost'}:${runtimeEnv.API_PORT || '8000'}`,
+        target: `http://${resolveApiProxyHost(runtimeEnv)}:${runtimeEnv.API_PORT || '8000'}`,
         ws: true,
         changeOrigin: true,
       },
