@@ -1,43 +1,72 @@
 <script setup>
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
-import { Bell, BellOff, Check, CheckCheck, ExternalLink, RefreshCw } from 'lucide-vue-next'
-import { moduleManager } from '@/modules/index.js'
+import {
+  Archive,
+  ArchiveRestore,
+  Bell,
+  BellOff,
+  CheckCheck,
+  Loader2,
+  RefreshCw,
+  Trash2,
+} from 'lucide-vue-next'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
-import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
-import NotificationActions from '@/core/notifications/components/NotificationActions.vue'
-import { formatDateTime } from '@/js/utils/timeUtils.js'
+import { groupNotificationsByDate } from '@/core/notifications/js/groupByDate.js'
+import NotificationItem from '@/core/notifications/components/NotificationItem.vue'
 import SelectBox from '@/components/SelectBox.vue'
+import HoverTooltip from '@/components/HoverTooltip.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { mapStringOptions } from '@/core/cms/js/adminSelectOptions.js'
+import { confirmDelete } from '@/js/utils/confirm.js'
+import { useToast } from '@/js/utils/toast.js'
 
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 
 const HIGHLIGHT_DURATION_MS = 4000
 const highlightedId = ref(null)
+const filtersReady = ref(false)
+const groupBusyKey = ref(null)
 
 const {
   items,
   unreadCount,
   loading,
+  loadingMore,
+  hasMore,
+  listTotal,
+  sourceModules,
   hasUnread,
   ensureInitialized,
   loadInitial,
+  loadMore,
   markRead,
   markAllRead,
+  archive,
+  unarchive,
+  softDelete,
 } = useNotificationsInbox()
 
 const { state: filterState, patchState } = useRouteQueryState({
   unread: { default: '', enum: ['', '1'] },
   source: { default: '' },
+  archived: { default: '', enum: ['', '1'] },
 })
 
 const showOnlyUnread = computed({
   get: () => filterState.value.unread === '1',
   set: (value) => {
     patchState({ unread: value ? '1' : '' }, { immediate: true })
+  },
+})
+
+const showArchived = computed({
+  get: () => filterState.value.archived === '1',
+  set: (value) => {
+    patchState({ archived: value ? '1' : '' }, { immediate: true })
   },
 })
 
@@ -48,78 +77,135 @@ const sourceFilter = computed({
   },
 })
 
-const sourceSelectOptions = computed(() => mapStringOptions(availableSources.value))
+const MODULE_LABELS = {
+  crm: 'CRM',
+  organizations: 'Организации',
+  lms: 'LMS',
+  tasks: 'Задачи',
+  project_ed: 'Project ED',
+}
 
-const availableSources = computed(() => {
-  const set = new Set()
-  for (const item of items.value) {
-    if (item.source_module) set.add(item.source_module)
-  }
-  return Array.from(set).sort()
+const sourceSelectOptions = computed(() => {
+  const mapped = mapStringOptions(sourceModules.value)
+  return mapped.map((opt) => ({
+    ...opt,
+    name: MODULE_LABELS[opt.id] || opt.name,
+  }))
 })
 
-const filteredItems = computed(() => {
-  return items.value.filter((item) => {
-    if (showOnlyUnread.value && item.is_read) return false
-    if (sourceFilter.value && item.source_module !== sourceFilter.value) return false
-    return true
+const groupedItems = computed(() => groupNotificationsByDate(items.value))
+
+const headerBadge = computed(() => {
+  if (hasUnread.value) return { text: String(unreadCount.value), tone: 'primary' }
+  if (listTotal.value) return { text: String(listTotal.value), tone: 'muted' }
+  return null
+})
+
+const emptyTitle = computed(() => {
+  if (showArchived.value) return 'Архив пуст'
+  if (showOnlyUnread.value) return 'Нет непрочитанных'
+  if (sourceFilter.value) return 'Ничего не найдено'
+  return 'Пока нет уведомлений'
+})
+
+function groupHasUnread(group) {
+  return (group.items || []).some((n) => !n.is_read)
+}
+
+function groupDateStyle(groupKey) {
+  if (groupKey === 'today' || groupKey === 'yesterday') return 'time'
+  if (groupKey === 'week') return 'weekday'
+  return 'full'
+}
+
+function reloadFromFilters() {
+  return loadInitial({
+    is_read: showOnlyUnread.value ? false : null,
+    source_module: sourceFilter.value || '',
+    archived: showArchived.value,
   })
-})
-
-const totalCount = computed(() => items.value.length)
-
-function levelClass(level) {
-  switch (level) {
-    case 'success': return 'level--success'
-    case 'warning': return 'level--warning'
-    case 'error': return 'level--error'
-    default: return 'level--info'
-  }
 }
 
-function iconFor(item) {
-  const name = resolveNotificationIconName(item)
-  const icon = moduleManager?.icons?.getIcon?.(name)
-  return icon || Bell
-}
+watch(
+  () => [filterState.value.unread, filterState.value.source, filterState.value.archived],
+  () => {
+    if (!filtersReady.value) return
+    reloadFromFilters()
+  },
+)
 
-function formatNotificationDate(value) {
-  if (!value) return ''
-  const formatted = formatDateTime(value)
-  return formatted === '—' ? '' : formatted
-}
-
-function hasTarget(item) {
-  if (item?.actions_state === 'pending' && Array.isArray(item?.actions) && item.actions.length) {
-    return false
-  }
-  return Boolean(item?.route?.name) || Boolean(item?.link_url)
-}
-
-async function activate(item) {
-  await markRead(item.id)
-  if (item.route?.name) {
-    router.push({ name: item.route.name, params: item.route.params || {} })
-    return
-  }
-  if (item.link_url) {
-    if (/^https?:\/\//i.test(item.link_url)) {
-      window.open(item.link_url, '_blank', 'noopener')
-    } else {
-      router.push(item.link_url)
-    }
+async function handleMarkAllRead() {
+  if (sourceFilter.value) {
+    await markAllRead({ source_module: sourceFilter.value })
+  } else {
+    await markAllRead()
   }
 }
 
 function refresh() {
-  loadInitial()
+  reloadFromFilters()
+}
+
+async function runGroupAction(group, action) {
+  if (!group?.key || groupBusyKey.value) return
+
+  const snapshot = [...(group.items || [])]
+  if (!snapshot.length) return
+
+  if (action === 'delete') {
+    const ok = await confirmDelete(
+      'Удаление уведомлений',
+      `Удалить ${snapshot.length} уведомлений из группы «${group.label}»?`,
+    )
+    if (!ok) return
+  }
+
+  groupBusyKey.value = group.key
+  let success = 0
+
+  try {
+    if (action === 'read') {
+      const unread = snapshot.filter((n) => !n.is_read)
+      for (const item of unread) {
+        await markRead(item.id)
+        const current = items.value.find((n) => n.id === item.id)
+        if (!current || current.is_read) success += 1
+      }
+    } else if (action === 'archive') {
+      for (const item of snapshot) {
+        if (await archive(item.id)) success += 1
+      }
+    } else if (action === 'unarchive') {
+      for (const item of snapshot) {
+        if (await unarchive(item.id)) success += 1
+      }
+    } else if (action === 'delete') {
+      for (const item of snapshot) {
+        if (await softDelete(item.id)) success += 1
+      }
+    }
+  } finally {
+    groupBusyKey.value = null
+  }
+
+  const labels = {
+    read: 'Прочитано',
+    archive: 'В архиве',
+    unarchive: 'Возвращено из архива',
+    delete: 'Удалено',
+  }
+  const label = labels[action] || 'Готово'
+  if (success > 0) {
+    toast.success(`${label}: ${success}`)
+  } else {
+    toast.error('Не удалось выполнить действие')
+  }
 }
 
 async function handleOpenQueryParam() {
   const openId = Number(route.query.open)
   if (!openId) return
 
-  // Убираем параметр сразу, чтобы поведение не повторялось при обновлении
   const { open: _open, ...restQuery } = route.query
   router.replace({ query: restQuery })
 
@@ -140,103 +226,454 @@ async function handleOpenQueryParam() {
 }
 
 onMounted(async () => {
-  // ensureInitialized сам вызывает loadInitial при первом запуске;
-  // ждём его, иначе повторный loadInitial вернётся мгновенно из-за guard по loading
-  await ensureInitialized()
-  await loadInitial()
+  await ensureInitialized({ skipLoad: true })
+  await reloadFromFilters()
+  filtersReady.value = true
   await handleOpenQueryParam()
 })
 </script>
 
 <template>
-  <div class="card h-100">
-    <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
-      <h5 class="card-title mb-0 d-flex align-items-center">
-        <Bell :size="20" class="me-2" />
+  <div class="notif-page card h-100">
+    <div class="card-header notif-page__header">
+      <h1 class="notif-page__title">
+        <Bell :size="20" aria-hidden="true" />
         <span>Уведомления</span>
-        <span v-if="totalCount" class="badge bg-secondary ms-2">{{ totalCount }}</span>
-        <span v-if="hasUnread" class="badge bg-primary ms-2">{{ unreadCount }} непрочитанных</span>
-      </h5>
-      <div class="d-flex gap-2 flex-wrap align-items-center">
-        <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="loading" @click="refresh" title="Обновить">
-          <RefreshCw :size="16" :class="{ 'spin': loading }" />
-        </button>
-        <button v-if="hasUnread" type="button" class="btn btn-outline-primary btn-sm" @click="markAllRead">
-          <CheckCheck :size="16" class="me-1" />
-          Прочитать все
+        <span
+          v-if="headerBadge"
+          class="notif-page__badge"
+          :class="headerBadge.tone === 'primary' ? 'notif-page__badge--primary' : 'notif-page__badge--muted'"
+        >
+          {{ headerBadge.text }}
+        </span>
+      </h1>
+      <div class="notif-page__header-actions">
+        <HoverTooltip text="Обновить">
+          <button
+            type="button"
+            class="notif-page__icon-btn"
+            :disabled="loading"
+            aria-label="Обновить"
+            @click="refresh"
+          >
+            <RefreshCw :size="16" :class="{ spin: loading }" aria-hidden="true" />
+          </button>
+        </HoverTooltip>
+        <button
+          v-if="hasUnread && !showArchived"
+          type="button"
+          class="btn btn-outline-primary btn-sm notif-page__mark-all"
+          @click="handleMarkAllRead"
+        >
+          <CheckCheck :size="16" aria-hidden="true" />
+          {{ sourceFilter ? 'Прочитать по фильтру' : 'Прочитать все' }}
         </button>
       </div>
     </div>
 
-    <div class="card-body">
-      <div class="filters d-flex flex-wrap gap-3 align-items-center mb-3">
-        <div class="btn-group btn-group-sm" role="group" aria-label="Фильтр по статусу">
-          <button type="button" class="btn" :class="showOnlyUnread ? 'btn-outline-primary' : 'btn-primary'" @click="showOnlyUnread = false">
+    <div class="card-body notif-page__body">
+      <div class="notif-page__filters" role="toolbar" aria-label="Фильтры уведомлений">
+        <div class="btn-group btn-group-sm notif-page__seg" role="group" aria-label="Статус">
+          <button
+            type="button"
+            class="btn"
+            :class="showOnlyUnread ? 'btn-outline-primary' : 'btn-primary'"
+            @click="showOnlyUnread = false"
+          >
             Все
           </button>
-          <button type="button" class="btn" :class="showOnlyUnread ? 'btn-primary' : 'btn-outline-primary'" @click="showOnlyUnread = true">
+          <button
+            type="button"
+            class="btn"
+            :class="showOnlyUnread ? 'btn-primary' : 'btn-outline-primary'"
+            @click="showOnlyUnread = true"
+          >
             Непрочитанные
           </button>
         </div>
 
-        <div v-if="availableSources.length" class="d-flex align-items-center gap-2 filters__source">
+        <div class="btn-group btn-group-sm notif-page__seg" role="group" aria-label="Область">
+          <button
+            type="button"
+            class="btn"
+            :class="showArchived ? 'btn-outline-primary' : 'btn-primary'"
+            @click="showArchived = false"
+          >
+            Активные
+          </button>
+          <button
+            type="button"
+            class="btn"
+            :class="showArchived ? 'btn-primary' : 'btn-outline-primary'"
+            @click="showArchived = true"
+          >
+            Архив
+          </button>
+        </div>
+
+        <div v-if="sourceSelectOptions.length" class="notif-page__source">
           <SelectBox
             v-model="sourceFilter"
-            label="Модуль:"
+            aria-label="Модуль"
             :options="sourceSelectOptions"
             value-key="id"
             label-key="name"
-            all-label="Все" :full-width="false"
+            all-label="Все"
+            :full-width="false"
           />
         </div>
       </div>
 
       <LoadingContentArea :loading="loading" min-height="10rem">
-        <div v-if="items.length === 0" class="empty-state text-center py-5 text-muted">
-          <BellOff :size="40" class="mb-2 opacity-50" />
-          <p class="mb-0">Пока нет уведомлений</p>
-        </div>
-        <div v-else-if="filteredItems.length === 0" class="empty-state text-center py-5 text-muted">
-          <BellOff :size="40" class="mb-2 opacity-50" />
-          <p class="mb-0">Под выбранные фильтры ничего не подходит</p>
+        <div v-if="items.length === 0" class="notif-page__empty text-muted">
+          <BellOff :size="40" class="opacity-50" aria-hidden="true" />
+          <p>{{ emptyTitle }}</p>
         </div>
 
-        <ul v-else class="notifications-list">
-        <li v-for="item in filteredItems" :key="item.id" :data-notification-id="item.id" class="notifications-item" :class="[levelClass(item.level), { 'is-unread': !item.is_read, 'is-clickable': hasTarget(item), 'is-highlighted': item.id === highlightedId }]" @click="hasTarget(item) && activate(item)">
-          <div class="notifications-item__icon" :class="levelClass(item.level)">
-            <component :is="iconFor(item)" :size="20" />
-          </div>
-          <div class="notifications-item__content">
-            <div class="d-flex align-items-start justify-content-between gap-2">
-              <div class="notifications-item__title">{{ item.title }}</div>
-              <span class="notifications-item__date text-muted">{{ formatNotificationDate(item.created_at) }}</span>
+        <template v-else>
+          <section
+            v-for="group in groupedItems"
+            :key="group.key"
+            class="notif-page__group"
+            :aria-label="group.label"
+          >
+            <div class="notif-page__group-head">
+              <h2 class="notif-page__group-label">
+                {{ group.label }}
+                <span class="notif-page__group-count">({{ group.items.length }})</span>
+              </h2>
+
+              <div
+                class="notif-page__group-actions"
+                role="group"
+                :aria-label="`Действия для группы ${group.label}`"
+              >
+                <Loader2
+                  v-if="groupBusyKey === group.key"
+                  :size="14"
+                  class="notif-page__group-spinner spin"
+                  aria-hidden="true"
+                />
+
+                <HoverTooltip
+                  v-if="!showArchived && groupHasUnread(group)"
+                  text="Прочитать группу"
+                >
+                  <button
+                    type="button"
+                    class="notif-page__icon-btn"
+                    :disabled="groupBusyKey === group.key"
+                    :aria-label="`Прочитать группу ${group.label}`"
+                    @click="runGroupAction(group, 'read')"
+                  >
+                    <CheckCheck :size="14" aria-hidden="true" />
+                  </button>
+                </HoverTooltip>
+
+                <HoverTooltip
+                  v-if="showArchived"
+                  text="Вернуть группу из архива"
+                >
+                  <button
+                    type="button"
+                    class="notif-page__icon-btn"
+                    :disabled="groupBusyKey === group.key"
+                    :aria-label="`Вернуть группу ${group.label} из архива`"
+                    @click="runGroupAction(group, 'unarchive')"
+                  >
+                    <ArchiveRestore :size="14" aria-hidden="true" />
+                  </button>
+                </HoverTooltip>
+                <HoverTooltip
+                  v-else
+                  text="Архивировать группу"
+                >
+                  <button
+                    type="button"
+                    class="notif-page__icon-btn"
+                    :disabled="groupBusyKey === group.key"
+                    :aria-label="`Архивировать группу ${group.label}`"
+                    @click="runGroupAction(group, 'archive')"
+                  >
+                    <Archive :size="14" aria-hidden="true" />
+                  </button>
+                </HoverTooltip>
+
+                <HoverTooltip text="Удалить группу">
+                  <button
+                    type="button"
+                    class="notif-page__icon-btn notif-page__icon-btn--danger"
+                    :disabled="groupBusyKey === group.key"
+                    :aria-label="`Удалить группу ${group.label}`"
+                    @click="runGroupAction(group, 'delete')"
+                  >
+                    <Trash2 :size="14" aria-hidden="true" />
+                  </button>
+                </HoverTooltip>
+              </div>
             </div>
-            <div v-if="item.body" class="notifications-item__body">{{ item.body }}</div>
-            <NotificationActions :notification="item" />
-            <div class="notifications-item__meta">
-              <span v-if="item.source_module" class="notifications-item__source">{{ item.source_module }}</span>
-              <span v-if="item.event_key" class="notifications-item__event">{{ item.event_key }}</span>
-            </div>
-          </div>
-          <div class="notifications-item__actions" @click.stop>
-            <button v-if="hasTarget(item)" type="button" class="btn btn-sm btn-outline-primary" @click="activate(item)" title="Перейти">
-              <ExternalLink :size="14" />
+
+            <ul class="notif-page__list">
+              <NotificationItem
+                v-for="item in group.items"
+                :key="item.id"
+                v-memo="[item.id, item.is_read, item.archived_at, item.actions_state, item.id === highlightedId, group.key]"
+                :notification="item"
+                :highlighted="item.id === highlightedId"
+                :archived-view="showArchived"
+                :date-style="groupDateStyle(group.key)"
+                @mark-read="markRead"
+                @archive="archive"
+                @unarchive="unarchive"
+                @delete="softDelete"
+              />
+            </ul>
+          </section>
+
+          <div v-if="hasMore" class="notif-page__more">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              :disabled="loadingMore"
+              @click="loadMore"
+            >
+              <span v-if="loadingMore" class="spinner-border spinner-border-sm me-2" aria-hidden="true" />
+              Загрузить ещё
             </button>
-            <button v-if="!item.is_read" type="button" class="btn btn-sm btn-outline-secondary" @click="markRead(item.id)" title="Отметить прочитанным">
-              <Check :size="14" />
-            </button>
           </div>
-        </li>
-      </ul>
+        </template>
       </LoadingContentArea>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss">
-.card {
-  border: 1px solid var(--color-border, #dee2e6);
-  background-color: var(--color-primary-background);
+.notif-page {
+  border: 1px solid var(--ui-border);
+  background-color: var(--ui-surface);
+  color: var(--ui-text);
+}
+
+.notif-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-border);
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+
+.notif-page__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.notif-page__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+
+  &--primary {
+    color: var(--bs-primary-text-emphasis, var(--ui-text));
+    background-color: var(--bs-primary-bg-subtle, var(--ui-surface-2));
+    border: 1px solid var(--bs-primary-border-subtle, var(--ui-border));
+  }
+
+  &--muted {
+    color: var(--ui-text-muted);
+    background-color: var(--ui-surface-2);
+    border: 1px solid var(--ui-border);
+  }
+}
+
+.notif-page__header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.notif-page__mark-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.notif-page__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.notif-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin: 0 0 1rem;
+  padding: 0 0 0.85rem;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.notif-page__seg {
+  flex: 0 0 auto;
+
+  .btn {
+    min-height: 31px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+.notif-page__source {
+  min-width: 160px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+
+  :deep(.select-box) {
+    --select-box-font-size: 0.875rem;
+    --select-box-trigger-min-height: 31px;
+    --select-box-item-padding-y: 0.25rem;
+    --select-box-item-padding-x: 0.5rem;
+    width: 100%;
+  }
+
+  :deep(.form-label) {
+    display: none;
+  }
+}
+
+.notif-page__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ui-text-muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background-color: var(--ui-surface-2);
+    color: var(--ui-text);
+    border-color: var(--ui-border);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent, var(--bs-primary));
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &--danger:hover:not(:disabled) {
+    color: var(--bs-danger);
+    border-color: var(--bs-danger-border-subtle, var(--ui-border));
+  }
+}
+
+.notif-page__empty {
+  text-align: center;
+  padding: 3rem 1rem;
+
+  p {
+    margin: 0.75rem 0 0;
+  }
+}
+
+.notif-page__group {
+  margin-bottom: 1.25rem;
+}
+
+.notif-page__group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.4rem;
+  padding: 0 0.15rem;
+  min-height: 32px;
+}
+
+.notif-page__group-label {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ui-text-muted);
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.notif-page__group-count {
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.notif-page__group-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  flex: 0 0 auto;
+}
+
+.notif-page__group-spinner {
+  color: var(--ui-text-muted);
+  margin-right: 0.15rem;
+}
+
+.notif-page__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--ui-surface);
+
+  :deep(.notif-item) {
+    border-radius: 0;
+    border-bottom: 1px solid var(--ui-border);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+}
+
+.notif-page__more {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0 0.25rem;
 }
 
 .spin {
@@ -248,169 +685,25 @@ onMounted(async () => {
   to { transform: rotate(360deg); }
 }
 
-.filters__source {
-  min-width: 180px;
-
-  :deep(.select-box) {
-    --select-box-font-size: 0.875rem;
-  }
-}
-
-.notifications-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.notifications-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem 1rem;
-  border: 1px solid var(--color-border, #dee2e6);
-  border-radius: 8px;
-  background-color: var(--color-primary-background);
-  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-  position: relative;
-
-  &.is-clickable {
-    cursor: pointer;
-
-    &:hover {
-      background-color: var(--color-hover-background);
-      border-color: var(--bs-primary-border-subtle, rgba(13, 110, 253, 0.25));
-    }
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
   }
 
-  &.is-unread {
-    background-color: var(--color-secondary-background, #f8f9fa);
-    border-color: var(--bs-primary-border-subtle, rgba(13, 110, 253, 0.25));
-
-    .notifications-item__title { font-weight: 600; }
+  .notif-page__icon-btn {
+    transition: none;
   }
-
-  &.level--success { border-left: 3px solid var(--bs-success, #198754); }
-  &.level--warning { border-left: 3px solid var(--bs-warning, #ffc107); }
-  &.level--error   { border-left: 3px solid var(--bs-danger, #dc3545); }
-  &.level--info    { border-left: 3px solid var(--bs-info, #0dcaf0); }
-
-  &.is-highlighted {
-    border-color: var(--bs-primary, #0d6efd);
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
-    animation: highlight-fade 4s ease forwards;
-  }
-}
-
-@keyframes highlight-fade {
-  0%, 60% {
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
-  }
-  100% {
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0);
-  }
-}
-
-.notifications-item__icon {
-  flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--color-secondary-background, #f8f9fa);
-  border: 1px solid var(--color-border, #dee2e6);
-  color: var(--color-primary-text);
-
-  &.level--success {
-    color: var(--bs-success, #198754);
-    border-color: var(--bs-success-border-subtle, rgba(25, 135, 84, 0.25));
-    background-color: var(--bs-success-bg-subtle, rgba(25, 135, 84, 0.08));
-  }
-  &.level--warning {
-    color: var(--bs-warning-text-emphasis, #997404);
-    border-color: var(--bs-warning-border-subtle, rgba(255, 193, 7, 0.3));
-    background-color: var(--bs-warning-bg-subtle, rgba(255, 193, 7, 0.1));
-  }
-  &.level--error {
-    color: var(--bs-danger, #dc3545);
-    border-color: var(--bs-danger-border-subtle, rgba(220, 53, 69, 0.25));
-    background-color: var(--bs-danger-bg-subtle, rgba(220, 53, 69, 0.08));
-  }
-  &.level--info {
-    color: var(--bs-primary, #0d6efd);
-    border-color: var(--bs-primary-border-subtle, rgba(13, 110, 253, 0.25));
-    background-color: var(--bs-primary-bg-subtle, rgba(13, 110, 253, 0.08));
-  }
-}
-
-.notifications-item__content {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.notifications-item__title {
-  font-size: 0.95rem;
-  color: var(--color-primary-text);
-  line-height: 1.3;
-  word-break: break-word;
-}
-
-.notifications-item__date {
-  font-size: 0.75rem;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.notifications-item__body {
-  font-size: 0.875rem;
-  color: var(--color-secondary-text, #6c757d);
-  margin-top: 0.25rem;
-  line-height: 1.45;
-  word-break: break-word;
-  white-space: pre-wrap;
-}
-
-.notifications-item__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  font-size: 0.7rem;
-  color: var(--color-secondary-text, #6c757d);
-}
-
-.notifications-item__source {
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background-color: var(--color-secondary-background, #f1f3f5);
-}
-
-.notifications-item__event {
-  font-family: var(--bs-font-monospace, monospace);
-}
-
-.notifications-item__actions {
-  flex: 0 0 auto;
-  display: flex;
-  gap: 0.25rem;
-  align-items: center;
 }
 
 @media (max-width: 575px) {
-  .notifications-item {
-    flex-wrap: wrap;
+  .notif-page__source {
+    margin-left: 0;
+    width: 100%;
+    min-width: 0;
   }
 
-  .notifications-item__actions {
-    width: 100%;
-    justify-content: flex-end;
+  .notif-page__group-head {
+    flex-wrap: wrap;
   }
 }
 </style>

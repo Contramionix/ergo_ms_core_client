@@ -27,13 +27,17 @@
             <AppsMenu v-else ref="appsMenuRef" @dropdown-toggle="(active) => setDropdownActive('apps', active)"/>
           </div>
           <div class="tools__settings">
-            <SettingsMenu ref="settingsMenuRef" @dropdown-toggle="(active) => setDropdownActive('settings', active)" @open-user-settings="showUserSettingsModal = true"/>
+            <SettingsMenu ref="settingsMenuRef" @dropdown-toggle="(active) => setDropdownActive('settings', active)" @open-user-settings="openUserSettingsModal('profile')"/>
           </div>
         </div>
       </div>
     </div>
 
-    <UserSettingsModal :show="showUserSettingsModal" @close="showUserSettingsModal = false" />
+    <UserSettingsModal
+      :show="showUserSettingsModal"
+      :initial-tab="userSettingsInitialTab"
+      @close="closeUserSettingsModal"
+    />
   </div>
 </template>
 
@@ -43,7 +47,7 @@ import SidebarNotifications from '@/components/menu/SidebarNotifications.vue'
 import AppsMenu from '@/components/menu/AppsMenu.vue'
 import SettingsMenu from '@/components/menu/SettingsMenu.vue'
 import UserSettingsModal from '@/core/cms/adp/user/account/component/UserSettingsModal.vue'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useUiSettings, initUserSettings } from '@/core/cms/js/uiSettings.js'
 
@@ -70,6 +74,30 @@ const notificationsMenuRef = ref(null)
 const appsMenuRef = ref(null)
 const settingsMenuRef = ref(null)
 const showUserSettingsModal = ref(false)
+const userSettingsInitialTab = ref('profile')
+
+function openUserSettingsModal(tab = 'profile') {
+  userSettingsInitialTab.value = tab || 'profile'
+  showUserSettingsModal.value = true
+}
+
+function closeUserSettingsModal() {
+  showUserSettingsModal.value = false
+  userSettingsInitialTab.value = 'profile'
+}
+
+function onOpenUserSettingsEvent(event) {
+  const tab = event?.detail?.tab || 'profile'
+  openUserSettingsModal(tab)
+}
+
+onMounted(() => {
+  window.addEventListener('ergo:open-user-settings', onOpenUserSettingsEvent)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('ergo:open-user-settings', onOpenUserSettingsEvent)
+})
 
 const { actionButton } = useUiSettings()
 

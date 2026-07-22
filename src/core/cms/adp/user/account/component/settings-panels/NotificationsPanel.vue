@@ -12,6 +12,7 @@ import {
   anchorIdModule,
 } from '@/core/notifications/js/useNotificationSettingsNav.js'
 import NotificationSettingsTable from '@/core/notifications/components/NotificationSettingsTable.vue'
+import BrowserNotificationsSettings from '@/core/notifications/components/BrowserNotificationsSettings.vue'
 
 const toast = useToast()
 const userStore = useUserStore()
@@ -88,6 +89,8 @@ onUnmounted(() => {
       </div>
 
       <template v-else>
+        <BrowserNotificationsSettings />
+
         <section :id="anchorIdGlobal()" class="notif-panel__anchor notif-panel__section">
           <p class="notif-panel__caption">Каналы доставки</p>
           <div class="settings-card notif-panel__global">

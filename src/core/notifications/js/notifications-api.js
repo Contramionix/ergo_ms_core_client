@@ -12,12 +12,32 @@ export const notificationsApi = {
     return apiClient.get(ep.unreadCount)
   },
 
+  sourceModules() {
+    return apiClient.get(ep.sourceModules)
+  },
+
   markRead(id) {
     return apiClient.post(ep.markRead(id), {})
   },
 
-  markAllRead() {
-    return apiClient.post(ep.markAllRead, {})
+  markAllRead(payload = {}) {
+    return apiClient.post(ep.markAllRead, payload)
+  },
+
+  archive(id) {
+    return apiClient.post(ep.archive(id), {})
+  },
+
+  unarchive(id) {
+    return apiClient.post(ep.unarchive(id), {})
+  },
+
+  hideFromSidebar(id) {
+    return apiClient.post(ep.hideFromSidebar(id), {})
+  },
+
+  softDelete(id) {
+    return apiClient.post(ep.softDelete(id), {})
   },
 
   executeAction(id, actionId) {

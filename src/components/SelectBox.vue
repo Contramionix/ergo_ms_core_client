@@ -121,6 +121,7 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick, useId } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
+import { OVERLAY_MENU_Z_INDEX } from '@/js/utils/overlayZIndex.js'
 
 defineOptions({ inheritAttrs: false })
 
@@ -348,7 +349,15 @@ function updateMenuPosition() {
             rect.left,
             window.innerWidth - viewportPadding - width
         )
-        top = triggerRect.bottom
+        const menuHeight = menuEl.value?.getBoundingClientRect().height || 0
+        const spaceBelow = window.innerHeight - viewportPadding - triggerRect.bottom
+        const spaceAbove = triggerRect.top - viewportPadding
+        const openUp = menuHeight > 0
+            && spaceBelow < menuHeight
+            && spaceAbove > spaceBelow
+        top = openUp
+            ? Math.max(viewportPadding, triggerRect.top - menuHeight)
+            : triggerRect.bottom
     }
 
     const triggerStyle = getComputedStyle(trigger)
@@ -362,6 +371,7 @@ function updateMenuPosition() {
         left: `${left}px`,
         width: `${width}px`,
         maxWidth: `${maxWidth}px`,
+        zIndex: OVERLAY_MENU_Z_INDEX,
         boxSizing: 'border-box',
         fontSize: resolvedMenuFontSize,
         lineHeight: menuLineHeight,
