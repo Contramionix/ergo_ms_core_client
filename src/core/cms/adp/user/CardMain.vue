@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-import { Briefcase, Calendar, Settings, Shield } from 'lucide-vue-next'
+import { Calendar, Settings, Shield } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore'
 import UserAvatar from '@/components/UserAvatar.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
@@ -31,7 +31,6 @@ const displayUserInfo = computed(() => {
   if (!profileData.value && !userStore.user) {
     return {
       username: 'Пользователь',
-      profession: '',
       registration: 'Неизвестно',
       role: '',
     }
@@ -41,7 +40,6 @@ const displayUserInfo = computed(() => {
 
   return {
     username: profile?.fullName || userStore.fullName || 'Гость',
-    profession: profile?.bio || '',
     registration: formatRegistrationDate(resolveRegistrationDateRaw()),
     role: userStore.userRole || '',
   }
@@ -187,10 +185,6 @@ defineExpose({
           </div>
 
           <ul class="profile-card__meta list-unstyled mb-0">
-            <li v-if="displayUserInfo.profession" class="profile-card__meta-item">
-              <Briefcase :size="14" class="profile-card__meta-icon" />
-              <span class="profile-card__meta-value">{{ displayUserInfo.profession }}</span>
-            </li>
             <li class="profile-card__meta-item">
               <Calendar :size="14" class="profile-card__meta-icon" />
               <span class="profile-card__meta-label">На платформе с</span>
