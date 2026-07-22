@@ -80,14 +80,14 @@ export const coreIntegrations = import.meta.glob('../../core/**/js/integrations.
 export const coreComponents = import.meta.glob('../../**/*.vue')
 
 export const modulesRoutes = ${buildModuleGlobExport('client/js/routes.js')}
-export const modulesRoutesNested = ${buildModuleGlobExport('client/**/js/routes.js')}
+export const modulesRoutesNested = ${buildModuleGlobExport('client/*/js/routes.js')}
 export const modulesEndpoints = ${buildModuleGlobExport('client/js/endpoints.js')}
 export const modulesPermissionRules = ${buildModuleGlobExport('client/js/permission-rules.js')}
 export const modulesPermissionSections = ${buildModuleGlobExport('client/js/permission-sections.js')}
-export const modulesPermissionSectionsNested = ${buildModuleGlobExport('client/**/js/permission-sections.js')}
+export const modulesPermissionSectionsNested = ${buildModuleGlobExport('client/*/js/permission-sections.js')}
 export const modulesRouteGuards = ${buildModuleGlobExport('client/js/routeGuard.js')}
 export const modulesIntegrations = ${buildModuleGlobExport('client/js/integrations.js')}
-export const modulesIntegrationsNested = ${buildModuleGlobExport('client/**/js/integrations.js')}
+export const modulesIntegrationsNested = ${buildModuleGlobExport('client/*/js/integrations.js')}
 export const modulesThemeDefaults = ${buildModuleGlobExport('client/js/theme-defaults.js')}
 export const modulesComponents = ${buildModuleGlobExport('client/**/*.vue')}
 `

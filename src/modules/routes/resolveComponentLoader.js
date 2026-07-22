@@ -64,8 +64,13 @@ export function createDeferredComponentImport(componentPath, getComponentsMap) {
       return loader()
     }
 
-    if (import.meta.env.DEV && componentPath.startsWith('@/')) {
-      return import(/* @vite-ignore */ componentPath)
+    // Новые .vue до перезапуска Vite: glob ещё без файла.
+    // import('@/...') с @vite-ignore не резолвит алиас — берём путь относительно этого файла.
+    if (import.meta.env.DEV) {
+      const relativePath = componentPathToGlobKey(componentPath)
+      if (relativePath) {
+        return import(/* @vite-ignore */ new URL(relativePath, import.meta.url).href)
+      }
     }
 
     return Promise.reject(new Error(`Component not found: ${componentPath}`))
