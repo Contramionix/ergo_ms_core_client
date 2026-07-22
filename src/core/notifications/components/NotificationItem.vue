@@ -246,7 +246,7 @@ async function onDelete() {
     <div class="notif-item__body-col">
       <!-- Строка 1: заголовок + дата -->
       <div class="notif-item__top">
-        <div class="notif-item__title">{{ notification.title }}</div>
+        <div class="notif-item__title" :title="notification.title">{{ notification.title }}</div>
         <HoverTooltip :text="dateTooltip">
           <time class="notif-item__date" :datetime="notification.created_at">
             {{ formattedDate }}
