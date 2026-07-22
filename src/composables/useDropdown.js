@@ -29,9 +29,13 @@ export function useDropdown(emit, options = {}) {
     emit('dropdown-toggle', willOpen)
 
     if (willOpen) {
+      // Держим suppress дольше одного tick: иначе document click
+      // в том же жесте успевает закрыть только что открытое меню.
       suppressOutsideClick = true
       nextTick(() => {
-        suppressOutsideClick = false
+        requestAnimationFrame(() => {
+          suppressOutsideClick = false
+        })
       })
     }
   }

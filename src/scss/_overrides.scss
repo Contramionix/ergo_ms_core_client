@@ -112,9 +112,9 @@ $dropdown-link-active-bg: var(--bs-primary-bg-subtle);
   box-shadow: $dropdown-box-shadow;
 }
 
-// Анимация
-.dropdown .dropdown-menu,
-.dropdown-center .dropdown-menu {
+// Анимация legacy-меню (не teleport)
+.dropdown .dropdown-menu:not(.dropdown-menu-teleport),
+.dropdown-center .dropdown-menu:not(.dropdown-menu-teleport) {
   transition:
     max-height 0.3s,
     opacity 0.2s 0.1s,
@@ -127,13 +127,13 @@ $dropdown-link-active-bg: var(--bs-primary-bg-subtle);
   visibility: hidden;
   pointer-events: none;
 }
-.dropdown .dropdown-menu-end {
+.dropdown .dropdown-menu-end:not(.dropdown-menu-teleport) {
   inset: 0 0 auto auto;
   transform: translate(0px, 40px);
 }
 
-.dropdown .dropdown-menu.show,
-.dropdown-center .dropdown-menu.show {
+.dropdown .dropdown-menu.show:not(.dropdown-menu-teleport),
+.dropdown-center .dropdown-menu.show:not(.dropdown-menu-teleport) {
   transition:
     max-height 0.3s,
     opacity 0.2s,
@@ -145,8 +145,8 @@ $dropdown-link-active-bg: var(--bs-primary-bg-subtle);
   pointer-events: all;
 }
 
-.dropdown .dropdown-menu .dropdown-item,
-.dropdown-center .dropdown-menu .dropdown-item {
+.dropdown .dropdown-menu:not(.dropdown-menu-teleport) .dropdown-item,
+.dropdown-center .dropdown-menu:not(.dropdown-menu-teleport) .dropdown-item {
   opacity: 0;
   transform: translateY(-10px);
 
@@ -155,8 +155,8 @@ $dropdown-link-active-bg: var(--bs-primary-bg-subtle);
     transform 0.5s ease;
 }
 
-.dropdown .dropdown-menu.show .dropdown-item,
-.dropdown-center .dropdown-menu.show .dropdown-item {
+.dropdown .dropdown-menu.show:not(.dropdown-menu-teleport) .dropdown-item,
+.dropdown-center .dropdown-menu.show:not(.dropdown-menu-teleport) .dropdown-item {
   opacity: 1;
   transform: translateY(0);
 }

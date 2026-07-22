@@ -79,6 +79,10 @@ function updateMenuPosition() {
     maxWidth: `${maxWidth}px`,
     zIndex: OVERLAY_MENU_Z_INDEX,
     display: 'block',
+    // Сбрасываем legacy-отступ из _overrides.scss (.dropdown-menu-end { transform: translate(0, 40px) })
+    transform: 'none',
+    inset: 'auto',
+    margin: '0',
   }
 
   if (menuHeight) {
@@ -168,19 +172,33 @@ defineExpose({
 }
 
 // Teleport-меню: позиция через fixed, без Bootstrap JS
-.dropdown-menu-teleport {
+.dropdown-menu-teleport.dropdown-menu {
+  position: fixed !important;
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  max-height: none !important;
+  overflow: visible;
+  transform: none !important;
+  inset: auto !important;
+  margin: 0 !important;
   background-color: var(--bs-card-bg, var(--bs-body-bg));
   border: 1px solid var(--bs-border-color, var(--ui-border));
   border-radius: var(--bs-border-radius, 0.375rem);
   box-shadow: var(--bs-box-shadow, 0 0.5rem 1rem rgba(0, 0, 0, 0.15));
   padding: 0.5rem 0;
-  margin: 0;
   list-style: none;
 }
 
 .dropdown-menu-teleport .dropdown-item {
-  opacity: 1;
-  transform: none;
+  opacity: 1 !important;
+  transform: none !important;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 
 // Legacy: inline-меню в DOM (без teleport) — скрыто, пока DropDown не открыт через JS

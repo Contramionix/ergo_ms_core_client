@@ -36,7 +36,7 @@ class MediaApiClient {
    * @param {File} file                    - объект File
    * @param {string} uploadUrl             - URL загрузки (от getUploadToken)
    * @param {string} token                 - upload-токен  (от getUploadToken)
-   * @param {Function} [onProgress]        - колбэк прогресса (event)
+   * @param {Function} [onProgress]        - колбэк прогресса (0..1)
    * @returns {Promise<{uuid, path, original_name, size, content_type}>}
    */
   async uploadFile(file, uploadUrl, token, onProgress) {
@@ -44,17 +44,54 @@ class MediaApiClient {
     formData.append('file', file)
     formData.append('token', token)
 
-    const response = await fetch(uploadUrl, {
-      method: 'POST',
-      body: formData,
-    })
+    if (typeof onProgress !== 'function') {
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+      })
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: response.statusText }))
-      throw new Error(error.error || `Upload failed: ${response.status}`)
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: response.statusText }))
+        throw new Error(error.error || `Upload failed: ${response.status}`)
+      }
+
+      return response.json()
     }
 
-    return response.json()
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', uploadUrl)
+
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return
+        const total = event.total || file.size || 0
+        if (!total) return
+        onProgress(Math.min(1, event.loaded / total))
+      }
+
+      xhr.onload = () => {
+        let data = null
+        try {
+          data = xhr.responseText ? JSON.parse(xhr.responseText) : null
+        } catch {
+          data = null
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress(1)
+          resolve(data)
+          return
+        }
+
+        reject(new Error(data?.error || `Upload failed: ${xhr.status}`))
+      }
+
+      xhr.onerror = () => {
+        reject(new Error('Сетевая ошибка при загрузке файла'))
+      }
+
+      xhr.send(formData)
+    })
   }
 
   /**

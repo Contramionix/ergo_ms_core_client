@@ -217,6 +217,21 @@ onBeforeUnmount(() => {
   z-index: 1 !important;
   margin: 1.75rem auto;
   pointer-events: auto;
+
+  // Без scrollable диалог не должен занимать всю высоту оверлея —
+  // иначе body с flex:1 растягивает пустое пространство до футера.
+  &:not(.modal-dialog-scrollable) {
+    height: auto;
+
+    .modal-content {
+      height: auto;
+      max-height: min(90vh, 100%);
+    }
+
+    .modal-body {
+      flex: 0 1 auto;
+    }
+  }
 }
 
 .modal-dialog {
