@@ -2,6 +2,12 @@
  * Утилиты для работы с временем
  */
 
+/** Месяцы в родительном падеже (для «с июня», «01 января»). */
+const MONTHS_GENITIVE = [
+    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+]
+
 /**
  * Возвращает русское название месяца по номеру (1–12).
  * По умолчанию — "все месяцы" для нулевого или некорректного значения.
@@ -29,6 +35,18 @@ export function getMonthNameByNumber(month) {
     }
 
     return months[month] || 'все месяцы'
+}
+
+/**
+ * Месяц в родительном падеже по номеру 1–12 (января…декабря).
+ * @param {number} month
+ * @returns {string}
+ */
+export function getMonthNameGenitiveByNumber(month) {
+    if (!month || month < 1 || month > 12) {
+        return ''
+    }
+    return MONTHS_GENITIVE[month - 1] || ''
 }
 
 /**
@@ -203,15 +221,24 @@ export function formatDate(date) {
     if (!date) return ''
     const d = parseDate(date)
     if (!d) return String(date)
-    
-    const months = [
-        'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
-    ]
+
     const dd = String(d.getDate()).padStart(2, '0')
-    const monthName = months[d.getMonth()]
+    const monthName = MONTHS_GENITIVE[d.getMonth()]
     const yyyy = d.getFullYear()
     return `${dd} ${monthName} ${yyyy}`
+}
+
+/**
+ * Месяц и год в родительном падеже для конструкций «с …» / «по …»
+ * (например, «июня 2026 г.»).
+ * @param {string|Date} date
+ * @returns {string}
+ */
+export function formatMonthYearGenitive(date) {
+    const d = parseDate(date)
+    if (!d) return ''
+
+    return `${MONTHS_GENITIVE[d.getMonth()]} ${d.getFullYear()} г.`
 }
 
 /**

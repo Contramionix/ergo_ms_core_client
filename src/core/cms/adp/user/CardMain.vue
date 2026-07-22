@@ -1,10 +1,11 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-import { Briefcase, Calendar, Mail, Settings, Shield } from 'lucide-vue-next'
+import { Briefcase, Calendar, Settings, Shield } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore'
 import UserAvatar from '@/components/UserAvatar.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
+import { formatMonthYearGenitive } from '@/js/utils/timeUtils.js'
 import { logError } from '@/js/utils/logError.js'
 
 const userStore = useUserStore()
@@ -32,20 +33,16 @@ const displayUserInfo = computed(() => {
       username: 'Пользователь',
       profession: '',
       registration: 'Неизвестно',
-      email: '',
       role: '',
     }
   }
 
   const profile = profileData.value
-  const emailRaw = userStore.userEmail
-  const email = emailRaw && emailRaw !== 'email не указан' ? emailRaw : ''
 
   return {
     username: profile?.fullName || userStore.fullName || 'Гость',
     profession: profile?.bio || '',
     registration: formatRegistrationDate(resolveRegistrationDateRaw()),
-    email,
     role: userStore.userRole || '',
   }
 })
@@ -62,11 +59,8 @@ function resolveRegistrationDateRaw() {
 function formatRegistrationDate(dateString) {
   if (!dateString) return 'Неизвестно'
 
-  const date = new Date(dateString)
-  if (Number.isNaN(date.getTime())) return 'Неизвестно'
-
-  const options = { year: 'numeric', month: 'long' }
-  return date.toLocaleDateString('ru-RU', options)
+  const label = formatMonthYearGenitive(dateString)
+  return label || 'Неизвестно'
 }
 
 async function fetchProfile({ showLoading = false } = {}) {
@@ -185,23 +179,10 @@ defineExpose({
             </HoverTooltip>
           </div>
 
-          <div
-            v-if="displayUserInfo.role || displayUserInfo.email"
-            class="profile-card__chips"
-          >
-            <span
-              v-if="displayUserInfo.role"
-              class="profile-card__chip profile-card__chip--role"
-            >
+          <div v-if="displayUserInfo.role" class="profile-card__chips">
+            <span class="profile-card__chip profile-card__chip--role">
               <Shield :size="12" aria-hidden="true" />
               {{ displayUserInfo.role }}
-            </span>
-            <span
-              v-if="displayUserInfo.email"
-              class="profile-card__chip profile-card__chip--email"
-            >
-              <Mail :size="12" aria-hidden="true" />
-              {{ displayUserInfo.email }}
             </span>
           </div>
 
@@ -445,11 +426,6 @@ defineExpose({
     color: var(--bs-primary-text-emphasis, var(--color-primary-text));
     background-color: var(--bs-primary-bg-subtle, var(--ui-surface-2));
     border-color: var(--bs-primary-border-subtle, var(--ui-border));
-  }
-
-  &--email {
-    color: color-mix(in srgb, var(--color-primary-text) 82%, transparent);
-    background: var(--ui-surface-2, var(--color-secondary-background));
   }
 }
 
