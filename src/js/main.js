@@ -13,10 +13,12 @@ import { createPinia } from 'pinia'
 
 import App from '@/App.vue'
 import { initEndpoints } from '@/js/api/endpoints.js'
+import { hideBootstrapMask } from '@/js/bootstrapMask.js'
 import { DEFAULT_SITE_NAME } from '@/js/siteWordmark.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { bootstrapAppSession } from '@/js/bootstrapSession.js'
 import { initTheme } from '@/js/theme-manager.js'
+import { logError } from '@/js/utils/logError.js'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -32,18 +34,37 @@ if (typeof document !== 'undefined') {
 
 initTheme()
 
-await Promise.all([initEndpoints(), initRouter()]).then(([, router]) => {
-  app.use(router)
-})
+function showBootFailure(error) {
+  hideBootstrapMask()
+  logError('Не удалось запустить клиент:', error)
+  if (typeof document !== 'undefined') {
+    const root = document.getElementById('app')
+    if (root) {
+      root.textContent =
+        'Не удалось загрузить приложение. Обновите страницу или проверьте, что API запущен.'
+    }
+  }
+}
 
-app.mount('#app')
+/**
+ * Без top-level await: иначе evaluation чанка index не завершается, пока
+ * initEndpoints/initRouter ждут dynamic import integrations/routes, а те
+ * статически импортируют index → ESM-дедлок (сеть 200, SPA навсегда в boot-loader).
+ */
+Promise.all([initEndpoints(), initRouter()])
+  .then(([, router]) => {
+    app.use(router)
+    app.mount('#app')
 
-void bootstrapAppSession()
+    void bootstrapAppSession()
+    useUserStore().warmupAvatar()
 
-useUserStore().warmupAvatar()
+    void import('@/js/theme-service.js')
+      .then(({ syncSiteThemeFromApi }) => syncSiteThemeFromApi())
+      .catch(() => {})
 
-const { syncSiteThemeFromApi } = await import('@/js/theme-service.js')
-syncSiteThemeFromApi().catch(() => {})
-
-const { preloadModuleThemeManifests } = await import('@/modules/themes/ThemeDefaultsManager.js')
-preloadModuleThemeManifests().catch(() => {})
+    void import('@/modules/themes/ThemeDefaultsManager.js')
+      .then(({ preloadModuleThemeManifests }) => preloadModuleThemeManifests())
+      .catch(() => {})
+  })
+  .catch(showBootFailure)
