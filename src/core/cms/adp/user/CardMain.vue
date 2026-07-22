@@ -226,11 +226,21 @@ defineExpose({
 .profile-card {
   --profile-cover-h: 72px;
   --profile-overlap: 36px;
+  --profile-card-shadow: 0 2px 12px color-mix(in srgb, var(--color-primary-text) 6%, transparent);
+  --profile-card-shadow-hover: 0 8px 22px color-mix(in srgb, var(--color-primary-text) 12%, transparent);
   overflow: hidden;
   border: 1px solid var(--ui-border, var(--color-border));
   border-radius: 0.625rem;
   background: var(--ui-surface, var(--color-primary-background));
-  box-shadow: 0 2px 12px color-mix(in srgb, var(--color-primary-text) 6%, transparent);
+  box-shadow: var(--profile-card-shadow);
+  /* Только opacity — transform оставлен для soft lift на hover */
+  animation: profile-card-fade 0.25s ease-out backwards;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--profile-card-shadow-hover);
+  }
 
   @media (width <= 992px) {
     --profile-cover-h: 68px;
@@ -258,58 +268,52 @@ defineExpose({
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+  transform-origin: 88% 0%;
   background: radial-gradient(
     70% 130% at 88% 0%,
     color-mix(in srgb, var(--color-accent, var(--bs-primary)) 16%, transparent),
     transparent 60%
   );
   opacity: 0.85;
+  animation: profile-cover-bloom 0.35s ease-out 0.08s backwards;
   transition: opacity 0.2s ease;
 
   .profile-card:hover & {
     opacity: 1;
   }
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      105deg,
-      transparent 40%,
-      color-mix(in srgb, var(--color-accent, var(--bs-primary)) 18%, transparent) 50%,
-      transparent 60%
-    );
-    transform: translateX(-120%);
-    animation: profile-cover-sheen 1s ease-out 0.25s 1;
-    transition: transform 0.45s ease-out;
-  }
-
-  .profile-card:hover &::after {
-    transform: translateX(120%);
-  }
-
-  .profile-card:not(:hover) &::after {
-    transition: none;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-
-    &::after {
-      animation: none;
-      transition: none;
-    }
-  }
 }
 
-@keyframes profile-cover-sheen {
+@keyframes profile-card-fade {
   from {
-    transform: translateX(-120%);
+    opacity: 0;
   }
 
   to {
-    transform: translateX(120%);
+    opacity: 1;
+  }
+}
+
+@keyframes profile-cover-bloom {
+  from {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+
+  to {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+
+@keyframes profile-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -335,6 +339,7 @@ defineExpose({
     0 0 0 3px var(--ui-surface, var(--color-primary-background)),
     0 6px 16px color-mix(in srgb, var(--color-primary-text) 12%, transparent);
   background: var(--ui-surface, var(--color-primary-background));
+  animation: profile-reveal 0.28s ease-out backwards;
 
   :deep(.user-avatar-wrap),
   :deep(.user-avatar) {
@@ -368,6 +373,7 @@ defineExpose({
   justify-content: flex-start;
   gap: 0.35rem;
   min-width: 0;
+  animation: profile-reveal 0.28s ease-out 0.05s backwards;
 }
 
 .profile-card__username {
@@ -417,6 +423,7 @@ defineExpose({
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+  animation: profile-reveal 0.28s ease-out 0.1s backwards;
 }
 
 .profile-card__chip {
@@ -452,6 +459,7 @@ defineExpose({
   align-items: center;
   gap: 0.25rem 0.85rem;
   margin: 0;
+  animation: profile-reveal 0.28s ease-out 0.15s backwards;
 }
 
 .profile-card__meta-item {
@@ -499,6 +507,32 @@ defineExpose({
   .profile-card__username {
     font-size: 1.15rem;
     white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-card {
+    animation: none;
+    transition: none;
+
+    &:hover {
+      transform: none;
+      box-shadow: var(--profile-card-shadow);
+    }
+  }
+
+  .profile-card__cover-gleam {
+    animation: none;
+    opacity: 0.85;
+    transform: none;
+    transition: none;
+  }
+
+  .profile-card__avatar,
+  .profile-card__title-row,
+  .profile-card__chips,
+  .profile-card__meta {
+    animation: none;
   }
 }
 </style>
