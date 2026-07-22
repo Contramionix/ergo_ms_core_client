@@ -1,26 +1,25 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-import { Briefcase, Calendar } from 'lucide-vue-next'
+import { Briefcase, Calendar, Mail, Settings, Shield } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore'
 import UserAvatar from '@/components/UserAvatar.vue'
+import HoverTooltip from '@/components/HoverTooltip.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
+import { logError } from '@/js/utils/logError.js'
 
 const userStore = useUserStore()
 
 function getAvatarSizeForViewport() {
   if (typeof window === 'undefined') {
-    return 180
+    return 96
   }
-
   if (window.innerWidth <= 575) {
-    return 120
+    return 72
   }
-
   if (window.innerWidth <= 992) {
-    return 150
+    return 80
   }
-
-  return 180
+  return 96
 }
 
 const profileData = ref(null)
@@ -33,15 +32,21 @@ const displayUserInfo = computed(() => {
       username: 'Пользователь',
       profession: '',
       registration: 'Неизвестно',
+      email: '',
+      role: '',
     }
   }
 
   const profile = profileData.value
+  const emailRaw = userStore.userEmail
+  const email = emailRaw && emailRaw !== 'email не указан' ? emailRaw : ''
 
   return {
     username: profile?.fullName || userStore.fullName || 'Гость',
     profession: profile?.bio || '',
     registration: formatRegistrationDate(resolveRegistrationDateRaw()),
+    email,
+    role: userStore.userRole || '',
   }
 })
 
@@ -121,6 +126,12 @@ function updateAvatarSize() {
   avatarSize.value = getAvatarSizeForViewport()
 }
 
+function openProfileSettings() {
+  window.dispatchEvent(new CustomEvent('ergo:open-user-settings', {
+    detail: { tab: 'profile' },
+  }))
+}
+
 onMounted(async () => {
   window.addEventListener('resize', updateAvatarSize)
 
@@ -142,11 +153,11 @@ defineExpose({
 
 <template>
   <div class="profile-card col-12">
-    <div class="profile-card__cover">
-      <img src="@/core/cms/assets/profile-cover.png" alt="Profile Cover" />
+    <div class="profile-card__cover" aria-hidden="true">
+      <div class="profile-card__cover-gleam" />
     </div>
 
-    <LoadingContentArea :loading="loading" min-height="8rem">
+    <LoadingContentArea :loading="loading" min-height="6rem">
       <div class="profile-card__body">
         <div class="profile-card__avatar">
           <UserAvatar
@@ -158,21 +169,51 @@ defineExpose({
         </div>
 
         <div class="profile-card__info">
-          <h3 class="profile-card__username">
-            {{ displayUserInfo.username }}
-          </h3>
+          <div class="profile-card__title-row">
+            <h3 class="profile-card__username">
+              {{ displayUserInfo.username }}
+            </h3>
+            <HoverTooltip text="Настройки профиля">
+              <button
+                type="button"
+                class="profile-card__settings"
+                aria-label="Настройки профиля"
+                @click="openProfileSettings"
+              >
+                <Settings :size="16" aria-hidden="true" />
+              </button>
+            </HoverTooltip>
+          </div>
+
+          <div
+            v-if="displayUserInfo.role || displayUserInfo.email"
+            class="profile-card__chips"
+          >
+            <span
+              v-if="displayUserInfo.role"
+              class="profile-card__chip profile-card__chip--role"
+            >
+              <Shield :size="12" aria-hidden="true" />
+              {{ displayUserInfo.role }}
+            </span>
+            <span
+              v-if="displayUserInfo.email"
+              class="profile-card__chip profile-card__chip--email"
+            >
+              <Mail :size="12" aria-hidden="true" />
+              {{ displayUserInfo.email }}
+            </span>
+          </div>
 
           <ul class="profile-card__meta list-unstyled mb-0">
             <li v-if="displayUserInfo.profession" class="profile-card__meta-item">
-              <Briefcase :size="20" class="profile-card__meta-icon" />
+              <Briefcase :size="14" class="profile-card__meta-icon" />
               <span class="profile-card__meta-value">{{ displayUserInfo.profession }}</span>
             </li>
-            <li class="profile-card__meta-item profile-card__meta-item--inline">
-              <span class="profile-card__meta-part">
-                <Calendar :size="20" class="profile-card__meta-icon" />
-                <span class="profile-card__meta-label">На платформе с:</span>
-                <span class="profile-card__meta-value">{{ displayUserInfo.registration }}</span>
-              </span>
+            <li class="profile-card__meta-item">
+              <Calendar :size="14" class="profile-card__meta-icon" />
+              <span class="profile-card__meta-label">На платформе с</span>
+              <span class="profile-card__meta-value">{{ displayUserInfo.registration }}</span>
             </li>
           </ul>
         </div>
@@ -183,56 +224,117 @@ defineExpose({
 
 <style scoped lang="scss">
 .profile-card {
+  --profile-cover-h: 72px;
+  --profile-overlap: 36px;
   overflow: hidden;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--ui-border, var(--color-border));
   border-radius: 0.625rem;
-  background: var(--color-primary-background);
-}
-
-.profile-card__cover {
-  overflow: hidden;
-
-  img {
-    display: block;
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-  }
+  background: var(--ui-surface, var(--color-primary-background));
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--color-primary-text) 6%, transparent);
 
   @media (width <= 992px) {
-    img {
-      height: 180px;
-    }
+    --profile-cover-h: 68px;
+    --profile-overlap: 32px;
   }
 
   @media (width <= 575px) {
-    img {
-      height: 120px;
+    --profile-cover-h: 60px;
+    --profile-overlap: 28px;
+  }
+}
+
+.profile-card__cover {
+  position: relative;
+  height: var(--profile-cover-h);
+  overflow: hidden;
+  /* Тон самой карточки (surface-2), чуть темнее белого тела — полоса читается как
+     часть карточки, а не отдельный баннер, независимо от акцента активной темы */
+  background: var(--ui-surface-2, var(--color-secondary-background));
+  border-bottom: 1px solid var(--ui-border, var(--color-border));
+}
+
+.profile-card__cover-gleam {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(
+    70% 130% at 88% 0%,
+    color-mix(in srgb, var(--color-accent, var(--bs-primary)) 16%, transparent),
+    transparent 60%
+  );
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+
+  .profile-card:hover & {
+    opacity: 1;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      color-mix(in srgb, var(--color-accent, var(--bs-primary)) 18%, transparent) 50%,
+      transparent 60%
+    );
+    transform: translateX(-120%);
+    animation: profile-cover-sheen 1s ease-out 0.25s 1;
+    transition: transform 0.45s ease-out;
+  }
+
+  .profile-card:hover &::after {
+    transform: translateX(120%);
+  }
+
+  .profile-card:not(:hover) &::after {
+    transition: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    &::after {
+      animation: none;
+      transition: none;
     }
+  }
+}
+
+@keyframes profile-cover-sheen {
+  from {
+    transform: translateX(-120%);
+  }
+
+  to {
+    transform: translateX(120%);
   }
 }
 
 .profile-card__body {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0 1.5rem 1.5rem;
-  text-align: center;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0 1.25rem 1.15rem;
+  margin-top: calc(var(--profile-overlap) * -1);
 }
 
 .profile-card__avatar {
-  --profile-avatar-size: 180px;
+  --profile-avatar-size: 96px;
   width: var(--profile-avatar-size);
   height: var(--profile-avatar-size);
-  margin-top: calc(var(--profile-avatar-size) / -2);
-  margin-bottom: 1rem;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 0 0 4px var(--color-primary-background);
+  box-shadow:
+    0 0 0 3px var(--ui-surface, var(--color-primary-background)),
+    0 6px 16px color-mix(in srgb, var(--color-primary-text) 12%, transparent);
+  background: var(--ui-surface, var(--color-primary-background));
 
   :deep(.user-avatar-wrap),
   :deep(.user-avatar) {
@@ -241,81 +343,162 @@ defineExpose({
   }
 
   @media (width <= 992px) {
-    --profile-avatar-size: 150px;
+    --profile-avatar-size: 80px;
   }
 
   @media (width <= 575px) {
-    --profile-avatar-size: 120px;
+    --profile-avatar-size: 72px;
   }
 }
 
 .profile-card__info {
-  width: 100%;
-  max-width: 42rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  /* Имя и чипы только на светлом теле — ниже края cover */
+  padding-top: calc(var(--profile-cover-h) - var(--profile-overlap) + 0.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.profile-card__title-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
 }
 
 .profile-card__username {
-  margin: 0 0 0.75rem;
-  min-height: 2.25rem;
-  font-size: 1.5rem;
-  font-weight: 600;
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.3;
   color: var(--color-primary-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-card__settings {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-primary-text) 58%, transparent);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--ui-surface-2, var(--color-secondary-background));
+    color: var(--color-primary-text);
+    border-color: var(--ui-border, var(--color-border));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent, var(--bs-primary));
+    outline-offset: 1px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.profile-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.profile-card__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--ui-border, var(--color-border));
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &--role {
+    color: var(--bs-primary-text-emphasis, var(--color-primary-text));
+    background-color: var(--bs-primary-bg-subtle, var(--ui-surface-2));
+    border-color: var(--bs-primary-border-subtle, var(--ui-border));
+  }
+
+  &--email {
+    color: color-mix(in srgb, var(--color-primary-text) 82%, transparent);
+    background: var(--ui-surface-2, var(--color-secondary-background));
+  }
 }
 
 .profile-card__meta {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin: 0 auto;
-  max-width: 100%;
+  gap: 0.25rem 0.85rem;
+  margin: 0;
 }
 
 .profile-card__meta-item {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  font-size: 0.9375rem;
-  text-align: center;
-
-  &--inline {
-    flex-wrap: wrap;
-    gap: 0.5rem 0.875rem;
-  }
-}
-
-.profile-card__meta-part {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
+  gap: 0.3rem;
+  font-size: 0.875rem;
+  min-width: 0;
+  color: color-mix(in srgb, var(--color-primary-text) 70%, transparent);
 }
 
 .profile-card__meta-label {
-  color: var(--color-primary-text);
-  font-weight: 500;
+  font-weight: 550;
 }
 
 .profile-card__meta-value {
-  color: var(--color-secondary-text);
-}
-
-.profile-card__meta-divider {
-  align-self: center;
-  color: var(--color-secondary-text);
-  opacity: 0.5;
-  user-select: none;
+  font-weight: 500;
 }
 
 .profile-card__meta-icon {
-  width: 20px;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
-  color: var(--color-primary-text);
+  color: color-mix(in srgb, var(--color-primary-text) 65%, transparent);
+}
+
+@media (width <= 575px) {
+  .profile-card__body {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+    padding: 0 1rem 1rem;
+  }
+
+  .profile-card__avatar {
+    align-self: flex-start;
+  }
+
+  .profile-card__info {
+    padding-top: 0.35rem;
+  }
+
+  .profile-card__title-row {
+    flex-wrap: wrap;
+  }
+
+  .profile-card__username {
+    font-size: 1.15rem;
+    white-space: normal;
+  }
 }
 </style>

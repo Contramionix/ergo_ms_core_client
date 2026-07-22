@@ -488,14 +488,22 @@ async function onDelete() {
 .notif-item__title {
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.875rem;
   line-height: 1.35;
   color: var(--ui-text);
-  word-break: break-word;
 }
 
 .notif-item.is-page .notif-item__title {
   font-size: 0.9375rem;
+}
+
+/* HoverTooltip — flex-ребёнок; без shrink время не сжимается и не перекрывается */
+.notif-item__top :deep(.hover-tooltip) {
+  flex: 0 0 auto;
+  max-width: none;
 }
 
 .notif-item__date {
