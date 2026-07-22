@@ -592,11 +592,27 @@ export function createThemeEditor() {
 
     resettingThemeId.value = theme.id || theme.module_pair
     try {
-      for (const id of ids) {
-        const res = await apiClient.post(endpoints.themes.resetDefaults(id))
+      if (theme.is_pair || theme.module_key) {
+        await preloadModuleThemeManifests()
+        const moduleKey = theme.module_key || selectedScope.value
+        const manifest = await getThemeDefaultsManager().getByModuleKey(moduleKey)
+        const resetId = ids[0]
+        if (!resetId) {
+          toast.error('Не удалось определить тему для сброса')
+          return
+        }
+        const res = await apiClient.post(endpoints.themes.resetDefaults(resetId), manifest ? { manifest } : {})
         if (!res.success) {
           toast.error(res.message || 'Ошибка сброса темы')
           return
+        }
+      } else {
+        for (const id of ids) {
+          const res = await apiClient.post(endpoints.themes.resetDefaults(id))
+          if (!res.success) {
+            toast.error(res.message || 'Ошибка сброса темы')
+            return
+          }
         }
       }
       toast.success(`Тема «${theme.name}» сброшена к начальным значениям`)

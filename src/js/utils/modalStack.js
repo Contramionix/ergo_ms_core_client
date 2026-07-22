@@ -64,12 +64,27 @@ export function isTopModal(id) {
 
 export function acquireScrollLock() {
   scrollLockCount += 1
-  document.body.style.overflow = 'hidden'
+  if (scrollLockCount > 1) {
+    return
+  }
+  // Компенсируем исчезающую полосу прокрутки: без padding-right контент
+  // становится шире и перестраивается при открытии модалки.
+  const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+  if (scrollbarWidth > 0) {
+    document.body.style.paddingRight = `${scrollbarWidth}px`
+  }
+  // Блокируем прокрутку через html, а не body: у html задан overflow-x: clip,
+  // поэтому overflow:hidden на body не переносится на окно, а превращает body
+  // в scroll-контейнер — sticky-элементы (меню настроек и т.п.) отвязываются
+  // от окна и дёргаются вверх. Overflow корневого элемента всегда применяется
+  // к окну и сохраняет позицию прокрутки.
+  document.documentElement.style.overflow = 'hidden'
 }
 
 export function releaseScrollLock() {
   scrollLockCount = Math.max(0, scrollLockCount - 1)
   if (scrollLockCount === 0) {
-    document.body.style.overflow = ''
+    document.documentElement.style.overflow = ''
+    document.body.style.paddingRight = ''
   }
 }

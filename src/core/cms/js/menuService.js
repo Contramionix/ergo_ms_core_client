@@ -10,6 +10,11 @@ import { endpoints } from '@/js/api/endpoints'
 import { getIcon, preloadMenuIconsFromData } from '@/config/icons-mapping.js'
 import { markRaw } from 'vue'
 import { logError, logWarn } from '@/js/utils/logError.js'
+import tokenService from '@/core/cms/js/tokenService.js'
+import {
+  collectRemovedMenuRouteNames,
+  isScopeRequiredMenuRoutePrefix,
+} from '@/integrations/menuExtensions.js'
 
 // In-memory кеш меню. Прогревается в main.js до монтирования, поэтому MenuList
 // может синхронно отрисовать меню с первого кадра (см. peekCachedMenu).
@@ -187,6 +192,89 @@ function transformMenuItem(item) {
   }
 
   return transformed
+}
+
+function shouldHideMenuRouteWithoutSessionScope(routeName, resolveRouteMeta) {
+  if (!routeName || typeof resolveRouteMeta !== 'function') {
+    return false
+  }
+
+  if (tokenService.hasActiveSessionScope()) {
+    return false
+  }
+
+  const meta = resolveRouteMeta(routeName)
+  if (!meta) {
+    return isScopeRequiredMenuRoutePrefix(routeName)
+  }
+
+  if (meta.menuVisibleWithoutSessionScope === true) {
+    return false
+  }
+
+  if (meta.hideInMenuWithoutSessionScope === true) {
+    return true
+  }
+
+  if (meta.requiresActiveSessionScope === true || meta.requiresSessionScope === true) {
+    return true
+  }
+
+  return false
+}
+
+function filterMenuListItem(item, resolveRouteMeta) {
+  if (item.routeName && collectRemovedMenuRouteNames().has(item.routeName)) {
+    return null
+  }
+  if (shouldHideMenuRouteWithoutSessionScope(item.routeName, resolveRouteMeta)) {
+    return null
+  }
+  return item
+}
+
+function filterMenuSection(section, resolveRouteMeta, isRootLevel = false) {
+  const next = { ...section }
+
+  if (Array.isArray(next.list)) {
+    next.list = next.list
+      .map((item) => filterMenuListItem(item, resolveRouteMeta))
+      .filter(Boolean)
+  }
+
+  if (Array.isArray(next.children)) {
+    next.children = next.children
+      .map((child) => filterMenuSection(child, resolveRouteMeta, false))
+      .filter(Boolean)
+  }
+
+  if (isRootLevel) {
+    return next
+  }
+
+  const hasList = (next.list?.length ?? 0) > 0
+  const hasChildren = (next.children?.length ?? 0) > 0
+
+  if (!hasList && !hasChildren) {
+    return null
+  }
+
+  return next
+}
+
+/**
+ * Скрывает пункты меню, недоступные без активного session-scope в JWT.
+ * @param {Array} sections - результат transformMenuData
+ * @param {(routeName: string) => object|null} resolveRouteMeta
+ */
+export function filterMenuSectionsForSessionScope(sections, resolveRouteMeta) {
+  if (!Array.isArray(sections) || sections.length === 0) {
+    return sections
+  }
+
+  return sections
+    .map((section) => filterMenuSection(section, resolveRouteMeta, true))
+    .filter(Boolean)
 }
 
 /**
@@ -448,6 +536,7 @@ export default {
   peekCachedMenu,
   clearMenuCache,
   transformMenuData,
+  filterMenuSectionsForSessionScope,
   transformSeparators,
   shouldShowSeparatorAt,
   getSeparatorTextAt,

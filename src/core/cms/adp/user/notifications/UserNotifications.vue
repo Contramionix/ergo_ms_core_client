@@ -18,7 +18,6 @@ import NotificationItem from '@/core/notifications/components/NotificationItem.v
 import SelectBox from '@/components/SelectBox.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
-import { mapStringOptions } from '@/core/cms/js/adminSelectOptions.js'
 import { confirmDelete } from '@/js/utils/confirm.js'
 import { useToast } from '@/js/utils/toast.js'
 
@@ -77,20 +76,20 @@ const sourceFilter = computed({
   },
 })
 
-const MODULE_LABELS = {
-  crm: 'CRM',
-  organizations: 'Организации',
-  lms: 'LMS',
-  tasks: 'Задачи',
-  project_ed: 'Project ED',
-}
-
 const sourceSelectOptions = computed(() => {
-  const mapped = mapStringOptions(sourceModules.value)
-  return mapped.map((opt) => ({
-    ...opt,
-    name: MODULE_LABELS[opt.id] || opt.name,
-  }))
+  return (sourceModules.value || [])
+    .map((item) => {
+      if (item && typeof item === 'object') {
+        const id = item.id || item.module || ''
+        if (!id) return null
+        return { id, name: item.name || item.module_label || id }
+      }
+      if (typeof item === 'string' && item) {
+        return { id: item, name: item }
+      }
+      return null
+    })
+    .filter(Boolean)
 })
 
 const groupedItems = computed(() => groupNotificationsByDate(items.value))

@@ -7,6 +7,12 @@
  */
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
+import {
+  buildNormalizedComponentsMap,
+  componentPathToGlobKey,
+  createDeferredComponentImport,
+  findComponentLoader,
+} from './resolveComponentLoader.js'
 
 // Создаем один экземпляр ModuleLoader для доступа к общим глобам
 const sharedLoader = new ModuleLoader()
@@ -14,8 +20,10 @@ const sharedLoader = new ModuleLoader()
 export class CoreRoutesManager {
   constructor(coreRoutesConfig) {
     this.coreRoutesConfig = coreRoutesConfig
-    // Используем глобы из общего ModuleLoader
-    this.componentsMap = sharedLoader.getGlobsByType('components', 'all')
+  }
+
+  getComponentsMap() {
+    return buildNormalizedComponentsMap(sharedLoader.getGlobsByType('components', 'all'))
   }
 
   /**
@@ -24,24 +32,10 @@ export class CoreRoutesManager {
    * @returns {Function|null}
    */
   getComponentLoader(componentPath) {
-    if (!componentPath || typeof componentPath !== 'string') {
-      return null
-    }
-
-    let searchPath
-
-    if (componentPath.startsWith('@/modules/')) {
-      searchPath = componentPath.replace('@/modules/', '../../../../../modules/')
-    } else if (componentPath.startsWith('@/')) {
-      searchPath = componentPath.replace('@/', '../../')
-    } else {
-      return null
-    }
-
-    const loader = this.componentsMap[searchPath]
+    const loader = findComponentLoader(componentPath, this.getComponentsMap())
 
     if (!loader) {
-      logWarn(`Компонент не найден: ${componentPath}`)
+      logWarn(`Компонент не найден: ${componentPath} (искали: ${componentPathToGlobKey(componentPath)})`)
     }
 
     return loader || null
@@ -55,12 +49,11 @@ export class CoreRoutesManager {
   transformComponentPath(componentPath) {
     const loader = this.getComponentLoader(componentPath)
 
-    if (loader) {
-      return loader
+    if (!loader) {
+      logError('Не удалось преобразовать путь', componentPath)
     }
 
-    logError('Не удалось преобразовать путь', componentPath)
-    return () => Promise.reject(new Error(`Component not found: ${componentPath}`))
+    return createDeferredComponentImport(componentPath, () => this.getComponentsMap())
   }
 
   /**

@@ -77,7 +77,6 @@ const isOpen = computed(() => {
   return props.openStates[groupId.value] || false
 })
 
-// Проверка активности текущего элемента (используем общую логику из checkChildrenActiveRecursive)
 const isActive = computed(() => isMenuItemActive(props.item, { route, router }))
 
 const isGroupActive = computed(() => {
@@ -152,10 +151,12 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
 
 <template>
   <li class="menu-item" :class="{ 'menu-item--group': isGroup }">
-    <div class="menu-item__content nav-btn" :class="{ 
-        'menu-item--active': isActive || isGroupActive,
-        'menu-item--group-active': isGroupActive && !isActive
-      }" :style="{ paddingLeft: paddingLeft }" @click="handleClick">
+    <div
+      class="menu-item__content nav-btn"
+      :class="{ 'menu-item--active': isActive || isGroupActive }"
+      :style="{ paddingLeft: paddingLeft }"
+      @click="handleClick"
+    >
       <div class="menu-item__label">
         <div class="menu-item__icon icon-flex">
           <component v-if="itemIcon" :is="itemIcon" :size="iconSizes.item" />

@@ -227,15 +227,6 @@ export function applyModuleThemeSet(moduleKey, themeSet, options = {}) {
   applyResolvedVariant(moduleKey, cachedModuleSet)
 }
 
-/** @deprecated Используй applyModuleThemeSet */
-export function applyModuleTheme(moduleKey, themeOrSet) {
-  if (themeOrSet?.variants) {
-    applyModuleThemeSet(moduleKey, themeOrSet)
-    return
-  }
-  applyModuleThemeSet(moduleKey, normalizeModuleThemeSetPayload(themeOrSet))
-}
-
 export function clearModuleTheme() {
   previewForceMode = null
   activeModuleKey = null
@@ -255,10 +246,6 @@ export function previewModuleThemeSet(moduleKey, themeSet, options = {}) {
     forceMode: options.forceMode ?? null,
     keepForceMode: Boolean(options.forceMode),
   })
-}
-
-export function previewModuleTheme(moduleKey, themeOrSet) {
-  applyModuleTheme(moduleKey, themeOrSet)
 }
 
 export function moduleThemeHasCustomPalette(themeOrSet) {

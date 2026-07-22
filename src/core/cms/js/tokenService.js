@@ -3,11 +3,10 @@ import {
   clearTokens,
   getAccess,
   getAccessExp,
-  getDepartmentId,
-  getOrganizationId,
   getPayload,
+  getSessionClaim,
   getUserId,
-  hasActiveOrganization,
+  hasActiveSessionScope,
   setTokens,
   shouldRefresh,
 } from '@/core/cms/js/tokenStorage.js'
@@ -20,9 +19,8 @@ export const tokenService = {
   tryRefresh: performTokenRefresh,
   shouldRefresh,
   getUserId,
-  getOrganizationId,
-  getDepartmentId,
-  hasActiveOrganization,
+  getSessionClaim,
+  hasActiveSessionScope,
   getPayload,
 }
 

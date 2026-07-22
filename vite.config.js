@@ -112,7 +112,7 @@ function buildClientEnvDefines(envValues) {
   const logLevel = envValues.CLIENT_LOG_LEVEL
     || (envValues.CLIENT_DEPLOY_TYPE === 'production' ? 'critical' : 'debug')
 
-  const values = {
+  const coreValues = {
     CLIENT_API_HOST: resolveBrowserApiHost(envValues),
     CLIENT_API_PORT: envValues.API_PORT || '8000',
     CLIENT_USE_RELATIVE_API: useRelativeApi,
@@ -131,9 +131,17 @@ function buildClientEnvDefines(envValues) {
     CLIENT_REALTIME_POLL_NOTIFICATIONS_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_NOTIFICATIONS_INTERVAL', 15000),
     CLIENT_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_ADMIN_PRESENCE_INTERVAL', 10000),
     CLIENT_REALTIME_POLL_MESSENGER_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_MESSENGER_INTERVAL', 5000),
-    CLIENT_BI_PREVIEW_ITEMS_PER_PAGE: envValues.CLIENT_BI_PREVIEW_ITEMS_PER_PAGE || '20',
-    CLIENT_TASKS_MAX_ATTACHMENT_SIZE_MB: envValues.CLIENT_TASKS_MAX_ATTACHMENT_SIZE_MB || '600',
     CLIENT_SYSTEM_VERSION: envValues.VERSION || '2.1.0',
+  }
+
+  const values = { ...coreValues }
+  for (const [key, value] of Object.entries(envValues)) {
+    if (!key.startsWith('CLIENT_') || key in coreValues) {
+      continue
+    }
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      values[key] = value
+    }
   }
 
   return Object.fromEntries(
@@ -147,11 +155,20 @@ function buildClientEnvDefines(envValues) {
 const CORE_MODULE_SYSTEM = '/core/client/src/modules/'
 
 /** Внешние модули без static import из других modules/* — отдельный чанк безопасен. */
-const STANDALONE_MODULE_CHUNKS = new Set([
-  'video_analysis',
-  'porosity_analysis',
-  'impuls_analysis',
-])
+function loadStandaloneModuleChunks(envValues) {
+  const raw = String(envValues.CLIENT_STANDALONE_MODULE_CHUNKS || '').trim()
+  if (!raw) {
+    return new Set()
+  }
+  return new Set(
+    raw
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean),
+  )
+}
+
+const STANDALONE_MODULE_CHUNKS = loadStandaloneModuleChunks(runtimeEnv)
 
 function resolveManualChunk(id) {
   const normalizedId = id.replace(/\\/g, '/')
@@ -177,8 +194,7 @@ function resolveManualChunk(id) {
       if (STANDALONE_MODULE_CHUNKS.has(moduleName)) {
         return `module_${moduleName.replace(/-/g, '_')}`
       }
-      // Остальные модули с cross-import (project_ed, bi_analysis, organizations…)
-      // — без принудительного чанка: Rollup режет по lazy routes, без circular TDZ.
+      // Остальные модули с cross-import — без принудительного чанка
       return undefined
     }
     return undefined

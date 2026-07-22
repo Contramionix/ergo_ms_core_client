@@ -17,14 +17,6 @@ import HoverTooltip from '@/components/HoverTooltip.vue'
 import { formatDateTime, getRelativeTime } from '@/js/utils/timeUtils.js'
 import { confirmDelete } from '@/js/utils/confirm.js'
 
-const MODULE_LABELS = {
-  crm: 'CRM',
-  organizations: 'Организации',
-  lms: 'LMS',
-  tasks: 'Задачи',
-  project_ed: 'Project ED',
-}
-
 const props = defineProps({
   notification: {
     type: Object,
@@ -101,9 +93,9 @@ const hasTarget = computed(() => {
 })
 
 const sourceLabel = computed(() => {
-  const key = props.notification.source_module
-  if (!key) return ''
-  return MODULE_LABELS[key] || key
+  const item = props.notification
+  if (!item?.source_module) return ''
+  return item.module_label || item.source_module
 })
 
 function formatTimeOnly(iso) {

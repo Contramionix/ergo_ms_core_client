@@ -38,11 +38,19 @@ async function runModuleRouteGuards(to, from) {
   const guards = await getCachedRouteGuards()
   for (let i = 0; i < guards.length; i++) {
     let redirect = null
+    let aborted = false
     await guards[i](to, from, (redirectTo) => {
-      if (redirectTo && typeof redirectTo === 'object') {
+      if (redirectTo === false) {
+        aborted = true
+        return
+      }
+      if (typeof redirectTo === 'string' || (redirectTo && typeof redirectTo === 'object')) {
         redirect = redirectTo
       }
     })
+    if (aborted) {
+      return false
+    }
     if (redirect) {
       return redirect
     }
@@ -85,7 +93,7 @@ async function checkRouteAccess(to) {
       const ruleMatches = rule.match(to)
 
       if (ruleMatches) {
-        if (rule.skipWithoutOrganization && !tokenService.getOrganizationId()) {
+        if (rule.skipWithoutSessionScope && !tokenService.hasActiveSessionScope()) {
           continue
         }
 
@@ -149,7 +157,12 @@ async function runCheckToken() {
 
 function setupRouterGuards(router) {
   router.beforeEach(async (to, from, next) => {
-    if (from !== START_LOCATION && to.path !== from.path) {
+    const sameCacheGroup =
+      from.meta?.cacheGroup &&
+      to.meta?.cacheGroup &&
+      from.meta.cacheGroup === to.meta.cacheGroup
+
+    if (from !== START_LOCATION && to.path !== from.path && !sameCacheGroup) {
       startRouteProgress()
     }
 
@@ -178,6 +191,9 @@ function setupRouterGuards(router) {
       }
 
       const moduleRedirect = await runModuleRouteGuards(to, from)
+      if (moduleRedirect === false) {
+        return next(false)
+      }
       if (moduleRedirect) {
         return safeNext(moduleRedirect)
       }

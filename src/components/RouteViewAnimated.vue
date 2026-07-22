@@ -13,10 +13,20 @@ const route = useRoute()
 const moduleKey = computed(() => route.meta?.moduleKey || null)
 
 function cachedRouteKey(activeRoute) {
+  const matched = activeRoute.matched
+  if (matched?.length) {
+    for (let i = matched.length - 1; i >= 0; i -= 1) {
+      const cacheGroup = matched[i]?.meta?.cacheGroup
+      if (cacheGroup) {
+        return cacheGroup
+      }
+    }
+  }
+
   // Ключ — запись верхнего RouterView (родитель при nested), не leaf-имя.
   // Иначе вкладки модуля (PorosityAnalysisMain ↔ List) пересоздают ParentLayout
   // и дергают навигацию из‑за layout-route transition.
-  const top = activeRoute.matched?.[0]
+  const top = matched?.[0]
   return top?.name ?? top?.path ?? activeRoute.name ?? activeRoute.path
 }
 </script>

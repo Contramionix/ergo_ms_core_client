@@ -1,5 +1,7 @@
+import { ref } from 'vue'
 import Cookies from 'js-cookie'
 import bridge from '@/integrations/ModuleBridge.js'
+import { getSessionScopeGatingClaims } from '@/integrations/sessionScopeGating.js'
 
 const SESSION_HINT_COOKIE_NAME = 'ergo_session'
 
@@ -18,7 +20,10 @@ export function decodePayload(token) {
   }
 }
 
-let _accessToken = null
+// ref, а не обычная переменная: computed на claim из токена должны
+// пересчитываться при смене access (вход/выход из session-scope),
+// иначе значение кэшируется навсегда.
+const _accessToken = ref(null)
 
 export function isExpired(token, skewSeconds = 0) {
   const payload = decodePayload(token)
@@ -28,7 +33,7 @@ export function isExpired(token, skewSeconds = 0) {
 }
 
 export function getAccess() {
-  return _accessToken || null
+  return _accessToken.value || null
 }
 
 export function getAccessExp() {
@@ -39,7 +44,7 @@ export function getAccessExp() {
 
 export function setTokens(access, _refreshIgnored = null) {
   if (access) {
-    _accessToken = access
+    _accessToken.value = access
   }
   clearLegacyAuthCookies()
 }
@@ -52,10 +57,6 @@ export function clearLegacyAuthCookies() {
   } catch {
     // ignore
   }
-}
-
-export function hasLegacyRefreshCookie() {
-  return Boolean(Cookies.get('refresh'))
 }
 
 /** Подсказка от сервера: есть HttpOnly refresh (без секретов в JS). */
@@ -72,7 +73,7 @@ export function clearSessionHintCookie() {
 }
 
 export function clearTokens() {
-  _accessToken = null
+  _accessToken.value = null
   clearLegacyAuthCookies()
   clearSessionHintCookie()
 
@@ -105,22 +106,29 @@ export function getSessionUserId() {
   return getUserId()
 }
 
-export function getOrganizationId() {
+/**
+ * Generic-чтение session-claim из payload JWT.
+ * Имена claim задаёт модуль через контракт session_context.claims.
+ */
+export function getSessionClaim(name) {
+  if (!name) return null
   const access = getAccess()
   if (!access) return null
   const payload = decodePayload(access)
-  return payload?.organization_id ?? null
+  return payload?.[name] ?? null
 }
 
-export function getDepartmentId() {
-  const access = getAccess()
-  if (!access) return null
-  const payload = decodePayload(access)
-  return payload?.department_id ?? null
-}
-
-export function hasActiveOrganization() {
-  return getOrganizationId() !== null
+/**
+ * Активен ли session-scope: в payload присутствуют все gating-claim,
+ * зарегистрированные модулем-владельцем домена (session.scope_gating_claim).
+ * Без зарегистрированных claim понятие scope отсутствует -> false.
+ */
+export function hasActiveSessionScope() {
+  const claims = getSessionScopeGatingClaims()
+  if (claims.length === 0) {
+    return false
+  }
+  return claims.every((claim) => getSessionClaim(claim) !== null)
 }
 
 export function getPayload() {
@@ -130,5 +138,5 @@ export function getPayload() {
 }
 
 export function hasAccessToken() {
-  return Boolean(_accessToken)
+  return Boolean(_accessToken.value)
 }

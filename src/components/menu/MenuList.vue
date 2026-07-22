@@ -12,6 +12,7 @@ import {
   peekCachedMenu,
   isMenuCacheFresh,
   transformMenuData,
+  filterMenuSectionsForSessionScope,
   transformSeparators,
   shouldShowSeparatorAt,
   getSeparatorTextAt
@@ -304,16 +305,42 @@ async function finishMenuBootstrap() {
 // перерисовывает иконки (важно для отсутствия мигания при гидратации + onMounted).
 let appliedMenuData = null
 
+function resolveRouteMetaForMenu(routeName) {
+  if (!routeName) {
+    return null
+  }
+
+  try {
+    const resolved = router.resolve({ name: routeName })
+    if (!resolved?.matched?.length) {
+      return null
+    }
+    // Склеиваем meta всех matched — у redirect/parent флаги могут быть только у листа
+    return resolved.matched.reduce(
+      (acc, record) => ({ ...acc, ...(record.meta || {}) }),
+      {},
+    )
+  } catch {
+    return null
+  }
+}
+
+function buildMenuSections(menuData) {
+  const sections = transformMenuData(menuData)
+  return filterMenuSectionsForSessionScope(sections, resolveRouteMetaForMenu)
+}
+
 function applyMenuData(menuData, { force = false } = {}) {
   if (!menuData?.menu_items?.length) {
     return false
   }
 
   if (!force && menuData === appliedMenuData && menuSections.value.length > 0) {
+    menuSections.value = buildMenuSections(menuData)
     return true
   }
 
-  menuSections.value = transformMenuData(menuData)
+  menuSections.value = buildMenuSections(menuData)
   separatorsConfig.value = transformSeparators(menuData.separators || [], menuData.menu_items)
   appliedMenuData = menuData
   return true
@@ -476,9 +503,19 @@ const loadMenu = async (forceRefresh = false) => {
 // Слушаем событие обновления меню
 const handleMenuUpdate = () => loadMenu(true)
 
+function handleSessionScopeChange() {
+  if (!appliedMenuData) {
+    return
+  }
+  menuSections.value = buildMenuSections(appliedMenuData)
+  applyInitialMenuLayout()
+  scheduleLayoutOffsetSync()
+}
+
 // Инициализация при монтировании
 onMounted(async () => {
   window.addEventListener('menu-updated', handleMenuUpdate)
+  window.addEventListener('session-scope-changed', handleSessionScopeChange)
 
   if (!userStore.isInitialized) {
     await userStore.ensureUserReady()
@@ -519,6 +556,7 @@ onMounted(async () => {
 // Удаляем слушатель при размонтировании
 onBeforeUnmount(() => {
   window.removeEventListener('menu-updated', handleMenuUpdate)
+  window.removeEventListener('session-scope-changed', handleSessionScopeChange)
   window.removeEventListener('resize', onWindowResize)
   menuRef.value?.removeEventListener('transitionend', onMenuTransitionEnd)
   clearLayoutTransitionTimer()

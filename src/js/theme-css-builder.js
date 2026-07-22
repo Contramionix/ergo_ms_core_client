@@ -89,7 +89,7 @@ function buildModuleTokensCss(moduleKey, moduleTokens) {
  * @param {string} options.baseTheme — light | dark
  * @param {object} options.colors
  * @param {object} [options.bootstrapColors]
- * @param {string} [options.scopeSelector] — например [data-ergo-module-theme="ai_assistant"]
+ * @param {string} [options.scopeSelector] — например [data-ergo-module-theme="my_module"]
  * @param {string} [options.moduleKey] — для module_tokens
  * @param {object} [options.moduleTokens]
  * @param {boolean} [options.includeAccentComponentRules=true]

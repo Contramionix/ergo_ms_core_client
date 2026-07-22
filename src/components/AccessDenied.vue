@@ -63,7 +63,7 @@ const props = defineProps({
   },
   homeRouteName: {
     type: String,
-    default: 'CRMRemasteredDashboard',
+    default: 'AppHome',
   },
   bordered: {
     type: Boolean,

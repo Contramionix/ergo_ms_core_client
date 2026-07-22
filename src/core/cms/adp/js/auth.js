@@ -25,6 +25,9 @@ export const authService = {
         
         if (response.success && response.data?.access) {
             tokenService.setTokens(response.data.access)
+            if (tokenService.hasActiveSessionScope()) {
+                window.dispatchEvent(new CustomEvent('session-scope-changed'))
+            }
         }
         
         return response;

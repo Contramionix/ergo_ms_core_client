@@ -46,13 +46,10 @@ export class ModuleManager {
       this.endpointManager.initialize(),
       this.permissionRulesManager.initialize(),
       this.routeGuardsManager.initialize(),
+      this.integrationsManager.initialize(),
     ])
 
     this.routeGenerator = new RouteGenerator(this.routeManager)
-
-    // Интеграции не блокируют старт приложения: файлы регистрируют bridge
-    // синхронно при загрузке chunk; await нужен только для статистики/отладки.
-    void this.integrationsManager.initialize()
 
     this.initialized = true
   }

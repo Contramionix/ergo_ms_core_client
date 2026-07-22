@@ -1,7 +1,7 @@
 <!--
   MemberPickerModal — универсальная UI-оболочка multi-select выбора пользователей.
   Загрузка данных — через prop fetchUsers (доменная логика в модулях).
-  Не путать с organizations/client/components/AddMemberModal.vue (форма участника организации).
+  Это универсальный picker ядра, а не доменная форма добавления участника из модуля.
 -->
 <template>
   <ModalCenter standalone :visible="show" :modal-id="modalId" :title="title" :dialog-class="'modal-md'" @close="close">

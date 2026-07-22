@@ -1,13 +1,16 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { CircleUserRound, Power } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { collectVisibleHeaderUserMenuItems } from '@/integrations/headerUserMenu.js'
+import { logError } from '@/js/utils/logError.js'
 
 const userStore = useUserStore()
+const router = useRouter()
 const emit = defineEmits(['dropdown-toggle'])
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 
@@ -62,7 +65,9 @@ async function handleTrailingAction(item) {
   }
 
   try {
-    await item.trailingAction.onClick()
+    // Передаём роутер приложения: обработчики модулей живут вне setup
+    // и не могут надёжно получить его сами (useRouter недоступен).
+    await item.trailingAction.onClick({ router })
   } catch (error) {
     logError('Ошибка действия пункта меню:', error)
   }

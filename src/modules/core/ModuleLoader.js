@@ -174,7 +174,7 @@ export class ModuleLoader {
    */
   extractModuleName(path, isExternal = false) {
     if (isExternal) {
-      // ../../../../../modules/video_analysis/client/js/... -> video_analysis
+      // ../../../../../modules/my_module/client/js/... -> my_module
       const match = path.match(/modules\/([^/]+)\/client/)
       return match ? match[1] : null
     } else {

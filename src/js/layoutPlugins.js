@@ -2,30 +2,15 @@ import { shallowRef } from 'vue'
 
 import { logError } from '@/js/utils/logError.js'
 import { getSessionBootstrapCache } from '@/core/cms/js/sessionBootstrapCache.js'
+import {
+  resolveModuleFromOffcanvasPage,
+  resolveModuleFromRouteName,
+} from '@/integrations/layoutPluginRegistry.js'
 
 const layoutPluginLoaders = import.meta.glob('../../../../modules/*/client/LayoutPlugin.vue')
 
 /** @type {Map<string, import('vue').Component>} */
 const loadedPluginsByModule = new Map()
-
-const BI_OFFCANVAS_PAGES = new Set(['datasets', 'connections', 'charts', 'dashboards'])
-
-const ROUTE_NAME_MODULE = {
-  BI: 'bi_analysis',
-  LMS: 'lms',
-}
-
-function resolveModuleFromRouteName(routeName) {
-  if (!routeName || typeof routeName !== 'string') {
-    return null
-  }
-  for (const [prefix, moduleName] of Object.entries(ROUTE_NAME_MODULE)) {
-    if (routeName.startsWith(prefix)) {
-      return moduleName
-    }
-  }
-  return null
-}
 
 function walkMenuItems(items, names) {
   for (const item of items || []) {
@@ -33,12 +18,11 @@ function walkMenuItems(items, names) {
     if (fromRoute) {
       names.add(fromRoute)
     }
-    if (
-      item.item_type === 'offcanvas'
-      && item.page
-      && BI_OFFCANVAS_PAGES.has(item.page)
-    ) {
-      names.add('bi_analysis')
+    if (item.item_type === 'offcanvas' && item.page) {
+      const fromPage = resolveModuleFromOffcanvasPage(item.page)
+      if (fromPage) {
+        names.add(fromPage)
+      }
     }
     if (Array.isArray(item.children) && item.children.length) {
       walkMenuItems(item.children, names)

@@ -4,18 +4,18 @@ import {
   ensureLayoutPluginForModule,
   layoutPluginsRef,
 } from '@/js/layoutPlugins.js'
-
-const BI_OFFCANVAS_PAGES = new Set(['datasets', 'connections', 'charts', 'dashboards'])
+import { resolveModuleFromOffcanvasPage } from '@/integrations/layoutPluginRegistry.js'
 
 export const isOffcanvasSidebarOpen = ref(false)
 export const currentOffcanvasSidebarPage = ref('')
 
 function ensureOffcanvasLayoutPlugin(page) {
-  if (!BI_OFFCANVAS_PAGES.has(page)) {
+  const moduleName = resolveModuleFromOffcanvasPage(page)
+  if (!moduleName) {
     return
   }
 
-  void ensureLayoutPluginForModule('bi_analysis').then((component) => {
+  void ensureLayoutPluginForModule(moduleName).then((component) => {
     if (!component || layoutPluginsRef.value.includes(component)) {
       return
     }

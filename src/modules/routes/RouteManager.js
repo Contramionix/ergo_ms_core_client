@@ -6,6 +6,12 @@
  */
 
 import { ModuleLoader } from '../core/ModuleLoader.js'
+import {
+  buildNormalizedComponentsMap,
+  componentPathToGlobKey,
+  createDeferredComponentImport,
+  findComponentLoader,
+} from './resolveComponentLoader.js'
 
 import { logWarn } from '@/js/utils/logError.js'
 
@@ -13,7 +19,6 @@ export class RouteManager extends ModuleLoader {
   constructor() {
     super()
     this.routes = new Map()
-    this.componentsMap = null
     this.initialized = false
   }
 
@@ -26,7 +31,6 @@ export class RouteManager extends ModuleLoader {
     }
 
     await this.loadRoutes()
-    this.loadComponentsMap()
     this.initialized = true
   }
 
@@ -59,17 +63,10 @@ export class RouteManager extends ModuleLoader {
   }
 
   /**
-   * Загружает маппинг всех Vue компонентов
+   * Актуальный маппинг Vue-компонентов (без кеша — учитывает HMR glob и новые файлы).
    */
-  loadComponentsMap() {
-    if (this.componentsMap) {
-      return this.componentsMap
-    }
-
-    // Используем предзагруженные глобы из родительского класса
-    this.componentsMap = this.getGlobsByType('components', 'all')
-
-    return this.componentsMap
+  getComponentsMap() {
+    return buildNormalizedComponentsMap(this.getGlobsByType('components', 'all'))
   }
 
   /**
@@ -78,27 +75,10 @@ export class RouteManager extends ModuleLoader {
    * @returns {Function|null}
    */
   getComponentLoader(componentPath) {
-    if (!componentPath || typeof componentPath !== 'string') {
-      return null
-    }
-
-    if (!this.componentsMap) {
-      this.loadComponentsMap()
-    }
-
-    let searchPath
-
-    if (componentPath.startsWith('@/modules/')) {
-      searchPath = componentPath.replace('@/modules/', '../../../../../modules/')
-    } else if (componentPath.startsWith('@/')) {
-      searchPath = componentPath.replace('@/', '../../')
-    } else {
-      return null
-    }
-
-    const loader = this.componentsMap[searchPath]
+    const loader = findComponentLoader(componentPath, this.getComponentsMap())
 
     if (!loader) {
+      const searchPath = componentPathToGlobKey(componentPath)
       logWarn(`Компонент не найден: ${componentPath} (искали: ${searchPath})`)
     }
 
@@ -113,12 +93,11 @@ export class RouteManager extends ModuleLoader {
   createLazyImport(componentPath) {
     const loader = this.getComponentLoader(componentPath)
 
-    if (loader) {
-      return loader
+    if (!loader) {
+      logError('Не удалось создать lazy import для', componentPath)
     }
 
-    logError('Не удалось создать lazy import для', componentPath)
-    return () => Promise.reject(new Error(`Component not found: ${componentPath}`))
+    return createDeferredComponentImport(componentPath, () => this.getComponentsMap())
   }
 
   /**

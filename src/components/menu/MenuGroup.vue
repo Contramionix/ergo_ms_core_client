@@ -99,32 +99,6 @@ const router = useRouter()
 const route = useRoute()
 const emit = defineEmits(['toggle', 'navigate', 'toggle-nested'])
 
-// Проверяем, находится ли пользователь на странице группы или её подстраницах
-const isCurrentGroupPage = computed(() => {
-  // Проверяем основную страницу группы
-  if (route.name === props.data.routeName) {
-    return true
-  }
-  
-  // Проверяем, является ли текущий роут дочерним роутом для группы
-  if (props.data.routeName && route.name && route.name.startsWith(props.data.routeName) && route.name !== props.data.routeName) {
-    if (!canNavigateToRoute(router, props.data.routeName)) {
-      return false
-    }
-    const parentRoute = router.resolve({ name: props.data.routeName })
-    if (parentRoute?.path && route.path.startsWith(parentRoute.path)) {
-      return true
-    }
-  }
-  
-  // Проверяем подстраницы через рекурсивную функцию
-  if (menuItems.value.length > 0) {
-    return checkChildrenActiveRecursive(menuItems.value)
-  }
-
-  return false
-})
-
 const checkChildrenActiveRecursive = (children) => {
   if (!children || children.length === 0) return false
 
@@ -144,6 +118,46 @@ const checkChildrenActiveRecursive = (children) => {
     return false
   })
 }
+
+/** Активен ли пункт из списка детей группы (не сам заголовок). */
+const isChildMenuActive = computed(() => {
+  if (menuItems.value.length === 0) {
+    return false
+  }
+  return checkChildrenActiveRecursive(menuItems.value)
+})
+
+/** Текущий маршрут — страница группы или её потомок по префиксу имени/path. */
+const isGroupRouteOrDescendant = computed(() => {
+  if (route.name === props.data.routeName) {
+    return true
+  }
+
+  if (
+    props.data.routeName
+    && route.name
+    && route.name.startsWith(props.data.routeName)
+    && route.name !== props.data.routeName
+  ) {
+    if (!canNavigateToRoute(router, props.data.routeName)) {
+      return false
+    }
+    const parentRoute = router.resolve({ name: props.data.routeName })
+    if (parentRoute?.path && route.path.startsWith(parentRoute.path)) {
+      return true
+    }
+  }
+
+  return false
+})
+
+/** Подсветка заголовка группы — своя страница или любой потомок в меню. */
+const isGroupTitleActive = computed(() => {
+  if (isChildMenuActive.value) {
+    return true
+  }
+  return isGroupRouteOrDescendant.value
+})
 
 // Обработчик переключения вложенных групп
 function handleToggleNested(groupId) {
@@ -188,7 +202,11 @@ function routeClick(event) {
 
 <template>
   <li class="side-menu__group side-group">
-    <div class="side-title nav-btn" :class="{ 'side-title--active': isCurrentGroupPage }" @click="routeClick($event)">
+    <div
+      class="side-title nav-btn"
+      :class="{ 'side-title--active': isGroupTitleActive }"
+      @click="routeClick($event)"
+    >
       <div class="side-title__label">
         <div class="side-icon icon-flex">
           <component v-if="groupIcon" :is="groupIcon" :size="iconSizes.item" />
@@ -255,6 +273,7 @@ function routeClick(event) {
   color: var(--bs-primary);
   background-color: var(--bs-primary-bg-subtle);
 }
+
 .side-subtitle--active .nav-icon,
 .side-subtitle--active .side-subtitle__name {
   color: var(--bs-primary);
