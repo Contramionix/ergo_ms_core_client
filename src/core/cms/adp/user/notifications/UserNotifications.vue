@@ -272,38 +272,47 @@ onMounted(async () => {
 
     <div class="card-body notif-page__body">
       <div class="notif-page__filters" role="toolbar" aria-label="Фильтры уведомлений">
-        <div class="btn-group btn-group-sm notif-page__seg" role="group" aria-label="Статус">
+        <div class="notif-page__seg" role="group" aria-label="Статус">
           <button
             type="button"
-            class="btn"
-            :class="showOnlyUnread ? 'btn-outline-primary' : 'btn-primary'"
+            class="notif-page__seg-btn"
+            :class="{ 'is-active': !showOnlyUnread }"
+            :aria-pressed="!showOnlyUnread"
             @click="showOnlyUnread = false"
           >
             Все
           </button>
           <button
             type="button"
-            class="btn"
-            :class="showOnlyUnread ? 'btn-primary' : 'btn-outline-primary'"
+            class="notif-page__seg-btn"
+            :class="{ 'is-active': showOnlyUnread }"
+            :aria-pressed="showOnlyUnread"
             @click="showOnlyUnread = true"
           >
             Непрочитанные
+            <span
+              v-if="hasUnread"
+              class="notif-page__seg-count"
+              aria-hidden="true"
+            >{{ unreadCount }}</span>
           </button>
         </div>
 
-        <div class="btn-group btn-group-sm notif-page__seg" role="group" aria-label="Область">
+        <div class="notif-page__seg" role="group" aria-label="Область">
           <button
             type="button"
-            class="btn"
-            :class="showArchived ? 'btn-outline-primary' : 'btn-primary'"
+            class="notif-page__seg-btn"
+            :class="{ 'is-active': !showArchived }"
+            :aria-pressed="!showArchived"
             @click="showArchived = false"
           >
             Активные
           </button>
           <button
             type="button"
-            class="btn"
-            :class="showArchived ? 'btn-primary' : 'btn-outline-primary'"
+            class="notif-page__seg-btn"
+            :class="{ 'is-active': showArchived }"
+            :aria-pressed="showArchived"
             @click="showArchived = true"
           >
             Архив
@@ -523,7 +532,7 @@ onMounted(async () => {
 .notif-page__filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
+  gap: 0.5rem 0.625rem;
   align-items: center;
   margin: 0 0 1rem;
   padding: 0 0 0.85rem;
@@ -531,13 +540,70 @@ onMounted(async () => {
 }
 
 .notif-page__seg {
+  display: inline-flex;
+  align-items: stretch;
   flex: 0 0 auto;
+  padding: 0.2rem;
+  gap: 0.15rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.5rem;
+  background: var(--ui-surface-2);
+}
 
-  .btn {
-    min-height: 31px;
-    display: inline-flex;
-    align-items: center;
+.notif-page__seg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 1.75rem;
+  padding: 0.25rem 0.7rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--ui-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:hover:not(.is-active) {
+    color: var(--ui-text);
+    background: var(--ui-hover);
   }
+
+  &.is-active {
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    box-shadow: 0 0 0 1px var(--ui-border);
+    font-weight: 600;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent, var(--bs-primary));
+    outline-offset: 1px;
+  }
+}
+
+.notif-page__seg-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--bs-primary-text-emphasis, var(--ui-text));
+  background: var(--bs-primary-bg-subtle, var(--ui-surface));
+  border: 1px solid var(--bs-primary-border-subtle, var(--ui-border));
 }
 
 .notif-page__source {
@@ -547,8 +613,8 @@ onMounted(async () => {
   align-items: center;
 
   :deep(.select-box) {
-    --select-box-font-size: 0.875rem;
-    --select-box-trigger-min-height: 31px;
+    --select-box-font-size: 0.8125rem;
+    --select-box-trigger-min-height: 2.15rem;
     --select-box-item-padding-y: 0.25rem;
     --select-box-item-padding-x: 0.5rem;
     width: 100%;
@@ -689,7 +755,8 @@ onMounted(async () => {
     animation: none;
   }
 
-  .notif-page__icon-btn {
+  .notif-page__icon-btn,
+  .notif-page__seg-btn {
     transition: none;
   }
 }
