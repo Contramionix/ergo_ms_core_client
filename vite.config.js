@@ -17,6 +17,37 @@ const { applyNginxClientEnv, nginxEnabled } = require('../deployment/nginx/nginx
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const analyzeBuild = process.env.ANALYZE === 'true'
+const projectRoot = path.resolve(__dirname, '../..')
+const npmModules = path.resolve(projectRoot, 'virtual_env/npm/node_modules')
+const npmRoot = path.resolve(projectRoot, 'virtual_env/npm')
+const requireFromNpm = createRequire(path.join(npmModules, '_ergo_resolve.js'))
+
+/** Пакеты лежат в virtual_env/npm/node_modules (не предок core/client). */
+function resolveFromNpmRootPlugin() {
+  return {
+    name: 'resolve-from-npm-root',
+    enforce: 'pre',
+    resolveId(id) {
+      if (
+        !id ||
+        id.startsWith('\0') ||
+        id.startsWith('.') ||
+        id.startsWith('/') ||
+        id.startsWith('@/') ||
+        id.startsWith('@modules/') ||
+        path.isAbsolute(id) ||
+        id === 'vue'
+      ) {
+        return null
+      }
+      try {
+        return requireFromNpm.resolve(id)
+      } catch {
+        return null
+      }
+    },
+  }
+}
 
 const modulesRoot = path.resolve(__dirname, '../../modules')
 const disabledModules = loadDisabledModules()
@@ -248,6 +279,7 @@ function resolveManualChunk(id) {
 }
 
 const plugins = [
+  resolveFromNpmRootPlugin(),
   vue(),
   AutoImport({
     imports: [
@@ -322,6 +354,7 @@ export default defineConfig(() => ({
       { find: 'vue', replacement: 'vue/dist/vue.esm-bundler.js' },
     ],
     extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue'],
+    modules: [npmModules, 'node_modules'],
   },
   css: {
     preprocessorOptions: {
@@ -351,6 +384,8 @@ export default defineConfig(() => ({
       allow: [
         '..',
         '../..',
+        npmRoot,
+        npmModules,
       ],
     },
   },
