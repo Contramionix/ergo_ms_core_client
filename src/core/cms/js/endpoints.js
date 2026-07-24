@@ -50,6 +50,10 @@ export const cmsEndpoints = {
         adminUserDetail: (userRef) => `cms/adp/admin-users/by-ref/${userRef}/`,
         adminUserAvatar: (userRef) => `cms/adp/admin-users/by-ref/${userRef}/avatar/`,
         adminUserResetPassword: (userRef) => `cms/adp/admin-users/by-ref/${userRef}/reset-password/`,
+        adminUserStatus: (userRef) => `cms/adp/admin-users/by-ref/${userRef}/status/`,
+        adminUserDevices: (userRef) => `cms/adp/admin-users/by-ref/${userRef}/devices/`,
+        adminUserDeviceDetail: (userRef, deviceId) => `cms/adp/admin-users/by-ref/${userRef}/devices/${deviceId}/`,
+        adminUserRevokeSessions: (userRef) => `cms/adp/admin-users/by-ref/${userRef}/revoke-sessions/`,
         presence: {
             batch: 'cms/adp/presence/',
             heartbeat: 'cms/adp/presence/heartbeat/',

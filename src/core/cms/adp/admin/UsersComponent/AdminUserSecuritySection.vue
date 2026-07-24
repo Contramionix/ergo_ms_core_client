@@ -1,31 +1,113 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
-import { confirmAction, confirmDelete } from '@/js/utils/confirm.js'
-import { resetAdminUserPassword } from '@/core/cms/adp/admin/js/adminUserService.js'
+import { confirmAction } from '@/js/utils/confirm.js'
+import LoadingContentArea from '@/components/LoadingContentArea.vue'
+import SessionCard from '@/core/cms/adp/user/account/component/settings-panels/SessionCard.vue'
+import { profileService } from '@/core/cms/js/profileService.js'
+import {
+  resetAdminUserPassword,
+  setAdminUserStatus,
+  fetchAdminUserDevices,
+  revokeAdminUserDevice,
+  revokeAdminUserSessions,
+} from '@/core/cms/adp/admin/js/adminUserService.js'
 import { validatePasswordValue } from '@/js/passwordPolicy.js'
+
+const PAGE_SIZE = 5
 
 const props = defineProps({
   userRef: { type: String, default: null },
   username: { type: String, default: '' },
   passwordResetMode: { type: String, default: 'system' },
+  isActive: { type: Boolean, default: true },
+  isCurrentUser: { type: Boolean, default: false },
 })
+
+const emit = defineEmits(['status-changed'])
 
 const toast = useToast()
 const resetting = ref(false)
-const showResetConfirm = ref(false)
+const statusUpdating = ref(false)
+const revokingAll = ref(false)
 const newPassword = ref('')
 const passwordError = ref('')
 
+const loadingDevices = ref(false)
+const devices = ref([])
+const deletingDeviceId = ref(null)
+const currentPage = ref(1)
+const localIsActive = ref(true)
+
 const isManualMode = computed(() => props.passwordResetMode === 'manual')
 
-const resetConfirmMessage = computed(() => {
-  const label = props.username || 'пользователя'
-  return (
-    `Сбросить пароль для ${label}?\n\nБудет установлен случайный пароль, все сессии завершены. ` +
-    'Для входа пользователю нужно воспользоваться формой «Забыл пароль».'
-  )
+const rowsForPage = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return devices.value.slice(start, start + PAGE_SIZE)
 })
+
+const paginationTotal = computed(() => devices.value.length)
+
+const paginationFrom = computed(() => {
+  if (paginationTotal.value === 0) return 0
+  return (currentPage.value - 1) * PAGE_SIZE + 1
+})
+
+const paginationTo = computed(() => {
+  if (paginationTotal.value === 0) return 0
+  return Math.min(paginationTotal.value, currentPage.value * PAGE_SIZE)
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(paginationTotal.value / PAGE_SIZE) || 1))
+const canPrev = computed(() => currentPage.value > 1)
+const canNext = computed(() => currentPage.value < totalPages.value)
+
+const statusHint = computed(() => {
+  if (props.isCurrentUser) {
+    return 'Нельзя приостановить собственную учётную запись.'
+  }
+  if (localIsActive.value) {
+    return 'Приостановка запрещает вход и сразу завершает все сессии пользователя.'
+  }
+  return 'Пользователь не сможет войти, пока аккаунт приостановлен.'
+})
+
+watch(
+  () => props.isActive,
+  (value) => {
+    localIsActive.value = value !== false
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.userRef,
+  (userRef) => {
+    currentPage.value = 1
+    devices.value = []
+    if (userRef) {
+      loadDevices()
+    }
+  },
+  { immediate: true },
+)
+
+const loadDevices = async () => {
+  if (!props.userRef) return
+
+  loadingDevices.value = true
+  try {
+    const response = await fetchAdminUserDevices(props.userRef)
+    const list = Array.isArray(response) ? response : []
+    devices.value = list.map((device) => profileService.formatDeviceData(device)).filter(Boolean)
+  } catch (error) {
+    logError('Ошибка загрузки сессий пользователя:', error)
+    toast.error('Не удалось загрузить сессии')
+    devices.value = []
+  } finally {
+    loadingDevices.value = false
+  }
+}
 
 const validateManualPassword = () => {
   passwordError.value = ''
@@ -43,25 +125,26 @@ const validateManualPassword = () => {
   return !passwordError.value
 }
 
-const requestSystemReset = () => {
-  if (!props.userRef) return
-  showResetConfirm.value = true
-}
-
-const closeResetConfirm = () => {
-  if (!resetting.value) {
-    showResetConfirm.value = false
-  }
-}
-
-const confirmSystemReset = async () => {
+const requestSystemReset = async () => {
   if (!props.userRef || resetting.value) return
+
+  const label = props.username || 'пользователя'
+  const ok = await confirmAction({
+    title: 'Сброс пароля',
+    message: (
+      `Сбросить пароль для ${label}?\n\nБудет установлен случайный пароль, все сессии завершены. ` +
+      'Для входа пользователю нужно воспользоваться формой «Забыл пароль».'
+    ),
+    confirmText: 'Сбросить',
+    variant: 'danger',
+  })
+  if (!ok) return
 
   resetting.value = true
   try {
     await resetAdminUserPassword(props.userRef)
     toast.success('Пароль сброшен')
-    showResetConfirm.value = false
+    await loadDevices()
   } catch (error) {
     logError('Ошибка сброса пароля:', error)
     const message = error.response?.data?.error || 'Не удалось сбросить пароль'
@@ -83,6 +166,7 @@ const handleManualSet = async () => {
     })
     toast.success(result.message || 'Пароль установлен')
     newPassword.value = ''
+    await loadDevices()
   } catch (error) {
     logError('Ошибка установки пароля:', error)
     const data = error.response?.data
@@ -100,24 +184,164 @@ const handleManualSet = async () => {
     resetting.value = false
   }
 }
+
+const toggleAccountStatus = async () => {
+  if (!props.userRef || statusUpdating.value || props.isCurrentUser) return
+
+  const nextActive = !localIsActive.value
+  const label = props.username || 'пользователя'
+  const ok = await confirmAction({
+    title: nextActive ? 'Возобновление аккаунта' : 'Приостановка аккаунта',
+    message: nextActive
+      ? `Возобновить доступ для ${label}? Пользователь снова сможет войти в систему.`
+      : (
+        `Приостановить аккаунт ${label}?\n\n` +
+        'Пользователь не сможет войти, все активные сессии будут завершены.'
+      ),
+    confirmText: nextActive ? 'Возобновить' : 'Приостановить',
+    variant: nextActive ? 'primary' : 'warning',
+  })
+  if (!ok) return
+
+  statusUpdating.value = true
+  try {
+    const data = await setAdminUserStatus(props.userRef, nextActive)
+    localIsActive.value = data.is_active !== false
+    emit('status-changed', localIsActive.value)
+    toast.success(localIsActive.value ? 'Аккаунт возобновлён' : 'Аккаунт приостановлен')
+    await loadDevices()
+  } catch (error) {
+    logError('Ошибка изменения статуса аккаунта:', error)
+    const message = error.response?.data?.error || 'Не удалось изменить статус аккаунта'
+    toast.error(message)
+  } finally {
+    statusUpdating.value = false
+  }
+}
+
+const handleRevokeDevice = async (id) => {
+  if (!props.userRef || deletingDeviceId.value != null) return
+
+  const target = devices.value.find((device) => device.id === id)
+  if (target?.isCurrent) {
+    toast.warning('Нельзя завершить текущую сессию')
+    return
+  }
+
+  try {
+    deletingDeviceId.value = id
+    await revokeAdminUserDevice(props.userRef, id)
+    devices.value = devices.value.filter((device) => device.id !== id)
+    toast.success('Сессия отозвана')
+    const maxPage = Math.max(1, Math.ceil(devices.value.length / PAGE_SIZE) || 1)
+    if (currentPage.value > maxPage) {
+      currentPage.value = maxPage
+    }
+  } catch (error) {
+    logError('Не удалось отозвать сессию', error)
+    const message = error.response?.data?.error || 'Не удалось отозвать сессию'
+    toast.error(message)
+  } finally {
+    deletingDeviceId.value = null
+  }
+}
+
+const handleRevokeAllSessions = async () => {
+  if (!props.userRef || revokingAll.value) return
+
+  const label = props.username || 'пользователя'
+  const ok = await confirmAction({
+    title: 'Завершение сессий',
+    message: props.isCurrentUser
+      ? `Завершить все сессии ${label}, кроме текущей?`
+      : `Завершить все активные сессии ${label}? Пользователю потребуется войти заново.`,
+    confirmText: 'Завершить',
+    variant: 'warning',
+  })
+  if (!ok) return
+
+  revokingAll.value = true
+  try {
+    const result = await revokeAdminUserSessions(props.userRef)
+    toast.success(result.message || 'Сессии завершены')
+    await loadDevices()
+  } catch (error) {
+    logError('Ошибка завершения сессий:', error)
+    const message = error.response?.data?.error || 'Не удалось завершить сессии'
+    toast.error(message)
+  } finally {
+    revokingAll.value = false
+  }
+}
+
+const goPrev = () => {
+  if (canPrev.value) currentPage.value -= 1
+}
+
+const goNext = () => {
+  if (canNext.value) currentPage.value += 1
+}
 </script>
 
 <template>
   <div>
     <h2 class="admin-user-modal__section-title">Безопасность</h2>
     <div class="profile-card">
+      <div class="profile-card__row">
+        <div class="profile-card__label-block">
+          <span class="profile-card__label">Статус аккаунта</span>
+          <span class="profile-card__hint">{{ statusHint }}</span>
+        </div>
+        <div class="profile-card__control profile-card__control--actions">
+          <span
+            class="account-status-badge"
+            :class="localIsActive ? 'account-status-badge--active' : 'account-status-badge--suspended'"
+          >
+            {{ localIsActive ? 'Активен' : 'Приостановлен' }}
+          </span>
+          <button
+            type="button"
+            class="btn btn-sm"
+            :class="localIsActive ? 'btn-outline-warning' : 'btn-outline-success'"
+            :disabled="statusUpdating || isCurrentUser"
+            @click="toggleAccountStatus"
+          >
+            <span v-if="statusUpdating">...</span>
+            <span v-else>{{ localIsActive ? 'Приостановить' : 'Возобновить' }}</span>
+          </button>
+        </div>
+      </div>
+
       <template v-if="isManualMode">
         <div class="profile-card__row profile-card__row--last">
           <span class="profile-card__label">Пароль</span>
           <div class="profile-card__control">
             <div class="password-field-shell" :class="{ 'password-field-shell--invalid': passwordError }">
-              <input id="admin-user-new-password" v-model="newPassword" type="password" class="password-field-shell__input form-control-sm" placeholder="Новый пароль" autocomplete="new-password" :disabled="resetting"/>
+              <input
+                id="admin-user-new-password"
+                v-model="newPassword"
+                type="password"
+                class="password-field-shell__input form-control-sm"
+                placeholder="Новый пароль"
+                autocomplete="new-password"
+                :disabled="resetting"
+              />
               <div class="password-field-shell__actions">
-                <button type="button" class="btn btn-sm password-field-shell__btn password-field-shell__btn--apply" :disabled="resetting" @click="handleManualSet">
+                <button
+                  type="button"
+                  class="btn btn-sm password-field-shell__btn password-field-shell__btn--apply"
+                  :disabled="resetting"
+                  @click="handleManualSet"
+                >
                   <span v-if="resetting">...</span>
                   <span v-else>Изменить</span>
                 </button>
-                <button type="button" class="btn btn-sm password-field-shell__btn password-field-shell__btn--reset" :disabled="resetting" @click="requestSystemReset">
+                <button
+                  type="button"
+                  class="btn btn-sm password-field-shell__btn password-field-shell__btn--reset"
+                  :disabled="resetting"
+                  @click="requestSystemReset"
+                >
                   Сбросить
                 </button>
               </div>
@@ -145,6 +369,56 @@ const handleManualSet = async () => {
         </div>
       </template>
     </div>
+
+    <div class="sessions-block__header">
+      <p class="sessions-block__caption">Активные сессии</p>
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-warning"
+        :disabled="revokingAll || loadingDevices || paginationTotal === 0"
+        @click="handleRevokeAllSessions"
+      >
+        <span v-if="revokingAll">Завершение...</span>
+        <span v-else>{{ isCurrentUser ? 'Завершить остальные' : 'Завершить все' }}</span>
+      </button>
+    </div>
+
+    <div class="profile-card profile-card--sessions">
+      <LoadingContentArea :loading="loadingDevices" min-height="6rem">
+        <div v-if="paginationTotal === 0" class="sessions__empty text-muted small py-3 px-2">
+          Нет активных сессий
+        </div>
+
+        <div v-else class="sessions__list">
+          <SessionCard
+            v-for="device in rowsForPage"
+            :key="device.id"
+            :device="device"
+            :revoking="deletingDeviceId === device.id"
+            @revoke="handleRevokeDevice"
+          />
+        </div>
+
+        <div v-if="paginationTotal > 0" class="sessions__footer">
+          <span class="sessions__range text-muted small">
+            Показано {{ paginationFrom }}–{{ paginationTo }} из {{ paginationTotal }}
+          </span>
+          <div class="sessions__pager">
+            <button type="button" class="btn btn-link btn-sm sessions__pager-btn" :disabled="!canPrev" @click="goPrev">
+              Назад
+            </button>
+            <span class="sessions__page-indicator small text-muted">{{ currentPage }} / {{ totalPages }}</span>
+            <button type="button" class="btn btn-link btn-sm sessions__pager-btn" :disabled="!canNext" @click="goNext">
+              Вперёд
+            </button>
+          </div>
+        </div>
+      </LoadingContentArea>
+    </div>
+
+    <p class="sessions__disclaimer text-muted small mt-2 mb-0">
+      Отзыв сессии немедленно завершает вход на выбранном устройстве.
+    </p>
   </div>
 </template>
 
@@ -162,6 +436,10 @@ const handleManualSet = async () => {
   border: 1px solid var(--color-border);
   border-radius: 0.625rem;
   overflow: hidden;
+}
+
+.profile-card--sessions {
+  margin-top: 0;
 }
 
 .profile-card__row {
@@ -235,6 +513,27 @@ const handleManualSet = async () => {
       align-items: stretch;
       padding-top: 0;
     }
+  }
+}
+
+.account-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+
+  &--active {
+    color: var(--bs-success, #198754);
+    background: color-mix(in srgb, var(--bs-success, #198754) 12%, transparent);
+  }
+
+  &--suspended {
+    color: var(--bs-warning-text-emphasis, #997404);
+    background: color-mix(in srgb, var(--bs-warning, #ffc107) 18%, transparent);
   }
 }
 
@@ -344,14 +643,55 @@ const handleManualSet = async () => {
   }
 }
 
-.profile-card__inline-warning {
-  display: block;
-  font-size: 0.75rem;
-  margin-top: 0.375rem;
-  text-align: right;
+.sessions-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.sessions-block__caption {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-primary-text);
+}
+
+.sessions__empty {
+  text-align: center;
+}
+
+.sessions__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem 0.75rem;
+  border-top: 1px solid var(--color-border);
 
   @media (max-width: 575.98px) {
-    text-align: left;
+    flex-direction: column;
+    align-items: stretch;
   }
+}
+
+.sessions__pager {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sessions__pager-btn {
+  padding: 0;
+  text-decoration: none;
+
+  &:disabled {
+    opacity: 0.45;
+  }
+}
+
+.sessions__disclaimer {
+  line-height: 1.35;
 }
 </style>

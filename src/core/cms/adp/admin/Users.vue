@@ -143,6 +143,7 @@ const mapUserToRow = (user) => ({
   first_name: user.first_name || null,
   last_name: user.last_name || null,
   date_joined: user.date_joined || null,
+  is_active: user.is_active !== false,
   is_online: Boolean(user.is_online),
   last_seen: user.last_seen || null,
   role: user.role,
@@ -378,7 +379,10 @@ const getItemKey = (item) => item.user_id
         <div class="d-flex align-items-center gap-3">
           <UserAvatar :user-ref="item.public_id" :presence-user-id="item.user_id" :custom-avatar-url="item.avatar_url" :title="item.user" :size="32" :first-name="item.first_name" :last-name="item.last_name" show-online-status show-presence-tooltip />
           <div class="d-flex flex-column">
-            <span class="fw-semibold">{{ item.user }}</span>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="fw-semibold">{{ item.user }}</span>
+              <span v-if="!item.is_active" class="user-status-badge user-status-badge--suspended">Приостановлен</span>
+            </div>
             <small class="text-muted">{{ item.username }} · {{ item.email }}</small>
           </div>
         </div>
@@ -545,6 +549,23 @@ const getItemKey = (item) => item.user_id
     max-width: 100%;
     min-height: 38px;
     box-sizing: border-box;
+  }
+}
+
+.user-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.2;
+
+  &--suspended {
+    color: var(--bs-warning-text-emphasis, #997404);
+    background: color-mix(in srgb, var(--bs-warning, #ffc107) 18%, transparent);
   }
 }
 </style>

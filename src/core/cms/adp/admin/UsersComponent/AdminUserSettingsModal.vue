@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
-import { confirmDelete } from '@/js/utils/confirm.js'
+import { confirmAction, confirmDelete } from '@/js/utils/confirm.js'
 import AvatarBlock from '@/core/cms/adp/user/account/component/settings-panels/AvatarBlock.vue'
 import UserProfileFields from '@/core/cms/adp/user/account/component/settings-panels/UserProfileFields.vue'
 import AdminUserSecuritySection from '@/core/cms/adp/admin/UsersComponent/AdminUserSecuritySection.vue'
@@ -51,6 +51,8 @@ const selectedGroupIds = ref([])
 const username = ref('')
 const passwordResetMode = ref('system')
 const loadedUserId = ref(null)
+const isActive = ref(true)
+const initialRoleIsAdmin = ref(false)
 
 const displayName = computed(() => {
   const parts = [formData.value.first_name, formData.value.middle_name, formData.value.last_name]
@@ -79,6 +81,8 @@ const resetState = () => {
   username.value = ''
   passwordResetMode.value = 'system'
   loadedUserId.value = null
+  isActive.value = true
+  initialRoleIsAdmin.value = false
   errors.value = {}
 }
 
@@ -97,6 +101,8 @@ const loadUser = async () => {
     selectedRoleId.value = data.role?.id ?? null
     selectedGroupIds.value = data.role_groups?.map((group) => group.id) || []
     passwordResetMode.value = data.password_reset_mode || 'system'
+    isActive.value = data.is_active !== false
+    initialRoleIsAdmin.value = data.role?.role_type === 'admin'
   } catch (error) {
     logError('Ошибка загрузки пользователя:', error)
     toast.error('Не удалось загрузить данные пользователя')
@@ -117,6 +123,11 @@ watch(
   },
 )
 
+const handleStatusChanged = (nextActive) => {
+  isActive.value = nextActive !== false
+  emit('saved')
+}
+
 const handleClose = () => {
   emit('update:show', false)
 }
@@ -133,8 +144,33 @@ const handleAvatarRemove = async () => {
   return { avatar_url: null }
 }
 
+const isSelectedRoleAdmin = computed(() => {
+  const role = props.roles.find((item) => item.id === selectedRoleId.value)
+  return role?.role_type === 'admin'
+})
+
+const isSelfAdminDemotion = computed(
+  () =>
+    isCurrentUser.value &&
+    initialRoleIsAdmin.value &&
+    !isSelectedRoleAdmin.value,
+)
+
 const handleSave = async () => {
   if (!props.userRef) return
+
+  if (isSelfAdminDemotion.value) {
+    const ok = await confirmAction({
+      title: 'Снятие роли администратора',
+      message: (
+        'Вы снимаете роль администратора с собственной учётной записи.\n\n' +
+        'После сохранения доступ к админ-панели будет потерян. Продолжить?'
+      ),
+      confirmText: 'Снять роль',
+      variant: 'warning',
+    })
+    if (!ok) return
+  }
 
   saving.value = true
   errors.value = {}
@@ -162,7 +198,10 @@ const handleSave = async () => {
     handleClose()
   } catch (error) {
     logError('Ошибка сохранения пользователя:', error)
-    if (!applyProfileApiErrors(error, errors)) {
+    const apiError = error.response?.data?.error
+    if (apiError) {
+      toast.error(apiError)
+    } else if (!applyProfileApiErrors(error, errors)) {
       toast.error('Не удалось сохранить настройки пользователя')
     }
   } finally {
@@ -253,7 +292,14 @@ const requestDelete = async () => {
         </div>
       </div>
 
-      <AdminUserSecuritySection :user-ref="userRef" :username="username" :password-reset-mode="passwordResetMode"/>
+      <AdminUserSecuritySection
+        :user-ref="userRef"
+        :username="username"
+        :password-reset-mode="passwordResetMode"
+        :is-active="isActive"
+        :is-current-user="isCurrentUser"
+        @status-changed="handleStatusChanged"
+      />
 
       <h2 class="admin-user-modal__section-title admin-user-modal__section-title--danger">Опасная зона</h2>
       <div class="profile-card profile-card--danger">

@@ -56,3 +56,31 @@ export async function resetAdminUserPassword(userRef, payload = {}) {
   const response = await apiClient.post(endpoints.cms.adminUserResetPassword(userRef), payload, true)
   return response.data
 }
+
+export async function setAdminUserStatus(userRef, isActive) {
+  const response = await apiClient.post(
+    endpoints.cms.adminUserStatus(userRef),
+    { is_active: Boolean(isActive) },
+    true,
+  )
+  return response.data
+}
+
+export async function fetchAdminUserDevices(userRef) {
+  const response = await apiClient.get(endpoints.cms.adminUserDevices(userRef), {}, true)
+  return response.data
+}
+
+export async function revokeAdminUserDevice(userRef, deviceId) {
+  const response = await apiClient.delete(
+    endpoints.cms.adminUserDeviceDetail(userRef, deviceId),
+    {},
+    true,
+  )
+  return response.data
+}
+
+export async function revokeAdminUserSessions(userRef) {
+  const response = await apiClient.post(endpoints.cms.adminUserRevokeSessions(userRef), {}, true)
+  return response.data
+}
