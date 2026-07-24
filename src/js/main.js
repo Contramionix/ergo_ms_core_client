@@ -6,6 +6,7 @@ import '@/scss/styles.scss'
 
 import { autoAnimatePlugin } from '@formkit/auto-animate/vue'
 import Toast from 'vue-toastification'
+import 'vue-toastification/dist/index.css'
 import { getToastPluginOptions, syncToastPluginWithSettings } from '@/js/utils/toast.js'
 
 import { createApp } from 'vue'

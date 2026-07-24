@@ -1,14 +1,7 @@
 import { fileURLToPath, URL } from 'node:url'
-
-import vue from '@vitejs/plugin-vue'
-import AutoImport from 'unplugin-auto-import/vite'
-import { defineConfig } from 'vite'
-import { visualizer } from 'rollup-plugin-visualizer'
-
-import dotenv from 'dotenv'
 import path from 'path'
 import fs from 'fs'
-import { createRequire } from 'node:module'
+import { createRequire, isBuiltin } from 'node:module'
 import { mergeModuleEnv } from './scripts/lib/module-env.js'
 import { loadDisabledModules } from './scripts/lib/parse-disabled-modules.js'
 
@@ -20,14 +13,21 @@ const analyzeBuild = process.env.ANALYZE === 'true'
 const projectRoot = path.resolve(__dirname, '../..')
 const npmModules = path.resolve(projectRoot, 'virtual_env/npm/node_modules')
 const npmRoot = path.resolve(projectRoot, 'virtual_env/npm')
+// Пакеты только в virtual_env/npm — ESM import из core/client их не находит (Node walk-up).
 const requireFromNpm = createRequire(path.join(npmModules, '_ergo_resolve.js'))
+const vue = requireFromNpm('@vitejs/plugin-vue')
+const AutoImport = requireFromNpm('unplugin-auto-import/vite')
+const { defineConfig } = requireFromNpm('vite')
+const { visualizer } = requireFromNpm('rollup-plugin-visualizer')
+const dotenv = requireFromNpm('dotenv')
 
 /** Пакеты лежат в virtual_env/npm/node_modules (не предок core/client). */
 function resolveFromNpmRootPlugin() {
+  const npmImporter = path.join(npmRoot, 'package.json')
   return {
     name: 'resolve-from-npm-root',
     enforce: 'pre',
-    resolveId(id) {
+    async resolveId(id, _importer, options) {
       if (
         !id ||
         id.startsWith('\0') ||
@@ -36,15 +36,32 @@ function resolveFromNpmRootPlugin() {
         id.startsWith('@/') ||
         id.startsWith('@modules/') ||
         path.isAbsolute(id) ||
-        id === 'vue'
+        id === 'vue' ||
+        isBuiltin(id)
       ) {
         return null
       }
-      try {
-        return requireFromNpm.resolve(id)
-      } catch {
+      const bare = id.startsWith('@')
+        ? id.split('/').slice(0, 2).join('/')
+        : id.split('/')[0]
+      if (!bare || !fs.existsSync(path.join(npmModules, bare))) {
         return null
       }
+      // Vite resolve из npm-root — корректные package exports (browser)
+      const resolved = await this.resolve(id, npmImporter, { ...options, skipSelf: true })
+      if (resolved) {
+        return resolved
+      }
+      // CSS/@import и прочие пути, которые default resolve не поднял
+      try {
+        const abs = requireFromNpm.resolve(id)
+        if (abs && abs !== id && !isBuiltin(abs) && fs.existsSync(abs)) {
+          return abs
+        }
+      } catch {
+        /* пакет есть, но субпуть не резолвится через require */
+      }
+      return null
     },
   }
 }
@@ -351,7 +368,10 @@ export default defineConfig(() => ({
     alias: [
       ...externalModuleAliases,
       { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
-      { find: 'vue', replacement: 'vue/dist/vue.esm-bundler.js' },
+      {
+        find: /^vue$/,
+        replacement: path.join(npmModules, 'vue/dist/vue.esm-bundler.js'),
+      },
     ],
     extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue'],
     modules: [npmModules, 'node_modules'],
@@ -360,6 +380,7 @@ export default defineConfig(() => ({
     preprocessorOptions: {
       scss: {
         additionalData: `@use "@/scss/_inject.scss" as *;\n`,
+        loadPaths: [npmModules],
       },
     },
     devSourcemap: false,
