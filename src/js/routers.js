@@ -184,8 +184,13 @@ function setupRouterGuards(router) {
       }
 
       if (to.meta.requiresAuth && !(await runCheckToken())) {
-        import('./api/manager').then(({ apiClient }) => {
-          apiClient.logout()
+        // Локальный сброс + один серверный logout (дедуп в tokenRefresh).
+        // Не auth.logout() с location.href — иначе цикл со startRoute → AppHome.
+        import('@/core/cms/js/tokenRefresh.js').then(({ performServerLogout }) => {
+          performServerLogout()
+        })
+        import('@/core/cms/js/tokenService').then(({ tokenService }) => {
+          tokenService.clear()
         })
         return safeNext({ name: 'StartPage' })
       }
@@ -205,8 +210,11 @@ function setupRouterGuards(router) {
 
       return safeNext()
     } catch {
-      import('./api/manager').then(({ apiClient }) => {
-        apiClient.logout()
+      import('@/core/cms/js/tokenRefresh.js').then(({ performServerLogout }) => {
+        performServerLogout()
+      })
+      import('@/core/cms/js/tokenService').then(({ tokenService }) => {
+        tokenService.clear()
       })
       accessDeniedState.active = false
       next({ name: 'StartPage' })

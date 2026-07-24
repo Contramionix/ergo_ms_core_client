@@ -56,8 +56,14 @@ class ApiClient {
           }
           this.logout()
           if (typeof window !== 'undefined' && window.location) {
-            if (!window.location.pathname.includes('/start') && !window.location.pathname.includes('/login')) {
-              window.location.href = '/start'
+            const path = window.location.pathname || ''
+            // /start — не маршрут (есть /start-page); уводил на NotFound(requiresAuth) → цикл logout
+            if (
+              !path.includes('/start-page') &&
+              !path.includes('/login') &&
+              !path.includes('/register')
+            ) {
+              window.location.href = '/start-page'
             }
           }
         }
@@ -235,8 +241,9 @@ class ApiClient {
    * Выход из системы
    */
   async logout() {
-    await performServerLogout()
+    // Сначала локально — параллельные 401 перестают слать Authorization
     tokenService.clear()
+    await performServerLogout()
   }
 
   /**

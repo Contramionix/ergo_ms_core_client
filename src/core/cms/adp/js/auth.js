@@ -3,7 +3,7 @@ import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import tokenService from '@/core/cms/js/tokenService'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { performServerLogout, restoreSession, invalidateSessionRestoreCache } from '@/core/cms/js/tokenRefresh.js'
+import { performServerLogout, restoreSession, invalidateSessionRestoreCache, resetServerLogoutGate } from '@/core/cms/js/tokenRefresh.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
 import { showBootstrapMask } from '@/js/bootstrapMask.js'
@@ -25,6 +25,7 @@ export const authService = {
         
         if (response.success && response.data?.access) {
             tokenService.setTokens(response.data.access)
+            resetServerLogoutGate()
             if (tokenService.hasActiveSessionScope()) {
                 window.dispatchEvent(new CustomEvent('session-scope-changed'))
             }
@@ -99,10 +100,16 @@ export const authService = {
                 tokenCheckCache = { at: Date.now(), result: response.success }
                 return response.success
             } catch (error) {
+                // Не auth.logout() (redirect): иначе 401 → /login → restore → AppHome → 401…
+                // Серверный logout делает интерцептор apiClient / guard.
                 if (error.response?.status === 401) {
-                    await this.logout()
+                    resetTokenCheckCache()
+                    tokenService.clear()
+                    invalidateSessionRestoreCache()
+                    await performServerLogout()
+                } else {
+                    resetTokenCheckCache()
                 }
-                resetTokenCheckCache()
                 return false
             }
         }

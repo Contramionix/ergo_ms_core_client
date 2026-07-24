@@ -103,8 +103,13 @@ export class AuthGuard {
     
     // Перенаправляем на стартовую страницу
     if (typeof window !== 'undefined' && window.location) {
-      if (!window.location.pathname.includes('/start') && !window.location.pathname.includes('/login')) {
-        window.location.href = '/start'
+      const path = window.location.pathname || ''
+      if (
+        !path.includes('/start-page') &&
+        !path.includes('/login') &&
+        !path.includes('/register')
+      ) {
+        window.location.href = '/start-page'
       }
     }
   }
