@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import { confirmAction } from '@/js/utils/confirm.js'
+import { logError } from '@/js/utils/logError.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import SessionCard from '@/core/cms/adp/user/account/component/settings-panels/SessionCard.vue'
 import { profileService } from '@/core/cms/js/profileService.js'
@@ -80,18 +81,6 @@ watch(
   { immediate: true },
 )
 
-watch(
-  () => props.userRef,
-  (userRef) => {
-    currentPage.value = 1
-    devices.value = []
-    if (userRef) {
-      loadDevices()
-    }
-  },
-  { immediate: true },
-)
-
 const loadDevices = async () => {
   if (!props.userRef) return
 
@@ -108,6 +97,18 @@ const loadDevices = async () => {
     loadingDevices.value = false
   }
 }
+
+watch(
+  () => props.userRef,
+  (userRef) => {
+    currentPage.value = 1
+    devices.value = []
+    if (userRef) {
+      loadDevices()
+    }
+  },
+  { immediate: true },
+)
 
 const validateManualPassword = () => {
   passwordError.value = ''
@@ -286,7 +287,8 @@ const goNext = () => {
 <template>
   <div>
     <h2 class="admin-user-modal__section-title">Безопасность</h2>
-    <div class="profile-card">
+
+    <div class="profile-card profile-card--stack">
       <div class="profile-card__row">
         <div class="profile-card__label-block">
           <span class="profile-card__label">Статус аккаунта</span>
@@ -301,8 +303,7 @@ const goNext = () => {
           </span>
           <button
             type="button"
-            class="btn btn-sm"
-            :class="localIsActive ? 'btn-outline-warning' : 'btn-outline-success'"
+            class="btn btn-sm profile-card__action"
             :disabled="statusUpdating || isCurrentUser"
             @click="toggleAccountStatus"
           >
@@ -313,38 +314,40 @@ const goNext = () => {
       </div>
 
       <template v-if="isManualMode">
-        <div class="profile-card__row profile-card__row--last">
-          <span class="profile-card__label">Пароль</span>
-          <div class="profile-card__control">
-            <div class="password-field-shell" :class="{ 'password-field-shell--invalid': passwordError }">
-              <input
-                id="admin-user-new-password"
-                v-model="newPassword"
-                type="password"
-                class="password-field-shell__input form-control-sm"
-                placeholder="Новый пароль"
-                autocomplete="new-password"
+        <div class="profile-card__row profile-card__row--last profile-card__row--password">
+          <div class="profile-card__label-block">
+            <label class="profile-card__label" for="admin-user-new-password">Пароль</label>
+            <span class="profile-card__hint">Задайте новый пароль или сбросьте на случайный</span>
+          </div>
+          <div class="profile-card__control profile-card__control--password">
+            <input
+              id="admin-user-new-password"
+              v-model="newPassword"
+              type="password"
+              class="form-control form-control-sm profile-card__input"
+              :class="{ 'is-invalid': passwordError }"
+              placeholder="Новый пароль"
+              autocomplete="new-password"
+              :disabled="resetting"
+            />
+            <div class="profile-card__password-actions">
+              <button
+                type="button"
+                class="btn btn-sm profile-card__action"
                 :disabled="resetting"
-              />
-              <div class="password-field-shell__actions">
-                <button
-                  type="button"
-                  class="btn btn-sm password-field-shell__btn password-field-shell__btn--apply"
-                  :disabled="resetting"
-                  @click="handleManualSet"
-                >
-                  <span v-if="resetting">...</span>
-                  <span v-else>Изменить</span>
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-sm password-field-shell__btn password-field-shell__btn--reset"
-                  :disabled="resetting"
-                  @click="requestSystemReset"
-                >
-                  Сбросить
-                </button>
-              </div>
+                @click="handleManualSet"
+              >
+                <span v-if="resetting">...</span>
+                <span v-else>Изменить</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm profile-card__action"
+                :disabled="resetting"
+                @click="requestSystemReset"
+              >
+                Сбросить
+              </button>
             </div>
             <div v-if="passwordError" class="invalid-feedback d-block">{{ passwordError }}</div>
           </div>
@@ -361,7 +364,12 @@ const goNext = () => {
             </span>
           </div>
           <div class="profile-card__control profile-card__control--actions">
-            <button type="button" class="btn btn-sm btn-outline-danger" :disabled="resetting" @click="requestSystemReset">
+            <button
+              type="button"
+              class="btn btn-sm profile-card__action"
+              :disabled="resetting"
+              @click="requestSystemReset"
+            >
               <span v-if="resetting">Сброс...</span>
               <span v-else>Сбросить пароль</span>
             </button>
@@ -374,7 +382,7 @@ const goNext = () => {
       <p class="sessions-block__caption">Активные сессии</p>
       <button
         type="button"
-        class="btn btn-sm btn-outline-warning"
+        class="btn btn-sm profile-card__action"
         :disabled="revokingAll || loadingDevices || paginationTotal === 0"
         @click="handleRevokeAllSessions"
       >
@@ -417,7 +425,7 @@ const goNext = () => {
     </div>
 
     <p class="sessions__disclaimer text-muted small mt-2 mb-0">
-      Отзыв сессии немедленно завершает вход на выбранном устройстве.
+      Отображаются только активные сессии. Отзыв завершает вход на выбранном устройстве сразу.
     </p>
   </div>
 </template>
@@ -438,13 +446,17 @@ const goNext = () => {
   overflow: hidden;
 }
 
+.profile-card--stack {
+  margin-bottom: 0;
+}
+
 .profile-card--sessions {
   margin-top: 0;
 }
 
 .profile-card__row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 0.875rem 1rem;
@@ -461,31 +473,27 @@ const goNext = () => {
   border-bottom: none;
 }
 
-.profile-card__label {
-  flex: 0 0 auto;
-  min-width: 6.5rem;
-  padding-top: 0.35rem;
-  font-size: 0.875rem;
-  color: var(--color-secondary-text);
-  margin: 0;
+.profile-card__row--password {
+  align-items: flex-start;
+}
 
-  @media (max-width: 575.98px) {
-    padding-top: 0;
-  }
+.profile-card__label {
+  flex: 1 1 auto;
+  font-size: 0.875rem;
+  color: var(--color-primary-text);
+  margin: 0;
 }
 
 .profile-card__label-block {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
-  flex: 0 0 auto;
-  min-width: 6.5rem;
-  max-width: 40%;
-  padding-top: 0.35rem;
+  min-width: 0;
+  max-width: 42%;
+  flex: 1 1 auto;
 
   @media (max-width: 575.98px) {
     max-width: none;
-    padding-top: 0;
   }
 }
 
@@ -497,7 +505,7 @@ const goNext = () => {
 }
 
 .profile-card__control {
-  flex: 1 1 60%;
+  flex: 0 0 auto;
   min-width: 0;
 
   &--actions {
@@ -505,14 +513,84 @@ const goNext = () => {
     flex-direction: column;
     align-items: flex-end;
     gap: 0.375rem;
-    flex: 0 0 auto;
     width: auto;
-    padding-top: 0.35rem;
 
     @media (max-width: 575.98px) {
       align-items: stretch;
-      padding-top: 0;
+      width: 100%;
     }
+  }
+
+  &--password {
+    flex: 0 1 18rem;
+    width: clamp(12rem, 48%, 18rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    @media (max-width: 575.98px) {
+      width: 100%;
+      flex: 1 1 auto;
+    }
+  }
+}
+
+.profile-card__input {
+  background: var(--color-primary-background);
+  color: var(--color-primary-text);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+
+  &::placeholder {
+    color: var(--color-secondary-text);
+    opacity: 0.75;
+  }
+
+  &:focus {
+    outline: none;
+    background: var(--color-hover-background);
+    border-color: var(--color-border);
+    box-shadow: none;
+  }
+
+  &.is-invalid {
+    border-color: var(--bs-danger, #dc3545);
+  }
+}
+
+.profile-card__password-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 575.98px) {
+    justify-content: stretch;
+
+    .profile-card__action {
+      flex: 1 1 auto;
+    }
+  }
+}
+
+.profile-card__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-weight: 400;
+  background: var(--color-primary-background);
+  color: var(--color-primary-text);
+  border: 1px solid var(--color-border);
+
+  &:hover:not(:disabled) {
+    background: var(--color-secondary-background);
+    color: var(--color-primary-text);
+  }
+
+  &:disabled {
+    opacity: 0.65;
   }
 }
 
@@ -527,119 +605,13 @@ const goNext = () => {
   text-transform: uppercase;
 
   &--active {
-    color: var(--bs-success, #198754);
-    background: color-mix(in srgb, var(--bs-success, #198754) 12%, transparent);
+    color: var(--color-accent, #0d6efd);
+    background: color-mix(in srgb, var(--color-accent, #0d6efd) 12%, transparent);
   }
 
   &--suspended {
-    color: var(--bs-warning-text-emphasis, #997404);
-    background: color-mix(in srgb, var(--bs-warning, #ffc107) 18%, transparent);
-  }
-}
-
-.password-field-shell {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: 0.375rem;
-  background: var(--color-primary-background);
-  overflow: hidden;
-  min-height: 2rem;
-
-  &--invalid {
-    border-color: var(--bs-danger, #dc3545);
-  }
-
-  &:focus-within:not(.password-field-shell--invalid) {
-    background: var(--color-hover-background);
-  }
-
-  &__input {
-    flex: 1;
-    border: none;
-    background: transparent;
-    color: var(--color-primary-text);
-    padding: 0.25rem 0.5rem;
-    min-width: 0;
-    font-size: 0.875rem;
-    box-shadow: none;
-
-    &::placeholder {
-      color: var(--color-secondary-text);
-      opacity: 0.75;
-    }
-
-    &:focus {
-      outline: none;
-      background: transparent;
-      box-shadow: none;
-    }
-
-    &:disabled {
-      opacity: 0.65;
-    }
-  }
-
-  &__actions {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem;
-    flex-shrink: 0;
-  }
-
-  &__btn {
-    border-radius: 0.25rem;
-    white-space: nowrap;
-    padding: 0.2rem 0.625rem;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    line-height: 1.2;
-    border: none;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-    transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-
-    @media (max-width: 575.98px) {
-      padding: 0.2rem 0.5rem;
-      font-size: 0.75rem;
-    }
-
-    &:disabled {
-      opacity: 0.55;
-      box-shadow: none;
-    }
-
-    &--apply {
-      background-color: var(--bs-success, #198754);
-      color: #fff;
-
-      &:hover:not(:disabled) {
-        background-color: var(--bs-success-text-emphasis, #146c43);
-        color: #fff;
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--bs-success, #198754);
-        outline-offset: 1px;
-        color: #fff;
-      }
-    }
-
-    &--reset {
-      background-color: var(--color-secondary-background, #e9ecef);
-      color: var(--color-secondary-text, #5c636a);
-      border: 1px solid var(--color-border);
-
-      &:hover:not(:disabled) {
-        background-color: var(--color-hover-background, #dee2e6);
-        color: var(--color-primary-text);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--color-border);
-        outline-offset: 1px;
-      }
-    }
+    color: var(--color-secondary-text);
+    background: var(--color-secondary-background);
   }
 }
 
@@ -648,14 +620,21 @@ const goNext = () => {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin: 1rem 0 0.5rem;
+  margin: 1rem 0 0.375rem;
 }
 
 .sessions-block__caption {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 0.6875rem;
   font-weight: 600;
-  color: var(--color-primary-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-secondary-text, rgba(128, 128, 128, 0.95));
+}
+
+.sessions__list {
+  display: flex;
+  flex-direction: column;
 }
 
 .sessions__empty {
@@ -667,31 +646,37 @@ const goNext = () => {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.5rem 1rem 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.625rem 1rem 0.75rem;
   border-top: 1px solid var(--color-border);
-
-  @media (max-width: 575.98px) {
-    flex-direction: column;
-    align-items: stretch;
-  }
 }
 
 .sessions__pager {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .sessions__pager-btn {
-  padding: 0;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
   text-decoration: none;
+  color: var(--color-primary-text);
 
   &:disabled {
     opacity: 0.45;
+    pointer-events: none;
   }
 }
 
+.sessions__page-indicator {
+  min-width: 3rem;
+  text-align: center;
+}
+
 .sessions__disclaimer {
+  font-size: 0.675rem;
+  max-width: 36rem;
   line-height: 1.35;
 }
 </style>
