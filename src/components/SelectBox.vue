@@ -149,6 +149,8 @@ const props = defineProps({
     searchable: { type: Boolean, default: false },
     searchPlaceholder: { type: String, default: 'Поиск...' },
     searchByFirstLetters: { type: Boolean, default: false },
+    /** Ключ доп. поля в объекте опции для поиска (помимо label); пусто — только label */
+    searchExtraKey: { type: String, default: '' },
     multiple: { type: Boolean, default: false },
     showCheckboxesWhenMultiple: { type: Boolean, default: false },
     multipleLabelFormat: { type: String, default: 'list', validator: (v) => ['count', 'list'].includes(v) },
@@ -275,6 +277,14 @@ function matchesFirstLetters(label, query) {
 
 const searchQuery = ref('')
 const hasActiveSearch = computed(() => props.searchable && searchQuery.value.trim().length > 0)
+
+function getSearchExtraText(opt) {
+    if (!props.searchExtraKey || opt?.raw == null || typeof opt.raw !== 'object') return ''
+    const value = opt.raw[props.searchExtraKey]
+    if (value == null) return ''
+    return String(value).trim()
+}
+
 const filteredOptions = computed(() => {
     if (!props.searchable || !searchQuery.value.trim()) return normalizedOptions.value
     const q = searchQuery.value.trim()
@@ -283,10 +293,20 @@ const filteredOptions = computed(() => {
         return normalizedOptions.value.filter(opt => {
             const label = opt.label ?? ''
             const labelLower = label.toLowerCase()
-            return matchesFirstLetters(label, q) || labelLower.includes(qLower)
+            const extraLower = getSearchExtraText(opt).toLowerCase()
+            return (
+                matchesFirstLetters(label, q)
+                || labelLower.includes(qLower)
+                || (extraLower && extraLower.includes(qLower))
+            )
         })
     }
-    return normalizedOptions.value.filter(opt => (opt.label ?? '').toLowerCase().includes(qLower))
+    return normalizedOptions.value.filter((opt) => {
+        const labelLower = (opt.label ?? '').toLowerCase()
+        if (labelLower.includes(qLower)) return true
+        const extraLower = getSearchExtraText(opt).toLowerCase()
+        return Boolean(extraLower && extraLower.includes(qLower))
+    })
 })
 
 const isOpen = ref(false)
