@@ -19,8 +19,18 @@ let refreshInProgress = null
 let sessionRestorePromise = null
 /** @type {boolean | null} null — ещё не проверяли, false — сессии нет, true — есть */
 let sessionRestoreResolved = null
+/**
+ * После первого logout до явного login:
+ * — не слать повторные POST /logout/
+ * — не делать token-refresh (иначе refresh↔logout гонка и шторм запросов)
+ */
+let serverLogoutPromise = null
+let logoutFinalized = false
 
 export function canAttemptTokenRefresh() {
+  if (logoutFinalized || serverLogoutPromise) {
+    return false
+  }
   return hasSessionHintCookie()
 }
 
@@ -42,6 +52,10 @@ function markSessionRestoreResult(hasSession) {
  * Без подсказки о refresh не обращается к API — нет лишних 400 в консоли.
  */
 export async function restoreSession() {
+  if (logoutFinalized) {
+    return false
+  }
+
   const access = getAccess()
   if (access && !isExpired(access)) {
     markSessionRestoreResult(true)
@@ -76,6 +90,10 @@ export async function restoreSession() {
  * @returns {Promise<string|null>} access или null при отсутствии/истечении сессии (без throw)
  */
 export async function performTokenRefresh() {
+  if (logoutFinalized || serverLogoutPromise) {
+    return null
+  }
+
   if (refreshInProgress) {
     return refreshInProgress
   }
@@ -96,6 +114,10 @@ export async function performTokenRefresh() {
             status === 200 || EXPECTED_REFRESH_FAILURE.has(status),
         },
       )
+
+      if (logoutFinalized || serverLogoutPromise) {
+        return null
+      }
 
       if (response.status !== 200) {
         markSessionRestoreResult(false)
@@ -122,14 +144,42 @@ export async function performTokenRefresh() {
   return refreshInProgress
 }
 
+/** Сброс только после успешного login — не из token-refresh. */
+export function resetServerLogoutGate() {
+  serverLogoutPromise = null
+  logoutFinalized = false
+}
+
+export function isServerLogoutFinalized() {
+  return logoutFinalized
+}
+
+/**
+ * Один POST /logout/ на волну истечения сессии до следующего login.
+ */
 export async function performServerLogout() {
-  try {
-    await axios.post(
-      `${resolveApiClientBaseUrl()}${AUTH_LOGOUT_PATH}`,
-      {},
-      { withCredentials: true },
-    )
-  } catch {
-    // ignore — локальная очистка всё равно выполняется
+  if (serverLogoutPromise) {
+    return serverLogoutPromise
   }
+
+  logoutFinalized = true
+  invalidateSessionRestoreCache()
+
+  serverLogoutPromise = (async () => {
+    try {
+      await axios.post(
+        `${resolveApiClientBaseUrl()}${AUTH_LOGOUT_PATH}`,
+        {},
+        {
+          withCredentials: true,
+          validateStatus: (status) =>
+            (status >= 200 && status < 300) || status === 401 || status === 429,
+        },
+      )
+    } catch {
+      // ignore — локальная очистка всё равно выполняется вызывающим кодом
+    }
+  })()
+
+  return serverLogoutPromise
 }
