@@ -101,6 +101,13 @@ const updateValue = (event) => {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  // Bootstrap рисует иконку ошибки справа — она пересекается с кнопкой показа пароля.
+  // Текст ошибки уже выводится ниже через .invalid-feedback.
+  :deep(.form-control.is-invalid) {
+    background-image: none;
+    padding-right: 2.75rem;
+  }
 }
 
 .password-input__toggle {
