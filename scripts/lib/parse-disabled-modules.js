@@ -2,13 +2,18 @@
  * Парсинг DISABLED_MODULES из корневого .env (логика как в module-env.js).
  */
 
-import dotenv from 'dotenv'
 import fs from 'fs'
 import path from 'path'
+import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.resolve(__dirname, '../../../..')
+// node_modules в virtual_env/npm — не предок core/client, walk-up Node их не найдёт
+const requireFromNpm = createRequire(
+  path.join(projectRoot, 'virtual_env/npm/node_modules', '_ergo_resolve.js'),
+)
+const dotenv = requireFromNpm('dotenv')
 
 /**
  * @param {string} [raw]
