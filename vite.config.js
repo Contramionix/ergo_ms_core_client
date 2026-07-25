@@ -105,6 +105,26 @@ function ensureMaintenanceJson() {
 
 ensureMaintenanceJson()
 
+/**
+ * optimizeDeps.include резолвит пакеты от корня Vite (core/client), а не через плагин.
+ * Пакеты лежат только в virtual_env/npm — без alias Vite пишет Failed to resolve dependency.
+ */
+const OPTIMIZE_DEPS_INCLUDE = [
+  'vue',
+  'vue-router',
+  'pinia',
+  'axios',
+  'exceljs',
+  'pdfjs-dist',
+]
+
+function npmPackageAliases(names) {
+  return names.map((name) => ({
+    find: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
+    replacement: path.join(npmModules, name),
+  }))
+}
+
 /** Bind-адреса сервера — браузер по ним не ходит (ERR_ADDRESS_INVALID). */
 const BIND_ALL_HOSTS = new Set(['0.0.0.0', '*', '::', '[::]'])
 
@@ -372,10 +392,13 @@ export default defineConfig(() => ({
         find: /^vue$/,
         replacement: path.join(npmModules, 'vue/dist/vue.esm-bundler.js'),
       },
+      // vue уже выше (ESM-бандл); остальные — для optimizeDeps.include
+      ...npmPackageAliases(OPTIMIZE_DEPS_INCLUDE.filter((name) => name !== 'vue')),
     ],
     extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue'],
     modules: [npmModules, 'node_modules'],
   },
+
   css: {
     preprocessorOptions: {
       scss: {
@@ -413,14 +436,7 @@ export default defineConfig(() => ({
   define: buildClientEnvDefines(runtimeEnv),
   optimizeDeps: {
     exclude: ['@vite-ignore', 'vue3-apexcharts'],
-    include: [
-      'vue',
-      'vue-router',
-      'pinia',
-      'axios',
-      'exceljs',
-      'pdfjs-dist',
-    ],
+    include: OPTIMIZE_DEPS_INCLUDE,
     esbuildOptions: {
       plugins: [
         {

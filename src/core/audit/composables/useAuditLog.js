@@ -1,4 +1,4 @@
-import { ref, computed, watch, shallowRef } from 'vue'
+import { ref, computed, watch, unref } from 'vue'
 import {
   useRouteQueryState,
   filtersObjectFromState,
@@ -106,7 +106,8 @@ export function useAuditLog(options = {}) {
   const selectedEvent = ref(null)
   const showDetailsModal = ref(false)
 
-  const iconCache = shallowRef({})
+  // Не reactive: запись в кэш из resolveIcon во время render давала лишние re-render.
+  const iconCacheMap = new Map()
 
   const routeQuery = syncRouteQuery
     ? useRouteQueryState({
@@ -259,11 +260,12 @@ export function useAuditLog(options = {}) {
   )
 
   function resolveScopeParams() {
-    const raw = scopeParamsOption?.value ?? scopeParamsOption
-    if (!raw || typeof raw !== 'object') return {}
+    const raw = unref(scopeParamsOption)
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
     const params = {}
     for (const [key, value] of Object.entries(raw)) {
-      if (value === null || value === undefined || value === '') continue
+      if (value == null || value === '') continue
+      if (typeof value === 'object') continue
       params[key] = value
     }
     return params
@@ -287,9 +289,9 @@ export function useAuditLog(options = {}) {
 
   function resolveIcon(name) {
     const key = name || 'Activity'
-    if (iconCache.value[key]) return iconCache.value[key]
+    if (iconCacheMap.has(key)) return iconCacheMap.get(key)
     const icon = moduleManager?.icons?.getIcon?.(key) || moduleManager?.icons?.getIcon?.('Activity')
-    iconCache.value = { ...iconCache.value, [key]: icon }
+    iconCacheMap.set(key, icon)
     return icon
   }
 

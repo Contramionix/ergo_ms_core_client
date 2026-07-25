@@ -69,8 +69,15 @@ function textFits(text, maxWidth) {
 
 function checkOverflow() {
   const label = labelEl.value
-  isOverflowing.value = Boolean(label && label.scrollWidth > label.clientWidth)
+  const next = Boolean(label && label.scrollWidth > label.clientWidth)
+  if (isOverflowing.value !== next) {
+    isOverflowing.value = next
+  }
 }
+
+let resizeObserver = null
+let rafId = 0
+let lastMaxWidth = -1
 
 function updateDisplay() {
   const wrap = nameWrapEl.value
@@ -85,36 +92,50 @@ function updateDisplay() {
   }
 
   if (!expandedDisplay) {
-    displayName.value = ''
-    isOverflowing.value = false
+    if (displayName.value !== '') displayName.value = ''
+    if (isOverflowing.value) isOverflowing.value = false
+    lastMaxWidth = -1
     return
   }
 
   const maxWidth = wrap?.clientWidth ?? 0
 
   if (maxWidth <= 0) {
-    displayName.value = expandedDisplay
+    if (displayName.value !== expandedDisplay) displayName.value = expandedDisplay
     nextTick(checkOverflow)
     return
   }
 
-  if (textFits(expandedDisplay, maxWidth)) {
-    displayName.value = expandedDisplay
-  } else if (compactDisplay) {
-    displayName.value = compactDisplay
-  } else {
-    displayName.value = expandedDisplay
+  // Тот же ширину уже посчитали — не трогаем DOM (иначе ResizeObserver ↔ re-render цикл).
+  if (maxWidth === lastMaxWidth && displayName.value) {
+    nextTick(checkOverflow)
+    return
+  }
+  lastMaxWidth = maxWidth
+
+  let nextName = expandedDisplay
+  if (!textFits(expandedDisplay, maxWidth) && compactDisplay) {
+    nextName = compactDisplay
   }
 
+  if (displayName.value !== nextName) {
+    displayName.value = nextName
+  }
   nextTick(checkOverflow)
 }
 
-let resizeObserver = null
+function scheduleUpdateDisplay() {
+  if (rafId) return
+  rafId = window.requestAnimationFrame(() => {
+    rafId = 0
+    updateDisplay()
+  })
+}
 
 function setupObserver() {
   resizeObserver?.disconnect()
-  if (!nameWrapEl.value) return
-  resizeObserver = new ResizeObserver(() => updateDisplay())
+  if (!nameWrapEl.value || typeof ResizeObserver === 'undefined') return
+  resizeObserver = new ResizeObserver(() => scheduleUpdateDisplay())
   resizeObserver.observe(nameWrapEl.value)
 }
 
@@ -134,12 +155,19 @@ watch(
     props.actorLastName,
     props.actorMiddleName,
   ],
-  () => nextTick(updateDisplay),
+  () => {
+    lastMaxWidth = -1
+    nextTick(updateDisplay)
+  },
 )
 
 watch(displayName, () => nextTick(checkOverflow))
 
 onBeforeUnmount(() => {
+  if (rafId) {
+    window.cancelAnimationFrame(rafId)
+    rafId = 0
+  }
   resizeObserver?.disconnect()
 })
 </script>

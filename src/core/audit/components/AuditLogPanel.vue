@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, toRef, watch, computed } from 'vue'
+import { onMounted, computed, watch } from 'vue'
 import { Download, RefreshCw, Eye } from 'lucide-vue-next'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import DataTable from '@/components/DataTable.vue'
@@ -33,7 +33,11 @@ const props = defineProps({
   },
 })
 
-const scopeParamsRef = toRef(props, 'scopeParams')
+const scopeParamsForLog = computed(() => {
+  const raw = props.scopeParams
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  return raw
+})
 
 const {
   isLoading,
@@ -61,7 +65,7 @@ const {
   closeDetails,
   exportCsv,
 } = useAuditLog({
-  scopeParams: scopeParamsRef,
+  scopeParams: scopeParamsForLog,
   syncRouteQuery: props.syncRouteQuery,
 })
 
@@ -69,7 +73,8 @@ onMounted(() => {
   initialize()
 })
 
-watch(scopeParamsRef, () => {
+watch(scopeParamsForLog, (next, prev) => {
+  if (next == null && prev == null) return
   initialize()
 }, { deep: true })
 
