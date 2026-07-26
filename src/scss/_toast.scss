@@ -20,6 +20,16 @@
   font-family: inherit;
 }
 
+// Перебиваем цветные фоны vue-toastification (у --success и т.п. выше специфичность)
+.Vue-Toastification__toast--success,
+.Vue-Toastification__toast--error,
+.Vue-Toastification__toast--warning,
+.Vue-Toastification__toast--info,
+.Vue-Toastification__toast--default {
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+
 .Vue-Toastification__toast--success {
   border-color: color-mix(in srgb, var(--bs-success) 35%, var(--ui-border));
 }

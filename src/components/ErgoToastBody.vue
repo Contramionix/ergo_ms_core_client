@@ -23,6 +23,19 @@ const iconMap = {
 
 const IconComponent = computed(() => iconMap[props.type] || iconMap.info)
 
+const iconColorVar = computed(() => {
+  switch (props.type) {
+    case 'success':
+      return 'var(--bs-success)'
+    case 'error':
+      return 'var(--bs-danger)'
+    case 'warning':
+      return 'var(--bs-warning)'
+    default:
+      return 'var(--bs-info)'
+  }
+})
+
 function close() {
   emit('close-toast')
 }
@@ -30,7 +43,9 @@ function close() {
 
 <template>
   <div class="ergo-toast-body" :class="`ergo-toast-body--${type}`">
-    <IconComponent :size="20" class="ergo-toast-body__icon" aria-hidden="true" />
+    <span class="ergo-toast-body__icon-wrap" aria-hidden="true">
+      <IconComponent :size="20" :color="iconColorVar" class="ergo-toast-body__icon" />
+    </span>
     <span class="ergo-toast-body__message">{{ message }}</span>
     <button
       type="button"
@@ -52,8 +67,40 @@ function close() {
   color: var(--ui-text);
 }
 
+.ergo-toast-body__icon-wrap {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.375rem;
+}
+
 .ergo-toast-body__icon {
   flex-shrink: 0;
+  color: inherit;
+}
+
+.ergo-toast-body--success .ergo-toast-body__icon-wrap {
+  color: var(--bs-success);
+  background: color-mix(in srgb, var(--bs-success) 12%, transparent);
+}
+
+.ergo-toast-body--error .ergo-toast-body__icon-wrap {
+  color: var(--bs-danger);
+  background: color-mix(in srgb, var(--bs-danger) 12%, transparent);
+}
+
+.ergo-toast-body--warning .ergo-toast-body__icon-wrap {
+  color: var(--bs-warning);
+  background: color-mix(in srgb, var(--bs-warning) 12%, transparent);
+}
+
+.ergo-toast-body--info .ergo-toast-body__icon-wrap,
+.ergo-toast-body--default .ergo-toast-body__icon-wrap {
+  color: var(--bs-info);
+  background: color-mix(in srgb, var(--bs-info) 12%, transparent);
 }
 
 .ergo-toast-body--success .ergo-toast-body__icon {
