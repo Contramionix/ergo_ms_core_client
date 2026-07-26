@@ -27,68 +27,25 @@
         </tbody>
       </table>
     </div>
-    <div v-if="enablePagination && showPaginationControls" class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
-      <div class="text-muted small">
-        <template v-if="useFullPagination || hasKnownTotal">
-          Показано {{ startIndex + 1 }} – {{ endIndex }} из {{ totalItemsCount }}
-        </template>
-        <template v-else-if="useSimpleServerPagination">
-          <template v-if="displayItems.length">
-            Показано {{ startIndex + 1 }} – {{ startIndex + displayItems.length }}
-          </template>
-          <template v-else>Записей на странице нет</template>
-          <span class="data-table-page-label">· Страница {{ currentPage }}</span>
-        </template>
-        <template v-else>
-          Показано {{ startIndex + 1 }} – {{ endIndex }} из {{ totalItemsCount }}
-        </template>
-      </div>
-      <nav class="data-table-pagination" aria-label="Навигация по страницам">
-        <ul class="pagination pagination-sm mb-0">
-          <template v-if="useFullPagination">
-            <li class="page-item" :class="{ disabled: isFirstDisabled }">
-              <button type="button" class="page-link page-link--icon" aria-label="Первая страница" :disabled="isFirstDisabled" @click="firstPage">
-                <LucideIcon name="ChevronsLeft" :size="16" />
-              </button>
-            </li>
-          </template>
-          <li class="page-item" :class="{ disabled: isPrevDisabled }">
-            <button type="button" class="page-link page-link--icon" aria-label="Предыдущая страница" :disabled="isPrevDisabled" @click="prevPage">
-              <LucideIcon name="ChevronLeft" :size="16" />
-            </button>
-          </li>
-          <template v-if="useFullPagination">
-            <li v-for="(page, idx) in visiblePages" :key="idx" class="page-item" :class="{ active: page === currentPage, disabled: page === '...' }">
-              <button v-if="page !== '...'" type="button" class="page-link page-link--number" @click="goToPage(page)">
-                {{ page }}
-              </button>
-              <span v-else class="page-link page-link--ellipsis">…</span>
-            </li>
-          </template>
-          <li v-else-if="useSimpleServerPagination" class="page-item active" aria-current="page">
-            <span class="page-link page-link--number">{{ currentPage }}</span>
-          </li>
-          <li class="page-item" :class="{ disabled: isNextDisabled }">
-            <button type="button" class="page-link page-link--icon" aria-label="Следующая страница" :disabled="isNextDisabled" @click="nextPage">
-              <LucideIcon name="ChevronRight" :size="16" />
-            </button>
-          </li>
-          <template v-if="useFullPagination">
-            <li class="page-item" :class="{ disabled: isLastDisabled }">
-              <button type="button" class="page-link page-link--icon" aria-label="Последняя страница" :disabled="isLastDisabled" @click="lastPage">
-                <LucideIcon name="ChevronsRight" :size="16" />
-              </button>
-            </li>
-          </template>
-        </ul>
-      </nav>
-    </div>
+    <Pagination
+      v-if="enablePagination"
+      :model-value="currentPage"
+      :total-pages="totalPages"
+      :total-items="paginationTotalItems"
+      :page-size="itemsPerPage"
+      :visible-count="displayItems.length"
+      :variant="paginationVariant"
+      layout="toolbar"
+      :has-next-page="paginationHasNext"
+      :has-previous-page="paginationHasPrevious"
+      @update:model-value="handlePageChange"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import LucideIcon from '@/components/LucideIcon.vue'
+import Pagination from '@/components/Pagination.vue'
 
 const props = defineProps({
   items: {
@@ -189,6 +146,11 @@ function handleRowClick(item, idx) {
   }
 }
 
+function handlePageChange(page) {
+  emit('update:currentPage', page)
+  emit('pageChange', page)
+}
+
 // Пагинация
 const useServerPagination = computed(
   () => props.hasNextPage !== null && props.hasPreviousPage !== null,
@@ -217,43 +179,21 @@ const totalPages = computed(() => {
   return Math.max(1, Math.ceil(totalItemsCount.value / props.itemsPerPage) || 1)
 })
 
-const useFullPagination = computed(() => {
-  if (!props.enablePagination) {
-    return false
-  }
-  if (useServerPagination.value) {
-    return hasKnownTotal.value && totalPages.value > 1
-  }
-  return totalPages.value > 1
-})
+const paginationVariant = computed(() =>
+  useSimpleServerPagination.value ? 'simple' : 'full',
+)
 
-const showPaginationControls = computed(() => {
-  if (useFullPagination.value) {
-    return true
-  }
-  if (useSimpleServerPagination.value) {
-    return props.hasNextPage || props.hasPreviousPage || props.currentPage > 1
-  }
-  return totalItemsCount.value > props.itemsPerPage
-})
+const paginationTotalItems = computed(() =>
+  useSimpleServerPagination.value ? null : totalItemsCount.value,
+)
 
-const isFirstDisabled = computed(() => props.currentPage <= 1)
+const paginationHasNext = computed(() =>
+  useSimpleServerPagination.value ? props.hasNextPage : null,
+)
 
-const isLastDisabled = computed(() => props.currentPage >= totalPages.value)
-
-const isPrevDisabled = computed(() => {
-  if (useSimpleServerPagination.value) {
-    return !props.hasPreviousPage
-  }
-  return props.currentPage <= 1
-})
-
-const isNextDisabled = computed(() => {
-  if (useSimpleServerPagination.value) {
-    return !props.hasNextPage
-  }
-  return props.currentPage >= totalPages.value
-})
+const paginationHasPrevious = computed(() =>
+  useSimpleServerPagination.value ? props.hasPreviousPage : null,
+)
 
 const displayItems = computed(() => {
   if (!props.enablePagination) {
@@ -273,76 +213,6 @@ const displayNumberOffset = computed(() => {
   }
   return props.numberOffset + (props.currentPage - 1) * props.itemsPerPage
 })
-
-const startIndex = computed(() => {
-  return (props.currentPage - 1) * props.itemsPerPage
-})
-
-const endIndex = computed(() => {
-  return Math.min(props.currentPage * props.itemsPerPage, totalItemsCount.value)
-})
-
-const visiblePages = computed(() => {
-  const pages = []
-  const total = totalPages.value
-  const current = props.currentPage
-  
-  if (total <= 7) {
-    for (let i = 1; i <= total; i++) {
-      pages.push(i)
-    }
-  } else {
-    if (current <= 4) {
-      for (let i = 1; i <= 5; i++) pages.push(i)
-      pages.push('...')
-      pages.push(total)
-    } else if (current >= total - 3) {
-      pages.push(1)
-      pages.push('...')
-      for (let i = total - 4; i <= total; i++) pages.push(i)
-    } else {
-      pages.push(1)
-      pages.push('...')
-      for (let i = current - 1; i <= current + 1; i++) pages.push(i)
-      pages.push('...')
-      pages.push(total)
-    }
-  }
-  return pages
-})
-
-const goToPage = (page) => {
-  const target = Number(page)
-  if (!Number.isFinite(target) || target < 1 || target > totalPages.value || target === props.currentPage) {
-    return
-  }
-  emit('update:currentPage', target)
-  emit('pageChange', target)
-}
-
-const firstPage = () => {
-  goToPage(1)
-}
-
-const lastPage = () => {
-  goToPage(totalPages.value)
-}
-
-const prevPage = () => {
-  if (!isPrevDisabled.value) {
-    const newPage = props.currentPage - 1
-    emit('update:currentPage', newPage)
-    emit('pageChange', newPage)
-  }
-}
-
-const nextPage = () => {
-  if (!isNextDisabled.value) {
-    const newPage = props.currentPage + 1
-    emit('update:currentPage', newPage)
-    emit('pageChange', newPage)
-  }
-}
 </script>
 
 <style lang="scss" scoped>
@@ -368,100 +238,5 @@ const nextPage = () => {
   .table-responsive {
     font-size: 0.875rem;
   }
-}
-
-.data-table-pagination {
-  flex-shrink: 0;
-}
-
-.data-table-pagination .pagination {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-.data-table-pagination .page-item {
-  display: flex;
-  align-items: center;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  &::marker {
-    content: none;
-  }
-}
-
-.data-table-pagination .page-link {
-  position: static;
-  float: none;
-  margin-left: 0 !important;
-  border-radius: 0.375rem;
-  padding: 0;
-  color: var(--color-primary-text);
-  background-color: var(--color-primary-background);
-  border: 1px solid var(--color-border);
-  min-width: 2.25rem;
-  width: 2.25rem;
-  height: 2.25rem;
-  line-height: 1;
-  font-size: 0.875rem;
-  font-weight: 500;
-  text-align: center;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: none !important;
-}
-
-.data-table-pagination .page-link--number {
-  min-width: 2.25rem;
-  width: auto;
-  padding: 0 0.5rem;
-}
-
-.data-table-pagination .page-link--ellipsis {
-  border-color: transparent;
-  background-color: transparent;
-  cursor: default;
-  min-width: 1.5rem;
-  width: auto;
-  padding: 0 0.125rem;
-}
-
-.data-table-pagination button.page-link {
-  cursor: pointer;
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-}
-
-.data-table-pagination .page-item.active .page-link {
-  background-color: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-primary-background);
-  font-weight: 600;
-}
-
-.data-table-pagination .page-item.disabled .page-link {
-  color: var(--color-secondary-text);
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-.data-table-pagination .page-item:not(.disabled):not(.active) button.page-link:hover {
-  background-color: var(--color-hover-background);
-  border-color: var(--color-border);
-  color: var(--color-primary-text);
-}
-
-.data-table-page-label {
-  margin-left: 0.25rem;
 }
 </style>

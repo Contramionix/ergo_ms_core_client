@@ -267,9 +267,15 @@ const visiblePages = computed(() => {
 function goToPage(page) {
   const target = Number(page)
   if (!Number.isFinite(target)) return
-  if (target < 1 || target > props.totalPages) return
+  if (target < 1) return
   if (target === props.modelValue) return
   if (props.disabled) return
+
+  // Без известного total серверные флаги разрешают шаг ±1 за пределы totalPages.
+  if (target > props.totalPages) {
+    const canStepNext = props.hasNextPage === true && target === props.modelValue + 1
+    if (!canStepNext) return
+  }
 
   emit('update:modelValue', target)
   emit('page-change', target)
