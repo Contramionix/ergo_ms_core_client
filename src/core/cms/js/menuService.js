@@ -145,7 +145,6 @@ function transformMenuItem(item) {
   // Добавляем внешнюю ссылку
   if (item.item_type === 'external' && item.external_url) {
     transformed.externalUrl = item.external_url
-    transformed.external_url = item.external_url // Дублируем для совместимости
   }
 
   // Обрабатываем дочерние элементы - сохраняем исходный порядок из API
@@ -175,7 +174,6 @@ function transformMenuItem(item) {
         // Добавляем внешнюю ссылку для external элементов
         if (child.item_type === 'external' && child.external_url) {
           listItem.externalUrl = child.external_url
-          listItem.external_url = child.external_url // Дублируем для совместимости
         }
         
         list.push(listItem)

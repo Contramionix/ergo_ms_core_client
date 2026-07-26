@@ -4,6 +4,7 @@ import tokenService from '@/core/cms/js/tokenService'
 import { performServerLogout } from '@/core/cms/js/tokenRefresh.js'
 import { applyMaintenanceFromResponse, isMaintenanceResponse } from '@/composables/useMaintenanceMode.js'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
+import { logError, sanitizeError } from '@/js/utils/logError.js'
 
 /**
  * Класс для работы с API
@@ -142,39 +143,6 @@ class ApiClient {
   }
 
   /**
-   * Загрузка файлов
-   */
-  async upload(endpoint, formData, needToken = true, onUploadProgress) {
-    try {
-      const config = {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-      
-      if (needToken) {
-        this._addAuthToken(config)
-      }
-      
-      if (typeof onUploadProgress === 'function') {
-        config.onUploadProgress = onUploadProgress
-      }
-      
-      const response = await this.client.post(endpoint, formData, config)
-      return this.handleResponse(response)
-    } catch (error) {
-      return this.handleError(error)
-    }
-  }
-
-  /**
-   * Получение списка загруженных файлов
-   */
-  async getUploadedFiles(endpoint, needToken = true) {
-    return this.get(endpoint, {}, needToken)
-  }
-
-  /**
    * Скачивание файлов (бинарные данные)
    */
   async downloadFile(endpoint, params = {}, method = 'GET', needToken = true) {
@@ -237,27 +205,10 @@ class ApiClient {
   /**
    * Выход из системы
    */
-  /**
-   * Выход из системы
-   */
   async logout() {
     // Сначала локально — параллельные 401 перестают слать Authorization
     tokenService.clear()
     await performServerLogout()
-  }
-
-  /**
-   * Проверка валидности токена
-   */
-  isTokenValid() {
-    return !!tokenService.getAccess()
-  }
-
-  /**
-   * Получение текущего токена
-   */
-  getCurrentToken() {
-    return tokenService.getAccess()
   }
 
   /**

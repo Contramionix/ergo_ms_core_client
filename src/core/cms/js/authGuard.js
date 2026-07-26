@@ -68,7 +68,7 @@ export class AuthGuard {
         const userStore = useUserStore()
         
         // Если пользователь инициализирован, считаем токен валидным
-        // (так как initializeUser уже проверил его через /protected/)
+        // (initializeUser уже проверил сессию через session-bootstrap / restore)
         if (userStore.isInitialized && userStore.isAuthenticated) {
           this.isCheckingToken = false
           return

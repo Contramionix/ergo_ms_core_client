@@ -16,19 +16,14 @@ export const cmsEndpoints = {
         profileSettings: 'cms/adp/profile-settings/',
         profileChangeRequests: 'cms/adp/profile-change-requests/',
         validateInvitation: 'cms/adp/invitations/validate/',
-        protected: 'cms/adp/protected/',
         sessionBootstrap: 'cms/adp/session-bootstrap/',
         changePassword: 'cms/adp/change-password/',
         devices: 'cms/adp/devices/',
         deleteDevice: id => `cms/adp/devices/${id}/`,
         profile: 'cms/adp/profile/',
-        menu: 'cms/adp/user-menu-data/',
         securitySettings: 'cms/adp/security-settings/',
     },
     cms: {
-        disabledModules: 'cms/disabled-modules/',
-        checkAccessToAdminPanel: 'cms/check_access_to_admin_panel/',
-
         getpages: 'cms/get-cms-pages',
 
         roles: {

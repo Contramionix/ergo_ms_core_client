@@ -144,49 +144,6 @@ export class EndpointManager extends ModuleLoader {
   }
 
   /**
-   * Проверяет существование эндпоинта
-   * @param {string} name - имя эндпоинта
-   * @returns {boolean}
-   */
-  hasEndpoint(name) {
-    return this.endpoints.has(name)
-  }
-
-  /**
-   * Получает эндпоинты по префиксу
-   * @param {string} prefix - префикс имени эндпоинта
-   * @returns {Object}
-   */
-  getEndpointsByPrefix(prefix) {
-    const result = {}
-    
-    this.endpoints.forEach((data, name) => {
-      if (name.startsWith(prefix)) {
-        result[name] = data.value
-      }
-    })
-
-    return result
-  }
-
-  /**
-   * Фильтрует эндпоинты по условию
-   * @param {Function} predicate - функция-предикат
-   * @returns {Object}
-   */
-  filterEndpoints(predicate) {
-    const result = {}
-    
-    this.endpoints.forEach((data, name) => {
-      if (predicate(name, data.value)) {
-        result[name] = data.value
-      }
-    })
-
-    return result
-  }
-
-  /**
    * Получает статистику по эндпоинтам
    * @returns {Object}
    */

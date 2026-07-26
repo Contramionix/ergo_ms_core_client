@@ -16,6 +16,7 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
 import { accessDeniedState } from './accessDeniedState'
 import { finishRouteProgress, startRouteProgress } from '@/js/routeProgressState.js'
+import { runSessionScopeGuard } from '@/js/session/sessionScopeGuard.js'
 
 let cachedPermissionRules = null
 let cachedRouteGuards = null
@@ -56,6 +57,30 @@ async function runModuleRouteGuards(to, from) {
     }
   }
   return null
+}
+
+/**
+ * Platform session-scope: meta.requiresSessionScope / requiresActiveSessionScope.
+ * Welcome/home — из bridge (session.scope_entry_routes); доменная validateSession —
+ * опционально в модульном routeGuard после этого шага.
+ * @returns {Promise<object|false|null>}
+ */
+async function runPlatformSessionScopeGuard(to, from) {
+  let redirect = null
+  let aborted = false
+  await runSessionScopeGuard(to, from, (redirectTo) => {
+    if (redirectTo === false) {
+      aborted = true
+      return
+    }
+    if (typeof redirectTo === 'string' || (redirectTo && typeof redirectTo === 'object')) {
+      redirect = redirectTo
+    }
+  })
+  if (aborted) {
+    return false
+  }
+  return redirect
 }
 
 async function getCachedPermissionRules() {
@@ -193,6 +218,14 @@ function setupRouterGuards(router) {
           tokenService.clear()
         })
         return safeNext({ name: 'StartPage' })
+      }
+
+      const scopeRedirect = await runPlatformSessionScopeGuard(to, from)
+      if (scopeRedirect === false) {
+        return next(false)
+      }
+      if (scopeRedirect) {
+        return safeNext(scopeRedirect)
       }
 
       const moduleRedirect = await runModuleRouteGuards(to, from)

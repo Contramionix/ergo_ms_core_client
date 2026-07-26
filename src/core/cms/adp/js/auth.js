@@ -96,7 +96,8 @@ export const authService = {
             }
 
             try {
-                const response = await apiClient.get(endpoints.auth.protected)
+                // Серверная проверка через существующий session-bootstrap (без отдельного /protected/).
+                const response = await apiClient.get(endpoints.auth.sessionBootstrap)
                 tokenCheckCache = { at: Date.now(), result: response.success }
                 return response.success
             } catch (error) {

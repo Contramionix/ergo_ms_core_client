@@ -2,7 +2,6 @@ import axios from 'axios'
 
 import { resolveApiClientBaseUrl } from '@/js/api/baseUrl.js'
 import {
-  clearLegacyAuthCookies,
   clearSessionHintCookie,
   getAccess,
   hasSessionHintCookie,
@@ -131,7 +130,6 @@ export async function performTokenRefresh() {
       }
 
       setTokens(newAccess)
-      clearLegacyAuthCookies()
       markSessionRestoreResult(true)
       return newAccess
     } catch {

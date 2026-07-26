@@ -172,7 +172,7 @@ function handleNestedNavigate(item) {
 function routeClick(event) {
   event.preventDefault() // Всегда блокируем стандартную навигацию RouterLink
 
-  const externalUrl = props.data.externalUrl || props.data.external_url
+  const externalUrl = props.data.externalUrl
   if (props.data.item_type === 'external' && externalUrl) {
     window.open(externalUrl, '_blank', 'noopener,noreferrer')
     return

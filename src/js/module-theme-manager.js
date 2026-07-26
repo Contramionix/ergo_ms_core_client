@@ -265,12 +265,3 @@ export function moduleThemeHasCustomPalette(themeOrSet) {
     return hasCustomColors(variant.colors) || hasBootstrap || hasTokens
   })
 }
-
-// Совместимость со старым кешем
-export function saveModuleThemeToCache(moduleKey, theme) {
-  saveModuleThemeSetToCache(moduleKey, normalizeModuleThemeSetPayload(theme))
-}
-
-export function getCachedModuleTheme(moduleKey) {
-  return getCachedModuleThemeSet(moduleKey)
-}

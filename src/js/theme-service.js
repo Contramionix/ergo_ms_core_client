@@ -1,6 +1,7 @@
 import { apiClient } from '@/js/api/manager'
 import { endpoints, initEndpoints } from '@/js/api/endpoints.js'
 import { isMaintenanceResponse } from '@/composables/useMaintenanceMode.js'
+import { logWarn } from '@/js/utils/logError.js'
 import {
   applyThemeModePreference,
   initTheme,

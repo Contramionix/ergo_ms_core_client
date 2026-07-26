@@ -154,7 +154,9 @@ function buildCombinedOrder(rootItems, sepList) {
   const combined = [...menuEntries, ...sepEntries]
   combined.sort((a, b) => {
     if (a.parentId !== b.parentId) {
-      return (a.parentId || 0) - (b.parentId || 0)
+      const left = a.parentId == null ? '' : String(a.parentId)
+      const right = b.parentId == null ? '' : String(b.parentId)
+      return left.localeCompare(right)
     }
     if (a._sortOrder !== b._sortOrder) return a._sortOrder - b._sortOrder
     if (a.type === 'separator' && b.type !== 'separator') return -1

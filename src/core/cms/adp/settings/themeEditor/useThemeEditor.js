@@ -11,92 +11,28 @@ import {
   getBootstrapByCategories,
   previewTheme,
   applyThemeModePreference,
-  resetPreviewToDefaults,
   getCurrentThemeMode,
   loadThemeFromLocalStorage,
   saveThemeToLocalStorage,
 } from '@/js/theme-manager'
 import { previewModuleThemeSet, applyModuleThemeSet, normalizeModuleThemeSetPayload, clearModuleTheme } from '@/js/module-theme-manager.js'
-import { getThemeDefaultsManager, preloadModuleThemeManifests } from '@/modules/themes/ThemeDefaultsManager.js'
 import { syncUiSettingsFromStorage } from '@/core/cms/js/uiSettings.js'
 import { Sun, Moon } from 'lucide-vue-next'
-import { normalizeColorMapToHex, normalizeColorToHex } from './colorFormat.js'
+import { normalizeColorMapToHex } from './colorFormat.js'
+import { contrastRatio } from './themeContrast.js'
+import { createThemeEditorActions } from './themeEditorActions.js'
+import { resetSystemThemeRecord } from './themeEditorReset.js'
+import {
+  createEmptyDraft as buildEmptyDraft,
+  createEmptyModulePairDraft as buildEmptyModulePairDraft,
+  normalizedModulePairKey,
+  pickEditableFields,
+  snapshotTheme,
+} from './themeEditorModel.js'
 
 export const THEME_EDITOR_KEY = 'ergoThemeEditor'
 
-function parseCssColorToRgb(value) {
-  const raw = String(value || '').trim()
-  if (!raw) {
-    return null
-  }
-  if (raw.startsWith('#')) {
-    let hex = raw.slice(1)
-    if (hex.length === 3) {
-      hex = hex.split('').map((c) => c + c).join('')
-    }
-    if (hex.length !== 6) {
-      return null
-    }
-    const n = Number.parseInt(hex, 16)
-    if (Number.isNaN(n)) {
-      return null
-    }
-    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
-  }
-  const rgba = raw.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i)
-  if (!rgba) {
-    return null
-  }
-  return {
-    r: Number.parseInt(rgba[1], 10),
-    g: Number.parseInt(rgba[2], 10),
-    b: Number.parseInt(rgba[3], 10),
-  }
-}
-
-function relativeLuminance({ r, g, b }) {
-  const toLinear = (c) => {
-    const s = c / 255
-    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
-  }
-  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
-}
-
-function contrastRatio(fg, bg) {
-  const a = parseCssColorToRgb(fg)
-  const b = parseCssColorToRgb(bg)
-  if (!a || !b) {
-    return null
-  }
-  const l1 = relativeLuminance(a)
-  const l2 = relativeLuminance(b)
-  const lighter = Math.max(l1, l2)
-  const darker = Math.min(l1, l2)
-  return (lighter + 0.05) / (darker + 0.05)
-}
-
-export function isColorLikeToken(value) {
-  const v = String(value || '').trim()
-  if (!v) {
-    return false
-  }
-  if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) {
-    return true
-  }
-  return /^rgba?\(/i.test(v)
-}
-
-function pickEditableFields(source) {
-  return {
-    name: source?.name || '',
-    description: source?.description || '',
-    author: source?.author || '',
-    base_theme: source?.base_theme || 'light',
-    colors: normalizeColorMapToHex(source?.colors || {}),
-    bootstrap_colors: normalizeColorMapToHex(source?.bootstrap_colors || {}),
-    module_tokens: { ...(source?.module_tokens || {}) },
-  }
-}
+export { isColorLikeToken } from './themeContrast.js'
 
 export function createThemeEditor() {
   const toast = useToast()
@@ -127,58 +63,8 @@ export function createThemeEditor() {
     { id: 'light', name: 'Светлый вариант', icon: markRaw(Sun) },
     { id: 'dark', name: 'Тёмный вариант', icon: markRaw(Moon) },
   ]
-
   const isModuleScope = computed(() => false)
   const previewModuleKey = computed(() => null)
-
-  function normalizedModulePairKey(value, fallback = 'default') {
-    const text = String(value ?? '').trim()
-    return text || fallback
-  }
-
-  function groupFlatThemesToPairs(flatList) {
-    const byPair = new Map()
-    for (const theme of flatList) {
-      const pairKey = normalizedModulePairKey(theme.module_pair)
-      if (!byPair.has(pairKey)) {
-        byPair.set(pairKey, {
-          module_key: theme.module_key,
-          module_pair: pairKey,
-          name: theme.name,
-          description: theme.description || '',
-          is_active: false,
-          is_default: false,
-          variants: { light: null, dark: null },
-        })
-      }
-      const pair = byPair.get(pairKey)
-      const slot = theme.base_theme === 'dark' ? 'dark' : 'light'
-      pair.variants[slot] = theme
-      if (theme.is_active) {
-        pair.is_active = true
-      }
-      if (theme.is_default) {
-        pair.is_default = true
-      }
-      if (theme.name) {
-        pair.name = theme.name
-      }
-    }
-    return Array.from(byPair.values())
-  }
-
-  function normalizeModuleThemesResponse(data) {
-    if (!Array.isArray(data) || !data.length) {
-      return []
-    }
-    if (data[0]?.variants) {
-      return data.map((pair) => ({
-        ...pair,
-        module_pair: normalizedModulePairKey(pair.module_pair),
-      }))
-    }
-    return groupFlatThemesToPairs(data)
-  }
 
   function buildModuleSetForPreview() {
     const pair = themes.value.find((p) => p.module_pair === selectedPairKey.value)
@@ -408,81 +294,21 @@ export function createThemeEditor() {
   })
 
   function createEmptyDraft(baseTheme = 'light') {
-    const manifest = activeModuleManifest.value
-    const lightSpec = manifest?.systemThemes?.find((s) => s.base_theme === 'light')
-    const darkSpec = manifest?.systemThemes?.find((s) => s.base_theme === 'dark')
-    let colors
-    if (baseTheme === 'light' && lightSpec?.colors) {
-      colors = { ...lightSpec.colors }
-    } else if (baseTheme === 'dark' && darkSpec?.colors) {
-      colors = { ...darkSpec.colors }
-    } else if (baseTheme === (manifest?.baseTheme || 'light') && manifest?.colors && Object.keys(manifest.colors).length) {
-      colors = { ...manifest.colors }
-    } else {
-      colors = { ...getDefaultColors(baseTheme) }
-    }
-    return {
-      id: DRAFT_THEME_ID,
-      name: 'Новая тема',
-      description: '',
-      author: '',
-      base_theme: baseTheme,
-      module_key: isModuleScope.value ? selectedScope.value : null,
-      module_pair: 'default',
-      colors,
-      bootstrap_colors: manifest?.bootstrap_colors ? { ...manifest.bootstrap_colors } : {},
-      module_tokens: manifest?.moduleTokens ? { ...manifest.moduleTokens } : {},
-      is_active: false,
-      is_default: false,
-      is_system: false,
-    }
+    return buildEmptyDraft({
+      DRAFT_THEME_ID,
+      baseTheme,
+      isModuleScope: isModuleScope.value,
+      selectedScope: selectedScope.value,
+      activeModuleManifest: activeModuleManifest.value,
+    })
   }
 
   function createEmptyModulePairDraft() {
-    const pairKey = `pair_${Date.now()}`
-    const displayName = activeModuleManifest.value?.displayName || selectedScope.value
-    return {
-      module_key: selectedScope.value,
-      module_pair: pairKey,
-      name: `Новая пара (${displayName})`,
-      description: '',
-      is_active: false,
-      is_system: false,
-      variants: {
-        light: {
-          ...createEmptyDraft('light'),
-          id: null,
-          module_pair: pairKey,
-          name: `Новая пара (${displayName})`,
-          is_draft_variant: true,
-        },
-        dark: {
-          ...createEmptyDraft('dark'),
-          id: null,
-          module_pair: pairKey,
-          name: `Новая пара (${displayName})`,
-          is_draft_variant: true,
-        },
-      },
-    }
-  }
-
-  function snapshotTheme(source) {
-    return {
-      id: source.id,
-      name: source.name,
-      description: source.description || '',
-      author: source.author || '',
-      base_theme: source.base_theme,
-      module_key: source.module_key || null,
-      module_pair: source.module_pair || 'default',
-      colors: normalizeColorMapToHex(source.colors || {}),
-      bootstrap_colors: normalizeColorMapToHex(source.bootstrap_colors || {}),
-      module_tokens: { ...(source.module_tokens || {}) },
-      is_active: Boolean(source.is_active),
-      is_default: Boolean(source.is_default),
-      is_system: Boolean(source.is_system),
-    }
+    return buildEmptyModulePairDraft({
+      DRAFT_THEME_ID,
+      selectedScope: selectedScope.value,
+      activeModuleManifest: activeModuleManifest.value,
+    })
   }
 
   function applyThemeToCurrent(theme) {
@@ -526,26 +352,6 @@ export function createThemeEditor() {
     }
   }
 
-  const syncModuleDefaults = async () => {
-    try {
-      await preloadModuleThemeManifests()
-      const manager = getThemeDefaultsManager()
-      const manifests = await manager.getAll()
-      const res = await apiClient.post(endpoints.themes.syncModuleDefaults, { manifests })
-      if (res.success) {
-        const listRes = await apiClient.get(endpoints.themes.list, {
-          module: selectedScope.value,
-          as_pairs: 'true',
-        })
-        if (listRes.success) {
-          themes.value = normalizeModuleThemesResponse(listRes.data || [])
-        }
-      }
-    } catch (e) {
-      logError('Ошибка синхронизации модульных тем:', e)
-    }
-  }
-
   const changeScope = async () => {
     selectedScope.value = 'site'
     draftTheme.value = null
@@ -566,79 +372,6 @@ export function createThemeEditor() {
       }
     } catch (e) {
       logError('Ошибка создания системных тем:', e)
-    }
-  }
-
-  // Сброс системной темы (сайт — одна запись; модуль — пара light+dark)
-  const resetSystemTheme = async (theme) => {
-    if (!theme.is_system && !theme.is_pair) {
-      return
-    }
-
-    const ok = await confirmAction({
-      title: 'Сброс темы',
-      message: `Сбросить тему «${theme.name}» к начальным значениям?`,
-      confirmText: 'Сбросить',
-      cancelText: 'Отмена',
-      variant: 'warning',
-    })
-    if (!ok) {
-      return
-    }
-
-    const ids = theme.is_pair
-      ? [theme.variants?.light?.id, theme.variants?.dark?.id].filter(Boolean)
-      : [theme.id]
-
-    resettingThemeId.value = theme.id || theme.module_pair
-    try {
-      if (theme.is_pair || theme.module_key) {
-        await preloadModuleThemeManifests()
-        const moduleKey = theme.module_key || selectedScope.value
-        const manifest = await getThemeDefaultsManager().getByModuleKey(moduleKey)
-        const resetId = ids[0]
-        if (!resetId) {
-          toast.error('Не удалось определить тему для сброса')
-          return
-        }
-        const res = await apiClient.post(endpoints.themes.resetDefaults(resetId), manifest ? { manifest } : {})
-        if (!res.success) {
-          toast.error(res.message || 'Ошибка сброса темы')
-          return
-        }
-      } else {
-        for (const id of ids) {
-          const res = await apiClient.post(endpoints.themes.resetDefaults(id))
-          if (!res.success) {
-            toast.error(res.message || 'Ошибка сброса темы')
-            return
-          }
-        }
-      }
-      toast.success(`Тема «${theme.name}» сброшена к начальным значениям`)
-      await loadThemes()
-      if (theme.is_pair) {
-        const refreshed = themes.value.find((p) => p.module_pair === theme.module_pair)
-        if (refreshed) {
-          selectModulePair(refreshed, editingVariant.value, { preview: false })
-          if (refreshed.is_active) {
-            applyActivatedTheme(refreshed)
-          }
-        }
-        return
-      }
-      const resetTheme = themes.value.find((t) => t.id === theme.id)
-      if (resetTheme) {
-        selectTheme(resetTheme)
-        if (resetTheme.is_active) {
-          applyActivatedTheme(resetTheme)
-        }
-      }
-    } catch (e) {
-      logError('Ошибка сброса темы:', e)
-      toast.error('Ошибка сброса темы')
-    } finally {
-      resettingThemeId.value = null
     }
   }
 
@@ -804,6 +537,22 @@ export function createThemeEditor() {
     })
   }
 
+  const resetSystemTheme = (theme) => resetSystemThemeRecord(theme, {
+    apiClient,
+    endpoints,
+    confirmAction,
+    toast,
+    logError,
+    selectedScope,
+    editingVariant,
+    themes,
+    resettingThemeId,
+    loadThemes,
+    selectModulePair,
+    selectTheme,
+    applyActivatedTheme,
+  })
+
   async function persistVariantRecord(variantKey, variantData) {
     const payload = {
       name: variantData.name || currentTheme.name,
@@ -824,466 +573,64 @@ export function createThemeEditor() {
   }
 
   // Создание новой темы
-  const createNewTheme = () => {
-    if (isModuleScope.value) {
-      const draftPair = createEmptyModulePairDraft()
-      themes.value = [draftPair, ...themes.value]
-      selectModulePair({
-        ...draftPair,
-        module_pair: draftPair.module_pair,
-        is_pair: true,
-        is_draft_pair: true,
-      }, 'light')
-      return
-    }
-    if (draftTheme.value) {
-      selectTheme({ id: DRAFT_THEME_ID })
-      return
-    }
-
-    draftTheme.value = createEmptyDraft()
-    selectTheme({ id: DRAFT_THEME_ID })
-  }
-
-  const discardModulePairDraft = async () => {
-    if (!isModuleScope.value || !modulePairHasUnsavedVariant.value) {
-      return
-    }
-    const ok = await confirmAction({
-      title: 'Удаление черновика',
-      message: 'Удалить несохранённую пару тем?',
-      confirmText: 'Удалить',
-      cancelText: 'Отмена',
-      variant: 'danger',
-    })
-    if (!ok) {
-      return
-    }
-    themes.value = themes.value.filter((p) => p.module_pair !== selectedPairKey.value)
-    const fallback = themes.value[0]
-    if (fallback) {
-      selectModulePair(fallback, 'light', { preview: false })
-      return
-    }
-    selectedPairKey.value = null
-    selectedThemeId.value = null
-  }
-
-  const discardDraft = async () => {
-    const ok = await confirmAction({
-      title: 'Удаление черновика',
-      message: 'Удалить несохранённый черновик темы?',
-      confirmText: 'Удалить',
-      cancelText: 'Отмена',
-      variant: 'danger',
-    })
-    if (!ok) {
-      return
-    }
-
-    const wasSelected = isDraftSelected.value
-    draftTheme.value = null
-
-    if (!wasSelected) {
-      return
-    }
-
-    const fallback = themes.value[0]
-    if (fallback) {
-      selectTheme(fallback, { preview: false })
-      return
-    }
-
-    selectedThemeId.value = null
-  }
-
-  // Смена базовой темы
-  const changeBaseTheme = (base) => {
-    if (isModuleScope.value) {
-      changeEditingVariant(base)
-      return
-    }
-    currentTheme.base_theme = base
-    // Сбрасываем цвета к начальным для новой базовой темы
-    if (!currentTheme.is_system) {
-      currentTheme.colors = { ...getDefaultColors(base) }
-      currentTheme.bootstrap_colors = {}
-    }
-    applyEditorPreview()
-  }
-
-  const updateColor = (key, value) => {
-    currentTheme.colors[key] = normalizeColorToHex(value)
-    applyEditorPreview()
-  }
-
-  const updateBootstrapColor = (key, value) => {
-    if (!currentTheme.bootstrap_colors) {
-      currentTheme.bootstrap_colors = {}
-    }
-    currentTheme.bootstrap_colors[key] = normalizeColorToHex(value)
-    applyEditorPreview()
-  }
-
-  const updateModuleToken = (key, value) => {
-    if (!currentTheme.module_tokens) {
-      currentTheme.module_tokens = {}
-    }
-    // Цветоподобные токены — к hex; тени и прочее оставляем как есть
-    const trimmed = String(value || '').trim()
-    currentTheme.module_tokens[key] = isColorLikeToken(trimmed)
-      ? normalizeColorToHex(trimmed)
-      : value
-    applyEditorPreview()
-  }
-
-  const moduleTokenEntries = computed(() => {
-    const tokens = currentTheme.module_tokens || {}
-    return Object.keys(tokens)
-      .filter((key) => key)
-      .map((key) => ({
-        key,
-        label: key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()),
-        value: tokens[key],
-      }))
+  const {
+    createNewTheme,
+    discardModulePairDraft,
+    discardDraft,
+    changeBaseTheme,
+    updateColor,
+    updateBootstrapColor,
+    updateModuleToken,
+    moduleTokenEntries,
+    getDefaultValue,
+    resetToDefaults,
+    saveTheme,
+    saveModulePair,
+    activateTheme,
+    duplicateTheme,
+    deleteTheme,
+    exportTheme,
+    importTheme,
+    handleFileImport,
+  } = createThemeEditorActions({
+    DRAFT_THEME_ID,
+    apiClient,
+    applyActivatedTheme,
+    applyEditorPreview,
+    applyThemeToCurrent,
+    canEditCurrentTheme,
+    captureBaseline,
+    changeEditingVariant,
+    confirmAction,
+    createEmptyDraft,
+    createEmptyModulePairDraft,
+    currentTheme,
+    draftTheme,
+    editingVariant,
+    endpoints,
+    fileInput,
+    isDraftSelected,
+    isModuleScope,
+    isNewTheme,
+    loadThemes,
+    loading,
+    logError,
+    mediaApiClient,
+    modulePairHasUnsavedVariant,
+    persistCurrentVariantToPair,
+    persistVariantRecord,
+    resettingThemeId,
+    saving,
+    selectModulePair,
+    selectTheme,
+    selectedPairKey,
+    selectedScope,
+    selectedThemeId,
+    snapshotTheme,
+    syncPairMetadataToSibling,
+    themes,
+    toast,
   })
-
-  // Получить значение по умолчанию для Bootstrap переменной
-  const getDefaultValue = (key) => {
-    const categories = getBootstrapByCategories()
-    const base = isModuleScope.value ? editingVariant.value : currentTheme.base_theme
-    const defaultKey = base === 'dark' ? 'darkDefault' : 'lightDefault'
-  
-    for (const category of Object.values(categories)) {
-      if (category.variables && category.variables[key]) {
-        return category.variables[key][defaultKey] || ''
-      }
-    }
-    return ''
-  }
-
-  // Сброс к начальным значениям из _theme.scss (только превью редактора)
-  const resetToDefaults = () => {
-    if (!canEditCurrentTheme.value) {
-      return
-    }
-    const base = isModuleScope.value ? editingVariant.value : currentTheme.base_theme
-    const defaults = resetPreviewToDefaults(base)
-    currentTheme.colors = { ...defaults.colors }
-    currentTheme.bootstrap_colors = {}
-    applyEditorPreview()
-    toast.success(`Вариант «${base === 'dark' ? 'тёмный' : 'светлый'}» сброшен к начальным значениям`)
-  }
-
-  // Сохранение текущего варианта (модуль) или темы (сайт)
-  const saveTheme = async () => {
-    if (!currentTheme.name.trim()) {
-      toast.error('Укажите название темы')
-      return
-    }
-  
-    saving.value = true
-    try {
-      persistCurrentVariantToPair()
-
-      if (isModuleScope.value) {
-        const pair = themes.value.find((p) => p.module_pair === selectedPairKey.value)
-        const variantSnapshot = snapshotTheme(currentTheme)
-        variantSnapshot.base_theme = editingVariant.value
-        const res = await persistVariantRecord(editingVariant.value, variantSnapshot)
-        if (!res.success) {
-          toast.error(res.message || 'Ошибка сохранения')
-          return
-        }
-
-        if (pair?.variants) {
-          pair.variants[editingVariant.value] = {
-            ...(pair.variants[editingVariant.value] || {}),
-            ...res.data,
-          }
-          pair.name = currentTheme.name
-        }
-
-        await syncPairMetadataToSibling()
-        toast.success(
-          `Сохранён ${editingVariant.value === 'dark' ? 'тёмный' : 'светлый'} вариант`,
-        )
-
-        const savedPairKey = currentTheme.module_pair || selectedPairKey.value
-        await loadThemes()
-        const savedPair = themes.value.find((p) => p.module_pair === savedPairKey)
-        if (savedPair) {
-          selectModulePair(savedPair, editingVariant.value)
-          if (savedPair.is_active) {
-            applyActivatedTheme(savedPair)
-          }
-        }
-        return
-      }
-
-      const data = {
-        name: currentTheme.name,
-        description: currentTheme.description,
-        author: currentTheme.author,
-        base_theme: isModuleScope.value ? editingVariant.value : currentTheme.base_theme,
-        module_key: currentTheme.module_key || null,
-        module_pair: currentTheme.module_pair || 'default',
-        colors: currentTheme.colors,
-        bootstrap_colors: currentTheme.bootstrap_colors,
-        module_tokens: currentTheme.module_tokens || {},
-      }
-    
-      let res
-      if (isDraftSelected.value) {
-        syncCurrentToDraft()
-        res = await apiClient.post(endpoints.themes.create, data)
-      } else if (currentTheme.id) {
-        res = await apiClient.put(endpoints.themes.update(currentTheme.id), data)
-      } else {
-        res = await apiClient.post(endpoints.themes.create, data)
-      }
-    
-      if (res.success) {
-        toast.success('Тема сохранена')
-        draftTheme.value = null
-        const savedPairKey = isModuleScope.value ? (currentTheme.module_pair || selectedPairKey.value) : null
-        const savedId = res.data?.id || currentTheme.id
-        await loadThemes()
-        if (isModuleScope.value && savedPairKey) {
-          const savedPair = themes.value.find((p) => p.module_pair === savedPairKey)
-          if (savedPair) {
-            selectModulePair(savedPair, editingVariant.value)
-            if (savedPair.is_active) {
-              applyActivatedTheme(savedPair)
-            }
-          }
-          return
-        }
-        const savedTheme = themes.value.find((t) => t.id === savedId)
-          || themes.value.find((t) => t.name === data.name)
-        if (savedTheme) {
-          selectTheme(savedTheme)
-          if (savedTheme.is_active) {
-            applyActivatedTheme(savedTheme)
-          }
-        }
-      } else {
-        toast.error(res.message || 'Ошибка сохранения')
-      }
-    } catch (e) {
-      toast.error(e.message || 'Ошибка сохранения темы')
-    } finally {
-      saving.value = false
-    }
-  }
-
-  const saveModulePair = async () => {
-    if (!isModuleScope.value || !selectedPairKey.value) {
-      return
-    }
-    if (!currentTheme.name.trim()) {
-      toast.error('Укажите название темы')
-      return
-    }
-
-    saving.value = true
-    try {
-      persistCurrentVariantToPair()
-      const pair = themes.value.find((p) => p.module_pair === selectedPairKey.value)
-      if (!pair?.variants) {
-        toast.error('Пара тем не найдена')
-        return
-      }
-
-      for (const variantKey of ['light', 'dark']) {
-        const source = variantKey === editingVariant.value
-          ? snapshotTheme(currentTheme)
-          : snapshotTheme(pair.variants[variantKey] || createEmptyDraft(variantKey))
-        source.name = currentTheme.name
-        source.description = currentTheme.description
-        source.author = currentTheme.author
-        source.module_key = selectedScope.value
-        source.module_pair = selectedPairKey.value
-        source.base_theme = variantKey
-
-        const res = await persistVariantRecord(variantKey, source)
-        if (!res.success) {
-          toast.error(res.message || `Ошибка сохранения ${variantKey}-варианта`)
-          return
-        }
-        pair.variants[variantKey] = res.data
-      }
-
-      toast.success('Светлый и тёмный варианты сохранены')
-      const savedPairKey = selectedPairKey.value
-      await loadThemes()
-      const savedPair = themes.value.find((p) => p.module_pair === savedPairKey)
-      if (savedPair) {
-        selectModulePair(savedPair, editingVariant.value)
-        if (savedPair.is_active) {
-          applyActivatedTheme(savedPair)
-        }
-      }
-    } catch (e) {
-      toast.error(e.message || 'Ошибка сохранения пары')
-    } finally {
-      saving.value = false
-    }
-  }
-
-  // Активация темы
-  const activateTheme = async (theme) => {
-    try {
-      const themeId = theme.is_pair
-        ? (theme.variants?.light?.id || theme.variants?.dark?.id)
-        : theme.id
-      if (!themeId) {
-        toast.error('Не найден вариант темы для активации')
-        return
-      }
-      const res = await apiClient.post(endpoints.themes.activate(themeId))
-      if (res.success) {
-        toast.success(`Тема "${theme.name}" активирована`)
-        await loadThemes()
-        applyActivatedTheme(res.data)
-        if (isModuleScope.value && res.data?.module_pair) {
-          const pair = themes.value.find((p) => p.module_pair === res.data.module_pair) || res.data
-          selectModulePair(pair, editingVariant.value, { preview: false })
-        } else if (!isModuleScope.value) {
-          selectTheme(res.data)
-        }
-      }
-    } catch {
-      toast.error('Ошибка активации темы')
-    }
-  }
-
-  // Дублирование темы
-  const duplicateTheme = async (theme) => {
-    if (isModuleScope.value) {
-      toast.info('Дублирование пар модульных тем пока не поддерживается')
-      return
-    }
-    try {
-      const res = await apiClient.post(endpoints.themes.duplicate(theme.id), {
-        name: `${theme.name} (копия)`
-      })
-      if (res.success) {
-        toast.success('Копия создана')
-        await loadThemes()
-        selectTheme(res.data)
-      }
-    } catch {
-      toast.error('Ошибка создания копии')
-    }
-  }
-
-  const deleteTheme = async (theme) => {
-    if (theme.is_system || theme.is_pair) {
-      toast.error('Нельзя удалить системную тему')
-      return
-    }
-
-    const ok = await confirmAction({
-      title: 'Удаление темы',
-      message: `Вы уверены, что хотите удалить тему "${theme.name}"?`,
-      confirmText: 'Удалить',
-      cancelText: 'Отмена',
-      variant: 'danger',
-    })
-    if (!ok) return
-
-    try {
-      const res = await apiClient.delete(endpoints.themes.delete(theme.id))
-      if (res.success) {
-        toast.success('Тема удалена')
-        await loadThemes()
-      }
-    } catch {
-      toast.error('Ошибка удаления темы')
-    }
-  }
-
-  // Экспорт темы
-  const exportTheme = async () => {
-    if (!currentTheme.id || isDraftSelected.value) {
-      // Экспорт несохраненной темы
-      const data = {
-        name: currentTheme.name,
-        description: currentTheme.description,
-        author: currentTheme.author,
-        base_theme: currentTheme.base_theme,
-        module_key: currentTheme.module_key,
-        colors: currentTheme.colors,
-        bootstrap_colors: currentTheme.bootstrap_colors,
-        module_tokens: currentTheme.module_tokens,
-        version: '1.1',
-        exported_at: new Date().toISOString()
-      }
-    
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${currentTheme.name || 'theme'}.json`
-      link.click()
-      URL.revokeObjectURL(url)
-      toast.success('Тема экспортирована')
-      return
-    }
-  
-    try {
-      const res = await apiClient.downloadFile(endpoints.themes.export(currentTheme.id))
-      if (!res.success || !res.data) {
-        toast.error(res.message || 'Ошибка экспорта темы')
-        return
-      }
-      const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${currentTheme.name || 'theme'}.json`
-      link.click()
-      URL.revokeObjectURL(url)
-      toast.success('Тема экспортирована')
-    } catch {
-      toast.error('Ошибка экспорта темы')
-    }
-  }
-
-  // Импорт темы
-  const importTheme = () => {
-    fileInput.value?.click()
-  }
-
-  const handleFileImport = async (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-  
-    try {
-      const uploadResult = await mediaApiClient.upload(file, {
-        targetDir: 'imports/themes',
-        allowedTypes: ['json'],
-      })
-
-      const res = await apiClient.post(endpoints.themes.import, {
-        file_path: uploadResult.path,
-      })
-    
-      if (res.success) {
-        toast.success('Тема импортирована')
-        await loadThemes()
-        selectTheme(res.data)
-      } else {
-        toast.error(res.message || 'Ошибка импорта')
-      }
-    } catch (e) {
-      toast.error(e.message || 'Ошибка импорта темы')
-    }
-  
-    // Сброс input
-    event.target.value = ''
-  }
 
   async function init() {
     selectedScope.value = 'site'
@@ -1348,8 +695,6 @@ export function createThemeEditor() {
 
 export function useThemeEditor() {
   const editor = inject(THEME_EDITOR_KEY, null)
-  if (!editor) {
-    throw new Error('useThemeEditor: ParentLayout должен предоставить createThemeEditor()')
-  }
+  if (!editor) throw new Error('useThemeEditor: ParentLayout должен предоставить createThemeEditor()')
   return editor
 }

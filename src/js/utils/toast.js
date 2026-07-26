@@ -20,11 +20,6 @@ export const TOAST_TIMEOUT = {
   default: 3000,
 }
 
-const TYPE_ALIASES = {
-  primary: 'info',
-  danger: 'error',
-}
-
 export function normalizeToastMessage(message, fallback = 'Произошла ошибка') {
   if (message == null || message === '') {
     return fallback
@@ -61,7 +56,7 @@ function mapToastType(type) {
   if (!type) {
     return 'info'
   }
-  return TYPE_ALIASES[type] || type
+  return type
 }
 
 function isCustomToastContent(content) {

@@ -44,7 +44,7 @@ export const clientEnv = {
   realtimePollNotificationsMs: readInt('CLIENT_REALTIME_POLL_NOTIFICATIONS_INTERVAL', 15000),
   realtimePollAdminPresenceMs: readInt('CLIENT_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL', 10000),
   realtimePollMessengerMs: readInt('CLIENT_REALTIME_POLL_MESSENGER_INTERVAL', 5000),
-  systemVersion: readEnv('CLIENT_SYSTEM_VERSION', '2.1.0'),
+  systemVersion: readEnv('CLIENT_SYSTEM_VERSION', '2.7.8'),
   /** Vite: режим разработки (сборка dev). */
   isDev: import.meta.env.DEV === true,
   /** Vite: production-сборка. */

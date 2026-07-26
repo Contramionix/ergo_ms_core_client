@@ -19,7 +19,7 @@ import {
   clearAvatarCache,
   avatarCacheKey,
 } from '@/js/avatarCache.js'
-import { logError, logWarn } from '@/js/utils/logError.js'
+import { logError } from '@/js/utils/logError.js'
 
 export const useUserStore = defineStore('userStore', () => {
   const toast = useToast()
@@ -189,38 +189,6 @@ export const useUserStore = defineStore('userStore', () => {
     return bootstrapPromise
   }
 
-  // Загрузка минимальных данных для меню
-  const loadMenuData = async () => {
-    try {
-      // Проверяем, что endpoint существует
-      if (!endpoints?.auth?.menu) {
-        logWarn('Endpoint menu не найден, загружаем полный профиль')
-        // Fallback: загружаем полный профиль, если menu endpoint недоступен
-        await loadProfile()
-        return
-      }
-
-      const response = await apiClient.get(endpoints.auth.menu)
-      
-      const userData = response?.data || response
-      
-      if (userData?.username && !userData.adp_profile && userData.initials_name !== undefined) {
-        updateUserData(userData)
-        return
-      }
-      
-      logWarn('Menu endpoint вернул полные данные вместо легковесных, используем fallback')
-      await loadProfile()
-    } catch (error) {
-      logError('Ошибка загрузки данных меню:', error)
-      try {
-        await loadProfile()
-      } catch (profileError) {
-        logError('Ошибка загрузки профиля:', profileError)
-      }
-    }
-  }
-
   // Загрузка полного профиля пользователя
   const loadProfile = async (force = false) => {
     // Если профиль уже загружается, ждем завершения
@@ -239,9 +207,6 @@ export const useUserStore = defineStore('userStore', () => {
         const profileData = await profileService.getProfile()
         profile.value = profileService.formatProfileData(profileData)
         updateUserData(profileData)
-        if (force) {
-          await loadMenuData()
-        }
         return profile.value
       } catch (error) {
         logError('Ошибка загрузки профиля:', error)

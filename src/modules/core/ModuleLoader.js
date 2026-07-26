@@ -109,30 +109,27 @@ export class ModuleLoader {
   /**
    * Загружает файлы из core модулей
    * @param {string} pattern - паттерн для поиска файлов
-   * @param {boolean} eager - загружать ли файлы сразу (не используется, для совместимости)
    * @returns {Object} - объект с загруженными модулями
    */
-  loadCoreModules(pattern, eager = false) {
+  loadCoreModules(pattern) {
     return this.getGlobsByType(pattern, 'core')
   }
 
   /**
    * Загружает файлы из внешних модулей
    * @param {string} pattern - паттерн для поиска файлов
-   * @param {boolean} eager - загружать ли файлы сразу (не используется, для совместимости)
    * @returns {Object} - объект с загруженными модулями
    */
-  loadExternalModules(pattern, eager = false) {
+  loadExternalModules(pattern) {
     return this.getGlobsByType(pattern, 'modules')
   }
 
   /**
    * Загружает файлы из core и внешних модулей одновременно
    * @param {string} pattern - паттерн для поиска файлов
-   * @param {boolean} eager - загружать ли файлы сразу (не используется, для совместимости)
    * @returns {Object} - объединенный объект с загруженными модулями
    */
-  loadAllModules(pattern, eager = false) {
+  loadAllModules(pattern) {
     return this.getGlobsByType(pattern, 'all')
   }
 

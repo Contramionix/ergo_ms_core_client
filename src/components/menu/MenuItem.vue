@@ -110,7 +110,7 @@ const handleClick = (event) => {
   event.preventDefault()
   
   // Проверяем, является ли элемент внешней ссылкой
-  const externalUrl = props.item.externalUrl || props.item.external_url
+  const externalUrl = props.item.externalUrl
   if (props.item.item_type === 'external' && externalUrl) {
     window.open(externalUrl, '_blank', 'noopener,noreferrer')
     return

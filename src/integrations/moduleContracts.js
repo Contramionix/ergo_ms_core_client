@@ -4,6 +4,9 @@
  * Единый re-export имён групп и событий для модулей и ядра.
  */
 
+/** Logout / clearTokens: модули чистят свой legacy browser storage. */
+export const CORE_AUTH_CLEAR_LEGACY_STORAGE = 'core.auth.clear_legacy_storage'
+
 export { LAYOUT_PLUGIN_REGISTRY_GROUP } from '@/integrations/layoutPluginRegistry.js'
 export { HEADER_USER_MENU_ITEMS_GROUP } from '@/integrations/headerUserMenu.js'
 export {
@@ -16,6 +19,3 @@ export {
   getSessionDefaultHomeRoute,
   getSessionScopeWelcomeRoute,
 } from '@/integrations/sessionScopeEntryRoutes.js'
-
-/** Client bridge events */
-export const CORE_AUTH_CLEAR_LEGACY_STORAGE = 'core.auth.clear_legacy_storage'

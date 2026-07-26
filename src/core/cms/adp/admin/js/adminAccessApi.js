@@ -16,10 +16,13 @@ export function invalidateAdminAccessCache() {
   adminAccessFetchedAt = 0
 }
 
+/** Доступ к админ-панели — из session-bootstrap (без отдельного HTTP). */
 export async function checkAccessToAdminPanel() {
   const bootstrap = getSessionBootstrapCache()
   if (bootstrap && typeof bootstrap.access_to_panel === 'boolean') {
-    return { access_to_panel: bootstrap.access_to_panel }
+    cachedAdminAccess = { access_to_panel: bootstrap.access_to_panel }
+    adminAccessFetchedAt = Date.now()
+    return cachedAdminAccess
   }
 
   const now = Date.now()
@@ -27,10 +30,7 @@ export async function checkAccessToAdminPanel() {
     return cachedAdminAccess
   }
 
-  const response = await apiClient.get(endpoints.cms.checkAccessToAdminPanel, {}, true)
-  cachedAdminAccess = response.data
-  adminAccessFetchedAt = now
-  return cachedAdminAccess
+  return { access_to_panel: false }
 }
 
 export async function getPages() {

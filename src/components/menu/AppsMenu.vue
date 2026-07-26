@@ -6,6 +6,7 @@ import { moduleManager } from '@/modules/index.js'
 import { useDropdown } from '@/composables/useDropdown.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
+import { logError } from '@/js/utils/logError.js'
 
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()

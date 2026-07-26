@@ -1,12 +1,11 @@
 /**
  * Предпочтения браузерных (OS) уведомлений.
- * Ключи сохранены для совместимости с CRM (localStorage).
  */
 
 export const BROWSER_NOTIFICATION_PREFS = {
-  enabled: 'crm-browser-notifications-enabled',
-  privacy: 'crm-browser-notifications-private',
-  sound: 'crm-browser-notifications-sound',
+  enabled: 'ergo-browser-notifications-enabled',
+  privacy: 'ergo-browser-notifications-private',
+  sound: 'ergo-browser-notifications-sound',
 }
 
 export const BROWSER_NOTIFICATION_PREFS_CHANGED = 'ergo:browser-notification-prefs'

@@ -440,7 +440,7 @@ const setToolbarDropdownActive = (active) => {
 }
 
 const handleNavigate = (item) => {
-  const externalUrl = item.externalUrl || item.external_url
+  const externalUrl = item.externalUrl
   if (item.item_type === 'external' && externalUrl) {
     window.open(externalUrl, '_blank', 'noopener,noreferrer')
     return

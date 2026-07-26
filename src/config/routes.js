@@ -73,15 +73,6 @@ export default {
         "startRoute": true,
         "requiresAuth": false
       }
-    },
-    {
-      "path": "/two-steps",
-      "name": "TwoSteps",
-      "component": "@/core/cms/adp/pages/TwoStepsPage.vue",
-      "meta": {
-        "startRoute": true,
-        "requiresAuth": false
-      }
     }
   ]
 };

@@ -1,6 +1,5 @@
 import { ref } from 'vue'
 import Cookies from 'js-cookie'
-import bridge from '@/integrations/ModuleBridge.js'
 import { getSessionScopeGatingClaims } from '@/integrations/sessionScopeGating.js'
 
 const SESSION_HINT_COOKIE_NAME = 'ergo_session'
@@ -36,26 +35,9 @@ export function getAccess() {
   return _accessToken.value || null
 }
 
-export function getAccessExp() {
-  const token = getAccess()
-  const payload = token ? decodePayload(token) : null
-  return payload?.exp ? payload.exp * 1000 : 0
-}
-
-export function setTokens(access, _refreshIgnored = null) {
+export function setTokens(access) {
   if (access) {
     _accessToken.value = access
-  }
-  clearLegacyAuthCookies()
-}
-
-/** Удаляет устаревшие JWT-cookie, выставленные клиентом до перехода на HttpOnly. */
-export function clearLegacyAuthCookies() {
-  try {
-    Cookies.remove('token', { path: '/' })
-    Cookies.remove('refresh', { path: '/' })
-  } catch {
-    // ignore
   }
 }
 
@@ -74,14 +56,7 @@ export function clearSessionHintCookie() {
 
 export function clearTokens() {
   _accessToken.value = null
-  clearLegacyAuthCookies()
   clearSessionHintCookie()
-
-  try {
-    bridge.emit('core.auth.clear_legacy_storage')
-  } catch {
-    // ignore
-  }
 }
 
 export function shouldRefresh(thresholdSeconds = 120) {
@@ -91,19 +66,6 @@ export function shouldRefresh(thresholdSeconds = 120) {
   if (!payload?.exp) return true
   const nowSec = Math.floor(Date.now() / 1000)
   return payload.exp - nowSec <= thresholdSeconds
-}
-
-export function getUserId() {
-  const access = getAccess()
-  if (!access) return null
-  const payload = decodePayload(access)
-  return payload?.user_id ? String(payload.user_id) : null
-}
-
-export function getSessionUserId() {
-  const access = getAccess()
-  if (!access || isExpired(access)) return null
-  return getUserId()
 }
 
 /**
@@ -119,6 +81,18 @@ export function getSessionClaim(name) {
 }
 
 /**
+ * user_id из access JWT (SimpleJWT USER_ID_CLAIM), или null.
+ */
+export function getUserId() {
+  const value = getSessionClaim('user_id')
+  if (value == null || value === '') {
+    return null
+  }
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : value
+}
+
+/**
  * Активен ли session-scope: в payload присутствуют все gating-claim,
  * зарегистрированные модулем-владельцем домена (session.scope_gating_claim).
  * Без зарегистрированных claim понятие scope отсутствует -> false.
@@ -129,14 +103,4 @@ export function hasActiveSessionScope() {
     return false
   }
   return claims.every((claim) => getSessionClaim(claim) !== null)
-}
-
-export function getPayload() {
-  const access = getAccess()
-  if (!access) return null
-  return decodePayload(access)
-}
-
-export function hasAccessToken() {
-  return Boolean(_accessToken.value)
 }

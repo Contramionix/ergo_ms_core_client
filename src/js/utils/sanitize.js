@@ -26,13 +26,4 @@ export function sanitizeHtml(dirty, config = {}) {
   return DOMPurify.sanitize(dirty, { ...DEFAULT_CONFIG, ...config })
 }
 
-export function sanitizeMinimal(dirty) {
-  if (!dirty) return ''
-  return DOMPurify.sanitize(dirty, {
-    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'br', 'span', 'p', 'a', 'code', 'pre'],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
-    ALLOW_DATA_ATTR: false,
-  })
-}
-
-export default { sanitizeHtml, sanitizeMinimal }
+export default { sanitizeHtml }

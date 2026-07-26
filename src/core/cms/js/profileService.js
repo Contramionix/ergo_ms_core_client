@@ -58,61 +58,6 @@ export const profileService = {
     }
   },
 
-  // Авторизация пользователя
-  async login(credentials) {
-    try {
-      const response = await apiClient.post(endpoints.auth.login, credentials, false)
-      return response.data
-    } catch (error) {
-      logError('Ошибка авторизации:', error)
-      throw error
-    }
-  },
-
-  // Валидация данных регистрации
-  async validateRegistration(userData) {
-    try {
-      const response = await apiClient.post(endpoints.auth.validateRegistration, userData, false)
-      return response.data
-    } catch (error) {
-      logError('Ошибка валидации регистрации:', error)
-      throw error
-    }
-  },
-
-  // Регистрация нового пользователя
-  async register(userData) {
-    try {
-      const response = await apiClient.post(endpoints.auth.registration, userData, false)
-      return response.data
-    } catch (error) {
-      logError('Ошибка регистрации:', error)
-      throw error
-    }
-  },
-
-  // Отправка кода подтверждения
-  async sendConfirmationCode(email) {
-    try {
-      const response = await apiClient.post(endpoints.auth.sendCode, { email })
-      return response.data
-    } catch (error) {
-      logError('Ошибка отправки кода подтверждения:', error)
-      throw error
-    }
-  },
-
-  // Проверка кода подтверждения
-  async verifyConfirmationCode(email, code) {
-    try {
-      const response = await apiClient.post(endpoints.auth.verifyCode, { email, code })
-      return response.data
-    } catch (error) {
-      logError('Ошибка проверки кода подтверждения:', error)
-      throw error
-    }
-  },
-
   // Форматирование данных профиля для отображения
   formatProfileData(profileData) {
     if (!profileData) return null

@@ -38,18 +38,6 @@ export function getMonthNameByNumber(month) {
 }
 
 /**
- * Месяц в родительном падеже по номеру 1–12 (января…декабря).
- * @param {number} month
- * @returns {string}
- */
-export function getMonthNameGenitiveByNumber(month) {
-    if (!month || month < 1 || month > 12) {
-        return ''
-    }
-    return MONTHS_GENITIVE[month - 1] || ''
-}
-
-/**
  * Парсит дату и возвращает валидный объект Date или null
  * @param {string|Date} date - Дата в ISO формате или объект Date
  * @returns {Date|null} Валидный объект Date или null
@@ -187,32 +175,6 @@ export function getFullDateTime(date) {
 }
 
 /**
- * Форматирует дату: день недели, число и месяц (например, «понедельник, 30 июня»)
- * @param {string|Date} date - Дата в ISO формате или объект Date
- * @returns {string} Отформатированная дата или пустая строка при ошибке
- */
-export function formatWeekdayDate(date = new Date()) {
-    const targetDate = parseDate(date)
-    if (!targetDate) return ''
-
-    try {
-        const weekdayRaw = new Intl.DateTimeFormat('ru-RU', { weekday: 'long' }).format(targetDate)
-        const weekday = weekdayRaw.charAt(0).toUpperCase() + weekdayRaw.slice(1)
-        const dayMonth = new Intl.DateTimeFormat('ru-RU', {
-            day: 'numeric',
-            month: 'long',
-        }).format(targetDate)
-        const dayMonthNormalized = dayMonth.replace(
-            /(\d+\s+)(.+)/,
-            (_, prefix, month) => `${prefix}${month.toLowerCase()}`,
-        )
-        return `${weekday}, ${dayMonthNormalized}`
-    } catch {
-        return ''
-    }
-}
-
-/**
  * Форматирует дату в формат "dd месяц yyyy" (например, "01 января 2024")
  * @param {string|Date} date - Дата в ISO формате или объект Date
  * @returns {string} Отформатированная дата или исходная строка при ошибке
@@ -221,24 +183,15 @@ export function formatDate(date) {
     if (!date) return ''
     const d = parseDate(date)
     if (!d) return String(date)
-
+    
+    const months = [
+        'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    ]
     const dd = String(d.getDate()).padStart(2, '0')
-    const monthName = MONTHS_GENITIVE[d.getMonth()]
+    const monthName = months[d.getMonth()]
     const yyyy = d.getFullYear()
     return `${dd} ${monthName} ${yyyy}`
-}
-
-/**
- * Месяц и год в родительном падеже для конструкций «с …» / «по …»
- * (например, «июня 2026 г.»).
- * @param {string|Date} date
- * @returns {string}
- */
-export function formatMonthYearGenitive(date) {
-    const d = parseDate(date)
-    if (!d) return ''
-
-    return `${MONTHS_GENITIVE[d.getMonth()]} ${d.getFullYear()} г.`
 }
 
 /**
@@ -406,4 +359,32 @@ export function getDefaultEndDate(startDate = null) {
     
     const endOfYear = new Date(targetYear, 11, 31) // 11 = декабрь (0-индексированный)
     return formatDateLocal(endOfYear)
+}
+
+export function formatWeekdayDate(date = new Date()) {
+    const targetDate = parseDate(date)
+    if (!targetDate) return ''
+
+    try {
+        const weekdayRaw = new Intl.DateTimeFormat('ru-RU', { weekday: 'long' }).format(targetDate)
+        const weekday = weekdayRaw.charAt(0).toUpperCase() + weekdayRaw.slice(1)
+        const dayMonth = new Intl.DateTimeFormat('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+        }).format(targetDate)
+        const dayMonthNormalized = dayMonth.replace(
+            /(\d+\s+)(.+)/,
+            (_, prefix, month) => `${prefix}${month.toLowerCase()}`,
+        )
+        return `${weekday}, ${dayMonthNormalized}`
+    } catch {
+        return ''
+    }
+}
+
+export function formatMonthYearGenitive(date) {
+    const d = parseDate(date)
+    if (!d) return ''
+
+    return `${MONTHS_GENITIVE[d.getMonth()]} ${d.getFullYear()} г.`
 }

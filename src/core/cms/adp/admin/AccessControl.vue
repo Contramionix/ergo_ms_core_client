@@ -14,8 +14,7 @@ const router = useRouter()
 
 const activeTab = computed(() => {
   const tab = typeof route.query.tab === 'string' ? route.query.tab : 'policies'
-  const normalizedTab = tab === 'pages' ? 'policies' : tab
-  return TABS.some((item) => item.id === normalizedTab) ? normalizedTab : 'policies'
+  return TABS.some((item) => item.id === tab) ? tab : 'policies'
 })
 
 function selectTab(tabId) {

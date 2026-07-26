@@ -120,39 +120,6 @@ export default {
       "requiresGlobalAdmin": true
     }
   },
-  "PermissionsPanel": {
-    "path": "/admin-panel/permissions",
-    "redirect": {
-      "path": "/admin-panel/access",
-      "query": { "tab": "policies" }
-    },
-    "meta": {
-      "requiresAuth": true,
-      "requiresGlobalAdmin": true
-    }
-  },
-  "ModulePagePermissionsPanel": {
-    "path": "/admin-panel/module-page-permissions",
-    "redirect": {
-      "path": "/admin-panel/access",
-      "query": { "tab": "policies" }
-    },
-    "meta": {
-      "requiresAuth": true,
-      "requiresGlobalAdmin": true
-    }
-  },
-  "LiminationPanel": {
-    "path": "/admin-panel/limitations",
-    "redirect": {
-      "path": "/admin-panel/access",
-      "query": { "tab": "policies" }
-    },
-    "meta": {
-      "requiresAuth": true,
-      "requiresGlobalAdmin": true
-    }
-  },
   "MenuPanel": {
     "path": "/admin-panel/menu",
     "component": "@/core/cms/adp/admin/MenuPanel.vue",

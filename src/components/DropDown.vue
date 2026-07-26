@@ -7,10 +7,8 @@ import { OVERLAY_MENU_Z_INDEX } from '@/js/utils/overlayZIndex.js'
 const props = defineProps({
   makeCenter: { type: Boolean, default: false },
   dropdownMenuClass: { type: String, default: '' },
-  /** Зазор между триггером и меню по вертикали, px (legacy: offset "0,N") */
+  /** Зазор между триггером и меню по вертикали, px (формат offset "0,N") */
   offset: { type: String, default: '0,4' },
-  inset: { type: String, default: '0 0 auto auto' },
-  transform: { type: String, default: 'translate(0px, 40px)' },
   menuMinWidth: { type: Number, default: 160 },
 })
 
@@ -79,7 +77,6 @@ function updateMenuPosition() {
     maxWidth: `${maxWidth}px`,
     zIndex: OVERLAY_MENU_Z_INDEX,
     display: 'block',
-    // Сбрасываем legacy-отступ из _overrides.scss (.dropdown-menu-end { transform: translate(0, 40px) })
     transform: 'none',
     inset: 'auto',
     margin: '0',
@@ -199,38 +196,5 @@ defineExpose({
   gap: 0.625rem;
   visibility: visible !important;
   pointer-events: auto !important;
-}
-
-// Legacy: inline-меню в DOM (без teleport) — скрыто, пока DropDown не открыт через JS
-.dropdown .dropdown-menu:not(.dropdown-menu-teleport),
-.dropdown-center .dropdown-menu:not(.dropdown-menu-teleport) {
-  background-color: var(--bs-card-bg);
-  transition:
-    max-height 0.3s,
-    opacity 0.2s 0.1s,
-    visibility 0s 0.3s;
-  max-height: 0;
-  display: block;
-  overflow: hidden;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.dropdown .dropdown-menu-end:not(.dropdown-menu-teleport) {
-  inset: v-bind(inset);
-  transform: v-bind(transform);
-}
-
-.dropdown .dropdown-menu.show:not(.dropdown-menu-teleport),
-.dropdown-center .dropdown-menu.show:not(.dropdown-menu-teleport) {
-  transition:
-    max-height 0.3s,
-    opacity 0.2s,
-    visibility 0s;
-  max-height: 190px;
-  opacity: 1;
-  visibility: visible;
-  pointer-events: all;
 }
 </style>
