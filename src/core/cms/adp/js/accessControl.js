@@ -8,7 +8,25 @@ const PERMISSIONS_CACHE_TTL = 60 * 1000
 const URL_ACCESS_CACHE_TTL = 60 * 1000
 
 /** Совпадает с PermissionService.DEFAULT_ROLE_NAME на сервере. */
-const DEFAULT_ROLE_NAME = 'Пользователь'
+export const DEFAULT_ROLE_NAME = 'Пользователь'
+
+/** Совпадает с PermissionService.ADMIN_ROLE_NAME на сервере. */
+export const ADMIN_ROLE_NAME = 'Администратор'
+
+/**
+ * Отображаемое имя ADP-роли из permissions snapshot (UX).
+ * Зеркало PermissionService.resolve_display_role для подписи на карточке.
+ */
+export function resolveDisplayRoleName(snapshot) {
+  const name = snapshot?.role?.name
+  if (typeof name === 'string' && name.trim()) {
+    return name.trim()
+  }
+  if (snapshot?.is_global_admin) {
+    return ADMIN_ROLE_NAME
+  }
+  return DEFAULT_ROLE_NAME
+}
 
 function getActiveRoleGroups(snapshot) {
   const groups = snapshot?.role_groups || []

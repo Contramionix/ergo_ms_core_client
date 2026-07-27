@@ -6,7 +6,12 @@ import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import { profileService } from '@/core/cms/js/profileService.js'
 import { applyMenuBootstrap } from '@/core/cms/js/menuService.js'
-import { applyPermissionsBootstrap, invalidatePermissionsSnapshot } from '@/core/cms/adp/js/accessControl.js'
+import {
+  applyPermissionsBootstrap,
+  invalidatePermissionsSnapshot,
+  resolveDisplayRoleName,
+  DEFAULT_ROLE_NAME,
+} from '@/core/cms/adp/js/accessControl.js'
 import {
   clearSessionBootstrapCache,
   setSessionBootstrapCache,
@@ -29,6 +34,7 @@ export const useUserStore = defineStore('userStore', () => {
   const user = ref(null)
   const profile = ref(null)
   const avatarUrl = ref(null) // null означает использование стандартного аватара
+  const roleName = ref(DEFAULT_ROLE_NAME)
   const isLoading = ref(false)
   const isInitialized = ref(false)
   const accessToPanel = ref(false)
@@ -107,7 +113,7 @@ export const useUserStore = defineStore('userStore', () => {
   })
 
   const userEmail = computed(() => user.value?.email || 'email не указан')
-  const userRole = computed(() => profile.value?.role || 'Пользователь')
+  const userRole = computed(() => roleName.value || DEFAULT_ROLE_NAME)
   const hasCustomAvatar = computed(() => !!avatarUrl.value)
 
   // ==== ACTIONS ====
@@ -117,6 +123,7 @@ export const useUserStore = defineStore('userStore', () => {
     user.value = null
     profile.value = null
     avatarUrl.value = null
+    roleName.value = DEFAULT_ROLE_NAME
     accessToPanel.value = false
     clearSessionBootstrapCache()
     invalidateAdminAccessCache()
@@ -167,6 +174,9 @@ export const useUserStore = defineStore('userStore', () => {
     }
     if (data.permissions) {
       applyPermissionsBootstrap(data.permissions)
+      roleName.value = resolveDisplayRoleName(data.permissions)
+    } else {
+      roleName.value = DEFAULT_ROLE_NAME
     }
     accessToPanel.value = Boolean(data.access_to_panel)
 
