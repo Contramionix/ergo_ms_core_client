@@ -67,9 +67,14 @@ $input-focus-box-shadow: none;
   box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
-// Переключатель
+// Переключатель / чекбокс: accent темы, не Sass $primary (#d0322d)
 $form-check-input-width: 1.125rem;
 $form-check-input-focus-box-shadow: none;
+$form-check-input-focus-border: var(--color-accent, var(--bs-primary));
+$form-check-input-checked-bg-color: var(--color-accent, var(--bs-primary));
+$form-check-input-checked-border-color: var(--color-accent, var(--bs-primary));
+$form-check-input-indeterminate-bg-color: var(--color-accent, var(--bs-primary));
+$form-check-input-indeterminate-border-color: var(--color-accent, var(--bs-primary));
 
 .form-check .form-check-input,
 .form-check .form-check-input:focus-within,
@@ -87,6 +92,7 @@ $form-check-input-focus-box-shadow: none;
   cursor: pointer;
   box-shadow: none;
   border: none;
+  background-color: var(--color-accent, var(--bs-primary));
 }
 
 // Шкала прогресса
