@@ -327,9 +327,14 @@ function bootstrapEarlyAssetPlugin() {
   const devUrl = '/js/bootstrap-early.js'
   // Комментарий вместо <script>: Vite не ругается на classic script без type="module"
   const placeholderRe = /<!--\s*ergo-bootstrap-early\s*-->/
+  let isBuild = false
 
   return {
     name: 'bootstrap-early-asset',
+    configResolved(config) {
+      // emitFile только в build; в serve Vite его не поддерживает
+      isBuild = config.command === 'build'
+    },
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = req.url?.split('?')[0]
@@ -343,6 +348,9 @@ function bootstrapEarlyAssetPlugin() {
       })
     },
     buildStart() {
+      if (!isBuild) {
+        return
+      }
       this.emitFile({
         type: 'asset',
         name: 'bootstrap-early.js',

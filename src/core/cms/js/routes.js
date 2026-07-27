@@ -67,7 +67,7 @@ export default {
     "path": "/admin-panel/users",
     "component": "@/core/cms/adp/admin/Users.vue",
     "meta": {
-      "title": "Панель пользователей",
+      "title": "Пользователи",
       "titleKey": "routes.users",
       "requiresAuth": true,
       "requiresGlobalAdmin": true

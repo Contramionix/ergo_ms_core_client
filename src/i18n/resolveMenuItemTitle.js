@@ -13,6 +13,7 @@ const STORED_MENU_LABEL_KEYS = {
   'Личный кабинет': 'routes.account',
   'Админ-панель': 'routes.adminPanel',
   Пользователи: 'routes.users',
+  'Панель пользователей': 'routes.users',
   Роли: 'routes.roles',
   'Ролевые группы': 'routes.roleGroups',
   'Политики и права': 'routes.accessControl',
@@ -20,6 +21,7 @@ const STORED_MENU_LABEL_KEYS = {
   'Доступ и права': 'routes.accessControl',
   'Управление меню': 'routes.menu',
   'Темы оформления': 'routes.themes',
+  Темы: 'routes.themes',
   'Журнал аудита': 'routes.audit',
   'Журнал действий': 'routes.audit',
   Приглашения: 'routes.invitations',
@@ -43,6 +45,7 @@ const STORED_MENU_LABEL_KEYS = {
   'Модуль нейронных сетей': 'neural_networks_hub.routes.shell',
   'Рабочее место': 'neural_networks_hub.routes.roleSelect',
   'AI Hub': 'ai_assistant.routes.hub',
+  'Учебная аналитика': 'learning_analytics.routes.shell',
 }
 
 /**

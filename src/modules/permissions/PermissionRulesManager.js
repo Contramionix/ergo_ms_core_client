@@ -43,10 +43,13 @@ export class PermissionRulesManager extends ModuleLoader {
       if (Array.isArray(moduleRules)) {
         moduleRules.forEach((rule) => {
           if (this.validateRule(rule)) {
-            this.rules.push({
-              ...rule,
-              _modulePath: path
-            })
+            // Не ...rule: spread вызывает getters (title/message → tGlobal)
+            // до merge модульных каталогов i18n и даёт [intlify] Not found.
+            const entry = Object.defineProperties(
+              { _modulePath: path },
+              Object.getOwnPropertyDescriptors(rule),
+            )
+            this.rules.push(entry)
           } else {
             logWarn(`[PermissionRulesManager] Невалидное правило в ${path}`)
           }
@@ -161,12 +164,12 @@ export class PermissionRulesManager extends ModuleLoader {
     const warnings = []
 
     this.rules.forEach((rule, index) => {
-      // Проверяем наличие title и message
-      if (!rule.title) {
+      // 'in' не вызывает getters (в отличие от !rule.title)
+      if (!('title' in rule)) {
         warnings.push(`Правило #${index} (${rule.module}): отсутствует title`)
       }
 
-      if (!rule.message) {
+      if (!('message' in rule)) {
         warnings.push(`Правило #${index} (${rule.module}): отсутствует message`)
       }
 

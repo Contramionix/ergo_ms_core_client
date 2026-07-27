@@ -54,8 +54,14 @@ function showBootFailure(error) {
  * Без top-level await: иначе evaluation чанка index не завершается, пока
  * initEndpoints/initRouter ждут dynamic import integrations/routes, а те
  * статически импортируют index → ESM-дедлок (сеть 200, SPA навсегда в boot-loader).
+ *
+ * Модульные каталоги i18n — до initEndpoints/initRouter: permission-rules
+ * с getters title/message вызывают tGlobal при отказе в доступе и в DEV validateAll.
  */
-Promise.all([initEndpoints(), initRouter()])
+import('@/modules/i18n/LocaleManager.js')
+  .then(({ preloadModuleLocales }) => preloadModuleLocales())
+  .catch(() => {})
+  .then(() => Promise.all([initEndpoints(), initRouter()]))
   .then(([, router]) => {
     app.use(router)
     app.mount('#app')
@@ -69,10 +75,6 @@ Promise.all([initEndpoints(), initRouter()])
 
     void import('@/modules/themes/ThemeDefaultsManager.js')
       .then(({ preloadModuleThemeManifests }) => preloadModuleThemeManifests())
-      .catch(() => {})
-
-    void import('@/modules/i18n/LocaleManager.js')
-      .then(({ preloadModuleLocales }) => preloadModuleLocales())
       .catch(() => {})
   })
   .catch(showBootFailure)
