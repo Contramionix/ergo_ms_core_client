@@ -10,14 +10,16 @@ const props = defineProps({
   /** Зазор между триггером и меню по вертикали, px (формат offset "0,N") */
   offset: { type: String, default: '0,4' },
   menuMinWidth: { type: Number, default: 160 },
+  /** Компактные пункты (меньший шрифт и отступы) */
+  compact: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['dropdown-toggle'])
 
 const menuEl = ref(null)
 const menuStyle = ref({
-  top: '0px',
-  left: '0px',
+  '--dropdown-menu-top': '0px',
+  '--dropdown-menu-left': '0px',
   minWidth: '0px',
 })
 
@@ -44,50 +46,54 @@ function updateMenuPosition() {
 
   const triggerRect = trigger.getBoundingClientRect()
   const gap = parseVerticalGap()
-  const maxWidth = Math.max(0, window.innerWidth - VIEWPORT_PADDING * 2)
-  const minWidth = Math.max(props.menuMinWidth, triggerRect.width)
-  const width = Math.min(minWidth, maxWidth)
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const maxWidth = Math.max(0, vw - VIEWPORT_PADDING * 2)
+  const minWidth = Math.min(Math.max(props.menuMinWidth, triggerRect.width), maxWidth)
+
+  const menuRect = menuEl.value?.getBoundingClientRect()
+  // Реальная ширина после рендера — иначе длинные подписи уезжают за край при align-end
+  const menuWidth = Math.min(
+    Math.max(menuRect?.width || 0, minWidth),
+    maxWidth,
+  )
+  const menuHeight = menuRect?.height || 0
+  const maxHeight = Math.max(0, vh - VIEWPORT_PADDING * 2)
 
   let left
   if (alignEnd.value) {
-    left = triggerRect.right - width
+    left = triggerRect.right - menuWidth
   } else if (props.makeCenter) {
-    left = triggerRect.left + triggerRect.width / 2 - width / 2
+    left = triggerRect.left + triggerRect.width / 2 - menuWidth / 2
   } else {
     left = triggerRect.left
   }
-  left = Math.min(left, window.innerWidth - VIEWPORT_PADDING - width)
+  left = Math.min(left, vw - VIEWPORT_PADDING - menuWidth)
   left = Math.max(VIEWPORT_PADDING, left)
 
   let top = triggerRect.bottom + gap
-  const menuHeight = menuEl.value?.getBoundingClientRect().height || 0
-
-  if (menuHeight && top + menuHeight > window.innerHeight - VIEWPORT_PADDING) {
-    const aboveTop = triggerRect.top - menuHeight - gap
-    if (aboveTop >= VIEWPORT_PADDING) {
-      top = aboveTop
+  if (menuHeight) {
+    const spaceBelow = vh - VIEWPORT_PADDING - (triggerRect.bottom + gap)
+    const spaceAbove = triggerRect.top - gap - VIEWPORT_PADDING
+    if (menuHeight > spaceBelow && spaceAbove > spaceBelow) {
+      top = triggerRect.top - menuHeight - gap
     }
+    // Финальный clamp — меню целиком в viewport (как в ConnectionFiles SheetContextMenu)
+    top = Math.min(top, vh - VIEWPORT_PADDING - Math.min(menuHeight, maxHeight))
+    top = Math.max(VIEWPORT_PADDING, top)
   }
 
   const style = {
-    position: 'fixed',
-    top: `${top}px`,
-    left: `${left}px`,
-    minWidth: `${width}px`,
+    '--dropdown-menu-top': `${top}px`,
+    '--dropdown-menu-left': `${left}px`,
+    minWidth: `${minWidth}px`,
     maxWidth: `${maxWidth}px`,
     zIndex: OVERLAY_MENU_Z_INDEX,
-    display: 'block',
-    transform: 'none',
-    inset: 'auto',
-    margin: '0',
   }
 
-  if (menuHeight) {
-    const maxHeight = window.innerHeight - VIEWPORT_PADDING * 2
-    if (menuHeight > maxHeight) {
-      style.maxHeight = `${maxHeight}px`
-      style.overflowY = 'auto'
-    }
+  if (menuHeight > maxHeight) {
+    style.maxHeight = `${maxHeight}px`
+    style.overflowY = 'auto'
   }
 
   menuStyle.value = style
@@ -122,9 +128,13 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="dropdownRef" :class="makeCenter ? 'dropdown-center' : 'dropdown'">
+  <div
+    ref="dropdownRef"
+    class="dropdown-root"
+    :class="makeCenter ? 'dropdown-center' : 'dropdown'"
+  >
     <div
-      class="dropdown-button rounded p-2"
+      class="dropdown-button"
       role="button"
       tabindex="0"
       :aria-expanded="isOpen"
@@ -140,7 +150,7 @@ defineExpose({
         v-if="isOpen"
         ref="menuEl"
         class="dropdown-menu show dropdown-menu-teleport"
-        :class="dropdownMenuClass"
+        :class="[dropdownMenuClass, { 'dropdown-menu-teleport--compact': compact }]"
         :style="menuStyle"
         role="menu"
         @click.stop
@@ -152,14 +162,25 @@ defineExpose({
 </template>
 
 <style lang="scss">
-// Кнопка открытия
-.dropdown-button {
-  cursor: pointer;
-  transition: all $transition;
+// Корень и триггер — bare: размер = слот #main, без Bootstrap p-2
+.dropdown-root.dropdown,
+.dropdown-root.dropdown-center {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+  vertical-align: middle;
+}
 
-  &:hover {
-    background-color: var(--color-secondary-background);
-  }
+.dropdown-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  line-height: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
 }
 
 // Пункт меню
@@ -173,6 +194,10 @@ defineExpose({
 // Teleport-меню: позиция через fixed, без Bootstrap JS
 .dropdown-menu-teleport.dropdown-menu {
   position: fixed !important;
+  top: var(--dropdown-menu-top, 0) !important;
+  left: var(--dropdown-menu-left, 0) !important;
+  right: auto !important;
+  bottom: auto !important;
   display: block !important;
   opacity: 1 !important;
   visibility: visible !important;
@@ -180,7 +205,6 @@ defineExpose({
   max-height: none !important;
   overflow: visible;
   transform: none !important;
-  inset: auto !important;
   margin: 0 !important;
   background-color: var(--bs-card-bg, var(--bs-body-bg));
   border: 1px solid var(--bs-border-color, var(--ui-border));
@@ -198,5 +222,17 @@ defineExpose({
   gap: 0.625rem;
   visibility: visible !important;
   pointer-events: auto !important;
+}
+
+.dropdown-menu-teleport--compact {
+  padding: 2px 0;
+  min-width: 0;
+}
+
+.dropdown-menu-teleport--compact .dropdown-item {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  gap: 0.4rem;
 }
 </style>
