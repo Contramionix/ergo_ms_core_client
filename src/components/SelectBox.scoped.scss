@@ -151,8 +151,15 @@
     top: auto;
     min-width: unset;
     margin-top: 0;
+    // Снизу от триггера — «пристыкованный» вид без скругления сверху
     border-top-left-radius: 0;
     border-top-right-radius: 0;
+
+    // Сбоку (подменю) — полноценный плавающий блок со скруглением со всех сторон
+    &--side {
+        border-top-left-radius: .375rem;
+        border-top-right-radius: .375rem;
+    }
 }
 .select-box .dropdown { position: relative; width: 100%; max-width: 100%; }
 

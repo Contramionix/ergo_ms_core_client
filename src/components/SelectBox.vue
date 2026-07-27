@@ -245,6 +245,7 @@ function getDropdownItemStyle(opt) {
 
 const dropdownTeleportMenuClass = computed(() => {
     const parts = ['dropdown-menu', 'show', 'fixed-menu']
+    if (props.placement === 'right') parts.push('fixed-menu--side')
     if (props.dropdownMenuClass) parts.push(props.dropdownMenuClass)
     if (props.uniformDropdownListFont) parts.push('select-box-menu--uniform-font')
     return parts
