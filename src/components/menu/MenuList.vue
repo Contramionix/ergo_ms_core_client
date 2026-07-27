@@ -37,6 +37,7 @@ import {
   writeMenuCollapsedPreference,
 } from './composables/useMenuCollapsedPreference.js'
 import { isOffcanvasSidebarOpen, openOffcanvasSidebar } from '@/js/useOffcanvasSidebarStore.js'
+import { SHELL_DESKTOP_MIN } from '@/composables/useBreakpoint.js'
 
 const props = defineProps({
   isVisible: Boolean,
@@ -368,7 +369,7 @@ const {
 watch(
   () => props.isVisible,
   (newValue) => {
-    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1200
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= SHELL_DESKTOP_MIN
 
     beginLayoutTransition({
       visibility: true,
@@ -571,7 +572,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside ref="menuRef" class="side-menu card p-0" :class="{ collapsed: isCollapsed, hovering: isHovering, 'side-menu--collapsed-settled': isCollapsedSettled, 'side-menu--labels-hidden': isCollapsedLabelsHidden, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen, 'side-menu--visibility-transition': isVisibilityTransitionActive, 'side-menu--layout-transition': isLayoutTransitionActive || isCollapsed, 'wordmark-hiding': isWordmarkHiding }" :style="{ '--menu-width': `${menuWidth}px`, '--menu-item-height': `${menuIconSizes.item + 16}px`, '--menu-icon-inset': `calc((100% - ${menuIconSizes.item}px) / 2)`, '--menu-avatar-inset': 'calc((100% - 40px) / 2)' }" @mouseleave="handleMouseLeave">
+  <aside
+    ref="menuRef"
+    class="side-menu card p-0"
+    role="navigation"
+    aria-label="Боковое меню"
+    :class="{ collapsed: isCollapsed, hovering: isHovering, 'side-menu--collapsed-settled': isCollapsedSettled, 'side-menu--labels-hidden': isCollapsedLabelsHidden, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen, 'side-menu--visibility-transition': isVisibilityTransitionActive, 'side-menu--layout-transition': isLayoutTransitionActive || isCollapsed, 'wordmark-hiding': isWordmarkHiding }"
+    :style="{ '--menu-width': `${menuWidth}px`, '--menu-item-height': `${menuIconSizes.item + 16}px`, '--menu-icon-inset': `calc((100% - ${menuIconSizes.item}px) / 2)`, '--menu-avatar-inset': 'calc((100% - 40px) / 2)' }"
+    @mouseleave="handleMouseLeave"
+  >
     <div class="side-menu__header side-header">
       <div class="side-header__brand-row">
         <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">

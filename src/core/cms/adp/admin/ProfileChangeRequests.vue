@@ -1,6 +1,5 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import { useToast } from '@/js/utils/toast.js'
 import { Check, X, AlertCircle } from 'lucide-vue-next'
@@ -15,13 +14,13 @@ import UserAvatar from '@/components/UserAvatar.vue'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { confirmAction } from '@/js/utils/confirm.js'
 import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
+import { accessDeniedState } from '@/js/accessDeniedState'
 import {
   fetchAdminProfileChangeRequests,
   approveProfileChangeRequest,
   rejectProfileChangeRequest,
 } from '@/core/cms/adp/admin/js/profileChangeRequestService.js'
 
-const router = useRouter()
 const toast = useToast()
 
 const breadcrumbItems = [
@@ -86,15 +85,15 @@ const tableEmptyText = computed(() => {
 
 const columns = [
   { key: 'user', label: 'Пользователь' },
-  { key: 'current_email', label: 'Текущий email' },
+  { key: 'current_email', label: 'Текущий email', hideBelow: 'lg' },
   { key: 'email', label: 'Новый email' },
-  { key: 'current_full_name', label: 'Текущее ФИО' },
-  { key: 'requested_full_name', label: 'Новое ФИО' },
-  { key: 'current_phone', label: 'Текущий телефон' },
-  { key: 'phone', label: 'Новый телефон' },
-  { key: 'comment', label: 'Комментарий' },
+  { key: 'current_full_name', label: 'Текущее ФИО', hideBelow: 'lg' },
+  { key: 'requested_full_name', label: 'Новое ФИО', hideBelow: 'md' },
+  { key: 'current_phone', label: 'Текущий телефон', hideBelow: 'lg' },
+  { key: 'phone', label: 'Новый телефон', hideBelow: 'md' },
+  { key: 'comment', label: 'Комментарий', hideOnCompact: true },
   { key: 'status', label: 'Статус', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
-  { key: 'created_at', label: 'Создано', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
+  { key: 'created_at', label: 'Создано', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' }, hideBelow: 'md' },
   { key: 'actions', label: 'Действия', headerStyle: { textAlign: 'right' }, cellStyle: { textAlign: 'right' } },
 ]
 
@@ -140,7 +139,9 @@ onMounted(async () => {
     const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
       toast.error('У вас нет доступа к административной панели')
-      router.push({ name: 'AccessDenied' })
+      accessDeniedState.active = true
+      accessDeniedState.title = 'Доступ запрещён'
+      accessDeniedState.message = 'Требуются права администратора.'
       return
     }
     hasAdminAccess.value = true
@@ -149,7 +150,9 @@ onMounted(async () => {
   } catch (error) {
     logError('Ошибка проверки прав доступа:', error)
     toast.error('Ошибка проверки прав доступа')
-    router.push({ name: 'AccessDenied' })
+    accessDeniedState.active = true
+    accessDeniedState.title = 'Доступ запрещён'
+    accessDeniedState.message = 'Не удалось проверить права доступа.'
   } finally {
     isQueryWatchReady.value = true
   }
@@ -366,7 +369,7 @@ const handleReject = async (item) => {
 @import './admin-page.scss';
 
 .loading-container {
-  min-height: 400px;
+  min-height: min(400px, 50dvh);
 }
 
 .profile-change-shell {
@@ -443,12 +446,28 @@ const handleReject = async (item) => {
   .status-filter {
     width: 220px;
   }
+
+  @media (width < $ui-bp-md) {
+    .filters-wrapper {
+      grid-template-columns: 1fr;
+    }
+
+    .status-filter {
+      width: 100%;
+      max-width: none;
+    }
+  }
 }
 
 .status-filter {
   width: 220px;
   max-width: 220px;
   box-sizing: border-box;
+
+  @media (width < $ui-bp-md) {
+    width: 100%;
+    max-width: none;
+  }
 
   :deep(.hover-tooltip) {
     display: contents;

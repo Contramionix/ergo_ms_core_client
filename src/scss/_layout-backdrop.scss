@@ -60,7 +60,7 @@
   }
 }
 
-@media (width < 1200px) {
+@media (width < $ui-shell-desktop-min) {
   .layout-backdrop--menu-offset {
     top: 56px;
     left: 0;
@@ -71,4 +71,8 @@
   .layout-backdrop__orb {
     animation: none;
   }
+}
+
+html[data-ergo-motion='reduce'] .layout-backdrop__orb {
+  animation: none;
 }

@@ -96,7 +96,13 @@ export const authService = {
             }
 
             try {
-                // Серверная проверка через существующий session-bootstrap (без отдельного /protected/).
+                const userStore = useUserStore()
+                // F5: наполняем session-bootstrap (access_to_panel), не только «токен жив».
+                if (!userStore.isInitialized) {
+                    const ok = Boolean(await userStore.loadSessionBootstrap())
+                    tokenCheckCache = { at: Date.now(), result: ok }
+                    return ok
+                }
                 const response = await apiClient.get(endpoints.auth.sessionBootstrap)
                 tokenCheckCache = { at: Date.now(), result: response.success }
                 return response.success

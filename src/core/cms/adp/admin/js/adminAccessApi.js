@@ -16,18 +16,55 @@ export function invalidateAdminAccessCache() {
   adminAccessFetchedAt = 0
 }
 
-/** Доступ к админ-панели — из session-bootstrap (без отдельного HTTP). */
-export async function checkAccessToAdminPanel() {
+function readAccessFromBootstrap() {
   const bootstrap = getSessionBootstrapCache()
   if (bootstrap && typeof bootstrap.access_to_panel === 'boolean') {
     cachedAdminAccess = { access_to_panel: bootstrap.access_to_panel }
     adminAccessFetchedAt = Date.now()
     return cachedAdminAccess
   }
+  return null
+}
+
+/**
+ * Доступ к админ-панели — из session-bootstrap / TTL-кеша / userStore.
+ * На F5 guard часто бежит раньше bootstrap: ждём whenSessionReady,
+ * иначе ложный false → /access-denied.
+ */
+export async function checkAccessToAdminPanel() {
+  const fromBootstrap = readAccessFromBootstrap()
+  if (fromBootstrap) {
+    return fromBootstrap
+  }
 
   const now = Date.now()
   if (cachedAdminAccess && now - adminAccessFetchedAt < ADMIN_ACCESS_CACHE_TTL) {
     return cachedAdminAccess
+  }
+
+  try {
+    const { whenSessionReady } = await import('@/js/bootstrapSession.js')
+    await whenSessionReady()
+  } catch {
+    /* bootstrap недоступен */
+  }
+
+  const afterReady = readAccessFromBootstrap()
+  if (afterReady) {
+    return afterReady
+  }
+
+  try {
+    // Динамический import — без цикла с userStore → invalidateAdminAccessCache.
+    const { useUserStore } = await import('@/core/cms/js/userStore.js')
+    const userStore = useUserStore()
+    if (userStore.isInitialized && typeof userStore.accessToPanel === 'boolean') {
+      cachedAdminAccess = { access_to_panel: Boolean(userStore.accessToPanel) }
+      adminAccessFetchedAt = Date.now()
+      return cachedAdminAccess
+    }
+  } catch {
+    /* pinia ещё не готов */
   }
 
   return { access_to_panel: false }

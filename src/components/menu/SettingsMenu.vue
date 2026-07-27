@@ -42,7 +42,8 @@ function openUserSettings() {
           <SelectBox
             v-model="theme"
             :options="THEME_OPTIONS"
-            :include-all-option="false" open-on-hover
+            :include-all-option="false"
+            open-on-hover
             placement="right"
             :placement-gap="0"
             placement-align="center"
@@ -84,7 +85,8 @@ function openUserSettings() {
   @include dropdown-menu-base;
   left: 50%;
   transform: translate(-50%, -8px);
-  min-width: 220px;
+  min-width: min(220px, calc(100vw - 1rem));
+  max-width: min(280px, calc(100vw - 1rem));
 }
 
 .settings-menu__main-text {
@@ -111,7 +113,6 @@ function openUserSettings() {
   list-style: none;
 }
 
-// SelectBox стилизуем под обычный пункт меню (как было: строка «Тема … значение ›»).
 .settings-menu__theme-select {
   width: 100%;
   --select-box-font-size: 0.9375rem;
@@ -199,7 +200,6 @@ function openUserSettings() {
   transform: translate(-50%, -16px) !important;
 }
 
-// Меню SelectBox темы телепортируется в body — стилизуем глобально по классу.
 .settings-menu__theme-menu {
   min-width: 12.5rem;
 }

@@ -761,7 +761,7 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 575px) {
+@media (width < $ui-bp-sm) {
   .notif-page__source {
     margin-left: 0;
     width: 100%;

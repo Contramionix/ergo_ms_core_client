@@ -8,6 +8,7 @@ import {
   Download,
   Info,
   Users,
+  AlertCircle,
 } from 'lucide-vue-next'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
@@ -419,7 +420,7 @@ const {
 @import './import-users.scss';
 
 .loading-container {
-  min-height: 400px;
+  min-height: min(400px, 50dvh);
 }
 
 .import-users-shell {

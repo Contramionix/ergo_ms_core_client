@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { activateFocusTrap } from '@/js/utils/focusTrap.js'
 
 const TRANSITION_MS = 300
 
@@ -36,6 +37,8 @@ const isClosing = ref(false)
 const isPanelOpen = ref(false)
 const wasEverOpened = ref(false)
 const titleId = useId()
+const panelRef = ref(null)
+let deactivateFocusTrap = null
 
 // Панель остаётся в DOM после первого открытия — иначе при каждом open
 // элемент создаётся заново и браузер не успевает отрисовать translateX(-100%).
@@ -91,6 +94,8 @@ watch(
       wasEverOpened.value = true
     }
     if (!isVisible) {
+      deactivateFocusTrap?.()
+      deactivateFocusTrap = null
       isPanelOpen.value = false
       isClosing.value = false
       return
@@ -113,7 +118,20 @@ watch(
   { immediate: true },
 )
 
+watch(isPanelOpen, async (open) => {
+  if (!open) {
+    deactivateFocusTrap?.()
+    deactivateFocusTrap = null
+    return
+  }
+  await nextTick()
+  deactivateFocusTrap?.()
+  deactivateFocusTrap = activateFocusTrap(panelRef.value)
+})
+
 onBeforeUnmount(() => {
+  deactivateFocusTrap?.()
+  deactivateFocusTrap = null
   window.removeEventListener('keydown', onKeydown)
   isPanelOpen.value = false
   isClosing.value = false
@@ -136,6 +154,7 @@ defineExpose({ requestClose })
       />
 
       <aside
+        ref="panelRef"
         class="side-drawer"
         :class="{
           'side-drawer--open': isPanelOpen,
@@ -262,11 +281,13 @@ $drawer-anchor-transition: 0.3s ease-in-out;
   background-color: var(--bs-card-bg);
 }
 
-@media (width < 1200px) {
+@media (width < $ui-shell-desktop-min) {
   .side-drawer-backdrop,
   .side-drawer {
+    top: 56px;
     left: 0;
     width: 100vw;
+    height: calc(100dvh - 56px);
     border-radius: 0;
   }
 

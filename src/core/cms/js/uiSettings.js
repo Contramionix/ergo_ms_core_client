@@ -4,6 +4,7 @@ import {
   applyThemeModePreference,
   readThemePreference,
 } from '@/js/theme-manager.js'
+import { syncUiPreferencesFromStorage } from '@/core/cms/js/uiPreferencesSettings.js'
 
 export const THEME_OPTIONS = [
   { id: 'light', name: 'Светлая', icon: markRaw(Sun) },
@@ -53,6 +54,7 @@ export function syncUiSettingsFromStorage() {
   theme.value = readThemePreference() || DEFAULT_THEME
   actionButton.value = localStorage.getItem(ACTION_BUTTON_BASE_KEY) || DEFAULT_ACTION_BUTTON
   language.value = localStorage.getItem(LANGUAGE_BASE_KEY) || DEFAULT_LANGUAGE
+  syncUiPreferencesFromStorage()
 }
 
 /**

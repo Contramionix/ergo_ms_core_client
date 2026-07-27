@@ -1,11 +1,12 @@
 <script setup>
-import { ref, provide, onMounted, computed } from 'vue'
+import { ref, provide, onMounted, computed, defineAsyncComponent } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import ThemeEditor from './ThemeEditor.vue'
-import ThemePreview from './ThemePreview.vue'
 import { restoreSiteThemeAfterEditor } from '@/js/theme-service.js'
 import { createThemeEditor, THEME_EDITOR_KEY } from './useThemeEditor.js'
 import { Edit, Eye } from 'lucide-vue-next'
+
+const ThemePreview = defineAsyncComponent(() => import('./ThemePreview.vue'))
 
 const editor = createThemeEditor()
 provide(THEME_EDITOR_KEY, editor)

@@ -1,8 +1,13 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AccessControlPoliciesTab from '@/core/cms/adp/admin/AccessControlComponents/AccessControlPoliciesTab.vue'
-import AccessControlModulePermissionsTab from '@/core/cms/adp/admin/AccessControlComponents/AccessControlModulePermissionsTab.vue'
+
+const AccessControlPoliciesTab = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/AccessControlComponents/AccessControlPoliciesTab.vue'),
+)
+const AccessControlModulePermissionsTab = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/AccessControlComponents/AccessControlModulePermissionsTab.vue'),
+)
 
 const TABS = [
   { id: 'policies', label: 'Доступ к маршрутам' },
@@ -75,7 +80,16 @@ function selectTab(tabId) {
 }
 
 .access-control__tabs {
+  display: flex;
+  flex-wrap: nowrap;
   border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+
+  .nav-item {
+    flex: 0 0 auto;
+  }
 
   .nav-link {
     color: var(--color-secondary-text);
@@ -86,6 +100,7 @@ function selectTab(tabId) {
     font-size: 0.9rem;
     font-weight: 500;
     background: transparent;
+    white-space: nowrap;
 
     &:hover {
       color: var(--color-primary-text);
@@ -96,6 +111,13 @@ function selectTab(tabId) {
       color: var(--color-accent);
       border-bottom-color: var(--color-accent);
       background: transparent;
+    }
+  }
+
+  @media (width < $ui-bp-sm) {
+    .nav-link {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8125rem;
     }
   }
 }

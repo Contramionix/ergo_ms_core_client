@@ -7,6 +7,7 @@ import HoverTooltip from '@/components/HoverTooltip.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { formatMonthYearGenitive } from '@/js/utils/timeUtils.js'
 import { logError } from '@/js/utils/logError.js'
+import { BREAKPOINTS } from '@/composables/useBreakpoint.js'
 
 const userStore = useUserStore()
 
@@ -14,10 +15,10 @@ function getAvatarSizeForViewport() {
   if (typeof window === 'undefined') {
     return 96
   }
-  if (window.innerWidth <= 575) {
+  if (window.innerWidth < BREAKPOINTS.sm) {
     return 72
   }
-  if (window.innerWidth <= 992) {
+  if (window.innerWidth < BREAKPOINTS.lg) {
     return 80
   }
   return 96
@@ -217,12 +218,12 @@ defineExpose({
     box-shadow: var(--profile-card-shadow-hover);
   }
 
-  @media (width <= 992px) {
+  @media (width < $ui-bp-lg) {
     --profile-cover-h: 68px;
     --profile-overlap: 32px;
   }
 
-  @media (width <= 575px) {
+  @media (width < $ui-bp-sm) {
     --profile-cover-h: 60px;
     --profile-overlap: 28px;
   }
@@ -322,11 +323,11 @@ defineExpose({
     height: 100% !important;
   }
 
-  @media (width <= 992px) {
+  @media (width < $ui-bp-lg) {
     --profile-avatar-size: 80px;
   }
 
-  @media (width <= 575px) {
+  @media (width < $ui-bp-sm) {
     --profile-avatar-size: 72px;
   }
 }
@@ -454,7 +455,7 @@ defineExpose({
   color: color-mix(in srgb, var(--color-primary-text) 65%, transparent);
 }
 
-@media (width <= 575px) {
+@media (width < $ui-bp-sm) {
   .profile-card__body {
     flex-direction: column;
     align-items: stretch;

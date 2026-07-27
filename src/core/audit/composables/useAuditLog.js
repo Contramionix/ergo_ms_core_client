@@ -30,9 +30,9 @@ export const AUDIT_COLUMNS = [
   { key: 'created_at', label: 'Время', headerStyle: { whiteSpace: 'nowrap' } },
   { key: 'action', label: 'Действие' },
   { key: 'actor_label', label: 'Инициатор' },
-  { key: 'entity_label', label: 'Объект' },
-  { key: 'severity', label: 'Важность', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
-  { key: 'ip_address', label: 'IP' },
+  { key: 'entity_label', label: 'Объект', hideBelow: 'md' },
+  { key: 'severity', label: 'Важность', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' }, hideBelow: 'md' },
+  { key: 'ip_address', label: 'IP', hideBelow: 'lg' },
   { key: 'actions', label: '', headerStyle: { textAlign: 'right' }, cellStyle: { textAlign: 'right' } },
 ]
 

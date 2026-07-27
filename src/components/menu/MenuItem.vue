@@ -25,6 +25,7 @@ import { isMenuItemActive } from './composables/isMenuItemActive.js'
 import { canNavigateToRoute, isSameMenuRoutePath, safeNavigateByName } from './composables/safeMenuNavigate.js'
 import { buildMenuItemGroupId } from './composables/useMenuNavigation.js'
 import MenuPeekLabel from '@/components/menu/MenuPeekLabel.vue'
+import { prefetchRouteByName } from '@/js/utils/prefetchRoute.js'
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -105,6 +106,13 @@ const checkChildrenActiveRecursive = (children) => {
   })
 }
 
+function prefetchItemRoute() {
+  const routeName = props.item.routeName
+  if (routeName) {
+    prefetchRouteByName(router, routeName)
+  }
+}
+
 // Обработка клика по элементу
 const handleClick = (event) => {
   event.preventDefault()
@@ -155,6 +163,8 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
       class="menu-item__content nav-btn"
       :class="{ 'menu-item--active': isActive || isGroupActive }"
       :style="{ paddingLeft: paddingLeft }"
+      @pointerenter="prefetchItemRoute"
+      @focusin="prefetchItemRoute"
       @click="handleClick"
     >
       <div class="menu-item__label">

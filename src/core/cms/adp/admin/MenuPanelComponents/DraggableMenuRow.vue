@@ -53,27 +53,33 @@
       <!-- Действия -->
       <div class="menu-row__actions">
         <button
+          type="button"
           class="menu-row__visibility-btn"
           :class="{ 'menu-row__visibility-btn--hidden': !item.is_active }"
           @click.stop="toggleVisibility"
           :title="item.is_active ? 'Скрыть элемент' : 'Показать элемент'"
+          :aria-label="item.is_active ? 'Скрыть элемент' : 'Показать элемент'"
         >
-          <Eye v-if="item.is_active" :size="20" />
-          <EyeOff v-else :size="20" />
+          <Eye v-if="item.is_active" :size="20" aria-hidden="true" />
+          <EyeOff v-else :size="20" aria-hidden="true" />
         </button>
-        <button 
+        <button
+          type="button"
           class="menu-row__action-btn menu-row__action-btn--edit"
           @click.stop="$emit('edit', item)"
           title="Редактировать"
+          aria-label="Редактировать элемент"
         >
-          <Settings :size="20" class="menu-row__settings-icon" />
+          <Settings :size="20" class="menu-row__settings-icon" aria-hidden="true" />
         </button>
-        <button 
+        <button
+          type="button"
           class="menu-row__action-btn menu-row__action-btn--delete"
           @click.stop="$emit('delete', item)"
           title="Удалить"
+          aria-label="Удалить элемент"
         >
-          <Trash :size="20" />
+          <Trash :size="20" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -398,6 +404,18 @@ function toggleVisibility() {
       opacity: 1;
     }
     
+    .menu-row__action-btn {
+      opacity: 1;
+      max-width: 28px;
+      padding: 0.25rem;
+    }
+  }
+
+  @media (hover: none) {
+    .menu-row__visibility-btn {
+      opacity: 1;
+    }
+
     .menu-row__action-btn {
       opacity: 1;
       max-width: 28px;

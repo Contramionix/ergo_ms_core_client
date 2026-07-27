@@ -22,6 +22,7 @@ import { isAccessibilityTheme, resolveThemePresentation } from './themeCategorie
 const {
   BASE_THEME_OPTIONS,
   activateTheme,
+  toggleThemeAvailable,
   bootstrapCategories,
   changeBaseTheme,
   canEditCurrentTheme,
@@ -241,6 +242,7 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                     :is-module-scope="isModuleScope"
                     @select="selectTheme"
                     @activate="activateTheme"
+                    @toggle-available="toggleThemeAvailable"
                     @reset="resetSystemTheme"
                     @duplicate="duplicateTheme"
                     @delete="deleteTheme"

@@ -15,7 +15,7 @@ const navigateToLogin = () => {
 <template>
   <AuthPageShell>
     <div class="auth-page__header">
-      <h2 class="auth-page__title">Авторизуйтесь в системе</h2>
+      <h1 class="auth-page__title">Авторизуйтесь в системе</h1>
       <p class="auth-page__description">
         Войдите под своей учётной записью, чтобы продолжить работу с платформой
       </p>

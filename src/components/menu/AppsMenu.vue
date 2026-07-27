@@ -92,8 +92,8 @@ onMounted(async () => {
   @include dropdown-menu-base;
   left: 50%;
   transform: translate(-50%, -8px);
-  min-width: 280px;
-  max-width: 400px;
+  min-width: min(280px, calc(100vw - 1rem));
+  max-width: min(400px, calc(100vw - 1rem));
   padding: 1rem;
 }
 
@@ -108,6 +108,11 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
+
+  @media (width < $ui-bp-sm) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
 }
 
 .apps-menu__item {

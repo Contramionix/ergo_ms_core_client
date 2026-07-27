@@ -1,14 +1,16 @@
 <script setup>
 import LayoutBackdrop from '@/components/LayoutBackdrop.vue'
 import RouteViewAnimated from '@/components/RouteViewAnimated.vue'
+import SkipLink from '@/components/SkipLink.vue'
 </script>
 
 <template>
   <div class="layout-public">
-    <LayoutBackdrop />
-    <div class="layout-public__content">
+    <SkipLink />
+    <LayoutBackdrop data-ergo-decorative-image />
+    <main id="main-content" class="layout-public__content" tabindex="-1">
       <RouteViewAnimated :use-keep-alive="false" />
-    </div>
+    </main>
   </div>
 </template>
 
@@ -25,5 +27,6 @@ import RouteViewAnimated from '@/components/RouteViewAnimated.vue'
   z-index: 1;
   min-height: inherit;
   overflow: clip;
+  outline: none;
 }
 </style>

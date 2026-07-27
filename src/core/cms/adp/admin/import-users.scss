@@ -528,7 +528,7 @@
   to { background-position: 0 0; }
 }
 
-@media (max-width: 576px) {
+@media (width < $ui-bp-md) {
   .iu-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

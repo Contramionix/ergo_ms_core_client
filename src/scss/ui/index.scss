@@ -1,5 +1,7 @@
 @import './tokens';
+@import './breakpoints';
 @import './mixins';
+@import './modes';
 
 .ui-page {
   display: flex;
@@ -8,7 +10,7 @@
   padding: var(--ui-gap-lg);
   color: var(--ui-text);
 
-  @media (max-width: 768px) {
+  @media (width < $ui-bp-md) {
     gap: var(--ui-gap);
     padding: var(--ui-gap);
   }

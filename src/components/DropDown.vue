@@ -128,6 +128,7 @@ defineExpose({
       role="button"
       tabindex="0"
       :aria-expanded="isOpen"
+      aria-haspopup="menu"
       @click.stop="toggleDropdown"
       @keydown.enter.prevent="toggleDropdown"
       @keydown.space.prevent="toggleDropdown"
@@ -141,6 +142,7 @@ defineExpose({
         class="dropdown-menu show dropdown-menu-teleport"
         :class="dropdownMenuClass"
         :style="menuStyle"
+        role="menu"
         @click.stop
       >
         <slot name="list" />

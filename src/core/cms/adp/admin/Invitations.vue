@@ -1,6 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import { useToast } from '@/js/utils/toast.js'
 import { MailPlus, Copy, Mail, Ban, FileSpreadsheet, Trash2, Eraser, } from 'lucide-vue-next'
@@ -14,12 +13,17 @@ import HoverTooltip from '@/components/HoverTooltip.vue'
 import { runWithConfirm, confirmAction } from '@/js/utils/confirm.js'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
+import { accessDeniedState } from '@/js/accessDeniedState'
 import { fetchInvitations, revokeInvitation, resendInvitation, clearInvitations, } from '@/core/cms/adp/admin/js/invitationService'
 import { copyTextToClipboard } from '@/js/utils/clipboard.js'
-import InvitationCreateModal from '@/core/cms/adp/admin/InvitationsComponents/InvitationCreateModal.vue'
-import InvitationBulkModal from '@/core/cms/adp/admin/InvitationsComponents/InvitationBulkModal.vue'
 
-const router = useRouter()
+const InvitationCreateModal = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/InvitationsComponents/InvitationCreateModal.vue'),
+)
+const InvitationBulkModal = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/InvitationsComponents/InvitationBulkModal.vue'),
+)
+
 const toast = useToast()
 
 const breadcrumbItems = [
@@ -99,9 +103,9 @@ const statusClass = {
 const columns = [
   { key: 'email', label: 'Email' },
   { key: 'status', label: 'Статус', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
-  { key: 'invited_by_name', label: 'Пригласил' },
-  { key: 'created_at', label: 'Создано', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
-  { key: 'expires_at', label: 'Действует до', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
+  { key: 'invited_by_name', label: 'Пригласил', hideBelow: 'md' },
+  { key: 'created_at', label: 'Создано', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' }, hideBelow: 'lg' },
+  { key: 'expires_at', label: 'Действует до', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' }, hideBelow: 'md' },
   { key: 'actions', label: 'Действия', headerStyle: { textAlign: 'right' }, cellStyle: { textAlign: 'right' } },
 ]
 
@@ -143,7 +147,9 @@ onMounted(async () => {
     const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
       toast.error('У вас нет доступа к административной панели')
-      router.push({ name: 'AccessDenied' })
+      accessDeniedState.active = true
+      accessDeniedState.title = 'Доступ запрещён'
+      accessDeniedState.message = 'Требуются права администратора.'
       return
     }
     hasAdminAccess.value = true
@@ -152,7 +158,9 @@ onMounted(async () => {
   } catch (error) {
     logError('Ошибка проверки прав доступа:', error)
     toast.error('Ошибка проверки прав доступа')
-    router.push({ name: 'AccessDenied' })
+    accessDeniedState.active = true
+    accessDeniedState.title = 'Доступ запрещён'
+    accessDeniedState.message = 'Не удалось проверить права доступа.'
   } finally {
     isQueryWatchReady.value = true
   }
@@ -411,8 +419,8 @@ const openClearConfirm = async (scope) => {
         </DataTable>
       </LoadingContentArea>
 
-      <InvitationCreateModal :visible="showCreateModal" @close="showCreateModal = false" @created="handleInvitationCreated"/>
-      <InvitationBulkModal :visible="showBulkModal" @close="showBulkModal = false" @completed="handleBulkCompleted"/>
+      <InvitationCreateModal v-if="showCreateModal" :visible="showCreateModal" @close="showCreateModal = false" @created="handleInvitationCreated"/>
+      <InvitationBulkModal v-if="showBulkModal" :visible="showBulkModal" @close="showBulkModal = false" @completed="handleBulkCompleted"/>
       </div>
     </div>
   </div>
@@ -422,7 +430,7 @@ const openClearConfirm = async (scope) => {
 @import './admin-page.scss';
 
 .loading-container {
-  min-height: 400px;
+  min-height: min(400px, 50dvh);
 }
 
 .invitations-shell {
@@ -491,12 +499,35 @@ const openClearConfirm = async (scope) => {
       flex: 0 0 auto;
     }
   }
+
+  @media (width < $ui-bp-md) {
+    grid-template-columns: 1fr;
+
+    .filters-wrapper {
+      grid-template-columns: 1fr;
+    }
+
+    .status-filter {
+      width: 100%;
+      max-width: none;
+    }
+
+    .actions-wrapper {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
 }
 
 .status-filter {
   width: 220px;
   max-width: 220px;
   box-sizing: border-box;
+
+  @media (width < $ui-bp-md) {
+    width: 100%;
+    max-width: none;
+  }
 
   :deep(.hover-tooltip) {
     display: contents;
@@ -530,6 +561,8 @@ const openClearConfirm = async (scope) => {
   justify-content: center;
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   padding: 0;
   border: none;
 
@@ -548,6 +581,13 @@ const openClearConfirm = async (scope) => {
     &:hover:not(:disabled) {
       background-color: rgba(var(--bs-danger-rgb, 220, 53, 69), 0.08);
     }
+  }
+
+  @media (width < $ui-bp-md) {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 

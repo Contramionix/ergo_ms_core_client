@@ -15,6 +15,7 @@
                 :disabled="disabled"
                 :aria-label="triggerAriaLabel"
                 :aria-expanded="isOpen"
+                :aria-controls="listboxId"
                 aria-haspopup="listbox"
                 @click="toggle"
                 @blur="$emit('blur')"
@@ -24,12 +25,15 @@
                         <span class="value-text">{{ currentLabel }}</span>
                     </slot>
                 </span>
-                <span v-if="!hideChevron" class="d-inline-flex align-items-center select-trigger-chevron" :class="{ 'select-trigger-chevron--open': isOpen }"><LucideIcon name="ChevronDown" class="icon-center" /></span>
+                <span v-if="!hideChevron" class="d-inline-flex align-items-center select-trigger-chevron" :class="{ 'select-trigger-chevron--open': isOpen }" aria-hidden="true"><LucideIcon name="ChevronDown" class="icon-center" /></span>
             </button>
             <teleport to="body">
                 <div
                     v-if="isOpen"
                     ref="menuEl"
+                    :id="listboxId"
+                    role="listbox"
+                    :aria-labelledby="triggerId"
                     :class="dropdownTeleportMenuClass"
                     :style="fixedMenuStyle"
                     @mouseenter="onHoverZoneEnter"
@@ -42,10 +46,11 @@
                         type="text"
                         class="select-box-search"
                         :placeholder="searchPlaceholder"
+                        :aria-label="searchPlaceholder || 'Поиск'"
                         autocomplete="off"
                     />
                     <template v-if="!virtualized">
-                        <ul class="dropdown-menu-list">
+                        <ul class="dropdown-menu-list" role="presentation">
                             <li v-if="includeAllOption && !hasActiveSearch">
                                 <a class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" @click.prevent="choose(null)">{{ allLabel }}</a>
                             </li>
@@ -189,6 +194,7 @@ const emit = defineEmits(['update:modelValue', 'change', 'blur'])
 
 const generatedId = useId()
 const triggerId = computed(() => props.id || generatedId)
+const listboxId = computed(() => `${triggerId.value}-listbox`)
 const triggerAriaLabel = computed(() => (props.label ? undefined : (props.ariaLabel || undefined)))
 
 const rootCssVars = computed(() => {

@@ -1,8 +1,11 @@
 <script setup>
-import SubmitForm from '@/core/cms/adp/admin/CategoriesComponents/SubmitCategory.vue'
+import { ref, defineAsyncComponent } from 'vue'
 import SearchInput from '@/components/SearchInput.vue'
 import { Plus } from 'lucide-vue-next'
-import { ref } from 'vue'
+
+const SubmitForm = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/CategoriesComponents/SubmitCategory.vue'),
+)
 
 const showAddModal = ref(false)
 const emit = defineEmits(['updateCategories', 'searchRowData'])
@@ -24,7 +27,7 @@ const updateCategories = () => {
         <Plus :size="16" />
         <span>Добавить роль</span>
       </button>
-      <SubmitForm v-model:visible="showAddModal" modal-id="roleAdd" @add-category="updateCategories" />
+      <SubmitForm v-if="showAddModal" v-model:visible="showAddModal" modal-id="roleAdd" @add-category="updateCategories" />
     </div>
   </div>
 </template>

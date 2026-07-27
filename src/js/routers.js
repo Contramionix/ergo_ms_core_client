@@ -192,8 +192,15 @@ function setupRouterGuards(router) {
     }
 
     try {
+      const clearDeniedUnlessAccessDeniedTarget = (params) => {
+        const toName = params && typeof params === 'object' ? params.name : null
+        if (toName !== 'AccessDenied') {
+          accessDeniedState.active = false
+        }
+      }
+
       const safeNext = (params) => {
-        accessDeniedState.active = false
+        clearDeniedUnlessAccessDeniedTarget(params)
         return next(params)
       }
 
@@ -220,6 +227,17 @@ function setupRouterGuards(router) {
         return safeNext({ name: 'StartPage' })
       }
 
+      // F5 / прямой заход: session-bootstrap ещё может не успеть — без него
+      // requiresGlobalAdmin и ADP дают ложный AccessDenied.
+      if (from === START_LOCATION && (to.meta?.requiresAuth || to.meta?.requiresGlobalAdmin)) {
+        try {
+          const { whenSessionReady } = await import('@/js/bootstrapSession.js')
+          await whenSessionReady()
+        } catch {
+          /* гость / bootstrap недоступен — дальше отработают проверки доступа */
+        }
+      }
+
       const scopeRedirect = await runPlatformSessionScopeGuard(to, from)
       if (scopeRedirect === false) {
         return next(false)
@@ -238,6 +256,15 @@ function setupRouterGuards(router) {
 
       const accessResult = await checkRouteAccess(to)
       if (!accessResult.allowed) {
+        if (accessResult.redirect === 'AccessDenied') {
+          // Прямой заход / reload — нужна страница AccessDenied.
+          // Иначе оставляем текущий URL и показываем overlay (без ложного
+          // ухода на /access-denied при remount / смене режимов UI).
+          if (from === START_LOCATION || to.name === 'AccessDenied') {
+            return next({ name: 'AccessDenied' })
+          }
+          return next(false)
+        }
         return accessResult.redirect ? safeNext({ name: accessResult.redirect }) : next()
       }
 

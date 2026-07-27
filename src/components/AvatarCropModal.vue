@@ -146,19 +146,19 @@ function reset() {
     </div>
 
     <div class="toolbar mt-3 d-flex flex-wrap gap-2 justify-content-center">
-      <button type="button" class="btn btn-sm btn-outline-secondary" @click="rotateCounterClockwise" :disabled="loading" title="Повернуть против часовой стрелки">
-        <RotateCcw :size="16" class="me-1" />
+      <button type="button" class="btn btn-sm btn-outline-secondary" @click="rotateCounterClockwise" :disabled="loading" title="Повернуть против часовой стрелки" aria-label="Повернуть против часовой стрелки">
+        <RotateCcw :size="16" class="me-1" aria-hidden="true" />
         Повернуть
       </button>
-      <button type="button" class="btn btn-sm btn-outline-secondary" @click="rotateClockwise" :disabled="loading" title="Повернуть по часовой стрелке">
-        <RotateCw :size="16" class="me-1" />
+      <button type="button" class="btn btn-sm btn-outline-secondary" @click="rotateClockwise" :disabled="loading" title="Повернуть по часовой стрелке" aria-label="Повернуть по часовой стрелке">
+        <RotateCw :size="16" class="me-1" aria-hidden="true" />
         Повернуть
       </button>
-      <button type="button" class="btn btn-sm btn-outline-secondary" @click="flipHorizontal" :disabled="loading" title="Отразить по горизонтали">
-        <span class="me-1">↔</span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" @click="flipHorizontal" :disabled="loading" title="Отразить по горизонтали" aria-label="Отразить по горизонтали">
+        <span class="me-1" aria-hidden="true">↔</span>
         Отразить
       </button>
-      <button type="button" class="btn btn-sm btn-outline-secondary" @click="reset" :disabled="loading" title="Сбросить изменения">
+      <button type="button" class="btn btn-sm btn-outline-secondary" @click="reset" :disabled="loading" title="Сбросить изменения" aria-label="Сбросить изменения">
         Сбросить
       </button>
     </div>
@@ -212,7 +212,7 @@ function reset() {
   }
 }
 
-@media (max-width: 576px) {
+@media (width < $ui-bp-sm) {
   .toolbar {
     .btn {
       font-size: 0.875rem;

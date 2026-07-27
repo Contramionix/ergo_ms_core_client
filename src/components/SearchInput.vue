@@ -114,11 +114,24 @@ function onInput(event) {
   &--layout-grow {
     flex: 1 1 auto;
     min-width: 200px;
+
+    @media (width < $ui-bp-md) {
+      flex: 1 1 100%;
+      min-width: 0;
+      width: 100%;
+    }
   }
 
   &--layout-fixed {
     flex: 0 1 280px;
     min-width: 180px;
+
+    @media (width < $ui-bp-md) {
+      flex: 1 1 100%;
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
+    }
   }
 
   &__wrap {

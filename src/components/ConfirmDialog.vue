@@ -114,7 +114,7 @@ function handleClose() {
         @click="handleConfirm"
         :disabled="isConfirmDisabled"
       >
-        <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
+        <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-label="Загрузка"></span>
         {{ confirmButtonText }}
       </button>
     </template>

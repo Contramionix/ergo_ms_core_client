@@ -1,5 +1,6 @@
 <script setup>
 import SiteWordmark from '@/components/SiteWordmark.vue'
+import SkipLink from '@/components/SkipLink.vue'
 
 defineProps({
   detail: {
@@ -14,9 +15,12 @@ defineProps({
 </script>
 
 <template>
+  <SkipLink />
   <main
+    id="main-content"
     class="maintenance-page"
     :class="{ 'maintenance-page--overlay': overlay }"
+    tabindex="-1"
     role="alert"
     aria-live="polite"
   >
@@ -34,7 +38,7 @@ defineProps({
       <p class="maintenance-page__text">{{ detail }}</p>
 
       <div class="maintenance-page__progress" aria-hidden="true">
-        <span class="maintenance-page__progress-bar" />
+        <span class="maintenance-page__progress-bar" data-ergo-motion-safe="pulse" />
       </div>
 
       <p class="maintenance-page__hint">
@@ -217,11 +221,16 @@ defineProps({
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+html[data-ergo-motion='reduce'] {
   .maintenance-page__orb,
-  .maintenance-page__wordmark :deep(.ergoms-logo__cog),
+  .maintenance-page__wordmark :deep(.ergoms-logo__cog) {
+    animation: none !important;
+  }
+
   .maintenance-page__progress-bar {
-    animation: none;
+    width: 100%;
+    transform: none !important;
+    background: var(--maint-accent);
   }
 }
 </style>

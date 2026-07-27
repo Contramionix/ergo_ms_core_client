@@ -103,3 +103,25 @@
     transform: none;
   }
 }
+
+// Дублирует media для явного preference reduce (см. ui/_modes.scss)
+html[data-ergo-motion='reduce'] {
+  .route-progress {
+    display: none;
+  }
+
+  .layout-route-enter-active,
+  .layout-route-leave-active {
+    transition: none;
+  }
+
+  .layout-route-leave-active {
+    position: static;
+  }
+
+  .layout-route-enter-from,
+  .layout-route-leave-to {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -18,10 +18,10 @@ const previewing = ref(false)
 
 const permissionHint = computed(() => {
   if (permission.value === 'denied') {
-    return 'Браузер запретил фоновые уведомления ОС. Toast внутри приложения всё равно может работать.'
+    return 'Браузер запретил системные уведомления. Всплывающие уведомления в приложении всё равно могут работать.'
   }
   if (permission.value === 'unsupported') {
-    return 'Этот браузер не поддерживает фоновые уведомления ОС.'
+    return 'Этот браузер не поддерживает системные уведомления.'
   }
   return ''
 })
@@ -68,7 +68,7 @@ async function handlePreview() {
   try {
     if (typeof window.Notification === 'undefined') {
       permission.value = 'unsupported'
-      toast.info('Фоновые уведомления ОС недоступны в этом браузере')
+      toast.info('Системные уведомления недоступны в этом браузере')
       return
     }
     if (window.Notification.permission === 'default') {
@@ -101,15 +101,15 @@ onMounted(loadPrefs)
   <section class="browser-notif-settings">
     <p class="browser-notif-settings__caption">Уведомления браузера</p>
     <p class="browser-notif-settings__hint">
-      Пока вкладка открыта — toast в приложении; в фоне — баннер ОС (если разрешено).
-      Сейчас используется модулем CRM; настройки общие для аккаунта в этом браузере.
+      Пока вкладка открыта — всплывающее уведомление в приложении; когда вкладка в фоне — системное уведомление (если разрешено).
+      Сейчас используется в модуле CRM; настройки общие для аккаунта в этом браузере.
     </p>
 
     <div class="settings-card">
       <div class="settings-card__row">
         <div class="settings-card__label-block">
           <span class="settings-card__label">Показывать уведомления</span>
-          <span class="settings-card__hint">Включает toast и попытку показать баннер ОС</span>
+          <span class="settings-card__hint">Включает всплывающие уведомления в приложении и попытку показать системное уведомление</span>
         </div>
         <div class="form-check form-switch browser-notif-settings__switch">
           <input
@@ -143,7 +143,7 @@ onMounted(loadPrefs)
       <div class="settings-card__row settings-card__row--last">
         <div class="settings-card__label-block">
           <span class="settings-card__label">Звуковой сигнал</span>
-          <span class="settings-card__hint">Короткий сигнал в клиенте при новом уведомлении CRM</span>
+          <span class="settings-card__hint">Короткий сигнал в приложении при новом уведомлении из CRM</span>
         </div>
         <div class="form-check form-switch browser-notif-settings__switch">
           <input

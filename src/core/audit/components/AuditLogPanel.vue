@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, computed, watch } from 'vue'
+import { onMounted, computed, watch, defineAsyncComponent } from 'vue'
 import { Download, RefreshCw, Eye } from 'lucide-vue-next'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import DataTable from '@/components/DataTable.vue'
@@ -7,12 +7,15 @@ import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import SearchInput from '@/components/SearchInput.vue'
 import FilterMenu from '@/components/FilterMenu.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
-import AuditEventDetailsModal from '@/core/cms/adp/admin/AuditLogComponents/AuditEventDetailsModal.vue'
 import AuditActorCell from '@/core/cms/adp/admin/AuditLogComponents/AuditActorCell.vue'
 import {
   useAuditLog,
   AUDIT_COLUMNS,
 } from '@/core/audit/composables/useAuditLog.js'
+
+const AuditEventDetailsModal = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/AuditLogComponents/AuditEventDetailsModal.vue'),
+)
 
 const props = defineProps({
   scopeParams: {
@@ -224,6 +227,7 @@ const displayColumns = computed(() => (
     </LoadingContentArea>
 
     <AuditEventDetailsModal
+      v-if="showDetailsModal"
       :visible="showDetailsModal"
       :event="selectedEvent"
       @close="closeDetails"
@@ -252,7 +256,7 @@ const displayColumns = computed(() => (
   margin-bottom: 1rem;
   overflow: visible;
 
-  @media (max-width: 768px) {
+  @media (width < $ui-bp-md) {
     flex-wrap: wrap;
   }
 }
@@ -272,20 +276,23 @@ const displayColumns = computed(() => (
 }
 
 .audit-filter-menu-wrap {
-  flex: 0 0 auto;
-  width: 132px;
-  min-width: 132px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
 
-  /* у .filter-menu в компоненте min-width: 170px — без сброса
-     триггер вылезает за обёртку и под кнопку «Обновить» */
   :deep(.filter-menu) {
     width: 100%;
     min-width: 0;
   }
+
+  @media (width < $ui-bp-md) {
+    flex: 1 1 auto;
+  }
 }
 
 .audit-filter-menu {
-  width: 132px;
+  width: auto;
+  min-width: 0;
 
   --filter-menu-trigger-font-size: 0.875rem;
   --select-box-font-size: 0.875rem;
@@ -313,7 +320,7 @@ const displayColumns = computed(() => (
     flex: 0 0 auto;
   }
 
-  @media (max-width: 768px) {
+  @media (width < $ui-bp-md) {
     margin-left: 0;
   }
 }
@@ -377,6 +384,7 @@ const displayColumns = computed(() => (
 
   &--spinning {
     animation: audit-refresh-spin 0.8s linear infinite;
+    @include ui-reduced-motion;
   }
 }
 

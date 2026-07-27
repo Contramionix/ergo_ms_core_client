@@ -224,6 +224,7 @@ export function createThemeEditor() {
     module_tokens: {},
     is_active: false,
     is_default: false,
+    is_available: false,
     is_system: false
   })
 
@@ -502,6 +503,7 @@ export function createThemeEditor() {
       module_tokens: theme.module_tokens ? { ...theme.module_tokens } : {},
       is_active: theme.is_active,
       is_default: theme.is_default,
+      is_available: theme.is_available,
       is_system: theme.is_system,
     })
 
@@ -587,6 +589,7 @@ export function createThemeEditor() {
     saveTheme,
     saveModulePair,
     activateTheme,
+    toggleThemeAvailable,
     duplicateTheme,
     deleteTheme,
     exportTheme,
@@ -642,6 +645,7 @@ export function createThemeEditor() {
     BASE_THEME_OPTIONS,
     VARIANT_OPTIONS,
     activateTheme,
+    toggleThemeAvailable,
     applyEditorPreview,
     bootstrapCategories,
     changeBaseTheme,

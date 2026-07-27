@@ -87,7 +87,7 @@ const ipAddressDisplay = computed(() => {
     border-bottom: none;
   }
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     flex-direction: column;
     align-items: stretch;
   }
@@ -162,7 +162,7 @@ const ipAddressDisplay = computed(() => {
   gap: 0.375rem 1rem;
   margin: 0;
 
-  @media (max-width: 767.98px) {
+  @media (width < $ui-bp-md) {
     grid-template-columns: 1fr;
   }
 }
@@ -191,7 +191,7 @@ const ipAddressDisplay = computed(() => {
   flex-shrink: 0;
   padding-top: 0.125rem;
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     padding-top: 0;
   }
 }

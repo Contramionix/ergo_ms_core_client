@@ -1,0 +1,192 @@
+// Режимы UI: анимации, картинки, помощь диктору (data-ergo-* на html).
+
+// Opacity-пульс для индикаторов загрузки: без вращения/сдвига (не вестибулярное движение).
+@keyframes ui-motion-safe-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+// --- Reduced motion (preference reduce или system + OS) ---
+html[data-ergo-motion='reduce'] {
+  scroll-behavior: auto !important;
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+
+  .route-progress {
+    display: none !important;
+  }
+
+  .layout-route-enter-active,
+  .layout-route-leave-active {
+    transition: none !important;
+  }
+
+  .layout-route-leave-active {
+    position: static !important;
+  }
+
+  .layout-route-enter-from,
+  .layout-route-leave-to {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  // Скелетон: ровная заливка вместо «застывшего» shimmer
+  .ui-skeleton {
+    animation: none !important;
+    background-image: none !important;
+    background-color: var(--ui-surface-2, var(--color-secondary-background, #e9ecef)) !important;
+  }
+
+  // Лоадеры: полное кольцо + opacity-пульс вместо застывшего сектора
+  .spinner-loading__ring,
+  .spinner-border,
+  .spinner-grow,
+  [data-ergo-motion-safe='pulse'] {
+    animation-name: ui-motion-safe-pulse !important;
+    animation-duration: 1.15s !important;
+    animation-timing-function: ease-in-out !important;
+    animation-iteration-count: infinite !important;
+    animation-delay: 0s !important;
+    animation-direction: normal !important;
+    animation-fill-mode: none !important;
+  }
+
+  .spinner-loading__ring,
+  .spinner-border {
+    border-style: solid !important;
+    border-color: var(--spinner-color, currentColor) !important;
+    transform: none !important;
+  }
+
+  .spinner-grow {
+    transform: none !important;
+  }
+}
+
+// --- Hide content images (не трогаем Lucide / aria-hidden декоративные SVG в кнопках) ---
+html[data-ergo-images='off'] {
+  img:not([data-ergo-keep-image]),
+  picture:not([data-ergo-keep-image]) {
+    position: relative !important;
+    display: inline-block !important;
+    max-width: 100%;
+    min-height: 1.25em;
+    background: var(--ui-surface-2, var(--color-secondary-background, #e9ecef)) !important;
+    border: 1px dashed var(--ui-border, var(--color-border, #dee2e6));
+    color: var(--ui-text-muted, var(--color-secondary-text, #6c757d));
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    vertical-align: middle;
+    object-position: -9999px -9999px;
+    object-fit: none !important;
+  }
+
+  img:not([data-ergo-keep-image])[alt]:not([alt=''])::after {
+    content: attr(alt);
+  }
+
+  // Фоновые декоративные слои оболочки
+  [data-ergo-decorative-image],
+  .layout-backdrop {
+    background-image: none !important;
+
+    .layout-backdrop__orb {
+      display: none !important;
+    }
+  }
+
+  .ergo-content-image__fallback {
+    display: inline !important;
+  }
+
+  .ergo-content-image__img {
+    display: none !important;
+  }
+}
+
+html[data-ergo-images='on'] {
+  .ergo-content-image__fallback {
+    display: none !important;
+  }
+}
+
+// --- High contrast (палитра ещё подменяет theme override; здесь усиление UI) ---
+html[data-ergo-contrast='more'] {
+  --ui-border: var(--color-border, #1a1a1a);
+  --ui-text-muted: var(--color-secondary-text, #333);
+
+  :focus-visible {
+    outline-width: 3px !important;
+    outline-offset: 3px !important;
+  }
+
+  .btn,
+  .form-control,
+  .form-select,
+  .select-trigger,
+  .dropdown-menu {
+    border-width: 1px;
+  }
+}
+
+@media (forced-colors: active) {
+  .ergo-skip-link:focus {
+    outline: 3px solid CanvasText;
+  }
+}
+
+// --- Screen-reader assist ---
+html[data-ergo-a11y='assist'] {
+  :focus-visible {
+    outline: 3px solid rgba(var(--bs-primary-rgb), 0.85) !important;
+    outline-offset: 3px !important;
+  }
+
+  .ergo-skip-link:focus {
+    outline: 3px solid rgba(var(--bs-primary-rgb), 0.85);
+    outline-offset: 2px;
+  }
+}
+
+// Skip-link (всегда в DOM; видим при фокусе)
+.ergo-skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 100000;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--ui-radius-sm, 0.375rem);
+  background: var(--ui-surface, #fff);
+  color: var(--ui-text, #212529);
+  border: 1px solid var(--ui-border, #dee2e6);
+  box-shadow: var(--ui-shadow-md, 0 0.25rem 0.75rem rgba(0, 0, 0, 0.12));
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform 0.15s ease;
+
+  &:focus {
+    transform: translateY(0);
+  }
+}
+
+// Компактная оболочка (viewport < xl)
+html[data-ergo-layout='compact'] {
+  body {
+    overflow-x: clip;
+  }
+}

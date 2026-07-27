@@ -127,7 +127,7 @@ const submitForm = async () => {
 <template>
   <AuthPageShell>
     <div class="auth-page__header">
-      <h2 class="auth-page__title">Вход в систему</h2>
+      <h1 class="auth-page__title">Вход в систему</h1>
       <p class="auth-page__description">Введите ваши учетные данные</p>
     </div>
 
@@ -168,7 +168,7 @@ const submitForm = async () => {
           />
 
           <!-- Дополнительные опции -->
-          <div class="d-flex justify-content-between align-items-center mb-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
             <div class="form-check">
               <input
                 type="checkbox"

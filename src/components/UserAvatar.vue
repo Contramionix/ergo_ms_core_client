@@ -1,7 +1,15 @@
 <template>
   <div class="user-avatar-wrap" :style="avatarStyle">
     <div class="user-avatar" :class="{ 'user-avatar--clickable': clickable }" :title="title">
-      <img v-if="showPhoto" :src="readyPhotoSrc" :alt="title" class="user-avatar-image" @error="onImageError"/>
+      <ContentImage
+        v-if="showPhoto"
+        :src="readyPhotoSrc"
+        :alt="title"
+        class="user-avatar-image"
+        loading="eager"
+        decoding="async"
+        @error="onImageError"
+      />
       <div v-else-if="isAvatarPending" class="user-avatar-placeholder" aria-hidden="true" />
       <DefaultAvatar v-else :size="size" :clickable="clickable" :title="title" :first-name="effectiveFirstName" :last-name="effectiveLastName" :color-key="avatarColorKey"/>
     </div>
@@ -12,6 +20,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import ContentImage from './ContentImage.vue'
 import DefaultAvatar from './DefaultAvatar.vue'
 import PresenceIndicator from '@/core/cms/adp/components/PresenceIndicator.vue'
 import { usePresenceStatus } from '@/core/cms/adp/js/presence/usePresenceStatus.js'
@@ -292,7 +301,14 @@ async function onImageError() {
   }
 }
 
-.user-avatar-image {
+:deep(.ergo-content-image) {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 50%;
+}
+
+:deep(.user-avatar-image) {
   width: 100%;
   height: 100%;
   object-fit: cover;

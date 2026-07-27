@@ -1,5 +1,4 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
 import { useToast } from '@/js/utils/toast.js'
 import {
   CheckCircle,
@@ -11,6 +10,7 @@ import { logError } from '@/js/utils/logError.js'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { cmsEndpoints } from '@/core/cms/js/endpoints'
 import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
+import { accessDeniedState } from '@/js/accessDeniedState'
 import { downloadImportUsersTemplate } from '@/core/cms/adp/admin/js/importUsersExcel.js'
 import { downloadBlob, extractFilenameFromHeaders, formatFileSize } from '@/js/utils/file-helpers.js'
 import {
@@ -19,7 +19,6 @@ import {
 } from '@/core/cms/adp/admin/js/importUsersDraft.js'
 
 export function useImportUsers() {
-  const router = useRouter()
   const toast = useToast()
 
   const breadcrumbItems = [
@@ -245,7 +244,9 @@ export function useImportUsers() {
       const accessData = await checkAccessToAdminPanel()
       if (!accessData.access_to_panel) {
         toast.error('У вас нет доступа к административной панели')
-        router.push({ name: 'AccessDenied' })
+        accessDeniedState.active = true
+        accessDeniedState.title = 'Доступ запрещён'
+        accessDeniedState.message = 'Требуются права администратора.'
         return
       }
       hasAdminAccess.value = true
@@ -259,7 +260,9 @@ export function useImportUsers() {
     } catch (error) {
       logError('Ошибка проверки прав доступа:', error)
       toast.error('Ошибка проверки прав доступа')
-      router.push({ name: 'AccessDenied' })
+      accessDeniedState.active = true
+      accessDeniedState.title = 'Доступ запрещён'
+      accessDeniedState.message = 'Не удалось проверить права доступа.'
     } finally {
       isCheckingAccess.value = false
     }

@@ -230,7 +230,7 @@ function previewToast(button) {
   padding: 0.875rem 1rem;
   border-bottom: 1px solid var(--color-border);
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
@@ -266,7 +266,7 @@ function previewToast(button) {
   width: clamp(11rem, 50%, 14rem);
   min-width: 0;
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     width: 100%;
   }
 
@@ -321,7 +321,7 @@ function previewToast(button) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.625rem;
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     grid-template-columns: 1fr;
   }
 }

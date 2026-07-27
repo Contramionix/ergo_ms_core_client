@@ -357,7 +357,7 @@ export function createThemeEditorActions(ctx) {
     }
   }
 
-  // Активация темы
+  // Стандарт сайта (site) или активация пары модуля
   const activateTheme = async (theme) => {
     try {
       const themeId = theme.is_pair
@@ -367,20 +367,57 @@ export function createThemeEditorActions(ctx) {
         toast.error('Не найден вариант темы для активации')
         return
       }
-      const res = await apiClient.post(endpoints.themes.activate(themeId))
+      const endpoint = isModuleScope.value
+        ? endpoints.themes.activate(themeId)
+        : endpoints.themes.setDefault(themeId)
+      const res = await apiClient.post(endpoint)
       if (res.success) {
-        toast.success(`Тема "${theme.name}" активирована`)
+        toast.success(
+          isModuleScope.value
+            ? `Тема "${theme.name}" активирована`
+            : `«${theme.name}» — стандарт сайта`,
+        )
         await loadThemes()
+        if (!isModuleScope.value) {
+          applyActivatedTheme(res.data)
+          selectTheme(res.data)
+          return
+        }
         applyActivatedTheme(res.data)
-        if (isModuleScope.value && res.data?.module_pair) {
+        if (res.data?.module_pair) {
           const pair = themes.value.find((p) => p.module_pair === res.data.module_pair) || res.data
           selectModulePair(pair, editingVariant.value, { preview: false })
-        } else if (!isModuleScope.value) {
-          selectTheme(res.data)
         }
       }
     } catch {
-      toast.error('Ошибка активации темы')
+      toast.error(isModuleScope.value ? 'Ошибка активации темы' : 'Ошибка назначения стандарта сайта')
+    }
+  }
+
+  const toggleThemeAvailable = async (theme) => {
+    if (isModuleScope.value || theme.is_draft || theme.is_pair) {
+      return
+    }
+    const next = !theme.is_available
+    if (!next && theme.is_default) {
+      toast.error('Нельзя убрать из каталога стандарт сайта. Сначала назначьте другой стандарт.')
+      return
+    }
+    try {
+      const res = await apiClient.patch(endpoints.themes.update(theme.id), {
+        is_available: next,
+      })
+      if (res.success) {
+        toast.success(next ? 'Тема добавлена в быстрый выбор' : 'Тема убрана из быстрого выбора')
+        await loadThemes()
+        if (selectedThemeId?.value === theme.id || currentTheme?.id === theme.id) {
+          selectTheme(res.data, { preview: false })
+        }
+      } else {
+        toast.error(res.message || res.data?.is_available?.[0] || 'Не удалось изменить доступность')
+      }
+    } catch (e) {
+      toast.error(e.message || 'Не удалось изменить доступность')
     }
   }
 
@@ -526,6 +563,7 @@ export function createThemeEditorActions(ctx) {
     saveTheme,
     saveModulePair,
     activateTheme,
+    toggleThemeAvailable,
     duplicateTheme,
     deleteTheme,
     exportTheme,

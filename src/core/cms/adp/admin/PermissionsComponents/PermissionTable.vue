@@ -1,9 +1,14 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, defineAsyncComponent } from 'vue'
 import { Pencil, Trash2 } from 'lucide-vue-next'
-import ChangePermissionForm from '@/core/cms/adp/admin/PermissionsComponents/SubmitPermissionChange.vue'
 import { deletePolicy } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
+import Pagination from '@/components/Pagination.vue'
+import { useBreakpoint } from '@/composables/useBreakpoint.js'
+
+const ChangePermissionForm = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/PermissionsComponents/SubmitPermissionChange.vue'),
+)
 
 const props = defineProps({
   headers: { type: Array, required: true },
@@ -23,6 +28,16 @@ const emit = defineEmits(['updatePermissions'])
 const data = ref(props.rows)
 const rowSelected = ref({})
 const showEditModal = ref(false)
+const { isMdUp, isLgUp, isSmUp } = useBreakpoint()
+const showPolicyType = computed(() => isMdUp.value)
+const showPatternPriority = computed(() => isLgUp.value)
+const useCards = computed(() => !isSmUp.value)
+const visibleColCount = computed(() => {
+  let count = 5 // name, action, resource, target, actions
+  if (showPolicyType.value) count += 1
+  if (showPatternPriority.value) count += 2
+  return count
+})
 
 const changingRow = (row) => {
   rowSelected.value = { ...row }
@@ -113,19 +128,51 @@ const resolveResourceTitle = (path) => {
 </script>
 
 <template>
-  <div class="table-responsive">
+  <div v-if="useCards && paginatedRows.length" class="admin-cards">
+    <article v-for="row in paginatedRows" :key="row.id" class="admin-card">
+      <div class="admin-card__title">{{ row.name }}</div>
+      <div class="admin-card__meta">
+        <span :class="getActionBadgeClass(row.action)">{{ row.action }}</span>
+        <span class="cell-muted">{{ row.role_name || row.role_group_name || '—' }}</span>
+      </div>
+      <div class="admin-card__resource">
+        <div v-if="resolveResourceTitle(row.resource_path)" class="fw-medium">
+          {{ resolveResourceTitle(row.resource_path) }}
+        </div>
+        <div class="text-monospace small text-muted">{{ row.resource_path }}</div>
+      </div>
+      <div class="d-flex align-items-center justify-content-end gap-2 admin-card__actions">
+        <button type="button" class="btn btn-sm btn-icon btn-outline-primary" @click="openEditModal(row)" title="Изменить" aria-label="Изменить">
+          <Pencil :size="14" aria-hidden="true" />
+        </button>
+        <button type="button" class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(row.id)" title="Удалить" aria-label="Удалить">
+          <Trash2 :size="14" aria-hidden="true" />
+        </button>
+      </div>
+    </article>
+  </div>
+  <div v-else-if="useCards" class="text-center text-muted py-4">
+    Политики не найдены
+  </div>
+
+  <div v-else class="table-responsive">
     <table class="permission-table">
       <thead>
         <tr>
-          <th v-for="(header, index) in headers" :key="index">
-            {{ header }}
-          </th>
+          <th>{{ headers[0] }}</th>
+          <th v-if="showPolicyType">{{ headers[1] }}</th>
+          <th>{{ headers[2] }}</th>
+          <th>{{ headers[3] }}</th>
+          <th>{{ headers[4] }}</th>
+          <th v-if="showPatternPriority">{{ headers[5] }}</th>
+          <th v-if="showPatternPriority">{{ headers[6] }}</th>
+          <th>{{ headers[7] }}</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="row in paginatedRows" :key="row.id">
           <td class="fw-medium">{{ row.name }}</td>
-          <td>{{ row.policy_type }}</td>
+          <td v-if="showPolicyType">{{ row.policy_type }}</td>
           <td>
             <span :class="getActionBadgeClass(row.action)">{{ row.action }}</span>
           </td>
@@ -136,25 +183,25 @@ const resolveResourceTitle = (path) => {
             <div class="text-monospace small text-muted">{{ row.resource_path }}</div>
           </td>
           <td>{{ row.role_name || row.role_group_name || '—' }}</td>
-          <td>
+          <td v-if="showPatternPriority">
             <span :class="row.is_pattern ? 'badge bg-info-subtle text-info' : 'badge bg-light text-muted'">
               {{ row.is_pattern ? 'Шаблон' : 'Точный' }}
             </span>
           </td>
-          <td>{{ row.priority }}</td>
+          <td v-if="showPatternPriority">{{ row.priority }}</td>
           <td>
             <div class="d-flex align-items-center gap-2">
-              <button class="btn btn-sm btn-icon btn-outline-primary" @click="openEditModal(row)" title="Изменить">
-                <Pencil :size="14" />
+              <button type="button" class="btn btn-sm btn-icon btn-outline-primary" @click="openEditModal(row)" title="Изменить" aria-label="Изменить">
+                <Pencil :size="14" aria-hidden="true" />
               </button>
-              <button class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(row.id)" title="Удалить">
-                <Trash2 :size="14" />
+              <button type="button" class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(row.id)" title="Удалить" aria-label="Удалить">
+                <Trash2 :size="14" aria-hidden="true" />
               </button>
             </div>
           </td>
         </tr>
         <tr v-if="paginatedRows.length === 0">
-          <td :colspan="headers.length" class="text-center text-muted py-4">
+          <td :colspan="visibleColCount" class="text-center text-muted py-4">
             Политики не найдены
           </td>
         </tr>
@@ -162,27 +209,20 @@ const resolveResourceTitle = (path) => {
     </table>
   </div>
 
-  <div v-if="totalPages > 1" class="pagination-wrapper">
-    <button
-      type="button"
-      class="btn btn-sm btn-outline-secondary"
-      :disabled="currentPage <= 1"
-      @click="goToPage(currentPage - 1)"
-    >
-      Назад
-    </button>
-    <span class="pagination-info">{{ currentPage }} / {{ totalPages }}</span>
-    <button
-      type="button"
-      class="btn btn-sm btn-outline-secondary"
-      :disabled="currentPage >= totalPages"
-      @click="goToPage(currentPage + 1)"
-    >
-      Далее
-    </button>
-  </div>
+  <Pagination
+    v-if="totalPages > 1"
+    :model-value="currentPage"
+    :total-pages="totalPages"
+    :total-items="filteredRows.length"
+    :page-size="rowsPerPage"
+    :visible-count="paginatedRows.length"
+    variant="simple"
+    layout="toolbar"
+    @update:model-value="goToPage"
+  />
 
   <ChangePermissionForm
+    v-if="showEditModal"
     v-model:visible="showEditModal"
     modal-id="policyEdit"
     :row="rowSelected"
@@ -234,24 +274,63 @@ const resolveResourceTitle = (path) => {
   justify-content: center;
   width: 2rem;
   height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
   padding: 0;
+
+  @media (hover: none), (width < $ui-bp-sm) {
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
 }
 
 .text-monospace {
   font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
 }
 
-.pagination-wrapper {
+.admin-cards {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   gap: 0.75rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--color-border);
 }
 
-.pagination-info {
-  font-size: 0.8125rem;
-  color: var(--color-secondary-text);
+.admin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-primary-background);
+
+  &__title {
+    font-weight: 600;
+    color: var(--color-primary-text);
+    word-break: break-word;
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__resource {
+    min-width: 0;
+  }
+
+  &__actions {
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--color-border);
+  }
 }
+
+.cell-muted {
+  color: var(--color-secondary-text);
+  font-size: 0.875rem;
+}
+
 </style>

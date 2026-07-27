@@ -483,11 +483,11 @@ watch(
   }
 }
 
-@media (max-width: 768px) {
+@media (width < $ui-bp-md) {
   .member-picker-modal-content {
-    height: 80vh;
-    min-height: 500px;
-    max-height: 600px;
+    height: min(80vh, 100dvh - 4rem);
+    min-height: min(320px, 50dvh);
+    max-height: min(600px, 85dvh);
   }
 }
 </style>

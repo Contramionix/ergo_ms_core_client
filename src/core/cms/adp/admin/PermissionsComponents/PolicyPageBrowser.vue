@@ -315,7 +315,7 @@ function selectPage(path) {
   word-break: break-all;
 }
 
-@media (max-width: 767.98px) {
+@media (width < $ui-bp-md) {
   .policy-page-browser__layout {
     grid-template-columns: 1fr;
     max-height: none;

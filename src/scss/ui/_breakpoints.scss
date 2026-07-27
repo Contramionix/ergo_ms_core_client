@@ -1,0 +1,9 @@
+// Брейкпоинты оболочки — синхрон с BREAKPOINTS / SHELL_DESKTOP_MIN в useBreakpoint.js
+$ui-bp-sm: 576px !default;
+$ui-bp-md: 768px !default;
+$ui-bp-lg: 992px !default;
+$ui-bp-xl: 1200px !default;
+$ui-bp-xxl: 1400px !default;
+
+/** Десктопная оболочка меню (innerWidth >= SHELL_DESKTOP_MIN). */
+$ui-shell-desktop-min: $ui-bp-xl !default;

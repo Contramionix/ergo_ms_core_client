@@ -38,27 +38,23 @@ const fetchProfile = async () => {
   try {
     loading.value = true
 
-    const settings = await fetchProfileSettings()
-    profileSelfEditEnabled.value = settings.profile_self_edit_enabled !== false
-
+    const settingsPromise = fetchProfileSettings()
     if (!userStore.isInitialized) {
       await userStore.ensureUserReady()
     }
 
+    const [settings] = await Promise.all([
+      settingsPromise,
+      userStore.profile ? Promise.resolve() : userStore.loadProfile(),
+      userStore.loadAvatar(),
+    ])
+
+    profileSelfEditEnabled.value = settings.profile_self_edit_enabled !== false
+
     if (userStore.profile) {
       profileData.value = userStore.profile
-    } else {
-      await userStore.loadProfile()
-      if (userStore.profile) {
-        profileData.value = userStore.profile
-      }
-    }
-
-    if (profileData.value) {
       formData.value = mapUserProfileToFormData(profileData.value)
     }
-
-    await userStore.loadAvatar()
   } catch (error) {
     logError('Ошибка загрузки профиля:', error)
     toast.error('Ошибка загрузки данных профиля')

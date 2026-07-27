@@ -1,15 +1,25 @@
 <script setup>
 import SelectBox from '@/components/SelectBox.vue'
 import { useUiSettings } from '@/core/cms/js/uiSettings.js'
+import { useUiPreferencesSettings } from '@/core/cms/js/uiPreferencesSettings.js'
 
 const {
-  theme,
   actionButton,
   language,
-  THEME_OPTIONS,
   ACTION_BUTTON_OPTIONS,
   LANGUAGE_OPTIONS,
 } = useUiSettings()
+
+const {
+  motion,
+  images,
+  contrast,
+  a11y,
+  MOTION_OPTIONS,
+  IMAGES_OPTIONS,
+  CONTRAST_OPTIONS,
+  A11Y_OPTIONS,
+} = useUiPreferencesSettings()
 </script>
 
 <template>
@@ -18,9 +28,9 @@ const {
 
     <div class="settings-card">
       <div class="settings-card__row">
-        <label class="settings-card__label" for="system-theme">Тема оформления</label>
+        <label class="settings-card__label" for="system-action-button">Кнопка действия</label>
         <div class="settings-card__control">
-          <SelectBox id="system-theme" v-model="theme" :options="THEME_OPTIONS" :include-all-option="false" >
+          <SelectBox id="system-action-button" v-model="actionButton" :options="ACTION_BUTTON_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
               <span class="settings-card__option">
                 <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
@@ -38,9 +48,69 @@ const {
       </div>
 
       <div class="settings-card__row">
-        <label class="settings-card__label" for="system-action-button">Кнопка действия</label>
+        <label class="settings-card__label" for="system-language">Язык интерфейса</label>
         <div class="settings-card__control">
-          <SelectBox id="system-action-button" v-model="actionButton" :options="ACTION_BUTTON_OPTIONS" :include-all-option="false" >
+          <SelectBox id="system-language" v-model="language" :options="LANGUAGE_OPTIONS" :include-all-option="false" disabled>
+            <template #selected="{ option, label }">
+              <span class="settings-card__option">
+                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <span class="settings-card__option-label">{{ label }}</span>
+              </span>
+            </template>
+            <template #option="{ option, label }">
+              <span class="settings-card__option">
+                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <span class="settings-card__option-label">{{ label }}</span>
+              </span>
+            </template>
+          </SelectBox>
+        </div>
+      </div>
+
+      <div class="settings-card__row">
+        <label class="settings-card__label" for="system-motion">Анимации</label>
+        <div class="settings-card__control">
+          <SelectBox id="system-motion" v-model="motion" :options="MOTION_OPTIONS" :include-all-option="false">
+            <template #selected="{ option, label }">
+              <span class="settings-card__option">
+                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <span class="settings-card__option-label">{{ label }}</span>
+              </span>
+            </template>
+            <template #option="{ option, label }">
+              <span class="settings-card__option">
+                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <span class="settings-card__option-label">{{ label }}</span>
+              </span>
+            </template>
+          </SelectBox>
+        </div>
+      </div>
+
+      <div class="settings-card__row">
+        <label class="settings-card__label" for="system-images">Картинки</label>
+        <div class="settings-card__control">
+          <SelectBox id="system-images" v-model="images" :options="IMAGES_OPTIONS" :include-all-option="false">
+            <template #selected="{ option, label }">
+              <span class="settings-card__option">
+                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <span class="settings-card__option-label">{{ label }}</span>
+              </span>
+            </template>
+            <template #option="{ option, label }">
+              <span class="settings-card__option">
+                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <span class="settings-card__option-label">{{ label }}</span>
+              </span>
+            </template>
+          </SelectBox>
+        </div>
+      </div>
+
+      <div class="settings-card__row">
+        <label class="settings-card__label" for="system-contrast">Контраст</label>
+        <div class="settings-card__control">
+          <SelectBox id="system-contrast" v-model="contrast" :options="CONTRAST_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
               <span class="settings-card__option">
                 <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
@@ -58,9 +128,9 @@ const {
       </div>
 
       <div class="settings-card__row settings-card__row--last">
-        <label class="settings-card__label" for="system-language">Язык интерфейса</label>
+        <label class="settings-card__label" for="system-a11y">Экранный диктор</label>
         <div class="settings-card__control">
-          <SelectBox id="system-language" v-model="language" :options="LANGUAGE_OPTIONS" :include-all-option="false" disabled>
+          <SelectBox id="system-a11y" v-model="a11y" :options="A11Y_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
               <span class="settings-card__option">
                 <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
@@ -108,7 +178,7 @@ const {
   padding: 0.875rem 1rem;
   border-bottom: 1px solid var(--color-border);
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
@@ -131,7 +201,7 @@ const {
   width: clamp(11rem, 50%, 14rem);
   min-width: 0;
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     width: 100%;
   }
 

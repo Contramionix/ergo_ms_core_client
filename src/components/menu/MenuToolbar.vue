@@ -34,6 +34,7 @@
     </div>
 
     <UserSettingsModal
+      v-if="userSettingsMounted"
       :show="showUserSettingsModal"
       :initial-tab="userSettingsInitialTab"
       @close="closeUserSettingsModal"
@@ -43,13 +44,18 @@
 
 <script setup>
 import UserMenu from '@/components/header/UserMenu.vue'
-import SidebarNotifications from '@/components/menu/SidebarNotifications.vue'
-import AppsMenu from '@/components/menu/AppsMenu.vue'
 import SettingsMenu from '@/components/menu/SettingsMenu.vue'
-import UserSettingsModal from '@/core/cms/adp/user/account/component/UserSettingsModal.vue'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useUiSettings, initUserSettings } from '@/core/cms/js/uiSettings.js'
+
+const SidebarNotifications = defineAsyncComponent(() =>
+  import('@/components/menu/SidebarNotifications.vue'),
+)
+const AppsMenu = defineAsyncComponent(() => import('@/components/menu/AppsMenu.vue'))
+const UserSettingsModal = defineAsyncComponent(() =>
+  import('@/core/cms/adp/user/account/component/UserSettingsModal.vue'),
+)
 
 const props = defineProps({
   isCollapsed: {
@@ -74,10 +80,12 @@ const notificationsMenuRef = ref(null)
 const appsMenuRef = ref(null)
 const settingsMenuRef = ref(null)
 const showUserSettingsModal = ref(false)
+const userSettingsMounted = ref(false)
 const userSettingsInitialTab = ref('profile')
 
 function openUserSettingsModal(tab = 'profile') {
   userSettingsInitialTab.value = tab || 'profile'
+  userSettingsMounted.value = true
   showUserSettingsModal.value = true
 }
 
@@ -150,7 +158,7 @@ const setDropdownActive = (dropdownId, active) => {
 </script>
 
 <style scoped lang="scss">
-@media (width >= 1200px) {
+@media (width >= $ui-shell-desktop-min) {
   .header__menu {
     display: none;
   }

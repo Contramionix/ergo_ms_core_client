@@ -462,7 +462,7 @@ const goNext = () => {
   padding: 0.875rem 1rem;
   border-bottom: 1px solid var(--color-border);
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
@@ -492,7 +492,7 @@ const goNext = () => {
   max-width: 42%;
   flex: 1 1 auto;
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     max-width: none;
   }
 }
@@ -515,7 +515,7 @@ const goNext = () => {
     gap: 0.375rem;
     width: auto;
 
-    @media (max-width: 575.98px) {
+    @media (width < $ui-bp-sm) {
       align-items: stretch;
       width: 100%;
     }
@@ -528,7 +528,7 @@ const goNext = () => {
     flex-direction: column;
     gap: 0.5rem;
 
-    @media (max-width: 575.98px) {
+    @media (width < $ui-bp-sm) {
       width: 100%;
       flex: 1 1 auto;
     }
@@ -565,7 +565,7 @@ const goNext = () => {
   gap: 0.375rem;
   flex-wrap: wrap;
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     justify-content: stretch;
 
     .profile-card__action {

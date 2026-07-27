@@ -1,20 +1,6 @@
-export default {
-  "ThemeSettings": {
-    "path": "/settings/themes",
-    "component": "@/core/cms/adp/settings/themeEditor/ParentLayout.vue",
-    "redirect": "ThemeEditor",
-    "meta": {
-      "title": "Темы оформления",
-      "requiresAuth": true
-    }
-  },
-  "ThemeEditor": {
-    "path": "/settings/themes/editor",
-    "component": "@/core/cms/adp/settings/themeEditor/ParentLayout.vue",
-    "meta": {
-      "title": "Редактор тем",
-      "requiresAuth": true
-    }
-  }
-}
-
+/**
+ * Маршрут ThemeEditor объявлен в core/cms/js/routes.js
+ * (/settings/themes, requiresGlobalAdmin) — дубликат здесь
+ * перехватывал имя и отдавал /settings/themes/editor без проверки админа.
+ */
+export default {}

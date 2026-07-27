@@ -191,7 +191,7 @@ const submitForm = async () => {
 
     <template v-else>
       <div class="auth-page__header">
-        <h2 class="auth-page__title">
+        <h1 class="auth-page__title">
           {{
             isSuccess
               ? 'Пароль изменен!'
@@ -199,7 +199,7 @@ const submitForm = async () => {
                 ? 'Восстановление недоступно'
                 : 'Новый пароль'
           }}
-        </h2>
+        </h1>
         <p class="auth-page__description">
           {{
             isSuccess

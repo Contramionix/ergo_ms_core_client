@@ -1,13 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, defineAsyncComponent } from 'vue'
 import { logError } from '@/js/utils/logError.js'
 import { useToast } from '@/js/utils/toast.js'
 import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
+import { accessDeniedState } from '@/js/accessDeniedState'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
-import AuditLogPanel from '@/core/audit/components/AuditLogPanel.vue'
 
-const router = useRouter()
+const AuditLogPanel = defineAsyncComponent(() =>
+  import('@/core/audit/components/AuditLogPanel.vue'),
+)
+
 const toast = useToast()
 
 const isCheckingAccess = ref(true)
@@ -18,13 +20,17 @@ onMounted(async () => {
     const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
       toast.error('У вас нет доступа к административной панели')
-      router.push({ name: 'AccessDenied' })
+      accessDeniedState.active = true
+      accessDeniedState.title = 'Доступ запрещён'
+      accessDeniedState.message = 'Требуются права администратора.'
       return
     }
     hasAdminAccess.value = true
   } catch (error) {
     logError('Аудит: ошибка проверки прав', error)
-    router.push({ name: 'AccessDenied' })
+    accessDeniedState.active = true
+    accessDeniedState.title = 'Доступ запрещён'
+    accessDeniedState.message = 'Не удалось проверить права доступа.'
   } finally {
     isCheckingAccess.value = false
   }
@@ -52,6 +58,6 @@ onMounted(async () => {
 @import './admin-page.scss';
 
 .loading-container {
-  min-height: 400px;
+  min-height: min(400px, 50dvh);
 }
 </style>

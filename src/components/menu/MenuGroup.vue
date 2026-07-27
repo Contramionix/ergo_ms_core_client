@@ -37,6 +37,7 @@ import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useM
 import { isMenuItemActive } from './composables/isMenuItemActive.js'
 import { canNavigateToRoute, isSameMenuRoutePath, safeNavigateByName } from './composables/safeMenuNavigate.js'
 import MenuPeekLabel from '@/components/menu/MenuPeekLabel.vue'
+import { prefetchRouteByName } from '@/js/utils/prefetchRoute.js'
 
 const props = defineProps({
   data: { type: Object, required: true },
@@ -169,6 +170,13 @@ function handleNestedNavigate(item) {
   emit('navigate', item)
 }
 
+function prefetchGroupRoute() {
+  const routeName = props.data.routeName
+  if (routeName) {
+    prefetchRouteByName(router, routeName)
+  }
+}
+
 function routeClick(event) {
   event.preventDefault() // Всегда блокируем стандартную навигацию RouterLink
 
@@ -205,6 +213,8 @@ function routeClick(event) {
     <div
       class="side-title nav-btn"
       :class="{ 'side-title--active': isGroupTitleActive }"
+      @pointerenter="prefetchGroupRoute"
+      @focusin="prefetchGroupRoute"
       @click="routeClick($event)"
     >
       <div class="side-title__label">

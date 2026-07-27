@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import {
   pushModal,
   popModal,
@@ -7,6 +7,7 @@ import {
   acquireScrollLock,
   releaseScrollLock,
 } from '@/js/utils/modalStack.js'
+import { activateFocusTrap } from '@/js/utils/focusTrap.js'
 
 const SIZE_CLASS_MAP = {
   sm: 'modal-sm',
@@ -52,7 +53,9 @@ const props = defineProps({
 const emit = defineEmits(['close', 'closemodal'])
 
 const stackZIndex = ref(null)
+const standaloneRootRef = ref(null)
 let isStacked = false
+let deactivateFocusTrap = null
 
 const titleId = computed(() => `${props.modalId}Label`)
 
@@ -136,12 +139,17 @@ const unregisterFromStack = () => {
 
 watch(
   () => props.standalone && props.visible,
-  (open) => {
+  async (open) => {
     if (!props.standalone) return
     if (open) {
       registerInStack()
       document.addEventListener('keydown', onKeydown)
+      await nextTick()
+      deactivateFocusTrap?.()
+      deactivateFocusTrap = activateFocusTrap(standaloneRootRef.value)
     } else {
+      deactivateFocusTrap?.()
+      deactivateFocusTrap = null
       unregisterFromStack()
       document.removeEventListener('keydown', onKeydown)
     }
@@ -149,6 +157,8 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  deactivateFocusTrap?.()
+  deactivateFocusTrap = null
   document.removeEventListener('keydown', onKeydown)
   if (props.standalone) {
     unregisterFromStack()
@@ -161,6 +171,7 @@ onBeforeUnmount(() => {
     <div
       v-if="visible"
       :id="modalId"
+      ref="standaloneRootRef"
       class="modal fade show d-block mc-standalone"
       :class="customClass"
       tabindex="-1"
@@ -217,6 +228,8 @@ onBeforeUnmount(() => {
   z-index: 1 !important;
   margin: 1.75rem auto;
   pointer-events: auto;
+  width: min(100% - 2rem, var(--bs-modal-width, 500px));
+  max-width: calc(100% - 2rem);
 
   // Без scrollable диалог не должен занимать всю высоту оверлея —
   // иначе body с flex:1 растягивает пустое пространство до футера.
@@ -232,10 +245,25 @@ onBeforeUnmount(() => {
       flex: 0 1 auto;
     }
   }
+
+  @media (width < $ui-bp-sm) {
+    margin: 0.5rem auto;
+    width: calc(100% - 1rem);
+    max-width: calc(100% - 1rem);
+
+    &:not(.modal-dialog-scrollable) .modal-content {
+      max-height: min(92dvh, 100%);
+    }
+  }
 }
 
 .modal-dialog {
   max-height: 90vh;
+
+  @media (width < $ui-bp-sm) {
+    margin: 0.5rem auto;
+    max-width: calc(100% - 1rem);
+  }
 }
 
 .modal-header {

@@ -3,7 +3,7 @@
     <div class="menu-panel__header mb-4">
       <div class="d-flex align-items-center gap-2 mb-3">
         <h1 class="h3 mb-0">Управление меню</h1>
-        <button class="menu-panel__settings-btn" @click="showSettingsModal = true" title="Настройки страницы"><Settings :size="20" class="menu-panel__settings-icon" /></button>
+        <button type="button" class="menu-panel__settings-btn" @click="showSettingsModal = true" title="Настройки страницы" aria-label="Настройки страницы"><Settings :size="20" class="menu-panel__settings-icon" aria-hidden="true" /></button>
       </div>
       <p class="text-muted mb-0">Настройте элементы бокового меню и управляйте доступом к ним. Перетаскивайте элементы для изменения порядка.</p>
     </div>
@@ -39,12 +39,12 @@
     
     <MenuSeparatorModal v-if="showSeparatorModal" :separator="currentSeparator" @save="saveSeparator" @close="closeSeparatorModal"/>
     
-    <MenuSettingsModal :show="showSettingsModal" @close="showSettingsModal = false" @save="handleSettingsSave"/>
+    <MenuSettingsModal v-if="showSettingsModal" :show="showSettingsModal" @close="showSettingsModal = false" @save="handleSettingsSave"/>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick, defineAsyncComponent } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { LayersPlus, SeparatorHorizontal, Settings } from 'lucide-vue-next'
 import { useToast } from '@/js/utils/toast.js'
@@ -52,9 +52,6 @@ import { confirmAction } from '@/js/utils/confirm.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import UnsavedChangesToast from '@/components/UnsavedChangesToast.vue'
 import DraggableMenuList from './MenuPanelComponents/DraggableMenuList.vue'
-import MenuItemModal from './MenuPanelComponents/MenuItemModal.vue'
-import MenuSeparatorModal from './MenuPanelComponents/MenuSeparatorModal.vue'
-import MenuSettingsModal from './MenuPanelComponents/MenuSettingsModal.vue'
 import {
   getMenuItems,
   createMenuItem,
@@ -71,6 +68,14 @@ import {
 import { apiClient } from '@/js/api/manager'
 import { endpoints, initEndpoints } from '@/js/api/endpoints'
 import Cookies from 'js-cookie'
+
+const MenuItemModal = defineAsyncComponent(() => import('./MenuPanelComponents/MenuItemModal.vue'))
+const MenuSeparatorModal = defineAsyncComponent(() =>
+  import('./MenuPanelComponents/MenuSeparatorModal.vue'),
+)
+const MenuSettingsModal = defineAsyncComponent(() =>
+  import('./MenuPanelComponents/MenuSettingsModal.vue'),
+)
 
 const toast = useToast()
 
@@ -687,7 +692,7 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 768px) {
+@media (width < $ui-bp-md) {
   .menu-panel {
     padding: 0.75rem;
     

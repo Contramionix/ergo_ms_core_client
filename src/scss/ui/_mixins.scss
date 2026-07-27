@@ -20,6 +20,32 @@
   outline-offset: 2px;
 }
 
+@mixin ui-a11y-focus {
+  &:focus-visible {
+    @include ui-focus-ring;
+  }
+
+  html[data-ergo-a11y='assist'] &:focus-visible {
+    outline-width: 3px;
+    outline-color: rgba(var(--bs-primary-rgb), 0.85);
+    outline-offset: 3px;
+  }
+}
+
+// Гасит движение у декораций. Для индикаторов загрузки не использовать —
+// в reduce у них opacity-пульс (см. ui/_modes.scss, data-ergo-motion-safe="pulse").
+@mixin ui-reduced-motion {
+  html[data-ergo-motion='reduce'] & {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 @mixin ui-scroll {
   scrollbar-width: thin;
   scrollbar-color: var(--ui-border) transparent;

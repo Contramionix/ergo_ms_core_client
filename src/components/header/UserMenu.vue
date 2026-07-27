@@ -92,11 +92,18 @@ watch(isOpen, async (newValue) => {
 
 <template>
   <div ref="dropdownRef" class="user-menu-wrapper">
-    <div @click.stop="toggleDropdown" class="tools__avatar avatar">
-      <UserAvatar :size="40" :clickable="true" :title="userName"/>
-    </div>
+    <button
+      type="button"
+      class="tools__avatar avatar user-menu-trigger"
+      :aria-label="`Меню пользователя: ${userName}`"
+      :aria-expanded="isOpen"
+      aria-haspopup="menu"
+      @click.stop="toggleDropdown"
+    >
+      <UserAvatar :size="40" :clickable="false" :title="userName"/>
+    </button>
     <Transition name="dropdown-left">
-      <ul v-if="isOpen" class="user-dropdown-menu">
+      <ul v-if="isOpen" class="user-dropdown-menu" role="menu" aria-label="Меню пользователя">
       <li class="dropdown-header px-3 py-2 border-bottom">
         <div class="d-flex align-items-center">
           <div class="me-2">
@@ -167,11 +174,26 @@ watch(isOpen, async (newValue) => {
   justify-content: center;
 }
 
+.user-menu-trigger {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  appearance: none;
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--bs-primary-rgb), 0.85);
+    outline-offset: 2px;
+    border-radius: 50%;
+  }
+}
+
 .user-dropdown-menu {
   @include dropdown-menu-base;
   left: 0;
   transform: translate(0, -8px);
-  min-width: 280px;
+  min-width: min(280px, calc(100vw - 1rem));
+  max-width: min(320px, calc(100vw - 1rem));
 }
 
 .dropdown-header {

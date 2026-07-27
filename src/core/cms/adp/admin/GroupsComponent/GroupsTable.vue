@@ -1,9 +1,14 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, defineAsyncComponent } from 'vue'
 import { Settings, Trash2 } from 'lucide-vue-next'
-import GroupForm from '@/core/cms/adp/admin/GroupsComponent/SubmitGroupsAdd.vue'
 import { deleteRoleGroup } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
+import Pagination from '@/components/Pagination.vue'
+import { useBreakpoint } from '@/composables/useBreakpoint.js'
+
+const GroupForm = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/GroupsComponent/SubmitGroupsAdd.vue'),
+)
 
 const props = defineProps({
   headers: { type: Array, required: true },
@@ -14,6 +19,9 @@ const props = defineProps({
 
 const emit = defineEmits(['updateGroups'])
 const data = ref(props.rows)
+const { isMdUp, isSmUp } = useBreakpoint()
+const showDescription = computed(() => isMdUp.value)
+const useCards = computed(() => !isSmUp.value)
 
 watch(
   () => props.rows,
@@ -81,13 +89,45 @@ const deleteGroup = async groupId => {
 
 <template>
   <div class="groups-table">
-    <div class="table-responsive">
+    <div v-if="useCards && paginatedRows.length" class="admin-cards">
+      <article v-for="row in paginatedRows" :key="row.id" class="admin-card">
+        <div class="admin-card__title">{{ row.name }}</div>
+        <div class="admin-card__meta">
+          <span class="cell-muted">{{ row.parent_role_name || '—' }}</span>
+          <span :class="['status-badge', row.is_active ? 'badge-active' : 'badge-inactive']">
+            {{ row.is_active ? 'Активна' : 'Неактивна' }}
+          </span>
+        </div>
+        <div class="actions-cell admin-card__actions">
+          <button
+            class="btn-action btn-action--edit"
+            @click="openEditModal(row)"
+            type="button"
+            aria-label="Изменить группу"
+          >
+            <Settings :size="15" />
+          </button>
+          <button
+            class="btn-action btn-action--delete"
+            @click="deleteGroup(row.id)"
+            type="button"
+            aria-label="Удалить группу"
+          >
+            <Trash2 :size="15" />
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <div v-else-if="!useCards" class="table-responsive">
       <table class="table">
         <thead>
           <tr>
-            <th v-for="(header, index) in headers" :key="index" scope="col">
-              {{ header }}
-            </th>
+            <th scope="col">{{ headers[0] }}</th>
+            <th scope="col">{{ headers[1] }}</th>
+            <th v-if="showDescription" scope="col">{{ headers[2] }}</th>
+            <th scope="col">{{ headers[3] }}</th>
+            <th scope="col">{{ headers[4] }}</th>
           </tr>
         </thead>
         <tbody>
@@ -98,7 +138,7 @@ const deleteGroup = async groupId => {
             <td>
               <span class="cell-muted">{{ row.parent_role_name || '—' }}</span>
             </td>
-            <td>
+            <td v-if="showDescription">
               <span class="cell-muted">{{ row.description || '—' }}</span>
             </td>
             <td>
@@ -135,25 +175,20 @@ const deleteGroup = async groupId => {
       <p class="empty-state__text">Группы не найдены</p>
     </div>
 
-    <div v-if="totalPages > 1" class="pagination-wrapper">
-      <button
-        class="btn btn-sm btn-outline-secondary"
-        :disabled="currentPage <= 1"
-        @click="goToPage(currentPage - 1)"
-      >
-        Назад
-      </button>
-      <span class="pagination-info">{{ currentPage }} / {{ totalPages }}</span>
-      <button
-        class="btn btn-sm btn-outline-secondary"
-        :disabled="currentPage >= totalPages"
-        @click="goToPage(currentPage + 1)"
-      >
-        Далее
-      </button>
-    </div>
+    <Pagination
+      v-if="totalPages > 1"
+      :model-value="currentPage"
+      :total-pages="totalPages"
+      :total-items="filteredRows.length"
+      :page-size="rowsPerPage"
+      :visible-count="paginatedRows.length"
+      variant="simple"
+      layout="toolbar"
+      @update:model-value="goToPage"
+    />
 
     <GroupForm
+      v-if="showEditModal"
       v-model:visible="showEditModal"
       modal-id="groupEdit"
       mode="update"
@@ -238,6 +273,8 @@ const deleteGroup = async groupId => {
   justify-content: center;
   width: 2rem;
   height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
   border-radius: 0.375rem;
   border: none;
   background: transparent;
@@ -263,6 +300,13 @@ const deleteGroup = async groupId => {
     color: var(--bs-danger, #dc3545);
     background-color: rgba(var(--bs-danger-rgb, 220, 53, 69), 0.08);
   }
+
+  @media (hover: none), (width < $ui-bp-sm) {
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
 }
 
 .empty-state {
@@ -278,17 +322,39 @@ const deleteGroup = async groupId => {
   }
 }
 
-.pagination-wrapper {
+.admin-cards {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   gap: 0.75rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--color-border);
 }
 
-.pagination-info {
-  font-size: 0.8125rem;
-  color: var(--color-secondary-text);
+.admin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-primary-background);
+
+  &__title {
+    font-weight: 600;
+    color: var(--color-primary-text);
+    word-break: break-word;
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__actions {
+    justify-content: flex-end;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--color-border);
+  }
 }
+
 </style>

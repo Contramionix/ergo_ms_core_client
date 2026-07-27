@@ -1,7 +1,13 @@
 <template>
   <transition name="fade">
-    <div v-if="visible" class="permission-unsaved-toast">
-      <AlertTriangle :size="26" class="permission-unsaved-toast__icon" />
+    <div
+      v-if="visible"
+      class="permission-unsaved-toast"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <AlertTriangle :size="26" class="permission-unsaved-toast__icon" aria-hidden="true" />
       <div class="permission-unsaved-toast__content">
         <div class="permission-unsaved-toast__text">
           <p>{{ title }}</p>
@@ -94,7 +100,7 @@ defineEmits(['save', 'cancel'])
   gap: 16px;
   align-items: center;
   justify-content: space-between;
-  z-index: 1050;
+  z-index: 1060;
 
   &__icon {
     display: flex;
@@ -173,7 +179,7 @@ defineEmits(['save', 'cancel'])
   transform: translate(-50%, 12px);
 }
 
-@media (max-width: 768px) {
+@media (width < $ui-bp-md) {
   .permission-unsaved-toast {
     flex-direction: column;
     flex-wrap: wrap;

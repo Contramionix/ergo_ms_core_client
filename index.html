@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="ERGO MS — веб-приложение управления и совместной работы." />
+    <meta name="theme-color" content="#0d6efd" />
     <title>ERGOMS</title>
     <style>
       html.app-bootstrapping #app {
@@ -60,6 +62,13 @@
           animation: none;
           border-top-color: var(--color-accent, #0d6efd);
         }
+      }
+      html[data-ergo-motion='reduce'] #app {
+        transition: none;
+      }
+      html[data-ergo-motion='reduce'] .ergo-boot-loader__spinner {
+        animation: none;
+        border-top-color: var(--color-accent, #0d6efd);
       }
     </style>
     <script src="/js/bootstrap-early.js"></script>

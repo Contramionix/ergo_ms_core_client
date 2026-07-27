@@ -103,6 +103,8 @@ export function getToastPluginOptions() {
     showCloseButtonOnHover: false,
     hideProgressBar: snapshot.hideProgressBar,
     shareAppContext: true,
+    // role=alert + aria-live для дикторов (vue-toastification)
+    containerClassName: 'ergo-toast-container',
     filterBeforeCreate: createToastFilterBeforeCreate(),
     toastDefaults: {
       success: { timeout: timeouts.success },

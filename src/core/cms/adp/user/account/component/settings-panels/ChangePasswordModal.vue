@@ -238,9 +238,10 @@ const submitForm = async () => {
             class="change-password-modal__toggle"
             :disabled="isLoading"
             :title="isCurrentPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+            :aria-label="isCurrentPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
             @click="togglePasswordVisibility('currentPassword')"
           >
-            <component :is="currentPasswordIcon" :size="18" />
+            <component :is="currentPasswordIcon" :size="18" aria-hidden="true" />
           </button>
         </div>
         <p v-if="errors.currentPassword" class="change-password-modal__error">{{ errors.currentPassword }}</p>
@@ -265,9 +266,10 @@ const submitForm = async () => {
               class="change-password-modal__toggle"
               :disabled="isLoading"
               :title="isNewPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+              :aria-label="isNewPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
               @click="togglePasswordVisibility('newPassword')"
             >
-              <component :is="newPasswordIcon" :size="18" />
+              <component :is="newPasswordIcon" :size="18" aria-hidden="true" />
             </button>
           </div>
           <p v-if="errors.newPassword" class="change-password-modal__error">{{ errors.newPassword }}</p>
@@ -310,9 +312,10 @@ const submitForm = async () => {
               class="change-password-modal__toggle"
               :disabled="isLoading"
               :title="isConfirmPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+              :aria-label="isConfirmPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
               @click="togglePasswordVisibility('confirmPassword')"
             >
-              <component :is="confirmPasswordIcon" :size="18" />
+              <component :is="confirmPasswordIcon" :size="18" aria-hidden="true" />
             </button>
           </div>
           <p v-if="errors.confirmPassword" class="change-password-modal__error">{{ errors.confirmPassword }}</p>
@@ -375,7 +378,7 @@ const submitForm = async () => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.875rem 1rem;
 
-  @media (width <= 767px) {
+  @media (width < $ui-bp-md) {
     grid-template-columns: 1fr;
   }
 }

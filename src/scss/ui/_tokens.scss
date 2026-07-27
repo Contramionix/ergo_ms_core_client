@@ -53,6 +53,9 @@
   --ui-z-overlay-menu-flyout: 1071;
   --ui-z-overlay-hover-tooltip: 1072;
 
+  /* Shell desktop breakpoint (синхрон с SHELL_DESKTOP_MIN / Bootstrap xl). */
+  --ui-shell-desktop-min: 1200px;
+
   --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
     'Helvetica Neue', sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',

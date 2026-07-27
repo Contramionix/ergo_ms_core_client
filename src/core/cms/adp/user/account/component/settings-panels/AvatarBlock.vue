@@ -1,11 +1,12 @@
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import { Upload, Trash2 } from 'lucide-vue-next'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
-import AvatarCropModal from '@/components/AvatarCropModal.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+
+const AvatarCropModal = defineAsyncComponent(() => import('@/components/AvatarCropModal.vue'))
 
 const props = defineProps({
   saving: { type: Boolean, default: false },
@@ -212,6 +213,7 @@ onBeforeUnmount(() => {
       Рекомендуемый размер: 200×200 пикселей. Форматы PNG, JPG, GIF и WEBP до {{ MAX_AVATAR_SIZE_MB }} МБ.
     </p>
     <AvatarCropModal
+      v-if="showCropModal || cropImageSrc"
       :show="showCropModal"
       :image-src="cropImageSrc"
       @confirm="handleCropConfirm"
@@ -259,8 +261,8 @@ onBeforeUnmount(() => {
 
 .avatar-preview {
   position: relative;
-  width: 200px;
-  height: 200px;
+  width: min(200px, 45vw);
+  height: min(200px, 45vw);
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;

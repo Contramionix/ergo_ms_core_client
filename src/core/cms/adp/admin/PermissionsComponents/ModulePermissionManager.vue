@@ -277,8 +277,8 @@ onMounted(async () => {
                 </span>
               </td>
               <td class="text-end">
-                <button class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(permission.id)" title="Удалить">
-                  <Trash2 :size="14" />
+                <button type="button" class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(permission.id)" title="Удалить" aria-label="Удалить">
+                  <Trash2 :size="14" aria-hidden="true" />
                 </button>
               </td>
             </tr>

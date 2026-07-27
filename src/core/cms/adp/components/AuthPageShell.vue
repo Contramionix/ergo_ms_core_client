@@ -18,7 +18,8 @@ defineProps({
     <div class="auth-page__inner" :class="{ 'auth-page__inner--wide': wide }">
       <header v-if="showBrand" class="auth-page__brand">
         <h1 class="auth-page__site-name">
-          <SiteWordmark class="auth-page__wordmark site-wordmark--centered" />
+          <span class="visually-hidden">ERGO MS</span>
+          <SiteWordmark class="auth-page__wordmark site-wordmark--centered" aria-hidden="true" />
         </h1>
       </header>
 

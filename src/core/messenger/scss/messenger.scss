@@ -27,10 +27,12 @@
 
 .msng-bubble {
   animation: msng-slide-in 0.2s ease;
+  @include ui-reduced-motion;
 }
 
 .msng-sys {
   animation: msng-fade-in 0.25s ease;
+  @include ui-reduced-motion;
 }
 
 @keyframes msng-slide-in {

@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import {
   Check,
   Copy,
+  Eye,
+  EyeOff,
   Moon,
   RotateCcw,
   Sun,
@@ -35,6 +37,7 @@ const props = defineProps({
 const emit = defineEmits([
   'select',
   'activate',
+  'toggle-available',
   'reset',
   'duplicate',
   'delete',
@@ -71,7 +74,7 @@ function onCardKeydown(event) {
     class="theme-picker-card"
     :class="{
       'is-selected': selected,
-      'is-active-theme': theme.is_active,
+      'is-active-theme': isModuleScope ? theme.is_active : theme.is_default,
       'is-draft': theme.is_draft || theme.is_draft_pair,
     }"
     :style="previewStyle"
@@ -112,9 +115,9 @@ function onCardKeydown(event) {
         />
         <h3 class="theme-picker-card__name">{{ theme.name }}</h3>
         <span
-          v-if="theme.is_active"
+          v-if="isModuleScope ? theme.is_active : theme.is_default"
           class="theme-picker-card__check"
-          title="Активна"
+          :title="isModuleScope ? 'Активна' : 'Стандарт сайта'"
           aria-hidden="true"
         >
           <Check :size="12" />
@@ -144,10 +147,22 @@ function onCardKeydown(event) {
           Системная
         </span>
         <span
-          v-if="theme.is_active"
+          v-if="!isModuleScope && theme.is_default"
+          class="theme-picker-card__badge theme-picker-card__badge--active"
+        >
+          Стандарт
+        </span>
+        <span
+          v-else-if="theme.is_active"
           class="theme-picker-card__badge theme-picker-card__badge--active"
         >
           Активна
+        </span>
+        <span
+          v-if="!isModuleScope && theme.is_available"
+          class="theme-picker-card__badge theme-picker-card__badge--catalog"
+        >
+          В каталоге
         </span>
       </div>
 
@@ -192,14 +207,33 @@ function onCardKeydown(event) {
 
     <div class="theme-picker-card__actions" @click.stop>
       <button
-        v-if="!theme.is_active && !theme.is_draft && !theme.is_draft_pair"
+        v-if="isModuleScope && !theme.is_active && !theme.is_draft && !theme.is_draft_pair"
         type="button"
         class="theme-picker-card__apply"
         @click="emit('activate', theme)"
       >
         Применить
       </button>
+      <button
+        v-else-if="!isModuleScope && !theme.is_default && !theme.is_draft && !theme.is_draft_pair"
+        type="button"
+        class="theme-picker-card__apply"
+        @click="emit('activate', theme)"
+      >
+        Стандарт сайта
+      </button>
       <div class="theme-picker-card__icon-actions">
+        <button
+          v-if="!isModuleScope && !theme.is_draft && !theme.is_draft_pair"
+          type="button"
+          class="theme-picker-card__icon-btn"
+          :title="theme.is_available ? 'Убрать из быстрого выбора' : 'Добавить в быстрый выбор'"
+          :aria-label="theme.is_available ? 'Убрать из быстрого выбора' : 'Добавить в быстрый выбор'"
+          :disabled="theme.is_default && theme.is_available"
+          @click="emit('toggle-available', theme)"
+        >
+          <component :is="theme.is_available ? EyeOff : Eye" :size="15" />
+        </button>
         <button
           v-if="theme.is_system && !theme.is_draft_pair"
           type="button"
@@ -438,6 +472,11 @@ function onCardKeydown(event) {
     background: var(--bs-success, #198754);
     color: #fff;
     font-weight: 600;
+  }
+
+  &--catalog {
+    background: color-mix(in srgb, var(--color-accent) 16%, var(--color-secondary-background));
+    color: var(--color-primary-text);
   }
 
   &--draft {

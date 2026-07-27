@@ -1,3 +1,5 @@
 // Barrel для Vite additionalData — @use вместо дублирующих @import
 @forward 'variables';
 @forward 'mixins';
+@forward 'ui/breakpoints';
+@forward 'ui/mixins' show ui-reduced-motion, ui-a11y-focus, ui-focus-ring;

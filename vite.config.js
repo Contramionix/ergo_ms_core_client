@@ -367,7 +367,8 @@ if (analyzeBuild) {
 
 export default defineConfig(() => ({
   build: {
-    target: 'esnext',
+    // Согласовано с browserslist: последние 2 версии современных браузеров (без IE)
+    target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],
     minify: 'esbuild',
     cssCodeSplit: true,
     sourcemap: false,

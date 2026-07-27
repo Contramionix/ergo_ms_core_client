@@ -1,6 +1,17 @@
-.Vue-Toastification__container {
+.Vue-Toastification__container,
+.ergo-toast-container {
   z-index: 2147483646 !important;
   padding: 12px;
+}
+
+// Дикторы: контейнер тостов — live region (vue-toastification + assist mode)
+html[data-ergo-a11y='assist'] .Vue-Toastification__container,
+html[data-ergo-a11y='assist'] .ergo-toast-container {
+  /* роль/aria-live задаёт библиотека; усиливаем видимость фокуса у close */
+  .Vue-Toastification__close-button:focus-visible {
+    outline: 3px solid rgba(var(--bs-primary-rgb), 0.85);
+    outline-offset: 2px;
+  }
 }
 
 .Vue-Toastification__toast {
@@ -78,7 +89,7 @@
   background: var(--bs-info);
 }
 
-@media (max-width: 768px) {
+@media (width < $ui-bp-md) {
   .Vue-Toastification__container.top-right,
   .Vue-Toastification__container.top-left,
   .Vue-Toastification__container.top-center {

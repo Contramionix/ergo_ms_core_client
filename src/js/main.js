@@ -5,9 +5,9 @@ import '@/js/utils/logger.js'
 import 'vue-toastification/dist/index.css'
 import '@/scss/styles.scss'
 
-import { autoAnimatePlugin } from '@formkit/auto-animate/vue'
 import Toast from 'vue-toastification'
 import { getToastPluginOptions, syncToastPluginWithSettings } from '@/js/utils/toast.js'
+import { gatedAutoAnimatePlugin } from '@/js/utils/autoAnimatePlugin.js'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
@@ -19,13 +19,14 @@ import { DEFAULT_SITE_NAME } from '@/js/siteWordmark.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { bootstrapAppSession } from '@/js/bootstrapSession.js'
 import { initTheme } from '@/js/theme-manager.js'
+import { initUiPreferences } from '@/js/uiPreferences.js'
 import { logError } from '@/js/utils/logError.js'
 
 const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
-app.use(autoAnimatePlugin)
+app.use(gatedAutoAnimatePlugin)
 app.use(Toast, getToastPluginOptions())
 syncToastPluginWithSettings()
 
@@ -34,6 +35,7 @@ if (typeof document !== 'undefined') {
 }
 
 initTheme()
+initUiPreferences()
 
 function showBootFailure(error) {
   hideBootstrapMask()

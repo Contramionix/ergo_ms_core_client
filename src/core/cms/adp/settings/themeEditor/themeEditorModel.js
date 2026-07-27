@@ -78,6 +78,7 @@ export function snapshotTheme(source) {
     module_tokens: { ...(source.module_tokens || {}) },
     is_active: Boolean(source.is_active),
     is_default: Boolean(source.is_default),
+    is_available: Boolean(source.is_available),
     is_system: Boolean(source.is_system),
   }
 }
@@ -115,6 +116,7 @@ export function createEmptyDraft({
     module_tokens: manifest?.moduleTokens ? { ...manifest.moduleTokens } : {},
     is_active: false,
     is_default: false,
+    is_available: false,
     is_system: false,
   }
 }

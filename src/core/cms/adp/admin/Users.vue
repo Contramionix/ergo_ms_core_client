@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import { useToast } from '@/js/utils/toast.js'
@@ -7,8 +7,6 @@ import { Settings, Upload, MailPlus, UserPlus, FilePenLine } from 'lucide-vue-ne
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
-import AdminUserSettingsModal from '@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue'
-import AdminUserCreateModal from '@/core/cms/adp/admin/UsersComponent/AdminUserCreateModal.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { formatDateShort, formatDateTime } from '@/js/utils/timeUtils.js'
 import { getAdminUsers, getRoles, getRoleGroupOptions, checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
@@ -21,6 +19,14 @@ import SearchInput from '@/components/SearchInput.vue'
 import { PRESENCE_FILTER_OPTIONS } from '@/core/cms/js/adminSelectOptions.js'
 import { fetchProfileSettings } from '@/core/cms/adp/js/profileSettings.js'
 import { fetchAdminProfileChangeRequests } from '@/core/cms/adp/admin/js/profileChangeRequestService.js'
+import { accessDeniedState } from '@/js/accessDeniedState'
+
+const AdminUserSettingsModal = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue'),
+)
+const AdminUserCreateModal = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/UsersComponent/AdminUserCreateModal.vue'),
+)
 
 const router = useRouter()
 const toast = useToast()
@@ -175,8 +181,12 @@ const loadUsers = async () => {
 }
 
 const loadRefs = async () => {
-  roles.value = await getRoles()
-  roleGroups.value = await getRoleGroupOptions()
+  const [nextRoles, nextRoleGroups] = await Promise.all([
+    getRoles(),
+    getRoleGroupOptions(),
+  ])
+  roles.value = nextRoles
+  roleGroups.value = nextRoleGroups
 }
 
 onMounted(async () => {
@@ -184,7 +194,9 @@ onMounted(async () => {
     const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
       toast.error('У вас нет доступа к административной панели')
-      router.push({ name: 'AccessDenied' })
+      accessDeniedState.active = true
+      accessDeniedState.title = 'Доступ запрещён'
+      accessDeniedState.message = 'Требуются права администратора.'
       return
     }
     hasAdminAccess.value = true
@@ -195,7 +207,9 @@ onMounted(async () => {
     logError('Ошибка проверки прав доступа или загрузки данных:', error)
     if (!hasAdminAccess.value) {
       toast.error('Ошибка проверки прав доступа')
-      router.push({ name: 'AccessDenied' })
+      accessDeniedState.active = true
+      accessDeniedState.title = 'Доступ запрещён'
+      accessDeniedState.message = 'Не удалось проверить права доступа.'
     }
   } finally {
     isQueryWatchReady.value = true
@@ -234,12 +248,14 @@ const columns = [
     label: 'Дата регистрации',
     headerStyle: { textAlign: 'center' },
     cellStyle: { textAlign: 'center' },
+    hideBelow: 'md',
   },
   {
     key: 'last_activity',
     label: 'Последняя активность',
     headerStyle: { textAlign: 'center' },
     cellStyle: { textAlign: 'center' },
+    hideBelow: 'lg',
   },
   {
     key: 'role',
@@ -252,6 +268,7 @@ const columns = [
     label: 'Группы',
     headerStyle: { textAlign: 'center' },
     cellStyle: { textAlign: 'center' },
+    hideBelow: 'md',
   },
   {
     key: 'actions',
@@ -421,8 +438,8 @@ const getItemKey = (item) => item.user_id
     </DataTable>
     </LoadingContentArea>
 
-    <AdminUserSettingsModal v-model:show="showUserSettings" :user-ref="selectedUserRef" :roles="roles" :role-groups="roleGroups" @saved="handleUserSaved" @deleted="handleUserDeleted"/>
-    <AdminUserCreateModal v-model:show="showUserCreate" :roles="roles" :role-groups="roleGroups" @created="handleUserCreated"/>
+    <AdminUserSettingsModal v-if="showUserSettings" v-model:show="showUserSettings" :user-ref="selectedUserRef" :roles="roles" :role-groups="roleGroups" @saved="handleUserSaved" @deleted="handleUserDeleted"/>
+    <AdminUserCreateModal v-if="showUserCreate" v-model:show="showUserCreate" :roles="roles" :role-groups="roleGroups" @created="handleUserCreated"/>
         </div>
       </div>
   </div>
@@ -432,7 +449,7 @@ const getItemKey = (item) => item.user_id
 @import './admin-page.scss';
 
 .loading-container {
-  min-height: 400px;
+  min-height: min(400px, 50dvh);
 }
 
 .users-shell {
@@ -501,6 +518,24 @@ const getItemKey = (item) => item.user_id
   .presence-filter {
     width: 220px;
   }
+
+  @media (width < $ui-bp-md) {
+    grid-template-columns: 1fr;
+
+    .filters-wrapper {
+      grid-template-columns: 1fr;
+    }
+
+    .presence-filter {
+      width: 100%;
+      max-width: none;
+    }
+
+    .actions-wrapper {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
 }
 
 .users-toolbar .actions-wrapper {
@@ -520,10 +555,19 @@ const getItemKey = (item) => item.user_id
   justify-content: center;
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   padding: 0;
 
   &:hover {
     background-color: var(--color-hover-background);
+  }
+
+  @media (width < $ui-bp-md) {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 
@@ -531,6 +575,11 @@ const getItemKey = (item) => item.user_id
   width: 220px;
   max-width: 220px;
   box-sizing: border-box;
+
+  @media (width < $ui-bp-md) {
+    width: 100%;
+    max-width: none;
+  }
 
   :deep(.hover-tooltip) {
     display: contents;

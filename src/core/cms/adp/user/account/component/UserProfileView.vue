@@ -164,7 +164,7 @@ onMounted(fetchProfile)
   gap: 0.875rem 1.5rem;
   margin: 0;
 
-  @media (width <= 767px) {
+  @media (width < $ui-bp-md) {
     grid-template-columns: 1fr;
   }
 }

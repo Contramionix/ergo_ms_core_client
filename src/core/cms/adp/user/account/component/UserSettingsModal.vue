@@ -106,6 +106,10 @@ function handleClose() {
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
+
+  @media (width < $ui-bp-md) {
+    flex-direction: column;
+  }
 }
 
 .user-settings-modal__panel-wrap {
@@ -116,6 +120,10 @@ function handleClose() {
   padding: 1.25rem 1.5rem;
   scrollbar-width: thin;
   scrollbar-color: var(--color-hover-background) transparent;
+
+  @media (width < $ui-bp-md) {
+    padding: 1rem;
+  }
 }
 </style>
 
@@ -132,6 +140,12 @@ function handleClose() {
   height: min(82vh, 780px);
   max-height: 90vh;
   transition: none !important;
+
+  @media (width < $ui-bp-md) {
+    height: min(92dvh, 780px);
+    max-height: 96dvh;
+    margin: 0.5rem auto;
+  }
 }
 
 .user-settings-modal-root.modal .modal-content {

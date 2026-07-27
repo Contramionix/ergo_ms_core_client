@@ -605,7 +605,7 @@ async function onDelete() {
   }
 }
 
-@media (max-width: 575px) {
+@media (width < $ui-bp-sm) {
   .notif-item__top {
     flex-wrap: wrap;
     gap: 0.2rem 0.75rem;

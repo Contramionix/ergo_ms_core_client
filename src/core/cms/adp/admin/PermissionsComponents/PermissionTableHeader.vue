@@ -1,8 +1,11 @@
 <script setup>
-import SubmitForm from '@/core/cms/adp/admin/PermissionsComponents/SubmitPermissionAdd.vue'
+import { ref, defineAsyncComponent } from 'vue'
 import SearchInput from '@/components/SearchInput.vue'
 import { Plus } from 'lucide-vue-next'
-import { ref } from 'vue'
+
+const SubmitForm = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/PermissionsComponents/SubmitPermissionAdd.vue'),
+)
 
 const props = defineProps({
   roles: { type: Array, required: true },
@@ -40,6 +43,7 @@ const handleSearchQuery = (query) => {
       Добавить политику
     </button>
     <SubmitForm
+      v-if="showAddModal"
       v-model:visible="showAddModal"
       modal-id="policyAdd"
       :roles="props.roles"

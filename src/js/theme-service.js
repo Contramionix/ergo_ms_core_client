@@ -24,22 +24,29 @@ function normalizeThemePayload(data) {
     module_tokens: data.module_tokens || {},
     is_active: data.is_active,
     is_default: data.is_default,
+    is_available: data.is_available,
     is_system: data.is_system,
   }
 }
 
 /**
- * Загружает активную тему сайта с API и применяет её.
+ * Загружает эффективную тему с API и применяет её.
+ * Для авторизованного — личная палитра или стандарт сайта; для анонима — стандарт.
  * Публичный endpoint — работает и на странице входа.
  *
- * Режим — из шестерёнки (localStorage `theme`). Палитра активной темы
+ * Режим — из шестерёнки (localStorage `theme`). Палитра
  * подстраивается под него. Явной записи в localStorage ещё нет — берём
- * base_theme активной темы, чтобы тёмная активная тема не схлопывалась в light.
+ * base_theme темы, чтобы тёмная палитра не схлопывалась в light.
  */
 export async function syncSiteThemeFromApi() {
   await initEndpoints()
+  // Access только в памяти: на F5 сначала restoreSession, иначе active/ без JWT
+  // вернёт стандарт сайта и затрёт личную палитру в localStorage.
+  const { whenSessionReady } = await import('@/js/bootstrapSession.js')
+  await whenSessionReady()
   try {
-    const res = await apiClient.get(endpoints.themes.active, {}, false)
+    // needToken=true: для авторизованного — личная палитра; без токена — стандарт сайта.
+    const res = await apiClient.get(endpoints.themes.active, {}, true)
     if (res.success && res.data && !res.data.detail) {
       const theme = normalizeThemePayload(res.data)
       if (theme) {

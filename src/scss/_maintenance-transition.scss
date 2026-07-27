@@ -31,3 +31,16 @@
     transform: none;
   }
 }
+
+html[data-ergo-motion='reduce'] {
+  .maintenance-overlay-enter-active,
+  .maintenance-overlay-enter-active .maintenance-page__card {
+    transition: none;
+  }
+
+  .maintenance-overlay-enter-from,
+  .maintenance-overlay-enter-from .maintenance-page__card {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -13,6 +13,16 @@
     "build:analyze": "npm run prebuild && cross-env ANALYZE=true vite build",
     "preview": "vite preview",
     "lint": "eslint . --fix",
+    "lint:a11y": "eslint -c eslint.a11y.config.js \"src/**/*.{vue,js}\" --no-fix --max-warnings 200",
     "format": "prettier --write src/"
-  }
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Edge versions",
+    "last 2 Firefox versions",
+    "last 2 Safari versions",
+    "last 2 iOS versions",
+    "not dead",
+    "not ie 11"
+  ]
 }

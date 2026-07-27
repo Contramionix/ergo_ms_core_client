@@ -207,6 +207,23 @@ watch(
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--color-hover-background) transparent;
+
+  @media (width < $ui-bp-md) {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.25rem;
+    flex: 0 0 auto;
+    max-width: none;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--color-secondary-background);
+    padding: 0.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .user-settings-modal__nav-section {
@@ -225,6 +242,19 @@ watch(
       background-color: var(--color-hover-background);
     }
   }
+
+  @media (width < $ui-bp-md) {
+    display: contents;
+
+    &:not(:first-child) {
+      margin-top: 0;
+      padding-top: 0;
+
+      &::before {
+        display: none;
+      }
+    }
+  }
 }
 
 .user-settings-modal__nav-section-title {
@@ -235,14 +265,27 @@ watch(
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-secondary-text, rgba(128, 128, 128, 0.95));
+
+  @media (width < $ui-bp-md) {
+    display: none;
+  }
 }
 
 .user-settings-modal__nav-list {
   padding: 0 0.5rem;
+
+  @media (width < $ui-bp-md) {
+    display: contents;
+  }
 }
 
 .user-settings-modal__nav-item-wrap {
   margin-bottom: 0.125rem;
+
+  @media (width < $ui-bp-md) {
+    margin-bottom: 0;
+    flex: 0 0 auto;
+  }
 }
 
 .user-settings-modal__nav-item {
@@ -271,6 +314,17 @@ watch(
 
   &--expandable {
     justify-content: space-between;
+  }
+
+  @media (width < $ui-bp-md) {
+    width: auto;
+    white-space: nowrap;
+    min-height: 40px;
+    padding: 0.5rem 0.875rem;
+
+    .user-settings-modal__nav-chevron {
+      display: none;
+    }
   }
 }
 
@@ -308,6 +362,10 @@ watch(
   &--nested {
     margin-left: 0.5rem;
     margin-top: 0.125rem;
+  }
+
+  @media (width < $ui-bp-md) {
+    display: none;
   }
 }
 

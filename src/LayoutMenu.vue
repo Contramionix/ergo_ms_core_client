@@ -27,6 +27,7 @@ import {
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { ensurePresenceConnected } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { useAppBootstrap } from '@/composables/useAppBootstrap.js'
+import { useBreakpoint, SHELL_DESKTOP_MIN } from '@/composables/useBreakpoint.js'
 import { getSessionBootstrapCache } from '@/core/cms/js/sessionBootstrapCache.js'
 import {
   layoutPluginsRef,
@@ -36,6 +37,7 @@ import MenuList from '@/components/menu/MenuList.vue'
 import LayoutBackdrop from '@/components/LayoutBackdrop.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import SkipLink from '@/components/SkipLink.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 import LucideIcon from '@/components/LucideIcon.vue'
 
@@ -45,12 +47,13 @@ import RouteViewAnimated from '@/components/RouteViewAnimated.vue'
 const userStore = useUserStore()
 const route = useRoute()
 const { bootstrapping: sessionBootstrapping, whenSessionReady } = useAppBootstrap()
+const { isShellDesktop, width: viewportWidth } = useBreakpoint()
 
 let resizeTimeout = null
 
 const leftPadding = ref('279px')
 const menuRightEdge = ref('260px')
-const isMenuVisible = ref(window.innerWidth >= 1200)
+const isMenuVisible = ref(viewportWidth.value >= SHELL_DESKTOP_MIN)
 const isMenuToggledManually = ref(false)
 const isOverlayVisible = ref(false)
 const isMenuCollapsed = ref(false)
@@ -80,7 +83,7 @@ const showShellBackdrop = computed(() =>
 )
 
 function updateMenuVisibilityImmediate() {
-  if (window.innerWidth >= 1200) {
+  if (isShellDesktop.value) {
     isMenuVisible.value = true
     isOverlayVisible.value = false
     isMenuToggledManually.value = false
@@ -101,7 +104,7 @@ function updateMenuVisibility() {
 function toggleMenu(isVisible) {
   isMenuToggledManually.value = true
   isMenuVisible.value = isVisible
-  isOverlayVisible.value = isVisible && window.innerWidth < 1200
+  isOverlayVisible.value = isVisible && !isShellDesktop.value
 }
 
 function closeMenu() {
@@ -164,15 +167,16 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <SkipLink />
   <Teleport to="body">
-    <div v-if="!isFullPage" class="mobile-header d-xl-none">
-      <button class="btn btn-link d-flex align-items-center justify-content-center mobile-header__btn" type="button" :aria-label="isMenuVisible ? 'Закрыть меню' : 'Открыть меню'" :title="isMenuVisible ? 'Закрыть меню' : 'Открыть меню'" @click="onHamburgerClick">
-        <LucideIcon name="Menu" :size="24" />
+    <header v-if="!isFullPage" class="mobile-header d-xl-none">
+      <button class="btn btn-link d-flex align-items-center justify-content-center mobile-header__btn" type="button" :aria-label="isMenuVisible ? 'Закрыть меню' : 'Открыть меню'" :title="isMenuVisible ? 'Закрыть меню' : 'Открыть меню'" :aria-expanded="isMenuVisible" aria-controls="side-menu" @click="onHamburgerClick">
+        <LucideIcon name="Menu" :size="24" aria-hidden="true" />
       </button>
       <RouterLink :to="{ name: 'AppHome' }" class="mobile-header__brand text-decoration-none">
         <SiteWordmark class="site-wordmark--mobile site-wordmark--centered" />
       </RouterLink>
-    </div>
+    </header>
   </Teleport>
   <div class="layout-container" :class="{ 'layout-container--full-page': isFullPage }">
     <aside
@@ -184,6 +188,7 @@ onBeforeUnmount(() => {
     </aside>
     <MenuList
       v-else-if="!isFullPage"
+      id="side-menu"
       @left-padding="leftToggle"
       @menu-right-edge="handleMenuRightEdge"
       @layout-sync-transition="handleMenuLayoutSyncTransition"
@@ -191,17 +196,30 @@ onBeforeUnmount(() => {
       @menu-state-change="handleMenuStateChange"
     />
     <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage, 'layout-page--menu-sync-transition': isMenuLayoutTransitioning }">
-      <LayoutBackdrop v-if="!isFullPage && showShellBackdrop" />
-      <div class="layout-page__content">
+      <LayoutBackdrop v-if="!isFullPage && showShellBackdrop" data-ergo-decorative-image />
+      <main id="main-content" class="layout-page__content" tabindex="-1">
+        <!--
+          AccessDenied поверх RouteView (v-show), без v-else:
+          иначе краткий accessDeniedState.active размонтирует страницу,
+          onMounted снова дергает checkAccess → ложный /access-denied.
+        -->
+        <AccessDenied
+          v-show="accessDeniedState.active"
+          bordered
+          :title="accessDeniedState.title"
+          :message="accessDeniedState.message"
+        />
         <template v-if="route.meta?.fullPage">
-          <AccessDenied v-if="accessDeniedState.active" bordered :title="accessDeniedState.title" :message="accessDeniedState.message"/>
-          <RouteViewAnimated v-else />
+          <RouteViewAnimated v-show="!accessDeniedState.active" />
         </template>
-        <div v-else :class="route.meta?.flushContent ? 'layout-content--flush' : 'py-4 container-xxl'">
-          <AccessDenied v-if="accessDeniedState.active" bordered :title="accessDeniedState.title" :message="accessDeniedState.message"/>
-          <RouteViewAnimated v-else />
+        <div
+          v-else
+          v-show="!accessDeniedState.active"
+          :class="route.meta?.flushContent ? 'layout-content--flush' : 'layout-content-shell py-4 container-xxl'"
+        >
+          <RouteViewAnimated />
         </div>
-      </div>
+      </main>
     </div>
   </div>
 
@@ -237,7 +255,8 @@ onBeforeUnmount(() => {
   left: 0;
   right: 0;
   height: 56px;
-  z-index: 1100;
+  /* Ниже модалок (1055+) и drawer (1040/1050), выше меню (1005) и overlay (1004) */
+  z-index: 1030;
   background: var(--color-header-background);
   border-bottom: 1px solid var(--color-border);
   display: flex;
@@ -246,8 +265,10 @@ onBeforeUnmount(() => {
   width: 100%;
 
   &__btn {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     margin-right: 8px;
     color: var(--color-accent);
   }
@@ -288,6 +309,7 @@ onBeforeUnmount(() => {
   z-index: 1;
   min-height: inherit;
   overflow: clip;
+  outline: none;
 }
 
 .layout-container--full-page {
@@ -306,6 +328,14 @@ onBeforeUnmount(() => {
   overflow: clip;
 }
 
+.layout-content-shell {
+  @media (width < $ui-bp-sm) {
+    --bs-gutter-x: 1rem;
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+}
+
 .layout-overlay {
   z-index: 1004;
 }
@@ -314,7 +344,7 @@ onBeforeUnmount(() => {
   font-size: 2.5rem;
 }
 
-@media (width < 1200px) {
+@media (width < $ui-shell-desktop-min) {
   .menu-skeleton {
     display: none;
   }
@@ -326,11 +356,14 @@ onBeforeUnmount(() => {
   .layout-page {
     padding-inline-start: 0;
     padding-top: 0;
+    /* Фиксированный mobile-header (56px) — контент ниже шапки, не под ней */
+    margin-top: 56px;
     height: calc(100dvh - 56px);
     overflow: auto;
     overscroll-behavior: contain;
 
     &--full-page {
+      margin-top: 0;
       height: 100dvh;
     }
   }

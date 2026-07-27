@@ -1,13 +1,13 @@
 <template>
   <div ref="rootEl" class="filter-menu">
     <label v-if="label" class="form-label mb-1" :for="triggerId">{{ label }}</label>
-    <button :id="triggerId" type="button" class="btn w-100 d-flex align-items-center justify-content-between filter-menu__trigger" :class="{ 'filter-menu__trigger--open': isMainOpen }" :disabled="disabled" :aria-label="label || triggerText" :aria-expanded="isMainOpen" aria-haspopup="menu" @click="toggleMain">
+    <button :id="triggerId" type="button" class="btn w-100 d-flex align-items-center justify-content-between filter-menu__trigger" :class="{ 'filter-menu__trigger--open': isMainOpen }" :disabled="disabled" :aria-label="label || triggerText" :aria-expanded="isMainOpen" :aria-controls="panelId" aria-haspopup="menu" @click="toggleMain">
       <span class="filter-menu__trigger-label">{{ triggerText }}</span>
-      <ChevronDown class="filter-menu__trigger-chevron" :class="{ 'filter-menu__trigger-chevron--open': isMainOpen }" />
+      <ChevronDown class="filter-menu__trigger-chevron" :class="{ 'filter-menu__trigger-chevron--open': isMainOpen }" aria-hidden="true" />
     </button>
 
     <Teleport to="body">
-      <div v-if="isMainOpen" ref="mainPanelEl" class="filter-menu__panel dropdown-menu show fixed-menu" :style="mainPanelStyle" data-filter-menu-panel @mousedown.stop>
+      <div v-if="isMainOpen" :id="panelId" ref="mainPanelEl" class="filter-menu__panel dropdown-menu show fixed-menu" role="menu" :style="mainPanelStyle" data-filter-menu-panel @mousedown.stop>
         <ul class="filter-menu__list">
           <template v-for="field in fields" :key="fieldKey(field)">
             <li v-if="field.type === 'heading'" class="filter-menu__heading">
@@ -108,6 +108,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'apply', 'reset'])
 
 const triggerId = useId()
+const panelId = computed(() => `${triggerId}-panel`)
 
 const {
   rootEl,
@@ -421,6 +422,12 @@ onBeforeUnmount(() => {
   position: relative;
   min-width: 170px;
   line-height: 1.5;
+
+  @media (width < $ui-bp-md) {
+    min-width: 0;
+    flex: 1 1 auto;
+    max-width: 100%;
+  }
 }
 
 .filter-menu__trigger {

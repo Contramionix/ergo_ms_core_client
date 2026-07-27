@@ -18,9 +18,14 @@
         <div v-if="hasAttachments" class="msng-bubble__attachments">
           <template v-for="att in message.attachments" :key="att.id">
             <a v-if="getSafeHref(att.file_url)" :href="getSafeHref(att.file_url)" target="_blank" rel="noopener noreferrer" class="msng-bubble__attachment">
-              <img v-if="isImage(att.mime_type)" :src="getSafeHref(att.file_url)" :alt="att.original_filename" class="msng-bubble__attachment-img"/>
+              <ContentImage
+                v-if="isImage(att.mime_type)"
+                :src="getSafeHref(att.file_url)"
+                :alt="att.original_filename || 'Вложение'"
+                class="msng-bubble__attachment-img"
+              />
               <span v-else class="msng-bubble__attachment-file">
-                <Paperclip :size="14" class="msng-bubble__attachment-icon" />
+                <Paperclip :size="14" class="msng-bubble__attachment-icon" aria-hidden="true" />
                 {{ att.original_filename }}
               </span>
             </a>
@@ -39,18 +44,27 @@
     </div>
 
     <Teleport to="body">
-      <div v-if="showMenu" ref="menuRef" class="msng-ctx-menu" :style="menuStyle">
-        <button class="msng-ctx-menu__item" @click="onReply">
-          <Reply :size="14" />
+      <div
+        v-if="showMenu"
+        ref="menuRef"
+        class="msng-ctx-menu"
+        role="menu"
+        tabindex="-1"
+        aria-label="Действия с сообщением"
+        :style="menuStyle"
+        @keydown="onMenuKeydown"
+      >
+        <button type="button" class="msng-ctx-menu__item" role="menuitem" @click="onReply">
+          <Reply :size="14" aria-hidden="true" />
           <span>Ответить</span>
         </button>
         <template v-if="isOwn">
-          <button class="msng-ctx-menu__item" @click="onEdit">
-            <Pencil :size="14" />
+          <button type="button" class="msng-ctx-menu__item" role="menuitem" @click="onEdit">
+            <Pencil :size="14" aria-hidden="true" />
             <span>Редактировать</span>
           </button>
-          <button class="msng-ctx-menu__item msng-ctx-menu__item--danger" @click="onDeleteClick">
-            <Trash2 :size="14" />
+          <button type="button" class="msng-ctx-menu__item msng-ctx-menu__item--danger" role="menuitem" @click="onDeleteClick">
+            <Trash2 :size="14" aria-hidden="true" />
             <span>Удалить</span>
           </button>
         </template>
@@ -60,9 +74,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { Paperclip, Pencil, Trash2, Reply } from 'lucide-vue-next'
 import { getSafeHref } from '@/js/utils/urlUtils.js'
+import ContentImage from '@/components/ContentImage.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { confirmDelete } from '@/js/utils/confirm.js'
 
@@ -107,6 +122,43 @@ function onContextMenu(e) {
 function closeMenu() {
   showMenu.value = false
 }
+
+function focusFirstMenuItem() {
+  const items = menuRef.value?.querySelectorAll('[role="menuitem"]')
+  if (items?.length) {
+    items[0].focus()
+  }
+}
+
+function onMenuKeydown(e) {
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    closeMenu()
+    return
+  }
+  const items = Array.from(menuRef.value?.querySelectorAll('[role="menuitem"]') || [])
+  if (!items.length) return
+  const index = items.indexOf(document.activeElement)
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    items[(index + 1) % items.length]?.focus()
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    items[(index - 1 + items.length) % items.length]?.focus()
+  } else if (e.key === 'Home') {
+    e.preventDefault()
+    items[0]?.focus()
+  } else if (e.key === 'End') {
+    e.preventDefault()
+    items[items.length - 1]?.focus()
+  }
+}
+
+watch(showMenu, async (open) => {
+  if (!open) return
+  await nextTick()
+  focusFirstMenuItem()
+})
 
 function onReply() {
   closeMenu()
@@ -223,7 +275,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 240px;
+    max-width: min(240px, 100%);
   }
 
   &--own .msng-bubble__reply-quote {
@@ -271,8 +323,9 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
     text-decoration: none;
   }
 
-  &__attachment-img {
-    max-width: 240px;
+  &__attachment-img,
+  :deep(.msng-bubble__attachment-img) {
+    max-width: min(240px, 100%);
     max-height: 200px;
     border-radius: 0.5rem;
     object-fit: cover;
@@ -296,7 +349,7 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
 }
 
-@media (max-width: 576px) {
+@media (width < $ui-bp-sm) {
   .msng-bubble {
     max-width: 92%;
   }

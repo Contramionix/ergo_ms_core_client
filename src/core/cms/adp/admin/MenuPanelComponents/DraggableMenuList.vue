@@ -14,15 +14,15 @@
           
           <div class="separator-row-inline__actions-wrapper">
             <div class="separator-row-inline__actions">
-            <button class="separator-row-inline__visibility-btn" :class="{ 'separator-row-inline__visibility-btn--hidden': !item.is_active }" @click.stop="$emit('toggle-visibility-separator', getOriginalSeparator(item))" :title="item.is_active ? 'Скрыть разделитель' : 'Показать разделитель'">
-              <Eye v-if="item.is_active" :size="20" />
-              <EyeOff v-else :size="20" />
+            <button type="button" class="separator-row-inline__visibility-btn" :class="{ 'separator-row-inline__visibility-btn--hidden': !item.is_active }" @click.stop="$emit('toggle-visibility-separator', getOriginalSeparator(item))" :title="item.is_active ? 'Скрыть разделитель' : 'Показать разделитель'" :aria-label="item.is_active ? 'Скрыть разделитель' : 'Показать разделитель'">
+              <Eye v-if="item.is_active" :size="20" aria-hidden="true" />
+              <EyeOff v-else :size="20" aria-hidden="true" />
             </button>
-            <button  class="separator-row-inline__action-btn separator-row-inline__action-btn--edit" @click.stop="$emit('edit-separator', getOriginalSeparator(item))" title="Редактировать">
-              <Settings :size="20" class="separator-row-inline__settings-icon" />
+            <button type="button" class="separator-row-inline__action-btn separator-row-inline__action-btn--edit" @click.stop="$emit('edit-separator', getOriginalSeparator(item))" title="Редактировать" aria-label="Редактировать разделитель">
+              <Settings :size="20" class="separator-row-inline__settings-icon" aria-hidden="true" />
             </button>
-            <button class="separator-row-inline__action-btn separator-row-inline__action-btn--delete" @click.stop="$emit('delete-separator', getOriginalSeparator(item))" title="Удалить">
-              <Trash :size="20" />
+            <button type="button" class="separator-row-inline__action-btn separator-row-inline__action-btn--delete" @click.stop="$emit('delete-separator', getOriginalSeparator(item))" title="Удалить" aria-label="Удалить разделитель">
+              <Trash :size="20" aria-hidden="true" />
             </button>
             </div>
           </div>
@@ -390,6 +390,20 @@ function onChildDragEnd() {
       padding: 0.25rem;
     }
     
+    .separator-row-inline__action-btn {
+      opacity: 1;
+      width: 28px;
+      padding: 0.25rem;
+    }
+  }
+
+  @media (hover: none) {
+    .separator-row-inline__visibility-btn {
+      opacity: 1;
+      width: 28px;
+      padding: 0.25rem;
+    }
+
     .separator-row-inline__action-btn {
       opacity: 1;
       width: 28px;

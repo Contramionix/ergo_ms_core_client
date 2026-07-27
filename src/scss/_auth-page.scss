@@ -87,8 +87,15 @@
 }
 
 
-@media (width < 576px) {
+@media (width < $ui-bp-sm) {
   .auth-page {
     padding: 1rem;
+  }
+}
+
+html[data-ergo-motion='reduce'] {
+  .auth-page__brand,
+  .auth-page__card {
+    animation: none !important;
   }
 }

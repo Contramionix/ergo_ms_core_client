@@ -1,8 +1,18 @@
 <template>
   <div ref="pickerRef" class="msng-emoji">
     <div class="msng-emoji__tabs">
-      <button v-for="cat in categories" :key="cat.key" type="button" class="msng-emoji__tab" :class="{ 'msng-emoji__tab--active': activeCategory === cat.key }" :title="cat.label" @click="activeCategory = cat.key">
-        {{ cat.icon }}
+      <button
+        v-for="cat in categories"
+        :key="cat.key"
+        type="button"
+        class="msng-emoji__tab"
+        :class="{ 'msng-emoji__tab--active': activeCategory === cat.key }"
+        :title="cat.label"
+        :aria-label="cat.label"
+        :aria-pressed="activeCategory === cat.key"
+        @click="activeCategory = cat.key"
+      >
+        <span aria-hidden="true">{{ cat.icon }}</span>
       </button>
     </div>
 
@@ -121,7 +131,8 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
   position: absolute;
   bottom: 100%;
   right: 0;
-  width: 320px;
+  width: min(320px, calc(100% - 0.5rem));
+  max-width: min(320px, 90vw);
   max-height: 300px;
   background: var(--bs-body-bg, #fff);
   border: 1px solid var(--bs-border-color);
@@ -183,10 +194,11 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
   }
 }
 
-@media (max-width: 576px) {
+@media (width < $ui-bp-sm) {
   .msng-emoji {
-    width: calc(100vw - 2rem);
-    left: 0;
+    width: min(320px, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+    left: auto;
     right: 0;
   }
 }

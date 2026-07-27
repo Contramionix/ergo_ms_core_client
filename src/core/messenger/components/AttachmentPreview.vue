@@ -1,14 +1,14 @@
 <template>
   <div class="msng-att-preview">
     <div v-for="(file, idx) in files" :key="idx" class="msng-att-preview__item">
-      <img
+      <ContentImage
         v-if="isImage(file)"
         :src="getPreviewUrl(file)"
+        :alt="file.name || 'Файл'"
         class="msng-att-preview__thumb"
-        :alt="file.name"
       />
       <div v-else class="msng-att-preview__file-icon">
-        <FileText :size="20" />
+        <FileText :size="20" aria-hidden="true" />
       </div>
 
       <span class="msng-att-preview__name" :title="file.name">{{ file.name }}</span>
@@ -17,9 +17,10 @@
       <button
         type="button"
         class="btn btn-link p-0 msng-att-preview__remove"
+        aria-label="Убрать файл"
         @click="$emit('remove', idx)"
       >
-        <X :size="14" />
+        <X :size="14" aria-hidden="true" />
       </button>
     </div>
   </div>
@@ -27,6 +28,7 @@
 
 <script setup>
 import { FileText, X } from 'lucide-vue-next'
+import ContentImage from '@/components/ContentImage.vue'
 
 defineProps({
   files: { type: Array, default: () => [] },
@@ -72,6 +74,14 @@ function formatSize(bytes) {
   }
 
   &__thumb {
+    width: 32px;
+    height: 32px;
+    border-radius: 0.25rem;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  :deep(.msng-att-preview__thumb) {
     width: 32px;
     height: 32px;
     border-radius: 0.25rem;

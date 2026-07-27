@@ -1,9 +1,14 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, defineAsyncComponent } from 'vue'
 import { Settings, Trash2 } from 'lucide-vue-next'
-import ChangeCategoryForm from '@/core/cms/adp/admin/CategoriesComponents/SubmitCategoryChange.vue'
 import { deleteRole } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
+import Pagination from '@/components/Pagination.vue'
+import { useBreakpoint } from '@/composables/useBreakpoint.js'
+
+const ChangeCategoryForm = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/CategoriesComponents/SubmitCategoryChange.vue'),
+)
 
 const props = defineProps({
   headers: { type: Array, required: true },
@@ -14,6 +19,9 @@ const props = defineProps({
 
 const emit = defineEmits(['updateCategories'])
 const data = ref(props.rows)
+const { isMdUp, isSmUp } = useBreakpoint()
+const showDescription = computed(() => isMdUp.value)
+const useCards = computed(() => !isSmUp.value)
 
 watch(
   () => props.rows,
@@ -80,13 +88,44 @@ const removeRole = async (roleId) => {
 
 <template>
   <div class="category-table">
-    <div class="table-responsive">
+    <div v-if="useCards && paginatedRows.length" class="admin-cards">
+      <article v-for="row in paginatedRows" :key="row.id" class="admin-card">
+        <div class="admin-card__title">{{ row.name }}</div>
+        <div class="admin-card__meta">
+          <span :class="['status-badge', row.is_system ? 'badge-system' : 'badge-regular']">
+            {{ row.is_system ? 'Системная' : 'Пользовательская' }}
+          </span>
+        </div>
+        <div class="actions-cell admin-card__actions">
+          <button
+            class="btn-action btn-action--edit"
+            @click="openEditModal(row)"
+            type="button"
+            aria-label="Изменить роль"
+          >
+            <Settings :size="15" />
+          </button>
+          <button
+            class="btn-action btn-action--delete"
+            :disabled="row.is_system"
+            @click="removeRole(row.id)"
+            type="button"
+            aria-label="Удалить роль"
+          >
+            <Trash2 :size="15" />
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <div v-else-if="!useCards" class="table-responsive">
       <table class="table">
         <thead>
           <tr>
-            <th v-for="(header, index) in headers" :key="index" scope="col">
-              {{ header }}
-            </th>
+            <th scope="col">{{ headers[0] }}</th>
+            <th v-if="showDescription" scope="col">{{ headers[1] }}</th>
+            <th scope="col">{{ headers[2] }}</th>
+            <th scope="col">{{ headers[3] }}</th>
           </tr>
         </thead>
         <tbody>
@@ -94,7 +133,7 @@ const removeRole = async (roleId) => {
             <td>
               <span class="cell-text">{{ row.name }}</span>
             </td>
-            <td>
+            <td v-if="showDescription">
               <span class="cell-muted">{{ row.description || '—' }}</span>
             </td>
             <td>
@@ -132,25 +171,20 @@ const removeRole = async (roleId) => {
       <p class="empty-state__text">Роли не найдены</p>
     </div>
 
-    <div v-if="totalPages > 1" class="pagination-wrapper">
-      <button
-        class="btn btn-sm btn-outline-secondary"
-        :disabled="currentPage <= 1"
-        @click="goToPage(currentPage - 1)"
-      >
-        Назад
-      </button>
-      <span class="pagination-info">{{ currentPage }} / {{ totalPages }}</span>
-      <button
-        class="btn btn-sm btn-outline-secondary"
-        :disabled="currentPage >= totalPages"
-        @click="goToPage(currentPage + 1)"
-      >
-        Далее
-      </button>
-    </div>
+    <Pagination
+      v-if="totalPages > 1"
+      :model-value="currentPage"
+      :total-pages="totalPages"
+      :total-items="filteredRows.length"
+      :page-size="rowsPerPage"
+      :visible-count="paginatedRows.length"
+      variant="simple"
+      layout="toolbar"
+      @update:model-value="goToPage"
+    />
 
     <ChangeCategoryForm
+      v-if="showEditModal"
       v-model:visible="showEditModal"
       modal-id="roleEdit"
       :row="rowSelected"
@@ -234,6 +268,8 @@ const removeRole = async (roleId) => {
   justify-content: center;
   width: 2rem;
   height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
   border-radius: 0.375rem;
   border: none;
   background: transparent;
@@ -259,6 +295,13 @@ const removeRole = async (roleId) => {
     color: var(--bs-danger, #dc3545);
     background-color: rgba(var(--bs-danger-rgb, 220, 53, 69), 0.08);
   }
+
+  @media (hover: none), (width < $ui-bp-sm) {
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
 }
 
 .empty-state {
@@ -274,17 +317,39 @@ const removeRole = async (roleId) => {
   }
 }
 
-.pagination-wrapper {
+.admin-cards {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   gap: 0.75rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--color-border);
 }
 
-.pagination-info {
-  font-size: 0.8125rem;
-  color: var(--color-secondary-text);
+.admin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-primary-background);
+
+  &__title {
+    font-weight: 600;
+    color: var(--color-primary-text);
+    word-break: break-word;
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__actions {
+    justify-content: flex-end;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--color-border);
+  }
 }
+
 </style>

@@ -69,7 +69,8 @@ const highlights = [
         <div class="app-shell__brand app-shell__brand--centered">
           <p class="app-shell__eyebrow app-shell__eyebrow--date">{{ formattedDate }}</p>
           <h1 class="app-shell__title">
-            <SiteWordmark class="site-wordmark--hero site-wordmark--centered" />
+            <span class="visually-hidden">ERGO MS</span>
+            <SiteWordmark class="site-wordmark--hero site-wordmark--centered" aria-hidden="true" />
           </h1>
           <p class="app-shell__subtitle">
             {{ greeting }}, <span class="app-home__username">{{ userLabel }}</span>!
@@ -124,6 +125,7 @@ const highlights = [
 
 .app-home__highlights {
   animation: app-shell-fade-up 0.8s ease 0.18s both;
+  @include ui-reduced-motion;
 }
 
 .app-home__highlights-list {
@@ -143,6 +145,7 @@ const highlights = [
   border-radius: 1rem;
   background: color-mix(in srgb, var(--color-secondary-background) 55%, var(--color-primary-background));
   animation: app-shell-fade-up 0.55s ease var(--item-delay, 0ms) both;
+  @include ui-reduced-motion;
 }
 
 .app-home__highlight-icon {
@@ -193,7 +196,7 @@ const highlights = [
   color: var(--color-secondary-text);
 }
 
-@media (width < 768px) {
+@media (width < $ui-bp-md) {
   .app-home__highlights-list {
     grid-template-columns: 1fr;
   }

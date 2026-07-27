@@ -1,8 +1,11 @@
 <script setup>
-import SubmitForm from '@/core/cms/adp/admin/GroupsComponent/SubmitGroupsAdd.vue'
+import { ref, defineAsyncComponent } from 'vue'
 import SearchInput from '@/components/SearchInput.vue'
 import { Plus } from 'lucide-vue-next'
-import { ref } from 'vue'
+
+const SubmitForm = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/GroupsComponent/SubmitGroupsAdd.vue'),
+)
 
 const emit = defineEmits(['updateGroups', 'searchRowData'])
 const showAddModal = ref(false)
@@ -24,7 +27,7 @@ const updateGroups = () => {
         <Plus :size="16" />
         <span>Добавить группу</span>
       </button>
-      <SubmitForm v-model:visible="showAddModal" modal-id="groupAdd" @add-group="updateGroups()" />
+      <SubmitForm v-if="showAddModal" v-model:visible="showAddModal" modal-id="groupAdd" @add-group="updateGroups()" />
     </div>
   </div>
 </template>

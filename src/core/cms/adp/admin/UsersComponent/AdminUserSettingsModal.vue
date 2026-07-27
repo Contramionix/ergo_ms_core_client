@@ -371,7 +371,7 @@ const requestDelete = async () => {
   padding: 0.875rem 1rem;
   border-bottom: 1px solid var(--color-border);
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
@@ -405,7 +405,7 @@ const requestDelete = async () => {
     margin-top: 0;
   }
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     align-items: stretch;
   }
 }
@@ -437,7 +437,7 @@ const requestDelete = async () => {
     padding-top: 0;
   }
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     max-width: none;
     padding-top: 0;
   }
@@ -459,7 +459,7 @@ const requestDelete = async () => {
   width: auto;
   padding-top: 0.35rem;
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     align-items: stretch;
     padding-top: 0;
   }
@@ -471,7 +471,7 @@ const requestDelete = async () => {
   margin-top: 0.375rem;
   text-align: right;
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     text-align: left;
   }
 }

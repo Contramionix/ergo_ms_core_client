@@ -334,7 +334,7 @@ const handleCreate = async () => {
   padding: 0.875rem 1rem;
   border-bottom: 1px solid var(--color-border);
 
-  @media (max-width: 575.98px) {
+  @media (width < $ui-bp-sm) {
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;

@@ -338,6 +338,13 @@
   }
 }
 
+@media (width < $ui-shell-desktop-min) {
+  .side-menu {
+    top: 56px;
+    height: calc(100dvh - 56px);
+  }
+}
+
 .side-divider {
   @include flex-row-gap($padding-internal, center);
   padding: $padding-internal $padding-external;

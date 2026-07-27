@@ -263,7 +263,7 @@ const showSuccessMessage = () => {
 
     <template v-else>
       <div class="auth-page__header">
-        <h2 class="auth-page__title">{{ pageTitle }}</h2>
+        <h1 class="auth-page__title">{{ pageTitle }}</h1>
         <p class="auth-page__description">{{ pageDescription }}</p>
       </div>
 

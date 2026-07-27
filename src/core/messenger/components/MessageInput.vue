@@ -5,20 +5,25 @@
     <div v-if="editingMessage" class="msng-input__edit-bar">
       <Pencil :size="14" class="msng-input__edit-icon" />
       <span class="msng-input__edit-text">{{ editPreviewText }}</span>
-      <button type="button" class="btn btn-link p-0 msng-input__edit-close" @click="cancelEdit">
-        <X :size="16" />
+      <button type="button" class="btn btn-link p-0 msng-input__edit-close" aria-label="Отменить редактирование" @click="cancelEdit">
+        <X :size="16" aria-hidden="true" />
       </button>
     </div>
 
     <div v-if="editingMessage && keptAttachments.length > 0" class="msng-input__edit-attachments">
       <div v-for="att in keptAttachments" :key="att.id" class="msng-input__edit-att">
-        <img v-if="isImageAtt(att.mime_type) && getSafeHref(att.file_url)" :src="getSafeHref(att.file_url)" class="msng-input__edit-att-thumb" :alt="att.original_filename"/>
+        <ContentImage
+          v-if="isImageAtt(att.mime_type) && getSafeHref(att.file_url)"
+          :src="getSafeHref(att.file_url)"
+          :alt="att.original_filename || 'Вложение'"
+          class="msng-input__edit-att-thumb"
+        />
         <div v-else class="msng-input__edit-att-icon">
           <FileText :size="20" />
         </div>
         <span class="msng-input__edit-att-name" :title="att.original_filename">{{ att.original_filename }}</span>
-        <button type="button" class="btn btn-link p-0 msng-input__edit-att-remove" @click="markAttachmentRemoved(att.id)">
-          <X :size="14" />
+        <button type="button" class="btn btn-link p-0 msng-input__edit-att-remove" aria-label="Убрать вложение" @click="markAttachmentRemoved(att.id)">
+          <X :size="14" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -29,27 +34,27 @@
         <span class="msng-input__reply-author">{{ replyAuthorName }}</span>
         <span class="msng-input__reply-text">{{ replyPreviewText }}</span>
       </div>
-      <button type="button" class="btn btn-link p-0 msng-input__reply-close" @click="cancelReply">
-        <X :size="16" />
+      <button type="button" class="btn btn-link p-0 msng-input__reply-close" aria-label="Отменить ответ" @click="cancelReply">
+        <X :size="16" aria-hidden="true" />
       </button>
     </div>
 
     <div class="msng-input__row">
-      <button type="button" class="btn btn-link p-0 msng-input__btn" :disabled="disabled" title="Прикрепить файл" @click="triggerFileInput">
-        <Paperclip :size="18" />
+      <button type="button" class="btn btn-link p-0 msng-input__btn" :disabled="disabled" title="Прикрепить файл" aria-label="Прикрепить файл" @click="triggerFileInput">
+        <Paperclip :size="18" aria-hidden="true" />
       </button>
 
       <div class="msng-input__field-wrap">
         <textarea ref="textareaRef" v-model="text" class="form-control msng-input__textarea" :placeholder="editingMessage ? 'Редактирование сообщения...' : 'Введите сообщение...'" :disabled="disabled" rows="1" @input="autoResize" @keydown="onKeydown"/>
       </div>
 
-      <button type="button" class="btn btn-link p-0 msng-input__btn" :disabled="disabled" title="Эмодзи" @click="toggleEmoji">
-        <Smile :size="18" />
+      <button type="button" class="btn btn-link p-0 msng-input__btn" :disabled="disabled" title="Эмодзи" aria-label="Эмодзи" @click="toggleEmoji">
+        <Smile :size="18" aria-hidden="true" />
       </button>
 
-      <button type="button" class="btn btn-link p-0 msng-input__btn msng-input__btn--send" :disabled="sendDisabled" :title="editingMessage ? 'Сохранить' : 'Отправить'" @click="handleSend">
-        <Check v-if="editingMessage" :size="18" />
-        <SendHorizonal v-else :size="18" />
+      <button type="button" class="btn btn-link p-0 msng-input__btn msng-input__btn--send" :disabled="sendDisabled" :title="editingMessage ? 'Сохранить' : 'Отправить'" :aria-label="editingMessage ? 'Сохранить' : 'Отправить'" @click="handleSend">
+        <Check v-if="editingMessage" :size="18" aria-hidden="true" />
+        <SendHorizonal v-else :size="18" aria-hidden="true" />
       </button>
     </div>
 
@@ -63,6 +68,7 @@
 import { ref, watch, nextTick, computed } from 'vue'
 import { Paperclip, Smile, SendHorizonal, Pencil, X, Check, FileText, CornerDownLeft } from 'lucide-vue-next'
 import { getSafeHref } from '@/js/utils/urlUtils.js'
+import ContentImage from '@/components/ContentImage.vue'
 import AttachmentPreview from './AttachmentPreview.vue'
 import EmojiPicker from './EmojiPicker.vue'
 
@@ -318,7 +324,8 @@ function onEmojiSelect(emoji) {
     max-width: 180px;
   }
 
-  &__edit-att-thumb {
+  &__edit-att-thumb,
+  :deep(.msng-input__edit-att-thumb) {
     width: 32px;
     height: 32px;
     object-fit: cover;
