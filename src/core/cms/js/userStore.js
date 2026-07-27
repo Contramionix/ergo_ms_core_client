@@ -11,7 +11,7 @@ import {
   clearSessionBootstrapCache,
   setSessionBootstrapCache,
 } from '@/core/cms/js/sessionBootstrapCache.js'
-import { invalidateAdminAccessCache } from '@/core/cms/adp/admin/js/adminAccessApi.js'
+import { invalidateAdminAccessCache } from '@/core/cms/adp/admin/js/adminAccessCache.js'
 import { applyRealtimeConfigFromApi } from '@/js/realtime/config.js'
 import {
   ensureAvatarDisplaySrc,

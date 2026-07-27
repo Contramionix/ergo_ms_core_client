@@ -5,29 +5,25 @@
 import { apiClient } from '@/js/api/manager.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import { getSessionBootstrapCache } from '@/core/cms/js/sessionBootstrapCache.js'
+import {
+  getAdminAccessCache,
+  invalidateAdminAccessCache,
+  setAdminAccessCache,
+} from '@/core/cms/adp/admin/js/adminAccessCache.js'
+import { whenSessionReady } from '@/js/sessionReady.js'
 
-const ADMIN_ACCESS_CACHE_TTL = 60 * 1000
-
-let cachedAdminAccess = null
-let adminAccessFetchedAt = 0
-
-export function invalidateAdminAccessCache() {
-  cachedAdminAccess = null
-  adminAccessFetchedAt = 0
-}
+export { invalidateAdminAccessCache }
 
 function readAccessFromBootstrap() {
   const bootstrap = getSessionBootstrapCache()
   if (bootstrap && typeof bootstrap.access_to_panel === 'boolean') {
-    cachedAdminAccess = { access_to_panel: bootstrap.access_to_panel }
-    adminAccessFetchedAt = Date.now()
-    return cachedAdminAccess
+    return setAdminAccessCache({ access_to_panel: bootstrap.access_to_panel })
   }
   return null
 }
 
 /**
- * Доступ к админ-панели — из session-bootstrap / TTL-кеша / userStore.
+ * Доступ к админ-панели — из session-bootstrap / TTL-кеша.
  * На F5 guard часто бежит раньше bootstrap: ждём whenSessionReady,
  * иначе ложный false → /access-denied.
  */
@@ -37,13 +33,12 @@ export async function checkAccessToAdminPanel() {
     return fromBootstrap
   }
 
-  const now = Date.now()
-  if (cachedAdminAccess && now - adminAccessFetchedAt < ADMIN_ACCESS_CACHE_TTL) {
-    return cachedAdminAccess
+  const cached = getAdminAccessCache()
+  if (cached) {
+    return cached
   }
 
   try {
-    const { whenSessionReady } = await import('@/js/bootstrapSession.js')
     await whenSessionReady()
   } catch {
     /* bootstrap недоступен */
@@ -52,19 +47,6 @@ export async function checkAccessToAdminPanel() {
   const afterReady = readAccessFromBootstrap()
   if (afterReady) {
     return afterReady
-  }
-
-  try {
-    // Динамический import — без цикла с userStore → invalidateAdminAccessCache.
-    const { useUserStore } = await import('@/core/cms/js/userStore.js')
-    const userStore = useUserStore()
-    if (userStore.isInitialized && typeof userStore.accessToPanel === 'boolean') {
-      cachedAdminAccess = { access_to_panel: Boolean(userStore.accessToPanel) }
-      adminAccessFetchedAt = Date.now()
-      return cachedAdminAccess
-    }
-  } catch {
-    /* pinia ещё не готов */
   }
 
   return { access_to_panel: false }

@@ -9,6 +9,7 @@ import {
   saveThemeToLocalStorage,
   THEME_MODES,
 } from '@/js/theme-manager.js'
+import { whenSessionReady } from '@/js/sessionReady.js'
 
 function normalizeThemePayload(data) {
   if (!data || typeof data !== 'object') {
@@ -42,7 +43,6 @@ export async function syncSiteThemeFromApi() {
   await initEndpoints()
   // Access только в памяти: на F5 сначала restoreSession, иначе active/ без JWT
   // вернёт стандарт сайта и затрёт личную палитру в localStorage.
-  const { whenSessionReady } = await import('@/js/bootstrapSession.js')
   await whenSessionReady()
   try {
     // needToken=true: для авторизованного — личная палитра; без токена — стандарт сайта.

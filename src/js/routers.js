@@ -17,6 +17,7 @@ import { isExpired } from '@/core/cms/js/tokenStorage.js'
 import { accessDeniedState } from './accessDeniedState'
 import { finishRouteProgress, startRouteProgress } from '@/js/routeProgressState.js'
 import { runSessionScopeGuard } from '@/js/session/sessionScopeGuard.js'
+import { whenSessionReady } from '@/js/sessionReady.js'
 
 let cachedPermissionRules = null
 let cachedRouteGuards = null
@@ -231,7 +232,6 @@ function setupRouterGuards(router) {
       // requiresGlobalAdmin и ADP дают ложный AccessDenied.
       if (from === START_LOCATION && (to.meta?.requiresAuth || to.meta?.requiresGlobalAdmin)) {
         try {
-          const { whenSessionReady } = await import('@/js/bootstrapSession.js')
           await whenSessionReady()
         } catch {
           /* гость / bootstrap недоступен — дальше отработают проверки доступа */
