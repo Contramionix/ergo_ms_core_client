@@ -1,7 +1,9 @@
 <script setup>
 import { computed } from 'vue'
+import { useUiModes } from '@/composables/useUiModes.js'
 
 const BOOTSTRAP_VARIANTS = ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'light', 'dark']
+const DEFAULT_LOADING_TEXT = 'Загрузка...'
 
 const props = defineProps({
   loadingText: {
@@ -17,6 +19,16 @@ const props = defineProps({
     type: String,
     default: 'default' // default | button
   }
+})
+
+const { reducedMotionActive } = useUiModes()
+
+const showRing = computed(() => !reducedMotionActive.value)
+
+const displayText = computed(() => {
+  if (props.loadingText) return props.loadingText
+  if (reducedMotionActive.value) return DEFAULT_LOADING_TEXT
+  return ''
 })
 
 const ringClass = computed(() => {
@@ -42,14 +54,21 @@ const ringStyle = computed(() => {
     :class="[`spinner-loading--variant-${props.variant}`]"
   >
     <div
+      v-if="showRing"
       class="spinner-loading__ring"
       :class="ringClass"
       :style="ringStyle"
       role="status"
       aria-label="Загрузка"
     />
-    <p v-if="loadingText" class="spinner-loading__text">
-      {{ loadingText }}
+    <p
+      v-if="displayText"
+      class="spinner-loading__text"
+      :class="{ 'spinner-loading__text--solo': !showRing }"
+      role="status"
+      aria-live="polite"
+    >
+      {{ displayText }}
     </p>
   </div>
 </template>
@@ -86,6 +105,12 @@ const ringStyle = computed(() => {
   color: var(--bs-body-color);
   margin: 0;
   text-align: center;
+}
+
+.spinner-loading__text--solo {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--ui-text-muted, var(--color-secondary-text, var(--bs-secondary-color)));
 }
 
 @keyframes spinner-loading-spin {

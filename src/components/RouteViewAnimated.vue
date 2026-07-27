@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import ModuleThemeScope from '@/components/ModuleThemeScope.vue'
+import { useUiModes } from '@/composables/useUiModes.js'
 
 defineProps({
   keepAliveMax: { type: Number, default: 15 },
@@ -9,6 +10,7 @@ defineProps({
 })
 
 const route = useRoute()
+const { reducedMotionActive } = useUiModes()
 
 const moduleKey = computed(() => route.meta?.moduleKey || null)
 
@@ -33,7 +35,7 @@ function cachedRouteKey(activeRoute) {
 
 <template>
   <RouterView v-slot="{ Component, route: activeRoute }">
-    <Transition name="layout-route">
+    <Transition name="layout-route" :css="!reducedMotionActive">
       <div :key="cachedRouteKey(activeRoute)" class="layout-route-view">
         <ModuleThemeScope :module-key="activeRoute.meta?.moduleKey || moduleKey">
           <KeepAlive v-if="useKeepAlive" :max="keepAliveMax">

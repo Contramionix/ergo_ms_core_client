@@ -84,10 +84,10 @@ defineEmits(['save', 'cancel'])
   --unsaved-toast-muted-color: rgba(255, 255, 255, 0.75);
 
   position: fixed;
-  bottom: 32px;
+  bottom: calc(32px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translate(-50%, 0);
-  width: min(640px, calc(100% - 32px));
+  width: min(640px, calc(100% - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
   padding: 16px 20px;
   border-radius: 16px;
   background-color: var(--unsaved-toast-bg);

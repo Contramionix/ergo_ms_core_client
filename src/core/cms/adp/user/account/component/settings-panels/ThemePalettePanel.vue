@@ -214,12 +214,18 @@ onMounted(() => {
   gap: 0.35rem;
   font-weight: 400;
   font-size: 0.8125rem;
+  line-height: 1;
   min-height: 30px;
   padding: 0.25rem 0.65rem;
   background: var(--color-primary-background);
   color: var(--color-primary-text);
   border: 1px solid var(--color-border);
   border-radius: 0.375rem;
+
+  :deep(svg) {
+    display: block;
+    flex-shrink: 0;
+  }
 
   &:hover:not(:disabled) {
     background: var(--color-secondary-background);

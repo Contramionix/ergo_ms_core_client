@@ -1,5 +1,6 @@
 /**
  * Ранняя маска загрузки и режимы UI — до основного бандла (см. index.html, bootstrapMask.js).
+ * Сборка: hashed /assets/bootstrap-early-*.js (immutable); dev: middleware /js/bootstrap-early.js.
  */
 document.documentElement.classList.add('app-bootstrapping')
 
@@ -72,7 +73,7 @@ document.documentElement.classList.add('app-bootstrapping')
   }
 })()
 
-const loader = document.getElementById('ergo-boot-loader')
+var loader = document.getElementById('ergo-boot-loader')
 if (loader) {
   loader.hidden = false
   loader.setAttribute('aria-busy', 'true')

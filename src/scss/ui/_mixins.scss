@@ -32,8 +32,8 @@
   }
 }
 
-// Гасит движение у декораций. Для индикаторов загрузки не использовать —
-// в reduce у них opacity-пульс (см. ui/_modes.scss, data-ergo-motion-safe="pulse").
+// Гасит движение у декораций. Для лоадеров не использовать —
+// в reduce SpinnerLoading показывает текст «Загрузка...» (кружок скрыт в ui/_modes.scss).
 @mixin ui-reduced-motion {
   html[data-ergo-motion='reduce'] & {
     animation: none !important;

@@ -25,6 +25,24 @@ let sessionRestoreResolved = null
  */
 let serverLogoutPromise = null
 let logoutFinalized = false
+/** Payload session-bootstrap из успешного token-refresh (один RTT на F5). */
+let pendingSessionBootstrap = null
+
+/**
+ * Забирает bootstrap из последнего token-refresh (если был). Повторный вызов — null.
+ * @returns {object | null}
+ */
+export function takePendingSessionBootstrap() {
+  const data = pendingSessionBootstrap
+  pendingSessionBootstrap = null
+  return data
+}
+
+function storePendingSessionBootstrap(payload) {
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    pendingSessionBootstrap = payload
+  }
+}
 
 export function canAttemptTokenRefresh() {
   if (logoutFinalized || serverLogoutPromise) {
@@ -36,6 +54,7 @@ export function canAttemptTokenRefresh() {
 export function invalidateSessionRestoreCache() {
   sessionRestoreResolved = false
   sessionRestorePromise = null
+  pendingSessionBootstrap = null
   clearSessionHintCookie()
 }
 
@@ -128,6 +147,10 @@ export async function performTokenRefresh() {
         markSessionRestoreResult(false)
         return null
       }
+
+      const bootstrap =
+        response.data?.session_bootstrap ?? response.data?.data?.session_bootstrap
+      storePendingSessionBootstrap(bootstrap)
 
       setTokens(newAccess)
       markSessionRestoreResult(true)

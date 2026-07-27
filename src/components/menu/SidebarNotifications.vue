@@ -259,7 +259,7 @@ async function onDelete(id) {
   transform: translate(-50%, -8px);
   width: 360px;
   max-width: min(360px, 90vw);
-  max-height: min(70vh, calc(100vh - 7rem));
+  max-height: min(70dvh, calc(100dvh - 7rem));
   display: flex;
   flex-direction: column;
   padding: 0;

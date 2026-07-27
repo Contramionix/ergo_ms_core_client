@@ -1,7 +1,11 @@
 .Vue-Toastification__container,
 .ergo-toast-container {
   z-index: 2147483646 !important;
-  padding: 12px;
+  padding: calc(12px + env(safe-area-inset-top, 0px))
+    calc(12px + env(safe-area-inset-right, 0px))
+    calc(12px + env(safe-area-inset-bottom, 0px))
+    calc(12px + env(safe-area-inset-left, 0px));
+  box-sizing: border-box;
 }
 
 // Дикторы: контейнер тостов — live region (vue-toastification + assist mode)

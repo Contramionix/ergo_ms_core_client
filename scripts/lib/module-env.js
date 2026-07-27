@@ -71,7 +71,7 @@ export function mergeModuleEnv(modulesRoot, baseEnv) {
       Object.assign(merged, parsed)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      console.warn(`⚠️  Не удалось прочитать .env модуля: ${filePath}`, message)
+      console.warn(`Не удалось прочитать .env модуля: ${filePath}`, message)
     }
   }
 

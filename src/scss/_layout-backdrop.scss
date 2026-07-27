@@ -62,7 +62,7 @@
 
 @media (width < $ui-shell-desktop-min) {
   .layout-backdrop--menu-offset {
-    top: 56px;
+    top: var(--shell-mobile-header-offset);
     left: 0;
   }
 }

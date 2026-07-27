@@ -73,8 +73,13 @@ async function runAction(actionId) {
       :disabled="Boolean(executingId)"
       @click="runAction(action.id)"
     >
-      <span v-if="executingId === action.id" class="spinner-border spinner-border-sm" role="status" />
-      <span v-else>{{ action.label }}</span>
+      <span
+        v-if="executingId === action.id"
+        class="spinner-border spinner-border-sm me-1"
+        role="status"
+        aria-hidden="true"
+      />
+      <span>{{ executingId === action.id ? 'Загрузка...' : action.label }}</span>
     </button>
   </div>
   <div v-else-if="notification.actions_state === 'resolved'" class="notification-actions__resolved text-muted small">

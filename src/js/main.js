@@ -16,7 +16,6 @@ import App from '@/App.vue'
 import { initEndpoints } from '@/js/api/endpoints.js'
 import { hideBootstrapMask } from '@/js/bootstrapMask.js'
 import { DEFAULT_SITE_NAME } from '@/js/siteWordmark.js'
-import { useUserStore } from '@/core/cms/js/userStore.js'
 import { bootstrapAppSession } from '@/js/bootstrapSession.js'
 import { initTheme } from '@/js/theme-manager.js'
 import { initUiPreferences } from '@/js/uiPreferences.js'
@@ -59,8 +58,8 @@ Promise.all([initEndpoints(), initRouter()])
     app.use(router)
     app.mount('#app')
 
+    // warmupAvatar — после applySessionBootstrapData (на F5 avatarUrl ещё null)
     void bootstrapAppSession()
-    useUserStore().warmupAvatar()
 
     void import('@/js/theme-service.js')
       .then(({ syncSiteThemeFromApi }) => syncSiteThemeFromApi())

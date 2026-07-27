@@ -114,10 +114,8 @@ watch(isOpen, async (newValue) => {
             <small class="text-muted text-truncate d-block">{{ userEmail }}</small>
           </div>
         </div>
-        <div v-if="userStore.isLoading" class="mt-1">
-          <div class="spinner-border spinner-border-sm text-primary" role="status">
-            <span class="visually-hidden">Загрузка...</span>
-          </div>
+        <div v-if="userStore.isLoading" class="mt-1 text-muted small" role="status" aria-live="polite">
+          Загрузка...
         </div>
       </li>
       <li v-for="(item, index) in menuItems" :key="item.id">

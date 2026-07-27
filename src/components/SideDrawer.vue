@@ -284,15 +284,18 @@ $drawer-anchor-transition: 0.3s ease-in-out;
 @media (width < $ui-shell-desktop-min) {
   .side-drawer-backdrop,
   .side-drawer {
-    top: 56px;
+    top: var(--shell-mobile-header-offset);
     left: 0;
-    width: 100vw;
-    height: calc(100dvh - 56px);
+    width: 100%;
+    height: calc(100dvh - var(--shell-mobile-header-offset));
     border-radius: 0;
   }
 
-  .side-drawer-backdrop {
-    width: 100vw;
+  .side-drawer {
+    box-sizing: border-box;
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 </style>

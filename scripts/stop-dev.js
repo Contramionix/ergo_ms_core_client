@@ -29,7 +29,7 @@ async function main() {
     })
 
     if (devProcesses.length === 0) {
-      console.log('✓ Vite dev сервер не найден')
+      console.log('Vite dev сервер не найден')
       process.exit(0)
     }
 
@@ -41,15 +41,15 @@ async function main() {
       const success = await killProcess(proc.pid)
       if (success) {
         stoppedCount++
-        console.log(`✓ Процесс ${proc.pid} успешно остановлен`)
+        console.log(`Процесс ${proc.pid} успешно остановлен`)
       }
     }
 
     if (stoppedCount > 0) {
-      console.log(`\n✓ Остановлено процессов: ${stoppedCount}`)
+      console.log(`\nОстановлено процессов: ${stoppedCount}`)
       process.exit(0)
     } else {
-      console.log('\n✗ Не удалось остановить процессы')
+      console.log('\nНе удалось остановить процессы')
       process.exit(1)
     }
   } catch (error) {

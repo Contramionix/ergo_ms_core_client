@@ -83,7 +83,7 @@ const mainEnvPath = path.resolve(__dirname, '../../.env')
 if (fs.existsSync(mainEnvPath)) {
   dotenv.config({ path: mainEnvPath })
 } else {
-  console.warn('⚠️  Файл .env не найден в корне проекта:', mainEnvPath)
+  console.warn('Файл .env не найден в корне проекта:', mainEnvPath)
 }
 
 const env = mergeModuleEnv(modulesRoot, process.env)
@@ -315,8 +315,65 @@ function resolveManualChunk(id) {
   return undefined
 }
 
+/**
+ * Blocking classic script до module-бандла.
+ * Build: raw asset с content-hash в /assets/ (immutable).
+ * Dev: middleware на /js/bootstrap-early.js из src (без HMR-обёртки).
+ */
+function bootstrapEarlyAssetPlugin() {
+  const earlySrc = path.resolve(__dirname, 'src/js/bootstrap-early.js')
+  const devUrl = '/js/bootstrap-early.js'
+  // Комментарий вместо <script>: Vite не ругается на classic script без type="module"
+  const placeholderRe = /<!--\s*ergo-bootstrap-early\s*-->/
+
+  return {
+    name: 'bootstrap-early-asset',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url?.split('?')[0]
+        if (url !== devUrl) {
+          next()
+          return
+        }
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
+        res.setHeader('Cache-Control', 'no-store')
+        res.end(fs.readFileSync(earlySrc, 'utf8'))
+      })
+    },
+    buildStart() {
+      this.emitFile({
+        type: 'asset',
+        name: 'bootstrap-early.js',
+        source: fs.readFileSync(earlySrc, 'utf8'),
+      })
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!placeholderRe.test(html)) {
+          throw new Error('bootstrap-early: в index.html нет <!-- ergo-bootstrap-early -->')
+        }
+        let src = devUrl
+        if (!ctx.server) {
+          const asset = ctx.bundle
+            ? Object.values(ctx.bundle).find(
+              (chunk) => chunk.type === 'asset' && chunk.name === 'bootstrap-early.js',
+            )
+            : null
+          if (!asset?.fileName) {
+            throw new Error('bootstrap-early: hashed asset не найден в bundle')
+          }
+          src = asset.fileName.startsWith('/') ? asset.fileName : `/${asset.fileName}`
+        }
+        return html.replace(placeholderRe, `<script src="${src}"></script>`)
+      },
+    },
+  }
+}
+
 const plugins = [
   resolveFromNpmRootPlugin(),
+  bootstrapEarlyAssetPlugin(),
   vue(),
   AutoImport({
     imports: [
@@ -403,7 +460,7 @@ export default defineConfig(() => ({
   css: {
     preprocessorOptions: {
       scss: {
-        additionalData: `@use "@/scss/_inject.scss" as *;\n`,
+        additionalData: `@use "@/scss/_inject.scss"as *;\n`,
         loadPaths: [npmModules],
       },
     },

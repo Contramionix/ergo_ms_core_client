@@ -254,15 +254,18 @@ onBeforeUnmount(() => {
   top: 0;
   left: 0;
   right: 0;
-  height: 56px;
+  height: var(--shell-mobile-header-offset);
+  box-sizing: border-box;
   /* Ниже модалок (1055+) и drawer (1040/1050), выше меню (1005) и overlay (1004) */
   z-index: 1030;
   background: var(--color-header-background);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
-  padding: 0 12px;
+  padding: env(safe-area-inset-top, 0px) 12px 0;
   width: 100%;
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
 
   &__btn {
     width: 44px;
@@ -308,7 +311,8 @@ onBeforeUnmount(() => {
   position: relative;
   z-index: 1;
   min-height: inherit;
-  overflow: clip;
+  overflow-x: clip;
+  overflow-y: visible;
   outline: none;
 }
 
@@ -325,7 +329,8 @@ onBeforeUnmount(() => {
 .layout-content--flush {
   padding: 0;
   max-width: none;
-  overflow: clip;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 .layout-content-shell {
@@ -354,18 +359,36 @@ onBeforeUnmount(() => {
     overflow: hidden;
   }
   .layout-page {
+    box-sizing: border-box;
     padding-inline-start: 0;
     padding-top: 0;
-    /* Фиксированный mobile-header (56px) — контент ниже шапки, не под ней */
-    margin-top: 56px;
-    height: calc(100dvh - 56px);
+    /* Фиксированный mobile-header — контент ниже шапки (с учётом safe-area) */
+    margin-top: var(--shell-mobile-header-offset);
+    height: calc(100dvh - var(--shell-mobile-header-offset));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     overflow: auto;
     overscroll-behavior: contain;
+
+    /* Flush/full-height экраны сами учитывают safe-area (messenger и т.п.) */
+    &:has(.layout-content--flush) {
+      padding-bottom: 0;
+    }
 
     &--full-page {
       margin-top: 0;
       height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
+  }
+
+  .layout-page__content:has(.layout-content--flush) {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .layout-content--flush {
+    height: 100%;
+    min-height: 0;
   }
   :deep(.side-menu__toggle) {
     display: none !important;

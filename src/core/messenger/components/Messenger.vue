@@ -90,6 +90,12 @@ async function handleEditSave({ messageId, text, attachmentIdsToRemove = [], fil
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  box-sizing: border-box;
+
+  @media (width < $ui-shell-desktop-min) {
+    min-height: 100%;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 
   &__loader {
     display: flex;

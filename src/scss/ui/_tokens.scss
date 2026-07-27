@@ -56,6 +56,12 @@
   /* Shell desktop breakpoint (синхрон с SHELL_DESKTOP_MIN / Bootstrap xl). */
   --ui-shell-desktop-min: 1200px;
 
+  /* Compact shell: фиксированная шапка + notch / Dynamic Island. */
+  --shell-mobile-header-base: 56px;
+  --shell-mobile-header-offset: calc(
+    var(--shell-mobile-header-base) + env(safe-area-inset-top, 0px)
+  );
+
   --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
     'Helvetica Neue', sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',

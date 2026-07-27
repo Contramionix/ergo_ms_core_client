@@ -11,6 +11,7 @@ import {
   clearSessionBootstrapCache,
   setSessionBootstrapCache,
 } from '@/core/cms/js/sessionBootstrapCache.js'
+import { takePendingSessionBootstrap } from '@/core/cms/js/tokenRefresh.js'
 import { invalidateAdminAccessCache } from '@/core/cms/adp/admin/js/adminAccessCache.js'
 import { applyRealtimeConfigFromApi } from '@/js/realtime/config.js'
 import {
@@ -131,7 +132,49 @@ export const useUserStore = defineStore('userStore', () => {
       }
     }
   }
-  
+
+  const warmupAvatar = () => {
+    if (!avatarUrl.value) {
+      return
+    }
+    ensureAvatarDisplaySrc(avatarUrl.value).catch(() => {})
+  }
+
+  /** Применяет payload session-bootstrap (из GET или из token-refresh). */
+  const applySessionBootstrapData = async (data) => {
+    if (!data || typeof data !== 'object') {
+      throw new Error('Не удалось загрузить данные сессии')
+    }
+
+    setSessionBootstrapCache(data)
+
+    if (data.user) {
+      updateUserData(data.user)
+    }
+    if (data.profile) {
+      profile.value = profileService.formatProfileData(data.profile)
+    }
+    if (data.avatar_url) {
+      avatarUrl.value = data.avatar_url
+    } else {
+      avatarUrl.value = null
+    }
+    if (data.menu) {
+      await applyMenuBootstrap(data.menu)
+    }
+    if (data.realtime) {
+      applyRealtimeConfigFromApi(data.realtime)
+    }
+    if (data.permissions) {
+      applyPermissionsBootstrap(data.permissions)
+    }
+    accessToPanel.value = Boolean(data.access_to_panel)
+
+    isInitialized.value = true
+    warmupAvatar()
+    return true
+  }
+
   // Агрегированная загрузка сессии (session-bootstrap)
   const loadSessionBootstrap = async () => {
     if (isInitialized.value) {
@@ -144,37 +187,15 @@ export const useUserStore = defineStore('userStore', () => {
     bootstrapPromise = (async () => {
       try {
         isLoading.value = true
-        const response = await apiClient.get(endpoints.auth.sessionBootstrap)
-        if (!response?.success) {
-          throw new Error('Не удалось загрузить данные сессии')
+        let data = takePendingSessionBootstrap()
+        if (!data) {
+          const response = await apiClient.get(endpoints.auth.sessionBootstrap)
+          if (!response?.success) {
+            throw new Error('Не удалось загрузить данные сессии')
+          }
+          data = response.data || response
         }
-
-        const data = response.data || response
-        setSessionBootstrapCache(data)
-
-        if (data.user) {
-          updateUserData(data.user)
-        }
-        if (data.profile) {
-          profile.value = profileService.formatProfileData(data.profile)
-        }
-        if (data.avatar_url) {
-          avatarUrl.value = data.avatar_url
-        } else {
-          avatarUrl.value = null
-        }
-        if (data.menu) {
-          await applyMenuBootstrap(data.menu)
-        }
-        if (data.realtime) {
-          applyRealtimeConfigFromApi(data.realtime)
-        }
-        if (data.permissions) {
-          applyPermissionsBootstrap(data.permissions)
-        }
-        accessToPanel.value = Boolean(data.access_to_panel)
-
-        isInitialized.value = true
+        await applySessionBootstrapData(data)
         return true
       } catch (error) {
         logError('Ошибка загрузки session-bootstrap:', error)
@@ -344,13 +365,6 @@ export const useUserStore = defineStore('userStore', () => {
     } finally {
       isLoading.value = false
     }
-  }
-
-  const warmupAvatar = () => {
-    if (!avatarUrl.value) {
-      return
-    }
-    ensureAvatarDisplaySrc(avatarUrl.value).catch(() => {})
   }
 
   return {

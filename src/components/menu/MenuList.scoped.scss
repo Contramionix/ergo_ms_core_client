@@ -340,8 +340,12 @@
 
 @media (width < $ui-shell-desktop-min) {
   .side-menu {
-    top: 56px;
-    height: calc(100dvh - 56px);
+    box-sizing: border-box;
+    top: var(--shell-mobile-header-offset);
+    height: calc(100dvh - var(--shell-mobile-header-offset));
+    padding-bottom: max(#{$padding-external}, env(safe-area-inset-bottom, 0px));
+    padding-left: max(#{$padding-external}, env(safe-area-inset-left, 0px));
+    padding-right: max(#{$padding-external}, env(safe-area-inset-right, 0px));
   }
 }
 
