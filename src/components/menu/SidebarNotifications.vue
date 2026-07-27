@@ -219,15 +219,18 @@ async function onDelete(id) {
 
 .notifications-btn {
   position: relative;
-  min-width: 44px;
-  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: none;
-  background: transparent;
+  background-color: transparent;
   cursor: pointer;
   color: inherit;
+
+  // Scoped background перекрывает глобальный .header-btn:hover — повторяем здесь.
+  &:hover {
+    background-color: var(--color-hover-background);
+  }
 
   &:focus-visible {
     outline: 2px solid var(--color-accent, var(--bs-primary));
@@ -238,8 +241,8 @@ async function onDelete(id) {
 
 .notifications-badge {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 0;
+  right: 0;
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
