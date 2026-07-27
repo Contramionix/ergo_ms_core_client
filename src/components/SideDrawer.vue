@@ -126,7 +126,9 @@ watch(isPanelOpen, async (open) => {
   }
   await nextTick()
   deactivateFocusTrap?.()
-  deactivateFocusTrap = activateFocusTrap(panelRef.value)
+  deactivateFocusTrap = activateFocusTrap(panelRef.value, {
+    initialFocus: panelRef.value,
+  })
 })
 
 onBeforeUnmount(() => {
@@ -264,6 +266,10 @@ $drawer-anchor-transition: 0.3s ease-in-out;
   gap: 0.75rem;
   padding: 1rem 1rem 0.5rem;
   background-color: var(--bs-card-bg);
+
+  .btn-close:focus {
+    box-shadow: none;
+  }
 }
 
 .side-drawer__title {
