@@ -20,6 +20,8 @@ import { ChevronRight, Dot } from 'lucide-vue-next'
 import { computed, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { iconMapping } from '@/config/icons-mapping.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { resolveMenuItemTitle } from '@/i18n/resolveMenuItemTitle.js'
 import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
 import { isMenuItemActive } from './composables/isMenuItemActive.js'
 import { canNavigateToRoute, isSameMenuRoutePath, safeNavigateByName } from './composables/safeMenuNavigate.js'
@@ -36,10 +38,16 @@ const props = defineProps({
 
 const router = useRouter()
 const route = useRoute()
+const { locale } = useAppI18n()
 const emit = defineEmits(['navigate', 'toggle-group'])
 
 const injectedIconSizes = inject(MENU_ICON_SIZES_KEY, null)
 const iconSizes = computed(() => injectedIconSizes?.value ?? getDefaultMenuIconSizes())
+
+const displayTitle = computed(() => {
+  void locale.value
+  return resolveMenuItemTitle(props.item, router)
+})
 
 const groupId = computed(() => buildMenuItemGroupId(props.item, props.level))
 
@@ -173,9 +181,9 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
           <Dot v-else :size="iconSizes.item" />
         </div>
         <MenuPeekLabel
-          :text="item.name || item.title"
+          :text="displayTitle"
           :visible="isHovering"
-          :title="item.name || item.title"
+          :title="displayTitle"
           class="menu-item__name"
         />
       </div>

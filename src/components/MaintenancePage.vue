@@ -1,17 +1,23 @@
 <script setup>
+import { computed } from 'vue'
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import SkipLink from '@/components/SkipLink.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
-defineProps({
+const { t } = useAppI18n()
+
+const props = defineProps({
   detail: {
     type: String,
-    default: 'Система временно недоступна. Мы проводим обновление и скоро вернёмся.',
+    default: undefined,
   },
   overlay: {
     type: Boolean,
     default: false,
   },
 })
+
+const resolvedDetail = computed(() => props.detail ?? t('components.maintenance.detail'))
 </script>
 
 <template>
@@ -33,16 +39,16 @@ defineProps({
     <section class="maintenance-page__card">
       <SiteWordmark class="site-wordmark--hero site-wordmark--centered maintenance-page__wordmark" />
 
-      <p class="maintenance-page__badge">Технические работы</p>
-      <h1 class="maintenance-page__title">Скоро вернёмся</h1>
-      <p class="maintenance-page__text">{{ detail }}</p>
+      <p class="maintenance-page__badge">{{ t('components.maintenance.badge') }}</p>
+      <h1 class="maintenance-page__title">{{ t('components.maintenance.title') }}</h1>
+      <p class="maintenance-page__text">{{ resolvedDetail }}</p>
 
       <div class="maintenance-page__progress" aria-hidden="true">
         <span class="maintenance-page__progress-bar" data-ergo-motion-safe="pulse" />
       </div>
 
       <p class="maintenance-page__hint">
-        Страница обновится автоматически, когда система снова станет доступна.
+        {{ t('components.maintenance.hint') }}
       </p>
     </section>
   </main>

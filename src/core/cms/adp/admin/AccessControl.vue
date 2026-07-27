@@ -1,6 +1,7 @@
 <script setup>
 import { computed, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const AccessControlPoliciesTab = defineAsyncComponent(() =>
   import('@/core/cms/adp/admin/AccessControlComponents/AccessControlPoliciesTab.vue'),
@@ -9,17 +10,19 @@ const AccessControlModulePermissionsTab = defineAsyncComponent(() =>
   import('@/core/cms/adp/admin/AccessControlComponents/AccessControlModulePermissionsTab.vue'),
 )
 
-const TABS = [
-  { id: 'policies', label: 'Доступ к маршрутам' },
-  { id: 'modules', label: 'Модульные права' },
-]
+const { t } = useAppI18n()
+
+const tabs = computed(() => [
+  { id: 'policies', label: t('admin.access.tabPolicies') },
+  { id: 'modules', label: t('admin.access.tabModules') },
+])
 
 const route = useRoute()
 const router = useRouter()
 
 const activeTab = computed(() => {
   const tab = typeof route.query.tab === 'string' ? route.query.tab : 'policies'
-  return TABS.some((item) => item.id === tab) ? tab : 'policies'
+  return tabs.value.some((item) => item.id === tab) ? tab : 'policies'
 })
 
 function selectTab(tabId) {
@@ -37,14 +40,14 @@ function selectTab(tabId) {
 <template>
   <div class="access-control d-flex flex-column gap-4">
     <div class="access-control__header">
-      <h2 class="access-control__title">Доступ и права</h2>
+      <h2 class="access-control__title">{{ t('admin.access.title') }}</h2>
       <p class="access-control__subtitle">
-        Настройка доступа к маршрутам и прав модулей для ролей и ролевых групп.
+        {{ t('admin.access.subtitle') }}
       </p>
     </div>
 
     <ul class="nav nav-tabs access-control__tabs" role="tablist">
-      <li v-for="tab in TABS" :key="tab.id" class="nav-item" role="presentation">
+      <li v-for="tab in tabs" :key="tab.id" class="nav-item" role="presentation">
         <button
           type="button"
           class="nav-link"

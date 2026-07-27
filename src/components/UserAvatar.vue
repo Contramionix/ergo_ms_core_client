@@ -1,17 +1,17 @@
 <template>
   <div class="user-avatar-wrap" :style="avatarStyle">
-    <div class="user-avatar" :class="{ 'user-avatar--clickable': clickable }" :title="title">
+    <div class="user-avatar" :class="{ 'user-avatar--clickable': clickable }" :title="resolvedTitle">
       <ContentImage
         v-if="showPhoto"
         :src="readyPhotoSrc"
-        :alt="title"
+        :alt="resolvedTitle"
         class="user-avatar-image"
         loading="eager"
         decoding="async"
         @error="onImageError"
       />
       <div v-else-if="isAvatarPending" class="user-avatar-placeholder" aria-hidden="true" />
-      <DefaultAvatar v-else :size="size" :clickable="clickable" :title="title" :first-name="effectiveFirstName" :last-name="effectiveLastName" :color-key="avatarColorKey"/>
+      <DefaultAvatar v-else :size="size" :clickable="clickable" :title="resolvedTitle" :first-name="effectiveFirstName" :last-name="effectiveLastName" :color-key="avatarColorKey"/>
     </div>
     <PresenceIndicator v-if="showOnlineStatus" :visible="isKnown" :is-online="isOnline" :last-seen="lastSeen" :show-tooltip="showPresenceTooltip" :size="size"/>
   </div>
@@ -27,7 +27,9 @@ import { usePresenceStatus } from '@/core/cms/adp/js/presence/usePresenceStatus.
 import { getUserPublicInfoByRef, getCachedUserPublicInfoByRef, invalidateUserPublicInfoByRef, } from '@/js/userAvatar'
 import { avatarCacheKey, ensureAvatarDisplaySrc, invalidateAvatar, peekAvatarDisplaySrc, } from '@/js/avatarCache.js'
 import { logError } from '@/js/utils/logError.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const { t } = useAppI18n()
 const userStore = useUserStore()
 
 const props = defineProps({
@@ -41,7 +43,7 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: 'Пользователь'
+    default: undefined
   },
   avatarUrl: {
     type: [String, null],
@@ -88,6 +90,8 @@ const avatarStyle = computed(() => ({
   width: `${props.size}px`,
   height: `${props.size}px`
 }))
+
+const resolvedTitle = computed(() => props.title ?? t('common.user'))
 
 const avatarColorKey = computed(() => (props.userRef ? String(props.userRef) : null))
 

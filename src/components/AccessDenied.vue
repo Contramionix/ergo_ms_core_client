@@ -2,8 +2,8 @@
   <div class="access-denied" :class="{ 'access-denied--bordered': bordered }">
     <div class="card shadow-sm">
       <div class="card-body">
-        <h4 class="card-title mb-3">{{ title }}</h4>
-        <p class="mb-4">{{ message }}</p>
+        <h4 class="card-title mb-3">{{ resolvedTitle }}</h4>
+        <p class="mb-4">{{ resolvedMessage }}</p>
 
         <div v-if="showActions" class="d-flex gap-2 flex-wrap">
           <button
@@ -12,7 +12,7 @@
             type="button"
             @click="goBack"
           >
-            {{ backText }}
+            {{ resolvedBackText }}
           </button>
           <button
             v-if="showHome"
@@ -20,7 +20,7 @@
             type="button"
             @click="goHome"
           >
-            {{ homeText }}
+            {{ resolvedHomeText }}
           </button>
         </div>
       </div>
@@ -29,17 +29,20 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   title: {
     type: String,
-    default: 'Доступ ограничен',
+    default: undefined,
   },
   message: {
     type: String,
-    default:
-      'Доступ к этой странице ограничен настройками вашей организации. При необходимости обратитесь к администратору.',
+    default: undefined,
   },
   showActions: {
     type: Boolean,
@@ -55,11 +58,11 @@ const props = defineProps({
   },
   backText: {
     type: String,
-    default: 'Назад',
+    default: undefined,
   },
   homeText: {
     type: String,
-    default: 'На главную',
+    default: undefined,
   },
   homeRouteName: {
     type: String,
@@ -70,6 +73,11 @@ const props = defineProps({
     default: false,
   },
 })
+
+const resolvedTitle = computed(() => props.title ?? t('components.accessDenied.title'))
+const resolvedMessage = computed(() => props.message ?? t('components.accessDenied.description'))
+const resolvedBackText = computed(() => props.backText ?? t('common.back'))
+const resolvedHomeText = computed(() => props.homeText ?? t('components.notFound.goHome'))
 
 const router = useRouter()
 
@@ -106,4 +114,3 @@ const goHome = () => {
   width: 100%;
 }
 </style>
-

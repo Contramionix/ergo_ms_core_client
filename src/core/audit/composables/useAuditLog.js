@@ -10,6 +10,7 @@ import { moduleManager } from '@/modules/index.js'
 import { useToast } from '@/js/utils/toast.js'
 import { logError } from '@/js/utils/logError.js'
 import { buildActorNameVariants, parseErgoFullNameParts } from '@/js/userAvatar.js'
+import { tGlobal } from '@/i18n/index.js'
 
 export const AUDIT_FILTER_MAP = {
   module: 'module',
@@ -20,21 +21,31 @@ export const AUDIT_FILTER_MAP = {
   date_to: 'dateTo',
 }
 
-export const SEVERITY_META = {
-  info: { label: 'Информация', cls: 'audit-severity--info' },
-  security: { label: 'Безопасность', cls: 'audit-severity--security' },
-  critical: { label: 'Критично', cls: 'audit-severity--critical' },
+export function getSeverityMetaMap() {
+  return {
+    info: { label: tGlobal('admin.audit.severityInfo'), cls: 'audit-severity--info' },
+    security: { label: tGlobal('admin.audit.severitySecurity'), cls: 'audit-severity--security' },
+    critical: { label: tGlobal('admin.audit.severityCritical'), cls: 'audit-severity--critical' },
+  }
 }
 
-export const AUDIT_COLUMNS = [
-  { key: 'created_at', label: 'Время', headerStyle: { whiteSpace: 'nowrap' } },
-  { key: 'action', label: 'Действие' },
-  { key: 'actor_label', label: 'Инициатор' },
-  { key: 'entity_label', label: 'Объект', hideBelow: 'md' },
-  { key: 'severity', label: 'Важность', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' }, hideBelow: 'md' },
-  { key: 'ip_address', label: 'IP', hideBelow: 'lg' },
-  { key: 'actions', label: '', headerStyle: { textAlign: 'right' }, cellStyle: { textAlign: 'right' } },
-]
+export function getAuditColumns() {
+  return [
+    { key: 'created_at', label: tGlobal('admin.audit.time'), headerStyle: { whiteSpace: 'nowrap' } },
+    { key: 'action', label: tGlobal('admin.audit.action') },
+    { key: 'actor_label', label: tGlobal('admin.audit.initiator') },
+    { key: 'entity_label', label: tGlobal('admin.audit.object'), hideBelow: 'md' },
+    {
+      key: 'severity',
+      label: tGlobal('admin.audit.severity'),
+      headerStyle: { textAlign: 'center' },
+      cellStyle: { textAlign: 'center' },
+      hideBelow: 'md',
+    },
+    { key: 'ip_address', label: 'IP', hideBelow: 'lg' },
+    { key: 'actions', label: '', headerStyle: { textAlign: 'right' }, cellStyle: { textAlign: 'right' } },
+  ]
+}
 
 function resolveActorQueryParams(actorValue) {
   const value = (actorValue || '').trim()
@@ -191,54 +202,54 @@ export function useAuditLog(options = {}) {
   )
 
   const auditFilterFields = computed(() => [
-    { type: 'heading', label: 'Событие' },
+    { type: 'heading', label: tGlobal('admin.audit.event') },
     {
       type: 'select',
       key: 'module',
-      label: 'Модуль',
+      label: tGlobal('admin.audit.module'),
       options: moduleOptions.value,
       valueKey: 'value',
       labelKey: 'label',
       includeAllOption: true,
-      allLabel: 'Все модули',
+      allLabel: tGlobal('admin.audit.allModules'),
       searchable: true,
     },
     {
       type: 'select',
       key: 'action',
-      label: 'Действие',
+      label: tGlobal('admin.audit.action'),
       options: actionOptions.value,
       valueKey: 'value',
       labelKey: 'label',
       includeAllOption: true,
-      allLabel: 'Все действия',
+      allLabel: tGlobal('admin.audit.allActions'),
       searchable: true,
     },
     {
       type: 'select',
       key: 'severity',
-      label: 'Важность',
+      label: tGlobal('admin.audit.severity'),
       options: severityOptions.value,
       valueKey: 'value',
       labelKey: 'label',
       includeAllOption: true,
-      allLabel: 'Любая важность',
+      allLabel: tGlobal('admin.audit.anySeverity'),
     },
     {
       type: 'select',
       key: 'actor',
-      label: 'Инициатор',
+      label: tGlobal('admin.audit.initiator'),
       options: actorOptions.value,
       valueKey: 'value',
       labelKey: 'label',
       includeAllOption: true,
-      allLabel: 'Все инициаторы',
+      allLabel: tGlobal('admin.audit.allInitiators'),
       searchable: true,
       showOptionAvatars: true,
     },
-    { type: 'heading', label: 'Период' },
-    { type: 'date', key: 'dateFrom', label: 'С' },
-    { type: 'date', key: 'dateTo', label: 'По' },
+    { type: 'heading', label: tGlobal('admin.audit.period') },
+    { type: 'date', key: 'dateFrom', label: tGlobal('admin.audit.dateFrom') },
+    { type: 'date', key: 'dateTo', label: tGlobal('admin.audit.dateTo') },
   ])
 
   const auditFiltersTooltip = computed(() => {
@@ -296,7 +307,8 @@ export function useAuditLog(options = {}) {
   }
 
   function severityMeta(value) {
-    return SEVERITY_META[value] || SEVERITY_META.info
+    const map = getSeverityMetaMap()
+    return map[value] || map.info
   }
 
   function hasDetails(event) {
@@ -307,7 +319,7 @@ export function useAuditLog(options = {}) {
     const ip = (item?.ip_address || '').trim()
     if (!ip) return ''
     const location = (item?.ip_location || '').trim()
-    return location || 'Местоположение неизвестно'
+    return location || tGlobal('admin.audit.locationUnknown')
   }
 
   function hasIpLocationTooltip(item) {
@@ -353,7 +365,7 @@ export function useAuditLog(options = {}) {
       }
     } catch (error) {
       logError('Аудит: не удалось загрузить журнал', error)
-      toast.error('Не удалось загрузить журнал действий')
+      toast.error(tGlobal('admin.audit.loadError'))
     } finally {
       isLoading.value = false
       isRefreshing.value = false
@@ -371,7 +383,7 @@ export function useAuditLog(options = {}) {
       }
     } catch (error) {
       logError('Аудит: не удалось загрузить детали события', error)
-      toast.error('Не удалось загрузить детали события')
+      toast.error(tGlobal('admin.audit.detailsLoadError'))
       showDetailsModal.value = false
       selectedEvent.value = null
     }
@@ -407,7 +419,7 @@ export function useAuditLog(options = {}) {
         true,
       )
       if (!result?.success || !(result.data instanceof Blob)) {
-        toast.error('Не удалось выгрузить журнал')
+        toast.error(tGlobal('admin.audit.exportError'))
         return
       }
       const url = URL.createObjectURL(result.data)
@@ -420,7 +432,7 @@ export function useAuditLog(options = {}) {
       URL.revokeObjectURL(url)
     } catch (error) {
       logError('Аудит: ошибка экспорта', error)
-      toast.error('Не удалось выгрузить журнал')
+      toast.error(tGlobal('admin.audit.exportError'))
     }
   }
 

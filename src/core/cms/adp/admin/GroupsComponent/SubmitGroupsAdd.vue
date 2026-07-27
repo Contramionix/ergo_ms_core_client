@@ -6,6 +6,9 @@ import SelectBox from '@/components/SelectBox.vue'
 import { createRoleGroup, getRoles, updateRoleGroup } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { mapRoleSelectOptions } from '@/core/cms/js/adminSelectOptions.js'
 import { extractApiError } from '@/js/utils/apiErrorMessage.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -25,7 +28,7 @@ const emit = defineEmits(['update:visible', 'addGroup', 'changeGroup'])
 
 const isEditMode = computed(() => props.mode === 'update')
 const modalTitle = computed(() =>
-  isEditMode.value ? 'Редактировать ролевую группу' : 'Добавить новую ролевую группу',
+  isEditMode.value ? t('admin.groups.editTitle') : t('admin.groups.addTitle'),
 )
 const toast = useToast()
 
@@ -44,9 +47,9 @@ const availableRoles = computed(() => roles.value.filter(role => !role.is_system
 const roleSelectOptions = computed(() => mapRoleSelectOptions(availableRoles.value))
 const submitButtonText = computed(() => {
   if (isSubmitting.value) {
-    return 'Сохранение...'
+    return t('common.saving')
   }
-  return isEditMode.value ? 'Изменить' : 'Добавить'
+  return isEditMode.value ? t('common.edit') : t('common.add')
 })
 
 const formId = computed(() => `${props.modalId}-form`)
@@ -56,7 +59,7 @@ const loadRoles = async () => {
     const response = await getRoles()
     roles.value = response
   } catch (error) {
-    toast.error('Не удалось загрузить список ролей')
+    toast.error(t('admin.groups.loadRolesError'))
     logError('getRoles error:', error)
   }
 }
@@ -142,7 +145,7 @@ const submitForm = async () => {
 
     if (isEditMode.value) {
       await updateRoleGroup(groupId.value, payload)
-      toast.success('Ролевая группа успешно обновлена')
+      toast.success(t('admin.groups.updated'))
       emit('changeGroup')
       syncWithGroup({
         ...payload,
@@ -150,7 +153,7 @@ const submitForm = async () => {
       })
     } else {
       await createRoleGroup(payload)
-      toast.success('Ролевая группа успешно создана')
+      toast.success(t('admin.groups.created'))
       emit('addGroup')
       resetForm()
     }
@@ -158,8 +161,8 @@ const submitForm = async () => {
     emit('update:visible', false)
   } catch (error) {
     const defaultMessage = isEditMode.value
-      ? 'Не удалось обновить ролевую группу'
-      : 'Не удалось создать ролевую группу'
+      ? t('admin.groups.updateFailed')
+      : t('admin.groups.createFailed')
     toast.error(extractApiError(error, defaultMessage))
     logError('SubmitRoleGroup error:', error)
   } finally {
@@ -186,27 +189,27 @@ const submitForm = async () => {
           class="form-control"
           v-model="name"
           :class="{ 'is-invalid': showErrorName }"
-          placeholder="Введите название группы"
+          :placeholder="t('admin.groups.namePlaceholder')"
         />
-        <label for="nameInput">Введите название группы</label>
-        <div v-if="showErrorName" class="invalid-feedback">Название обязательно для заполнения.</div>
+        <label for="nameInput">{{ t('admin.groups.namePlaceholder') }}</label>
+        <div v-if="showErrorName" class="invalid-feedback">{{ t('admin.groups.nameRequired') }}</div>
       </div>
 
       <div class="mb-3">
         <SelectBox
           id="roleSelect"
           v-model="parentRoleId"
-          label="Родительская роль"
+          :label="t('admin.groups.parentRole')"
           :options="roleSelectOptions"
           value-key="id"
           label-key="name"
-          all-label="Выберите роль"
+          :all-label="t('admin.groups.selectRole')"
           cast-to-number
           :disabled="availableRoles.length === 0" />
         <div v-if="availableRoles.length === 0" class="form-text text-danger">
-          Нет доступных ролей для привязки. Сначала создайте пользовательскую роль.
+          {{ t('admin.groups.noRoles') }}
         </div>
-        <div v-if="showErrorRole" class="invalid-feedback d-block">Необходимо выбрать родительскую роль.</div>
+        <div v-if="showErrorRole" class="invalid-feedback d-block">{{ t('admin.groups.parentRequired') }}</div>
       </div>
 
       <div class="form-floating mb-3">
@@ -215,22 +218,22 @@ const submitForm = async () => {
           class="form-control"
           style="height: 100px"
           v-model="description"
-          placeholder="Описание группы"
+          :placeholder="t('admin.groups.descriptionPlaceholder')"
         ></textarea>
-        <label for="groupDescription">Описание группы</label>
+        <label for="groupDescription">{{ t('admin.groups.descriptionPlaceholder') }}</label>
       </div>
 
       <div class="form-check mb-3">
         <input class="form-check-input" type="checkbox" id="activeCheckbox" v-model="isActive" />
         <label class="form-check-label" for="activeCheckbox">
-          Группа активна
+          {{ t('admin.groups.activeLabel') }}
         </label>
       </div>
     </form>
 
     <template #footer>
       <button type="button" class="ui-btn ui-btn--secondary" :disabled="isSubmitting" @click="closeModal">
-        Отмена
+        {{ t('common.cancel') }}
       </button>
       <button type="submit" :form="formId" class="ui-btn ui-btn--primary" :disabled="isSubmitting">
         {{ submitButtonText }}

@@ -1,9 +1,10 @@
 <script setup>
 import { computed, inject, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ChevronDown, ChevronUp } from 'lucide-vue-next'
-import { useToast } from '@/js/utils/toast.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { useToast } from '@/js/utils/toast.js'
 import { useNotificationSettings } from '@/core/notifications/js/useNotificationSettings.js'
 import {
   NOTIFICATION_NAV_KEY,
@@ -14,6 +15,7 @@ import {
 import NotificationSettingsTable from '@/core/notifications/components/NotificationSettingsTable.vue'
 import BrowserNotificationsSettings from '@/core/notifications/components/BrowserNotificationsSettings.vue'
 
+const { t } = useAppI18n()
 const toast = useToast()
 const userStore = useUserStore()
 const notificationNav = inject(NOTIFICATION_NAV_KEY, null)
@@ -32,15 +34,23 @@ const {
 } = useNotificationSettings()
 
 setSaveErrorHandler(() => {
-  toast.error('Не удалось сохранить настройки уведомлений')
+  toast.error(t('settings.notifications.saveFailed'))
 })
 
 const userEmail = computed(() => userStore.profile?.email || '')
 
-const GLOBAL_CHANNELS = [
-  { key: 'email', label: 'По эл. почте', hint: 'Глобально включает или отключает письма' },
-  { key: 'in_app', label: 'В клиенте', hint: 'Уведомления в колокольчике и ленте системы' },
-]
+const GLOBAL_CHANNELS = computed(() => [
+  {
+    key: 'email',
+    label: t('settings.notifications.channelEmail'),
+    hint: t('settings.notifications.channelEmailHint'),
+  },
+  {
+    key: 'in_app',
+    label: t('settings.notifications.channelInApp'),
+    hint: t('settings.notifications.channelInAppHint'),
+  },
+])
 
 function handleToggle({ sourceModule, eventKey, channel, enabled }) {
   toggleEvent(sourceModule, eventKey, channel, enabled)
@@ -75,24 +85,24 @@ onUnmounted(() => {
 <template>
   <div class="settings-panel">
     <h2 class="settings-panel__title">
-      Уведомления
-      <span v-if="saving" class="settings-panel__saving text-muted">сохранение…</span>
+      {{ t('settings.notifications.title') }}
+      <span v-if="saving" class="settings-panel__saving text-muted">{{ t('settings.notifications.saving') }}</span>
     </h2>
     <p v-if="userEmail" class="settings-panel__hint text-muted">
-      Настройки уведомлений для {{ userEmail }}
+      {{ t('settings.notifications.forUser', { email: userEmail }) }}
     </p>
 
     <LoadingContentArea :loading="loading" min-height="8rem">
     <div v-if="loadError" class="notif-panel__empty text-muted">
-        Не удалось загрузить настройки уведомлений.
-        <button type="button" class="btn btn-sm btn-link" @click="load">Повторить</button>
+        {{ t('settings.notifications.loadFailed') }}
+        <button type="button" class="btn btn-sm btn-link" @click="load">{{ t('settings.notifications.retry') }}</button>
       </div>
 
       <template v-else>
         <BrowserNotificationsSettings />
 
         <section :id="anchorIdGlobal()" class="notif-panel__anchor notif-panel__section">
-          <p class="notif-panel__caption">Каналы доставки</p>
+          <p class="notif-panel__caption">{{ t('settings.notifications.channels') }}</p>
           <div class="settings-card notif-panel__global">
             <div
               v-for="(channel, index) in GLOBAL_CHANNELS"
@@ -119,7 +129,7 @@ onUnmounted(() => {
         </section>
 
         <div v-if="!hasSections" class="notif-panel__empty text-muted">
-          Нет настраиваемых уведомлений.
+          {{ t('settings.notifications.noConfigurable') }}
         </div>
 
         <section

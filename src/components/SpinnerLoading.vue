@@ -1,9 +1,11 @@
 <script setup>
 import { computed } from 'vue'
 import { useUiModes } from '@/composables/useUiModes.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const BOOTSTRAP_VARIANTS = ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'light', 'dark']
-const DEFAULT_LOADING_TEXT = 'Загрузка...'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   loadingText: {
@@ -27,7 +29,7 @@ const showRing = computed(() => !reducedMotionActive.value)
 
 const displayText = computed(() => {
   if (props.loadingText) return props.loadingText
-  if (reducedMotionActive.value) return DEFAULT_LOADING_TEXT
+  if (reducedMotionActive.value) return t('components.spinner.loading')
   return ''
 })
 
@@ -59,7 +61,7 @@ const ringStyle = computed(() => {
       :class="ringClass"
       :style="ringStyle"
       role="status"
-      aria-label="Загрузка"
+      :aria-label="t('components.spinner.loading')"
     />
     <p
       v-if="displayText"

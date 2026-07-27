@@ -2,6 +2,9 @@
 import SelectBox from '@/components/SelectBox.vue'
 import { useUiSettings } from '@/core/cms/js/uiSettings.js'
 import { useUiPreferencesSettings } from '@/core/cms/js/uiPreferencesSettings.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const {
   actionButton,
@@ -24,11 +27,11 @@ const {
 
 <template>
   <div class="settings-panel">
-    <h1 class="settings-panel__title">Система</h1>
+    <h1 class="settings-panel__title">{{ t('settings.system.title') }}</h1>
 
     <div class="settings-card">
       <div class="settings-card__row">
-        <label class="settings-card__label" for="system-action-button">Кнопка действия</label>
+        <label class="settings-card__label" for="system-action-button">{{ t('settings.system.actionButton') }}</label>
         <div class="settings-card__control">
           <SelectBox id="system-action-button" v-model="actionButton" :options="ACTION_BUTTON_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
@@ -48,9 +51,9 @@ const {
       </div>
 
       <div class="settings-card__row">
-        <label class="settings-card__label" for="system-language">Язык интерфейса</label>
+        <label class="settings-card__label" for="system-language">{{ t('settings.system.language') }}</label>
         <div class="settings-card__control">
-          <SelectBox id="system-language" v-model="language" :options="LANGUAGE_OPTIONS" :include-all-option="false" disabled>
+          <SelectBox id="system-language" v-model="language" :options="LANGUAGE_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
               <span class="settings-card__option">
                 <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
@@ -68,7 +71,7 @@ const {
       </div>
 
       <div class="settings-card__row">
-        <label class="settings-card__label" for="system-motion">Анимации</label>
+        <label class="settings-card__label" for="system-motion">{{ t('settings.system.motion') }}</label>
         <div class="settings-card__control">
           <SelectBox id="system-motion" v-model="motion" :options="MOTION_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
@@ -88,7 +91,7 @@ const {
       </div>
 
       <div class="settings-card__row">
-        <label class="settings-card__label" for="system-images">Картинки</label>
+        <label class="settings-card__label" for="system-images">{{ t('settings.system.images') }}</label>
         <div class="settings-card__control">
           <SelectBox id="system-images" v-model="images" :options="IMAGES_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
@@ -108,7 +111,7 @@ const {
       </div>
 
       <div class="settings-card__row">
-        <label class="settings-card__label" for="system-contrast">Контраст</label>
+        <label class="settings-card__label" for="system-contrast">{{ t('settings.system.contrast') }}</label>
         <div class="settings-card__control">
           <SelectBox id="system-contrast" v-model="contrast" :options="CONTRAST_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
@@ -128,7 +131,7 @@ const {
       </div>
 
       <div class="settings-card__row settings-card__row--last">
-        <label class="settings-card__label" for="system-a11y">Экранный диктор</label>
+        <label class="settings-card__label" for="system-a11y">{{ t('settings.system.a11y') }}</label>
         <div class="settings-card__control">
           <SelectBox id="system-a11y" v-model="a11y" :options="A11Y_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">

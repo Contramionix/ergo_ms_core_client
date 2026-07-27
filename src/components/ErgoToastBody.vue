@@ -1,6 +1,7 @@
 <script setup>
 import { CheckCircle, AlertCircle, AlertTriangle, Info, X } from 'lucide-vue-next'
 import { computed } from 'vue'
+import { tGlobal } from '@/i18n/index.js'
 
 const props = defineProps({
   message: { type: String, required: true },
@@ -22,6 +23,9 @@ const iconMap = {
 }
 
 const IconComponent = computed(() => iconMap[props.type] || iconMap.info)
+
+// Toast рендерится в отдельном app vue-toastification — useI18n/inject там ненадёжен.
+const closeLabel = computed(() => tGlobal('common.close'))
 
 const iconColorVar = computed(() => {
   switch (props.type) {
@@ -50,7 +54,7 @@ function close() {
     <button
       type="button"
       class="ergo-toast-body__close"
-      aria-label="Закрыть"
+      :aria-label="closeLabel"
       @click="close"
     >
       <X :size="16" />

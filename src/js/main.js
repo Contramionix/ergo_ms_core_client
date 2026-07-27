@@ -20,11 +20,14 @@ import { bootstrapAppSession } from '@/js/bootstrapSession.js'
 import { initTheme } from '@/js/theme-manager.js'
 import { initUiPreferences } from '@/js/uiPreferences.js'
 import { logError } from '@/js/utils/logError.js'
+import { i18n, tGlobal } from '@/i18n/index.js'
+import '@/core/cms/js/uiSettings.js'
 
 const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
+app.use(i18n)
 app.use(gatedAutoAnimatePlugin)
 app.use(Toast, getToastPluginOptions())
 syncToastPluginWithSettings()
@@ -38,12 +41,11 @@ initUiPreferences()
 
 function showBootFailure(error) {
   hideBootstrapMask()
-  logError('Не удалось запустить клиент:', error)
+  logError(tGlobal('errors.boot.failedLog'), error)
   if (typeof document !== 'undefined') {
     const root = document.getElementById('app')
     if (root) {
-      root.textContent =
-        'Не удалось загрузить приложение. Обновите страницу или проверьте, что API запущен.'
+      root.textContent = tGlobal('errors.boot.failed')
     }
   }
 }
@@ -67,6 +69,10 @@ Promise.all([initEndpoints(), initRouter()])
 
     void import('@/modules/themes/ThemeDefaultsManager.js')
       .then(({ preloadModuleThemeManifests }) => preloadModuleThemeManifests())
+      .catch(() => {})
+
+    void import('@/modules/i18n/LocaleManager.js')
+      .then(({ preloadModuleLocales }) => preloadModuleLocales())
       .catch(() => {})
   })
   .catch(showBootFailure)

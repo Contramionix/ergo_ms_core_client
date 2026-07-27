@@ -2,7 +2,9 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, SearchX } from 'lucide-vue-next'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const { t } = useAppI18n()
 const route = useRoute()
 const router = useRouter()
 
@@ -18,33 +20,30 @@ const attemptedPath = computed(() => route.fullPath || route.path)
             <SearchX :size="40" />
           </div>
           <div>
-            <p class="app-shell__eyebrow">Ошибка 404</p>
-            <h1 class="app-shell__title">Страница не найдена</h1>
+            <p class="app-shell__eyebrow">{{ t('components.notFound.eyebrow') }}</p>
+            <h1 class="app-shell__title">{{ t('components.notFound.title') }}</h1>
             <p class="app-shell__subtitle">
-              Запрошенный адрес недоступен или был перемещён
+              {{ t('components.notFound.subtitle') }}
             </p>
           </div>
         </div>
       </header>
 
-      <section class="app-shell__card" aria-label="Информация об ошибке">
-        <h2 class="app-shell__card-title">Что произошло?</h2>
+      <section class="app-shell__card" :aria-label="t('components.notFound.infoAria')">
+        <h2 class="app-shell__card-title">{{ t('components.notFound.cardTitle') }}</h2>
         <p class="app-shell__card-text">
-          Страница по адресу
-          <code class="not-found__path">{{ attemptedPath }}</code>
-          не существует. Возможно, ссылка устарела, адрес введён с ошибкой
-          или у вас нет доступа к этому разделу.
+          {{ t('components.notFound.cardText', { path: attemptedPath }) }}
         </p>
         <p class="app-shell__card-text app-shell__card-text--muted">
-          Проверьте правильность адреса или вернитесь на главную страницу системы.
+          {{ t('components.notFound.cardHint') }}
         </p>
         <div class="app-shell__actions">
           <button type="button" class="btn btn-primary not-found__btn" @click="router.push({ name: 'AppHome' })">
             <ArrowLeft :size="18" />
-            На главную
+            {{ t('components.notFound.goHome') }}
           </button>
           <button type="button" class="btn btn-outline-secondary not-found__btn" @click="router.back()">
-            Назад
+            {{ t('common.back') }}
           </button>
         </div>
       </section>

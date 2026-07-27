@@ -2,7 +2,7 @@
  * Реактивные настройки режимов UI для SystemPanel (localStorage + data-ergo-*).
  */
 
-import { ref, watch, markRaw } from 'vue'
+import { ref, watch, markRaw, computed } from 'vue'
 import {
   LaptopMinimal,
   Zap,
@@ -26,29 +26,30 @@ import {
   writeImagesPreference,
   writeMotionPreference,
 } from '@/js/uiPreferences.js'
+import { tGlobal } from '@/i18n/index.js'
 
-export const MOTION_OPTIONS = [
-  { id: 'system', name: 'Как в системе', icon: markRaw(LaptopMinimal) },
-  { id: 'reduce', name: 'Без анимаций', icon: markRaw(ZapOff) },
-  { id: 'full', name: 'С анимациями', icon: markRaw(Zap) },
-]
+export const MOTION_OPTIONS = computed(() => [
+  { id: 'system', name: tGlobal('settings.system.motionSystem'), icon: markRaw(LaptopMinimal) },
+  { id: 'reduce', name: tGlobal('settings.system.motionReduce'), icon: markRaw(ZapOff) },
+  { id: 'full', name: tGlobal('settings.system.motionFull'), icon: markRaw(Zap) },
+])
 
-export const IMAGES_OPTIONS = [
-  { id: 'system', name: 'Как в браузере', icon: markRaw(LaptopMinimal) },
-  { id: 'on', name: 'Показывать', icon: markRaw(Image) },
-  { id: 'off', name: 'Скрыть картинки', icon: markRaw(ImageOff) },
-]
+export const IMAGES_OPTIONS = computed(() => [
+  { id: 'system', name: tGlobal('settings.system.imagesSystem'), icon: markRaw(LaptopMinimal) },
+  { id: 'on', name: tGlobal('settings.system.imagesOn'), icon: markRaw(Image) },
+  { id: 'off', name: tGlobal('settings.system.imagesOff'), icon: markRaw(ImageOff) },
+])
 
-export const CONTRAST_OPTIONS = [
-  { id: 'system', name: 'Как в системе', icon: markRaw(LaptopMinimal) },
-  { id: 'more', name: 'Высокий контраст', icon: markRaw(Contrast) },
-  { id: 'normal', name: 'Обычный контраст', icon: markRaw(SunMedium) },
-]
+export const CONTRAST_OPTIONS = computed(() => [
+  { id: 'system', name: tGlobal('settings.system.contrastSystem'), icon: markRaw(LaptopMinimal) },
+  { id: 'more', name: tGlobal('settings.system.contrastMore'), icon: markRaw(Contrast) },
+  { id: 'normal', name: tGlobal('settings.system.contrastNormal'), icon: markRaw(SunMedium) },
+])
 
-export const A11Y_OPTIONS = [
-  { id: 'default', name: 'Выключен', icon: markRaw(CircleUser) },
-  { id: 'assist', name: 'Включён', icon: markRaw(Accessibility) },
-]
+export const A11Y_OPTIONS = computed(() => [
+  { id: 'default', name: tGlobal('settings.system.a11yOff'), icon: markRaw(CircleUser) },
+  { id: 'assist', name: tGlobal('settings.system.a11yAssist'), icon: markRaw(Accessibility) },
+])
 
 const motion = ref(readMotionPreference())
 const images = ref(readImagesPreference())

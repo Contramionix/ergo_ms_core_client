@@ -3,6 +3,9 @@ import { computed, ref, watch } from 'vue'
 import SelectBox from '@/components/SelectBox.vue'
 import PolicyPageBrowser from '@/core/cms/adp/admin/PermissionsComponents/PolicyPageBrowser.vue'
 import { mapModuleSelectOptions } from '@/core/cms/js/adminSelectOptions.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   pages: { type: Array, default: () => [] },
@@ -30,14 +33,14 @@ const groups = computed(() =>
 const patternPresets = computed(() => {
   if (!selectedModule.value || selectedModule.value === 'core') {
     return [
-      { id: '/admin-panel/*', name: 'Вся админ-панель · /admin-panel/*' },
-      { id: '/settings/*', name: 'Все настройки · /settings/*' },
+      { id: '/admin-panel/*', name: t('admin.policies.allAdmin') },
+      { id: '/settings/*', name: t('admin.policies.allSettings') },
     ]
   }
   return [
     {
       id: `/${selectedModule.value}/*`,
-      name: `Весь модуль · /${selectedModule.value}/*`,
+      name: t('admin.policies.wholeModule', { module: selectedModule.value }),
     },
   ]
 })
@@ -96,8 +99,8 @@ function applyPatternPreset(presetPath) {
 
 <template>
   <div class="policy-resource-path">
-    <label class="form-label d-block">Путь</label>
-    <div class="btn-group mb-3" role="group" aria-label="Режим выбора пути">
+    <label class="form-label d-block">{{ t('admin.policies.path') }}</label>
+    <div class="btn-group mb-3" role="group" :aria-label="t('admin.policies.pathModeAria')">
       <input
         id="resourceModePage"
         type="radio"
@@ -107,7 +110,7 @@ function applyPatternPreset(presetPath) {
         :checked="resourceMode === 'page'"
         @change="setResourceMode('page')"
       />
-      <label class="btn btn-outline-primary" for="resourceModePage">Страница</label>
+      <label class="btn btn-outline-primary" for="resourceModePage">{{ t('admin.policies.page') }}</label>
 
       <input
         id="resourceModePattern"
@@ -118,7 +121,7 @@ function applyPatternPreset(presetPath) {
         :checked="resourceMode === 'pattern'"
         @change="setResourceMode('pattern')"
       />
-      <label class="btn btn-outline-primary" for="resourceModePattern">Шаблон</label>
+      <label class="btn btn-outline-primary" for="resourceModePattern">{{ t('admin.policies.pattern') }}</label>
     </div>
 
     <template v-if="resourceMode === 'page'">
@@ -130,7 +133,7 @@ function applyPatternPreset(presetPath) {
         />
 
         <button type="button" class="btn btn-link btn-sm px-0 mt-2" @click="toggleManualInput">
-          Ввести путь вручную
+          {{ t('admin.policies.enterPathManually') }}
         </button>
       </template>
 
@@ -145,10 +148,10 @@ function applyPatternPreset(presetPath) {
             placeholder="/example/path"
             @input="emit('update:resourcePath', $event.target.value)"
           />
-          <label for="manualResourcePath">Путь страницы</label>
+          <label for="manualResourcePath">{{ t('admin.policies.pagePath') }}</label>
         </div>
         <button type="button" class="btn btn-link btn-sm px-0 mb-2" @click="toggleManualInput">
-          Выбрать из каталога
+          {{ t('admin.policies.chooseFromCatalog') }}
         </button>
       </template>
     </template>
@@ -158,24 +161,24 @@ function applyPatternPreset(presetPath) {
         <div class="col-md-5">
           <SelectBox
             v-model="selectedModule"
-            label="Модуль для пресетов"
+            :label="t('admin.policies.modulePresets')"
             :options="moduleOptions"
             value-key="id"
             label-key="name"
             :include-all-option="true"
-            all-label="Без модуля"
+            :all-label="t('admin.policies.noModule')"
             searchable
           />
         </div>
         <div class="col-md-7">
           <SelectBox
-            label="Быстрые шаблоны"
+            :label="t('admin.policies.quickPatterns')"
             :model-value="null"
             :options="patternPresets"
             value-key="id"
             label-key="name"
             :include-all-option="true"
-            all-label="Выберите пресет"
+            :all-label="t('admin.policies.selectPreset')"
             @update:model-value="applyPatternPreset"
           />
         </div>
@@ -191,15 +194,15 @@ function applyPatternPreset(presetPath) {
           placeholder="/module/*"
           @input="emit('update:resourcePath', $event.target.value)"
         />
-        <label for="patternResourcePath">Шаблон пути</label>
+        <label for="patternResourcePath">{{ t('admin.policies.pathPattern') }}</label>
       </div>
       <small class="text-muted d-block">
-        Используйте <code>*</code> для одного сегмента и <code>**</code> для любого хвоста пути.
+        <span v-html="t('admin.policies.pathPatternHelp')"></span>
       </small>
     </template>
 
     <div v-if="invalid" class="invalid-feedback d-block">
-      Укажите путь или выберите страницу.
+      {{ t('admin.policies.pathRequired') }}
     </div>
   </div>
 </template>

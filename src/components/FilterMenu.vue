@@ -31,18 +31,18 @@
 
         <div class="filter-menu__footer">
           <button type="button" class="btn btn-sm btn-outline-secondary w-100" :disabled="!hasActiveValues" @click="handleReset">
-            Сбросить
+            {{ t('components.filterMenu.reset') }}
           </button>
         </div>
       </div>
 
       <div v-if="isMainOpen && activeFlyoutKey && activeField" ref="flyoutPanelEl" class="filter-menu__flyout dropdown-menu show fixed-menu" :style="flyoutPanelStyle" data-filter-menu-flyout @mousedown.stop @mouseenter="onFlyoutEnter" @mouseleave="onFlyoutLeave">
         <template v-if="activeField.type === 'select'">
-          <input v-if="activeField.searchable" ref="flyoutSearchEl" v-model="flyoutSearchQuery" type="text" class="filter-menu__search select-box-search" placeholder="Поиск..." autocomplete="off" @mousedown.stop/>
+          <input v-if="activeField.searchable" ref="flyoutSearchEl" v-model="flyoutSearchQuery" type="text" class="filter-menu__search select-box-search" :placeholder="t('components.searchInput.placeholder')" autocomplete="off" @mousedown.stop/>
           <ul class="dropdown-menu-list">
             <li v-if="!activeField.multiple && activeField.includeAllOption !== false && !flyoutSearchActive">
               <a href="#" class="dropdown-item" :class="{ active: isEmptyValue(activeField.key) }" @click.prevent="chooseSelectValue(activeField, null)">
-                {{ activeField.allLabel || 'Все' }}
+                {{ activeField.allLabel || t('components.selectBox.all') }}
               </a>
             </li>
             <li v-for="opt in filteredFlyoutOptions" :key="opt.key">
@@ -62,7 +62,7 @@
             </label>
             <input :id="`filter-menu-date-${activeField.key}`" :value="getFieldRawValue(activeField.key)" type="date" class="form-control" @change="onDateChange(activeField, $event)"/>
             <button type="button" class="btn btn-sm btn-link filter-menu__date-clear px-0" :disabled="isEmptyValue(activeField.key)" @click="clearDateValue(activeField)">
-              Очистить
+              {{ t('components.filterMenu.clear') }}
             </button>
           </div>
         </template>
@@ -77,6 +77,9 @@ import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { hideHoverTooltipForOwner, showHoverTooltip, } from '@/js/utils/hoverTooltipLayer.js'
 import { useFilterMenuFlyout } from '@/composables/useFilterMenuFlyout.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   modelValue: {
@@ -93,7 +96,7 @@ const props = defineProps({
   },
   triggerLabel: {
     type: String,
-    default: 'Фильтры',
+    default: undefined,
   },
   applyOnChange: {
     type: Boolean,
@@ -140,11 +143,18 @@ const activeCount = computed(() =>
 
 const hasActiveValues = computed(() => activeCount.value > 0)
 
+const resolvedTriggerLabel = computed(
+  () => props.triggerLabel ?? t('components.filterMenu.trigger'),
+)
+
 const triggerText = computed(() => {
   if (activeCount.value > 0) {
+    if (props.triggerLabel == null) {
+      return t('components.filterMenu.triggerActive', { count: activeCount.value })
+    }
     return `${props.triggerLabel} (${activeCount.value})`
   }
-  return props.triggerLabel
+  return resolvedTriggerLabel.value
 })
 
 const flyoutSearchActive = computed(() =>
@@ -259,7 +269,7 @@ function getOptionAvatarProps(opt) {
 function getFieldDisplayValue(field) {
   if (isEmptyValue(field.key)) {
     if (field.type === 'select' && field.includeAllOption !== false) {
-      return field.allLabel || 'Все'
+      return field.allLabel || t('components.selectBox.all')
     }
     return field.emptyLabel || '—'
   }
@@ -272,10 +282,10 @@ function getFieldDisplayValue(field) {
     const value = props.modelValue[field.key]
     if (isFieldMultiple(field)) {
       if (!Array.isArray(value) || value.length === 0) {
-        return field.allLabel || 'Все'
+        return field.allLabel || t('components.selectBox.all')
       }
       if (field.multipleLabelFormat === 'count') {
-        return `${value.length} выбрано`
+        return t('components.selectBox.selectedCount', { count: value.length })
       }
       const labels = value.map((item) => {
         const found = normalizeSelectOptions(field).find((opt) => valuesAreEqual(opt.value, item))

@@ -1,49 +1,53 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { Eye, EyeOff } from 'lucide-vue-next'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 defineOptions({
   inheritAttrs: false,
 })
 
-defineProps({
+const props = defineProps({
   id: {
     type: String,
     default: 'password',
   },
   modelValue: {
     type: String,
-    default: ''
+    default: '',
   },
   placeholder: {
     type: String,
-    default: 'Пароль'
+    default: '',
   },
   label: {
     type: String,
-    default: 'Пароль'
+    default: '',
   },
   error: {
     type: String,
-    default: null
+    default: null,
   },
   disabled: {
     type: Boolean,
-    default: false
+    default: false,
   },
   autocomplete: {
     type: String,
-    default: 'current-password'
+    default: 'current-password',
   },
   icon: {
     type: String,
-    default: 'bi-lock'
-  }
+    default: 'bi-lock',
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])
+const { t } = useAppI18n()
 
 const showPassword = ref(false)
+
+const resolvedLabel = computed(() => props.label || t('components.passwordInput.label'))
 
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
@@ -70,7 +74,7 @@ const updateValue = (event) => {
           :autocomplete="autocomplete"
         />
         <label :for="id">
-          <i :class="`bi ${icon} me-2`"></i>{{ label }}
+          <i :class="`bi ${icon} me-2`"></i>{{ resolvedLabel }}
         </label>
       </div>
 
@@ -79,8 +83,8 @@ const updateValue = (event) => {
         class="password-input__toggle"
         @click="togglePasswordVisibility"
         :disabled="disabled"
-        :title="showPassword ? 'Скрыть пароль' : 'Показать пароль'"
-        :aria-label="showPassword ? 'Скрыть пароль' : 'Показать пароль'"
+        :title="showPassword ? t('components.passwordInput.hide') : t('components.passwordInput.show')"
+        :aria-label="showPassword ? t('components.passwordInput.hide') : t('components.passwordInput.show')"
       >
         <EyeOff v-if="showPassword" :size="18" aria-hidden="true" />
         <Eye v-else :size="18" aria-hidden="true" />

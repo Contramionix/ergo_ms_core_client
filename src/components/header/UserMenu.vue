@@ -8,7 +8,9 @@ import HoverTooltip from '@/components/HoverTooltip.vue'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { collectVisibleHeaderUserMenuItems } from '@/integrations/headerUserMenu.js'
 import { logError } from '@/js/utils/logError.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const { t } = useAppI18n()
 const userStore = useUserStore()
 const router = useRouter()
 const emit = defineEmits(['dropdown-toggle'])
@@ -19,28 +21,26 @@ const extensionItems = ref([])
 const userName = computed(() => userStore.menuUserName)
 
 const userEmail = computed(() => {
-  return userStore.user?.email || 'email не указан'
+  return userStore.user?.email || t('menu.userMenu.emailMissing')
 })
 
-const baseMenuItems = [
-  {
-    id: 'profile',
-    order: 10,
-    title: 'Профиль',
-    icon: CircleUserRound,
-    link: { name: 'User' },
-  },
-  {
-    id: 'logout',
-    order: 100,
-    title: 'Выход',
-    icon: Power,
-    link: { name: 'logout' },
-  },
-]
-
 const menuItems = computed(() => {
-  const items = baseMenuItems.slice()
+  const items = [
+    {
+      id: 'profile',
+      order: 10,
+      title: t('menu.userMenu.profile'),
+      icon: CircleUserRound,
+      link: { name: 'User' },
+    },
+    {
+      id: 'logout',
+      order: 100,
+      title: t('menu.userMenu.logout'),
+      icon: Power,
+      link: { name: 'logout' },
+    },
+  ]
   const logoutIndex = items.findIndex((item) => item.link?.name === 'logout')
   items.splice(logoutIndex, 0, ...extensionItems.value)
   return items
@@ -95,7 +95,7 @@ watch(isOpen, async (newValue) => {
     <button
       type="button"
       class="tools__avatar avatar user-menu-trigger"
-      :aria-label="`Меню пользователя: ${userName}`"
+      :aria-label="`${t('menu.userMenu.ariaLabel')}: ${userName}`"
       :aria-expanded="isOpen"
       aria-haspopup="menu"
       @click.stop="toggleDropdown"
@@ -103,7 +103,7 @@ watch(isOpen, async (newValue) => {
       <UserAvatar :size="40" :clickable="false" :title="userName"/>
     </button>
     <Transition name="dropdown-left">
-      <ul v-if="isOpen" class="user-dropdown-menu" role="menu" aria-label="Меню пользователя">
+      <ul v-if="isOpen" class="user-dropdown-menu" role="menu" :aria-label="t('menu.userMenu.ariaLabel')">
       <li class="dropdown-header px-3 py-2 border-bottom">
         <div class="d-flex align-items-center">
           <div class="me-2">
@@ -115,7 +115,7 @@ watch(isOpen, async (newValue) => {
           </div>
         </div>
         <div v-if="userStore.isLoading" class="mt-1 text-muted small" role="status" aria-live="polite">
-          Загрузка...
+          {{ t('menu.userMenu.loading') }}
         </div>
       </li>
       <li v-for="(item, index) in menuItems" :key="item.id">

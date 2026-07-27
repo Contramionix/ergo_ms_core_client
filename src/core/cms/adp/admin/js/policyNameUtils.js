@@ -1,4 +1,5 @@
 import { formatPageOptionLabel } from '@/core/cms/js/adminSelectOptions.js'
+import { tGlobal } from '@/i18n/index.js'
 
 export function buildDefaultPolicyName({
   resourcePath,
@@ -15,12 +16,12 @@ export function buildDefaultPolicyName({
   const pageLabel = page ? formatPageOptionLabel(page) : resourcePath
 
   if (targetType === 'role_group' && roleGroup) {
-    return `Доступ к странице ${pageLabel} для группы ${roleGroup.name}`
+    return tGlobal('admin.policies.autoNamePageGroup', { page: pageLabel, group: roleGroup.name })
   }
 
   if (targetType === 'role' && role) {
-    return `Доступ к странице ${pageLabel} для роли ${role.name}`
+    return tGlobal('admin.policies.autoNamePageRole', { page: pageLabel, role: role.name })
   }
 
-  return `Доступ к странице ${pageLabel}`
+  return tGlobal('admin.policies.autoNamePage', { page: pageLabel })
 }

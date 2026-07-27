@@ -5,7 +5,7 @@
     <div v-if="editingMessage" class="msng-input__edit-bar">
       <Pencil :size="14" class="msng-input__edit-icon" />
       <span class="msng-input__edit-text">{{ editPreviewText }}</span>
-      <button type="button" class="btn btn-link p-0 msng-input__edit-close" aria-label="Отменить редактирование" @click="cancelEdit">
+      <button type="button" class="btn btn-link p-0 msng-input__edit-close" :aria-label="t('settings.messenger.cancelEdit')" @click="cancelEdit">
         <X :size="16" aria-hidden="true" />
       </button>
     </div>
@@ -15,14 +15,14 @@
         <ContentImage
           v-if="isImageAtt(att.mime_type) && getSafeHref(att.file_url)"
           :src="getSafeHref(att.file_url)"
-          :alt="att.original_filename || 'Вложение'"
+          :alt="att.original_filename || t('settings.messenger.attachment')"
           class="msng-input__edit-att-thumb"
         />
         <div v-else class="msng-input__edit-att-icon">
           <FileText :size="20" />
         </div>
         <span class="msng-input__edit-att-name" :title="att.original_filename">{{ att.original_filename }}</span>
-        <button type="button" class="btn btn-link p-0 msng-input__edit-att-remove" aria-label="Убрать вложение" @click="markAttachmentRemoved(att.id)">
+        <button type="button" class="btn btn-link p-0 msng-input__edit-att-remove" :aria-label="t('settings.messenger.removeAttachment')" @click="markAttachmentRemoved(att.id)">
           <X :size="14" aria-hidden="true" />
         </button>
       </div>
@@ -34,25 +34,25 @@
         <span class="msng-input__reply-author">{{ replyAuthorName }}</span>
         <span class="msng-input__reply-text">{{ replyPreviewText }}</span>
       </div>
-      <button type="button" class="btn btn-link p-0 msng-input__reply-close" aria-label="Отменить ответ" @click="cancelReply">
+      <button type="button" class="btn btn-link p-0 msng-input__reply-close" :aria-label="t('settings.messenger.cancelReply')" @click="cancelReply">
         <X :size="16" aria-hidden="true" />
       </button>
     </div>
 
     <div class="msng-input__row">
-      <button type="button" class="btn btn-link p-0 msng-input__btn" :disabled="disabled" title="Прикрепить файл" aria-label="Прикрепить файл" @click="triggerFileInput">
+      <button type="button" class="btn btn-link p-0 msng-input__btn" :disabled="disabled" :title="t('settings.messenger.attachFile')" :aria-label="t('settings.messenger.attachFile')" @click="triggerFileInput">
         <Paperclip :size="18" aria-hidden="true" />
       </button>
 
       <div class="msng-input__field-wrap">
-        <textarea ref="textareaRef" v-model="text" class="form-control msng-input__textarea" :placeholder="editingMessage ? 'Редактирование сообщения...' : 'Введите сообщение...'" :disabled="disabled" rows="1" @input="autoResize" @keydown="onKeydown"/>
+        <textarea ref="textareaRef" v-model="text" class="form-control msng-input__textarea" :placeholder="editingMessage ? t('settings.messenger.editingPlaceholder') : t('settings.messenger.placeholder')" :disabled="disabled" rows="1" @input="autoResize" @keydown="onKeydown"/>
       </div>
 
-      <button type="button" class="btn btn-link p-0 msng-input__btn" :disabled="disabled" title="Эмодзи" aria-label="Эмодзи" @click="toggleEmoji">
+      <button type="button" class="btn btn-link p-0 msng-input__btn" :disabled="disabled" :title="t('settings.messenger.emoji')" :aria-label="t('settings.messenger.emoji')" @click="toggleEmoji">
         <Smile :size="18" aria-hidden="true" />
       </button>
 
-      <button type="button" class="btn btn-link p-0 msng-input__btn msng-input__btn--send" :disabled="sendDisabled" :title="editingMessage ? 'Сохранить' : 'Отправить'" :aria-label="editingMessage ? 'Сохранить' : 'Отправить'" @click="handleSend">
+      <button type="button" class="btn btn-link p-0 msng-input__btn msng-input__btn--send" :disabled="sendDisabled" :title="editingMessage ? t('common.save') : t('common.send')" :aria-label="editingMessage ? t('common.save') : t('common.send')" @click="handleSend">
         <Check v-if="editingMessage" :size="18" aria-hidden="true" />
         <SendHorizonal v-else :size="18" aria-hidden="true" />
       </button>
@@ -67,10 +67,13 @@
 <script setup>
 import { ref, watch, nextTick, computed } from 'vue'
 import { Paperclip, Smile, SendHorizonal, Pencil, X, Check, FileText, CornerDownLeft } from 'lucide-vue-next'
-import { getSafeHref } from '@/js/utils/urlUtils.js'
 import ContentImage from '@/components/ContentImage.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { getSafeHref } from '@/js/utils/urlUtils.js'
 import AttachmentPreview from './AttachmentPreview.vue'
 import EmojiPicker from './EmojiPicker.vue'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   disabled: { type: Boolean, default: false },
@@ -96,26 +99,28 @@ const keptAttachments = computed(() => {
 })
 
 const editPreviewText = computed(() => {
-  const t = props.editingMessage?.text?.trim() || ''
-  if (t) return t.length > 60 ? t.slice(0, 60) + '...' : t
+  const preview = props.editingMessage?.text?.trim() || ''
+  if (preview) return preview.length > 60 ? preview.slice(0, 60) + '...' : preview
   if (keptAttachments.value.length > 0) {
     const first = keptAttachments.value[0]
-    return isImageAtt(first.mime_type) ? 'Изображение' : (first.original_filename || 'Вложение')
+    return isImageAtt(first.mime_type)
+      ? t('settings.messenger.image')
+      : (first.original_filename || t('settings.messenger.attachment'))
   }
   return ''
 })
 
 const replyAuthorName = computed(() => {
   const ad = props.replyingTo?.author_data
-  if (ad) return ad.full_name || ad.username || 'Пользователь'
-  return 'Пользователь'
+  if (ad) return ad.full_name || ad.username || t('settings.messenger.user')
+  return t('settings.messenger.user')
 })
 
 const replyPreviewText = computed(() => {
-  const t = (props.replyingTo?.text || '').trim()
-  if (t) return t.length > 60 ? t.slice(0, 60) + '...' : t
-  if (props.replyingTo?.attachments?.length > 0) return 'Вложение'
-  return 'Сообщение'
+  const preview = (props.replyingTo?.text || '').trim()
+  if (preview) return preview.length > 60 ? preview.slice(0, 60) + '...' : preview
+  if (props.replyingTo?.attachments?.length > 0) return t('settings.messenger.attachment')
+  return t('settings.messenger.message')
 })
 
 const sendDisabled = computed(() => {

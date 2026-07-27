@@ -1,10 +1,11 @@
 <script setup>
 import { ref, computed, onBeforeUnmount, defineAsyncComponent } from 'vue'
-import { useToast } from '@/js/utils/toast.js'
 import { Upload, Trash2 } from 'lucide-vue-next'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { useToast } from '@/js/utils/toast.js'
 
 const AvatarCropModal = defineAsyncComponent(() => import('@/components/AvatarCropModal.vue'))
 
@@ -24,6 +25,7 @@ const emit = defineEmits(['avatar-updated'])
 
 const MAX_AVATAR_SIZE_MB = 5
 
+const { t } = useAppI18n()
 const toast = useToast()
 const userStore = useUserStore()
 
@@ -44,8 +46,8 @@ const avatarExplicitUrl = computed(() => {
 
 const avatarTitle = computed(() => {
   if (props.displayName) return props.displayName
-  if (isAdminMode.value) return 'Пользователь'
-  return userStore.displayName || userStore.fullName || 'Пользователь'
+  if (isAdminMode.value) return t('settings.profile.userFallback')
+  return userStore.displayName || userStore.fullName || t('settings.profile.userFallback')
 })
 
 const hasRemoteAvatar = computed(() => {
@@ -54,7 +56,9 @@ const hasRemoteAvatar = computed(() => {
 })
 
 const uploadAvatarLabel = computed(() =>
-  hasRemoteAvatar.value || avatarPreviewUrl.value ? 'Заменить' : 'Загрузить',
+  hasRemoteAvatar.value || avatarPreviewUrl.value
+    ? t('settings.profile.replace')
+    : t('settings.profile.upload'),
 )
 
 const showAvatarRemove = computed(() => hasRemoteAvatar.value || !!avatarPreviewUrl.value)
@@ -85,13 +89,13 @@ const handleAvatarFileChange = (event) => {
     fileInputRef.value.value = ''
   }
   if (!file || !file.type.startsWith('image/')) {
-    if (file) toast.error('Пожалуйста, выберите изображение')
+    if (file) toast.error(t('settings.profile.selectImage'))
     return
   }
 
   const maxBytes = MAX_AVATAR_SIZE_MB * 1024 * 1024
   if (file.size > maxBytes) {
-    toast.error(`Размер файла не должен превышать ${MAX_AVATAR_SIZE_MB} МБ`)
+    toast.error(t('settings.profile.fileTooLarge', { size: MAX_AVATAR_SIZE_MB }))
     return
   }
 
@@ -111,14 +115,14 @@ const handleCropConfirm = async (croppedFile) => {
         avatarPreviewUrl.value = result.avatar_url
       }
       emit('avatar-updated', result)
-      toast.success('Аватар успешно обновлён')
+      toast.success(t('settings.profile.avatarUpdated'))
     } else {
       await userStore.updateAvatar(croppedFile)
     }
   } catch (error) {
     logError('Ошибка обновления аватара:', error)
     if (isAdminMode.value) {
-      toast.error('Ошибка загрузки аватара')
+      toast.error(t('settings.profile.avatarUploadError'))
     }
   } finally {
     avatarLoading.value = false
@@ -147,14 +151,14 @@ const handleAvatarRemove = async () => {
       await props.onRemove()
       cleanupAvatarPreview()
       emit('avatar-updated', { avatar_url: null })
-      toast.success('Аватар сброшен')
+      toast.success(t('settings.profile.avatarReset'))
     } else {
       await userStore.resetAvatar()
     }
   } catch (error) {
     logError('Ошибка сброса аватара:', error)
     if (isAdminMode.value) {
-      toast.error('Ошибка сброса аватара')
+      toast.error(t('settings.profile.avatarResetError'))
     }
   } finally {
     avatarLoading.value = false
@@ -169,7 +173,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="avatar-block">
-    <p class="avatar-block__label">Фотография профиля</p>
+    <p class="avatar-block__label">{{ t('settings.profile.photoLabel') }}</p>
     <div class="avatar-section">
       <div ref="avatarRef" class="avatar-preview" tabindex="0" :class="{ 'avatar-preview--loading': avatarLoading }">
         <UserAvatar
@@ -192,7 +196,7 @@ onBeforeUnmount(() => {
             </button>
             <button v-if="showAvatarRemove" type="button" class="avatar-preview__action avatar-preview__action--danger" :disabled="props.saving || avatarLoading" @click.stop="handleAvatarRemove">
               <Trash2 :size="16" />
-              <span>Удалить</span>
+              <span>{{ t('settings.profile.remove') }}</span>
             </button>
           </div>
         </div>
@@ -205,12 +209,12 @@ onBeforeUnmount(() => {
         </button>
         <button v-if="showAvatarRemove" type="button" class="btn-avatar-action btn-avatar-remove" :disabled="props.saving || avatarLoading" @click="handleAvatarRemove">
           <Trash2 :size="16" />
-          <span>Удалить</span>
+          <span>{{ t('settings.profile.remove') }}</span>
         </button>
       </div>
     </div>
     <p class="avatar-block__hint">
-      Рекомендуемый размер: 200×200 пикселей. Форматы PNG, JPG, GIF и WEBP до {{ MAX_AVATAR_SIZE_MB }} МБ.
+      {{ t('settings.profile.photoHint', { size: MAX_AVATAR_SIZE_MB }) }}
     </p>
     <AvatarCropModal
       v-if="showCropModal || cropImageSrc"

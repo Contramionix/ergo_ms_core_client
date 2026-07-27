@@ -45,14 +45,14 @@
                         v-model="searchQuery"
                         type="text"
                         class="select-box-search"
-                        :placeholder="searchPlaceholder"
-                        :aria-label="searchPlaceholder || 'Поиск'"
+                        :placeholder="resolvedSearchPlaceholder"
+                        :aria-label="resolvedSearchPlaceholder || t('components.selectBox.search')"
                         autocomplete="off"
                     />
                     <template v-if="!virtualized">
                         <ul class="dropdown-menu-list" role="presentation">
                             <li v-if="includeAllOption && !hasActiveSearch">
-                                <a class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" @click.prevent="choose(null)">{{ allLabel }}</a>
+                                <a class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" @click.prevent="choose(null)">{{ resolvedAllLabel }}</a>
                             </li>
                             <li v-for="opt in filteredOptions" :key="opt.key">
                                 <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" :style="getDropdownItemStyle(opt)" @click.prevent="choose(opt.value)">
@@ -127,8 +127,11 @@
 import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick, useId } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { OVERLAY_MENU_Z_INDEX } from '@/js/utils/overlayZIndex.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 defineOptions({ inheritAttrs: false })
+
+const { t } = useAppI18n()
 
 const NULL_VALUE = 'null'
 
@@ -141,7 +144,7 @@ const props = defineProps({
     disabled: { type: Boolean, default: false },
     clearable: { type: Boolean, default: false },
     includeAllOption: { type: Boolean, default: true },
-    allLabel: { type: String, default: 'Не выбрана' },
+    allLabel: { type: String, default: undefined },
     valueKey: { type: String, default: 'id' },
     labelKey: { type: String, default: 'name' },
     size: { type: String, default: 'md' },
@@ -152,7 +155,7 @@ const props = defineProps({
     hideChevron: { type: Boolean, default: false },
     dropdownAnchorRef: { type: Object, default: null },
     searchable: { type: Boolean, default: false },
-    searchPlaceholder: { type: String, default: 'Поиск...' },
+    searchPlaceholder: { type: String, default: undefined },
     searchByFirstLetters: { type: Boolean, default: false },
     /** Ключ доп. поля в объекте опции для поиска (помимо label); пусто — только label */
     searchExtraKey: { type: String, default: '' },
@@ -517,11 +520,18 @@ function choose(value) {
     close()
 }
 
+const resolvedAllLabel = computed(
+    () => props.allLabel ?? t('components.selectBox.notSelected'),
+)
+const resolvedSearchPlaceholder = computed(
+    () => props.searchPlaceholder ?? t('components.selectBox.searchPlaceholder'),
+)
+
 const rawCurrentLabel = computed(() => {
     if (props.multiple && Array.isArray(props.modelValue)) {
-        if (!props.modelValue.length) return props.allLabel
+        if (!props.modelValue.length) return resolvedAllLabel.value
         if (props.multipleLabelFormat === 'count' && props.modelValue.length > 1) {
-            return `${props.modelValue.length} выбрано`
+            return t('components.selectBox.selectedCount', { count: props.modelValue.length })
         }
         if (props.multipleLabelFormat === 'count' && props.modelValue.length === 1) {
             const val = props.modelValue[0]
@@ -534,9 +544,11 @@ const rawCurrentLabel = computed(() => {
         })
         return labels.join(', ')
     }
-    if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') return props.allLabel
+    if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') {
+        return resolvedAllLabel.value
+    }
     const found = normalizedOptions.value.find(o => valuesAreEqual(o.value, props.modelValue))
-    if (!found) return props.allLabel
+    if (!found) return resolvedAllLabel.value
     if (typeof props.currentLabelFormatter === 'function') {
         try { return props.currentLabelFormatter({ option: found.raw, value: found.value, label: found.label }) } catch { return found.label }
     }
@@ -593,7 +605,7 @@ const effectiveOptionsForVirtual = computed(() => {
     if (!props.virtualized) return []
     const list = filteredOptions.value
     if (props.includeAllOption && !hasActiveSearch.value) {
-        return [{ key: '__all__', value: null, label: props.allLabel, raw: null }, ...list]
+        return [{ key: '__all__', value: null, label: resolvedAllLabel.value, raw: null }, ...list]
     }
     return list
 })

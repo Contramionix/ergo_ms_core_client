@@ -8,6 +8,9 @@ import {
   releaseScrollLock,
 } from '@/js/utils/modalStack.js'
 import { activateFocusTrap } from '@/js/utils/focusTrap.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const SIZE_CLASS_MAP = {
   sm: 'modal-sm',
@@ -154,6 +157,8 @@ watch(
       document.removeEventListener('keydown', onKeydown)
     }
   },
+  // v-if + уже visible=true: без immediate модалка не попадает в modalStack
+  { immediate: true },
 )
 
 onBeforeUnmount(() => {
@@ -188,13 +193,13 @@ onBeforeUnmount(() => {
             <h1 class="modal-title fs-5 d-flex align-items-center gap-2" :id="titleId">
               <slot name="title">{{ title }}</slot>
             </h1>
-            <button v-if="showCloseButton" type="button" class="btn-close" aria-label="Закрыть" @click.stop="handleClose"></button>
+            <button v-if="showCloseButton" type="button" class="btn-close" :aria-label="t('components.modal.close')" @click.stop="handleClose"></button>
           </div>
           <button
             v-else-if="!showTitle && showCloseButton"
             type="button"
             class="modal-content__floating-close btn-close"
-            aria-label="Закрыть"
+            :aria-label="t('components.modal.close')"
             @click.stop="handleClose"
           ></button>
           <div class="modal-body" :class="bodyClass">

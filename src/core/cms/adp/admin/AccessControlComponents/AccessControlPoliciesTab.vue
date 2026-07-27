@@ -1,4 +1,5 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import PermissionTableHeader from '@/core/cms/adp/admin/PermissionsComponents/PermissionTableHeader.vue'
 import PermissionTable from '@/core/cms/adp/admin/PermissionsComponents/PermissionTable.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
@@ -6,6 +7,9 @@ import { getPolicies, getRoles, getRoleGroups } from '@/core/cms/adp/admin/js/ad
 import { useCmsPageCatalog } from '@/core/cms/adp/admin/js/useCmsPageCatalog.js'
 import { ref, computed, onMounted } from 'vue'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
+
+const { t } = useAppI18n()
+
 
 const {
   pages,
@@ -95,8 +99,8 @@ const handleSearchQuery = (query) => {
   <div class="d-flex flex-column gap-3">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
       <p class="access-control-tab-desc mb-0">
-        Политики доступа к маршрутам: в модалке можно просмотреть все модули и их страницы.
-        Синхронизация обновляет записи CMS в базе данных.
+        {{ t('admin.access.policiesTabHint1') }}
+        {{ t('admin.access.policiesTabHint2') }}
       </p>
       <button
         type="button"
@@ -110,7 +114,7 @@ const handleSearchQuery = (query) => {
           role="status"
           aria-hidden="true"
         ></span>
-        {{ isSyncing ? 'Синхронизация...' : 'Синхронизировать маршруты' }}
+        {{ isSyncing ? t('admin.access.syncing') : t('admin.access.syncRoutes') }}
       </button>
     </div>
 
@@ -139,7 +143,7 @@ const handleSearchQuery = (query) => {
           :module-catalog="moduleCatalog"
           :get-page-label="getPageLabel"
           :get-page-title="getPageTitle"
-          :headers="['Название', 'Тип политики', 'Действие', 'Ресурс', 'Цель', 'Шаблон', 'Приоритет', 'Действия']"
+          :headers="[t('admin.access.headers.name'), t('admin.access.headers.type'), t('admin.access.headers.action'), t('admin.access.headers.resource'), t('admin.access.headers.target'), t('admin.access.headers.pattern'), t('admin.access.headers.priority'), t('admin.access.headers.actions')]"
           :rowsPerPage="rowsPerPage"
           :searchQuery="searchQuery"
           @updatePermissions="updatePermissions"

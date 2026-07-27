@@ -1,8 +1,12 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, watch, onMounted } from 'vue'
 import { Settings } from 'lucide-vue-next'
 import Cookies from 'js-cookie'
 import ModalCenter from '@/components/ModalCenter.vue'
+
+const { t } = useAppI18n()
+
 
 const props = defineProps({
   show: { type: Boolean, default: false }
@@ -44,17 +48,17 @@ function handleClose() {
 </script>
 
 <template>
-  <ModalCenter standalone :visible="show" modal-id="menuSettingsModal" title="Настройки страницы" @closemodal="handleClose">
+  <ModalCenter standalone :visible="show" modal-id="menuSettingsModal" :title="t('admin.menu.pageSettings')" @closemodal="handleClose">
       <template #title>
-        <Settings :size="24" class="text-primary" /><span>Настройки страницы</span>
+        <Settings :size="24" class="text-primary" /><span>{{ t('admin.menu.pageSettings') }}</span>
       </template>
       <div class="form-check">
         <input class="form-check-input" type="checkbox" id="expandAllGroups" v-model="expandAllGroups"/>
-        <label class="form-check-label" for="expandAllGroups">Раскрывать все родительские группы</label>
+        <label class="form-check-label" for="expandAllGroups">{{ t('admin.menu.expandAllGroups') }}</label>
       </div>
       <div class="d-flex justify-content-end gap-2 mt-3 pt-3 border-top">
-        <button type="button" class="ui-btn ui-btn--secondary" @click="handleClose">Отмена</button>
-        <button type="button" class="ui-btn ui-btn--primary" @click="handleSave">Сохранить</button>
+        <button type="button" class="ui-btn ui-btn--secondary" @click="handleClose">{{ t('common.cancel') }}</button>
+        <button type="button" class="ui-btn ui-btn--primary" @click="handleSave">{{ t('common.save') }}</button>
       </div>
   </ModalCenter>
 </template>

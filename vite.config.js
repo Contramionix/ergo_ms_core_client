@@ -185,6 +185,8 @@ function buildClientEnvDefines(envValues) {
     CLIENT_API_PORT: envValues.API_PORT || '8000',
     CLIENT_USE_RELATIVE_API: useRelativeApi,
     CLIENT_DEFAULT_THEME: envValues.CLIENT_DEFAULT_THEME || 'light',
+    CLIENT_DEFAULT_LANGUAGE:
+      envValues.CLIENT_DEFAULT_LANGUAGE || envValues.DEFAULT_LANGUAGE || 'ru',
     CLIENT_LOG_LEVEL: logLevel,
     CLIENT_BROWSER_LOG_ENABLED: envValues.CLIENT_BROWSER_LOG_ENABLED ?? 'true',
     CLIENT_DISABLED_MODULES: envValues.DISABLED_MODULES || '',

@@ -8,6 +8,7 @@
 import { ModuleManager } from './ModuleManager.js'
 import { CoreRoutesManager } from './routes/CoreRoutesManager.js'
 import coreRoutesConfig from '@/config/routes.js'
+import { resolveRouteTitle } from '@/i18n/resolveRouteTitle.js'
 
 export const moduleManager = new ModuleManager()
 export const coreRoutesManager = new CoreRoutesManager(coreRoutesConfig)
@@ -110,7 +111,7 @@ export async function getAvailableRouteOptions() {
     if (route.name) {
       byId.set(route.name, {
         id: route.name,
-        name: route.meta?.title || route.name
+        name: resolveRouteTitle(route, route.name),
       })
     }
   })
@@ -120,8 +121,7 @@ export async function getAvailableRouteOptions() {
   moduleNames.forEach(name => {
     if (byId.has(name)) return
     const config = routeManager.getRouteConfig(name)
-    const title = config?.meta?.title || name
-    byId.set(name, { id: name, name: title })
+    byId.set(name, { id: name, name: resolveRouteTitle(config, name) })
   })
 
   return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name))

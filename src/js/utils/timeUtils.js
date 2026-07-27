@@ -1,40 +1,19 @@
 /**
- * Утилиты для работы с временем
+ * Утилиты для работы с временем (локаль из vue-i18n).
  */
 
-/** Месяцы в родительном падеже (для «с июня», «01 января»). */
-const MONTHS_GENITIVE = [
-    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
-]
+import { getCurrentBcp47, tGlobal } from '@/i18n/index.js'
 
 /**
- * Возвращает русское название месяца по номеру (1–12).
- * По умолчанию — "все месяцы" для нулевого или некорректного значения.
+ * Возвращает название месяца по номеру (1–12) на текущем языке.
  * @param {number} month
  * @returns {string}
  */
 export function getMonthNameByNumber(month) {
-    const months = {
-        1: 'январь',
-        2: 'февраль',
-        3: 'март',
-        4: 'апрель',
-        5: 'май',
-        6: 'июнь',
-        7: 'июль',
-        8: 'август',
-        9: 'сентябрь',
-        10: 'октябрь',
-        11: 'ноябрь',
-        12: 'декабрь',
-    }
-
     if (!month || month < 1 || month > 12) {
-        return 'все месяцы'
+        return tGlobal('time.months.all')
     }
-
-    return months[month] || 'все месяцы'
+    return tGlobal(`time.months.${month}`)
 }
 
 /**
@@ -49,75 +28,52 @@ function parseDate(date) {
 }
 
 /**
- * Склоняет русские слова в зависимости от числа
- * @param {number} count - Число
- * @param {string} one - Форма для 1 (например, "минуту")
- * @param {string} few - Форма для 2-4 (например, "минуты")
- * @param {string} many - Форма для 5+ (например, "минут")
- * @returns {string} Правильная форма слова
- */
-function pluralizeRu(count, one, few, many) {
-    if (count === 1) return one
-    const mod10 = count % 10
-    const mod100 = count % 100
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few
-    return many
-}
-
-/**
- * Форматирует дату в относительное время (например, "несколько минут назад", "1 час назад")
+ * Форматирует дату в относительное время
  * @param {string|Date} date - Дата в ISO формате или объект Date
- * @returns {string} Относительное время на русском языке
+ * @returns {string} Относительное время
  */
 export function getRelativeTime(date) {
     const targetDate = parseDate(date)
     if (!targetDate) return ''
-    
+
     const now = new Date()
     const diffInSeconds = Math.floor((now - targetDate) / 1000)
-    
-    if (diffInSeconds < 0) return 'в будущем'
-    if (diffInSeconds < 60) return 'только что'
-    
+
+    if (diffInSeconds < 0) return tGlobal('time.relative.future')
+    if (diffInSeconds < 60) return tGlobal('time.relative.justNow')
+
     const diffInMinutes = Math.floor(diffInSeconds / 60)
     if (diffInMinutes < 60) {
-        return `${diffInMinutes} ${pluralizeRu(diffInMinutes, 'минуту', 'минуты', 'минут')} назад`
+        return tGlobal('time.relative.minutesAgo', diffInMinutes)
     }
-    
+
     const diffInHours = Math.floor(diffInMinutes / 60)
     if (diffInHours < 24) {
-        return `${diffInHours} ${pluralizeRu(diffInHours, 'час', 'часа', 'часов')} назад`
+        return tGlobal('time.relative.hoursAgo', diffInHours)
     }
-    
+
     const diffInDays = Math.floor(diffInHours / 24)
     if (diffInDays < 7) {
-        return `${diffInDays} ${pluralizeRu(diffInDays, 'день', 'дня', 'дней')} назад`
+        return tGlobal('time.relative.daysAgo', diffInDays)
     }
-    
+
     const diffInWeeks = Math.floor(diffInDays / 7)
     const diffInMonths = Math.floor(diffInDays / 30)
-    
-    // Если меньше 4 недель, показываем недели
-    if (diffInWeeks < 4) {
-        return `${diffInWeeks} ${pluralizeRu(diffInWeeks, 'неделю', 'недели', 'недель')} назад`
+
+    if (diffInWeeks < 4 || diffInMonths === 0) {
+        return tGlobal('time.relative.weeksAgo', diffInWeeks)
     }
-    
-    // Если месяцев 0, но больше или равно 4 неделям, показываем недели
-    if (diffInMonths === 0) {
-        return `${diffInWeeks} ${pluralizeRu(diffInWeeks, 'неделю', 'недели', 'недель')} назад`
-    }
-    
-    // Если месяцев больше 0, но меньше 12, показываем месяцы
+
     if (diffInMonths < 12) {
-        return `${diffInMonths} ${pluralizeRu(diffInMonths, 'месяц', 'месяца', 'месяцев')} назад`
+        return tGlobal('time.relative.monthsAgo', diffInMonths)
     }
-    
+
     const diffInYears = Math.floor(diffInDays / 365)
-    return `${diffInYears} ${pluralizeRu(diffInYears, 'год', 'года', 'лет')} назад`
+    return tGlobal('time.relative.yearsAgo', diffInYears)
 }
 
 /**
- * Форматирует дату с временем в формат "dd.mm.yyyy, hh:mm" (например, "01.01.2024, 14:30")
+ * Форматирует дату с временем в формат "dd.mm.yyyy, hh:mm"
  * @param {string|Date} date - Дата в ISO формате или объект Date
  * @returns {string} Отформатированная дата с временем или "—" при ошибке
  */
@@ -125,14 +81,14 @@ export function formatDateTime(date) {
     if (!date) return '—'
     const targetDate = parseDate(date)
     if (!targetDate) return '—'
-    
+
     try {
-        return new Intl.DateTimeFormat('ru-RU', {
+        return new Intl.DateTimeFormat(getCurrentBcp47(), {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
         }).format(targetDate)
     } catch {
         return '—'
@@ -147,10 +103,10 @@ export function formatDateTime(date) {
 export function getFormattedDateWithRelative(date) {
     const targetDate = parseDate(date)
     if (!targetDate) return ''
-    
+
     const relativeTime = getRelativeTime(date)
     const fullDate = formatDateTime(date)
-    
+
     return `${relativeTime} (${fullDate})`
 }
 
@@ -162,20 +118,20 @@ export function getFormattedDateWithRelative(date) {
 export function getFullDateTime(date) {
     const targetDate = parseDate(date)
     if (!targetDate) return ''
-    
-    return new Intl.DateTimeFormat('ru-RU', {
+
+    return new Intl.DateTimeFormat(getCurrentBcp47(), {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        weekday: 'long'
+        weekday: 'long',
     }).format(targetDate)
 }
 
 /**
- * Форматирует дату в формат "dd месяц yyyy" (например, "01 января 2024")
+ * Форматирует дату в формат "dd месяц yyyy"
  * @param {string|Date} date - Дата в ISO формате или объект Date
  * @returns {string} Отформатированная дата или исходная строка при ошибке
  */
@@ -183,30 +139,26 @@ export function formatDate(date) {
     if (!date) return ''
     const d = parseDate(date)
     if (!d) return String(date)
-    
-    const months = [
-        'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
-    ]
+
     const dd = String(d.getDate()).padStart(2, '0')
-    const monthName = months[d.getMonth()]
+    const monthName = tGlobal(`time.monthsGenitive.${d.getMonth() + 1}`)
     const yyyy = d.getFullYear()
     return `${dd} ${monthName} ${yyyy}`
 }
 
 /**
- * Форматирует дату в короткий формат "dd.mm.yyyy" (например, "01.01.2024")
+ * Форматирует дату в короткий формат "dd.mm.yyyy"
  * @param {string|Date} date - Дата в ISO формате или объект Date
  * @returns {string} Отформатированная дата в формате dd.mm.yyyy
  */
 export function formatDateShort(date) {
     const d = parseDate(date)
     if (!d) return ''
-    
-    return d.toLocaleDateString('ru-RU', {
+
+    return d.toLocaleDateString(getCurrentBcp47(), {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric'
+        year: 'numeric',
     })
 }
 
@@ -236,50 +188,42 @@ function formatDateRangeHelper(startDate, endDate, formatter) {
     const start = parseDate(startDate)
     const end = parseDate(endDate)
     if (!start || !end) return ''
-    
+
     return `${formatter(startDate)} — ${formatter(endDate)}`
 }
 
 /**
- * Форматирует диапазон дат в формат "дд месяц год — дд месяц год" (например, "01 января 2024 — 31 января 2024")
- * @param {string|Date} startDate - Дата начала в ISO формате или объект Date
- * @param {string|Date} endDate - Дата окончания в ISO формате или объект Date
- * @returns {string} Отформатированный диапазон дат
+ * Форматирует диапазон дат в формат "дд месяц год — дд месяц год"
  */
 export function formatDateRange(startDate, endDate) {
     return formatDateRangeHelper(startDate, endDate, formatDate)
 }
 
 /**
- * Форматирует диапазон дат в короткий формат "dd.mm.yyyy — dd.mm.yyyy" (например, "01.01.2024 — 31.01.2024")
- * @param {string|Date} startDate - Дата начала в ISO формате или объект Date
- * @param {string|Date} endDate - Дата окончания в ISO формате или объект Date
- * @returns {string} Отформатированный диапазон дат в коротком формате
+ * Форматирует диапазон дат в короткий формат "dd.mm.yyyy — dd.mm.yyyy"
  */
 export function formatDateRangeShort(startDate, endDate) {
     return formatDateRangeHelper(startDate, endDate, formatDateShort)
 }
 
 /**
- * Форматирует диапазон дат в формат месяца/месяцев (например, "январь 2024" или "январь 2024 — февраль 2024")
- * @param {string|Date} startDate - Дата начала в ISO формате или объект Date
- * @param {string|Date} endDate - Дата окончания в ISO формате или объект Date
- * @returns {string} Отформатированный диапазон месяцев
+ * Форматирует диапазон дат в формат месяца/месяцев
  */
 export function formatMonthRange(startDate, endDate) {
     if (!startDate || !endDate) return ''
     const start = parseDate(startDate)
     const end = parseDate(endDate)
     if (!start || !end) return ''
-    
-    const startMonth = start.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
-    const endMonth = end.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
-    
+
+    const locale = getCurrentBcp47()
+    const startMonth = start.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+    const endMonth = end.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+
     return startMonth === endMonth ? startMonth : `${startMonth} — ${endMonth}`
 }
 
 /**
- * Форматирует ключ периода YYYY-MM для отображения (например, «Март 2026»)
+ * Форматирует ключ периода YYYY-MM для отображения
  * @param {string} monthKey - Строка вида YYYY-MM
  * @returns {string} Подпись месяца и года или «—»
  */
@@ -291,15 +235,12 @@ export function formatYearMonthKeyRu(monthKey) {
     if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return '—'
 
     const date = new Date(year, month - 1, 1)
-    const label = date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+    const label = date.toLocaleDateString(getCurrentBcp47(), { month: 'long', year: 'numeric' })
     return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 /**
  * Нормализует значение к строке YYYY-MM-DD (ISO date).
- * Поддерживает: string (ISO/parseable), Date, объект {day, month, year}
- * @param {string|Date|Object} value - Дата в любом поддерживаемом формате
- * @returns {string} Дата в формате YYYY-MM-DD или пустая строка
  */
 export function toISODate(value) {
     if (!value) return ''
@@ -315,11 +256,6 @@ export function toISODate(value) {
     return ''
 }
 
-/**
- * Конвертирует старый формат даты (объект с day, month, year) в строку YYYY-MM-DD
- * @param {Object} dateObj - Объект с полями {day, month, year}
- * @returns {string} Дата в формате YYYY-MM-DD или пустая строка
- */
 function convertDateObjectToString(dateObj) {
     if (!dateObj || typeof dateObj !== 'object') return ''
     const { day, month, year } = dateObj
@@ -328,36 +264,27 @@ function convertDateObjectToString(dateObj) {
     return formatDateLocal(date)
 }
 
-/**
- * Получает дату по умолчанию (1 число следующего месяца)
- * @returns {string} Дата в формате YYYY-MM-DD
- */
 export function getDefaultStartDate() {
     const today = new Date()
     const nextMonth = today.getMonth() + 1
     const nextYear = nextMonth > 11 ? today.getFullYear() + 1 : today.getFullYear()
     const actualNextMonth = nextMonth > 11 ? 0 : nextMonth
-    
+
     const firstDayOfNextMonth = new Date(nextYear, actualNextMonth, 1)
     return formatDateLocal(firstDayOfNextMonth)
 }
 
-/**
- * Получает дату окончания по умолчанию (31 декабря года даты начала или текущего года)
- * @param {string|Date} startDate - Дата начала (опционально)
- * @returns {string} Дата в формате YYYY-MM-DD
- */
 export function getDefaultEndDate(startDate = null) {
     let targetYear
-    
+
     if (startDate) {
         const startDateObj = parseDate(startDate)
         targetYear = startDateObj ? startDateObj.getFullYear() : new Date().getFullYear()
     } else {
         targetYear = new Date().getFullYear()
     }
-    
-    const endOfYear = new Date(targetYear, 11, 31) // 11 = декабрь (0-индексированный)
+
+    const endOfYear = new Date(targetYear, 11, 31)
     return formatDateLocal(endOfYear)
 }
 
@@ -366,9 +293,10 @@ export function formatWeekdayDate(date = new Date()) {
     if (!targetDate) return ''
 
     try {
-        const weekdayRaw = new Intl.DateTimeFormat('ru-RU', { weekday: 'long' }).format(targetDate)
+        const locale = getCurrentBcp47()
+        const weekdayRaw = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(targetDate)
         const weekday = weekdayRaw.charAt(0).toUpperCase() + weekdayRaw.slice(1)
-        const dayMonth = new Intl.DateTimeFormat('ru-RU', {
+        const dayMonth = new Intl.DateTimeFormat(locale, {
             day: 'numeric',
             month: 'long',
         }).format(targetDate)
@@ -386,5 +314,6 @@ export function formatMonthYearGenitive(date) {
     const d = parseDate(date)
     if (!d) return ''
 
-    return `${MONTHS_GENITIVE[d.getMonth()]} ${d.getFullYear()} г.`
+    const monthName = tGlobal(`time.monthsGenitive.${d.getMonth() + 1}`)
+    return `${monthName} ${d.getFullYear()}`
 }

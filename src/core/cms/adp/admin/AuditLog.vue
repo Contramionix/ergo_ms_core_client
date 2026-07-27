@@ -1,10 +1,11 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted, defineAsyncComponent } from 'vue'
 import { logError } from '@/js/utils/logError.js'
 import { useToast } from '@/js/utils/toast.js'
 import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { accessDeniedState } from '@/js/accessDeniedState'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
+import { tGlobal } from '@/i18n/index.js'
 
 const AuditLogPanel = defineAsyncComponent(() =>
   import('@/core/audit/components/AuditLogPanel.vue'),
@@ -19,18 +20,18 @@ onMounted(async () => {
   try {
     const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
-      toast.error('У вас нет доступа к административной панели')
+      toast.error(tGlobal('admin.audit.noAdminAccess'))
       accessDeniedState.active = true
-      accessDeniedState.title = 'Доступ запрещён'
-      accessDeniedState.message = 'Требуются права администратора.'
+      accessDeniedState.title = tGlobal('admin.access.deniedTitle')
+      accessDeniedState.message = tGlobal('admin.access.adminRequired')
       return
     }
     hasAdminAccess.value = true
   } catch (error) {
     logError('Аудит: ошибка проверки прав', error)
     accessDeniedState.active = true
-    accessDeniedState.title = 'Доступ запрещён'
-    accessDeniedState.message = 'Не удалось проверить права доступа.'
+    accessDeniedState.title = tGlobal('admin.access.deniedTitle')
+    accessDeniedState.message = tGlobal('admin.audit.accessCheckFailed')
   } finally {
     isCheckingAccess.value = false
   }
@@ -44,8 +45,8 @@ onMounted(async () => {
 
   <div v-else-if="hasAdminAccess" class="admin-page">
     <div class="page-header">
-      <h1 class="page-title">Журнал действий</h1>
-      <p class="page-subtitle">Централизованный аудит действий пользователей в ядре и модулях</p>
+      <h1 class="page-title">{{ tGlobal('admin.audit.pageTitle') }}</h1>
+      <p class="page-subtitle">{{ tGlobal('admin.audit.pageSubtitle') }}</p>
     </div>
 
     <div class="content-card">

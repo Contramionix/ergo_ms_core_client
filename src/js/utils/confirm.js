@@ -1,11 +1,12 @@
 import { ref } from 'vue'
+import { tGlobal } from '@/i18n/index.js'
 
 export const confirmDialog = ref({
   show: false,
-  title: 'Подтверждение',
+  title: '',
   message: '',
-  confirmText: 'Удалить',
-  cancelText: 'Отмена',
+  confirmText: '',
+  cancelText: '',
   variant: 'danger',
   loading: false,
   confirmCountdownSeconds: 0,
@@ -16,7 +17,7 @@ export const confirmDialog = ref({
 
 export const choiceDialog = ref({
   show: false,
-  title: 'Выберите действие',
+  title: '',
   message: '',
   choices: [],
   loading: false,
@@ -81,10 +82,10 @@ export function confirmAction(options = {}) {
     confirmResolver = resolve
     confirmDialog.value = {
       show: true,
-      title: options.title ?? 'Подтверждение',
-      message: options.message ?? 'Вы уверены?',
-      confirmText: options.confirmText ?? 'Подтвердить',
-      cancelText: options.cancelText ?? 'Отмена',
+      title: options.title ?? tGlobal('components.confirm.title'),
+      message: options.message ?? tGlobal('components.confirm.message'),
+      confirmText: options.confirmText ?? tGlobal('components.confirm.confirm'),
+      cancelText: options.cancelText ?? tGlobal('components.confirm.cancel'),
       variant: options.variant ?? 'danger',
       loading: false,
       confirmCountdownSeconds: options.confirmCountdownSeconds ?? 0,
@@ -96,11 +97,14 @@ export function confirmAction(options = {}) {
   })
 }
 
-export function confirmDelete(title = 'Удаление', message = 'Вы уверены, что хотите удалить?') {
+export function confirmDelete(
+  title = tGlobal('components.confirm.deleteTitle'),
+  message = tGlobal('components.confirm.deleteMessage'),
+) {
   return confirmAction({
     title,
     message,
-    confirmText: 'Удалить',
+    confirmText: tGlobal('components.confirm.deleteConfirm'),
     variant: 'danger',
   })
 }
@@ -132,8 +136,8 @@ export function confirmChoice(options = {}) {
     choiceResolver = resolve
     choiceDialog.value = {
       show: true,
-      title: options.title ?? 'Выберите действие',
-      message: options.message ?? 'Выберите одно из действий:',
+      title: options.title ?? tGlobal('components.confirm.choiceTitle'),
+      message: options.message ?? tGlobal('components.confirm.choiceMessage'),
       choices: options.choices ?? [],
       loading: false,
       zIndex: options.zIndex ?? null,

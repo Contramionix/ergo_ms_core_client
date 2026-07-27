@@ -1,5 +1,5 @@
 <template>
-  <div class="default-avatar" :class="{ 'default-avatar--clickable': clickable }" :style="avatarStyle" :title="title">
+  <div class="default-avatar" :class="{ 'default-avatar--clickable': clickable }" :style="avatarStyle" :title="resolvedTitle">
     <span v-if="initials" class="default-avatar__initials" :style="initialsStyle">
       {{ initials }}
     </span>
@@ -10,6 +10,9 @@
 <script setup>
 import { computed } from 'vue'
 import { User } from 'lucide-vue-next'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const GRADIENTS = [
   'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
@@ -32,7 +35,7 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: 'Пользователь'
+    default: undefined
   },
   firstName: {
     type: String,
@@ -48,19 +51,21 @@ const props = defineProps({
   }
 })
 
+const resolvedTitle = computed(() => props.title ?? t('common.user'))
+
 const initials = computed(() => {
   const first = props.firstName?.trim()
   const last = props.lastName?.trim()
   if (first && last) return (last[0] + first[0]).toUpperCase()
 
-  const words = (props.title || '').trim().split(/\s+/).filter(w => w.length > 0)
+  const words = resolvedTitle.value.trim().split(/\s+/).filter(w => w.length > 0)
   if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase()
 
   return null
 })
 
 const gradientIndex = computed(() => {
-  const key = (props.colorKey || '').trim() || initials.value || (props.title || '').trim()
+  const key = (props.colorKey || '').trim() || initials.value || resolvedTitle.value.trim()
   let hash = 0
   for (const ch of key) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff
   return hash % GRADIENTS.length

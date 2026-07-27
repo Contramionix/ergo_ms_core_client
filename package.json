@@ -14,6 +14,7 @@
     "preview": "vite preview",
     "lint": "eslint . --fix",
     "lint:a11y": "eslint -c eslint.a11y.config.js \"src/**/*.{vue,js}\" --no-fix --max-warnings 200",
+    "check-i18n": "node scripts/check-i18n-keys.js",
     "format": "prettier --write src/"
   },
   "browserslist": [

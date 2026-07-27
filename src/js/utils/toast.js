@@ -11,6 +11,7 @@ import {
   subscribeToastSettingsChange,
 } from '@/js/utils/toastSettings.js'
 import { extractApiError } from '@/js/utils/apiErrorMessage.js'
+import { tGlobal } from '@/i18n/index.js'
 
 export const TOAST_TIMEOUT = {
   success: 3000,
@@ -20,9 +21,10 @@ export const TOAST_TIMEOUT = {
   default: 3000,
 }
 
-export function normalizeToastMessage(message, fallback = 'Произошла ошибка') {
+export function normalizeToastMessage(message, fallback) {
+  const resolvedFallback = fallback ?? tGlobal('components.toast.errorFallback')
   if (message == null || message === '') {
-    return fallback
+    return resolvedFallback
   }
 
   if (typeof message === 'string') {
@@ -34,7 +36,7 @@ export function normalizeToastMessage(message, fallback = 'Произошла о
   }
 
   if (Array.isArray(message)) {
-    return message.map((item) => normalizeToastMessage(item, '')).filter(Boolean).join(', ') || fallback
+    return message.map((item) => normalizeToastMessage(item, '')).filter(Boolean).join(', ') || resolvedFallback
   }
 
   if (typeof message === 'object') {
@@ -49,7 +51,7 @@ export function normalizeToastMessage(message, fallback = 'Произошла о
     }
   }
 
-  return fallback
+  return resolvedFallback
 }
 
 function mapToastType(type) {
@@ -249,18 +251,21 @@ subscribeToastSettingsChange(() => {
   syncToastPluginWithSettings()
 })
 
-export async function handleApiError(error, defaultMessage = 'Произошла ошибка') {
-  showError(extractApiError(error, defaultMessage))
+export async function handleApiError(error, defaultMessage) {
+  const fallback = defaultMessage ?? tGlobal('components.toast.errorFallback')
+  showError(extractApiError(error, fallback))
 }
 
-export function showValidationError(message = 'Проверьте правильность заполнения полей') {
-  showWarning(message)
+export function showValidationError(message) {
+  showWarning(message ?? tGlobal('components.toast.validationError'))
 }
 
-export function showSaveSuccess(itemType = 'данные') {
-  showSuccess(`${itemType} успешно сохранены!`)
+export function showSaveSuccess(itemType) {
+  const item = itemType ?? tGlobal('components.toast.defaultItem')
+  showSuccess(tGlobal('components.toast.saveSuccess', { item }))
 }
 
-export function showDeleteSuccess(itemType = 'элемент') {
-  showSuccess(`${itemType} успешно удален!`)
+export function showDeleteSuccess(itemType) {
+  const item = itemType ?? tGlobal('components.toast.defaultDeleteItem')
+  showSuccess(tGlobal('components.toast.deleteSuccess', { item }))
 }

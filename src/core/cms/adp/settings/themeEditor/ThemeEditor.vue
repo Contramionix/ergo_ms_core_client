@@ -1,4 +1,5 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, computed } from 'vue'
 import {
   Save,
@@ -62,15 +63,17 @@ const {
   updateModuleToken,
 } = useThemeEditor()
 
+const { t } = useAppI18n()
+
 const listSearch = ref('')
 const modeFilter = ref('all')
 
-const MODE_FILTER_OPTIONS = [
-  { id: 'all', label: 'Все' },
-  { id: 'light', label: 'Светлые' },
-  { id: 'dark', label: 'Тёмные' },
-  { id: 'a11y', label: 'Доступность' },
-]
+const modeFilterOptions = computed(() => [
+  { id: 'all', label: t('common.all') },
+  { id: 'light', label: t('settings.themes.lightThemes') },
+  { id: 'dark', label: t('settings.themes.darkThemes') },
+  { id: 'a11y', label: t('settings.themes.a11y') },
+])
 
 function themeMatchesMode(theme, mode) {
   if (mode === 'all') {
@@ -157,13 +160,13 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
       <section class="theme-editor__section theme-editor__section--list">
           <div class="theme-editor__section-head">
             <div class="table-header theme-editor__list-heading">
-              <h2 class="admin-section-heading theme-editor__list-title">Список тем</h2>
+              <h2 class="admin-section-heading theme-editor__list-title">{{ t('settings.themes.listTitle') }}</h2>
               <div class="actions-wrapper">
-                <HoverTooltip text="Новая тема" wrap>
+                <HoverTooltip :text="t('settings.themes.newTheme')" wrap>
                   <button
                     type="button"
                     class="theme-list-add-btn"
-                    aria-label="Новая тема"
+                    :aria-label="t('settings.themes.newTheme')"
                     @click="createNewTheme"
                   >
                     <Plus :size="18" aria-hidden="true" />
@@ -176,10 +179,10 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
               <div
                 class="theme-editor__mode-filter"
                 role="group"
-                aria-label="Фильтр по режиму темы"
+                :aria-label="t('settings.themes.filterModeAria')"
               >
                 <button
-                  v-for="option in MODE_FILTER_OPTIONS"
+                  v-for="option in modeFilterOptions"
                   :key="option.id"
                   type="button"
                   class="theme-editor__mode-filter-btn"
@@ -197,7 +200,7 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                 <SearchInput
                   v-if="showListSearch"
                   v-model="listSearch"
-                  placeholder="Поиск по названию..."
+                  :placeholder="t('settings.themes.searchPlaceholder')"
                   layout="grow"
                   :show-icon="true"
                 />
@@ -215,8 +218,8 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                   <p class="mb-2">
                     {{
                       listSearch.trim() || modeFilter !== 'all'
-                        ? 'Ничего не найдено по фильтру.'
-                        : 'Тем пока нет.'
+                        ? t('settings.themes.emptyFilter')
+                        : t('settings.themes.emptyList')
                     }}
                   </p>
                   <button
@@ -225,7 +228,7 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                     class="btn btn-outline-primary btn-sm"
                     @click="createNewTheme"
                   >
-                    Создать тему
+                    {{ t('settings.themes.createTheme') }}
                   </button>
                 </div>
                 <div
@@ -259,19 +262,19 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
           <div class="theme-editor__toolbar table-header mb-3">
             <h2 class="admin-section-heading mb-0">
               <template v-if="isEditingModulePair">
-                Редактирование пары
+                {{ t('settings.themes.editingPair') }}
                 <span class="theme-editor__variant-label">
-                  ({{ editingVariant === 'dark' ? 'тёмный' : 'светлый' }} вариант)
+                  ({{ editingVariant === 'dark' ? t('settings.themes.darkVariantParen') : t('settings.themes.lightVariantParen') }})
                 </span>
               </template>
               <template v-else>
-                {{ isNewTheme ? 'Новая тема' : 'Редактирование' }}
+                {{ isNewTheme ? t('settings.themes.newTheme') : t('settings.themes.editing') }}
               </template>
               <span
                 class="theme-editor__dirty-dot"
                 :class="{ 'is-visible': isDirty }"
-                title="Есть несохранённые изменения"
-                aria-label="Есть несохранённые изменения"
+                :title="t('settings.themes.dirtyHint')"
+                :aria-label="t('settings.themes.dirtyHint')"
                 :aria-hidden="!isDirty"
               />
             </h2>
@@ -284,17 +287,17 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                 @click="saveModulePair"
               >
                 <Save :size="16" aria-hidden="true" />
-                <span>{{ saving ? 'Сохранение...' : 'Сохранить пару' }}</span>
+                <span>{{ saving ? t('settings.themes.saving') : t('settings.themes.savePair') }}</span>
               </button>
               <button
                 type="button"
                 class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
                 :disabled="!canEditCurrentTheme"
-                title="Сбросить цвета текущего варианта"
+                :title="t('settings.themes.resetVariantColors')"
                 @click="resetToDefaults"
               >
                 <RotateCcw :size="16" aria-hidden="true" />
-                <span>Сбросить</span>
+<span>{{ t('settings.themes.reset') }}</span>
               </button>
               <button
                 type="button"
@@ -302,7 +305,7 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                 @click="importTheme"
               >
                 <Upload :size="16" aria-hidden="true" />
-                <span>Импорт</span>
+<span>{{ t('settings.themes.import') }}</span>
               </button>
               <button
                 type="button"
@@ -310,7 +313,7 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                 @click="exportTheme"
               >
                 <Download :size="16" aria-hidden="true" />
-                <span>Экспорт</span>
+<span>{{ t('settings.themes.export') }}</span>
               </button>
               <button
                 type="button"
@@ -322,8 +325,8 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                 <span>
                   {{
                     saving
-                      ? 'Сохранение...'
-                      : (isEditingModulePair ? 'Сохранить вариант' : 'Сохранить')
+                      ? t('settings.themes.saving')
+                      : (isEditingModulePair ? t('settings.themes.saveVariant') : t('common.save'))
                   }}
                 </span>
               </button>
@@ -342,16 +345,15 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
               >
                 <AlertCircle :size="18" aria-hidden="true" />
                 <div>
-                  <strong>Системная тема.</strong>
-                  Палитру менять нельзя — можно активировать или сбросить к начальным значениям.
-                  Чтобы править цвета, создайте копию темы.
+<strong>{{ t('settings.themes.systemThemeStrong') }}</strong>
+                  {{ t('settings.themes.systemThemeHint') }}
                 </div>
               </div>
             </div>
 
             <div v-if="isEditingModulePair" class="theme-editor__variant-tabs mb-4">
               <span class="theme-editor__variant-tabs-label" id="variant-tabs-label">
-                Редактируемый вариант
+                {{ t('settings.themes.editableVariant') }}
               </span>
               <div
                 class="theme-editor__variant-tabs-group"
@@ -371,7 +373,7 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                   @click="changeEditingVariant('light')"
                 >
                   <Sun :size="16" aria-hidden="true" />
-                  <span>Светлый</span>
+<span>{{ t('settings.themes.light') }}</span>
                 </button>
                 <button
                   type="button"
@@ -385,11 +387,11 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                   @click="changeEditingVariant('dark')"
                 >
                   <Moon :size="16" aria-hidden="true" />
-                  <span>Тёмный</span>
+<span>{{ t('settings.themes.dark') }}</span>
                 </button>
               </div>
               <p class="form-text small text-muted mb-0">
-                Цвета и токены задаются отдельно для каждого варианта. На сайте показывается вариант по глобальной теме пользователя.
+                {{ t('settings.themes.variantHint') }}
               </p>
             </div>
 
@@ -399,35 +401,35 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                 id="theme-form-panel"
                 class="theme-editor__form-panel"
                 role="tabpanel"
-                :aria-label="`Панель темы ${formPanelKey}`"
+                :aria-label="t('settings.themes.panelAria', { key: formPanelKey })"
               >
               <div class="row g-3 mb-4">
                 <div class="col-12 col-md-4">
-                  <label class="form-label" for="theme-name">Название{{ isEditingModulePair ? ' пары' : '' }}</label>
+                  <label class="form-label" for="theme-name">{{ t('settings.themes.name') }}{{ isEditingModulePair ? t('settings.themes.namePairSuffix') : '' }}</label>
                   <input
                     id="theme-name"
                     v-model="currentTheme.name"
                     type="text"
                     class="form-control theme-editor__input"
                     :disabled="!canEditCurrentTheme"
-                    placeholder="Название темы"
+                    :placeholder="t('settings.themes.namePlaceholder')"
                   />
                 </div>
                 <div class="col-12 col-md-4">
-                  <label class="form-label" for="theme-author">Автор</label>
+                  <label class="form-label" for="theme-author">{{ t('settings.themes.author') }}</label>
                   <input
                     id="theme-author"
                     v-model="currentTheme.author"
                     type="text"
                     class="form-control theme-editor__input"
                     :disabled="!canEditCurrentTheme"
-                    placeholder="Автор"
+                    :placeholder="t('settings.themes.author')"
                   />
                 </div>
                 <div v-if="!isModuleScope" class="col-12 col-md-4">
                   <SelectBox
                     id="theme-base"
-                    label="Базовая тема"
+                    :label="t('settings.themes.baseTheme')"
                     :model-value="currentTheme.base_theme"
                     :options="BASE_THEME_OPTIONS"
                     :include-all-option="false"
@@ -449,24 +451,24 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                   </SelectBox>
                 </div>
                 <div class="col-12">
-                  <label class="form-label" for="theme-description">Описание</label>
+                  <label class="form-label" for="theme-description">{{ t('settings.themes.description') }}</label>
                   <input
                     id="theme-description"
                     v-model="currentTheme.description"
                     type="text"
                     class="form-control theme-editor__input"
                     :disabled="!canEditCurrentTheme"
-                    placeholder="Описание темы"
+                    :placeholder="t('settings.themes.descriptionPlaceholder')"
                   />
                 </div>
               </div>
 
-              <div class="theme-editor__live mb-4" aria-label="Быстрый предпросмотр палитры">
+              <div class="theme-editor__live mb-4" :aria-label="t('settings.themes.livePreviewAria')">
                 <div
                   class="theme-editor__live-header"
                   :style="{ background: liveColors.headerBackground || '#ccc' }"
                 >
-                  <span :style="{ color: liveColors.primaryText || '#222' }">Шапка</span>
+                  <span :style="{ color: liveColors.primaryText || '#222' }">{{ t('settings.themes.header') }}</span>
                   <span
                     class="theme-editor__live-accent"
                     :style="{ background: liveColors.accent || '#888' }"
@@ -484,22 +486,22 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                       color: liveColors.primaryText || '#222',
                     }"
                   >
-                    <span>Карточка</span>
-                    <small :style="{ color: liveColors.secondaryText || '#666' }">Вторичный текст</small>
+<span>{{ t('settings.themes.card') }}</span>
+                    <small :style="{ color: liveColors.secondaryText || '#666' }">{{ t('settings.themes.secondaryText') }}</small>
                     <button
                       type="button"
                       class="theme-editor__live-btn"
                       :style="{ background: liveColors.accent || '#888', color: '#fff' }"
                       tabindex="-1"
                     >
-                      Кнопка
+                      {{ t('settings.themes.button') }}
                     </button>
                   </div>
                   <div
                     v-if="textContrast.ratio != null"
                     class="theme-editor__contrast"
                     :class="textContrast.ok ? 'is-ok' : 'is-warn'"
-                    :title="'Контраст основного текста к фону: ' + textContrast.ratio + ':1 (цель ≥ 4.5:1)'"
+                    :title="t('settings.themes.contrastTitle', { ratio: textContrast.ratio })"
                   >
                     {{ textContrast.label }}
                     <span v-if="textContrast.ratio != null">({{ textContrast.ratio }}:1)</span>
@@ -516,14 +518,14 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                   type="checkbox"
                 />
                 <label class="form-check-label" for="showBootstrap">
-                  Показать Bootstrap переменные
+                  {{ t('settings.themes.showBootstrap') }}
                 </label>
               </div>
 
               <h3 class="admin-section-heading mb-3">
-                Основные цвета
+                {{ t('settings.themes.mainColors') }}
                 <span v-if="isEditingModulePair" class="theme-editor__variant-label">
-                  — {{ editingVariant === 'dark' ? 'тёмный' : 'светлый' }} вариант
+                  — {{ editingVariant === 'dark' ? t('settings.themes.darkVariantParen') : t('settings.themes.lightVariantParen') }}
                 </span>
               </h3>
               <div class="row">
@@ -545,9 +547,9 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
               <template v-if="isModuleScope && moduleTokenEntries.length">
                 <hr class="theme-editor__divider" />
                 <h3 class="admin-section-heading mb-3">
-                  Токены модуля
+                  {{ t('settings.themes.moduleTokens') }}
                   <span class="theme-editor__variant-label">
-                    — {{ editingVariant === 'dark' ? 'тёмный' : 'светлый' }} вариант
+                    — {{ editingVariant === 'dark' ? t('settings.themes.darkVariantParen') : t('settings.themes.lightVariantParen') }}
                   </span>
                 </h3>
                 <div class="row g-3">
@@ -571,10 +573,10 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                         class="form-control theme-editor__input"
                         :value="entry.value"
                         :disabled="!canEditCurrentTheme"
-                        placeholder="Цвет или значение CSS (например тень)"
+                        :placeholder="t('settings.themes.cssValuePlaceholder')"
                         @input="updateModuleToken(entry.key, $event.target.value)"
                       />
-                      <small class="form-text text-muted">Не цветовой токен — редактируется текстом</small>
+                      <small class="form-text text-muted">{{ t('settings.themes.nonColorToken') }}</small>
                     </template>
                   </div>
                 </div>

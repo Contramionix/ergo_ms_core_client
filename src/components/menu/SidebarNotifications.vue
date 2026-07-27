@@ -9,10 +9,12 @@ import NotificationItem from '@/core/notifications/components/NotificationItem.v
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import LucideIcon from '@/components/LucideIcon.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const HOVER_READ_DELAY_MS = 1000
 const PANEL_ID = 'sidebar-notifications-panel'
 
+const { t } = useAppI18n()
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
@@ -115,7 +117,7 @@ async function onDelete(id) {
 
 <template>
   <div ref="dropdownRef" class="tools__notifications-wrapper">
-    <HoverTooltip text="Уведомления">
+    <HoverTooltip :text="t('menu.notifications.title')">
       <button
         type="button"
         class="header-btn notifications-btn"
@@ -123,7 +125,7 @@ async function onDelete(id) {
         :aria-expanded="isOpen"
         :aria-controls="PANEL_ID"
         aria-haspopup="true"
-        aria-label="Уведомления"
+        :aria-label="t('menu.notifications.title')"
         @click.stop="handleToggle"
       >
         <LucideIcon name="Bell" :size="20" />
@@ -141,26 +143,26 @@ async function onDelete(id) {
         :id="PANEL_ID"
         class="notifications-dropdown"
         role="dialog"
-        aria-label="Уведомления"
+        :aria-label="t('menu.notifications.title')"
       >
         <div class="notifications-dropdown__header">
           <button
             type="button"
             class="notifications-dropdown__title-link"
-            title="Открыть страницу уведомлений"
+            :title="t('menu.notifications.openPage')"
             @click="goToFullList"
           >
-            <span>Уведомления</span>
+            <span>{{ t('menu.notifications.title') }}</span>
           </button>
           <button
             v-if="hasUnread"
             class="notifications-dropdown__action"
             type="button"
-            title="Отметить все прочитанными"
+            :title="t('settings.notifications.markAllRead')"
             @click="markAllRead()"
           >
             <CheckCheck :size="16" aria-hidden="true" />
-            <span>Прочитать все</span>
+            <span>{{ t('menu.notifications.markAllRead') }}</span>
           </button>
         </div>
 
@@ -168,7 +170,7 @@ async function onDelete(id) {
           <LoadingContentArea :loading="sidebarLoading" min-height="6rem">
             <div v-if="sidebarItems.length === 0" class="notifications-dropdown__state">
               <BellOff :size="28" class="notifications-dropdown__empty-icon" aria-hidden="true" />
-              <p>Пока нет уведомлений</p>
+              <p>{{ t('menu.notifications.empty') }}</p>
             </div>
 
             <div v-else class="notifications-dropdown__scroll">
@@ -199,7 +201,7 @@ async function onDelete(id) {
         <div class="notifications-dropdown__footer">
           <button type="button" class="notifications-dropdown__footer-link" @click="goToFullList">
             <Bell :size="14" aria-hidden="true" />
-            Все уведомления
+            {{ t('menu.notifications.viewAll') }}
           </button>
         </div>
       </div>
@@ -226,16 +228,18 @@ async function onDelete(id) {
   background-color: transparent;
   cursor: pointer;
   color: inherit;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
 
   // Scoped background перекрывает глобальный .header-btn:hover — повторяем здесь.
-  &:hover {
+  &:hover,
+  &[aria-expanded='true'] {
     background-color: var(--color-hover-background);
   }
 
   &:focus-visible {
     outline: 2px solid var(--color-accent, var(--bs-primary));
     outline-offset: 2px;
-    border-radius: 6px;
   }
 }
 

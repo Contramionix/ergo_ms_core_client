@@ -2,7 +2,7 @@
   <div class="data-table">
     <div v-if="useCards" class="data-table-cards">
       <div v-if="!displayItems.length" class="data-table-cards__empty">
-        <slot name="empty">{{ emptyText }}</slot>
+        <slot name="empty">{{ resolvedEmptyText }}</slot>
       </div>
       <article
         v-for="(item, idx) in displayItems"
@@ -48,7 +48,7 @@
         <tbody>
           <tr v-if="!displayItems.length" class="data-table-empty-row">
             <td :colspan="totalColumnCount" class="data-table-empty-cell">
-              <slot name="empty">{{ emptyText }}</slot>
+              <slot name="empty">{{ resolvedEmptyText }}</slot>
             </td>
           </tr>
           <tr v-for="(item, idx) in displayItems" v-else :key="getItemKey(item, idx)" :class="getRowClass(item, idx)" @click="handleRowClick(item, idx)">
@@ -83,6 +83,9 @@
 import { computed } from 'vue'
 import Pagination from '@/components/Pagination.vue'
 import { BREAKPOINTS, useBreakpoint } from '@/composables/useBreakpoint.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   items: {
@@ -147,7 +150,7 @@ const props = defineProps({
   },
   emptyText: {
     type: String,
-    default: 'Нет данных',
+    default: undefined,
   },
   /**
    * Брейкпоинт, ниже которого таблица становится карточками.
@@ -161,6 +164,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['rowClick', 'update:currentPage', 'pageChange'])
+
+const resolvedEmptyText = computed(
+  () => props.emptyText ?? t('components.dataTable.noData'),
+)
 
 const { width, isSmUp } = useBreakpoint()
 

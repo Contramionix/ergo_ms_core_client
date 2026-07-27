@@ -4,10 +4,10 @@
   Это универсальный picker ядра, а не доменная форма добавления участника из модуля.
 -->
 <template>
-  <ModalCenter standalone :visible="show" :modal-id="modalId" :title="title" :dialog-class="'modal-md'" @close="close">
+  <ModalCenter standalone :visible="show" :modal-id="modalId" :title="resolvedTitle" :dialog-class="'modal-md'" @close="close">
     <div class="member-picker-modal-content">
       <div class="pb-2 search-container">
-        <SearchInput v-model="searchQuery" placeholder="Поиск" :show-icon="true" @update:model-value="handleSearch"/>
+        <SearchInput v-model="searchQuery" :placeholder="t('components.memberPicker.search')" :show-icon="true" @update:model-value="handleSearch"/>
       </div>
 
       <div v-if="resolvedTabs.length > 1" class="px-3 pb-2 border-bottom tabs-container">
@@ -20,9 +20,9 @@
       </div>
 
       <div class="users-list-container">
-        <LoadingContentArea :loading="isLoading" :reset-key="show ? listResetKey ?? activeTab : null" min-height="10rem" loading-text="Загрузка пользователей...">
+        <LoadingContentArea :loading="isLoading" :reset-key="show ? listResetKey ?? activeTab : null" min-height="10rem" :loading-text="t('components.memberPicker.loading')">
           <div v-if="filteredUsers.length === 0" class="empty-state">
-            <div class="text-muted">Пользователи не найдены</div>
+            <div class="text-muted">{{ t('components.memberPicker.empty') }}</div>
           </div>
 
           <div v-else class="users-list">
@@ -55,7 +55,7 @@
       </div>
 
       <div class="px-3 pt-2 border-top d-flex justify-content-end align-items-center buttons-container">
-        <button type="button" class="btn btn-link text-primary text-decoration-none cancel-btn" @click="close">Отмена</button>
+        <button type="button" class="btn btn-link text-primary text-decoration-none cancel-btn" @click="close">{{ t('common.cancel') }}</button>
         <button v-if="hasChanges" type="button" class="btn btn-primary" @click="assignSelected">
           {{ buttonText }}
         </button>
@@ -74,6 +74,9 @@ import UserAvatar from '@/components/UserAvatar.vue'
 import { useToast } from '@/js/utils/toast.js'
 import { logError, logWarn } from '@/js/utils/logError.js'
 import { parseFullNameParts, seedUserPublicInfoCache } from '@/js/userAvatar'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   show: {
@@ -82,11 +85,11 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: 'Назначить',
+    default: '',
   },
   tabs: {
     type: Array,
-    default: () => [{ key: 'all', label: 'Все' }],
+    default: () => [],
   },
   includeAllTab: {
     type: Boolean,
@@ -127,13 +130,17 @@ const users = ref([])
 const selectedUsers = ref([])
 const deselectedAssignedIds = ref(new Set())
 
+const resolvedTitle = computed(() => props.title || t('components.memberPicker.assign'))
+
+const allTab = computed(() => ({ key: 'all', label: t('components.memberPicker.all') }))
+
 const resolvedTabs = computed(() => {
   const raw = Array.isArray(props.tabs) ? props.tabs : []
   if (!props.includeAllTab) {
-    return raw.length > 0 ? raw : [{ key: 'all', label: 'Все' }]
+    return raw.length > 0 ? raw : [allTab.value]
   }
-  const hasAll = raw.some((t) => (t?.key || '') === 'all')
-  return hasAll ? raw : [{ key: 'all', label: 'Все' }, ...raw]
+  const hasAll = raw.some((tab) => (tab?.key || '') === 'all')
+  return hasAll ? raw : [allTab.value, ...raw]
 })
 
 function getDefaultTabKey() {
@@ -175,12 +182,15 @@ const buttonText = computed(() => {
   const deselectedCount = deselectedAssignedIds.value.size
 
   if (deselectedCount > 0 && selectedCount === 0) {
-    return `Изменить (${deselectedCount})`
-  } else if (deselectedCount > 0 && selectedCount > 0) {
-    return `Изменить (${selectedCount} + ${deselectedCount})`
-  } else {
-    return `Назначить (${selectedCount})`
+    return t('components.memberPicker.changeCount', { count: deselectedCount })
   }
+  if (deselectedCount > 0 && selectedCount > 0) {
+    return t('components.memberPicker.changeMixed', {
+      selected: selectedCount,
+      deselected: deselectedCount,
+    })
+  }
+  return t('components.memberPicker.assignCount', { count: selectedCount })
 })
 
 const excludedUserIdsSet = computed(() => {
@@ -240,7 +250,7 @@ async function loadCandidates() {
     applyLoadedUsers(list)
   } catch (e) {
     logError('Ошибка загрузки пользователей:', e)
-    const msg = e.response?.data?.error || e.message || 'Ошибка загрузки пользователей'
+    const msg = e.response?.data?.error || e.message || t('components.memberPicker.loadError')
     toast.error(msg)
     users.value = []
   } finally {

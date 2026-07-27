@@ -1,22 +1,55 @@
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+
+import { tGlobal } from '@/i18n/index.js'
 
 const STORAGE_KEY = 'ergo_toast_settings'
 
-export const TOAST_POSITION_OPTIONS = [
-  { id: 'top-right', name: 'Вверху справа' },
-  { id: 'top-left', name: 'Вверху слева' },
-  { id: 'top-center', name: 'Вверху по центру' },
-  { id: 'bottom-right', name: 'Внизу справа' },
-  { id: 'bottom-left', name: 'Внизу слева' },
-  { id: 'bottom-center', name: 'Внизу по центру' },
+const TOAST_POSITION_IDS = [
+  'top-right',
+  'top-left',
+  'top-center',
+  'bottom-right',
+  'bottom-left',
+  'bottom-center',
 ]
 
-export const TOAST_DURATION_PRESET_OPTIONS = [
-  { id: 'short', name: 'Короткая (2–4 сек)' },
-  { id: 'normal', name: 'Обычная (3–5 сек)' },
-  { id: 'long', name: 'Длинная (5–8 сек)' },
-  { id: 'persistent', name: 'До ручного закрытия' },
-]
+const TOAST_DURATION_PRESET_IDS = ['short', 'normal', 'long', 'persistent']
+
+const POSITION_LABEL_KEYS = {
+  'top-right': 'settings.toasts.posTopRight',
+  'top-left': 'settings.toasts.posTopLeft',
+  'top-center': 'settings.toasts.posTopCenter',
+  'bottom-right': 'settings.toasts.posBottomRight',
+  'bottom-left': 'settings.toasts.posBottomLeft',
+  'bottom-center': 'settings.toasts.posBottomCenter',
+}
+
+const DURATION_LABEL_KEYS = {
+  short: 'settings.toasts.durShort',
+  normal: 'settings.toasts.durNormal',
+  long: 'settings.toasts.durLong',
+  persistent: 'settings.toasts.durPersistent',
+}
+
+export function getToastPositionOptions() {
+  return TOAST_POSITION_IDS.map((id) => ({
+    id,
+    name: tGlobal(POSITION_LABEL_KEYS[id]),
+  }))
+}
+
+export function getToastDurationPresetOptions() {
+  return TOAST_DURATION_PRESET_IDS.map((id) => ({
+    id,
+    name: tGlobal(DURATION_LABEL_KEYS[id]),
+  }))
+}
+
+/** ID-only stubs for consumers that only need option ids. Prefer getToastPositionOptions(). */
+export const TOAST_POSITION_OPTIONS = TOAST_POSITION_IDS.map((id) => ({ id, name: id }))
+
+/** ID-only stubs for consumers that only need option ids. Prefer getToastDurationPresetOptions(). */
+export const TOAST_DURATION_PRESET_OPTIONS = TOAST_DURATION_PRESET_IDS.map((id) => ({ id, name: id }))
 
 export const TOAST_MAX_OPTIONS = [1, 2, 3, 4, 5, 6].map((value) => ({
   id: value,
@@ -71,11 +104,11 @@ function normalizeSettings(raw) {
     return { ...DEFAULT_SETTINGS }
   }
 
-  const position = TOAST_POSITION_OPTIONS.some((item) => item.id === raw.position)
+  const position = TOAST_POSITION_IDS.includes(raw.position)
     ? raw.position
     : DEFAULT_SETTINGS.position
 
-  const durationPreset = TOAST_DURATION_PRESET_OPTIONS.some((item) => item.id === raw.durationPreset)
+  const durationPreset = TOAST_DURATION_PRESET_IDS.includes(raw.durationPreset)
     ? raw.durationPreset
     : DEFAULT_SETTINGS.durationPreset
 
@@ -155,10 +188,13 @@ export function subscribeToastSettingsChange(listener) {
 }
 
 export function useToastSettings() {
+  const TOAST_POSITION_OPTIONS_I18N = computed(() => getToastPositionOptions())
+  const TOAST_DURATION_PRESET_OPTIONS_I18N = computed(() => getToastDurationPresetOptions())
+
   return {
     settings,
-    TOAST_POSITION_OPTIONS,
-    TOAST_DURATION_PRESET_OPTIONS,
+    TOAST_POSITION_OPTIONS: TOAST_POSITION_OPTIONS_I18N,
+    TOAST_DURATION_PRESET_OPTIONS: TOAST_DURATION_PRESET_OPTIONS_I18N,
     TOAST_MAX_OPTIONS,
   }
 }

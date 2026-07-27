@@ -1,4 +1,4 @@
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+﻿import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import {
   CheckCircle,
@@ -11,6 +11,7 @@ import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { cmsEndpoints } from '@/core/cms/js/endpoints'
 import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { accessDeniedState } from '@/js/accessDeniedState'
+import { tGlobal } from '@/i18n/index.js'
 import { downloadImportUsersTemplate } from '@/core/cms/adp/admin/js/importUsersExcel.js'
 import { downloadBlob, extractFilenameFromHeaders, formatFileSize } from '@/js/utils/file-helpers.js'
 import {
@@ -21,10 +22,10 @@ import {
 export function useImportUsers() {
   const toast = useToast()
 
-  const breadcrumbItems = [
-    { label: 'Пользователи', to: { name: 'UsersPanel' } },
-    { label: 'Загрузка пользователей' },
-  ]
+  const breadcrumbItems = computed(() => [
+    { label: tGlobal('admin.importUsers.breadcrumbUsers'), to: { name: 'UsersPanel' } },
+    { label: tGlobal('admin.importUsers.breadcrumb') },
+  ])
 
   const fileInput = ref(null)
   const selectedFile = ref(null)
@@ -183,7 +184,7 @@ export function useImportUsers() {
       persistWelcomeEmailSettings()
     } catch (error) {
       logError('Ошибка сброса шаблона приветственного письма', error)
-      toast.error('Не удалось загрузить шаблон по умолчанию')
+      toast.error(tGlobal('admin.importUsers.defaultTemplateError'))
     }
   }
 
@@ -232,7 +233,7 @@ export function useImportUsers() {
         skipped: result.skipped || 0,
       }
       importProgress.value = 100
-      importStatus.value = 'Загрузка завершена'
+      importStatus.value = tGlobal('admin.importUsers.completed')
     } catch (error) {
       logError('Ошибка восстановления выгрузки паролей', error)
       clearPasswordsTaskStorage()
@@ -243,10 +244,10 @@ export function useImportUsers() {
     try {
       const accessData = await checkAccessToAdminPanel()
       if (!accessData.access_to_panel) {
-        toast.error('У вас нет доступа к административной панели')
+        toast.error(tGlobal('admin.importUsers.noAdminAccess'))
         accessDeniedState.active = true
-        accessDeniedState.title = 'Доступ запрещён'
-        accessDeniedState.message = 'Требуются права администратора.'
+        accessDeniedState.title = tGlobal('admin.access.deniedTitle')
+        accessDeniedState.message = tGlobal('admin.access.adminRequired')
         return
       }
       hasAdminAccess.value = true
@@ -259,10 +260,10 @@ export function useImportUsers() {
       await restorePasswordsDownloadState()
     } catch (error) {
       logError('Ошибка проверки прав доступа:', error)
-      toast.error('Ошибка проверки прав доступа')
+      toast.error(tGlobal('admin.importUsers.accessCheckError'))
       accessDeniedState.active = true
-      accessDeniedState.title = 'Доступ запрещён'
-      accessDeniedState.message = 'Не удалось проверить права доступа.'
+      accessDeniedState.title = tGlobal('admin.access.deniedTitle')
+      accessDeniedState.message = tGlobal('admin.importUsers.accessCheckFailed')
     } finally {
       isCheckingAccess.value = false
     }
@@ -287,7 +288,7 @@ export function useImportUsers() {
       await downloadImportUsersTemplate()
     } catch (error) {
       logError('Ошибка формирования шаблона загрузки пользователей', error)
-      toast.error('Не удалось сформировать шаблон')
+      toast.error(tGlobal('admin.importUsers.templateBuildError'))
     } finally {
       downloadingTemplate.value = false
     }
@@ -342,7 +343,7 @@ export function useImportUsers() {
     const file = event.target.files[0]
     if (file) {
       if (!isValidFileExtension(file.name)) {
-        toast.error('Поддерживаются только файлы Excel (.xlsx, .xls) и CSV (.csv)')
+        toast.error(tGlobal('admin.importUsers.fileTypeError'))
         return
       }
     
@@ -361,7 +362,7 @@ export function useImportUsers() {
     const file = event.dataTransfer.files[0]
     if (file) {
       if (!isValidFileExtension(file.name)) {
-        toast.error('Поддерживаются только файлы Excel (.xlsx, .xls) и CSV (.csv)')
+        toast.error(tGlobal('admin.importUsers.fileTypeError'))
         return
       }
     
@@ -409,7 +410,7 @@ export function useImportUsers() {
             skipped: taskStatus.skipped || 0
           }
           importProgress.value = taskStatus.progress || 0
-          importStatus.value = `Обработка: ${taskStatus.current}/${taskStatus.total}`
+          importStatus.value = tGlobal('admin.importUsers.processing', { current: taskStatus.current, total: taskStatus.total })
 
           if (taskStatus.new_logs && taskStatus.new_logs.length > 0) {
             const uniqueNewLogs = filterDuplicateLogs(taskStatus.new_logs)
@@ -431,7 +432,7 @@ export function useImportUsers() {
             skipped: result.skipped || 0
           }
           importProgress.value = 100
-          importStatus.value = 'Загрузка завершена!'
+          importStatus.value = tGlobal('admin.importUsers.completedExclaim')
           importResults.value = {
             success: result.success !== false,
             created: result.created || 0,
@@ -456,24 +457,24 @@ export function useImportUsers() {
             }
           }
           if (result.created > 0) {
-            toast.success(`Загружено пользователей: ${result.created}`)
+            toast.success(tGlobal('admin.importUsers.importedCount', { count: result.created }))
           } else {
-            toast.info('Новых пользователей не создано')
+            toast.info(tGlobal('admin.importUsers.noneCreated'))
           }
           clearStorageTaskId()
           stopPolling()
           isImporting.value = false
         } else if (taskStatus.state === 'FAILURE') {
           importProgress.value = 100
-          importStatus.value = 'Ошибка загрузки'
+          importStatus.value = tGlobal('admin.importUsers.resultError')
           importResults.value = {
             success: false,
             created: 0,
             skipped: 0,
             total: 0,
-            errors: [taskStatus.error || 'Произошла ошибка при загрузке']
+            errors: [taskStatus.error || tGlobal('admin.importUsers.genericError')]
           }
-          toast.error(taskStatus.error || 'Ошибка при загрузке пользователей')
+          toast.error(taskStatus.error || tGlobal('admin.importUsers.importError'))
           clearStorageTaskId()
           stopPolling()
           isImporting.value = false
@@ -492,7 +493,7 @@ export function useImportUsers() {
         stopPolling()
         isImporting.value = false
         toast.warning(
-          'Загрузка ещё выполняется. Вы можете уйти со страницы и вернуться позже — нажмите «Продолжить отслеживание», чтобы снова увидеть прогресс.'
+          tGlobal('admin.importUsers.leaveHint')
         )
       }
     }, POLL_TIMEOUT_MS)
@@ -503,19 +504,19 @@ export function useImportUsers() {
     if (!taskId) return
     isImporting.value = true
     resetImportState()
-    importStatus.value = 'Восстановление отслеживания...'
+    importStatus.value = tGlobal('admin.importUsers.resumeTracking')
     runPolling(taskId)
   }
 
   const startImport = async () => {
     if (!selectedFile.value) {
-      toast.warning('Выберите файл для загрузки')
+      toast.warning(tGlobal('admin.importUsers.selectFile'))
       return
     }
   
     isImporting.value = true
     resetImportState()
-    importStatus.value = 'Запуск загрузки...'
+    importStatus.value = tGlobal('admin.importUsers.starting')
   
     try {
       const uploadResult = await mediaApiClient.upload(selectedFile.value, {
@@ -533,7 +534,7 @@ export function useImportUsers() {
       persistWelcomeEmailSettings()
     
       if (!response.data || !response.data.task_id) {
-        throw new Error('Не получен task_id от сервера')
+        throw new Error(tGlobal('admin.importUsers.noTaskId'))
       }
     
       const taskId = response.data.task_id
@@ -541,13 +542,13 @@ export function useImportUsers() {
         sessionStorage.setItem(STORAGE_KEY_TASK_ID, taskId)
       } catch (_) {}
       savedTaskId.value = taskId
-      importStatus.value = 'Обработка файла...'
+      importStatus.value = tGlobal('admin.importUsers.processingFile')
     
       runPolling(taskId)
     
     } catch (error) {
       importProgress.value = 100
-      importStatus.value = 'Ошибка загрузки'
+      importStatus.value = tGlobal('admin.importUsers.resultError')
     
       const errorData = error.response?.data || {}
     
@@ -556,10 +557,10 @@ export function useImportUsers() {
         created: 0,
         skipped: 0,
         total: 0,
-        errors: [errorData.error || 'Произошла ошибка при загрузке']
+        errors: [errorData.error || tGlobal('admin.importUsers.genericError')]
       }
     
-      toast.error(errorData.error || 'Ошибка при запуске загрузки')
+      toast.error(errorData.error || tGlobal('admin.importUsers.startError'))
       isImporting.value = false
     }
   }
@@ -588,7 +589,7 @@ export function useImportUsers() {
     return extractFilenameFromHeaders(headers, defaultName)
   }
 
-  async function extractDownloadErrorMessage(result, fallback = 'Не удалось скачать файл с паролями') {
+  async function extractDownloadErrorMessage(result, fallback = tGlobal('admin.importUsers.downloadPasswordsFallback')) {
     const blob = result?.data
     if (!(blob instanceof Blob)) {
       return result?.message || fallback
@@ -644,13 +645,13 @@ export function useImportUsers() {
       )
       downloadBlob(result.data, filename)
       markPasswordsDownloaded(taskId)
-      toast.success('Файл с паролями скачан. Повторная загрузка недоступна.')
+      toast.success(tGlobal('admin.importUsers.passwordsDownloaded'))
     } catch (error) {
       logError('Ошибка скачивания паролей импорта', error)
       const message = await extractDownloadErrorMessage(
         { data: error.response?.data, message: error.message },
       )
-      toast.error(message || 'Ошибка при скачивании файла с паролями')
+      toast.error(message || tGlobal('admin.importUsers.downloadPasswordsError'))
     } finally {
       downloadingPasswords.value = false
     }

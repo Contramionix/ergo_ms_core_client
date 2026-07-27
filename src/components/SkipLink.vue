@@ -1,4 +1,9 @@
 <script setup>
+import { computed } from 'vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
+
 const props = defineProps({
   href: {
     type: String,
@@ -6,9 +11,11 @@ const props = defineProps({
   },
   label: {
     type: String,
-    default: 'К основному содержимому',
+    default: undefined,
   },
 })
+
+const resolvedLabel = computed(() => props.label ?? t('components.skipLink.toMain'))
 
 function onSkip(event) {
   event.preventDefault()
@@ -21,5 +28,5 @@ function onSkip(event) {
 </script>
 
 <template>
-  <a class="ergo-skip-link" :href="href" @click="onSkip">{{ label }}</a>
+  <a class="ergo-skip-link" :href="href" @click="onSkip">{{ resolvedLabel }}</a>
 </template>

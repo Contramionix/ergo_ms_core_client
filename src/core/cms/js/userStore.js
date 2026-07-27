@@ -26,6 +26,7 @@ import {
   avatarCacheKey,
 } from '@/js/avatarCache.js'
 import { logError } from '@/js/utils/logError.js'
+import { applyLanguageFromProfile } from '@/core/cms/js/uiSettings.js'
 
 export const useUserStore = defineStore('userStore', () => {
   const toast = useToast()
@@ -160,6 +161,9 @@ export const useUserStore = defineStore('userStore', () => {
     }
     if (data.profile) {
       profile.value = profileService.formatProfileData(data.profile)
+      if (profile.value?.language) {
+        applyLanguageFromProfile(profile.value.language)
+      }
     }
     if (data.avatar_url) {
       avatarUrl.value = data.avatar_url

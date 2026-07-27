@@ -10,8 +10,11 @@ import HoverTooltip from '@/components/HoverTooltip.vue'
 import AuditActorCell from '@/core/cms/adp/admin/AuditLogComponents/AuditActorCell.vue'
 import {
   useAuditLog,
-  AUDIT_COLUMNS,
+  getAuditColumns,
 } from '@/core/audit/composables/useAuditLog.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const AuditEventDetailsModal = defineAsyncComponent(() =>
   import('@/core/cms/adp/admin/AuditLogComponents/AuditEventDetailsModal.vue'),
@@ -81,11 +84,12 @@ watch(scopeParamsForLog, (next, prev) => {
   initialize()
 }, { deep: true })
 
-const displayColumns = computed(() => (
-  props.embedded
-    ? AUDIT_COLUMNS.filter((column) => !['ip_address', 'actions'].includes(column.key))
-    : AUDIT_COLUMNS
-))
+const displayColumns = computed(() => {
+  const columns = getAuditColumns()
+  return props.embedded
+    ? columns.filter((column) => !['ip_address', 'actions'].includes(column.key))
+    : columns
+})
 </script>
 
 <template>
@@ -95,7 +99,7 @@ const displayColumns = computed(() => (
         :id="searchInputId"
         :model-value="searchQuery"
         layout="grow"
-        placeholder="Инициатор или объект..."
+        :placeholder="t('admin.audit.searchPlaceholder')"
         :show-icon="true"
         background="primary"
         focus-border="primary"
@@ -107,19 +111,19 @@ const displayColumns = computed(() => (
         <FilterMenu
           v-model="auditFilters"
           :fields="auditFilterFields"
-          trigger-label="Фильтры"
+          :trigger-label="t('admin.audit.filters')"
           apply-on-change
           class="audit-filter-menu"
         />
       </div>
 
       <div class="audit-toolbar__actions">
-        <HoverTooltip text="Обновить">
+        <HoverTooltip :text="t('admin.audit.refresh')">
           <span class="audit-toolbar-icon-wrap">
             <button
               type="button"
               class="btn audit-toolbar-icon-btn"
-              aria-label="Обновить"
+              :aria-label="t('admin.audit.refresh')"
               :disabled="isLoading"
               @click="refreshEvents"
             >
@@ -132,12 +136,12 @@ const displayColumns = computed(() => (
             </button>
           </span>
         </HoverTooltip>
-        <HoverTooltip text="Экспорт CSV">
+        <HoverTooltip :text="t('admin.audit.exportCsv')">
           <span class="audit-toolbar-icon-wrap">
             <button
               type="button"
               class="btn audit-toolbar-icon-btn"
-              aria-label="Экспорт CSV"
+              :aria-label="t('admin.audit.exportCsv')"
               @click="exportCsv"
             >
               <Download :size="20" aria-hidden="true" />
@@ -159,7 +163,7 @@ const displayColumns = computed(() => (
         :enable-pagination="true"
         :clickable="embedded"
         table-class="audit-data-table"
-        empty-text="Записи не найдены"
+        :empty-text="t('admin.audit.empty')"
         @update:current-page="handlePageChange"
         @row-click="openDetails"
       >
@@ -215,8 +219,8 @@ const displayColumns = computed(() => (
               v-if="hasDetails(item)"
               type="button"
               class="btn-action"
-              title="Подробности"
-              aria-label="Подробности"
+              :title="t('admin.audit.detailsShort')"
+              :aria-label="t('admin.audit.detailsShort')"
               @click.stop="openDetails(item)"
             >
               <Eye :size="15" />

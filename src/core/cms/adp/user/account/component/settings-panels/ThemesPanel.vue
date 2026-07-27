@@ -1,18 +1,20 @@
 <script setup>
 import SelectBox from '@/components/SelectBox.vue'
-import ThemePalettePanel from './ThemePalettePanel.vue'
 import { useUiSettings } from '@/core/cms/js/uiSettings.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+import ThemePalettePanel from './ThemePalettePanel.vue'
 
+const { t } = useAppI18n()
 const { theme, THEME_OPTIONS } = useUiSettings()
 </script>
 
 <template>
   <div class="settings-panel">
-    <h1 class="settings-panel__title">Темы оформления</h1>
+    <h1 class="settings-panel__title">{{ t('settings.themes.panelTitle') }}</h1>
 
     <div class="settings-card">
       <div class="settings-card__row settings-card__row--last">
-        <label class="settings-card__label" for="themes-mode">Режим</label>
+        <label class="settings-card__label" for="themes-mode">{{ t('settings.themes.mode') }}</label>
         <div class="settings-card__control">
           <SelectBox id="themes-mode" v-model="theme" :options="THEME_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">

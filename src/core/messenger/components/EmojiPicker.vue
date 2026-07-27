@@ -26,16 +26,18 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const emit = defineEmits(['select', 'close'])
+const { t } = useAppI18n()
 
 const activeCategory = ref('smileys')
 const pickerRef = ref(null)
 
-const categories = [
+const categories = computed(() => [
   {
     key: 'smileys',
-    label: 'Смайлики',
+    label: t('settings.messenger.catSmileys'),
     icon: '\u{1F600}',
     emojis: [
       '\u{1F600}', '\u{1F603}', '\u{1F604}', '\u{1F601}', '\u{1F606}', '\u{1F605}',
@@ -54,7 +56,7 @@ const categories = [
   },
   {
     key: 'gestures',
-    label: 'Жесты',
+    label: t('settings.messenger.catGestures'),
     icon: '\u{1F44D}',
     emojis: [
       '\u{1F44D}', '\u{1F44E}', '\u{1F44A}', '\u270A', '\u{1F91B}', '\u{1F91C}',
@@ -68,7 +70,7 @@ const categories = [
   },
   {
     key: 'hearts',
-    label: 'Сердечки',
+    label: t('settings.messenger.catHearts'),
     icon: '\u2764\u{FE0F}',
     emojis: [
       '\u2764\u{FE0F}', '\u{1F9E1}', '\u{1F49B}', '\u{1F49A}', '\u{1F499}',
@@ -82,7 +84,7 @@ const categories = [
   },
   {
     key: 'objects',
-    label: 'Объекты',
+    label: t('settings.messenger.catObjects'),
     icon: '\u{1F4BB}',
     emojis: [
       '\u{1F4BB}', '\u{1F4F1}', '\u{1F4F7}', '\u{1F4DA}', '\u{1F4DD}',
@@ -96,7 +98,7 @@ const categories = [
   },
   {
     key: 'nature',
-    label: 'Природа',
+    label: t('settings.messenger.catNature'),
     icon: '\u{1F436}',
     emojis: [
       '\u{1F436}', '\u{1F431}', '\u{1F42D}', '\u{1F439}', '\u{1F430}',
@@ -108,10 +110,10 @@ const categories = [
       '\u26A1', '\u{1F525}', '\u2744\u{FE0F}', '\u{1F4A7}',
     ],
   },
-]
+])
 
 const currentEmojis = computed(
-  () => categories.find((c) => c.key === activeCategory.value)?.emojis || [],
+  () => categories.value.find((c) => c.key === activeCategory.value)?.emojis || [],
 )
 
 function onClickOutside(e) {

@@ -45,6 +45,7 @@ const sharedGlobs = {
     ...generatedGlobs.modulesIntegrationsNested,
   },
   modulesThemeDefaults: generatedGlobs.modulesThemeDefaults,
+  modulesLocales: generatedGlobs.modulesLocales,
   modulesComponents: generatedGlobs.modulesComponents,
 }
 
@@ -70,6 +71,7 @@ export class ModuleLoader {
       'js/routeGuard.js': ['coreRouteGuards', 'modulesRouteGuards'],
       'js/integrations.js': ['coreIntegrations', 'modulesIntegrations'],
       'js/theme-defaults.js': ['modulesThemeDefaults'],
+      'js/locales.js': ['modulesLocales'],
       'components': ['coreComponents', 'modulesComponents']
     }
 

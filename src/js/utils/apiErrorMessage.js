@@ -2,7 +2,11 @@
  * Единый разбор тела ошибки DRF/axios для UI, toast и логов.
  */
 
-const DEFAULT_FALLBACK = 'Произошла ошибка. Попробуйте позже.'
+import { tGlobal } from '@/i18n/index.js'
+
+function defaultFallback() {
+  return tGlobal('errors.api.tryLater')
+}
 
 /**
  * @param {unknown} data — error.response.data или plain object
@@ -10,7 +14,7 @@ const DEFAULT_FALLBACK = 'Произошла ошибка. Попробуйте 
  * @returns {string}
  */
 export function parseApiErrorData(data, options = {}) {
-  const fallback = options.fallback ?? DEFAULT_FALLBACK
+  const fallback = options.fallback ?? defaultFallback()
   const mode = options.mode ?? 'first'
 
   if (data == null) {
@@ -66,6 +70,9 @@ export function parseApiErrorData(data, options = {}) {
  * @param {string} [fallback]
  * @returns {string}
  */
-export function extractApiError(error, fallback = DEFAULT_FALLBACK) {
-  return parseApiErrorData(error?.response?.data ?? error, { fallback, mode: 'first' })
+export function extractApiError(error, fallback) {
+  return parseApiErrorData(error?.response?.data ?? error, {
+    fallback: fallback ?? defaultFallback(),
+    mode: 'first',
+  })
 }

@@ -2,6 +2,7 @@
 
 import { getDefaultColors } from '@/js/theme-manager'
 import { normalizeColorMapToHex } from './colorFormat.js'
+import { tGlobal } from '@/i18n/index.js'
 
 export function pickEditableFields(source) {
   return {
@@ -105,7 +106,7 @@ export function createEmptyDraft({
   }
   return {
     id: DRAFT_THEME_ID,
-    name: 'Новая тема',
+    name: tGlobal('settings.themes.newThemeName'),
     description: '',
     author: '',
     base_theme: baseTheme,
@@ -131,7 +132,7 @@ export function createEmptyModulePairDraft({
   return {
     module_key: selectedScope,
     module_pair: pairKey,
-    name: `Новая пара (${displayName})`,
+    name: tGlobal('settings.themes.newPairName', { name: displayName }),
     description: '',
     is_active: false,
     is_system: false,
@@ -146,7 +147,7 @@ export function createEmptyModulePairDraft({
         }),
         id: null,
         module_pair: pairKey,
-        name: `Новая пара (${displayName})`,
+        name: tGlobal('settings.themes.newPairName', { name: displayName }),
         is_draft_variant: true,
       },
       dark: {
@@ -159,7 +160,7 @@ export function createEmptyModulePairDraft({
         }),
         id: null,
         module_pair: pairKey,
-        name: `Новая пара (${displayName})`,
+        name: tGlobal('settings.themes.newPairName', { name: displayName }),
         is_draft_variant: true,
       },
     },

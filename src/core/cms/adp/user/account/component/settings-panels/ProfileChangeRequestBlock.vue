@@ -1,8 +1,9 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { useToast } from '@/js/utils/toast.js'
 import { Send } from 'lucide-vue-next'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { useToast } from '@/js/utils/toast.js'
 import UserProfileFields from './UserProfileFields.vue'
 import {
   USER_PROFILE_IDENTITY_FIELDS,
@@ -19,6 +20,7 @@ const props = defineProps({
   profileData: { type: Object, required: true },
 })
 
+const { t } = useAppI18n()
 const toast = useToast()
 
 const loading = ref(true)
@@ -34,11 +36,11 @@ const pendingRequest = computed(() =>
 
 const hasPendingRequest = computed(() => Boolean(pendingRequest.value))
 
-const statusLabels = {
-  pending: 'На рассмотрении',
-  approved: 'Одобрено',
-  rejected: 'Отклонено',
-}
+const statusLabels = computed(() => ({
+  pending: t('settings.profileChange.pending'),
+  approved: t('settings.profileChange.approved'),
+  rejected: t('settings.profileChange.rejected'),
+}))
 
 const statusClass = {
   pending: 'profile-change-request__status--pending',
@@ -89,11 +91,11 @@ const submitRequest = async () => {
       ...buildUserProfilePayload(requestFormData.value, USER_PROFILE_IDENTITY_FIELDS),
       comment: (requestFormData.value.comment || '').trim(),
     })
-    toast.success('Заявка отправлена администратору')
+    toast.success(t('settings.profileChange.sent'))
     await loadRequests()
   } catch (error) {
     logError('Ошибка отправки заявки:', error)
-    const message = error?.response?.data?.error || 'Не удалось отправить заявку'
+    const message = error?.response?.data?.error || t('settings.profileChange.sendFailed')
     toast.error(message)
   } finally {
     submitting.value = false
@@ -119,10 +121,9 @@ onMounted(async () => {
 <template>
   <div v-if="requestFlowEnabled" class="profile-change-request">
     <div class="profile-change-request__header">
-      <h2 class="profile-change-request__title">Заявка на изменение данных</h2>
+      <h2 class="profile-change-request__title">{{ t('settings.profileChange.title') }}</h2>
       <p class="profile-change-request__hint">
-        Изменение email, фамилии, имени, отчества и телефона доступно только администратору.
-        Заполните форму ниже — заявка попадёт в реестр администратора.
+        {{ t('settings.profileChange.description') }}
       </p>
     </div>
 
@@ -132,16 +133,16 @@ onMounted(async () => {
           {{ statusLabels.pending }}
         </span>
         <p class="mb-1">
-          Email: <strong>{{ pendingRequest.email || pendingRequest.current_email || '—' }}</strong>
+          {{ t('settings.profile.email') }}: <strong>{{ pendingRequest.email || pendingRequest.current_email || '—' }}</strong>
         </p>
         <p class="mb-1">
-          ФИО: <strong>{{ pendingRequest.requested_full_name || '—' }}</strong>
+          {{ t('settings.profileChange.fullName') }}: <strong>{{ pendingRequest.requested_full_name || '—' }}</strong>
         </p>
         <p class="mb-1">
-          Телефон: <strong>{{ pendingRequest.phone || pendingRequest.current_phone || '—' }}</strong>
+          {{ t('settings.profileChange.phone') }}: <strong>{{ pendingRequest.phone || pendingRequest.current_phone || '—' }}</strong>
         </p>
         <p v-if="pendingRequest.comment" class="mb-0 text-muted">
-          Комментарий: {{ pendingRequest.comment }}
+          {{ t('settings.profileChange.comment') }}: {{ pendingRequest.comment }}
         </p>
       </div>
 
@@ -155,7 +156,7 @@ onMounted(async () => {
 
         <div class="profile-change-request__row">
           <label class="profile-change-request__label" for="profile-change-request-comment">
-            Комментарий
+            {{ t('settings.profileChange.comment') }}
           </label>
           <div class="profile-change-request__control">
             <textarea
@@ -164,7 +165,7 @@ onMounted(async () => {
               rows="3"
               maxlength="500"
               class="form-control form-control-sm profile-change-request__textarea"
-              placeholder="Пояснение для администратора (необязательно)"
+              :placeholder="t('settings.profileChange.commentPlaceholder')"
             />
           </div>
         </div>
@@ -177,14 +178,14 @@ onMounted(async () => {
             @click="submitRequest"
           >
             <Send :size="16" class="profile-change-request__submit-icon" />
-            <span v-if="submitting">Отправка...</span>
-            <span v-else>Отправить заявку</span>
+            <span v-if="submitting">{{ t('settings.profileChange.submitting') }}</span>
+            <span v-else>{{ t('settings.profileChange.submit') }}</span>
           </button>
         </div>
       </template>
 
       <div v-if="requests.length" class="profile-change-request__history">
-        <h3 class="profile-change-request__history-title">История заявок</h3>
+        <h3 class="profile-change-request__history-title">{{ t('settings.profileChange.history') }}</h3>
         <div
           v-for="item in requests"
           :key="item.id"
@@ -199,7 +200,7 @@ onMounted(async () => {
             <span v-if="item.phone" class="text-muted small">{{ item.phone }}</span>
           </div>
           <p v-if="item.admin_comment" class="mb-0 small text-muted">
-            Ответ администратора: {{ item.admin_comment }}
+            {{ t('settings.profileChange.adminReply') }}: {{ item.admin_comment }}
           </p>
         </div>
       </div>

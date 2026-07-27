@@ -5,16 +5,18 @@ import ThemeEditor from './ThemeEditor.vue'
 import { restoreSiteThemeAfterEditor } from '@/js/theme-service.js'
 import { createThemeEditor, THEME_EDITOR_KEY } from './useThemeEditor.js'
 import { Edit, Eye } from 'lucide-vue-next'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const ThemePreview = defineAsyncComponent(() => import('./ThemePreview.vue'))
 
+const { t } = useAppI18n()
 const editor = createThemeEditor()
 provide(THEME_EDITOR_KEY, editor)
 
 const activeView = ref('editor')
 const { isDirty, confirmLeaveIfDirty, applyEditorPreview, init } = editor
 
-const dirtyHint = computed(() => (isDirty.value ? 'Есть несохранённые изменения' : ''))
+const dirtyHint = computed(() => (isDirty.value ? t('settings.themes.dirtyHint') : ''))
 
 function setView(view) {
   if (view === activeView.value) {
@@ -45,25 +47,25 @@ onBeforeRouteLeave(async () => {
     <div class="theme-editor-shell">
       <div class="page-header">
         <div class="theme-editor-layout__title-row">
-          <h1 class="page-title mb-0">Темы оформления</h1>
+          <h1 class="page-title mb-0">{{ t('settings.themes.panelTitle') }}</h1>
           <span
             class="theme-editor-layout__dirty"
             :class="{ 'is-visible': isDirty }"
             :title="dirtyHint"
             :aria-hidden="!isDirty"
           >
-            Несохранённые изменения
+            {{ t('settings.themes.dirtyBanner') }}
           </span>
         </div>
         <p class="page-subtitle">
-          Создание, редактирование и активация цветовых схем интерфейса
+          {{ t('settings.themes.pageSubtitle') }}
         </p>
       </div>
 
       <div
         class="theme-editor-layout__segment"
         role="tablist"
-        aria-label="Режим страницы тем"
+        :aria-label="t('settings.themes.modeAria')"
       >
         <button
           type="button"
@@ -74,7 +76,7 @@ onBeforeRouteLeave(async () => {
           @click="setView('editor')"
         >
           <Edit :size="16" aria-hidden="true" />
-          <span>Редактор</span>
+          <span>{{ t('settings.themes.editor') }}</span>
         </button>
         <button
           type="button"
@@ -85,7 +87,7 @@ onBeforeRouteLeave(async () => {
           @click="setView('preview')"
         >
           <Eye :size="16" aria-hidden="true" />
-          <span>Предпросмотр</span>
+          <span>{{ t('settings.themes.preview') }}</span>
         </button>
       </div>
     </div>

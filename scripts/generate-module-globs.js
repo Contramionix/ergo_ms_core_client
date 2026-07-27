@@ -89,6 +89,7 @@ export const modulesRouteGuards = ${buildModuleGlobExport('client/js/routeGuard.
 export const modulesIntegrations = ${buildModuleGlobExport('client/js/integrations.js')}
 export const modulesIntegrationsNested = ${buildModuleGlobExport('client/*/js/integrations.js')}
 export const modulesThemeDefaults = ${buildModuleGlobExport('client/js/theme-defaults.js')}
+export const modulesLocales = ${buildModuleGlobExport('client/js/locales.js')}
 export const modulesComponents = ${buildModuleGlobExport('client/**/*.vue')}
 `
 

@@ -4,6 +4,8 @@ import { ChevronLeft, Minus } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useToast } from '@/js/utils/toast.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { resolveMenuSeparatorTitle } from '@/i18n/resolveMenuItemTitle.js'
 
 import SiteWordmark from '@/components/SiteWordmark.vue'
 
@@ -48,6 +50,7 @@ const emit = defineEmits(['left-padding', 'menu-right-edge', 'menu-state-change'
 const router = useRouter()
 const userStore = useUserStore()
 const toast = useToast()
+const { t, locale } = useAppI18n()
 
 // Состояние меню
 const isCollapsed = ref(readMenuCollapsedPreference())
@@ -242,7 +245,10 @@ function handleMenuMetricsChange(collapsed, width) {
 // Конфигурация разделителей из API
 const separatorsConfig = ref({ byOrderIndex: {} })
 
-const getSeparator = (index) => getSeparatorTextAt(index, separatorsConfig.value)
+const getSeparator = (index) => {
+  void locale.value
+  return resolveMenuSeparatorTitle(getSeparatorTextAt(index, separatorsConfig.value))
+}
 const shouldShowSeparator = (index) => shouldShowSeparatorAt(index, separatorsConfig.value)
 
 // Composables
@@ -491,12 +497,12 @@ const loadMenu = async (forceRefresh = false) => {
     }
 
     resetMenu()
-    toast.warning('Меню пока не настроено. Обратитесь к администратору.')
+    toast.warning(t('menu.sidebar.notConfigured'))
   } catch (error) {
     if (!menuSections.value.length) {
       resetMenu()
     }
-    toast.error('Не удалось загрузить меню. Попробуйте обновить страницу.')
+    toast.error(t('menu.sidebar.loadFailed'))
     logError('Ошибка загрузки меню:', error)
   }
 }
@@ -576,7 +582,7 @@ onBeforeUnmount(() => {
     ref="menuRef"
     class="side-menu card p-0"
     role="navigation"
-    aria-label="Боковое меню"
+    :aria-label="t('menu.sidebar.ariaLabel')"
     :class="{ collapsed: isCollapsed, hovering: isHovering, 'side-menu--collapsed-settled': isCollapsedSettled, 'side-menu--labels-hidden': isCollapsedLabelsHidden, 'is-hidden': !isVisible, 'side-menu--bootstrapping': !allowMenuTransitions, 'side-menu--offcanvas-open': isOffcanvasSidebarOpen, 'side-menu--visibility-transition': isVisibilityTransitionActive, 'side-menu--layout-transition': isLayoutTransitionActive || isCollapsed, 'wordmark-hiding': isWordmarkHiding }"
     :style="{ '--menu-width': `${menuWidth}px`, '--menu-item-height': `${menuIconSizes.item + 16}px`, '--menu-icon-inset': `calc((100% - ${menuIconSizes.item}px) / 2)`, '--menu-avatar-inset': 'calc((100% - 40px) / 2)' }"
     @mouseleave="handleMouseLeave"

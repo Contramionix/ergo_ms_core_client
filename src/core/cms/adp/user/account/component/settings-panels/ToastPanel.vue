@@ -1,9 +1,12 @@
 <script setup>
+import { computed } from 'vue'
 import { CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-vue-next'
 import SelectBox from '@/components/SelectBox.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { showInfo, showSuccess, showWarning, showError } from '@/js/utils/toast.js'
 import { useToastSettings } from '@/js/utils/toastSettings.js'
 
+const { t } = useAppI18n()
 const {
   settings,
   TOAST_POSITION_OPTIONS,
@@ -11,40 +14,40 @@ const {
   TOAST_MAX_OPTIONS,
 } = useToastSettings()
 
-const PREVIEW_BUTTONS = [
+const PREVIEW_BUTTONS = computed(() => [
   {
     type: 'success',
-    label: 'Успех',
-    description: 'Сохранение и подтверждение',
+    label: t('settings.toasts.success'),
+    description: t('settings.toasts.successDesc'),
     icon: CheckCircle,
     handler: showSuccess,
-    message: 'Пример успешного уведомления',
+    message: t('settings.toasts.successSample'),
   },
   {
     type: 'info',
-    label: 'Информация',
-    description: 'Подсказки и статус',
+    label: t('settings.toasts.info'),
+    description: t('settings.toasts.infoDesc'),
     icon: Info,
     handler: showInfo,
-    message: 'Пример информационного уведомления',
+    message: t('settings.toasts.infoSample'),
   },
   {
     type: 'warning',
-    label: 'Предупреждение',
-    description: 'Внимание к действию',
+    label: t('settings.toasts.warning'),
+    description: t('settings.toasts.warningDesc'),
     icon: AlertTriangle,
     handler: showWarning,
-    message: 'Пример предупреждения',
+    message: t('settings.toasts.warningSample'),
   },
   {
     type: 'error',
-    label: 'Ошибка',
-    description: 'Сбой или отказ',
+    label: t('settings.toasts.error'),
+    description: t('settings.toasts.errorDesc'),
     icon: AlertCircle,
     handler: showError,
-    message: 'Пример сообщения об ошибке',
+    message: t('settings.toasts.errorSample'),
   },
-]
+])
 
 function previewToast(button) {
   button.handler(button.message)
@@ -53,16 +56,16 @@ function previewToast(button) {
 
 <template>
   <div class="settings-panel">
-    <h1 class="settings-panel__title">Всплывающие уведомления</h1>
+    <h1 class="settings-panel__title">{{ t('settings.toasts.title') }}</h1>
     <p class="settings-panel__hint text-muted">
-      Настройки кратких сообщений в углу экрана при сохранении, ошибках и других действиях.
+      {{ t('settings.toasts.panelHint') }}
     </p>
 
     <div class="settings-card">
       <div class="settings-card__row">
         <div class="settings-card__label-block">
-          <span class="settings-card__label">Показывать уведомления</span>
-          <span class="settings-card__hint">Отключите, чтобы скрыть все всплывающие сообщения</span>
+          <span class="settings-card__label">{{ t('settings.toasts.enabled') }}</span>
+          <span class="settings-card__hint">{{ t('settings.toasts.enabledHint') }}</span>
         </div>
         <div class="form-check form-switch toast-panel__switch">
           <input
@@ -76,7 +79,7 @@ function previewToast(button) {
       </div>
 
       <div class="settings-card__row">
-        <label class="settings-card__label" for="toast-position">Положение на экране</label>
+        <label class="settings-card__label" for="toast-position">{{ t('settings.toasts.positionLabel') }}</label>
         <div class="settings-card__control">
           <SelectBox
             id="toast-position"
@@ -88,7 +91,7 @@ function previewToast(button) {
       </div>
 
       <div class="settings-card__row">
-        <label class="settings-card__label" for="toast-duration">Длительность показа</label>
+        <label class="settings-card__label" for="toast-duration">{{ t('settings.toasts.durationLabel') }}</label>
         <div class="settings-card__control">
           <SelectBox
             id="toast-duration"
@@ -100,7 +103,7 @@ function previewToast(button) {
       </div>
 
       <div class="settings-card__row">
-        <label class="settings-card__label" for="toast-max">Максимум одновременно</label>
+        <label class="settings-card__label" for="toast-max">{{ t('settings.toasts.maxSimultaneous') }}</label>
         <div class="settings-card__control">
           <SelectBox
             id="toast-max"
@@ -114,8 +117,8 @@ function previewToast(button) {
 
       <div class="settings-card__row">
         <div class="settings-card__label-block">
-          <span class="settings-card__label">Пауза при наведении</span>
-          <span class="settings-card__hint">Таймер останавливается, пока курсор над уведомлением</span>
+          <span class="settings-card__label">{{ t('settings.toasts.pauseOnHover') }}</span>
+          <span class="settings-card__hint">{{ t('settings.toasts.pauseOnHoverHint') }}</span>
         </div>
         <div class="form-check form-switch toast-panel__switch">
           <input
@@ -131,8 +134,8 @@ function previewToast(button) {
 
       <div class="settings-card__row">
         <div class="settings-card__label-block">
-          <span class="settings-card__label">Перетаскивание</span>
-          <span class="settings-card__hint">Можно сдвинуть уведомление мышью или пальцем</span>
+          <span class="settings-card__label">{{ t('settings.toasts.draggable') }}</span>
+          <span class="settings-card__hint">{{ t('settings.toasts.draggableHint') }}</span>
         </div>
         <div class="form-check form-switch toast-panel__switch">
           <input
@@ -148,8 +151,8 @@ function previewToast(button) {
 
       <div class="settings-card__row settings-card__row--last">
         <div class="settings-card__label-block">
-          <span class="settings-card__label">Скрыть индикатор времени</span>
-          <span class="settings-card__hint">Не показывать полоску обратного отсчёта внизу</span>
+          <span class="settings-card__label">{{ t('settings.toasts.hideProgress') }}</span>
+          <span class="settings-card__hint">{{ t('settings.toasts.hideProgressHint') }}</span>
         </div>
         <div class="form-check form-switch toast-panel__switch">
           <input
@@ -166,9 +169,9 @@ function previewToast(button) {
 
     <section class="toast-panel__preview">
       <div class="toast-panel__preview-header">
-        <h2 class="toast-panel__preview-title">Проверка всплывающих уведомлений</h2>
+        <h2 class="toast-panel__preview-title">{{ t('settings.toasts.previewTitle') }}</h2>
         <p class="toast-panel__preview-hint text-muted">
-          Нажмите на тип — появится пример так же, как при работе в системе.
+          {{ t('settings.toasts.previewHint') }}
         </p>
       </div>
       <div class="toast-panel__preview-grid">
@@ -191,7 +194,7 @@ function previewToast(button) {
         </button>
       </div>
       <p v-if="!settings.enabled" class="toast-panel__preview-disabled text-muted">
-        Включите показ уведомлений выше, чтобы проверить примеры.
+        {{ t('settings.toasts.previewDisabled') }}
       </p>
     </section>
   </div>

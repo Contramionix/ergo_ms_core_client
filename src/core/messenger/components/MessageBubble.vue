@@ -9,8 +9,8 @@
         <div v-if="!isOwn && showAuthorName" class="msng-bubble__author">{{ authorName }}</div>
 
         <div v-if="message.reply_to_data" class="msng-bubble__reply-quote">
-          <span class="msng-bubble__reply-author">{{ message.reply_to_data.author_data?.full_name || 'Пользователь' }}</span>
-          <span class="msng-bubble__reply-text">{{ message.reply_to_data.text_preview || 'Сообщение' }}</span>
+          <span class="msng-bubble__reply-author">{{ message.reply_to_data.author_data?.full_name || t('settings.messenger.user') }}</span>
+          <span class="msng-bubble__reply-text">{{ message.reply_to_data.text_preview || t('settings.messenger.message') }}</span>
         </div>
 
         <p v-if="message.text" class="msng-bubble__text">{{ message.text }}</p>
@@ -21,7 +21,7 @@
               <ContentImage
                 v-if="isImage(att.mime_type)"
                 :src="getSafeHref(att.file_url)"
-                :alt="att.original_filename || 'Вложение'"
+                :alt="att.original_filename || t('settings.messenger.attachment')"
                 class="msng-bubble__attachment-img"
               />
               <span v-else class="msng-bubble__attachment-file">
@@ -37,7 +37,7 @@
         </div>
 
         <span class="msng-bubble__time">
-          <span v-if="message.is_edited" class="msng-bubble__edited">ред.</span>
+          <span v-if="message.is_edited" class="msng-bubble__edited">{{ t('settings.messenger.edited') }}</span>
           {{ formattedTime }}
         </span>
       </div>
@@ -50,22 +50,22 @@
         class="msng-ctx-menu"
         role="menu"
         tabindex="-1"
-        aria-label="Действия с сообщением"
+        :aria-label="t('settings.messenger.actions')"
         :style="menuStyle"
         @keydown="onMenuKeydown"
       >
         <button type="button" class="msng-ctx-menu__item" role="menuitem" @click="onReply">
           <Reply :size="14" aria-hidden="true" />
-          <span>Ответить</span>
+          <span>{{ t('settings.messenger.reply') }}</span>
         </button>
         <template v-if="isOwn">
           <button type="button" class="msng-ctx-menu__item" role="menuitem" @click="onEdit">
             <Pencil :size="14" aria-hidden="true" />
-            <span>Редактировать</span>
+            <span>{{ t('settings.messenger.edit') }}</span>
           </button>
           <button type="button" class="msng-ctx-menu__item msng-ctx-menu__item--danger" role="menuitem" @click="onDeleteClick">
             <Trash2 :size="14" aria-hidden="true" />
-            <span>Удалить</span>
+            <span>{{ t('settings.messenger.delete') }}</span>
           </button>
         </template>
       </div>
@@ -76,10 +76,14 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { Paperclip, Pencil, Trash2, Reply } from 'lucide-vue-next'
-import { getSafeHref } from '@/js/utils/urlUtils.js'
 import ContentImage from '@/components/ContentImage.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { getCurrentBcp47 } from '@/i18n/index.js'
 import { confirmDelete } from '@/js/utils/confirm.js'
+import { getSafeHref } from '@/js/utils/urlUtils.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   message: { type: Object, required: true },
@@ -96,8 +100,8 @@ const menuRef = ref(null)
 
 const authorName = computed(() => {
   const ad = props.message.author_data
-  if (ad) return ad.full_name || ad.username || 'Пользователь'
-  return 'Пользователь'
+  if (ad) return ad.full_name || ad.username || t('settings.messenger.user')
+  return t('settings.messenger.user')
 })
 
 const hasAttachments = computed(
@@ -107,7 +111,7 @@ const hasAttachments = computed(
 const formattedTime = computed(() => {
   if (!props.message.created_at) return ''
   const d = new Date(props.message.created_at)
-  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString(getCurrentBcp47(), { hour: '2-digit', minute: '2-digit' })
 })
 
 function isImage(mimeType) {
@@ -173,8 +177,8 @@ function onEdit() {
 async function onDeleteClick() {
   closeMenu()
   const ok = await confirmDelete(
-    'Удаление сообщения',
-    'Удалить это сообщение?',
+    t('settings.messenger.deleteTitle'),
+    t('settings.messenger.deleteConfirm'),
   )
   if (!ok) {
     return

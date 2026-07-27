@@ -1,31 +1,31 @@
 <template>
-  <ModalCenter standalone :visible="true" modal-id="menuItemModal" :title="isEditing ? 'Редактирование элемента меню' : 'Добавление элемента меню'" dialog-class="modal-lg" @closemodal="$emit('close')">
+  <ModalCenter standalone :visible="true" modal-id="menuItemModal" :title="isEditing ? t('admin.menu.editItemTitle') : t('admin.menu.addItemTitle')" dialog-class="modal-lg" @closemodal="$emit('close')">
     <form @submit.prevent="handleSubmit">
       <div class="mb-3">
-        <label class="form-label">Название <span class="text-danger">*</span></label>
-        <input v-model="form.name" type="text" class="form-control" required placeholder="Название пункта меню" style="background-color: var(--var-primary-background)"/>
+        <label class="form-label">{{ t('admin.menu.name') }} <span class="text-danger">*</span></label>
+        <input v-model="form.name" type="text" class="form-control" required :placeholder="t('admin.menu.namePlaceholder')" style="background-color: var(--var-primary-background)"/>
       </div>
 
       <div class="mb-3">
-        <label class="form-label">Тип элемента <span class="text-danger">*</span></label>
+        <label class="form-label">{{ t('admin.menu.itemType') }} <span class="text-danger">*</span></label>
         <SelectBox :model-value="form.item_type" :options="itemTypeOptions" value-key="id" label-key="name" :include-all-option="false" @update:model-value="v => form.item_type = v"/>
       </div>
 
       <div v-if="form.item_type === 'route'" class="mb-3">
-        <label class="form-label">Имя маршрута Vue</label>
-        <SelectBox v-if="!useManualRouteInput" :model-value="form.route_name || null" :options="routeOptions" value-key="id" label-key="name" :include-all-option="true" all-label="Пусто (вкладка без перехода на страницу)" searchable search-placeholder="Поиск маршрута..." @update:model-value="v => form.route_name = v ?? ''"/>
-        <input v-else v-model="form.route_name" type="text" class="form-control" placeholder="Например: User, AdminPanel, MenuPanel" style="background-color: var(--var-primary-background)"/>
-        <div class="form-text" v-if="!useManualRouteInput">Названия маршрутов на кириллице прописаны в файлах <code>routes.js</code> в каждом модуле в атрибуте <code>meta.title</code>.</div>
-        <div class="form-text" v-else>Введите техническое имя маршрута (ключ из <code>routes.js</code>). Пусто — вкладка без перехода.</div>
+        <label class="form-label">{{ t('admin.menu.routeName') }}</label>
+        <SelectBox v-if="!useManualRouteInput" :model-value="form.route_name || null" :options="routeOptions" value-key="id" label-key="name" :include-all-option="true" :all-label="t('admin.menu.routeHintManual')" searchable :search-placeholder="t('admin.menu.searchRoute')" @update:model-value="v => form.route_name = v ?? ''"/>
+        <input v-else v-model="form.route_name" type="text" class="form-control" :placeholder="t('admin.menu.routePlaceholder')" style="background-color: var(--var-primary-background)"/>
+        <div class="form-text" v-if="!useManualRouteInput"><span v-html="t('admin.menu.routeHintCyrillicHtml')"></span></div>
+        <div class="form-text" v-else><span v-html="t('admin.menu.routeHintManualHtml')"></span></div>
         <div class="form-check mt-2">
           <input v-model="useManualRouteInput" type="checkbox" class="form-check-input" id="useManualRouteInput"/>
-          <label class="form-check-label" for="useManualRouteInput">Ввести имя маршрута вручную</label>
+          <label class="form-check-label" for="useManualRouteInput">{{ t('admin.menu.manualRoute') }}</label>
         </div>
       </div>
 
       <div v-if="form.item_type === 'offcanvas'" class="mb-3">
-        <label class="form-label">Идентификатор страницы <span class="text-danger">*</span></label>
-        <input v-model="form.page" type="text" class="form-control" required placeholder="Например: datasets" style="background-color: var(--var-primary-background)"/>
+        <label class="form-label">{{ t('admin.menu.pageId') }} <span class="text-danger">*</span></label>
+        <input v-model="form.page" type="text" class="form-control" required :placeholder="t('admin.menu.pageIdPlaceholder')" style="background-color: var(--var-primary-background)"/>
       </div>
 
       <div v-if="form.item_type === 'external'" class="mb-3">
@@ -34,8 +34,8 @@
       </div>
 
       <div class="mb-3">
-        <label class="form-label">Иконка</label>
-        <SelectBox :model-value="form.icon || null" :options="lucideIconOptions" searchable search-placeholder="Поиск иконки..." :include-all-option="true" all-label="Не выбрана" :virtualized="true" :item-height="36" :overscan="8" @update:model-value="v => form.icon = v ?? ''">
+        <label class="form-label">{{ t('admin.menu.icon') }}</label>
+        <SelectBox :model-value="form.icon || null" :options="lucideIconOptions" searchable :search-placeholder="t('admin.menu.searchIcons')" :include-all-option="true" :all-label="t('admin.menu.noIcon')" :virtualized="true" :item-height="36" :overscan="8" @update:model-value="v => form.icon = v ?? ''">
           <template #option="{ value, label }">
             <span class="d-inline-flex align-items-center gap-2">
               <component v-if="lucideIcons[value]" :is="lucideIcons[value]" :size="18"/>
@@ -49,23 +49,23 @@
             </span>
           </template>
         </SelectBox>
-        <div class="form-text">Иконки из библиотеки <a href="https://lucide.dev/icons/" target="_blank" rel="noopener noreferrer" class="text-decoration-none">Lucide</a></div>
+        <div class="form-text">{{ t('admin.menu.iconHelp') }} <a href="https://lucide.dev/icons/" target="_blank" rel="noopener noreferrer" class="text-decoration-none">Lucide</a></div>
       </div>
 
       <div class="mb-3">
-        <label class="form-label">Родительский элемент</label>
-        <SelectBox :model-value="form.parent" :options="filteredParentOptions" value-key="id" label-key="name" depth-key="depth" :option-indent-per-level="0" :include-all-option="false" all-label="-- Нет (корневой элемент) --" @update:model-value="v => form.parent = v"/>
+        <label class="form-label">{{ t('admin.menu.parent') }}</label>
+        <SelectBox :model-value="form.parent" :options="filteredParentOptions" value-key="id" label-key="name" depth-key="depth" :option-indent-per-level="0" :include-all-option="false" :all-label="t('admin.menu.noParent')" @update:model-value="v => form.parent = v"/>
       </div>
 
       <div class="mb-3">
         <div class="form-check">
           <input v-model="form.is_active" type="checkbox" class="form-check-input" id="isActive"/>
-          <label class="form-check-label" for="isActive">Активен</label>
+          <label class="form-check-label" for="isActive">{{ t('admin.menu.active') }}</label>
         </div>
       </div>
 
       <div class="mb-3">
-        <label class="form-label">Разрешённые роли</label>
+        <label class="form-label">{{ t('admin.menu.allowedRoles') }}</label>
         <SelectBox
           v-model="form.allowed_roles"
           :options="roleSelectOptions"
@@ -77,11 +77,11 @@
           multiple-label-format="count"
           cast-to-number
         />
-        <div class="form-text">Если не выбрано ни одной роли, доступно всем пользователям</div>
+        <div class="form-text">{{ t('admin.menu.rolesHelpAlt') }}</div>
       </div>
 
       <div class="mb-3">
-        <label class="form-label">Разрешённые ролевые группы</label>
+        <label class="form-label">{{ t('admin.menu.allowedRoleGroups') }}</label>
         <SelectBox
           v-model="form.allowed_role_groups"
           :options="roleGroupSelectOptions"
@@ -97,15 +97,16 @@
     </form>
 
     <div class="d-flex justify-content-end gap-2 mt-3 pt-3 border-top">
-      <button type="button" class="ui-btn ui-btn--secondary" @click="$emit('close')">Отмена</button>
+      <button type="button" class="ui-btn ui-btn--secondary" @click="$emit('close')">{{ t('admin.menu.cancel') }}</button>
       <button type="button" class="ui-btn ui-btn--primary" @click="handleSubmit" :disabled="!isFormValid">
-        {{ isEditing ? 'Сохранить' : 'Создать' }}
+        {{ isEditing ? t('admin.menu.save') : t('admin.menu.create') }}
       </button>
     </div>
   </ModalCenter>
 </template>
 
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, computed, watch, shallowRef, onMounted } from 'vue'
 import { getAvailableRouteOptions } from '@/modules/index.js'
 import {
@@ -115,6 +116,8 @@ import {
 } from '@/js/lucideIconLoader.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SelectBox from '@/components/SelectBox.vue'
+
+const { t } = useAppI18n()
 
 const lucideIcons = shallowRef({})
 const lucideIconOptions = ref([])
@@ -131,9 +134,9 @@ onMounted(async () => {
 })
 
 const itemTypeOptions = [
-  { id: 'route', name: 'Маршрут Vue' },
-  { id: 'offcanvas', name: 'Боковая панель' },
-  { id: 'external', name: 'Внешняя ссылка' }
+  { id: 'route', name: t('admin.menu.typeRoute') },
+  { id: 'offcanvas', name: t('admin.menu.typeOffcanvas') },
+  { id: 'external', name: t('admin.menu.typeExternal') }
 ]
 
 const props = defineProps({

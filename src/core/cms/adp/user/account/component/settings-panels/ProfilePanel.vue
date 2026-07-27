@@ -1,10 +1,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useToast } from '@/js/utils/toast.js'
 import { Save } from 'lucide-vue-next'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { useToast } from '@/js/utils/toast.js'
 import AvatarBlock from './AvatarBlock.vue'
 import UserProfileFields from './UserProfileFields.vue'
 import ProfileChangeRequestBlock from './ProfileChangeRequestBlock.vue'
@@ -20,6 +21,7 @@ import {
 } from '@/core/cms/adp/js/userProfileForm.js'
 import { fetchProfileSettings } from '@/core/cms/adp/js/profileSettings.js'
 
+const { t } = useAppI18n()
 const toast = useToast()
 const userStore = useUserStore()
 const { updateProfile } = useProfile()
@@ -57,7 +59,7 @@ const fetchProfile = async () => {
     }
   } catch (error) {
     logError('Ошибка загрузки профиля:', error)
-    toast.error('Ошибка загрузки данных профиля')
+    toast.error(t('settings.profile.loadError'))
     profileData.value = null
   } finally {
     loading.value = false
@@ -89,7 +91,7 @@ const saveSection = async (fields, savingRef, successMessage) => {
     logError('Ошибка сохранения профиля:', error)
 
     if (!applyProfileApiErrors(error, errors)) {
-      toast.error(error?.response?.data?.error || 'Ошибка сохранения профиля')
+      toast.error(error?.response?.data?.error || t('settings.profile.saveError'))
     }
   } finally {
     savingRef.value = false
@@ -97,7 +99,7 @@ const saveSection = async (fields, savingRef, successMessage) => {
 }
 
 const saveMainProfile = () =>
-  saveSection(USER_PROFILE_MAIN_FIELDS, savingMain, 'Профиль успешно обновлен')
+  saveSection(USER_PROFILE_MAIN_FIELDS, savingMain, t('settings.profile.updated'))
 
 const saveAdditionalInfo = () =>
   saveSection(
@@ -105,7 +107,7 @@ const saveAdditionalInfo = () =>
       ? USER_PROFILE_SELF_EDITABLE_ADDITIONAL_FIELDS
       : USER_PROFILE_ADDITIONAL_FIELDS,
     savingAdditional,
-    'Дополнительная информация успешно обновлена',
+    t('settings.profile.additionalUpdated'),
   )
 
 onMounted(() => {
@@ -115,7 +117,7 @@ onMounted(() => {
 
 <template>
   <div class="settings-panel">
-    <h1 class="settings-panel__title">Профиль</h1>
+    <h1 class="settings-panel__title">{{ t('settings.profile.title') }}</h1>
 
     <LoadingContentArea :loading="loading" min-height="8rem">
     <template v-if="profileData">
@@ -138,15 +140,15 @@ onMounted(() => {
             @click="saveMainProfile"
           >
             <Save :size="16" class="profile-card__save-icon" />
-            <span v-if="savingMain">Сохранение...</span>
-            <span v-else>Сохранить</span>
+            <span v-if="savingMain">{{ t('settings.profile.saving') }}</span>
+            <span v-else>{{ t('common.save') }}</span>
           </button>
         </div>
       </div>
 
       <ProfileChangeRequestBlock v-if="identityReadonly" :profile-data="profileData" />
 
-      <h1 class="settings-panel__title settings-panel__title--secondary">Дополнительная информация</h1>
+      <h1 class="settings-panel__title settings-panel__title--secondary">{{ t('settings.profile.additionalTitle') }}</h1>
 
       <div class="profile-card">
         <UserProfileFields
@@ -164,17 +166,17 @@ onMounted(() => {
             @click="saveAdditionalInfo"
           >
             <Save :size="16" class="profile-card__save-icon" />
-            <span v-if="savingAdditional">Сохранение...</span>
-            <span v-else>Сохранить</span>
+            <span v-if="savingAdditional">{{ t('settings.profile.saving') }}</span>
+            <span v-else>{{ t('common.save') }}</span>
           </button>
         </div>
       </div>
     </template>
 
     <div v-else class="profile-panel__empty text-center py-4">
-      <p class="text-muted mb-3">Не удалось загрузить данные профиля</p>
+      <p class="text-muted mb-3">{{ t('settings.profile.loadFailed') }}</p>
       <button type="button" class="btn btn-outline-primary btn-sm" @click="fetchProfile">
-        Попробовать снова
+        {{ t('settings.profile.tryAgain') }}
       </button>
     </div>
     </LoadingContentArea>

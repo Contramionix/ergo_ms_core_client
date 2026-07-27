@@ -1,6 +1,7 @@
 /** Сброс системных тем к defaults. */
 
 import { getThemeDefaultsManager, preloadModuleThemeManifests } from '@/modules/themes/ThemeDefaultsManager.js'
+import { tGlobal } from '@/i18n/index.js'
 
 export async function resetSystemThemeRecord(theme, ctx) {
   const {
@@ -24,10 +25,10 @@ export async function resetSystemThemeRecord(theme, ctx) {
   }
 
   const ok = await confirmAction({
-    title: 'Сброс темы',
-    message: `Сбросить тему «${theme.name}» к начальным значениям?`,
-    confirmText: 'Сбросить',
-    cancelText: 'Отмена',
+    title: tGlobal('settings.themes.resetTitle'),
+    message: tGlobal('settings.themes.resetMessage', { name: theme.name }),
+    confirmText: tGlobal('settings.themes.resetConfirm'),
+    cancelText: tGlobal('common.cancel'),
     variant: 'warning',
   })
   if (!ok) {
@@ -46,7 +47,7 @@ export async function resetSystemThemeRecord(theme, ctx) {
       const manifest = await getThemeDefaultsManager().getByModuleKey(moduleKey)
       const resetId = ids[0]
       if (!resetId) {
-        toast.error('Не удалось определить тему для сброса')
+        toast.error(tGlobal('settings.themes.resetThemeMissing'))
         return
       }
       const res = await apiClient.post(
@@ -54,19 +55,19 @@ export async function resetSystemThemeRecord(theme, ctx) {
         manifest ? { manifest } : {},
       )
       if (!res.success) {
-        toast.error(res.message || 'Ошибка сброса темы')
+        toast.error(res.message || tGlobal('settings.themes.resetThemeError'))
         return
       }
     } else {
       for (const id of ids) {
         const res = await apiClient.post(endpoints.themes.resetDefaults(id))
         if (!res.success) {
-          toast.error(res.message || 'Ошибка сброса темы')
+          toast.error(res.message || tGlobal('settings.themes.resetThemeError'))
           return
         }
       }
     }
-    toast.success(`Тема «${theme.name}» сброшена к начальным значениям`)
+    toast.success(tGlobal('settings.themes.resetThemeSuccess', { name: theme.name }))
     await loadThemes()
     if (theme.is_pair) {
       const refreshed = themes.value.find((p) => p.module_pair === theme.module_pair)
@@ -87,7 +88,7 @@ export async function resetSystemThemeRecord(theme, ctx) {
     }
   } catch (e) {
     logError('Ошибка сброса темы:', e)
-    toast.error('Ошибка сброса темы')
+    toast.error(tGlobal('settings.themes.resetThemeError'))
   } finally {
     resettingThemeId.value = null
   }

@@ -14,8 +14,11 @@ import { moduleManager } from '@/modules/index.js'
 import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
 import NotificationActions from '@/core/notifications/components/NotificationActions.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { formatDateTime, getRelativeTime } from '@/js/utils/timeUtils.js'
 import { confirmDelete } from '@/js/utils/confirm.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   notification: {
@@ -155,9 +158,11 @@ const dateTooltip = computed(() => {
 const readAtTooltip = computed(() => {
   if (props.notification.is_read && props.notification.read_at) {
     const formatted = formatDateTime(props.notification.read_at)
-    return formatted === '—' ? 'Прочитано' : `Прочитано: ${formatted}`
+    return formatted === '—'
+      ? t('settings.inbox.read')
+      : t('settings.inbox.readAt', { time: formatted })
   }
-  return 'Не прочитано'
+  return t('settings.inbox.unread')
 })
 
 function onBodyClick() {
@@ -205,8 +210,8 @@ function onHideSidebar() {
 
 async function onDelete() {
   const ok = await confirmDelete(
-    'Удаление уведомления',
-    'Уведомление будет скрыто из ленты. Продолжить?',
+    t('settings.inbox.deleteTitle'),
+    t('settings.inbox.deleteMessage'),
   )
   if (!ok) return
   emit('delete', props.notification.id)
@@ -227,7 +232,7 @@ async function onDelete() {
       },
     ]"
     :data-notification-id="notification.id"
-    :aria-label="notification.is_read ? notification.title : `${notification.title}, непрочитано`"
+    :aria-label="notification.is_read ? notification.title : `${notification.title}, ${t('settings.inbox.unreadSuffix')}`"
     @mouseenter="emit('hover-start', notification)"
     @mouseleave="emit('hover-end', notification)"
   >
@@ -265,61 +270,61 @@ async function onDelete() {
         <span v-else class="notif-item__source-spacer" aria-hidden="true" />
 
         <div class="notif-item__actions">
-          <HoverTooltip v-if="hasTarget" text="Открыть">
+          <HoverTooltip v-if="hasTarget" :text="t('settings.inbox.open')">
             <button
               type="button"
               class="notif-item__action-btn"
-              aria-label="Открыть"
+              :aria-label="t('settings.inbox.open')"
               @click="navigate"
             >
               <ExternalLink :size="14" aria-hidden="true" />
             </button>
           </HoverTooltip>
-          <HoverTooltip v-if="!notification.is_read" text="Отметить прочитанным">
+          <HoverTooltip v-if="!notification.is_read" :text="t('settings.inbox.markRead')">
             <button
               type="button"
               class="notif-item__action-btn"
-              aria-label="Отметить прочитанным"
+              :aria-label="t('settings.inbox.markRead')"
               @click="onMarkRead"
             >
               <Check :size="14" aria-hidden="true" />
             </button>
           </HoverTooltip>
-          <HoverTooltip v-if="showSidebarHide" text="Скрыть из колокольчика">
+          <HoverTooltip v-if="showSidebarHide" :text="t('settings.inbox.hideFromBell')">
             <button
               type="button"
               class="notif-item__action-btn"
-              aria-label="Скрыть из колокольчика"
+              :aria-label="t('settings.inbox.hideFromBell')"
               @click="onHideSidebar"
             >
               <EyeOff :size="14" aria-hidden="true" />
             </button>
           </HoverTooltip>
-          <HoverTooltip v-if="archivedView" text="Вернуть из архива">
+          <HoverTooltip v-if="archivedView" :text="t('settings.inbox.restoreFromArchive')">
             <button
               type="button"
               class="notif-item__action-btn"
-              aria-label="Вернуть из архива"
+              :aria-label="t('settings.inbox.restoreFromArchive')"
               @click="onUnarchive"
             >
               <ArchiveRestore :size="14" aria-hidden="true" />
             </button>
           </HoverTooltip>
-          <HoverTooltip v-else text="В архив">
+          <HoverTooltip v-else :text="t('settings.inbox.toArchive')">
             <button
               type="button"
               class="notif-item__action-btn"
-              aria-label="В архив"
+              :aria-label="t('settings.inbox.toArchive')"
               @click="onArchive"
             >
               <Archive :size="14" aria-hidden="true" />
             </button>
           </HoverTooltip>
-          <HoverTooltip text="Удалить">
+          <HoverTooltip :text="t('common.delete')">
             <button
               type="button"
               class="notif-item__action-btn notif-item__action-btn--danger"
-              aria-label="Удалить"
+              :aria-label="t('common.delete')"
               @click="onDelete"
             >
               <Trash2 :size="14" aria-hidden="true" />

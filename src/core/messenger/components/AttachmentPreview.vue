@@ -4,7 +4,7 @@
       <ContentImage
         v-if="isImage(file)"
         :src="getPreviewUrl(file)"
-        :alt="file.name || 'Файл'"
+        :alt="file.name || t('settings.messenger.file')"
         class="msng-att-preview__thumb"
       />
       <div v-else class="msng-att-preview__file-icon">
@@ -17,7 +17,7 @@
       <button
         type="button"
         class="btn btn-link p-0 msng-att-preview__remove"
-        aria-label="Убрать файл"
+        :aria-label="t('settings.messenger.removeFile')"
         @click="$emit('remove', idx)"
       >
         <X :size="14" aria-hidden="true" />
@@ -29,12 +29,15 @@
 <script setup>
 import { FileText, X } from 'lucide-vue-next'
 import ContentImage from '@/components/ContentImage.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 defineProps({
   files: { type: Array, default: () => [] },
 })
 
 defineEmits(['remove'])
+
+const { t } = useAppI18n()
 
 function isImage(file) {
   return file.type && file.type.startsWith('image/')

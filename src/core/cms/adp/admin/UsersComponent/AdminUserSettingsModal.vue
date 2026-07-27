@@ -1,4 +1,5 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, computed, watch } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import ModalCenter from '@/components/ModalCenter.vue'
@@ -8,6 +9,7 @@ import AvatarBlock from '@/core/cms/adp/user/account/component/settings-panels/A
 import UserProfileFields from '@/core/cms/adp/user/account/component/settings-panels/UserProfileFields.vue'
 import AdminUserSecuritySection from '@/core/cms/adp/admin/UsersComponent/AdminUserSecuritySection.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { tGlobal } from '@/i18n/index.js'
 import {
   fetchAdminUser,
   updateAdminUser,
@@ -25,6 +27,8 @@ import {
 import { assignRoleToUser } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import SelectBox from '@/components/SelectBox.vue'
 import { mapRoleSelectOptions, mapRoleGroupSelectOptions } from '@/core/cms/js/adminSelectOptions.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -58,11 +62,11 @@ const displayName = computed(() => {
   const parts = [formData.value.first_name, formData.value.middle_name, formData.value.last_name]
     .map((part) => (part || '').trim())
     .filter(Boolean)
-  return parts.join(' ') || username.value || 'Пользователь'
+  return parts.join(' ') || username.value || tGlobal('admin.users.colUser')
 })
 
 const modalTitle = computed(() =>
-  username.value ? `Настройки пользователя: ${username.value}` : 'Настройки пользователя',
+  username.value ? tGlobal('admin.users.settingsTitleNamed', { username: username.value }) : tGlobal('admin.users.settingsTitle'),
 )
 
 const isCurrentUser = computed(
@@ -105,7 +109,7 @@ const loadUser = async () => {
     initialRoleIsAdmin.value = data.role?.role_type === 'admin'
   } catch (error) {
     logError('Ошибка загрузки пользователя:', error)
-    toast.error('Не удалось загрузить данные пользователя')
+    toast.error(tGlobal('admin.users.settingsLoadError'))
     handleClose()
   } finally {
     loading.value = false
@@ -161,12 +165,11 @@ const handleSave = async () => {
 
   if (isSelfAdminDemotion.value) {
     const ok = await confirmAction({
-      title: 'Снятие роли администратора',
+      title: tGlobal('admin.users.removeAdminTitle'),
       message: (
-        'Вы снимаете роль администратора с собственной учётной записи.\n\n' +
-        'После сохранения доступ к админ-панели будет потерян. Продолжить?'
+        tGlobal('admin.users.removeAdminMessage')
       ),
-      confirmText: 'Снять роль',
+      confirmText: tGlobal('admin.users.removeAdminConfirm'),
       variant: 'warning',
     })
     if (!ok) return
@@ -193,7 +196,7 @@ const handleSave = async () => {
       })
     }
 
-    toast.success('Настройки пользователя сохранены')
+    toast.success(tGlobal('admin.users.settingsSaved'))
     emit('saved')
     handleClose()
   } catch (error) {
@@ -202,7 +205,7 @@ const handleSave = async () => {
     if (apiError) {
       toast.error(apiError)
     } else if (!applyProfileApiErrors(error, errors)) {
-      toast.error('Не удалось сохранить настройки пользователя')
+      toast.error(tGlobal('admin.users.settingsSaveError'))
     }
   } finally {
     saving.value = false
@@ -214,10 +217,10 @@ const requestDelete = async () => {
     return
   }
 
-  const label = username.value || 'этого пользователя'
+  const label = username.value || tGlobal('admin.users.thisUser')
   const ok = await confirmDelete(
-    'Удаление пользователя',
-    `Удалить ${label}?\n\nУчётная запись и связанные данные будут удалены без возможности восстановления.`,
+    tGlobal('admin.users.deleteTitle'),
+    tGlobal('admin.users.deleteMessage', { name: label }),
   )
   if (!ok || deleting.value) {
     return
@@ -226,12 +229,12 @@ const requestDelete = async () => {
   deleting.value = true
   try {
     await deleteAdminUser(props.userRef)
-    toast.success('Пользователь удалён')
+    toast.success(tGlobal('admin.users.userDeleted'))
     emit('deleted')
     handleClose()
   } catch (error) {
     logError('Ошибка удаления пользователя:', error)
-    const message = error.response?.data?.error || 'Не удалось удалить пользователя'
+    const message = error.response?.data?.error || tGlobal('admin.users.deleteFailed')
     toast.error(message)
   } finally {
     deleting.value = false
@@ -245,7 +248,7 @@ const requestDelete = async () => {
     <template v-if="userRef">
       <AvatarBlock :user-ref="userPublicId || userRef" :avatar-url="avatarUrl" :display-name="displayName" :first-name="formData.first_name" :last-name="formData.last_name" :saving="saving" :on-upload="handleAvatarUpload" :on-remove="handleAvatarRemove" @avatar-updated="handleAvatarUpdated"/>
 
-      <h2 class="admin-user-modal__section-title">Профиль</h2>
+      <h2 class="admin-user-modal__section-title">{{ t('admin.users.profile') }}</h2>
       <div class="profile-card">
         <UserProfileFields
           :fields="PROFILE_FIELDS"
@@ -255,10 +258,10 @@ const requestDelete = async () => {
         />
       </div>
 
-      <h2 class="admin-user-modal__section-title">Роль и группы</h2>
+      <h2 class="admin-user-modal__section-title">{{ t('admin.users.roleAndGroups') }}</h2>
       <div class="profile-card">
         <div class="profile-card__row">
-          <label class="profile-card__label" for="admin-user-role">Роль</label>
+          <label class="profile-card__label" for="admin-user-role">{{ t('admin.users.role') }}</label>
           <div class="profile-card__control">
             <SelectBox
               id="admin-user-role"
@@ -266,14 +269,14 @@ const requestDelete = async () => {
               :options="roleSelectOptions"
               value-key="id"
               label-key="name"
-              all-label="Без роли"
+              :all-label="t('admin.users.noRole')"
               cast-to-number />
-            <small class="text-muted">Роль можно назначить позже. Профиль сохраняется независимо от роли.</small>
+            <small class="text-muted">{{ t('admin.users.roleHelp') }}</small>
           </div>
         </div>
 
         <div class="profile-card__row profile-card__row--last">
-          <label class="profile-card__label" for="admin-user-groups">Ролевые группы</label>
+          <label class="profile-card__label" for="admin-user-groups">{{ t('admin.users.groups') }}</label>
           <div class="profile-card__control">
             <SelectBox
               id="admin-user-groups"
@@ -287,7 +290,7 @@ const requestDelete = async () => {
               multiple-label-format="count"
               cast-to-number
               :disabled="!selectedRoleId" />
-            <small class="text-muted">Доступно после выбора роли.</small>
+            <small class="text-muted">{{ t('admin.users.groupsHint') }}</small>
           </div>
         </div>
       </div>
@@ -301,13 +304,13 @@ const requestDelete = async () => {
         @status-changed="handleStatusChanged"
       />
 
-      <h2 class="admin-user-modal__section-title admin-user-modal__section-title--danger">Опасная зона</h2>
+      <h2 class="admin-user-modal__section-title admin-user-modal__section-title--danger">{{ t('admin.users.deleteAccount') }}</h2>
       <div class="profile-card profile-card--danger">
         <div class="profile-card__row profile-card__row--danger profile-card__row--last">
           <div class="profile-card__label-block">
-            <span class="profile-card__label">Удалить пользователя</span>
+            <span class="profile-card__label">{{ t('admin.users.delete') }}</span>
             <span class="profile-card__hint">
-              Удаление учётной записи необратимо. Все сессии пользователя будут завершены.
+              {{ t('admin.users.deleteAccountHint') }}
             </span>
           </div>
           <div class="profile-card__control profile-card__control--actions">
@@ -317,11 +320,11 @@ const requestDelete = async () => {
               :disabled="saving || deleting || isCurrentUser"
               @click="requestDelete"
             >
-              <span v-if="deleting">Удаление...</span>
-              <span v-else>Удалить</span>
+              <span v-if="deleting">{{ t('admin.users.deleting') }}</span>
+              <span v-else>{{ t('admin.users.deleteAction') }}</span>
             </button>
             <small v-if="isCurrentUser" class="text-muted profile-card__inline-warning">
-              Нельзя удалить собственную учётную запись.
+              {{ t('admin.users.cannotDeleteSelf') }}
             </small>
           </div>
         </div>
@@ -330,10 +333,10 @@ const requestDelete = async () => {
     </LoadingContentArea>
 
     <template #footer>
-      <button type="button" class="ui-btn ui-btn--secondary" :disabled="saving || deleting" @click="handleClose">Отмена</button>
+      <button type="button" class="ui-btn ui-btn--secondary" :disabled="saving || deleting" @click="handleClose">{{ t('admin.menu.cancel') }}</button>
       <button type="button" class="ui-btn ui-btn--primary" :disabled="saving || loading || deleting" @click="handleSave">
-        <span v-if="saving">Сохранение...</span>
-        <span v-else>Сохранить</span>
+        <span v-if="saving">{{ t('admin.users.saving') }}</span>
+        <span v-else>{{ t('admin.users.save') }}</span>
       </button>
     </template>
   </ModalCenter>

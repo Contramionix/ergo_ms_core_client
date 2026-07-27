@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useToast } from '@/js/utils/toast.js'
 import { logError } from '@/js/utils/logError.js'
 import { executeNotificationAction } from '@/core/notifications/js/useNotificationsInbox.js'
@@ -17,6 +18,7 @@ const props = defineProps({
 
 const emit = defineEmits(['executed'])
 
+const { t } = useAppI18n()
 const executingId = ref('')
 const toast = useToast()
 
@@ -38,7 +40,9 @@ function hasPendingActions(item) {
 function resolvedLabel(item) {
   if (item?.actions_state !== 'resolved') return ''
   const action = (item.actions || []).find((a) => a.id === item.resolved_action_id)
-  return action?.label ? `Выбрано: ${action.label}` : 'Действие выполнено'
+  return action?.label
+    ? t('settings.inbox.actionSelected', { label: action.label })
+    : t('settings.inbox.actionDone')
 }
 
 async function runAction(actionId) {
@@ -52,11 +56,11 @@ async function runAction(actionId) {
     } else if (result?.message) {
       toast.error(result.message)
     } else {
-      toast.error('Не удалось выполнить действие')
+      toast.error(t('settings.inbox.actionFailed'))
     }
   } catch (e) {
     logError('executeNotificationAction:', e)
-    toast.error('Не удалось выполнить действие')
+    toast.error(t('settings.inbox.actionFailed'))
   } finally {
     executingId.value = ''
   }
@@ -79,7 +83,7 @@ async function runAction(actionId) {
         role="status"
         aria-hidden="true"
       />
-      <span>{{ executingId === action.id ? 'Загрузка...' : action.label }}</span>
+      <span>{{ executingId === action.id ? t('common.loading') : action.label }}</span>
     </button>
   </div>
   <div v-else-if="notification.actions_state === 'resolved'" class="notification-actions__resolved text-muted small">

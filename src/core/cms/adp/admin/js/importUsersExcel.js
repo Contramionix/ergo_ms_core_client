@@ -1,10 +1,14 @@
-const COLUMNS = [
-  { header: 'Фамилия', key: 'last_name', width: 22 },
-  { header: 'Имя', key: 'first_name', width: 18 },
-  { header: 'Отчество', key: 'middle_name', width: 22 },
-  { header: 'Логин', key: 'username', width: 20 },
-  { header: 'E-mail', key: 'email', width: 32 },
-]
+import { tGlobal } from '@/i18n/index.js'
+
+function getColumns() {
+  return [
+    { header: tGlobal('admin.importUsers.colLastName'), key: 'last_name', width: 22 },
+    { header: tGlobal('admin.importUsers.colFirstName'), key: 'first_name', width: 18 },
+    { header: tGlobal('admin.importUsers.colMiddleName'), key: 'middle_name', width: 22 },
+    { header: tGlobal('admin.importUsers.colUsername'), key: 'username', width: 20 },
+    { header: 'E-mail', key: 'email', width: 32 },
+  ]
+}
 
 async function loadExcelJS() {
   const ExcelJSModule = await import('exceljs')
@@ -15,16 +19,16 @@ async function loadExcelJS() {
 export async function downloadImportUsersTemplate() {
   const Workbook = await loadExcelJS()
   const workbook = new Workbook()
-  const worksheet = workbook.addWorksheet('Пользователи')
+  const worksheet = workbook.addWorksheet(tGlobal('admin.importUsers.sheetName'))
 
-  worksheet.columns = COLUMNS
+  worksheet.columns = getColumns()
   worksheet.getRow(1).font = { bold: true }
   worksheet.views = [{ state: 'frozen', ySplit: 1 }]
 
   worksheet.addRow({
-    last_name: 'Иванов',
-    first_name: 'Иван',
-    middle_name: 'Иванович',
+    last_name: 'Ivanov',
+    first_name: 'Ivan',
+    middle_name: 'Ivanovich',
     username: 'ivanov.ii',
     email: 'ivanov@example.com',
   })

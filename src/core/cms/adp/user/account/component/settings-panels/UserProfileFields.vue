@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { BIO_MAX_LENGTH } from '@/core/cms/adp/js/userProfileForm.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const props = defineProps({
   fields: { type: Array, required: true },
@@ -11,48 +12,51 @@ const props = defineProps({
   readonlyFields: { type: Array, default: () => [] },
 })
 
+const { t } = useAppI18n()
 const bioCharCount = computed(() => (props.formData.bio || '').length)
 
-const fieldMeta = {
+const fieldMeta = computed(() => ({
   email: {
-    label: 'Email',
+    label: t('settings.profile.email'),
     type: 'email',
     autocomplete: 'email',
     placeholder: 'email@example.com',
   },
   first_name: {
-    label: 'Имя',
+    label: t('settings.profile.firstName'),
     type: 'text',
     autocomplete: 'given-name',
-    placeholder: 'Введите имя',
+    placeholder: t('settings.profile.enterFirstName'),
   },
   last_name: {
-    label: 'Фамилия',
+    label: t('settings.profile.lastName'),
     type: 'text',
     autocomplete: 'family-name',
-    placeholder: 'Введите фамилию',
+    placeholder: t('settings.profile.enterLastName'),
   },
   middle_name: {
-    label: 'Отчество',
+    label: t('settings.profile.middleName'),
     type: 'text',
     autocomplete: 'additional-name',
-    placeholder: 'Введите отчество',
+    placeholder: t('settings.profile.enterMiddleName'),
   },
   phone: {
-    label: 'Телефон',
+    label: t('settings.profile.phone'),
     type: 'tel',
     autocomplete: 'tel',
     placeholder: '+7 (999) 123-45-67',
   },
   bio: {
-    label: 'О себе',
+    label: t('settings.profile.bio'),
     type: 'textarea',
-    placeholder: 'Расскажите о себе',
+    placeholder: t('settings.profile.enterBio'),
   },
-}
+}))
 
 const visibleFields = computed(() =>
-  props.fields.filter((field) => fieldMeta[field]).map((field) => ({ key: field, ...fieldMeta[field] })),
+  props.fields
+    .filter((field) => fieldMeta.value[field])
+    .map((field) => ({ key: field, ...fieldMeta.value[field] })),
 )
 
 const inputId = (field) => `${props.idPrefix}-${field}`
@@ -72,9 +76,9 @@ const isFieldReadonly = (fieldKey) =>
         <span
           v-if="isFieldReadonly(field.key)"
           class="profile-card__value profile-card__value--static text-truncate"
-          :title="formData[field.key] || 'Не указано'"
+          :title="formData[field.key] || t('settings.profile.notSpecified')"
         >
-          {{ formData[field.key] || 'Не указано' }}
+          {{ formData[field.key] || t('settings.profile.notSpecified') }}
         </span>
 
         <textarea

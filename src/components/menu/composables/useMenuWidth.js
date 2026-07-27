@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 
+import { tGlobal } from '@/i18n/index.js'
 import { getSiteWordmarkText } from '@/js/siteWordmark.js'
 
 const MENU_ITEM_MEASURE_FONT = '14px system-ui, -apple-system, sans-serif'
@@ -26,7 +27,7 @@ export function useMenuWidth() {
 
   const getMinNameWidthForToolbar = (context) => {
     context.font = MENU_ITEM_MEASURE_FONT
-    return context.measureText('Имя Фамилия').width
+    return context.measureText(tGlobal('menu.sidebar.measureNameSample')).width
   }
 
   const calculateToolbarWidth = (userStore) => {
@@ -43,7 +44,7 @@ export function useMenuWidth() {
       if (userStore.user) {
         const nameWidth = getMinNameWidthForToolbar(context)
         context.font = '12px system-ui, -apple-system, sans-serif'
-        const statusWidth = context.measureText('В сети').width
+        const statusWidth = context.measureText(tGlobal('menu.sidebar.measureOnlineStatus')).width
         toolbarWidth += Math.max(nameWidth, statusWidth) + 15
       } else {
         toolbarWidth += 60

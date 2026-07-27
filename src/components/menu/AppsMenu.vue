@@ -7,7 +7,9 @@ import { useDropdown } from '@/composables/useDropdown.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import { logError } from '@/js/utils/logError.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const { t } = useAppI18n()
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
@@ -49,7 +51,7 @@ onMounted(async () => {
 
 <template>
   <div ref="dropdownRef" class="apps-menu-wrapper">
-    <HoverTooltip text="Приложения">
+    <HoverTooltip :text="t('menu.apps.title')">
       <div @click.stop="toggleDropdown" class="header-btn">
         <LucideIcon name="Grid3x3" :size="20" />
       </div>
@@ -58,7 +60,7 @@ onMounted(async () => {
       <div v-if="isOpen" class="apps-dropdown-menu">
         <LoadingContentArea :loading="isLoading" min-height="6rem">
           <div v-if="apps.length === 0" class="apps-menu__empty text-muted text-center py-3">
-            Нет доступных приложений
+            {{ t('menu.apps.empty') }}
           </div>
           <div v-else class="apps-menu__grid">
             <div

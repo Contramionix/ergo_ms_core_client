@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
@@ -16,10 +16,11 @@ import SelectBox from '@/components/SelectBox.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import SearchInput from '@/components/SearchInput.vue'
-import { PRESENCE_FILTER_OPTIONS } from '@/core/cms/js/adminSelectOptions.js'
+import { getPresenceFilterOptions } from '@/core/cms/js/adminSelectOptions.js'
 import { fetchProfileSettings } from '@/core/cms/adp/js/profileSettings.js'
 import { fetchAdminProfileChangeRequests } from '@/core/cms/adp/admin/js/profileChangeRequestService.js'
 import { accessDeniedState } from '@/js/accessDeniedState'
+import { tGlobal } from '@/i18n/index.js'
 
 const AdminUserSettingsModal = defineAsyncComponent(() =>
   import('@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue'),
@@ -31,9 +32,11 @@ const AdminUserCreateModal = defineAsyncComponent(() =>
 const router = useRouter()
 const toast = useToast()
 
-const breadcrumbItems = [
-  { label: 'Пользователи' },
-]
+const breadcrumbItems = computed(() => [
+  { label: tGlobal('admin.users.breadcrumb') },
+])
+
+const presenceFilterOptions = computed(() => getPresenceFilterOptions())
 
 const { connect: connectAdminPresenceFeed, disconnect: disconnectAdminPresenceFeed } = useAdminPresenceFeed()
 const rows = ref([])
@@ -70,7 +73,7 @@ const isQueryWatchReady = ref(false)
 const isOnlineFilter = computed(() => presenceFilter.value === 'online')
 
 const profileChangeRequestsTooltip = computed(() => {
-  const label = 'Заявки на изменение данных'
+  const label = tGlobal('admin.users.profileChangeLink')
   const count = pendingProfileChangeCount.value
   return count > 0 ? `${label} (${count})` : label
 })
@@ -174,7 +177,7 @@ const loadUsers = async () => {
     }
   } catch (error) {
     logError('Ошибка загрузки пользователей:', error)
-    toast.error('Не удалось загрузить список пользователей')
+    toast.error(tGlobal('admin.users.loadError'))
   } finally {
     isLoadingUsers.value = false
   }
@@ -193,10 +196,10 @@ onMounted(async () => {
   try {
     const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
-      toast.error('У вас нет доступа к административной панели')
+      toast.error(tGlobal('admin.users.noAdminAccess'))
       accessDeniedState.active = true
-      accessDeniedState.title = 'Доступ запрещён'
-      accessDeniedState.message = 'Требуются права администратора.'
+      accessDeniedState.title = tGlobal('admin.access.deniedTitle')
+      accessDeniedState.message = tGlobal('admin.access.adminRequired')
       return
     }
     hasAdminAccess.value = true
@@ -206,10 +209,10 @@ onMounted(async () => {
   } catch (error) {
     logError('Ошибка проверки прав доступа или загрузки данных:', error)
     if (!hasAdminAccess.value) {
-      toast.error('Ошибка проверки прав доступа')
+      toast.error(tGlobal('admin.users.accessCheckError'))
       accessDeniedState.active = true
-      accessDeniedState.title = 'Доступ запрещён'
-      accessDeniedState.message = 'Не удалось проверить права доступа.'
+      accessDeniedState.title = tGlobal('admin.access.deniedTitle')
+      accessDeniedState.message = tGlobal('admin.users.accessCheckFailed')
     }
   } finally {
     isQueryWatchReady.value = true
@@ -238,34 +241,34 @@ const handleSearchQuery = (query) => {
   patchState({ q: query })
 }
 
-const columns = [
+const columns = computed(() => [
   {
     key: 'user',
-    label: 'Пользователь',
+    label: tGlobal('admin.users.colUser'),
   },
   {
     key: 'date_joined',
-    label: 'Дата регистрации',
+    label: tGlobal('admin.users.colRegistered'),
     headerStyle: { textAlign: 'center' },
     cellStyle: { textAlign: 'center' },
     hideBelow: 'md',
   },
   {
     key: 'last_activity',
-    label: 'Последняя активность',
+    label: tGlobal('admin.users.colLastActive'),
     headerStyle: { textAlign: 'center' },
     cellStyle: { textAlign: 'center' },
     hideBelow: 'lg',
   },
   {
     key: 'role',
-    label: 'Роль',
+    label: tGlobal('admin.users.colRole'),
     headerStyle: { textAlign: 'center' },
     cellStyle: { textAlign: 'center' },
   },
   {
     key: 'role_groups',
-    label: 'Группы',
+    label: tGlobal('admin.users.colGroups'),
     headerStyle: { textAlign: 'center' },
     cellStyle: { textAlign: 'center' },
     hideBelow: 'md',
@@ -276,11 +279,11 @@ const columns = [
     headerStyle: { textAlign: 'right' },
     cellStyle: { textAlign: 'right' },
   },
-]
+])
 
 const openUserSettings = (item) => {
   if (!item?.public_id) {
-    toast.error('Не удалось открыть настройки: отсутствует публичный идентификатор пользователя')
+    toast.error(tGlobal('admin.users.openSettingsMissingId'))
     return
   }
   selectedUserRef.value = item.public_id
@@ -349,8 +352,8 @@ const getItemKey = (item) => item.user_id
 
     <div v-else-if="hasAdminAccess" class="admin-page">
       <div class="page-header">
-        <h1 class="page-title">Пользователи</h1>
-        <p class="page-subtitle">Управление учётными записями, ролями и группами пользователей системы</p>
+        <h1 class="page-title">{{ tGlobal('admin.users.title') }}</h1>
+        <p class="page-subtitle">{{ tGlobal('admin.users.subtitle') }}</p>
       </div>
 
       <div class="users-shell">
@@ -359,21 +362,21 @@ const getItemKey = (item) => item.user_id
         <div class="content-card">
         <div class="table-header users-toolbar">
           <div class="filters-wrapper">
-            <SearchInput id="users-search" :model-value="searchQuery" layout="fixed" placeholder="Поиск по пользователям..." :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
+            <SearchInput id="users-search" :model-value="searchQuery" layout="fixed" :placeholder="tGlobal('admin.users.search')" :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
             <div class="presence-filter">
-              <HoverTooltip text="Фильтрация">
-                <SelectBox id="users-presence-filter" v-model="presenceFilter" :options="PRESENCE_FILTER_OPTIONS" value-key="id" label-key="name" :include-all-option="false"/>
+              <HoverTooltip :text="tGlobal('admin.users.filterTooltip')">
+                <SelectBox id="users-presence-filter" v-model="presenceFilter" :options="presenceFilterOptions" value-key="id" label-key="name" :include-all-option="false"/>
               </HoverTooltip>
             </div>
           </div>
           <div class="actions-wrapper">
-            <HoverTooltip text="Создать пользователя">
-              <button type="button" class="btn users-toolbar-icon-btn" aria-label="Создать пользователя" @click="openUserCreate">
+            <HoverTooltip :text="tGlobal('admin.users.createTooltip')">
+              <button type="button" class="btn users-toolbar-icon-btn" :aria-label="tGlobal('admin.users.createTooltip')" @click="openUserCreate">
                 <UserPlus :size="20" aria-hidden="true" />
               </button>
             </HoverTooltip>
-            <HoverTooltip text="Управление приглашениями">
-              <button type="button" class="btn users-toolbar-icon-btn" aria-label="Управление приглашениями" @click="goToInvitations">
+            <HoverTooltip :text="tGlobal('admin.users.invitationsTooltip')">
+              <button type="button" class="btn users-toolbar-icon-btn" :aria-label="tGlobal('admin.users.invitationsTooltip')" @click="goToInvitations">
                 <MailPlus :size="20" aria-hidden="true" />
               </button>
             </HoverTooltip>
@@ -382,8 +385,8 @@ const getItemKey = (item) => item.user_id
                 <FilePenLine :size="20" aria-hidden="true" />
               </button>
             </HoverTooltip>
-            <HoverTooltip text="Загрузка пользователей">
-              <button type="button" class="btn users-toolbar-icon-btn" aria-label="Загрузка пользователей" @click="goToImport">
+            <HoverTooltip :text="tGlobal('admin.users.importTooltip')">
+              <button type="button" class="btn users-toolbar-icon-btn" :aria-label="tGlobal('admin.users.importTooltip')" @click="goToImport">
                 <Upload :size="20" aria-hidden="true" />
               </button>
             </HoverTooltip>
@@ -398,7 +401,7 @@ const getItemKey = (item) => item.user_id
           <div class="d-flex flex-column">
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <span class="fw-semibold">{{ item.user }}</span>
-              <span v-if="!item.is_active" class="user-status-badge user-status-badge--suspended">Приостановлен</span>
+              <span v-if="!item.is_active" class="user-status-badge user-status-badge--suspended">{{ tGlobal('admin.users.suspended') }}</span>
             </div>
             <small class="text-muted">{{ item.username }} · {{ item.email }}</small>
           </div>
@@ -410,13 +413,13 @@ const getItemKey = (item) => item.user_id
       </template>
 
       <template #cell-last_activity="{ item }">
-        <span v-if="item.is_online" class="presence-online">В сети</span>
+        <span v-if="item.is_online" class="presence-online">{{ tGlobal('admin.users.presenceOnline') }}</span>
         <span v-else-if="item.last_seen">{{ formatDateTime(item.last_seen) }}</span>
         <span v-else class="text-muted">—</span>
       </template>
 
       <template #cell-role="{ item }">
-        {{ item.role?.name || 'Не назначена' }}
+        {{ item.role?.name || tGlobal('admin.users.roleUnassigned') }}
       </template>
 
       <template #cell-role_groups="{ item }">
@@ -430,7 +433,7 @@ const getItemKey = (item) => item.user_id
 
       <template #cell-actions="{ item }">
         <div class="actions-cell">
-          <button type="button" class="btn-action btn-action--edit" aria-label="Настройки пользователя" @click="openUserSettings(item)">
+          <button type="button" class="btn-action btn-action--edit" :aria-label="tGlobal('admin.users.settingsAria')" @click="openUserSettings(item)">
             <Settings :size="15" />
           </button>
         </div>

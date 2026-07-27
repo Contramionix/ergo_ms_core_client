@@ -7,14 +7,17 @@ import {
   USER_PROFILE_ADDITIONAL_FIELDS,
   mapUserProfileToFormData,
 } from '@/core/cms/adp/js/userProfileForm.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
-const FIELD_LABELS = {
-  email: 'Email',
-  first_name: 'Имя',
-  last_name: 'Фамилия',
-  middle_name: 'Отчество',
-  phone: 'Телефон',
-  bio: 'О себе',
+const { t } = useAppI18n()
+
+const FIELD_LABEL_KEYS = {
+  email: 'settings.profile.email',
+  first_name: 'settings.profile.firstName',
+  last_name: 'settings.profile.lastName',
+  middle_name: 'settings.profile.middleName',
+  phone: 'settings.profile.phone',
+  bio: 'settings.profile.bio',
 }
 
 const userStore = useUserStore()
@@ -26,7 +29,7 @@ const formData = computed(() => mapUserProfileToFormData(profileData.value))
 function displayValue(field) {
   const value = formData.value[field]
   if (value == null || String(value).trim() === '') {
-    return 'Не указано'
+    return t('settings.profile.notSpecified')
   }
   return String(value).trim()
 }
@@ -38,10 +41,10 @@ function isEmpty(field) {
 
 function buildSection(fields) {
   return fields
-    .filter((field) => FIELD_LABELS[field])
+    .filter((field) => FIELD_LABEL_KEYS[field])
     .map((field) => ({
       key: field,
-      label: FIELD_LABELS[field],
+      label: t(FIELD_LABEL_KEYS[field]),
       value: displayValue(field),
       empty: isEmpty(field),
     }))
@@ -94,7 +97,7 @@ onMounted(fetchProfile)
     <LoadingContentArea :loading="loading" min-height="8rem">
     <div v-if="profileData" class="user-profile-view__content">
       <section class="user-profile-view__section">
-        <h2 class="user-profile-view__section-title">Основная информация</h2>
+        <h2 class="user-profile-view__section-title">{{ t('settings.profile.mainSection') }}</h2>
         <dl class="user-profile-view__grid">
           <div v-for="item in mainSection" :key="item.key" class="user-profile-view__item">
             <dt class="user-profile-view__label">{{ item.label }}</dt>
@@ -106,7 +109,7 @@ onMounted(fetchProfile)
       </section>
 
       <section class="user-profile-view__section">
-        <h2 class="user-profile-view__section-title">Контакты</h2>
+        <h2 class="user-profile-view__section-title">{{ t('settings.profile.contactsSection') }}</h2>
         <dl class="user-profile-view__grid">
           <div v-for="item in additionalSection" :key="item.key" class="user-profile-view__item">
             <dt class="user-profile-view__label">{{ item.label }}</dt>
@@ -118,15 +121,15 @@ onMounted(fetchProfile)
       </section>
 
       <section v-if="hasBio" class="user-profile-view__section">
-        <h2 class="user-profile-view__section-title">О себе</h2>
+        <h2 class="user-profile-view__section-title">{{ t('settings.profile.bio') }}</h2>
         <p class="user-profile-view__bio">{{ bioText }}</p>
       </section>
     </div>
 
     <div v-else class="user-profile-view__empty text-center py-4">
-      <p class="text-muted mb-3">Не удалось загрузить данные профиля</p>
+      <p class="text-muted mb-3">{{ t('settings.profile.loadFailed') }}</p>
       <button type="button" class="btn btn-outline-primary btn-sm" @click="fetchProfile">
-        Попробовать снова
+        {{ t('settings.profile.tryAgain') }}
       </button>
     </div>
     </LoadingContentArea>

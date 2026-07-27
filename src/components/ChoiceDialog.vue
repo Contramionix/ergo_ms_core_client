@@ -2,10 +2,13 @@
 import { computed } from 'vue'
 import { AlertTriangle, X } from 'lucide-vue-next'
 import ModalCenter from '@/components/ModalCenter.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   show: { type: Boolean, default: false },
-  title: { type: String, default: 'Выберите действие' },
+  title: { type: String, default: undefined },
   message: { type: String, default: '' },
   choices: {
     type: Array,
@@ -20,6 +23,7 @@ const props = defineProps({
 
 const emit = defineEmits(['choice', 'cancel', 'close'])
 
+const resolvedTitle = computed(() => props.title ?? t('components.confirm.choiceTitle'))
 const isVisible = computed(() => props.show && !!props.message && props.choices.length > 0)
 
 function handleChoice(choice) {
@@ -66,7 +70,7 @@ function getButtonClass(variant) {
   >
     <template #title>
       <AlertTriangle :size="24" class="text-warning" />
-      <span>{{ title }}</span>
+      <span>{{ resolvedTitle }}</span>
     </template>
 
     <p class="mb-3 cd-message">{{ message }}</p>
@@ -102,7 +106,7 @@ function getButtonClass(variant) {
         :disabled="loading"
       >
         <X :size="16" class="me-2" />
-        Отмена
+        {{ t('common.cancel') }}
       </button>
     </template>
   </ModalCenter>

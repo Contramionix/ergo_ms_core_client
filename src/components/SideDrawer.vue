@@ -1,7 +1,9 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 import { activateFocusTrap } from '@/js/utils/focusTrap.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const { t } = useAppI18n()
 const TRANSITION_MS = 300
 
 const props = defineProps({
@@ -177,7 +179,7 @@ defineExpose({ requestClose })
             <button
               type="button"
               class="btn-close"
-              aria-label="Закрыть"
+              :aria-label="t('components.sideDrawer.close')"
               @click="requestClose"
             />
           </slot>

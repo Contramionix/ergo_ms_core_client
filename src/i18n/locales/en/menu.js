@@ -1,0 +1,48 @@
+export default {
+  toolbar: {
+    notifications: 'Notifications',
+    apps: 'Apps',
+    settings: 'Settings',
+    profile: 'Profile',
+    logout: 'Log out',
+    search: 'Search',
+    theme: 'Theme',
+  },
+  sidebar: {
+    collapse: 'Collapse menu',
+    expand: 'Expand menu',
+    empty: 'No menu items',
+    ariaLabel: 'Side menu',
+    open: 'Open menu',
+    close: 'Close menu',
+    notConfigured: 'The menu is not configured yet. Contact an administrator.',
+    loadFailed: 'Failed to load the menu. Try refreshing the page.',
+    measureNameSample: 'First Last',
+    measureOnlineStatus: 'Online',
+  },
+  separators: {
+    settings: 'Settings',
+    modules: 'Modules',
+  },
+  apps: {
+    title: 'Apps',
+    empty: 'No apps available',
+  },
+  notifications: {
+    title: 'Notifications',
+    empty: 'No notifications yet',
+    markRead: 'Mark as read',
+    markAllRead: 'Mark all as read',
+    viewAll: 'All notifications',
+    openPage: 'Open notifications page',
+  },
+  userMenu: {
+    account: 'Account',
+    profile: 'Profile',
+    settings: 'Settings',
+    logout: 'Log out',
+    ariaLabel: 'User menu',
+    emailMissing: 'email not set',
+    loading: 'Loading...',
+  },
+}

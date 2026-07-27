@@ -5,6 +5,9 @@ import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { getRoleGroups } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { ref, computed, onMounted } from 'vue'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const rows = ref([])
 const isLoading = ref(false)
@@ -51,8 +54,8 @@ const handleSearchQuery = (query) => {
 <template>
   <div class="admin-page">
     <div class="page-header">
-      <h1 class="page-title">Ролевые группы</h1>
-      <p class="page-subtitle">Управление группами ролей для организации доступа</p>
+      <h1 class="page-title">{{ t('admin.groups.title') }}</h1>
+      <p class="page-subtitle">{{ t('admin.groups.subtitle') }}</p>
     </div>
 
     <div class="content-card">
@@ -66,7 +69,7 @@ const handleSearchQuery = (query) => {
       <LoadingContentArea :loading="isLoading">
         <GroupTable
           :rows="rows"
-          :headers="['Название группы', 'Родительская роль', 'Описание', 'Активна', 'Действия']"
+          :headers="[t('admin.groups.headers.name'), t('admin.groups.headers.parent'), t('admin.groups.headers.description'), t('admin.groups.headers.active'), t('admin.groups.headers.actions')]"
           :rowsPerPage="rowsPerPage"
           :searchQuery="searchQuery"
           @updateGroups="updateGroups"

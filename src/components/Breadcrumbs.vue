@@ -1,5 +1,5 @@
 <template>
-  <nav class="breadcrumbs" aria-label="Хлебные крошки">
+  <nav class="breadcrumbs" :aria-label="t('components.breadcrumbs.ariaLabel')">
     <ol class="breadcrumb-list">
       <template v-for="(item, index) in breadcrumbs" :key="index">
         <li class="breadcrumb-item" :class="{ active: index === breadcrumbs.length - 1 }" :aria-current="index === breadcrumbs.length - 1 ? 'page' : undefined">
@@ -33,6 +33,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   items: {

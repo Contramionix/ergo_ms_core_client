@@ -8,6 +8,9 @@ import {
   applyRgbKeepingAlpha,
   parseCssColor,
 } from './colorFormat.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   label: {
@@ -119,7 +122,7 @@ const openEyeDropper = async () => {
         :value="displayValue"
         :disabled="disabled"
         class="form-control color-picker__text-input"
-        placeholder="#rrggbb или #rrggbbaa"
+        :placeholder="t('settings.themes.hexPlaceholder')"
         spellcheck="false"
         @input="onTextInput"
         @blur="onTextBlur"
@@ -130,8 +133,8 @@ const openEyeDropper = async () => {
         type="button"
         class="btn-action"
         :disabled="disabled"
-        title="Пипетка"
-        aria-label="Пипетка"
+        :title="t('settings.themes.eyedropper')"
+        :aria-label="t('settings.themes.eyedropper')"
         @click="openEyeDropper"
       >
         <Droplet :size="16" />

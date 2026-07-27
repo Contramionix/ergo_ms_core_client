@@ -2,7 +2,7 @@
   <div ref="listRef" class="msng-list" @scroll="onScroll">
     <div v-if="sortedItems.length === 0" class="msng-list__empty">
       <MessageSquareMore :size="48" class="msng-list__empty-icon" />
-      <p class="msng-list__empty-text">Сообщений пока нет</p>
+      <p class="msng-list__empty-text">{{ t('settings.messenger.empty') }}</p>
     </div>
 
     <template v-for="(item, idx) in sortedItems" :key="item._key">
@@ -28,8 +28,12 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { MessageSquareMore } from 'lucide-vue-next'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { getCurrentBcp47 } from '@/i18n/index.js'
 import MessageBubble from './MessageBubble.vue'
 import SystemMessage from './SystemMessage.vue'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   messages: { type: Array, default: () => [] },
@@ -96,9 +100,9 @@ function formatDateSeparator(dateStr) {
   yesterday.setDate(yesterday.getDate() - 1)
   const isYesterday = d.toDateString() === yesterday.toDateString()
 
-  if (isToday) return 'Сегодня'
-  if (isYesterday) return 'Вчера'
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+  if (isToday) return t('settings.messenger.today')
+  if (isYesterday) return t('settings.messenger.yesterday')
+  return d.toLocaleDateString(getCurrentBcp47(), { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function onScroll() {

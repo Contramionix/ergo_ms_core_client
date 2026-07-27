@@ -1,14 +1,15 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { Eye, EyeOff, CheckCircle, Shield } from 'lucide-vue-next'
-import { useToast } from '@/js/utils/toast.js'
 import ModalCenter from '@/components/ModalCenter.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import {
   passwordPolicy,
   validatePasswordValue,
   getPasswordRequirementHints,
 } from '@/js/passwordPolicy.js'
+import { useToast } from '@/js/utils/toast.js'
 import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
@@ -17,6 +18,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+const { t } = useAppI18n()
 const toast = useToast()
 const { changePassword } = useProfile()
 
@@ -75,7 +77,7 @@ const currentPasswordIcon = computed(() => (isCurrentPasswordVisible.value ? Eye
 const newPasswordIcon = computed(() => (isNewPasswordVisible.value ? Eye : EyeOff))
 const confirmPasswordIcon = computed(() => (isConfirmPasswordVisible.value ? Eye : EyeOff))
 
-const passwordRequirementHints = getPasswordRequirementHints()
+const passwordRequirementHints = computed(() => getPasswordRequirementHints())
 
 const passwordStrength = computed(() => {
   const password = form.value.newPassword
@@ -91,12 +93,12 @@ const passwordStrength = computed(() => {
 
   const strengthMap = {
     0: { label: '', tone: '' },
-    1: { label: 'Очень слабый', tone: 'danger' },
-    2: { label: 'Слабый', tone: 'warning' },
-    3: { label: 'Слабый', tone: 'warning' },
-    4: { label: 'Средний', tone: 'info' },
-    5: { label: 'Сильный', tone: 'success' },
-    6: { label: 'Очень сильный', tone: 'success' },
+    1: { label: t('settings.changePassword.strengthVeryWeak'), tone: 'danger' },
+    2: { label: t('settings.changePassword.strengthWeak'), tone: 'warning' },
+    3: { label: t('settings.changePassword.strengthWeak'), tone: 'warning' },
+    4: { label: t('settings.changePassword.strengthMedium'), tone: 'info' },
+    5: { label: t('settings.changePassword.strengthStrong'), tone: 'success' },
+    6: { label: t('settings.changePassword.strengthVeryStrong'), tone: 'success' },
   }
 
   return { score, ...strengthMap[score] }
@@ -122,7 +124,7 @@ const validateForm = () => {
   cleanErrors()
 
   if (!form.value.currentPassword) {
-    errors.value.currentPassword = 'Введите текущий пароль'
+    errors.value.currentPassword = t('settings.changePassword.currentRequired')
     isValid = false
   }
 
@@ -133,7 +135,7 @@ const validateForm = () => {
   }
 
   if (form.value.newPassword !== form.value.confirmPassword) {
-    errors.value.confirmPassword = 'Пароли не совпадают'
+    errors.value.confirmPassword = t('settings.changePassword.mismatch')
     isValid = false
   }
 
@@ -172,7 +174,7 @@ const submitForm = async () => {
     })
 
     resetForm()
-    toast.success('Пароль успешно изменён')
+    toast.success(t('settings.changePassword.changed'))
     handleClose()
   } catch (error) {
     logError('Ошибка смены пароля', error)
@@ -200,7 +202,7 @@ const submitForm = async () => {
         toast.error(generalError)
       }
     } else {
-      toast.error('Ошибка при смене пароля')
+      toast.error(t('settings.changePassword.changeError'))
     }
   } finally {
     isLoading.value = false
@@ -213,15 +215,15 @@ const submitForm = async () => {
     standalone
     :visible="show"
     modal-id="changePasswordModal"
-    title="Изменить пароль"
-    modal-aria-label="Изменить пароль"
+    :title="t('settings.changePassword.title')"
+    :modal-aria-label="t('settings.changePassword.title')"
     size="md"
     scrollable
     @close="handleClose"
   >
     <form :id="formId" class="change-password-modal" @submit.prevent="submitForm">
       <div class="change-password-modal__field">
-        <label class="change-password-modal__label" for="cpm-current-password">Текущий пароль</label>
+        <label class="change-password-modal__label" for="cpm-current-password">{{ t('settings.changePassword.current') }}</label>
         <div class="change-password-modal__input-wrap">
           <input
             id="cpm-current-password"
@@ -231,14 +233,14 @@ const submitForm = async () => {
             v-model="form.currentPassword"
             :disabled="isLoading"
             autocomplete="current-password"
-            placeholder="Введите текущий пароль"
+            :placeholder="t('settings.changePassword.currentPlaceholder')"
           />
           <button
             type="button"
             class="change-password-modal__toggle"
             :disabled="isLoading"
-            :title="isCurrentPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
-            :aria-label="isCurrentPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+            :title="isCurrentPasswordVisible ? t('settings.changePassword.hidePassword') : t('settings.changePassword.showPassword')"
+            :aria-label="isCurrentPasswordVisible ? t('settings.changePassword.hidePassword') : t('settings.changePassword.showPassword')"
             @click="togglePasswordVisibility('currentPassword')"
           >
             <component :is="currentPasswordIcon" :size="18" aria-hidden="true" />
@@ -249,7 +251,7 @@ const submitForm = async () => {
 
       <div class="change-password-modal__grid">
         <div class="change-password-modal__field">
-          <label class="change-password-modal__label" for="cpm-new-password">Новый пароль</label>
+          <label class="change-password-modal__label" for="cpm-new-password">{{ t('settings.changePassword.new') }}</label>
           <div class="change-password-modal__input-wrap">
             <input
               id="cpm-new-password"
@@ -259,14 +261,14 @@ const submitForm = async () => {
               v-model="form.newPassword"
               :disabled="isLoading"
               autocomplete="new-password"
-              placeholder="Введите новый пароль"
+              :placeholder="t('settings.changePassword.newPlaceholder')"
             />
             <button
               type="button"
               class="change-password-modal__toggle"
               :disabled="isLoading"
-              :title="isNewPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
-              :aria-label="isNewPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+              :title="isNewPasswordVisible ? t('settings.changePassword.hidePassword') : t('settings.changePassword.showPassword')"
+              :aria-label="isNewPasswordVisible ? t('settings.changePassword.hidePassword') : t('settings.changePassword.showPassword')"
               @click="togglePasswordVisibility('newPassword')"
             >
               <component :is="newPasswordIcon" :size="18" aria-hidden="true" />
@@ -276,7 +278,7 @@ const submitForm = async () => {
 
           <div v-if="form.newPassword && passwordStrength.score > 0" class="change-password-modal__strength">
             <div class="change-password-modal__strength-head">
-              <span class="change-password-modal__strength-label">Сила пароля</span>
+              <span class="change-password-modal__strength-label">{{ t('settings.changePassword.strength') }}</span>
               <span
                 class="change-password-modal__strength-value"
                 :class="`change-password-modal__strength-value--${passwordStrength.tone}`"
@@ -295,7 +297,7 @@ const submitForm = async () => {
         </div>
 
         <div class="change-password-modal__field">
-          <label class="change-password-modal__label" for="cpm-confirm-password">Подтверждение</label>
+          <label class="change-password-modal__label" for="cpm-confirm-password">{{ t('settings.changePassword.confirm') }}</label>
           <div class="change-password-modal__input-wrap">
             <input
               id="cpm-confirm-password"
@@ -305,14 +307,14 @@ const submitForm = async () => {
               v-model="form.confirmPassword"
               :disabled="isLoading"
               autocomplete="new-password"
-              placeholder="Повторите новый пароль"
+              :placeholder="t('settings.changePassword.confirmPlaceholder')"
             />
             <button
               type="button"
               class="change-password-modal__toggle"
               :disabled="isLoading"
-              :title="isConfirmPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
-              :aria-label="isConfirmPasswordVisible ? 'Скрыть пароль' : 'Показать пароль'"
+              :title="isConfirmPasswordVisible ? t('settings.changePassword.hidePassword') : t('settings.changePassword.showPassword')"
+              :aria-label="isConfirmPasswordVisible ? t('settings.changePassword.hidePassword') : t('settings.changePassword.showPassword')"
               @click="togglePasswordVisibility('confirmPassword')"
             >
               <component :is="confirmPasswordIcon" :size="18" aria-hidden="true" />
@@ -321,7 +323,7 @@ const submitForm = async () => {
           <p v-if="errors.confirmPassword" class="change-password-modal__error">{{ errors.confirmPassword }}</p>
           <p v-else-if="passwordsMatch" class="change-password-modal__match">
             <CheckCircle :size="14" />
-            Пароли совпадают
+            {{ t('settings.changePassword.match') }}
           </p>
         </div>
       </div>
@@ -329,7 +331,7 @@ const submitForm = async () => {
       <div class="change-password-modal__requirements">
         <h2 class="change-password-modal__requirements-title">
           <Shield :size="16" />
-          Требования к паролю
+          {{ t('settings.changePassword.requirements') }}
         </h2>
         <ul class="change-password-modal__requirements-list">
           <li v-for="hint in passwordRequirementHints" :key="hint">{{ hint }}</li>
@@ -344,7 +346,7 @@ const submitForm = async () => {
         :disabled="isLoading"
         @click="handleClose"
       >
-        Отмена
+        {{ t('common.cancel') }}
       </button>
       <button
         type="submit"
@@ -353,7 +355,7 @@ const submitForm = async () => {
         :disabled="isLoading"
       >
         <span v-if="isLoading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-        <span>{{ isLoading ? 'Сохранение...' : 'Сохранить' }}</span>
+        <span>{{ isLoading ? t('settings.changePassword.saving') : t('common.save') }}</span>
       </button>
     </template>
   </ModalCenter>

@@ -1,10 +1,13 @@
 <script setup>
 import { ref, onUnmounted, onMounted, computed } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
+import { logError } from '@/js/utils/logError.js'
 import { RotateCw, RotateCcw, Check } from 'lucide-vue-next'
 import ModalCenter from './ModalCenter.vue'
 import ImageCropper from './ImageCropper.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const { t } = useAppI18n()
 const toast = useToast()
 
 const props = defineProps({
@@ -86,11 +89,11 @@ async function handleConfirm() {
     if (croppedFile) {
       emit('confirm', croppedFile)
     } else {
-      throw new Error('Не удалось обрезать изображение')
+      throw new Error(t('components.avatarCrop.cropFailed'))
     }
   } catch (error) {
     logError('Ошибка при кадрировании:', error)
-    toast.error('Ошибка при кадрировании изображения')
+    toast.error(t('components.avatarCrop.cropError'))
   } finally {
     loading.value = false
   }
@@ -125,9 +128,8 @@ function reset() {
   <ModalCenter
     standalone
     modal-id="avatarCropModal"
-    title="Кадрирование фотографии"
+    :title="t('components.avatarCrop.title')"
     :visible="show"
-    :z-index="9999"
     :dialog-style="modalStyle"
     custom-class="avatar-crop-modal"
     @close="handleClose"
@@ -142,39 +144,39 @@ function reset() {
       />
     </div>
     <div v-else class="text-center py-4 text-muted">
-      <p>Изображение не загружено</p>
+      <p>{{ t('components.avatarCrop.empty') }}</p>
     </div>
 
     <div class="toolbar mt-3 d-flex flex-wrap gap-2 justify-content-center">
-      <button type="button" class="btn btn-sm btn-outline-secondary" @click="rotateCounterClockwise" :disabled="loading" title="Повернуть против часовой стрелки" aria-label="Повернуть против часовой стрелки">
+      <button type="button" class="btn btn-sm btn-outline-secondary" @click="rotateCounterClockwise" :disabled="loading" :title="t('components.avatarCrop.rotateCcw')" :aria-label="t('components.avatarCrop.rotateCcw')">
         <RotateCcw :size="16" class="me-1" aria-hidden="true" />
-        Повернуть
+        {{ t('components.avatarCrop.rotate') }}
       </button>
-      <button type="button" class="btn btn-sm btn-outline-secondary" @click="rotateClockwise" :disabled="loading" title="Повернуть по часовой стрелке" aria-label="Повернуть по часовой стрелке">
+      <button type="button" class="btn btn-sm btn-outline-secondary" @click="rotateClockwise" :disabled="loading" :title="t('components.avatarCrop.rotateCw')" :aria-label="t('components.avatarCrop.rotateCw')">
         <RotateCw :size="16" class="me-1" aria-hidden="true" />
-        Повернуть
+        {{ t('components.avatarCrop.rotate') }}
       </button>
-      <button type="button" class="btn btn-sm btn-outline-secondary" @click="flipHorizontal" :disabled="loading" title="Отразить по горизонтали" aria-label="Отразить по горизонтали">
+      <button type="button" class="btn btn-sm btn-outline-secondary" @click="flipHorizontal" :disabled="loading" :title="t('components.avatarCrop.flipHorizontal')" :aria-label="t('components.avatarCrop.flipHorizontal')">
         <span class="me-1" aria-hidden="true">↔</span>
-        Отразить
+        {{ t('components.avatarCrop.flip') }}
       </button>
-      <button type="button" class="btn btn-sm btn-outline-secondary" @click="reset" :disabled="loading" title="Сбросить изменения" aria-label="Сбросить изменения">
-        Сбросить
+      <button type="button" class="btn btn-sm btn-outline-secondary" @click="reset" :disabled="loading" :title="t('components.avatarCrop.resetChanges')" :aria-label="t('components.avatarCrop.resetChanges')">
+        {{ t('components.avatarCrop.reset') }}
       </button>
     </div>
 
     <div class="text-muted text-center mt-3" style="font-size: 13px">
-      Перетащите рамку для выбора области кадрирования. Используйте инструменты для поворота и отражения.
+      {{ t('components.avatarCrop.hint') }}
     </div>
 
     <template #footer>
       <button type="button" class="ui-btn ui-btn--secondary" @click="handleClose" :disabled="loading">
-        Отмена
+        {{ t('common.cancel') }}
       </button>
       <button type="button" class="ui-btn ui-btn--primary" @click="handleConfirm" :disabled="loading">
         <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
         <Check v-else :size="16" class="me-1" />
-        Применить
+        {{ t('common.apply') }}
       </button>
     </template>
   </ModalCenter>

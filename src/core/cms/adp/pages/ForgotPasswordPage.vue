@@ -3,9 +3,11 @@ import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
 import { sendConfirmationCode, fetchPasswordResetSettings } from '@/core/cms/adp/js/auth-index'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { validateFieldValue, validateFieldWithRegex, emailRegex } from '@/js/validation'
 
 const router = useRouter()
+const { t } = useAppI18n()
 const isLoading = ref(false)
 const isSuccess = ref(false)
 const isBootstrapping = ref(true)
@@ -25,29 +27,29 @@ const passwordResetDisabled = computed(
 )
 
 const pageTitle = computed(() => (
-  passwordResetDisabled.value ? 'Восстановление недоступно' : 'Восстановление пароля'
+  passwordResetDisabled.value ? t('auth.forgot.titleDisabled') : t('auth.forgot.title')
 ))
 
 const pageDescription = computed(() => {
   if (isSuccess.value) {
-    return 'Код восстановления отправлен на ваш email'
+    return t('auth.forgot.descriptionSent')
   }
   if (passwordResetDisabled.value) {
-    return 'Самостоятельное восстановление пароля отключено администратором.'
+    return t('auth.forgot.descriptionDisabled')
   }
-  return 'Введите email для получения кода восстановления'
+  return t('auth.forgot.description')
 })
 
 const resolveEmailSendError = (error) => {
   const { message } = sanitizeError(error)
-  return message || 'Не удалось отправить письмо с кодом восстановления'
+  return message || t('auth.forgot.sendFailed')
 }
 
 const validateForm = () => {
-  errors.email = validateFieldValue(form.email, 'Email')
+  errors.email = validateFieldValue(form.email, t('auth.login.email'))
 
   if (!errors.email) {
-    errors.email = validateFieldWithRegex(form.email, emailRegex, 'Введите корректный email')
+    errors.email = validateFieldWithRegex(form.email, emailRegex, t('auth.forgot.invalidEmail'))
   }
 
   errors.general = null
@@ -91,7 +93,7 @@ const submitForm = async () => {
         errors.general = result.message
           || apiErrors?.detail
           || apiErrors?.error
-          || 'Не удалось отправить письмо с кодом восстановления'
+          || t('auth.forgot.sendFailed')
       }
     }
   } catch (error) {
@@ -104,7 +106,7 @@ const submitForm = async () => {
 
     if (error.response) {
       if (error.response.status === 404) {
-        errors.email = 'Пользователь с таким email не найден'
+        errors.email = t('auth.forgot.userNotFound')
       } else if (error.response.status === 400) {
         const errorData = error.response.data
         if (errorData?.email) {
@@ -120,9 +122,9 @@ const submitForm = async () => {
         errors.general = resolveEmailSendError(error)
       }
     } else if (error.request) {
-      errors.general = 'Нет соединения с сервером'
+      errors.general = t('auth.login.noConnection')
     } else {
-      errors.general = 'Произошла неизвестная ошибка'
+      errors.general = t('auth.login.unknownError')
     }
   } finally {
     isLoading.value = false
@@ -138,7 +140,7 @@ const goToLogin = () => {
   <AuthPageShell>
     <div v-if="isBootstrapping" class="text-center py-4">
       <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Загрузка...</span>
+        <span class="visually-hidden">{{ t('common.loading') }}</span>
       </div>
     </div>
 
@@ -148,77 +150,76 @@ const goToLogin = () => {
         <p class="auth-page__description">{{ pageDescription }}</p>
       </div>
 
-          <div v-if="passwordResetDisabled" class="text-center">
-            <div class="alert alert-warning" role="alert">
-              <i class="bi bi-info-circle-fill me-2"></i>
-              Обратитесь к администратору системы для восстановления доступа.
-            </div>
-            <button type="button" class="btn btn-outline-primary" @click="goToLogin">
-              <i class="bi bi-arrow-left me-2"></i>
-              Вернуться к входу
-            </button>
+      <div v-if="passwordResetDisabled" class="text-center">
+        <div class="alert alert-warning" role="alert">
+          <i class="bi bi-info-circle-fill me-2"></i>
+          {{ t('auth.forgot.contactAdmin') }}
+        </div>
+        <button type="button" class="btn btn-outline-primary" @click="goToLogin">
+          <i class="bi bi-arrow-left me-2"></i>
+          {{ t('auth.forgot.backToLogin') }}
+        </button>
+      </div>
+
+      <div v-else-if="isSuccess" class="text-center">
+        <div class="alert alert-success" role="alert">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          {{ t('auth.forgot.codeSentTo') }} <strong>{{ form.email }}</strong>
+        </div>
+
+        <p class="text-muted mb-4">
+          {{ t('auth.forgot.checkInbox') }}
+        </p>
+
+        <button type="button" class="btn btn-outline-primary" @click="goToLogin">
+          <i class="bi bi-arrow-left me-2"></i>
+          {{ t('auth.forgot.backToLogin') }}
+        </button>
+      </div>
+
+      <form v-else @submit.prevent="submitForm" novalidate>
+        <div v-if="errors.general" class="alert alert-danger" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          {{ errors.general }}
+        </div>
+
+        <div class="form-floating mb-4" v-auto-animate>
+          <input
+            type="email"
+            id="email"
+            class="form-control"
+            :class="{ 'is-invalid': errors.email }"
+            v-model="form.email"
+            placeholder="email@example.com"
+            :disabled="isLoading"
+            autocomplete="email"
+          />
+          <label for="email">
+            <i class="bi bi-envelope me-2"></i>{{ t('auth.login.email') }}
+          </label>
+          <div v-if="errors.email" class="invalid-feedback">
+            {{ errors.email }}
           </div>
+        </div>
 
-          <div v-else-if="isSuccess" class="text-center">
-            <div class="alert alert-success" role="alert">
-              <i class="bi bi-check-circle-fill me-2"></i>
-              Код восстановления отправлен на <strong>{{ form.email }}</strong>
-            </div>
+        <button type="submit" class="btn btn-primary w-100 py-3 mb-3" :disabled="isLoading">
+          <span
+            v-if="isLoading"
+            class="spinner-border spinner-border-sm me-2"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          <i v-else class="bi bi-envelope-arrow-up me-2"></i>
+          {{ isLoading ? t('auth.forgot.sending') : t('auth.forgot.sendCode') }}
+        </button>
 
-            <p class="text-muted mb-4">
-              Проверьте свою почту и следуйте инструкциям для восстановления пароля.
-              Если письмо не пришло, проверьте папку «Спам».
-            </p>
-
-            <button type="button" class="btn btn-outline-primary" @click="goToLogin">
-              <i class="bi bi-arrow-left me-2"></i>
-              Вернуться к входу
-            </button>
-          </div>
-
-          <form v-else @submit.prevent="submitForm" novalidate>
-            <div v-if="errors.general" class="alert alert-danger" role="alert">
-              <i class="bi bi-exclamation-triangle-fill me-2"></i>
-              {{ errors.general }}
-            </div>
-
-            <div class="form-floating mb-4" v-auto-animate>
-              <input
-                type="email"
-                id="email"
-                class="form-control"
-                :class="{ 'is-invalid': errors.email }"
-                v-model="form.email"
-                placeholder="email@example.com"
-                :disabled="isLoading"
-                autocomplete="email"
-              />
-              <label for="email">
-                <i class="bi bi-envelope me-2"></i>Email
-              </label>
-              <div v-if="errors.email" class="invalid-feedback">
-                {{ errors.email }}
-              </div>
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100 py-3 mb-3" :disabled="isLoading">
-              <span
-                v-if="isLoading"
-                class="spinner-border spinner-border-sm me-2"
-                role="status"
-                aria-hidden="true"
-              ></span>
-              <i v-else class="bi bi-envelope-arrow-up me-2"></i>
-              {{ isLoading ? 'Отправка...' : 'Отправить код восстановления' }}
-            </button>
-
-            <div class="text-center">
-              <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary">
-                <i class="bi bi-arrow-left me-2"></i>
-                Вернуться к входу
-              </RouterLink>
-            </div>
-          </form>
+        <div class="text-center">
+          <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary">
+            <i class="bi bi-arrow-left me-2"></i>
+            {{ t('auth.forgot.backToLogin') }}
+          </RouterLink>
+        </div>
+      </form>
     </template>
   </AuthPageShell>
 </template>

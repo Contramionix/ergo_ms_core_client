@@ -1,3 +1,5 @@
+import { tGlobal } from '@/i18n/index.js'
+
 const EMAIL_HEADER = 'Email'
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -20,7 +22,9 @@ function normalizeCellValue(value) {
 function findEmailColumnIndex(headerRow) {
   const normalizedHeaders = headerRow.map((cell) => normalizeCellValue(cell).toLowerCase())
   const emailIndex = normalizedHeaders.findIndex(
-    (header) => header === 'email' || header === 'e-mail' || header === 'почта' || header === 'электронная почта',
+    (header) => header === 'email' || header === 'e-mail'
+    // Intentional RU Excel header aliases for import compatibility (do not i18n)
+    || header === 'почта' || header === 'электронная почта',
   )
   return emailIndex >= 0 ? emailIndex : 0
 }
@@ -32,7 +36,7 @@ export function isValidEmailFormat(email) {
 export async function downloadInvitationTemplate() {
   const Workbook = await loadExcelJS()
   const workbook = new Workbook()
-  const worksheet = workbook.addWorksheet('Приглашения')
+  const worksheet = workbook.addWorksheet(tGlobal('admin.invitations.sheetName'))
 
   worksheet.columns = [{ header: EMAIL_HEADER, key: 'email', width: 40 }]
   worksheet.getRow(1).font = { bold: true }
@@ -58,7 +62,7 @@ export async function parseInvitationEmailsFromFile(file) {
   if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
     return parseExcelEmails(file)
   }
-  throw new Error('Поддерживаются только файлы Excel (.xlsx, .xls) и CSV (.csv)')
+  throw new Error(tGlobal('admin.invitations.fileTypeError'))
 }
 
 async function parseCsvEmails(file) {
@@ -132,7 +136,7 @@ export function buildEmailPreviewList(rawEmails) {
         email,
         row: index + 2,
         status: 'duplicate',
-        statusLabel: 'Дубликат в файле',
+        statusLabel: tGlobal('admin.invitations.statusDuplicate'),
         canInvite: false,
       })
       return
@@ -144,7 +148,7 @@ export function buildEmailPreviewList(rawEmails) {
         email,
         row: index + 2,
         status: 'invalid',
-        statusLabel: 'Некорректный email',
+        statusLabel: tGlobal('admin.invitations.statusInvalidEmail'),
         canInvite: false,
       })
       return
@@ -154,7 +158,7 @@ export function buildEmailPreviewList(rawEmails) {
       email,
       row: index + 2,
       status: 'ready',
-      statusLabel: 'Готов к отправке',
+      statusLabel: tGlobal('admin.invitations.statusReady'),
       canInvite: true,
     })
   })

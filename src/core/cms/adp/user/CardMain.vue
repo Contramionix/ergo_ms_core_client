@@ -8,8 +8,10 @@ import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { formatMonthYearGenitive } from '@/js/utils/timeUtils.js'
 import { logError } from '@/js/utils/logError.js'
 import { BREAKPOINTS } from '@/composables/useBreakpoint.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const userStore = useUserStore()
+const { t } = useAppI18n()
 
 function getAvatarSizeForViewport() {
   if (typeof window === 'undefined') {
@@ -31,8 +33,8 @@ const avatarSize = ref(getAvatarSizeForViewport())
 const displayUserInfo = computed(() => {
   if (!profileData.value && !userStore.user) {
     return {
-      username: 'Пользователь',
-      registration: 'Неизвестно',
+      username: t('components.profileCard.user'),
+      registration: t('components.profileCard.unknown'),
       role: '',
     }
   }
@@ -40,7 +42,7 @@ const displayUserInfo = computed(() => {
   const profile = profileData.value
 
   return {
-    username: profile?.fullName || userStore.fullName || 'Гость',
+    username: profile?.fullName || userStore.fullName || t('components.profileCard.guest'),
     registration: formatRegistrationDate(resolveRegistrationDateRaw()),
     role: userStore.userRole || '',
   }
@@ -56,10 +58,10 @@ function resolveRegistrationDateRaw() {
 }
 
 function formatRegistrationDate(dateString) {
-  if (!dateString) return 'Неизвестно'
+  if (!dateString) return t('components.profileCard.unknown')
 
   const label = formatMonthYearGenitive(dateString)
-  return label || 'Неизвестно'
+  return label || t('components.profileCard.unknown')
 }
 
 async function fetchProfile({ showLoading = false } = {}) {
@@ -166,11 +168,11 @@ defineExpose({
             <h3 class="profile-card__username">
               {{ displayUserInfo.username }}
             </h3>
-            <HoverTooltip text="Настройки профиля">
+            <HoverTooltip :text="t('components.profileCard.settings')">
               <button
                 type="button"
                 class="profile-card__settings"
-                aria-label="Настройки профиля"
+                :aria-label="t('components.profileCard.settings')"
                 @click="openProfileSettings"
               >
                 <Settings :size="16" aria-hidden="true" />
@@ -188,7 +190,7 @@ defineExpose({
           <ul class="profile-card__meta list-unstyled mb-0">
             <li class="profile-card__meta-item">
               <Calendar :size="14" class="profile-card__meta-icon" />
-              <span class="profile-card__meta-label">На платформе с</span>
+              <span class="profile-card__meta-label">{{ t('components.profileCard.onPlatformSince') }}</span>
               <span class="profile-card__meta-value">{{ displayUserInfo.registration }}</span>
             </li>
           </ul>

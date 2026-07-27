@@ -1,10 +1,14 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { computed, ref, watch, defineAsyncComponent } from 'vue'
 import { Settings, Trash2 } from 'lucide-vue-next'
 import { deleteRole } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import Pagination from '@/components/Pagination.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint.js'
+
+const { t } = useAppI18n()
+
 
 const ChangeCategoryForm = defineAsyncComponent(() =>
   import('@/core/cms/adp/admin/CategoriesComponents/SubmitCategoryChange.vue'),
@@ -93,7 +97,7 @@ const removeRole = async (roleId) => {
         <div class="admin-card__title">{{ row.name }}</div>
         <div class="admin-card__meta">
           <span :class="['status-badge', row.is_system ? 'badge-system' : 'badge-regular']">
-            {{ row.is_system ? 'Системная' : 'Пользовательская' }}
+            {{ row.is_system ? t('admin.roles.system') : t('admin.roles.custom') }}
           </span>
         </div>
         <div class="actions-cell admin-card__actions">
@@ -101,7 +105,7 @@ const removeRole = async (roleId) => {
             class="btn-action btn-action--edit"
             @click="openEditModal(row)"
             type="button"
-            aria-label="Изменить роль"
+            :aria-label="t('admin.roles.editAria')"
           >
             <Settings :size="15" />
           </button>
@@ -110,7 +114,7 @@ const removeRole = async (roleId) => {
             :disabled="row.is_system"
             @click="removeRole(row.id)"
             type="button"
-            aria-label="Удалить роль"
+            :aria-label="t('admin.roles.deleteAria')"
           >
             <Trash2 :size="15" />
           </button>
@@ -138,7 +142,7 @@ const removeRole = async (roleId) => {
             </td>
             <td>
               <span :class="['status-badge', row.is_system ? 'badge-system' : 'badge-regular']">
-                {{ row.is_system ? 'Системная' : 'Пользовательская' }}
+                {{ row.is_system ? t('admin.roles.system') : t('admin.roles.custom') }}
               </span>
             </td>
             <td>
@@ -147,7 +151,7 @@ const removeRole = async (roleId) => {
                   class="btn-action btn-action--edit"
                   @click="openEditModal(row)"
                   type="button"
-                  aria-label="Изменить роль"
+                  :aria-label="t('admin.roles.editAria')"
                 >
                   <Settings :size="15" />
                 </button>
@@ -156,7 +160,7 @@ const removeRole = async (roleId) => {
                   :disabled="row.is_system"
                   @click="removeRole(row.id)"
                   type="button"
-                  aria-label="Удалить роль"
+                  :aria-label="t('admin.roles.deleteAria')"
                 >
                   <Trash2 :size="15" />
                 </button>
@@ -168,7 +172,7 @@ const removeRole = async (roleId) => {
     </div>
 
     <div v-if="paginatedRows.length === 0" class="empty-state">
-      <p class="empty-state__text">Роли не найдены</p>
+      <p class="empty-state__text">{{ t('admin.roles.empty') }}</p>
     </div>
 
     <Pagination

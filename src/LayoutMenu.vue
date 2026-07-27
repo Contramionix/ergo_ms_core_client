@@ -40,10 +40,12 @@ import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import SkipLink from '@/components/SkipLink.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 import LucideIcon from '@/components/LucideIcon.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import RouteViewAnimated from '@/components/RouteViewAnimated.vue'
 
+const { t } = useAppI18n()
 const userStore = useUserStore()
 const route = useRoute()
 const { bootstrapping: sessionBootstrapping, whenSessionReady } = useAppBootstrap()
@@ -170,7 +172,7 @@ onBeforeUnmount(() => {
   <SkipLink />
   <Teleport to="body">
     <header v-if="!isFullPage" class="mobile-header d-xl-none">
-      <button class="btn btn-link d-flex align-items-center justify-content-center mobile-header__btn" type="button" :aria-label="isMenuVisible ? 'Закрыть меню' : 'Открыть меню'" :title="isMenuVisible ? 'Закрыть меню' : 'Открыть меню'" :aria-expanded="isMenuVisible" aria-controls="side-menu" @click="onHamburgerClick">
+      <button class="btn btn-link d-flex align-items-center justify-content-center mobile-header__btn" type="button" :aria-label="isMenuVisible ? t('menu.sidebar.close') : t('menu.sidebar.open')" :title="isMenuVisible ? t('menu.sidebar.close') : t('menu.sidebar.open')" :aria-expanded="isMenuVisible" aria-controls="side-menu" @click="onHamburgerClick">
         <LucideIcon name="Menu" :size="24" aria-hidden="true" />
       </button>
       <RouterLink :to="{ name: 'AppHome' }" class="mobile-header__brand text-decoration-none">

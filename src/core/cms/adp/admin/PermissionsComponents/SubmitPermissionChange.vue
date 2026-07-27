@@ -6,11 +6,16 @@ import PolicyResourcePathField from '@/core/cms/adp/admin/PermissionsComponents/
 import { updatePolicy } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { buildDefaultPolicyName } from '@/core/cms/adp/admin/js/policyNameUtils.js'
 import {
-  POLICY_TYPE_OPTIONS,
-  POLICY_ACTION_OPTIONS,
+  getPolicyTypeOptions,
+  getPolicyActionOptions,
   mapRoleSelectOptions,
   mapRoleGroupSelectOptions,
 } from '@/core/cms/js/adminSelectOptions.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
+const policyTypeOptions = computed(() => getPolicyTypeOptions())
+const policyActionOptions = computed(() => getPolicyActionOptions())
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -69,8 +74,14 @@ const suggestedPolicyName = computed(() =>
 const syncWithRow = (newRow) => {
   policyId.value = newRow.id
   name.value = newRow.name || ''
-  policyType.value = newRow.policy_type === 'Компонент' ? 'component' : 'url'
-  action.value = newRow.action === 'Запретить' ? 'deny' : 'allow'
+  const typeMatch = getPolicyTypeOptions().find(
+    (opt) => opt.id === newRow.policy_type || opt.name === newRow.policy_type,
+  )
+  const actionMatch = getPolicyActionOptions().find(
+    (opt) => opt.id === newRow.action || opt.name === newRow.action,
+  )
+  policyType.value = typeMatch?.id || 'url'
+  action.value = actionMatch?.id || 'allow'
   resourcePath.value = newRow.resource_path || ''
   isPattern.value = Boolean(newRow.is_pattern)
   priority.value = newRow.priority ?? 0
@@ -172,7 +183,7 @@ const submitForm = async () => {
     :modal-id="modalId"
     standalone
     :visible="visible"
-    title="Редактировать политику"
+    :title="t('admin.policies.editTitle')"
     size="xl"
     scrollable
     @closemodal="closeModal"
@@ -183,8 +194,8 @@ const submitForm = async () => {
           <SelectBox
             id="actionEdit"
             v-model="action"
-            label="Действие"
-            :options="POLICY_ACTION_OPTIONS"
+            :label="t('admin.policies.action')"
+            :options="policyActionOptions"
             value-key="id"
             label-key="name"
             :include-all-option="false"
@@ -194,8 +205,8 @@ const submitForm = async () => {
           <SelectBox
             id="policyTypeEdit"
             v-model="policyType"
-            label="Тип политики"
-            :options="POLICY_TYPE_OPTIONS"
+            :label="t('admin.policies.type')"
+            :options="policyTypeOptions"
             value-key="id"
             label-key="name"
             :include-all-option="false"
@@ -215,7 +226,7 @@ const submitForm = async () => {
       />
 
       <div class="mb-3 mt-3">
-        <label class="form-label d-block">Кому применить</label>
+        <label class="form-label d-block">{{ t('admin.policies.applyTo') }}</label>
         <div class="btn-group mb-2" role="group">
           <input
             type="radio"
@@ -225,7 +236,7 @@ const submitForm = async () => {
             value="role_group"
             v-model="targetType"
           />
-          <label class="btn btn-outline-primary" for="targetGroupEdit">Ролевая группа</label>
+          <label class="btn btn-outline-primary" for="targetGroupEdit">{{ t('admin.policies.targetGroup') }}</label>
 
           <input
             type="radio"
@@ -235,7 +246,7 @@ const submitForm = async () => {
             value="role"
             v-model="targetType"
           />
-          <label class="btn btn-outline-primary" for="targetRoleEdit">Роль</label>
+          <label class="btn btn-outline-primary" for="targetRoleEdit">{{ t('admin.policies.targetRole') }}</label>
         </div>
 
         <SelectBox
@@ -244,7 +255,7 @@ const submitForm = async () => {
           :options="roleGroupSelectOptions"
           value-key="id"
           label-key="name"
-          all-label="Выберите ролевую группу"
+          :all-label="t('admin.policies.selectGroup')"
           cast-to-number
         />
 
@@ -254,12 +265,12 @@ const submitForm = async () => {
           :options="roleSelectOptions"
           value-key="id"
           label-key="name"
-          all-label="Выберите роль"
+          :all-label="t('admin.policies.selectRole')"
           cast-to-number
         />
 
         <div v-if="showErrorTarget" class="invalid-feedback d-block">
-          Необходимо выбрать цель политики.
+          {{ t('admin.policies.targetRequired') }}
         </div>
       </div>
 
@@ -269,7 +280,7 @@ const submitForm = async () => {
           class="btn btn-link btn-sm px-0"
           @click="showAdvanced = !showAdvanced"
         >
-          {{ showAdvanced ? 'Скрыть дополнительные параметры' : 'Дополнительные параметры' }}
+          {{ showAdvanced ? t('admin.policies.hideAdvanced') : t('admin.policies.showAdvanced') }}
         </button>
       </div>
 
@@ -281,15 +292,15 @@ const submitForm = async () => {
             class="form-control"
             v-model="name"
             :class="{ 'is-invalid': showErrorName }"
-            placeholder="Введите название политики"
+            :placeholder="t('admin.policies.namePlaceholder')"
             @input="nameManuallyEdited = true"
           />
-          <label for="policyNameEdit">Название политики</label>
-          <div v-if="showErrorName" class="invalid-feedback">Название обязательно для заполнения.</div>
+          <label for="policyNameEdit">{{ t('admin.policies.nameLabel') }}</label>
+          <div v-if="showErrorName" class="invalid-feedback">{{ t('admin.policies.nameRequired') }}</div>
         </div>
 
         <div class="mb-0">
-          <label for="priorityEdit" class="form-label">Приоритет</label>
+          <label for="priorityEdit" class="form-label">{{ t('admin.policies.priority') }}</label>
           <input
             type="number"
             id="priorityEdit"
@@ -302,10 +313,10 @@ const submitForm = async () => {
 
     <template #footer>
       <button type="button" class="ui-btn ui-btn--secondary" :disabled="isSubmitting" @click="closeModal">
-        Отмена
+        {{ t('common.cancel') }}
       </button>
       <button type="submit" :form="formId" class="ui-btn ui-btn--primary" :disabled="isSubmitting">
-        {{ isSubmitting ? 'Сохранение...' : 'Сохранить' }}
+        {{ isSubmitting ? t('common.saving') : t('common.save') }}
       </button>
     </template>
   </ModalCenter>

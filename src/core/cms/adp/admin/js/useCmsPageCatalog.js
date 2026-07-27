@@ -9,6 +9,7 @@ import {
   mapModuleSelectOptions,
   mapPagePathOptions,
 } from '@/core/cms/js/adminSelectOptions.js'
+import { tGlobal } from '@/i18n/index.js'
 
 export function useCmsPageCatalog() {
   const toast = useToast()
@@ -61,8 +62,8 @@ export function useCmsPageCatalog() {
       pages.value = (response && response.pages) || []
     } catch (error) {
       logError('Ошибка загрузки каталога страниц', error)
-      errorMessage.value = 'Не удалось загрузить каталог маршрутов. Попробуйте позже.'
-      toast.error('Не удалось загрузить каталог маршрутов.')
+        errorMessage.value = tGlobal('admin.policies.catalogLoadError')
+        toast.error(tGlobal('admin.policies.catalogLoadToast'))
       pages.value = []
     } finally {
       isLoading.value = false
@@ -82,11 +83,11 @@ export function useCmsPageCatalog() {
       isSyncing.value = true
       await apiClient.post('cms/patch-all-project-pages', {}, true)
       await loadCatalog()
-      toast.success('Маршруты синхронизированы')
+      toast.success(tGlobal('admin.policies.syncSuccess'))
       return true
     } catch (error) {
       logError('Ошибка синхронизации маршрутов', error)
-      toast.error('Не удалось синхронизировать маршруты. Попробуйте позже.')
+      toast.error(tGlobal('admin.policies.syncError'))
       return false
     } finally {
       isSyncing.value = false

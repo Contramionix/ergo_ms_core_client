@@ -18,6 +18,7 @@ import { accessDeniedState } from './accessDeniedState'
 import { finishRouteProgress, startRouteProgress } from '@/js/routeProgressState.js'
 import { runSessionScopeGuard } from '@/js/session/sessionScopeGuard.js'
 import { whenSessionReady } from '@/js/sessionReady.js'
+import { tGlobal } from '@/i18n/index.js'
 
 let cachedPermissionRules = null
 let cachedRouteGuards = null
@@ -107,8 +108,8 @@ async function checkRouteAccess(to) {
     const canAccessAdminPanel = await checkGlobalAdminAccess()
     if (!canAccessAdminPanel) {
       accessDeniedState.active = true
-      accessDeniedState.title = 'Доступ запрещён'
-      accessDeniedState.message = 'Требуются права администратора.'
+      accessDeniedState.title = tGlobal('admin.access.deniedTitle')
+      accessDeniedState.message = tGlobal('admin.access.adminRequired')
       return { allowed: false, redirect: 'AccessDenied' }
     }
   }

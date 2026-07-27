@@ -3,6 +3,7 @@ import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import PasswordInput from '@/core/cms/adp/components/PasswordInput.vue'
 import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { validateFieldValue, validateFieldsOnEquality } from '@/js/validation'
 import { validatePasswordValue } from '@/js/passwordPolicy.js'
 import { resetPassword, fetchPasswordResetSettings } from '@/core/cms/adp/js/auth-index'
@@ -10,6 +11,7 @@ import { logError } from '@/js/utils/logError.js'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useAppI18n()
 const isLoading = ref(false)
 const isSuccess = ref(false)
 const isBootstrapping = ref(true)
@@ -49,28 +51,30 @@ onMounted(async () => {
 })
 
 const validateForm = () => {
-  errors.code = validateFieldValue(form.code, 'Код подтверждения')
-  errors.password = validateFieldValue(form.password, 'Новый пароль')
-  errors.passwordConfirm = validateFieldValue(form.passwordConfirm, 'Подтверждение пароля')
-  
+  errors.code = validateFieldValue(form.code, t('auth.validation.confirmationCode'))
+  errors.password = validateFieldValue(form.password, t('auth.validation.newPassword'))
+  errors.passwordConfirm = validateFieldValue(
+    form.passwordConfirm,
+    t('auth.validation.passwordConfirm'),
+  )
+
   if (!errors.password) {
     const passwordComplexityError = validatePasswordValue(form.password)
     if (passwordComplexityError) {
       errors.password = passwordComplexityError
     }
   }
-  
-  // Проверяем совпадение паролей
+
   if (!errors.password && !errors.passwordConfirm) {
     const { firstFieldError, secondFieldError } = validateFieldsOnEquality(
       form.password,
       form.passwordConfirm,
-      'Пароли не совпадают'
+      t('auth.password.passwordsMismatch'),
     )
     errors.password = firstFieldError
     errors.passwordConfirm = secondFieldError
   }
-  
+
   errors.general = null
   return !errors.code && !errors.password && !errors.passwordConfirm
 }
@@ -82,39 +86,37 @@ const submitForm = async () => {
 
   isLoading.value = true
   errors.general = null
-  
+
   try {
     const result = await resetPassword(
-      form.email, 
-      form.code, 
-      form.password, 
-      form.passwordConfirm
+      form.email,
+      form.code,
+      form.password,
+      form.passwordConfirm,
     )
-    
+
     if (result && result.success) {
       isSuccess.value = true
       setTimeout(() => {
         router.push({ name: 'Login' })
       }, 2000)
     } else {
-      // Обрабатываем ошибки из результата
       if (result && result.errors) {
         if (result.errors.error) {
           const errorMsg = Array.isArray(result.errors.error)
             ? result.errors.error[0]
             : result.errors.error
-          
-          // Проверяем тип ошибки и устанавливаем в соответствующее поле
-          if (errorMsg.includes('код') || errorMsg.includes('Код')) {
+
+          if (errorMsg.includes('код') || errorMsg.includes('Код') || /code/i.test(errorMsg)) {
             errors.code = errorMsg
-          } else if (errorMsg.includes('пароль') || errorMsg.includes('Пароль')) {
+          } else if (errorMsg.includes('пароль') || errorMsg.includes('Пароль') || /password/i.test(errorMsg)) {
             errors.password = errorMsg
           } else {
             errors.general = errorMsg
           }
         } else if (result.errors.code) {
-          errors.code = Array.isArray(result.errors.code) 
-            ? result.errors.code[0] 
+          errors.code = Array.isArray(result.errors.code)
+            ? result.errors.code[0]
             : result.errors.code
         } else if (result.errors.password) {
           errors.password = Array.isArray(result.errors.password)
@@ -124,56 +126,53 @@ const submitForm = async () => {
       } else if (result && result.message) {
         errors.general = result.message
       } else if (result && result.error) {
-        errors.general = Array.isArray(result.error) 
-          ? result.error[0] 
+        errors.general = Array.isArray(result.error)
+          ? result.error[0]
           : result.error
       } else {
-        errors.general = 'Не удалось изменить пароль'
+        errors.general = t('auth.reset.changeFailed')
       }
     }
-    
   } catch (error) {
     logError('Ошибка сброса пароля', error)
     if (error.response) {
       if (error.response.status === 400) {
         const errorData = error.response.data
-        // Обрабатываем поле error из ответа API
         if (errorData && errorData.error) {
-          const errorMsg = Array.isArray(errorData.error) 
-            ? errorData.error[0] 
+          const errorMsg = Array.isArray(errorData.error)
+            ? errorData.error[0]
             : errorData.error
-          
-          // Проверяем тип ошибки и устанавливаем в соответствующее поле
-          if (errorMsg.includes('код') || errorMsg.includes('Код')) {
+
+          if (errorMsg.includes('код') || errorMsg.includes('Код') || /code/i.test(errorMsg)) {
             errors.code = errorMsg
-          } else if (errorMsg.includes('пароль') || errorMsg.includes('Пароль')) {
+          } else if (errorMsg.includes('пароль') || errorMsg.includes('Пароль') || /password/i.test(errorMsg)) {
             errors.password = errorMsg
           } else {
             errors.general = errorMsg
           }
         } else if (errorData && errorData.code) {
-          errors.code = Array.isArray(errorData.code) 
-            ? errorData.code[0] 
+          errors.code = Array.isArray(errorData.code)
+            ? errorData.code[0]
             : errorData.code
         } else if (errorData && errorData.password) {
           errors.password = Array.isArray(errorData.password)
             ? errorData.password[0]
             : errorData.password
         } else {
-          errors.general = errorData?.detail || errorData?.message || 'Неверный код или данные'
+          errors.general = errorData?.detail || errorData?.message || t('auth.reset.invalidCodeOrData')
         }
       } else if (error.response.status === 403) {
         errors.general = sanitizeError(error).message
-          || 'Восстановление пароля отключено администратором.'
+          || t('auth.reset.resetDisabled')
       } else if (error.response.status >= 500) {
-        errors.general = error.response.data?.detail || error.response.data?.error || 'Ошибка сервера. Попробуйте позже'
+        errors.general = error.response.data?.detail || error.response.data?.error || t('auth.login.serverError')
       } else {
-        errors.general = error.response.data?.error || error.response.data?.message || 'Ошибка сброса пароля'
+        errors.general = error.response.data?.error || error.response.data?.message || t('auth.reset.resetError')
       }
     } else if (error.request) {
-      errors.general = 'Нет соединения с сервером'
+      errors.general = t('auth.login.noConnection')
     } else {
-      errors.general = error.message || 'Произошла неизвестная ошибка'
+      errors.general = error.message || t('auth.login.unknownError')
     }
   } finally {
     isLoading.value = false
@@ -185,7 +184,7 @@ const submitForm = async () => {
   <AuthPageShell>
     <div v-if="isBootstrapping" class="text-center py-4">
       <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Загрузка...</span>
+        <span class="visually-hidden">{{ t('common.loading') }}</span>
       </div>
     </div>
 
@@ -194,133 +193,126 @@ const submitForm = async () => {
         <h1 class="auth-page__title">
           {{
             isSuccess
-              ? 'Пароль изменен!'
+              ? t('auth.reset.titleSuccess')
               : passwordResetDisabled
-                ? 'Восстановление недоступно'
-                : 'Новый пароль'
+                ? t('auth.reset.titleDisabled')
+                : t('auth.reset.title')
           }}
         </h1>
         <p class="auth-page__description">
           {{
             isSuccess
-              ? 'Ваш пароль успешно изменен. Перенаправляем на страницу входа...'
+              ? t('auth.reset.descriptionSuccess')
               : passwordResetDisabled
-                ? 'Самостоятельное восстановление пароля отключено администратором.'
-                : 'Создайте новый пароль для вашего аккаунта'
+                ? t('auth.reset.descriptionDisabled')
+                : t('auth.reset.description')
           }}
         </p>
       </div>
 
-          <div v-if="passwordResetDisabled" class="text-center">
-            <div class="alert alert-warning" role="alert">
-              <i class="bi bi-info-circle-fill me-2"></i>
-              Обратитесь к администратору системы для восстановления доступа.
-            </div>
-            <RouterLink :to="{ name: 'Login' }" class="btn btn-outline-primary">
-              <i class="bi bi-arrow-left me-2"></i>
-              Вернуться к входу
-            </RouterLink>
-          </div>
+      <div v-if="passwordResetDisabled" class="text-center">
+        <div class="alert alert-warning" role="alert">
+          <i class="bi bi-info-circle-fill me-2"></i>
+          {{ t('auth.forgot.contactAdmin') }}
+        </div>
+        <RouterLink :to="{ name: 'Login' }" class="btn btn-outline-primary">
+          <i class="bi bi-arrow-left me-2"></i>
+          {{ t('auth.forgot.backToLogin') }}
+        </RouterLink>
+      </div>
 
-          <div v-else-if="isSuccess" class="text-center">
-          <div class="alert alert-success" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i>
-            Пароль успешно изменен!
-          </div>
-          
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Загрузка...</span>
-          </div>
-          <p class="text-muted mt-2">Перенаправление на страницу входа...</p>
+      <div v-else-if="isSuccess" class="text-center">
+        <div class="alert alert-success" role="alert">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          {{ t('auth.reset.successAlert') }}
         </div>
 
-        <form v-else @submit.prevent="submitForm" novalidate>
-          <!-- Общая ошибка -->
-          <div v-if="errors.general" class="alert alert-danger" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            {{ errors.general }}
-          </div>
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">{{ t('common.loading') }}</span>
+        </div>
+        <p class="text-muted mt-2">{{ t('auth.reset.redirecting') }}</p>
+      </div>
 
-          <!-- Email (только для отображения) -->
-          <div class="form-floating mb-3">
-            <input
-              type="email"
-              id="email"
-              class="form-control"
-              v-model="form.email"
-              placeholder="email@example.com"
-              readonly
-            />
-            <label for="email">
-              <i class="bi bi-envelope me-2"></i>Email
-            </label>
-          </div>
+      <form v-else @submit.prevent="submitForm" novalidate>
+        <div v-if="errors.general" class="alert alert-danger" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          {{ errors.general }}
+        </div>
 
-          <!-- Поле кода -->
-          <div class="form-floating mb-3" v-auto-animate>
-            <input
-              type="text"
-              id="code"
-              class="form-control"
-              :class="{ 'is-invalid': errors.code }"
-              v-model="form.code"
-              placeholder="Код подтверждения"
-              :disabled="isLoading"
-              maxlength="6"
-            />
-            <label for="code">
-              <i class="bi bi-shield-check me-2"></i>Код подтверждения
-            </label>
-            <div v-if="errors.code" class="invalid-feedback">
-              {{ errors.code }}
-            </div>
-          </div>
-
-          <!-- Новый пароль -->
-          <PasswordInput
-            id="password"
-            v-model="form.password"
-            :error="errors.password"
-            label="Новый пароль"
-            placeholder="Новый пароль"
-            autocomplete="new-password"
-            :disabled="isLoading"
-            class="mb-3"
+        <div class="form-floating mb-3">
+          <input
+            type="email"
+            id="email"
+            class="form-control"
+            v-model="form.email"
+            placeholder="email@example.com"
+            readonly
           />
+          <label for="email">
+            <i class="bi bi-envelope me-2"></i>{{ t('auth.login.email') }}
+          </label>
+        </div>
 
-          <!-- Подтверждение пароля -->
-          <PasswordInput
-            id="passwordConfirm"
-            v-model="form.passwordConfirm"
-            :error="errors.passwordConfirm"
-            label="Подтвердите пароль"
-            placeholder="Подтвердите пароль"
-            autocomplete="new-password"
-            icon="bi-lock-fill"
+        <div class="form-floating mb-3" v-auto-animate>
+          <input
+            type="text"
+            id="code"
+            class="form-control"
+            :class="{ 'is-invalid': errors.code }"
+            v-model="form.code"
+            :placeholder="t('auth.password.confirmationCode')"
             :disabled="isLoading"
-            class="mb-4"
+            maxlength="6"
           />
-
-          <!-- Кнопка сброса -->
-          <button type="submit" class="btn btn-primary w-100 py-3 mb-3" :disabled="isLoading">
-            <span
-              v-if="isLoading"
-              class="spinner-border spinner-border-sm me-2"
-              role="status"
-              aria-hidden="true"
-            ></span>
-            <i v-else class="bi bi-shield-check me-2"></i>
-            {{ isLoading ? 'Изменение пароля...' : 'Изменить пароль' }}
-          </button>
-
-          <!-- Ссылка на вход -->
-          <div class="text-center">
-            <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary">
-              <i class="bi bi-arrow-left me-2"></i>
-              Вернуться к входу
-            </RouterLink>
+          <label for="code">
+            <i class="bi bi-shield-check me-2"></i>{{ t('auth.password.confirmationCode') }}
+          </label>
+          <div v-if="errors.code" class="invalid-feedback">
+            {{ errors.code }}
           </div>
-        </form>
+        </div>
+
+        <PasswordInput
+          id="password"
+          v-model="form.password"
+          :error="errors.password"
+          :label="t('auth.password.new')"
+          :placeholder="t('auth.password.new')"
+          autocomplete="new-password"
+          :disabled="isLoading"
+          class="mb-3"
+        />
+
+        <PasswordInput
+          id="passwordConfirm"
+          v-model="form.passwordConfirm"
+          :error="errors.passwordConfirm"
+          :label="t('auth.password.confirmPlaceholder')"
+          :placeholder="t('auth.password.confirmPlaceholder')"
+          autocomplete="new-password"
+          icon="bi-lock-fill"
+          :disabled="isLoading"
+          class="mb-4"
+        />
+
+        <button type="submit" class="btn btn-primary w-100 py-3 mb-3" :disabled="isLoading">
+          <span
+            v-if="isLoading"
+            class="spinner-border spinner-border-sm me-2"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          <i v-else class="bi bi-shield-check me-2"></i>
+          {{ isLoading ? t('auth.reset.submitting') : t('auth.reset.submit') }}
+        </button>
+
+        <div class="text-center">
+          <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary">
+            <i class="bi bi-arrow-left me-2"></i>
+            {{ t('auth.forgot.backToLogin') }}
+          </RouterLink>
+        </div>
+      </form>
     </template>
   </AuthPageShell>
 </template>

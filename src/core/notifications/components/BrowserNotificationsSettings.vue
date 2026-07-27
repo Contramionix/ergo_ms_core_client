@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { Bell } from 'lucide-vue-next'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useToast } from '@/js/utils/toast.js'
 import {
   BROWSER_NOTIFICATION_PREFS,
@@ -8,6 +9,7 @@ import {
   writeBrowserNotificationPref,
 } from '@/core/notifications/js/browserNotificationPrefs.js'
 
+const { t } = useAppI18n()
 const toast = useToast()
 
 const browserEnabled = ref(false)
@@ -18,10 +20,10 @@ const previewing = ref(false)
 
 const permissionHint = computed(() => {
   if (permission.value === 'denied') {
-    return 'Браузер запретил системные уведомления. Всплывающие уведомления в приложении всё равно могут работать.'
+    return t('settings.browserNotifications.denied')
   }
   if (permission.value === 'unsupported') {
-    return 'Этот браузер не поддерживает системные уведомления.'
+    return t('settings.browserNotifications.unsupported')
   }
   return ''
 })
@@ -68,7 +70,7 @@ async function handlePreview() {
   try {
     if (typeof window.Notification === 'undefined') {
       permission.value = 'unsupported'
-      toast.info('Системные уведомления недоступны в этом браузере')
+      toast.info(t('settings.browserNotifications.unavailableToast'))
       return
     }
     if (window.Notification.permission === 'default') {
@@ -77,18 +79,18 @@ async function handlePreview() {
       syncPermission()
     }
     if (permission.value !== 'granted') {
-      toast.warning('Разрешите уведомления в настройках браузера')
+      toast.warning(t('settings.browserNotifications.allowInBrowser'))
       return
     }
     const body = privacyEnabled.value
-      ? 'Новое уведомление. Откройте приложение, чтобы посмотреть подробности.'
-      : 'Пример: вам назначена задача. Откройте карточку в системе.'
+      ? t('settings.browserNotifications.privateBody')
+      : t('settings.browserNotifications.sampleBody')
     const n = new window.Notification('ERGO MS', {
       body,
       tag: 'ergo-browser-notif-preview',
     })
     setTimeout(() => n.close(), 5000)
-    toast.success('Тестовое уведомление отправлено')
+    toast.success(t('settings.browserNotifications.testSent'))
   } finally {
     previewing.value = false
   }
@@ -99,17 +101,16 @@ onMounted(loadPrefs)
 
 <template>
   <section class="browser-notif-settings">
-    <p class="browser-notif-settings__caption">Уведомления браузера</p>
+    <p class="browser-notif-settings__caption">{{ t('settings.browserNotifications.caption') }}</p>
     <p class="browser-notif-settings__hint">
-      Пока вкладка открыта — всплывающее уведомление в приложении; когда вкладка в фоне — системное уведомление (если разрешено).
-      Сейчас используется в модуле CRM; настройки общие для аккаунта в этом браузере.
+      {{ t('settings.browserNotifications.intro') }}
     </p>
 
     <div class="settings-card">
       <div class="settings-card__row">
         <div class="settings-card__label-block">
-          <span class="settings-card__label">Показывать уведомления</span>
-          <span class="settings-card__hint">Включает всплывающие уведомления в приложении и попытку показать системное уведомление</span>
+          <span class="settings-card__label">{{ t('settings.browserNotifications.show') }}</span>
+          <span class="settings-card__hint">{{ t('settings.browserNotifications.showHint') }}</span>
         </div>
         <div class="form-check form-switch browser-notif-settings__switch">
           <input
@@ -125,8 +126,8 @@ onMounted(loadPrefs)
 
       <div class="settings-card__row">
         <div class="settings-card__label-block">
-          <span class="settings-card__label">Скрывать тему и детали</span>
-          <span class="settings-card__hint">В уведомлении — нейтральный текст без данных заявки или задачи</span>
+          <span class="settings-card__label">{{ t('settings.browserNotifications.hideDetails') }}</span>
+          <span class="settings-card__hint">{{ t('settings.browserNotifications.hideDetailsHint') }}</span>
         </div>
         <div class="form-check form-switch browser-notif-settings__switch">
           <input
@@ -142,8 +143,8 @@ onMounted(loadPrefs)
 
       <div class="settings-card__row settings-card__row--last">
         <div class="settings-card__label-block">
-          <span class="settings-card__label">Звуковой сигнал</span>
-          <span class="settings-card__hint">Короткий сигнал в приложении при новом уведомлении из CRM</span>
+          <span class="settings-card__label">{{ t('settings.browserNotifications.sound') }}</span>
+          <span class="settings-card__hint">{{ t('settings.browserNotifications.soundHint') }}</span>
         </div>
         <div class="form-check form-switch browser-notif-settings__switch">
           <input
@@ -167,7 +168,7 @@ onMounted(loadPrefs)
         @click="handlePreview"
       >
         <Bell :size="14" class="me-1" aria-hidden="true" />
-        Проверить уведомление
+        {{ t('settings.browserNotifications.preview') }}
       </button>
     </div>
     <p v-if="permissionHint" class="browser-notif-settings__permission text-muted">

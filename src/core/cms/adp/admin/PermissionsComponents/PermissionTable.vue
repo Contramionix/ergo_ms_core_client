@@ -1,10 +1,14 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { computed, ref, watch, defineAsyncComponent } from 'vue'
 import { Pencil, Trash2 } from 'lucide-vue-next'
 import { deletePolicy } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import Pagination from '@/components/Pagination.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint.js'
+
+const { t } = useAppI18n()
+
 
 const ChangePermissionForm = defineAsyncComponent(() =>
   import('@/core/cms/adp/admin/PermissionsComponents/SubmitPermissionChange.vue'),
@@ -103,10 +107,12 @@ const deletePermission = async (policyId) => {
 
 const getActionBadgeClass = (action) => {
   const normalized = (action || '').toLowerCase()
-  if (normalized === 'allow' || normalized === 'разрешить') {
+  const allowLabel = t('admin.policies.allow').toLowerCase()
+  const denyLabel = t('admin.policies.deny').toLowerCase()
+  if (normalized === 'allow' || normalized === allowLabel) {
     return 'badge bg-success-subtle text-success'
   }
-  if (normalized === 'deny' || normalized === 'запретить') {
+  if (normalized === 'deny' || normalized === denyLabel) {
     return 'badge bg-danger-subtle text-danger'
   }
   return 'badge bg-secondary-subtle text-secondary'
@@ -142,17 +148,17 @@ const resolveResourceTitle = (path) => {
         <div class="text-monospace small text-muted">{{ row.resource_path }}</div>
       </div>
       <div class="d-flex align-items-center justify-content-end gap-2 admin-card__actions">
-        <button type="button" class="btn btn-sm btn-icon btn-outline-primary" @click="openEditModal(row)" title="Изменить" aria-label="Изменить">
+        <button type="button" class="btn btn-sm btn-icon btn-outline-primary" @click="openEditModal(row)" :title="t('admin.policies.edit')" :aria-label="t('admin.policies.edit')">
           <Pencil :size="14" aria-hidden="true" />
         </button>
-        <button type="button" class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(row.id)" title="Удалить" aria-label="Удалить">
+        <button type="button" class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(row.id)" :title="t('admin.policies.delete')" :aria-label="t('admin.policies.delete')">
           <Trash2 :size="14" aria-hidden="true" />
         </button>
       </div>
     </article>
   </div>
   <div v-else-if="useCards" class="text-center text-muted py-4">
-    Политики не найдены
+    {{ t('admin.policies.emptyPolicies') }}
   </div>
 
   <div v-else class="table-responsive">
@@ -185,16 +191,16 @@ const resolveResourceTitle = (path) => {
           <td>{{ row.role_name || row.role_group_name || '—' }}</td>
           <td v-if="showPatternPriority">
             <span :class="row.is_pattern ? 'badge bg-info-subtle text-info' : 'badge bg-light text-muted'">
-              {{ row.is_pattern ? 'Шаблон' : 'Точный' }}
+              {{ row.is_pattern ? t('admin.policies.pattern') : t('admin.policies.exact') }}
             </span>
           </td>
           <td v-if="showPatternPriority">{{ row.priority }}</td>
           <td>
             <div class="d-flex align-items-center gap-2">
-              <button type="button" class="btn btn-sm btn-icon btn-outline-primary" @click="openEditModal(row)" title="Изменить" aria-label="Изменить">
+              <button type="button" class="btn btn-sm btn-icon btn-outline-primary" @click="openEditModal(row)" :title="t('admin.policies.edit')" :aria-label="t('admin.policies.edit')">
                 <Pencil :size="14" aria-hidden="true" />
               </button>
-              <button type="button" class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(row.id)" title="Удалить" aria-label="Удалить">
+              <button type="button" class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(row.id)" :title="t('admin.policies.delete')" :aria-label="t('admin.policies.delete')">
                 <Trash2 :size="14" aria-hidden="true" />
               </button>
             </div>
@@ -202,7 +208,7 @@ const resolveResourceTitle = (path) => {
         </tr>
         <tr v-if="paginatedRows.length === 0">
           <td :colspan="visibleColCount" class="text-center text-muted py-4">
-            Политики не найдены
+            {{ t('admin.policies.emptyPolicies') }}
           </td>
         </tr>
       </tbody>

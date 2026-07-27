@@ -1,4 +1,5 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, computed, watch, onMounted } from 'vue'
 import { Trash2 } from 'lucide-vue-next'
 import SelectBox from '@/components/SelectBox.vue'
@@ -13,6 +14,8 @@ import {
   mapModuleCatalogSelectOptions,
   mapModulePermissionSelectOptions,
 } from '@/core/cms/js/adminSelectOptions.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   roleGroups: { type: Array, required: true }
@@ -149,15 +152,15 @@ onMounted(async () => {
   <div class="module-permission-manager">
     <div class="module-permission-manager__header">
       <div>
-        <h5 class="mb-0">Права модулей</h5>
-        <small class="text-secondary-custom">Модули подхватываются из папки modules/. Права можно выбрать из списка или задать вручную.</small>
+        <h5 class="mb-0">{{ t('admin.modulePermissions.title') }}</h5>
+        <small class="text-secondary-custom">{{ t('admin.modulePermissions.subtitle') }}</small>
       </div>
       <SelectBox
         v-model="selectedRoleGroup"
         :options="roleGroupSelectOptions"
         value-key="id"
         label-key="name"
-        all-label="Все группы"
+        :all-label="t('admin.modulePermissions.allGroups')"
         cast-to-number :full-width="false"
       />
     </div>
@@ -171,12 +174,12 @@ onMounted(async () => {
               :options="moduleSelectOptions"
               value-key="id"
               label-key="name"
-              all-label="Модуль"
+              :all-label="t('admin.modulePermissions.module')"
               searchable
               :include-all-option="false"
               :class="{ 'is-invalid': showErrors.module_name }"
             />
-            <div v-if="showErrors.module_name" class="invalid-feedback d-block">Выберите модуль</div>
+            <div v-if="showErrors.module_name" class="invalid-feedback d-block">{{ t('admin.modulePermissions.selectModuleRequired') }}</div>
           </div>
           <div class="col-md-3">
             <SelectBox
@@ -185,7 +188,7 @@ onMounted(async () => {
               :options="permissionSelectOptions"
               value-key="id"
               label-key="name"
-              all-label="Ключ права"
+              :all-label="t('admin.modulePermissions.permissionKey')"
               searchable
               :include-all-option="false"
               :class="{ 'is-invalid': showErrors.permission_key }"
@@ -196,16 +199,16 @@ onMounted(async () => {
               class="form-control form-control-sm"
               v-model="form.permission_key"
               :class="{ 'is-invalid': showErrors.permission_key }"
-              placeholder="Ключ (view_dashboard)"
+              :placeholder="t('admin.modulePermissions.keyPlaceholder')"
             />
-            <div v-if="showErrors.permission_key" class="invalid-feedback d-block">Укажите ключ</div>
+            <div v-if="showErrors.permission_key" class="invalid-feedback d-block">{{ t('admin.modulePermissions.keyRequiredShort') }}</div>
             <button
               v-if="permissionSelectOptions.length > 0"
               type="button"
               class="btn btn-link btn-sm px-0 mt-1 module-permission-manager__toggle-key"
               @click="useCustomPermissionKey = !useCustomPermissionKey"
             >
-              {{ useCustomPermissionKey ? 'Выбрать из списка' : 'Ввести новый ключ' }}
+              {{ useCustomPermissionKey ? t('admin.modulePermissions.chooseFromList') : t('admin.modulePermissions.enterNewKey') }}
             </button>
           </div>
           <div class="col-md-3">
@@ -214,10 +217,10 @@ onMounted(async () => {
               class="form-control form-control-sm"
               v-model="form.permission_name"
               :class="{ 'is-invalid': showErrors.permission_name }"
-              placeholder="Название"
+              :placeholder="t('admin.modulePermissions.namePlaceholder')"
               :readonly="canPickPermissionFromCatalog && !!form.permission_key"
             />
-            <div v-if="showErrors.permission_name" class="invalid-feedback">Укажите название</div>
+            <div v-if="showErrors.permission_name" class="invalid-feedback">{{ t('admin.modulePermissions.nameRequiredShort') }}</div>
           </div>
           <div class="col-md-3">
             <SelectBox
@@ -225,9 +228,9 @@ onMounted(async () => {
               :options="roleGroupSelectOptions"
               value-key="id"
               label-key="name"
-              all-label="Группа"
+              :all-label="t('admin.modulePermissions.group')"
               cast-to-number />
-            <div v-if="showErrors.role_group" class="invalid-feedback d-block">Выберите группу</div>
+            <div v-if="showErrors.role_group" class="invalid-feedback d-block">{{ t('admin.modulePermissions.selectGroupRequired') }}</div>
           </div>
         </div>
         <div class="row g-2 mt-1">
@@ -236,17 +239,17 @@ onMounted(async () => {
               type="text"
               class="form-control form-control-sm"
               v-model="form.description"
-              placeholder="Описание (опционально)"
+              :placeholder="t('admin.modulePermissions.description')"
             />
           </div>
           <div class="col-md-3 d-flex align-items-center">
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" id="grantedSwitch" v-model="form.is_granted" />
-              <label class="form-check-label small" for="grantedSwitch">Разрешено</label>
+              <label class="form-check-label small" for="grantedSwitch">{{ t('admin.modulePermissions.granted') }}</label>
             </div>
           </div>
           <div class="col-md-3 d-flex align-items-center justify-content-end">
-            <button type="submit" class="btn btn-primary btn-sm w-100">Сохранить</button>
+            <button type="submit" class="btn btn-primary btn-sm w-100">{{ t('admin.modulePermissions.save') }}</button>
           </div>
         </div>
       </form>
@@ -255,12 +258,12 @@ onMounted(async () => {
         <table class="module-permission-table">
           <thead>
             <tr>
-              <th>Модуль</th>
-              <th>Ключ</th>
-              <th>Название</th>
-              <th>Группа</th>
-              <th>Описание</th>
-              <th>Статус</th>
+              <th>{{ t('admin.modulePermissions.headersModule') }}</th>
+              <th>{{ t('admin.modulePermissions.headersKey') }}</th>
+              <th>{{ t('admin.modulePermissions.headersName') }}</th>
+              <th>{{ t('admin.modulePermissions.headersGroup') }}</th>
+              <th>{{ t('admin.modulePermissions.headersDesc') }}</th>
+              <th>{{ t('admin.modulePermissions.headersStatus') }}</th>
               <th></th>
             </tr>
           </thead>
@@ -273,17 +276,17 @@ onMounted(async () => {
               <td class="text-secondary-custom">{{ permission.description || '—' }}</td>
               <td>
                 <span :class="permission.is_granted ? 'badge bg-success-subtle text-success' : 'badge bg-danger-subtle text-danger'">
-                  {{ permission.is_granted ? 'Разрешено' : 'Запрещено' }}
+                  {{ permission.is_granted ? t('admin.modulePermissions.granted') : t('admin.modulePermissions.denied') }}
                 </span>
               </td>
               <td class="text-end">
-                <button type="button" class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(permission.id)" title="Удалить" aria-label="Удалить">
+                <button type="button" class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(permission.id)" :title="t('admin.modulePermissions.delete')" :aria-label="t('admin.modulePermissions.delete')">
                   <Trash2 :size="14" aria-hidden="true" />
                 </button>
               </td>
             </tr>
             <tr v-if="filteredPermissions.length === 0">
-              <td colspan="7" class="text-center text-muted py-4">Нет настроенных прав для выбранного фильтра</td>
+              <td colspan="7" class="text-center text-muted py-4">{{ t('admin.modulePermissions.empty') }}</td>
             </tr>
           </tbody>
         </table>

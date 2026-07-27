@@ -2,31 +2,31 @@
   <div class="menu-panel">
     <div class="menu-panel__header mb-4">
       <div class="d-flex align-items-center gap-2 mb-3">
-        <h1 class="h3 mb-0">Управление меню</h1>
-        <button type="button" class="menu-panel__settings-btn" @click="showSettingsModal = true" title="Настройки страницы" aria-label="Настройки страницы"><Settings :size="20" class="menu-panel__settings-icon" aria-hidden="true" /></button>
+        <h1 class="h3 mb-0">{{ t('admin.menu.pageTitle') }}</h1>
+        <button type="button" class="menu-panel__settings-btn" @click="showSettingsModal = true" :title="t('admin.menu.pageSettings')" :aria-label="t('admin.menu.pageSettings')"><Settings :size="20" class="menu-panel__settings-icon" aria-hidden="true" /></button>
       </div>
-      <p class="text-muted mb-0">Настройте элементы бокового меню и управляйте доступом к ним. Перетаскивайте элементы для изменения порядка.</p>
+      <p class="text-muted mb-0">{{ t('admin.menu.pageSubtitle') }}</p>
     </div>
 
     <div class="menu-panel__actions d-flex gap-3 mb-4 flex-wrap">
-      <button class="btn" :disabled="isSaving || isRestoring" @click="showAddModal"><LayersPlus :size="18" class="me-2" style="vertical-align: middle;" />Добавить элемент</button>
-      <button class="btn" :disabled="isSaving || isRestoring" @click="showAddSeparatorModal"><SeparatorHorizontal :size="18" class="me-2" style="vertical-align: middle;" />Добавить разделитель</button>
+      <button class="btn" :disabled="isSaving || isRestoring" @click="showAddModal"><LayersPlus :size="18" class="me-2" style="vertical-align: middle;" />{{ t('admin.menu.addItem') }}</button>
+      <button class="btn" :disabled="isSaving || isRestoring" @click="showAddSeparatorModal"><SeparatorHorizontal :size="18" class="me-2" style="vertical-align: middle;" />{{ t('admin.menu.addSeparator') }}</button>
       <button class="btn btn-outline-secondary" :disabled="isSaving || isRestoring" @click="handleRestoreMenu">
         <span v-if="isRestoring" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-        {{ isRestoring ? 'Восстановление...' : 'Восстановить из миграций' }}
+        {{ isRestoring ? t('admin.menu.restoring') : t('admin.menu.restoreFromMigrations') }}
       </button>
     </div>
 
-    <UnsavedChangesToast :visible="hasUnsavedChanges" :saving="isSaving" title="Есть несохранённые изменения порядка" description="Сохраните или отмените изменения порядка элементов." cancel-label="Отменить" @save="saveAllChanges" @cancel="cancelChanges"/>
-    <UnsavedChangesToast :visible="showDeleteSeparatorToast" :saving="isDeletingSeparator" :title="deleteSeparatorToastTitle" :description="deleteSeparatorToastDescription" cancel-label="Отмена" save-label="Удалить" saving-label="Удаление..." @save="executeDeleteSeparators" @cancel="cancelDeleteSeparators"/>  
-    <UnsavedChangesToast :visible="showDeleteItemToast" :saving="isDeletingItem" title="Удаление элемента меню" description="Вы уверены, что хотите удалить этот элемент? Это также удалит все дочерние элементы." cancel-label="Отмена" save-label="Удалить" saving-label="Удаление..." @save="executeDeleteItem" @cancel="cancelDeleteItem"/>
+    <UnsavedChangesToast :visible="hasUnsavedChanges" :saving="isSaving" :title="t('admin.menu.unsavedOrderTitle')" :description="t('admin.menu.unsavedOrderDesc')" :cancel-label="t('admin.menu.discard')" @save="saveAllChanges" @cancel="cancelChanges"/>
+    <UnsavedChangesToast :visible="showDeleteSeparatorToast" :saving="isDeletingSeparator" :title="deleteSeparatorToastTitle" :description="deleteSeparatorToastDescription" :cancel-label="t('admin.menu.cancel')" :save-label="t('admin.menu.delete')" :saving-label="t('admin.menu.deleting')" @save="executeDeleteSeparators" @cancel="cancelDeleteSeparators"/>  
+    <UnsavedChangesToast :visible="showDeleteItemToast" :saving="isDeletingItem" :title="t('admin.menu.deleteItemTitle')" :description="t('admin.menu.deleteItemConfirm')" :cancel-label="t('admin.menu.cancel')" :save-label="t('admin.menu.delete')" :saving-label="t('admin.menu.deleting')" @save="executeDeleteItem" @cancel="cancelDeleteItem"/>
 
     <div class="menu-panel__items">
-      <LoadingContentArea :loading="isLoading" loading-text="Загрузка...">
+      <LoadingContentArea :loading="isLoading" :loading-text="t('admin.menu.loading')">
         <div v-if="menuItems.length === 0" class="alert alert-info d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-          <span>Элементы меню не найдены. Восстановите пункты из миграций ядра и модулей.</span>
+          <span>{{ t('admin.menu.empty') }}</span>
           <button class="btn btn-primary" :disabled="isRestoring" @click="handleRestoreMenu">
-            {{ isRestoring ? 'Восстановление...' : 'Восстановить из миграций' }}
+            {{ isRestoring ? t('admin.menu.restoring') : t('admin.menu.restoreFromMigrations') }}
           </button>
         </div>
         <div v-else>
@@ -44,6 +44,7 @@
 </template>
 
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, onMounted, onUnmounted, computed, nextTick, defineAsyncComponent } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { LayersPlus, SeparatorHorizontal, Settings } from 'lucide-vue-next'
@@ -52,6 +53,7 @@ import { confirmAction } from '@/js/utils/confirm.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import UnsavedChangesToast from '@/components/UnsavedChangesToast.vue'
 import DraggableMenuList from './MenuPanelComponents/DraggableMenuList.vue'
+import { tGlobal } from '@/i18n/index.js'
 import {
   getMenuItems,
   createMenuItem,
@@ -68,6 +70,8 @@ import {
 import { apiClient } from '@/js/api/manager'
 import { endpoints, initEndpoints } from '@/js/api/endpoints'
 import Cookies from 'js-cookie'
+
+const { t } = useAppI18n()
 
 const MenuItemModal = defineAsyncComponent(() => import('./MenuPanelComponents/MenuItemModal.vue'))
 const MenuSeparatorModal = defineAsyncComponent(() =>
@@ -99,15 +103,15 @@ const separatorsToDeleteIds = computed(() => new Set(separatorsToDelete.value.ma
 const showDeleteSeparatorToast = computed(() => separatorsToDelete.value.length > 0)
 
 const deleteSeparatorToastTitle = computed(() =>
-  separatorsToDelete.value.length === 1 ? 'Удаление разделителя' : 'Удаление разделителей'
+  separatorsToDelete.value.length === 1 ? tGlobal('admin.menu.deleteSeparatorTitle') : tGlobal('admin.menu.deleteSeparatorsTitle')
 )
 
 const deleteSeparatorToastDescription = computed(() => {
   const count = separatorsToDelete.value.length
   if (count === 1) {
-    return 'Вы уверены, что хотите удалить этот разделитель?'
+    return tGlobal('admin.menu.deleteSeparatorConfirm')
   }
-  return `Вы уверены, что хотите удалить ${count} разделителей?`
+  return tGlobal('admin.menu.deleteSeparatorsConfirm', { count })
 })
 
 const showDeleteItemToast = ref(false)
@@ -204,9 +208,9 @@ onBeforeRouteLeave(async () => {
   }
 
   return confirmAction({
-    title: 'Несохранённые изменения',
-    message: 'Есть несохранённые изменения порядка. Уйти без сохранения?',
-    confirmText: 'Уйти',
+    title: tGlobal('admin.menu.unsavedLeaveTitle'),
+    message: tGlobal('admin.menu.unsavedLeaveMessage'),
+    confirmText: tGlobal('admin.menu.leave'),
     variant: 'danger',
   })
 })
@@ -230,7 +234,7 @@ const currentItem = ref(null)
 const currentSeparator = ref(null)
 
 const parentOptions = computed(() => {
-  const options = [{ id: null, name: '-- Нет (корневой элемент) --', depth: 0 }]
+  const options = [{ id: null, name: tGlobal('admin.menu.noParent'), depth: 0 }]
 
   function addItems(items, depth = 0) {
     for (const item of items) {
@@ -256,7 +260,7 @@ async function loadMenuItems() {
     menuItems.value = buildTree(items)
   } catch (error) {
     logError('[MenuPanel] Load error:', error)
-    toast.error('Ошибка загрузки элементов меню: ' + error.message)
+    toast.error(tGlobal('admin.menu.loadError') + error.message)
   } finally {
     isLoading.value = false
   }
@@ -272,10 +276,10 @@ async function handleRestoreMenu() {
     await restoreMenuFromMigrations()
     notifyMenuUpdated()
     await Promise.all([loadMenuItems(), loadSeparators()])
-    toast.success('Меню восстановлено из миграций')
+    toast.success(tGlobal('admin.menu.restored'))
   } catch (error) {
     logError('[MenuPanel] Restore menu error:', error)
-    toast.error(error.message || 'Не удалось восстановить меню')
+    toast.error(error.message || tGlobal('admin.menu.restoreError'))
   } finally {
     isRestoring.value = false
   }
@@ -304,7 +308,7 @@ async function loadSeparators() {
   try {
     separators.value = await getMenuSeparators()
   } catch (error) {
-    toast.error('Ошибка загрузки разделителей: ' + error.message)
+    toast.error(tGlobal('admin.menu.separatorsLoadError') + error.message)
   }
 }
 
@@ -427,7 +431,7 @@ async function saveAllChanges() {
     pendingMenuReorder.value = []
     pendingSeparatorReorder.value = []
     
-    toast.success('Порядок элементов сохранён')
+    toast.success(tGlobal('admin.menu.orderSaved'))
     notifyMenuUpdated()
     await Promise.all([
       loadMenuItems(),
@@ -436,7 +440,7 @@ async function saveAllChanges() {
     syncInitialCombinedOrder()
   } catch (error) {
     logError('[MenuPanel] Save error:', error)
-    toast.error('Ошибка сохранения порядка: ' + error.message)
+    toast.error(tGlobal('admin.menu.orderSaveError') + error.message)
   } finally {
     isSaving.value = false
   }
@@ -450,7 +454,7 @@ async function cancelChanges() {
     loadSeparators()
   ])
   syncInitialCombinedOrder()
-  toast.info('Изменения порядка отменены')
+  toast.info(tGlobal('admin.menu.orderCancelled'))
 }
 
 async function ensureChangesSaved() {
@@ -476,17 +480,17 @@ async function saveItem(itemData) {
   try {
     if (itemData.id) {
       await updateMenuItem(itemData.id, itemData)
-      toast.success('Элемент меню обновлён')
+      toast.success(tGlobal('admin.menu.itemUpdated'))
     } else {
       await createMenuItem(itemData)
-      toast.success('Элемент меню создан')
+      toast.success(tGlobal('admin.menu.itemCreated'))
     }
     closeItemModal()
     await loadMenuItems()
     syncInitialCombinedOrder()
     notifyMenuUpdated()
   } catch (error) {
-    toast.error('Ошибка сохранения: ' + error.message)
+    toast.error(tGlobal('admin.menu.saveError') + error.message)
   }
 }
 
@@ -501,13 +505,13 @@ async function executeDeleteItem() {
   isDeletingItem.value = true
   try {
     await deleteMenuItem(itemToDelete.value.id)
-    toast.success('Элемент меню удалён')
+    toast.success(tGlobal('admin.menu.itemDeleted'))
     await loadMenuItems()
     syncInitialCombinedOrder()
     notifyMenuUpdated()
     cancelDeleteItem()
   } catch (error) {
-    toast.error('Ошибка удаления: ' + error.message)
+    toast.error(tGlobal('admin.menu.deleteError') + error.message)
   } finally {
     isDeletingItem.value = false
   }
@@ -525,7 +529,7 @@ async function handleToggleVisibility(data) {
     if (found) found.item.is_active = data.is_active
     notifyMenuUpdated()
   } catch (error) {
-    toast.error('Ошибка обновления видимости: ' + error.message)
+    toast.error(tGlobal('admin.menu.visibilityError') + error.message)
     await loadMenuItems()
   }
 }
@@ -537,7 +541,7 @@ async function handleToggleSeparatorVisibility(separator) {
     if (sep) sep.is_active = !separator.is_active
     notifyMenuUpdated()
   } catch (error) {
-    toast.error('Ошибка обновления видимости разделителя: ' + error.message)
+    toast.error(tGlobal('admin.menu.separatorVisibilityError') + error.message)
     await loadSeparators()
   }
 }
@@ -562,17 +566,17 @@ async function saveSeparator(separatorData) {
   try {
     if (separatorData.id) {
       await updateMenuSeparator(separatorData.id, separatorData)
-      toast.success('Разделитель обновлён')
+      toast.success(tGlobal('admin.menu.separatorUpdated'))
     } else {
       await createMenuSeparator(separatorData)
-      toast.success('Разделитель создан')
+      toast.success(tGlobal('admin.menu.separatorCreated'))
     }
     closeSeparatorModal()
     await loadSeparators()
     syncInitialCombinedOrder()
     notifyMenuUpdated()
   } catch (error) {
-    toast.error('Ошибка сохранения: ' + error.message)
+    toast.error(tGlobal('admin.menu.saveError') + error.message)
   }
 }
 
@@ -592,15 +596,15 @@ async function executeDeleteSeparators() {
     }
     toast.success(
       queue.length === 1
-        ? 'Разделитель удалён'
-        : `Удалено разделителей: ${queue.length}`
+        ? tGlobal('admin.menu.separatorDeleted')
+        : tGlobal('admin.menu.separatorsDeleted', { count: queue.length })
     )
     await loadSeparators()
     syncInitialCombinedOrder()
     notifyMenuUpdated()
     cancelDeleteSeparators()
   } catch (error) {
-    toast.error('Ошибка удаления: ' + error.message)
+    toast.error(tGlobal('admin.menu.deleteError') + error.message)
     await loadSeparators()
   } finally {
     isDeletingSeparator.value = false
@@ -618,7 +622,7 @@ function closeSeparatorModal() {
 
 function handleSettingsSave(newValue) {
   expandAllGroups.value = newValue
-  toast.success('Настройки сохранены')
+  toast.success(tGlobal('admin.menu.settingsSaved'))
 }
 
 function loadExpandAllGroupsFromCookie() {

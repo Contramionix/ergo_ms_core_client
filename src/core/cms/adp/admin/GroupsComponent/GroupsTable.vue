@@ -1,10 +1,14 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { computed, ref, watch, defineAsyncComponent } from 'vue'
 import { Settings, Trash2 } from 'lucide-vue-next'
 import { deleteRoleGroup } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import Pagination from '@/components/Pagination.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint.js'
+
+const { t } = useAppI18n()
+
 
 const GroupForm = defineAsyncComponent(() =>
   import('@/core/cms/adp/admin/GroupsComponent/SubmitGroupsAdd.vue'),
@@ -95,7 +99,7 @@ const deleteGroup = async groupId => {
         <div class="admin-card__meta">
           <span class="cell-muted">{{ row.parent_role_name || '—' }}</span>
           <span :class="['status-badge', row.is_active ? 'badge-active' : 'badge-inactive']">
-            {{ row.is_active ? 'Активна' : 'Неактивна' }}
+            {{ row.is_active ? t('admin.groups.active') : t('admin.groups.inactive') }}
           </span>
         </div>
         <div class="actions-cell admin-card__actions">
@@ -103,7 +107,7 @@ const deleteGroup = async groupId => {
             class="btn-action btn-action--edit"
             @click="openEditModal(row)"
             type="button"
-            aria-label="Изменить группу"
+            :aria-label="t('admin.groups.editAria')"
           >
             <Settings :size="15" />
           </button>
@@ -111,7 +115,7 @@ const deleteGroup = async groupId => {
             class="btn-action btn-action--delete"
             @click="deleteGroup(row.id)"
             type="button"
-            aria-label="Удалить группу"
+            :aria-label="t('admin.groups.deleteAria')"
           >
             <Trash2 :size="15" />
           </button>
@@ -143,7 +147,7 @@ const deleteGroup = async groupId => {
             </td>
             <td>
               <span :class="['status-badge', row.is_active ? 'badge-active' : 'badge-inactive']">
-                {{ row.is_active ? 'Активна' : 'Неактивна' }}
+                {{ row.is_active ? t('admin.groups.active') : t('admin.groups.inactive') }}
               </span>
             </td>
             <td>
@@ -152,7 +156,7 @@ const deleteGroup = async groupId => {
                   class="btn-action btn-action--edit"
                   @click="openEditModal(row)"
                   type="button"
-                  aria-label="Изменить группу"
+                  :aria-label="t('admin.groups.editAria')"
                 >
                   <Settings :size="15" />
                 </button>
@@ -160,7 +164,7 @@ const deleteGroup = async groupId => {
                   class="btn-action btn-action--delete"
                   @click="deleteGroup(row.id)"
                   type="button"
-                  aria-label="Удалить группу"
+                  :aria-label="t('admin.groups.deleteAria')"
                 >
                   <Trash2 :size="15" />
                 </button>
@@ -172,7 +176,7 @@ const deleteGroup = async groupId => {
     </div>
 
     <div v-if="paginatedRows.length === 0" class="empty-state">
-      <p class="empty-state__text">Группы не найдены</p>
+      <p class="empty-state__text">{{ t('admin.groups.empty') }}</p>
     </div>
 
     <Pagination

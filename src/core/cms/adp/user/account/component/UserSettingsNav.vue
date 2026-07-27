@@ -5,7 +5,11 @@ import {
   NOTIFICATION_NAV_KEY,
   anchorIdCategory,
   anchorIdGlobal,
+  anchorIdModule,
 } from '@/core/notifications/js/useNotificationSettingsNav.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const NOTIFICATIONS_TAB_ID = 'notifications'
 
@@ -39,11 +43,13 @@ function toggleModuleExpand(module) {
 
 function handleTabClick(tab) {
   if (isNotificationsTab(tab.id)) {
-    emit('select', tab.id)
-    if (!isNotificationsExpanded.value) {
-      isNotificationsExpanded.value = true
-    } else {
+    // Сворачивать вложенный список только если вкладка уже активна.
+    // При переходе с другой вкладки всегда раскрываем — иначе клик «схлопывает» меню.
+    if (props.activeTabId === NOTIFICATIONS_TAB_ID) {
       toggleNotificationsExpand()
+    } else {
+      isNotificationsExpanded.value = true
+      emit('select', tab.id)
     }
     return
   }
@@ -51,18 +57,26 @@ function handleTabClick(tab) {
 }
 
 function handleGlobalNavClick() {
+  isNotificationsExpanded.value = true
   emit('select', NOTIFICATIONS_TAB_ID)
   emit('notification-navigate', anchorIdGlobal())
 }
 
 function handleCategoryNavClick(module, category) {
+  isNotificationsExpanded.value = true
   emit('select', NOTIFICATIONS_TAB_ID)
   emit('notification-navigate', anchorIdCategory(module, category))
 }
 
 function handleModuleHeaderClick(module) {
+  isNotificationsExpanded.value = true
   emit('select', NOTIFICATIONS_TAB_ID)
+  const wasExpanded = isModuleExpanded(module)
   toggleModuleExpand(module)
+  // При раскрытии модуля сразу ведём к его секции — без прыжка подсветки.
+  if (!wasExpanded) {
+    emit('notification-navigate', anchorIdModule(module))
+  }
 }
 
 function syncExpandFromAnchor(anchorId) {
@@ -97,7 +111,7 @@ watch(
 </script>
 
 <template>
-  <nav class="user-settings-modal__nav" aria-label="Разделы настроек">
+  <nav class="user-settings-modal__nav" :aria-label="t('settings.sections.user')">
     <div
       v-for="(section, sectionIndex) in sections"
       :key="section.title ?? sectionIndex"
@@ -139,7 +153,7 @@ watch(
                   :class="{ 'user-settings-modal__nav-sublink--active': notificationActiveAnchorId === anchorIdGlobal() }"
                   @click="handleGlobalNavClick"
                 >
-                  Каналы доставки
+                  {{ t('settings.notifications.channels') }}
                 </button>
               </li>
               <li

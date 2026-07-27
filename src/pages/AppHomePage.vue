@@ -4,61 +4,63 @@ import { Bot, Boxes, Cloud, Code2, GitBranch, Layers } from 'lucide-vue-next'
 
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { formatWeekdayDate } from '@/js/utils/timeUtils.js'
 
+const { t } = useAppI18n()
 const userStore = useUserStore()
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
   if (hour < 12) {
-    return 'Доброе утро'
+    return t('settings.home.goodMorning')
   }
   if (hour < 18) {
-    return 'Добрый день'
+    return t('settings.home.goodAfternoon')
   }
-  return 'Добрый вечер'
+  return t('settings.home.goodEvening')
 })
 
 const userLabel = computed(() => userStore.greetingName)
 
 const formattedDate = computed(() => formatWeekdayDate(new Date()))
 
-const highlights = [
+const highlights = computed(() => [
   {
     icon: Layers,
-    title: 'Связанный backend и frontend',
-    text: 'Изменения в серверной логике порождают соответствующие изменения на клиенте, при этом слои остаются архитектурно независимыми — без рутинной синхронизации API, типов и эндпоинтов.',
+    title: t('settings.home.h1Title'),
+    text: t('settings.home.h1Text'),
   },
   {
     icon: Boxes,
-    title: 'Истинная модульность',
-    text: 'Каждый модуль — самостоятельный репозиторий. Ядро автоматически обнаруживает его, подключает меню, права доступа и связи с другими модулями через единую интеграционную систему.',
+    title: t('settings.home.h2Title'),
+    text: t('settings.home.h2Text'),
   },
   {
     icon: Bot,
-    title: 'Специализированный AI',
-    text: 'ИИ, обученный архитектуре ERGOMS: проектирование модулей из требований на естественном языке, генерация кода с учётом паттернов платформы и места компонента в экосистеме.',
+    title: t('settings.home.h3Title'),
+    text: t('settings.home.h3Text'),
     inProgress: true,
   },
   {
     icon: Code2,
-    title: 'Модули на любом языке',
-    text: 'Go или Rust для нагрузки, Python для аналитики, удобный стек для бизнес-логики — разные языки в одной системе без потери целостности и эргономики разработки.',
+    title: t('settings.home.h4Title'),
+    text: t('settings.home.h4Text'),
     inProgress: true,
   },
   {
     icon: Cloud,
-    title: 'Автооркестрация',
-    text: 'Контейнеризация и распределение модулей по серверам: масштабирование, балансировка нагрузки и взаимодействие компонентов без погружения в DevOps-рутину.',
+    title: t('settings.home.h5Title'),
+    text: t('settings.home.h5Text'),
     inProgress: true,
   },
   {
     icon: GitBranch,
-    title: 'Версионирование модулей',
-    text: 'Управление версиями с пониманием структуры модулей и их зависимостей: обновления, откаты и совместимость на уровне компонентов, а не отдельных файлов.',
+    title: t('settings.home.h6Title'),
+    text: t('settings.home.h6Text'),
     inProgress: true,
   },
-]
+])
 
 </script>
 
@@ -78,24 +80,17 @@ const highlights = [
         </div>
       </header>
 
-      <section class="app-shell__card" aria-label="О системе">
-        <h2 class="app-shell__card-title">О ERGOMS</h2>
+      <section class="app-shell__card" :aria-label="t('settings.home.aboutAria')">
+        <h2 class="app-shell__card-title">{{ t('settings.home.aboutTitle') }}</h2>
         <p class="app-shell__card-text">
-          ERGOMS — концептуально новый подход к созданию веб-систем: целостная экосистема
-          для интеллектуального проектирования, где автоматизация, модульность и искусственный
-          интеллект работают в синергии. Разработчик описывает функциональность на высоком
-          уровне, а платформа берёт на себя синхронизацию слоёв, интеграцию модулей
-          и инфраструктурную рутину — превращая кодирование в проектирование систем.
+          {{ t('settings.home.aboutText') }}
         </p>
         <p class="app-shell__card-text app-shell__card-text--muted">
-          Специализированный AI, поддержка модулей на любом языке, автооркестрация
-          и интеллектуальное версионирование компонентов находятся в процессе реализации.
-          Для начала работы выберите нужный раздел в боковом меню — настройки профиля
-          и уведомления доступны через панель пользователя внизу меню.
+          {{ t('settings.home.aboutMuted') }}
         </p>
       </section>
 
-      <section class="app-home__highlights" aria-label="Инновации ERGOMS">
+      <section class="app-home__highlights" :aria-label="t('settings.home.highlightsAria')">
         <ul class="app-home__highlights-list">
           <li v-for="(item, index) in highlights" :key="item.title" class="app-home__highlight" :style="{ '--item-delay': `${index * 80}ms` }">
             <span class="app-home__highlight-icon" aria-hidden="true">
@@ -104,7 +99,7 @@ const highlights = [
             <div>
               <div class="app-home__highlight-heading">
                 <h3 class="app-home__highlight-title">{{ item.title }}</h3>
-                <span v-if="item.inProgress" class="app-home__highlight-badge">В разработке</span>
+                <span v-if="item.inProgress" class="app-home__highlight-badge">{{ t('settings.home.inProgress') }}</span>
               </div>
               <p class="app-home__highlight-text">{{ item.text }}</p>
             </div>
@@ -202,3 +197,4 @@ const highlights = [
   }
 }
 </style>
+

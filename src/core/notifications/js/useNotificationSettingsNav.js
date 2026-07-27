@@ -62,9 +62,55 @@ export function createNotificationNavController(panelWrapRef) {
   const activeAnchorId = ref(anchorIdGlobal())
   const expandedModules = ref(new Set())
   let observer = null
+  let observerLocked = false
+  let unlockTimer = null
+  let scrollSettleHandler = null
 
   function getScrollRoot() {
     return panelWrapRef.value || null
+  }
+
+  function clearScrollSettle() {
+    const root = getScrollRoot()
+    if (root && scrollSettleHandler) {
+      root.removeEventListener('scroll', scrollSettleHandler)
+    }
+    scrollSettleHandler = null
+  }
+
+  function unlockObserver() {
+    observerLocked = false
+    if (unlockTimer) {
+      clearTimeout(unlockTimer)
+      unlockTimer = null
+    }
+    clearScrollSettle()
+  }
+
+  /**
+   * Пока идёт программный скролл / раскрытие секции, IntersectionObserver
+   * не должен дёргать активный пункт меню.
+   */
+  function lockObserver(durationMs = 700) {
+    observerLocked = true
+    if (unlockTimer) clearTimeout(unlockTimer)
+    clearScrollSettle()
+
+    const root = getScrollRoot()
+    if (root) {
+      let settleTimer = null
+      scrollSettleHandler = () => {
+        if (settleTimer) clearTimeout(settleTimer)
+        settleTimer = setTimeout(() => {
+          unlockObserver()
+        }, 100)
+      }
+      root.addEventListener('scroll', scrollSettleHandler, { passive: true })
+    }
+
+    unlockTimer = setTimeout(() => {
+      unlockObserver()
+    }, durationMs)
   }
 
   function isModuleExpanded(module) {
@@ -74,6 +120,7 @@ export function createNotificationNavController(panelWrapRef) {
   async function expandModule(module) {
     if (!module || expandedModules.value.has(module)) return
     expandedModules.value = new Set([...expandedModules.value, module])
+    lockObserver(400)
     await nextTick()
     syncAnchors()
   }
@@ -86,12 +133,24 @@ export function createNotificationNavController(panelWrapRef) {
       next.add(module)
     }
     expandedModules.value = next
+    lockObserver(400)
     await nextTick()
     syncAnchors()
   }
 
   function initExpandedModules(sectionsList) {
     expandedModules.value = new Set((sectionsList || []).map((s) => s.module))
+  }
+
+  function scrollElementIntoRoot(root, el) {
+    const rootRect = root.getBoundingClientRect()
+    const elRect = el.getBoundingClientRect()
+    const scrollMargin = 12
+    const top = elRect.top - rootRect.top + root.scrollTop - scrollMargin
+    const maxTop = Math.max(0, root.scrollHeight - root.clientHeight)
+    const nextTop = Math.min(Math.max(0, top), maxTop)
+    if (Math.abs(root.scrollTop - nextTop) < 2) return
+    root.scrollTo({ top: nextTop, behavior: 'smooth' })
   }
 
   async function scrollToAnchor(anchorId) {
@@ -106,8 +165,11 @@ export function createNotificationNavController(panelWrapRef) {
 
     const el = root.querySelector(`#${CSS.escape(anchorId)}`)
     if (!el) return
+
+    // Сразу фиксируем активный пункт; observer не должен перебить его во время скролла.
     activeAnchorId.value = anchorId
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    lockObserver(800)
+    scrollElementIntoRoot(root, el)
   }
 
   function teardownObserver() {
@@ -115,10 +177,14 @@ export function createNotificationNavController(panelWrapRef) {
       observer.disconnect()
       observer = null
     }
+    unlockObserver()
   }
 
   function setupObserver(anchorIds) {
-    teardownObserver()
+    if (observer) {
+      observer.disconnect()
+      observer = null
+    }
     const root = getScrollRoot()
     if (!root || !anchorIds?.length) return
 
@@ -126,6 +192,7 @@ export function createNotificationNavController(panelWrapRef) {
 
     observer = new IntersectionObserver(
       (entries) => {
+        if (observerLocked) return
         for (const entry of entries) {
           visible.set(entry.target.id, entry.isIntersecting ? entry.intersectionRatio : 0)
         }
@@ -138,14 +205,14 @@ export function createNotificationNavController(panelWrapRef) {
             bestId = id
           }
         }
-        if (bestId) {
+        if (bestId && bestId !== activeAnchorId.value) {
           activeAnchorId.value = bestId
         }
       },
       {
         root,
-        rootMargin: '-10% 0px -55% 0px',
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
+        rootMargin: '-12% 0px -60% 0px',
+        threshold: [0, 0.25, 0.5, 0.75, 1],
       },
     )
 

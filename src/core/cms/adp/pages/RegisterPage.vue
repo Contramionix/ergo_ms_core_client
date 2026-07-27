@@ -3,10 +3,12 @@ import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
 import { registration, fetchRegistrationSettings, validateInvitationToken } from '@/core/cms/adp/js/auth-index'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { validateRegistrationForm } from '@/js/validation'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useAppI18n()
 const isLoading = ref(false)
 const isSuccess = ref(false)
 const isBootstrapping = ref(true)
@@ -45,26 +47,26 @@ const invitationValid = computed(() => invitationStatus.value?.valid === true)
 const emailLocked = computed(() => invitationRequired.value && invitationValid.value)
 
 const pageTitle = computed(() => {
-  if (isSuccess.value) return 'Регистрация завершена!'
-  if (registrationClosed.value) return 'Регистрация недоступна'
-  if (invitationRequired.value && !invitationValid.value) return 'Нужно приглашение'
-  return 'Регистрация'
+  if (isSuccess.value) return t('auth.register.titleDone')
+  if (registrationClosed.value) return t('auth.register.titleClosed')
+  if (invitationRequired.value && !invitationValid.value) return t('auth.register.titleInviteRequired')
+  return t('auth.register.title')
 })
 
 const pageDescription = computed(() => {
   if (isSuccess.value) {
-    return 'Ваш аккаунт успешно создан. Перенаправляем на страницу входа...'
+    return t('auth.register.descriptionDone')
   }
   if (registrationClosed.value) {
-    return 'Регистрация новых пользователей отключена администратором.'
+    return t('auth.register.descriptionClosed')
   }
   if (invitationRequired.value && !invitationValid.value) {
-    return 'Для регистрации перейдите по ссылке из письма-приглашения.'
+    return t('auth.register.descriptionInviteRequired')
   }
   if (invitationRequired.value && invitationValid.value) {
-    return `Регистрация по приглашению для ${invitationStatus.value.email}`
+    return t('auth.register.descriptionInviteFor', { email: invitationStatus.value.email })
   }
-  return 'Создайте новый аккаунт'
+  return t('auth.register.subtitle')
 })
 
 const canShowForm = computed(() => {
@@ -86,19 +88,21 @@ onMounted(async () => {
     }
   } catch (error) {
     logError('Registration bootstrap error:', error)
-    errors.general = 'Не удалось загрузить настройки регистрации'
+    errors.general = t('auth.register.settingsLoadError')
   } finally {
     isBootstrapping.value = false
   }
 })
 
 const validateForm = () => {
-  // Валидация обязательных полей
-  errors.firstName = !form.firstName || !form.firstName.trim() ? 'Имя обязательно для заполнения' : null
-  errors.lastName = !form.lastName || !form.lastName.trim() ? 'Фамилия обязательна для заполнения' : null
-  errors.middleName = null // Отчество опционально
-  
-  // Используем существующую валидацию для остальных полей
+  errors.firstName = !form.firstName || !form.firstName.trim()
+    ? t('auth.register.firstNameRequired')
+    : null
+  errors.lastName = !form.lastName || !form.lastName.trim()
+    ? t('auth.register.lastNameRequired')
+    : null
+  errors.middleName = null
+
   const validationErrors = validateRegistrationForm(
     form.firstName,
     form.login,
@@ -107,8 +111,7 @@ const validateForm = () => {
     form.passwordConfirm,
   )
 
-  // Маппим ошибки
-  Object.keys(validationErrors).forEach(key => {
+  Object.keys(validationErrors).forEach((key) => {
     if (key === 'name') {
       errors.firstName = validationErrors[key] || errors.firstName
     } else if (key !== 'name') {
@@ -118,9 +121,8 @@ const validateForm = () => {
 
   errors.general = null
 
-  // Проверяем все ошибки
-  const hasErrors = errors.firstName || errors.lastName || errors.login || errors.email || 
-                    errors.password || errors.passwordConfirm
+  const hasErrors = errors.firstName || errors.lastName || errors.login || errors.email
+    || errors.password || errors.passwordConfirm
 
   return !hasErrors
 }
@@ -132,9 +134,8 @@ const submitForm = async () => {
 
   isLoading.value = true
   errors.general = null
-  
+
   try {
-    // Регистрируем пользователя напрямую (быстрая регистрация)
     const registrationResult = await registration(
       form.firstName,
       form.lastName,
@@ -146,10 +147,8 @@ const submitForm = async () => {
     )
 
     if (registrationResult.success) {
-      // Показываем уведомление об успешной регистрации
       showSuccessMessage()
-      
-      // Перенаправляем на страницу входа через 0.5 секунды
+
       setTimeout(() => {
         router.push({ name: 'Login' })
       }, 1000)
@@ -158,20 +157,20 @@ const submitForm = async () => {
     }
   } catch (error) {
     logError('Registration error:', error)
-    
+
     if (error.response) {
       if (error.response.status === 400) {
         const errorData = error.response.data
         handleServerErrors(errorData)
       } else if (error.response.status >= 500) {
-        errors.general = 'Ошибка сервера. Попробуйте позже'
+        errors.general = t('auth.login.serverError')
       } else {
-        errors.general = 'Ошибка подключения к серверу'
+        errors.general = t('auth.login.connectionError')
       }
     } else if (error.request) {
-      errors.general = 'Нет соединения с сервером'
+      errors.general = t('auth.login.noConnection')
     } else {
-      errors.general = 'Произошла неизвестная ошибка'
+      errors.general = t('auth.login.unknownError')
     }
   } finally {
     isLoading.value = false
@@ -180,12 +179,11 @@ const submitForm = async () => {
 
 const handleServerErrors = (serverErrors) => {
   if (!serverErrors) {
-    errors.general = 'Произошла ошибка при регистрации'
+    errors.general = t('auth.register.registrationError')
     return
   }
 
-  // Очищаем предыдущие ошибки
-  Object.keys(errors).forEach(key => {
+  Object.keys(errors).forEach((key) => {
     if (key !== 'general') errors[key] = null
   })
 
@@ -194,37 +192,36 @@ const handleServerErrors = (serverErrors) => {
     return
   }
 
-  // Обрабатываем ошибки полей
   if (serverErrors.first_name) {
-    errors.firstName = Array.isArray(serverErrors.first_name) 
-      ? serverErrors.first_name[0] 
+    errors.firstName = Array.isArray(serverErrors.first_name)
+      ? serverErrors.first_name[0]
       : serverErrors.first_name
   }
-  
+
   if (serverErrors.last_name) {
-    errors.lastName = Array.isArray(serverErrors.last_name) 
-      ? serverErrors.last_name[0] 
+    errors.lastName = Array.isArray(serverErrors.last_name)
+      ? serverErrors.last_name[0]
       : serverErrors.last_name
   }
-  
+
   if (serverErrors.middle_name) {
-    errors.middleName = Array.isArray(serverErrors.middle_name) 
-      ? serverErrors.middle_name[0] 
+    errors.middleName = Array.isArray(serverErrors.middle_name)
+      ? serverErrors.middle_name[0]
       : serverErrors.middle_name
   }
-  
+
   if (serverErrors.username) {
     errors.login = Array.isArray(serverErrors.username)
       ? serverErrors.username[0]
       : serverErrors.username
   }
-  
+
   if (serverErrors.email) {
     errors.email = Array.isArray(serverErrors.email)
       ? serverErrors.email[0]
       : serverErrors.email
   }
-  
+
   if (serverErrors.password) {
     errors.password = Array.isArray(serverErrors.password)
       ? serverErrors.password[0]
@@ -241,10 +238,10 @@ const handleServerErrors = (serverErrors) => {
     errors.general = serverErrors.message || serverErrors.detail
   }
 
-  // Если нет конкретных ошибок полей, показываем общую ошибку
-  const hasFieldErrors = errors.firstName || errors.lastName || errors.middleName || errors.login || errors.email || errors.password
+  const hasFieldErrors = errors.firstName || errors.lastName || errors.middleName
+    || errors.login || errors.email || errors.password
   if (!hasFieldErrors && !errors.general) {
-    errors.general = 'Проверьте введенные данные'
+    errors.general = t('auth.register.checkData')
   }
 }
 
@@ -257,7 +254,7 @@ const showSuccessMessage = () => {
   <AuthPageShell wide>
     <div v-if="isBootstrapping" class="text-center py-4">
       <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Загрузка...</span>
+        <span class="visually-hidden">{{ t('common.loading') }}</span>
       </div>
     </div>
 
@@ -267,202 +264,191 @@ const showSuccessMessage = () => {
         <p class="auth-page__description">{{ pageDescription }}</p>
       </div>
 
-          <div v-if="registrationClosed" class="text-center">
-            <RouterLink :to="{ name: 'Login' }" class="btn btn-primary">
-              Перейти ко входу
-            </RouterLink>
+      <div v-if="registrationClosed" class="text-center">
+        <RouterLink :to="{ name: 'Login' }" class="btn btn-primary">
+          {{ t('auth.register.goToLogin') }}
+        </RouterLink>
+      </div>
+
+      <div v-else-if="invitationRequired && !invitationValid" class="text-center">
+        <div class="alert alert-info" role="alert">
+          {{ t('auth.register.inviteContactAdmin') }}
+        </div>
+        <RouterLink :to="{ name: 'Login' }" class="btn btn-outline-primary">
+          {{ t('auth.register.login') }}
+        </RouterLink>
+      </div>
+
+      <div v-else-if="isSuccess" class="text-center">
+        <div class="alert alert-success" role="alert">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          {{ t('auth.register.successAlert') }}
+        </div>
+
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">{{ t('common.loading') }}</span>
+        </div>
+        <p class="text-muted mt-2">{{ t('auth.register.redirecting') }}</p>
+      </div>
+
+      <div v-if="errors.general && canShowForm" class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        {{ errors.general }}
+      </div>
+
+      <form v-if="canShowForm" @submit.prevent="submitForm" novalidate>
+        <div class="form-floating mb-3" v-auto-animate>
+          <input
+            type="text"
+            id="firstName"
+            class="form-control"
+            :class="{ 'is-invalid': errors.firstName }"
+            v-model="form.firstName"
+            :placeholder="t('auth.register.firstName')"
+            :disabled="isLoading"
+            autocomplete="given-name"
+          />
+          <label for="firstName">
+            <i class="bi bi-person me-2"></i>{{ t('auth.register.firstName') }}
+          </label>
+          <div v-if="errors.firstName" class="invalid-feedback">
+            {{ errors.firstName }}
           </div>
+        </div>
 
-          <div v-else-if="invitationRequired && !invitationValid" class="text-center">
-            <div class="alert alert-info" role="alert">
-              Обратитесь к администратору системы, чтобы получить ссылку-приглашение.
-            </div>
-            <RouterLink :to="{ name: 'Login' }" class="btn btn-outline-primary">
-              Войти
-            </RouterLink>
+        <div class="form-floating mb-3" v-auto-animate>
+          <input
+            type="text"
+            id="middleName"
+            class="form-control"
+            :class="{ 'is-invalid': errors.middleName }"
+            v-model="form.middleName"
+            :placeholder="t('auth.register.middleName')"
+            :disabled="isLoading"
+            autocomplete="additional-name"
+          />
+          <label for="middleName">
+            <i class="bi bi-person me-2"></i>{{ t('auth.register.middleName') }}
+          </label>
+          <div v-if="errors.middleName" class="invalid-feedback">
+            {{ errors.middleName }}
           </div>
+        </div>
 
-          <!-- Сообщение об успешной регистрации -->
-          <div v-else-if="isSuccess" class="text-center">
-            <div class="alert alert-success" role="alert">
-              <i class="bi bi-check-circle-fill me-2"></i>
-              Регистрация прошла успешно! Теперь вы можете войти в систему.
-            </div>
-
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Загрузка...</span>
-            </div>
-            <p class="text-muted mt-2">Перенаправление на страницу входа...</p>
+        <div class="form-floating mb-3" v-auto-animate>
+          <input
+            type="text"
+            id="lastName"
+            class="form-control"
+            :class="{ 'is-invalid': errors.lastName }"
+            v-model="form.lastName"
+            :placeholder="t('auth.register.lastName')"
+            :disabled="isLoading"
+            autocomplete="family-name"
+          />
+          <label for="lastName">
+            <i class="bi bi-person me-2"></i>{{ t('auth.register.lastName') }}
+          </label>
+          <div v-if="errors.lastName" class="invalid-feedback">
+            {{ errors.lastName }}
           </div>
+        </div>
 
-          <!-- Общая ошибка -->
-          <div v-if="errors.general && canShowForm" class="alert alert-danger" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            {{ errors.general }}
+        <div class="form-floating mb-3" v-auto-animate>
+          <input
+            type="text"
+            id="login"
+            class="form-control"
+            :class="{ 'is-invalid': errors.login }"
+            v-model="form.login"
+            :placeholder="t('auth.login.loginField')"
+            :disabled="isLoading"
+            autocomplete="username"
+          />
+          <label for="login">
+            <i class="bi bi-at me-2"></i>{{ t('auth.login.loginField') }}
+          </label>
+          <div v-if="errors.login" class="invalid-feedback">
+            {{ errors.login }}
           </div>
+        </div>
 
-          <form v-if="canShowForm" @submit.prevent="submitForm" novalidate>
-          <!-- Имя -->
-          <div class="form-floating mb-3" v-auto-animate>
-            <input
-              type="text"
-              id="firstName"
-              class="form-control"
-              :class="{ 'is-invalid': errors.firstName }"
-              v-model="form.firstName"
-              placeholder="Имя"
-              :disabled="isLoading"
-              autocomplete="given-name"
-            />
-            <label for="firstName">
-              <i class="bi bi-person me-2"></i>Имя
-            </label>
-            <div v-if="errors.firstName" class="invalid-feedback">
-              {{ errors.firstName }}
-            </div>
+        <div class="form-floating mb-3" v-auto-animate>
+          <input
+            type="email"
+            id="email"
+            class="form-control"
+            :class="{ 'is-invalid': errors.email }"
+            v-model="form.email"
+            placeholder="email@example.com"
+            :disabled="isLoading || emailLocked"
+            :readonly="emailLocked"
+            autocomplete="email"
+          />
+          <label for="email">
+            <i class="bi bi-envelope me-2"></i>{{ t('auth.login.email') }}
+          </label>
+          <div v-if="errors.email" class="invalid-feedback">
+            {{ errors.email }}
           </div>
+        </div>
 
-          <!-- Отчество -->
-          <div class="form-floating mb-3" v-auto-animate>
-            <input
-              type="text"
-              id="middleName"
-              class="form-control"
-              :class="{ 'is-invalid': errors.middleName }"
-              v-model="form.middleName"
-              placeholder="Отчество"
-              :disabled="isLoading"
-              autocomplete="additional-name"
-            />
-            <label for="middleName">
-              <i class="bi bi-person me-2"></i>Отчество
-            </label>
-            <div v-if="errors.middleName" class="invalid-feedback">
-              {{ errors.middleName }}
-            </div>
+        <div class="form-floating mb-3" v-auto-animate>
+          <input
+            type="password"
+            id="password"
+            class="form-control"
+            :class="{ 'is-invalid': errors.password }"
+            v-model="form.password"
+            :placeholder="t('auth.login.password')"
+            :disabled="isLoading"
+            autocomplete="new-password"
+          />
+          <label for="password">
+            <i class="bi bi-lock me-2"></i>{{ t('auth.login.password') }}
+          </label>
+          <div v-if="errors.password" class="invalid-feedback">
+            {{ errors.password }}
           </div>
+        </div>
 
-          <!-- Фамилия -->
-          <div class="form-floating mb-3" v-auto-animate>
-            <input
-              type="text"
-              id="lastName"
-              class="form-control"
-              :class="{ 'is-invalid': errors.lastName }"
-              v-model="form.lastName"
-              placeholder="Фамилия"
-              :disabled="isLoading"
-              autocomplete="family-name"
-            />
-            <label for="lastName">
-              <i class="bi bi-person me-2"></i>Фамилия
-            </label>
-            <div v-if="errors.lastName" class="invalid-feedback">
-              {{ errors.lastName }}
-            </div>
+        <div class="form-floating mb-3" v-auto-animate>
+          <input
+            type="password"
+            id="passwordConfirm"
+            class="form-control"
+            :class="{ 'is-invalid': errors.passwordConfirm }"
+            v-model="form.passwordConfirm"
+            :placeholder="t('auth.register.confirmPassword')"
+            :disabled="isLoading"
+            autocomplete="new-password"
+          />
+          <label for="passwordConfirm">
+            <i class="bi bi-lock-fill me-2"></i>{{ t('auth.register.confirmPassword') }}
+          </label>
+          <div v-if="errors.passwordConfirm" class="invalid-feedback">
+            {{ errors.passwordConfirm }}
           </div>
+        </div>
 
-          <!-- Логин -->
-          <div class="form-floating mb-3" v-auto-animate>
-            <input
-              type="text"
-              id="login"
-              class="form-control"
-              :class="{ 'is-invalid': errors.login }"
-              v-model="form.login"
-              placeholder="Логин"
-              :disabled="isLoading"
-              autocomplete="username"
-            />
-            <label for="login">
-              <i class="bi bi-at me-2"></i>Логин
-            </label>
-            <div v-if="errors.login" class="invalid-feedback">
-              {{ errors.login }}
-            </div>
-          </div>
+        <button type="submit" class="btn btn-primary w-100 py-3 mb-3" :disabled="isLoading">
+          <span
+            v-if="isLoading"
+            class="spinner-border spinner-border-sm me-2"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          <i v-else class="bi bi-person-plus me-2"></i>
+          {{ isLoading ? t('auth.register.submitting') : t('auth.register.submit') }}
+        </button>
 
-          <!-- Email -->
-          <div class="form-floating mb-3" v-auto-animate>
-            <input
-              type="email"
-              id="email"
-              class="form-control"
-              :class="{ 'is-invalid': errors.email }"
-              v-model="form.email"
-              placeholder="email@example.com"
-              :disabled="isLoading || emailLocked"
-              :readonly="emailLocked"
-              autocomplete="email"
-            />
-            <label for="email">
-              <i class="bi bi-envelope me-2"></i>Email
-            </label>
-            <div v-if="errors.email" class="invalid-feedback">
-              {{ errors.email }}
-            </div>
-          </div>
-
-          <!-- Пароль -->
-          <div class="form-floating mb-3" v-auto-animate>
-            <input
-              type="password"
-              id="password"
-              class="form-control"
-              :class="{ 'is-invalid': errors.password }"
-              v-model="form.password"
-              placeholder="Пароль"
-              :disabled="isLoading"
-              autocomplete="new-password"
-            />
-            <label for="password">
-              <i class="bi bi-lock me-2"></i>Пароль
-            </label>
-            <div v-if="errors.password" class="invalid-feedback">
-              {{ errors.password }}
-            </div>
-          </div>
-
-          <!-- Подтверждение пароля -->
-          <div class="form-floating mb-3" v-auto-animate>
-            <input
-              type="password"
-              id="passwordConfirm"
-              class="form-control"
-              :class="{ 'is-invalid': errors.passwordConfirm }"
-              v-model="form.passwordConfirm"
-              placeholder="Подтвердите пароль"
-              :disabled="isLoading"
-              autocomplete="new-password"
-            />
-            <label for="passwordConfirm">
-              <i class="bi bi-lock-fill me-2"></i>Подтвердите пароль
-            </label>
-            <div v-if="errors.passwordConfirm" class="invalid-feedback">
-              {{ errors.passwordConfirm }}
-            </div>
-          </div>
-
-          <!-- Кнопка регистрации -->
-          <button type="submit" class="btn btn-primary w-100 py-3 mb-3" :disabled="isLoading">
-            <span
-              v-if="isLoading"
-              class="spinner-border spinner-border-sm me-2"
-              role="status"
-              aria-hidden="true"
-            ></span>
-            <i v-else class="bi bi-person-plus me-2"></i>
-            {{ isLoading ? 'Регистрация...' : 'Зарегистрироваться' }}
-          </button>
-
-          <!-- Ссылка на вход -->
-          <div class="text-center">
-            <span class="text-muted">Уже есть аккаунт? </span>
-            <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary fw-semibold">
-              Войти
-            </RouterLink>
-          </div>
-          </form>
+        <div class="text-center">
+          <span class="text-muted">{{ t('auth.register.hasAccount') }} </span>
+          <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary fw-semibold">
+            {{ t('auth.register.login') }}
+          </RouterLink>
+        </div>
+      </form>
     </template>
   </AuthPageShell>
 </template>

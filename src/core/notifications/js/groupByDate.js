@@ -1,3 +1,5 @@
+import { tGlobal } from '@/i18n/index.js'
+
 /**
  * Группировка уведомлений по дате: Сегодня / Вчера / На этой неделе / Ранее.
  */
@@ -30,10 +32,10 @@ export function groupNotificationsByDate(items) {
   const weekStart = startOfLocalWeek(now)
 
   const buckets = {
-    today: { key: 'today', label: 'Сегодня', items: [] },
-    yesterday: { key: 'yesterday', label: 'Вчера', items: [] },
-    week: { key: 'week', label: 'На этой неделе', items: [] },
-    earlier: { key: 'earlier', label: 'Ранее', items: [] },
+    today: { key: 'today', label: tGlobal('settings.inbox.today'), items: [] },
+    yesterday: { key: 'yesterday', label: tGlobal('settings.inbox.yesterday'), items: [] },
+    week: { key: 'week', label: tGlobal('settings.inbox.thisWeek'), items: [] },
+    earlier: { key: 'earlier', label: tGlobal('settings.inbox.earlier'), items: [] },
   }
 
   for (const item of items) {

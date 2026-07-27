@@ -1,7 +1,11 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, defineAsyncComponent } from 'vue'
 import SearchInput from '@/components/SearchInput.vue'
 import { Plus } from 'lucide-vue-next'
+
+const { t } = useAppI18n()
+
 
 const SubmitForm = defineAsyncComponent(() =>
   import('@/core/cms/adp/admin/CategoriesComponents/SubmitCategory.vue'),
@@ -21,11 +25,11 @@ const updateCategories = () => {
 
 <template>
   <div class="table-header">
-    <SearchInput :model-value="searchQuery" layout="fixed" placeholder="Поиск по ролям..." :show-icon="true" background="secondary" focus-border="primary" @update:model-value="$emit('searchRowData', $event)"/>
+    <SearchInput :model-value="searchQuery" layout="fixed" :placeholder="t('admin.roles.search')" :show-icon="true" background="secondary" focus-border="primary" @update:model-value="$emit('searchRowData', $event)"/>
     <div class="actions-wrapper">
       <button class="btn btn-primary d-flex align-items-center gap-2" type="button" @click="showAddModal = true">
         <Plus :size="16" />
-        <span>Добавить роль</span>
+        <span>{{ t('admin.roles.add') }}</span>
       </button>
       <SubmitForm v-if="showAddModal" v-model:visible="showAddModal" modal-id="roleAdd" @add-category="updateCategories" />
     </div>

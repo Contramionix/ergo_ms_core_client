@@ -57,8 +57,8 @@
           class="menu-row__visibility-btn"
           :class="{ 'menu-row__visibility-btn--hidden': !item.is_active }"
           @click.stop="toggleVisibility"
-          :title="item.is_active ? 'Скрыть элемент' : 'Показать элемент'"
-          :aria-label="item.is_active ? 'Скрыть элемент' : 'Показать элемент'"
+          :title="item.is_active ? t('admin.menu.hideItem') : t('admin.menu.showItem')"
+          :aria-label="item.is_active ? t('admin.menu.hideItem') : t('admin.menu.showItem')"
         >
           <Eye v-if="item.is_active" :size="20" aria-hidden="true" />
           <EyeOff v-else :size="20" aria-hidden="true" />
@@ -67,8 +67,8 @@
           type="button"
           class="menu-row__action-btn menu-row__action-btn--edit"
           @click.stop="$emit('edit', item)"
-          title="Редактировать"
-          aria-label="Редактировать элемент"
+          :title="t('admin.menu.editItem')"
+          :aria-label="t('admin.menu.editItemAria')"
         >
           <Settings :size="20" class="menu-row__settings-icon" aria-hidden="true" />
         </button>
@@ -76,8 +76,8 @@
           type="button"
           class="menu-row__action-btn menu-row__action-btn--delete"
           @click.stop="$emit('delete', item)"
-          title="Удалить"
-          aria-label="Удалить элемент"
+          :title="t('admin.menu.deleteItem')"
+          :aria-label="t('admin.menu.deleteItemAria')"
         >
           <Trash :size="20" aria-hidden="true" />
         </button>
@@ -120,6 +120,7 @@
 </template>
 
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, computed, watch, shallowRef, nextTick } from 'vue'
 import { SlickList, SlickItem, HandleDirective as vHandle } from 'vue-slicksort'
 import { 
@@ -131,6 +132,9 @@ import {
   EyeOff
 } from 'lucide-vue-next'
 import { getLucideIconAsync } from '@/js/lucideIconLoader.js'
+
+const { t } = useAppI18n()
+
 
 const props = defineProps({
   item: {
@@ -196,15 +200,13 @@ watch(() => props.item.icon, async (iconName) => {
   iconComponent.value = iconName ? await getLucideIconAsync(iconName) : null
 }, { immediate: true })
 
-// Метки типов элементов
-const itemTypeLabels = {
-  route: 'Маршрут',
-  offcanvas: 'Панель',
-  external: 'Внешняя'
-}
-
 const itemTypeLabel = computed(() => {
-  return itemTypeLabels[props.item.item_type] || (props.item.item_type === 'group' ? 'Маршрут' : props.item.item_type)
+  const labels = {
+    route: t('admin.menu.typeRoute'),
+    offcanvas: t('admin.menu.typePanelShort'),
+    external: t('admin.menu.typeExternalShort'),
+  }
+  return labels[props.item.item_type] || (props.item.item_type === 'group' ? t('admin.menu.typeRoute') : props.item.item_type)
 })
 
 const itemTypeBadgeClass = computed(() => {

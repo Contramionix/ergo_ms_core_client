@@ -35,7 +35,7 @@
         class="badge" 
         :class="item.is_active ? 'bg-success' : 'bg-secondary'"
       >
-        {{ item.is_active ? 'Активен' : 'Неактивен' }}
+        {{ item.is_active ? t('admin.users.active') : t('admin.users.inactive') }}
       </span>
     </td>
     <td>
@@ -64,9 +64,13 @@
 </template>
 
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { computed, shallowRef, watch } from 'vue'
 import { Edit, Trash } from 'lucide-vue-next'
 import { getLucideIconAsync } from '@/js/lucideIconLoader.js'
+
+const { t } = useAppI18n()
+
 
 const props = defineProps({
   item: {
@@ -88,15 +92,13 @@ watch(() => props.item.icon, async (iconName) => {
   iconComponent.value = iconName ? await getLucideIconAsync(iconName) : null
 }, { immediate: true })
 
-// Метки типов элементов
-const itemTypeLabels = {
-  route: 'Маршрут',
-  offcanvas: 'Боковая панель',
-  external: 'Внешняя ссылка'
-}
-
 const itemTypeLabel = computed(() => {
-  return itemTypeLabels[props.item.item_type] || (props.item.item_type === 'group' ? 'Маршрут' : props.item.item_type)
+  const labels = {
+    route: t('admin.menu.typeRoute'),
+    offcanvas: t('admin.menu.typeOffcanvas'),
+    external: t('admin.menu.typeExternal'),
+  }
+  return labels[props.item.item_type] || (props.item.item_type === 'group' ? t('admin.menu.typeRoute') : props.item.item_type)
 })
 
 const itemTypeBadgeClass = computed(() => {

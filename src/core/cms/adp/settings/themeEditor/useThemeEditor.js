@@ -5,6 +5,7 @@ import { logError } from '@/js/utils/logError.js'
 import { apiClient } from '@/js/api/manager'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
 import { endpoints, initEndpoints } from '@/js/api/endpoints.js'
+import { tGlobal } from '@/i18n/index.js'
 import {
   getDefaultColors,
   getColorDescriptions,
@@ -38,8 +39,8 @@ export function createThemeEditor() {
   const toast = useToast()
 
   const BASE_THEME_OPTIONS = [
-    { id: 'light', name: 'Светлая', icon: markRaw(Sun) },
-    { id: 'dark', name: 'Тёмная', icon: markRaw(Moon) },
+    { id: 'light', name: tGlobal('settings.themes.lightMode'), icon: markRaw(Sun) },
+    { id: 'dark', name: tGlobal('settings.themes.darkMode'), icon: markRaw(Moon) },
   ]
 
   const DRAFT_THEME_ID = '__draft__'
@@ -54,14 +55,14 @@ export function createThemeEditor() {
   const fileInput = ref(null)
   const draftTheme = ref(null)
   const selectedScope = ref('site')
-  const scopeOptions = ref([{ id: 'site', name: 'Сайт' }])
+  const scopeOptions = ref([{ id: 'site', name: tGlobal('settings.themes.site') }])
   const activeModuleManifest = ref(null)
   const selectedPairKey = ref(null)
   const editingVariant = ref('light')
 
   const VARIANT_OPTIONS = [
-    { id: 'light', name: 'Светлый вариант', icon: markRaw(Sun) },
-    { id: 'dark', name: 'Тёмный вариант', icon: markRaw(Moon) },
+    { id: 'light', name: tGlobal('settings.themes.lightVariant'), icon: markRaw(Sun) },
+    { id: 'dark', name: tGlobal('settings.themes.darkVariant'), icon: markRaw(Moon) },
   ]
   const isModuleScope = computed(() => false)
   const previewModuleKey = computed(() => null)
@@ -146,7 +147,7 @@ export function createThemeEditor() {
 
   const scopeLabel = computed(() => {
     const opt = scopeOptions.value.find((o) => o.id === selectedScope.value)
-    return opt?.name || (isModuleScope.value ? selectedScope.value : 'Сайт')
+    return opt?.name || (isModuleScope.value ? selectedScope.value : tGlobal('settings.themes.site'))
   })
 
   const previewMeta = computed(() => ({
@@ -156,8 +157,8 @@ export function createThemeEditor() {
     moduleKey: previewModuleKey.value,
     variant: isModuleScope.value ? editingVariant.value : currentTheme.base_theme,
     variantLabel: (isModuleScope.value ? editingVariant.value : currentTheme.base_theme) === 'dark'
-      ? 'Тёмный'
-      : 'Светлый',
+      ? tGlobal('settings.themes.dark')
+      : tGlobal('settings.themes.light'),
   }))
 
   const textContrast = computed(() => {
@@ -172,7 +173,7 @@ export function createThemeEditor() {
     return {
       ratio: Math.round(ratio * 10) / 10,
       ok,
-      label: ok ? 'Контраст OK' : 'Слабый контраст',
+      label: ok ? tGlobal('settings.themes.contrastOk') : tGlobal('settings.themes.contrastWeak'),
     }
   })
 
@@ -181,10 +182,10 @@ export function createThemeEditor() {
       return true
     }
     return confirmAction({
-      title: 'Несохранённые изменения',
-      message: 'Есть несохранённые изменения темы. Уйти без сохранения?',
-      confirmText: 'Уйти',
-      cancelText: 'Остаться',
+      title: tGlobal('settings.themes.leaveDirtyTitle'),
+      message: tGlobal('settings.themes.leaveDirtyMessage'),
+      confirmText: tGlobal('settings.themes.leaveConfirm'),
+      cancelText: tGlobal('settings.themes.stayConfirm'),
       variant: 'warning',
     })
   }
@@ -283,7 +284,7 @@ export function createThemeEditor() {
     const source = isDraftSelected.value ? currentTheme : draftTheme.value
     const draft = {
       id: DRAFT_THEME_ID,
-      name: source.name || 'Новая тема',
+      name: source.name || tGlobal('settings.themes.newThemeName'),
       description: source.description || '',
       base_theme: source.base_theme,
       is_system: false,
@@ -347,7 +348,7 @@ export function createThemeEditor() {
       }
     } catch (e) {
       logError('Ошибка загрузки тем:', e)
-      toast.error('Ошибка загрузки списка тем')
+      toast.error(tGlobal('settings.themes.loadError'))
     } finally {
       loading.value = false
     }
@@ -637,7 +638,7 @@ export function createThemeEditor() {
 
   async function init() {
     selectedScope.value = 'site'
-    scopeOptions.value = [{ id: 'site', name: 'Сайт' }]
+    scopeOptions.value = [{ id: 'site', name: tGlobal('settings.themes.site') }]
     await loadThemes()
   }
 
@@ -699,6 +700,6 @@ export function createThemeEditor() {
 
 export function useThemeEditor() {
   const editor = inject(THEME_EDITOR_KEY, null)
-  if (!editor) throw new Error('useThemeEditor: ParentLayout должен предоставить createThemeEditor()')
+  if (!editor) throw new Error('useThemeEditor: ParentLayout must provide createThemeEditor()')
   return editor
 }

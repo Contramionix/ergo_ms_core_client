@@ -10,7 +10,10 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 import { getUserMenu } from '@/core/cms/js/menuService.js'
 import { useRegistrationSettings } from '@/core/cms/adp/js/useRegistrationSettings.js'
 import { usePasswordResetSettings } from '@/core/cms/adp/js/usePasswordResetSettings.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { logError } from '@/js/utils/logError.js'
 
+const { t } = useAppI18n()
 const router = useRouter()
 const isLoading = ref(false)
 const { showRegisterLink } = useRegistrationSettings()
@@ -82,12 +85,12 @@ const submitForm = async () => {
             ? authResult.errors.password[0]
             : authResult.errors.password
         } else {
-          errors.general = 'Неверные учетные данные'
+          errors.general = t('auth.login.invalidCredentials')
         }
       } else if (authResult.message) {
         errors.general = authResult.message
       } else {
-        errors.general = 'Произошла ошибка при авторизации'
+        errors.general = t('auth.login.authError')
       }
     }
   } catch (error) {
@@ -104,19 +107,19 @@ const submitForm = async () => {
         } else if (errorData && errorData.detail) {
           errors.general = errorData.detail
         } else {
-          errors.general = 'Неверные учетные данные'
+          errors.general = t('auth.login.invalidCredentials')
         }
       } else if (error.response.status === 401) {
-        errors.general = 'Неверные учетные данные'
+        errors.general = t('auth.login.invalidCredentials')
       } else if (error.response.status >= 500) {
-        errors.general = 'Ошибка сервера. Попробуйте позже'
+        errors.general = t('auth.login.serverError')
       } else {
-        errors.general = 'Ошибка подключения к серверу'
+        errors.general = t('auth.login.connectionError')
       }
     } else if (error.request) {
-      errors.general = 'Нет соединения с сервером'
+      errors.general = t('auth.login.noConnection')
     } else {
-      errors.general = 'Произошла неизвестная ошибка'
+      errors.general = t('auth.login.unknownError')
     }
   } finally {
     isLoading.value = false
@@ -127,18 +130,16 @@ const submitForm = async () => {
 <template>
   <AuthPageShell>
     <div class="auth-page__header">
-      <h1 class="auth-page__title">Вход в систему</h1>
-      <p class="auth-page__description">Введите ваши учетные данные</p>
+      <h1 class="auth-page__title">{{ t('auth.login.title') }}</h1>
+      <p class="auth-page__description">{{ t('auth.login.subtitle') }}</p>
     </div>
 
-        <!-- Общая ошибка -->
         <div v-if="errors.general" class="alert alert-danger" role="alert">
           <i class="bi bi-exclamation-triangle-fill me-2"></i>
           {{ errors.general }}
         </div>
 
         <form @submit.prevent="submitForm" novalidate>
-          <!-- Поле логина -->
           <div class="form-floating mb-3" v-auto-animate>
             <input
               type="text"
@@ -146,19 +147,18 @@ const submitForm = async () => {
               class="form-control"
               :class="{ 'is-invalid': errors.login }"
               v-model="form.login"
-              placeholder="Логин"
+              :placeholder="t('auth.login.loginField')"
               :disabled="isLoading"
               autocomplete="username"
             />
             <label for="login">
-              <i class="bi bi-person me-2"></i>Логин
+              <i class="bi bi-person me-2"></i>{{ t('auth.login.loginField') }}
             </label>
             <div v-if="errors.login" class="invalid-feedback">
               {{ errors.login }}
             </div>
           </div>
 
-          <!-- Поле пароля -->
           <PasswordInput
             id="password"
             v-model="form.password"
@@ -167,7 +167,6 @@ const submitForm = async () => {
             class="mb-3"
           />
 
-          <!-- Дополнительные опции -->
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
             <div class="form-check">
               <input
@@ -178,7 +177,7 @@ const submitForm = async () => {
                 :disabled="isLoading"
               />
               <label class="form-check-label text-muted" for="rememberUser">
-                Запомнить меня
+                {{ t('auth.login.rememberMe') }}
               </label>
             </div>
 
@@ -187,11 +186,10 @@ const submitForm = async () => {
               :to="{ name: 'ForgotPassword' }"
               class="text-decoration-none text-primary"
             >
-              Забыли пароль?
+              {{ t('auth.login.forgotPassword') }}
             </RouterLink>
           </div>
 
-          <!-- Кнопка входа -->
           <button type="submit" class="btn btn-primary w-100 py-3 mb-3" :disabled="isLoading">
             <span
               v-if="isLoading"
@@ -200,14 +198,13 @@ const submitForm = async () => {
               aria-hidden="true"
             ></span>
             <i v-else class="bi bi-box-arrow-in-right me-2"></i>
-            {{ isLoading ? 'Выполняется вход...' : 'Войти' }}
+            {{ isLoading ? t('auth.login.submitting') : t('auth.login.submit') }}
           </button>
 
-          <!-- Ссылка на регистрацию -->
           <div v-if="showRegisterLink" class="text-center">
-            <span class="text-muted">Нет аккаунта? </span>
+            <span class="text-muted">{{ t('auth.login.noAccount') }} </span>
             <RouterLink :to="{ name: 'Register' }" class="text-decoration-none text-primary fw-semibold">
-              Зарегистрироваться
+              {{ t('auth.login.register') }}
             </RouterLink>
           </div>
         </form>

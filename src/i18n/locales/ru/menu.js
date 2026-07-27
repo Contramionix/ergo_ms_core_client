@@ -1,0 +1,48 @@
+export default {
+  toolbar: {
+    notifications: 'Уведомления',
+    apps: 'Приложения',
+    settings: 'Настройки',
+    profile: 'Профиль',
+    logout: 'Выйти',
+    search: 'Поиск',
+    theme: 'Тема',
+  },
+  sidebar: {
+    collapse: 'Свернуть меню',
+    expand: 'Развернуть меню',
+    empty: 'Нет пунктов меню',
+    ariaLabel: 'Боковое меню',
+    open: 'Открыть меню',
+    close: 'Закрыть меню',
+    notConfigured: 'Меню пока не настроено. Обратитесь к администратору.',
+    loadFailed: 'Не удалось загрузить меню. Попробуйте обновить страницу.',
+    measureNameSample: 'Имя Фамилия',
+    measureOnlineStatus: 'В сети',
+  },
+  separators: {
+    settings: 'Настройки',
+    modules: 'Модули',
+  },
+  apps: {
+    title: 'Приложения',
+    empty: 'Нет доступных приложений',
+  },
+  notifications: {
+    title: 'Уведомления',
+    empty: 'Пока нет уведомлений',
+    markRead: 'Прочитано',
+    markAllRead: 'Прочитать все',
+    viewAll: 'Все уведомления',
+    openPage: 'Открыть страницу уведомлений',
+  },
+  userMenu: {
+    account: 'Аккаунт',
+    profile: 'Профиль',
+    settings: 'Настройки',
+    logout: 'Выход',
+    ariaLabel: 'Меню пользователя',
+    emailMissing: 'email не указан',
+    loading: 'Загрузка...',
+  },
+}

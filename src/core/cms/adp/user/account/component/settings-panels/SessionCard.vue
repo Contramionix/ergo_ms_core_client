@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { Globe, Laptop, Monitor, Smartphone, Tablet } from 'lucide-vue-next'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const props = defineProps({
   device: { type: Object, required: true },
@@ -8,6 +9,8 @@ const props = defineProps({
 })
 
 defineEmits(['revoke'])
+
+const { t } = useAppI18n()
 
 const iconMap = {
   desktop: Monitor,
@@ -38,22 +41,22 @@ const ipAddressDisplay = computed(() => {
       <div class="session-card__content">
         <div class="session-card__header">
           <h3 class="session-card__title">{{ device.deviceName }}</h3>
-          <span v-if="device.isCurrent" class="session-card__badge">Текущая сессия</span>
+          <span v-if="device.isCurrent" class="session-card__badge">{{ t('settings.security.currentSession') }}</span>
         </div>
 
         <p class="session-card__subtitle">{{ device.subtitle }}</p>
 
         <dl class="session-card__meta">
           <div class="session-card__meta-row">
-            <dt>IP-адрес</dt>
+            <dt>{{ t('settings.security.ipAddress') }}</dt>
             <dd>{{ ipAddressDisplay }}</dd>
           </div>
           <div class="session-card__meta-row">
-            <dt>Последняя активность</dt>
+            <dt>{{ t('settings.security.lastActivity') }}</dt>
             <dd>{{ device.formattedLastActivity }}</dd>
           </div>
           <div class="session-card__meta-row">
-            <dt>Сессия создана</dt>
+            <dt>{{ t('settings.security.sessionCreated') }}</dt>
             <dd>{{ device.formattedCreatedAt }}</dd>
           </div>
         </dl>
@@ -65,10 +68,10 @@ const ipAddressDisplay = computed(() => {
         type="button"
         class="btn sessions__revoke"
         :disabled="revoking || !canRevoke"
-        :title="canRevoke ? 'Завершить эту сессию' : 'Нельзя завершить текущую сессию'"
+        :title="canRevoke ? t('settings.security.revokeTitle') : t('settings.security.cannotRevokeTitle')"
         @click="$emit('revoke', device.id)"
       >
-        {{ revoking ? '...' : 'Отозвать' }}
+        {{ revoking ? '...' : t('settings.security.revoke') }}
       </button>
     </div>
   </article>

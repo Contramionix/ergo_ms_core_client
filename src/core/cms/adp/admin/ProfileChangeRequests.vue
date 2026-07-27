@@ -1,4 +1,5 @@
-<script setup>
+﻿<script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, computed, onMounted } from 'vue'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import { useToast } from '@/js/utils/toast.js'
@@ -15,18 +16,21 @@ import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { confirmAction } from '@/js/utils/confirm.js'
 import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { accessDeniedState } from '@/js/accessDeniedState'
+import { tGlobal } from '@/i18n/index.js'
 import {
   fetchAdminProfileChangeRequests,
   approveProfileChangeRequest,
   rejectProfileChangeRequest,
 } from '@/core/cms/adp/admin/js/profileChangeRequestService.js'
 
+const { t } = useAppI18n()
+
 const toast = useToast()
 
-const breadcrumbItems = [
-  { label: 'Пользователи', to: { name: 'UsersPanel' } },
-  { label: 'Заявки на изменение данных' },
-]
+const breadcrumbItems = computed(() => [
+  { label: tGlobal('admin.users.breadcrumb'), to: { name: 'UsersPanel' } },
+  { label: t('admin.profileChange.breadcrumb') },
+])
 
 const hasAdminAccess = ref(false)
 const isCheckingAccess = ref(true)
@@ -54,16 +58,16 @@ const statusFilter = computed({
 })
 
 const STATUS_OPTIONS = [
-  { id: 'all', name: 'Все статусы' },
-  { id: 'pending', name: 'На рассмотрении' },
-  { id: 'approved', name: 'Одобрено' },
-  { id: 'rejected', name: 'Отклонено' },
+  { id: 'all', name: tGlobal('admin.profileChange.allStatuses') },
+  { id: 'pending', name: tGlobal('admin.profileChange.pending') },
+  { id: 'approved', name: tGlobal('admin.profileChange.approved') },
+  { id: 'rejected', name: tGlobal('admin.profileChange.rejected') },
 ]
 
 const statusLabels = {
-  pending: 'На рассмотрении',
-  approved: 'Одобрено',
-  rejected: 'Отклонено',
+  pending: tGlobal('admin.profileChange.pending'),
+  approved: tGlobal('admin.profileChange.approved'),
+  rejected: tGlobal('admin.profileChange.rejected'),
 }
 
 const statusClass = {
@@ -73,28 +77,28 @@ const statusClass = {
 }
 
 const profileEditModeLabel = computed(() => (
-  profileSelfEditEnabled.value ? 'Самостоятельное' : 'Через заявки'
+  profileSelfEditEnabled.value ? tGlobal('admin.profileChange.modeSelf') : tGlobal('admin.profileChange.modeRequests')
 ))
 
 const tableEmptyText = computed(() => {
   if (searchQuery.value.trim() || statusFilter.value !== 'all') {
-    return 'Заявки не найдены'
+    return tGlobal('admin.profileChange.notFound')
   }
-  return 'Нет заявок'
+  return tGlobal('admin.profileChange.none')
 })
 
 const columns = [
-  { key: 'user', label: 'Пользователь' },
-  { key: 'current_email', label: 'Текущий email', hideBelow: 'lg' },
-  { key: 'email', label: 'Новый email' },
-  { key: 'current_full_name', label: 'Текущее ФИО', hideBelow: 'lg' },
-  { key: 'requested_full_name', label: 'Новое ФИО', hideBelow: 'md' },
-  { key: 'current_phone', label: 'Текущий телефон', hideBelow: 'lg' },
-  { key: 'phone', label: 'Новый телефон', hideBelow: 'md' },
-  { key: 'comment', label: 'Комментарий', hideOnCompact: true },
-  { key: 'status', label: 'Статус', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
-  { key: 'created_at', label: 'Создано', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' }, hideBelow: 'md' },
-  { key: 'actions', label: 'Действия', headerStyle: { textAlign: 'right' }, cellStyle: { textAlign: 'right' } },
+  { key: 'user', label: tGlobal('admin.profileChange.colUser') },
+  { key: 'current_email', label: tGlobal('admin.profileChange.colCurrentEmail'), hideBelow: 'lg' },
+  { key: 'email', label: tGlobal('admin.profileChange.colNewEmail') },
+  { key: 'current_full_name', label: tGlobal('admin.profileChange.colCurrentFio'), hideBelow: 'lg' },
+  { key: 'requested_full_name', label: tGlobal('admin.profileChange.colNewFio'), hideBelow: 'md' },
+  { key: 'current_phone', label: tGlobal('admin.profileChange.colCurrentPhone'), hideBelow: 'lg' },
+  { key: 'phone', label: tGlobal('admin.profileChange.colNewPhone'), hideBelow: 'md' },
+  { key: 'comment', label: tGlobal('admin.profileChange.colComment'), hideOnCompact: true },
+  { key: 'status', label: tGlobal('admin.profileChange.colStatus'), headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
+  { key: 'created_at', label: tGlobal('admin.profileChange.colCreated'), headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' }, hideBelow: 'md' },
+  { key: 'actions', label: tGlobal('admin.profileChange.colActions'), headerStyle: { textAlign: 'right' }, cellStyle: { textAlign: 'right' } },
 ]
 
 const getItemKey = (item) => item.id
@@ -128,7 +132,7 @@ const loadRequests = async () => {
     }
   } catch (error) {
     logError('Ошибка загрузки заявок на изменение данных профиля:', error)
-    toast.error('Не удалось загрузить реестр заявок')
+    toast.error(tGlobal('admin.profileChange.loadError'))
   } finally {
     isLoading.value = false
   }
@@ -138,10 +142,10 @@ onMounted(async () => {
   try {
     const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
-      toast.error('У вас нет доступа к административной панели')
+      toast.error(tGlobal('admin.users.noAdminAccess'))
       accessDeniedState.active = true
-      accessDeniedState.title = 'Доступ запрещён'
-      accessDeniedState.message = 'Требуются права администратора.'
+      accessDeniedState.title = tGlobal('admin.access.deniedTitle')
+      accessDeniedState.message = tGlobal('admin.access.adminRequired')
       return
     }
     hasAdminAccess.value = true
@@ -149,10 +153,10 @@ onMounted(async () => {
     await loadRequests()
   } catch (error) {
     logError('Ошибка проверки прав доступа:', error)
-    toast.error('Ошибка проверки прав доступа')
+    toast.error(tGlobal('admin.users.accessCheckError'))
     accessDeniedState.active = true
-    accessDeniedState.title = 'Доступ запрещён'
-    accessDeniedState.message = 'Не удалось проверить права доступа.'
+    accessDeniedState.title = tGlobal('admin.access.deniedTitle')
+    accessDeniedState.message = tGlobal('admin.users.accessCheckFailed')
   } finally {
     isQueryWatchReady.value = true
   }
@@ -183,16 +187,16 @@ const handleApprove = async (item) => {
     details.push(`email «${item.email}»`)
   }
   if (isChanged(item.current_full_name, item.requested_full_name)) {
-    details.push(`ФИО «${item.requested_full_name}»`)
+    details.push(tGlobal('admin.profileChange.detailFio', { value: item.requested_full_name }))
   }
   if (isChanged(item.current_phone, item.phone)) {
-    details.push(`телефон «${item.phone}»`)
+    details.push(tGlobal('admin.profileChange.detailPhone', { value: item.phone }))
   }
 
   const ok = await confirmAction({
-    title: 'Одобрить заявку',
-    message: `Применить ${details.join(', ') || 'изменения'} для пользователя ${item.username}?`,
-    confirmText: 'Одобрить',
+    title: tGlobal('admin.profileChange.approve'),
+    message: tGlobal('admin.profileChange.approveMessageQ', { details: details.join(', ') || tGlobal('admin.profileChange.changesFallback'), username: item.username }),
+    confirmText: tGlobal('admin.profileChange.approveConfirm'),
     variant: 'primary',
   })
   if (!ok) {
@@ -201,19 +205,19 @@ const handleApprove = async (item) => {
 
   try {
     await approveProfileChangeRequest(item.id)
-    toast.success('Заявка одобрена')
+    toast.success(tGlobal('admin.profileChange.approvedToast'))
     await loadRequests()
   } catch (error) {
     logError('Ошибка одобрения заявки:', error)
-    toast.error(error?.response?.data?.error || 'Не удалось одобрить заявку')
+    toast.error(error?.response?.data?.error || tGlobal('admin.profileChange.approveError'))
   }
 }
 
 const handleReject = async (item) => {
   const ok = await confirmAction({
-    title: 'Отклонить заявку',
-    message: `Отклонить заявку пользователя ${item.username}?`,
-    confirmText: 'Отклонить',
+    title: tGlobal('admin.profileChange.reject'),
+    message: tGlobal('admin.profileChange.rejectMessageQ', { username: item.username }),
+    confirmText: tGlobal('admin.profileChange.rejectConfirm'),
     variant: 'danger',
   })
   if (!ok) {
@@ -222,11 +226,11 @@ const handleReject = async (item) => {
 
   try {
     await rejectProfileChangeRequest(item.id)
-    toast.success('Заявка отклонена')
+    toast.success(tGlobal('admin.profileChange.rejectedToast'))
     await loadRequests()
   } catch (error) {
     logError('Ошибка отклонения заявки:', error)
-    toast.error(error?.response?.data?.error || 'Не удалось отклонить заявку')
+    toast.error(error?.response?.data?.error || tGlobal('admin.profileChange.rejectError'))
   }
 }
 </script>
@@ -238,9 +242,9 @@ const handleReject = async (item) => {
 
   <div v-else-if="hasAdminAccess" class="admin-page">
     <div class="page-header">
-      <h1 class="page-title">Заявки на изменение данных профиля</h1>
+      <h1 class="page-title">{{ t('admin.profileChange.title') }}</h1>
       <p class="page-subtitle">
-        Реестр заявок пользователей на изменение email, фамилии, имени и отчества
+        {{ t('admin.profileChange.subtitleAlt') }}
       </p>
     </div>
 
@@ -250,29 +254,28 @@ const handleReject = async (item) => {
       <div class="content-card">
         <div class="profile-change-stats">
           <span class="profile-change-stat">
-            Редактирование профиля: <strong>{{ profileEditModeLabel }}</strong>
+            {{ t('admin.profileChange.editMode') }} <strong>{{ profileEditModeLabel }}</strong>
           </span>
           <span class="profile-change-stat">
-            Всего: <strong>{{ totalItems }}</strong>
+            {{ t('admin.profileChange.totalLabel') }} <strong>{{ totalItems }}</strong>
           </span>
           <span class="profile-change-stat">
-            На рассмотрении: <strong>{{ pendingCount }}</strong>
+            {{ t('admin.profileChange.pendingLabel') }} <strong>{{ pendingCount }}</strong>
           </span>
         </div>
 
         <div v-if="profileSelfEditEnabled" class="profile-change-alert">
           <AlertCircle :size="18" class="flex-shrink-0" aria-hidden="true" />
           <div>
-            Сейчас пользователи могут менять email, ФИО и телефон самостоятельно. Чтобы включить заявки,
-            установите <code>API_USER_PROFILE_SELF_EDIT_ENABLED=false</code> в .env.
+            <span v-html="t('admin.profileChange.envHint')"></span>
           </div>
         </div>
 
         <div class="table-header profile-change-toolbar">
           <div class="filters-wrapper">
-            <SearchInput id="profile-change-requests-search" :model-value="searchQuery" layout="fixed" placeholder="Пользователь, email, ФИО, телефон..." :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
+            <SearchInput id="profile-change-requests-search" :model-value="searchQuery" layout="fixed" :placeholder="t('admin.profileChange.searchPlaceholder')" :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
             <div class="status-filter">
-              <HoverTooltip text="Статус заявки">
+              <HoverTooltip :text="t('admin.profileChange.statusTooltip')">
                 <SelectBox id="profile-change-requests-status" v-model="statusFilter" :options="STATUS_OPTIONS" value-key="id" label-key="name" :include-all-option="false" @update:model-value="handleStatusFilterChange"/>
               </HoverTooltip>
             </div>
@@ -345,13 +348,13 @@ const handleReject = async (item) => {
 
             <template #cell-actions="{ item }">
               <div v-if="item.status === 'pending'" class="actions-cell">
-                <HoverTooltip text="Одобрить заявку">
-                  <button type="button" class="btn-action" aria-label="Одобрить заявку" @click.stop="handleApprove(item)">
+                <HoverTooltip :text="t('admin.profileChange.approve')">
+                  <button type="button" class="btn-action" :aria-label="t('admin.profileChange.approve')" @click.stop="handleApprove(item)">
                     <Check :size="15" />
                   </button>
                 </HoverTooltip>
-                <HoverTooltip text="Отклонить заявку">
-                  <button type="button" class="btn-action btn-action--delete" aria-label="Отклонить заявку" @click.stop="handleReject(item)">
+                <HoverTooltip :text="t('admin.profileChange.reject')">
+                  <button type="button" class="btn-action btn-action--delete" :aria-label="t('admin.profileChange.reject')" @click.stop="handleReject(item)">
                     <X :size="15" />
                   </button>
                 </HoverTooltip>

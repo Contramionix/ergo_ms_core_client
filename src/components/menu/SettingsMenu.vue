@@ -5,7 +5,9 @@ import HoverTooltip from '@/components/HoverTooltip.vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { useUiSettings } from '@/core/cms/js/uiSettings.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const { t } = useAppI18n()
 const emit = defineEmits(['dropdown-toggle', 'openUserSettings'])
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 
@@ -23,7 +25,7 @@ function openUserSettings() {
 
 <template>
   <div ref="dropdownRef" class="settings-menu-wrapper">
-    <HoverTooltip text="Настройки">
+    <HoverTooltip :text="t('menu.toolbar.settings')">
       <div @click.stop="toggleDropdown" class="header-btn">
         <LucideIcon name="Settings" :size="20" />
       </div>
@@ -35,7 +37,7 @@ function openUserSettings() {
             <span class="icon-flex settings-menu__item-icon">
               <Cog :size="18" />
             </span>
-            <span class="settings-menu__main-text">Настройки</span>
+            <span class="settings-menu__main-text">{{ t('menu.toolbar.settings') }}</span>
           </button>
         </li>
         <li class="settings-menu__theme">
@@ -57,7 +59,7 @@ function openUserSettings() {
                 <span class="icon-flex settings-menu__item-icon">
                   <Contrast :size="18" />
                 </span>
-                <span class="settings-menu__main-text settings-menu__theme-label text-truncate">Тема</span>
+                <span class="settings-menu__main-text settings-menu__theme-label text-truncate">{{ t('menu.toolbar.theme') }}</span>
                 <span class="settings-menu__theme-value text-muted text-truncate">{{ label }}</span>
                 <ChevronRight class="settings-menu__theme-chevron flex-shrink-0" :size="16" />
               </span>

@@ -14,6 +14,9 @@ import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import { formatFileSize } from '@/js/utils/file-helpers.js'
 import { useImportUsers } from './js/useImportUsers.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const {
   breadcrumbItems,
@@ -62,8 +65,8 @@ const {
 
   <div v-else-if="hasAdminAccess" class="admin-page">
     <div class="page-header">
-      <h1 class="page-title">Загрузка пользователей</h1>
-      <p class="page-subtitle">Массовое создание учётных записей из файла Excel или CSV</p>
+      <h1 class="page-title">{{ t('admin.importUsers.title') }}</h1>
+      <p class="page-subtitle">{{ t('admin.importUsers.subtitle') }}</p>
     </div>
 
     <div class="import-users-shell">
@@ -77,14 +80,14 @@ const {
         >
           <div class="iu-alert__content d-flex align-items-start gap-2">
             <AlertCircle :size="18" class="flex-shrink-0 mt-1" />
-            <span>Есть незавершённая загрузка. Вы можете продолжить отслеживание прогресса.</span>
+            <span>{{ t('admin.importUsers.draftNotice') }}</span>
           </div>
           <button
             type="button"
             class="btn btn-primary d-inline-flex align-items-center gap-2 flex-shrink-0"
             @click="resumeImport"
           >
-            Продолжить отслеживание
+            {{ t('admin.importUsers.resumeTracking') }}
           </button>
         </div>
 
@@ -94,7 +97,7 @@ const {
             :class="{ 'iu-step--active': currentStep >= 0, 'iu-step--done': currentStep > 0 }"
           >
             <span class="iu-step__num">1</span>
-            <span class="iu-step__label">Файл</span>
+            <span class="iu-step__label">{{ t('admin.importUsers.stepFile') }}</span>
           </div>
           <div class="iu-step__line" :class="{ 'iu-step__line--done': currentStep > 0 }" />
           <div
@@ -102,7 +105,7 @@ const {
             :class="{ 'iu-step--active': currentStep >= 1, 'iu-step--done': currentStep > 1 }"
           >
             <span class="iu-step__num">2</span>
-            <span class="iu-step__label">Настройки</span>
+            <span class="iu-step__label">{{ t('admin.importUsers.stepSettings') }}</span>
           </div>
           <div class="iu-step__line" :class="{ 'iu-step__line--done': currentStep > 1 }" />
           <div
@@ -110,21 +113,21 @@ const {
             :class="{ 'iu-step--active': currentStep >= 2, 'iu-step--done': currentStep > 2 }"
           >
             <span class="iu-step__num">3</span>
-            <span class="iu-step__label">Загрузка</span>
+            <span class="iu-step__label">{{ t('admin.importUsers.stepUpload') }}</span>
           </div>
           <div class="iu-step__line" :class="{ 'iu-step__line--done': currentStep > 2 }" />
           <div class="iu-step" :class="{ 'iu-step--active': currentStep >= 3 }">
             <span class="iu-step__num">4</span>
-            <span class="iu-step__label">Результат</span>
+            <span class="iu-step__label">{{ t('admin.importUsers.stepResult') }}</span>
           </div>
         </div>
 
         <section class="iu-section">
           <div class="iu-section__head">
             <div>
-              <h2 class="iu-section__title">Подготовка файла</h2>
+              <h2 class="iu-section__title">{{ t('admin.importUsers.prepareTitle') }}</h2>
               <p class="iu-section__desc">
-                Загрузите таблицу с пользователями. Для каждого нового аккаунта будет сгенерирован случайный пароль.
+                {{ t('admin.importUsers.prepareHint') }}
               </p>
             </div>
             <button
@@ -135,21 +138,21 @@ const {
             >
               <Loader2 v-if="downloadingTemplate" :size="15" class="iu-spinner" />
               <Download v-else :size="15" />
-              <span>{{ downloadingTemplate ? 'Формирование...' : 'Скачать шаблон' }}</span>
+              <span>{{ downloadingTemplate ? t('admin.importUsers.downloadingTemplate') : t('admin.importUsers.downloadTemplate') }}</span>
             </button>
           </div>
 
           <div class="iu-alert iu-alert--info">
             <Info :size="18" class="flex-shrink-0 mt-1" />
             <div class="iu-alert__content">
-              <span class="iu-alert__title">Требования к файлу</span>
+              <span class="iu-alert__title">{{ t('admin.importUsers.requirementsTitle') }}</span>
               <ul class="iu-requirements-list mb-0">
-                <li>Формат: Excel (<code>.xlsx</code>, <code>.xls</code>) или CSV (<code>.csv</code>)</li>
-                <li>Обязательные столбцы: <code>Фамилия</code>, <code>Имя</code>, <code>Логин</code></li>
-                <li>Опциональные столбцы: <code>Отчество</code>, <code>E-mail</code></li>
-                <li>После импорта пароли можно один раз скачать в Excel-файле</li>
-                <li>Дубликаты определяются по логину; по E-mail — если в настройках сервера включена проверка уникальности email</li>
-                <li>Перед загрузкой удалите пример строки из шаблона</li>
+                <li>{{ t('admin.importUsers.reqFormat') }}</li>
+                <li v-html="t('admin.importUsers.reqColumnsHtml')"></li>
+                <li v-html="t('admin.importUsers.reqOptionalHtml')"></li>
+                <li>{{ t('admin.importUsers.reqPasswords') }}</li>
+                <li>{{ t('admin.importUsers.reqDuplicates') }}</li>
+                <li>{{ t('admin.importUsers.reqRemoveSample') }}</li>
               </ul>
             </div>
           </div>
@@ -176,8 +179,8 @@ const {
               <div class="iu-upload__icon-wrap">
                 <Upload :size="28" />
               </div>
-              <p class="iu-upload__title">Перетащите файл или нажмите для выбора</p>
-              <p class="iu-upload__hint">Поддерживаются Excel (.xlsx, .xls) и CSV (.csv)</p>
+              <p class="iu-upload__title">{{ t('admin.importUsers.dropTitle') }}</p>
+              <p class="iu-upload__hint">{{ t('admin.importUsers.dropHint') }}</p>
             </template>
 
             <template v-else>
@@ -192,7 +195,7 @@ const {
                 <button
                   type="button"
                   class="btn-action btn-action--delete"
-                  aria-label="Удалить файл"
+                  :aria-label="t('admin.importUsers.removeFile')"
                   :disabled="isImporting"
                   @click.stop="removeFile"
                 >
@@ -206,9 +209,9 @@ const {
         <section class="iu-section">
           <div class="iu-section__head">
             <div>
-              <h2 class="iu-section__title">Приветственные письма</h2>
+              <h2 class="iu-section__title">{{ t('admin.importUsers.welcomeTitle') }}</h2>
               <p class="iu-section__desc mb-0">
-                По умолчанию письма не отправляются. Они уходят только пользователям с указанным E-mail.
+                {{ t('admin.importUsers.welcomeDefaultHint') }}
               </p>
             </div>
           </div>
@@ -228,8 +231,8 @@ const {
               />
               <label class="iu-email-option__label" for="sendWelcomeEmails">
                 <span class="iu-email-option__text">
-                  <strong>Отправлять приветственные письма на электронную почту</strong>
-                  <small>Можно настроить тему и текст письма перед загрузкой</small>
+                  <strong>{{ t('admin.importUsers.welcomeToggle') }}</strong>
+                  <small>{{ t('admin.importUsers.welcomeToggleHint') }}</small>
                 </span>
               </label>
             </div>
@@ -237,19 +240,19 @@ const {
 
           <div v-if="sendWelcomeEmails" class="iu-email-settings">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-              <h3 class="iu-section__title mb-0">Текст приветственного письма</h3>
+              <h3 class="iu-section__title mb-0">{{ t('admin.importUsers.welcomeTextTitle') }}</h3>
               <button
                 type="button"
                 class="btn btn-outline-secondary btn-sm"
                 :disabled="isImporting"
                 @click="resetWelcomeEmailTemplate"
               >
-                Сбросить шаблон
+                {{ t('admin.importUsers.resetTemplate') }}
               </button>
             </div>
 
             <div>
-              <label class="form-label" for="welcomeEmailSubject">Тема письма</label>
+              <label class="form-label" for="welcomeEmailSubject">{{ t('admin.importUsers.emailSubject') }}</label>
               <input
                 id="welcomeEmailSubject"
                 v-model="welcomeEmailSubject"
@@ -262,7 +265,7 @@ const {
             </div>
 
             <div>
-              <label class="form-label" for="welcomeEmailBody">Текст письма</label>
+              <label class="form-label" for="welcomeEmailBody">{{ t('admin.importUsers.emailBody') }}</label>
               <textarea
                 id="welcomeEmailBody"
                 v-model="welcomeEmailBody"
@@ -275,7 +278,7 @@ const {
             </div>
 
             <p v-if="welcomePlaceholders.length" class="form-text text-muted mb-0">
-              Доступные подстановки:
+              {{ t('admin.importUsers.placeholders') }}
               <code
                 v-for="placeholder in welcomePlaceholders"
                 :key="placeholder.key"
@@ -294,15 +297,15 @@ const {
           >
             <Loader2 v-if="isImporting" :size="16" class="iu-spinner" />
             <Users v-else :size="16" />
-            <span>{{ isImporting ? 'Загрузка...' : 'Начать загрузку' }}</span>
+            <span>{{ isImporting ? t('admin.importUsers.importing') : t('admin.importUsers.startImport') }}</span>
           </button>
         </div>
 
         <section v-if="isImporting || importResults" class="iu-section">
           <div class="iu-section__head">
             <div>
-              <h2 class="iu-section__title">Прогресс загрузки</h2>
-              <p class="iu-section__desc mb-0">{{ importStatus || 'Ожидание запуска...' }}</p>
+              <h2 class="iu-section__title">{{ t('admin.importUsers.progressTitle') }}</h2>
+              <p class="iu-section__desc mb-0">{{ importStatus || t('admin.importUsers.waitingStart') }}</p>
             </div>
             <p class="iu-progress-percent mb-0">{{ Math.round(progressPercent) }}%</p>
           </div>
@@ -318,19 +321,19 @@ const {
           <div class="iu-stats">
             <div class="iu-stat">
               <span class="iu-stat__value">{{ currentStats.total || importResults?.total || 0 }}</span>
-              <span class="iu-stat__label">Всего строк</span>
+              <span class="iu-stat__label">{{ t('admin.importUsers.statTotal') }}</span>
             </div>
             <div class="iu-stat iu-stat--info">
               <span class="iu-stat__value">{{ currentStats.processed || importResults?.total || 0 }}</span>
-              <span class="iu-stat__label">Обработано</span>
+              <span class="iu-stat__label">{{ t('admin.importUsers.statProcessed') }}</span>
             </div>
             <div class="iu-stat iu-stat--success">
               <span class="iu-stat__value">{{ currentStats.created || importResults?.created || 0 }}</span>
-              <span class="iu-stat__label">Создано</span>
+              <span class="iu-stat__label">{{ t('admin.importUsers.statCreated') }}</span>
             </div>
             <div class="iu-stat iu-stat--warning">
               <span class="iu-stat__value">{{ currentStats.skipped || importResults?.skipped || 0 }}</span>
-              <span class="iu-stat__label">Пропущено</span>
+              <span class="iu-stat__label">{{ t('admin.importUsers.statSkipped') }}</span>
             </div>
           </div>
         </section>
@@ -344,22 +347,22 @@ const {
             <XCircle v-else :size="20" class="flex-shrink-0" />
             <div class="iu-alert__content">
               <span class="iu-alert__title">
-                {{ importResults.success ? 'Загрузка завершена' : 'Ошибка загрузки' }}
+                {{ importResults.success ? t('admin.importUsers.resultSuccess') : t('admin.importUsers.resultError') }}
               </span>
               <ul class="iu-result-list mb-0">
-                <li>Создано пользователей: <strong>{{ importResults.created }}</strong></li>
-                <li>Пропущено (дубликаты или ошибки): <strong>{{ importResults.skipped }}</strong></li>
+                <li>{{ t('admin.importUsers.resultCreated') }} <strong>{{ importResults.created }}</strong></li>
+                <li>{{ t('admin.importUsers.resultSkipped') }} <strong>{{ importResults.skipped }}</strong></li>
                 <li v-if="importResults.emailsSent > 0">
-                  Отправлено приветственных писем: <strong>{{ importResults.emailsSent }}</strong>
+                  {{ t('admin.importUsers.resultEmailsSent') }} <strong>{{ importResults.emailsSent }}</strong>
                 </li>
                 <li v-if="importResults.emailsFailed > 0">
-                  Не удалось отправить писем: <strong>{{ importResults.emailsFailed }}</strong>
+                  {{ t('admin.importUsers.resultEmailsFailed') }} <strong>{{ importResults.emailsFailed }}</strong>
                 </li>
                 <li v-if="importResults.emailsSkippedNoEmail > 0">
-                  Без E-mail (письма не отправлены): <strong>{{ importResults.emailsSkippedNoEmail }}</strong>
+                  {{ t('admin.importUsers.resultEmailsNoEmail') }} <strong>{{ importResults.emailsSkippedNoEmail }}</strong>
                 </li>
                 <li v-if="importResults.errors.length > 0">
-                  Ошибок: <strong>{{ importResults.errors.length }}</strong>
+                  {{ t('admin.importUsers.resultErrors') }} <strong>{{ importResults.errors.length }}</strong>
                 </li>
               </ul>
             </div>
@@ -370,8 +373,8 @@ const {
             class="iu-alert iu-alert--warning d-flex align-items-center justify-content-between flex-wrap gap-3"
           >
             <div class="iu-alert__content">
-              <span class="iu-alert__title">Файл с паролями готов</span>
-              <span class="small">Скачивание доступно один раз. Сохраните файл в надёжное место.</span>
+              <span class="iu-alert__title">{{ t('admin.importUsers.passwordsReady') }}</span>
+              <span class="small">{{ t('admin.importUsers.passwordsHint') }}</span>
             </div>
             <button
               type="button"
@@ -381,17 +384,17 @@ const {
             >
               <Loader2 v-if="downloadingPasswords" :size="16" class="iu-spinner" />
               <Download v-else :size="16" />
-              <span>{{ downloadingPasswords ? 'Скачивание...' : 'Скачать пароли (Excel)' }}</span>
+              <span>{{ downloadingPasswords ? t('admin.importUsers.downloading') : t('admin.importUsers.downloadPasswords') }}</span>
             </button>
           </div>
 
           <div v-else-if="importResults.success && passwordsDownloaded" class="iu-alert iu-alert--muted">
-            Файл с паролями уже был скачан. Повторная выгрузка недоступна.
+            {{ t('admin.importUsers.passwordsDownloaded') }}
           </div>
         </template>
 
         <section v-if="importLogs.length > 0" class="iu-section iu-logs">
-          <h2 class="iu-section__title mb-0">Журнал загрузки</h2>
+          <h2 class="iu-section__title mb-0">{{ t('admin.importUsers.logTitle') }}</h2>
           <div ref="logsContainer" class="iu-logs__container">
             <div
               v-for="(log, index) in importLogs"

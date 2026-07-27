@@ -1,4 +1,5 @@
-<script setup>
+﻿<script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import { useToast } from '@/js/utils/toast.js'
@@ -14,8 +15,11 @@ import { runWithConfirm, confirmAction } from '@/js/utils/confirm.js'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { accessDeniedState } from '@/js/accessDeniedState'
+import { tGlobal } from '@/i18n/index.js'
 import { fetchInvitations, revokeInvitation, resendInvitation, clearInvitations, } from '@/core/cms/adp/admin/js/invitationService'
 import { copyTextToClipboard } from '@/js/utils/clipboard.js'
+
+const { t } = useAppI18n()
 
 const InvitationCreateModal = defineAsyncComponent(() =>
   import('@/core/cms/adp/admin/InvitationsComponents/InvitationCreateModal.vue'),
@@ -26,10 +30,10 @@ const InvitationBulkModal = defineAsyncComponent(() =>
 
 const toast = useToast()
 
-const breadcrumbItems = [
-  { label: 'Пользователи', to: { name: 'UsersPanel' } },
-  { label: 'Управление приглашениями' },
-]
+const breadcrumbItems = computed(() => [
+  { label: tGlobal('admin.users.breadcrumb'), to: { name: 'UsersPanel' } },
+  { label: t('admin.invitations.management') },
+])
 
 const hasAdminAccess = ref(false)
 const isCheckingAccess = ref(true)
@@ -62,17 +66,17 @@ const showBulkModal = ref(false)
 const isQueryWatchReady = ref(false)
 
 const STATUS_OPTIONS = [
-  { id: 'all', name: 'Все статусы' },
-  { id: 'pending', name: 'Ожидают' },
-  { id: 'used', name: 'Использованы' },
-  { id: 'expired', name: 'Истекли' },
-  { id: 'revoked', name: 'Отозваны' },
+  { id: 'all', name: tGlobal('admin.invitations.allStatuses') },
+  { id: 'pending', name: tGlobal('admin.invitations.statusPending') },
+  { id: 'used', name: tGlobal('admin.invitations.statusUsed') },
+  { id: 'expired', name: tGlobal('admin.invitations.statusExpired') },
+  { id: 'revoked', name: tGlobal('admin.invitations.statusRevoked') },
 ]
 
 const REGISTRATION_MODE_LABELS = {
-  open: 'Открытая',
-  invitation: 'Только по приглашениям',
-  closed: 'Закрыта',
+  open: tGlobal('admin.invitations.regOpen'),
+  invitation: tGlobal('admin.invitations.regInviteOnly'),
+  closed: tGlobal('admin.invitations.regClosed'),
 }
 
 const registrationModeLabel = computed(
@@ -81,16 +85,16 @@ const registrationModeLabel = computed(
 
 const tableEmptyText = computed(() => {
   if (searchQuery.value.trim() || statusFilter.value !== 'all') {
-    return 'Приглашения не найдены'
+    return tGlobal('admin.invitations.notFound')
   }
-  return 'Нет приглашений'
+  return tGlobal('admin.invitations.none')
 })
 
 const statusLabels = {
-  pending: 'Ожидает',
-  used: 'Использовано',
-  expired: 'Истекло',
-  revoked: 'Отозвано',
+  pending: tGlobal('admin.invitations.pending'),
+  used: tGlobal('admin.invitations.statusUsedSingular'),
+  expired: tGlobal('admin.invitations.expired'),
+  revoked: tGlobal('admin.invitations.statusRevokedSingular'),
 }
 
 const statusClass = {
@@ -102,11 +106,11 @@ const statusClass = {
 
 const columns = [
   { key: 'email', label: 'Email' },
-  { key: 'status', label: 'Статус', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
-  { key: 'invited_by_name', label: 'Пригласил', hideBelow: 'md' },
-  { key: 'created_at', label: 'Создано', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' }, hideBelow: 'lg' },
-  { key: 'expires_at', label: 'Действует до', headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' }, hideBelow: 'md' },
-  { key: 'actions', label: 'Действия', headerStyle: { textAlign: 'right' }, cellStyle: { textAlign: 'right' } },
+  { key: 'status', label: tGlobal('admin.invitations.colStatus'), headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' } },
+  { key: 'invited_by_name', label: tGlobal('admin.invitations.colInvitedBy'), hideBelow: 'md' },
+  { key: 'created_at', label: tGlobal('admin.invitations.colCreated'), headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' }, hideBelow: 'lg' },
+  { key: 'expires_at', label: tGlobal('admin.invitations.colExpires'), headerStyle: { textAlign: 'center' }, cellStyle: { textAlign: 'center' }, hideBelow: 'md' },
+  { key: 'actions', label: tGlobal('admin.invitations.colActions'), headerStyle: { textAlign: 'right' }, cellStyle: { textAlign: 'right' } },
 ]
 
 const getItemKey = (item) => item.id
@@ -136,7 +140,7 @@ const loadInvitations = async () => {
     }
   } catch (error) {
     logError('Ошибка загрузки приглашений:', error)
-    toast.error('Не удалось загрузить список приглашений')
+    toast.error(tGlobal('admin.invitations.loadError'))
   } finally {
     isLoading.value = false
   }
@@ -146,10 +150,10 @@ onMounted(async () => {
   try {
     const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
-      toast.error('У вас нет доступа к административной панели')
+      toast.error(tGlobal('admin.users.noAdminAccess'))
       accessDeniedState.active = true
-      accessDeniedState.title = 'Доступ запрещён'
-      accessDeniedState.message = 'Требуются права администратора.'
+      accessDeniedState.title = tGlobal('admin.access.deniedTitle')
+      accessDeniedState.message = tGlobal('admin.access.adminRequired')
       return
     }
     hasAdminAccess.value = true
@@ -157,10 +161,10 @@ onMounted(async () => {
     await loadInvitations()
   } catch (error) {
     logError('Ошибка проверки прав доступа:', error)
-    toast.error('Ошибка проверки прав доступа')
+    toast.error(tGlobal('admin.users.accessCheckError'))
     accessDeniedState.active = true
-    accessDeniedState.title = 'Доступ запрещён'
-    accessDeniedState.message = 'Не удалось проверить права доступа.'
+    accessDeniedState.title = tGlobal('admin.access.deniedTitle')
+    accessDeniedState.message = tGlobal('admin.users.accessCheckFailed')
   } finally {
     isQueryWatchReady.value = true
   }
@@ -195,17 +199,17 @@ const openBulkModal = () => {
 
 const handleInvitationCreated = ({ sendEmail, emailWarning }) => {
   if (emailWarning) {
-    toast.warning('Приглашение создано, но письмо не отправлено')
+    toast.warning(tGlobal('admin.invitations.createdNoEmail'))
   } else if (sendEmail) {
-    toast.success('Приглашение создано и отправлено на email')
+    toast.success(tGlobal('admin.invitations.createdAndSent'))
   } else {
-    toast.success('Приглашение создано, ссылка скопирована в буфер обмена')
+    toast.success(tGlobal('admin.invitations.createdLinkCopied'))
   }
   loadInvitations()
 }
 
 const handleBulkCompleted = () => {
-  toast.success('Список приглашений обновлён')
+  toast.success(tGlobal('admin.invitations.listUpdated'))
   loadInvitations()
 }
 
@@ -216,15 +220,15 @@ const copyInviteLink = async (item) => {
 
   const inviteUrl = item.invite_url?.trim()
   if (!inviteUrl) {
-    toast.error('Ссылка приглашения недоступна')
+    toast.error(tGlobal('admin.invitations.linkUnavailable'))
     return
   }
 
   try {
     await copyTextToClipboard(inviteUrl)
-    toast.success('Ссылка скопирована')
+    toast.success(tGlobal('admin.invitations.linkCopied'))
   } catch {
-    toast.error('Не удалось скопировать ссылку')
+    toast.error(tGlobal('admin.invitations.linkCopyFailed'))
   }
 }
 
@@ -236,27 +240,27 @@ const copyEmail = async (email) => {
 
   try {
     await copyTextToClipboard(normalizedEmail)
-    toast.success('Email скопирован')
+    toast.success(tGlobal('admin.invitations.emailCopied'))
   } catch {
-    toast.error('Не удалось скопировать email')
+    toast.error(tGlobal('admin.invitations.emailCopyFailed'))
   }
 }
 
 const handleResend = async (item) => {
   try {
     await resendInvitation(item.id)
-    toast.success('Письмо с приглашением отправлено')
+    toast.success(tGlobal('admin.invitations.emailSent'))
   } catch (error) {
-    toast.error(error.response?.data?.error || 'Не удалось отправить письмо')
+    toast.error(error.response?.data?.error || tGlobal('admin.invitations.emailSendFailed'))
   }
 }
 
 const handleRevoke = async (item) => {
   const confirmed = await confirmAction({
-    title: 'Отозвать приглашение',
-    message: `Отозвать приглашение для ${item.email}?\n\nСсылка перестанет работать.`,
-    confirmText: 'Отозвать',
-    cancelText: 'Отмена',
+    title: tGlobal('admin.invitations.revokeTitle'),
+    message: tGlobal('admin.invitations.revokeMessage', { email: item.email }),
+    confirmText: tGlobal('admin.invitations.revokeConfirm'),
+    cancelText: tGlobal('admin.invitations.cancel'),
     variant: 'danger',
   })
   if (!confirmed) {
@@ -265,29 +269,29 @@ const handleRevoke = async (item) => {
 
   try {
     await revokeInvitation(item.id)
-    toast.success('Приглашение отозвано')
+    toast.success(tGlobal('admin.invitations.revokedToast'))
     await loadInvitations()
   } catch (error) {
-    toast.error(error.response?.data?.error || 'Не удалось отозвать приглашение')
+    toast.error(error.response?.data?.error || tGlobal('admin.invitations.revokeFailed'))
   }
 }
 
 const openClearConfirm = async (scope) => {
   const options = {
-    title: 'Очистка приглашений',
-    confirmText: scope === 'all' ? 'Удалить все' : 'Удалить неактивные',
+    title: tGlobal('admin.invitations.clearTitle'),
+    confirmText: scope === 'all' ? tGlobal('admin.invitations.clearAllConfirm') : tGlobal('admin.invitations.clearInactiveConfirm'),
     variant: 'danger',
     message: scope === 'all'
-      ? `Будут безвозвратно удалены все приглашения (${totalAll.value}).\n\nОжидающие ссылки перестанут работать.`
-      : `Будут удалены использованные, истёкшие и отозванные приглашения (${inactiveCount.value}).\n\nОжидающие приглашения останутся.`,
+      ? tGlobal('admin.invitations.clearAllMessage', { count: totalAll.value })
+      : tGlobal('admin.invitations.clearInactiveMessage', { count: inactiveCount.value }),
   }
 
   await runWithConfirm(options, async () => {
     const result = await clearInvitations(scope)
     if (result.deleted > 0) {
-      toast.success(`Удалено приглашений: ${result.deleted}`)
+      toast.success(tGlobal('admin.invitations.deletedCount', { count: result.deleted }))
     } else {
-      toast.info(result.message || 'Нет приглашений для удаления')
+      toast.info(result.message || tGlobal('admin.invitations.nothingToDelete'))
     }
     await patchState({ page: 1 }, { immediate: true })
     if (listState.value.page === 1) {
@@ -304,9 +308,9 @@ const openClearConfirm = async (scope) => {
 
   <div v-else-if="hasAdminAccess" class="admin-page">
     <div class="page-header">
-      <h1 class="page-title">Управление приглашениями</h1>
+      <h1 class="page-title">{{ t('admin.invitations.management') }}</h1>
       <p class="page-subtitle">
-        Создавайте ссылки вручную или загружайте список email из Excel для массовой рассылки
+        {{ t('admin.invitations.subtitle') }}
       </p>
     </div>
 
@@ -316,54 +320,54 @@ const openClearConfirm = async (scope) => {
       <div class="content-card">
       <div class="invitations-stats">
         <span class="invitations-stat">
-          Режим регистрации: <strong>{{ registrationModeLabel }}</strong>
+          {{ t('admin.invitations.regMode') }} <strong>{{ registrationModeLabel }}</strong>
         </span>
         <span class="invitations-stat">
-          Всего в системе: <strong>{{ totalAll }}</strong>
+          {{ t('admin.invitations.totalLabel') }} <strong>{{ totalAll }}</strong>
         </span>
         <span class="invitations-stat">
-          Ожидают: <strong>{{ pendingCount }}</strong>
+          {{ t('admin.invitations.pendingLabel') }} <strong>{{ pendingCount }}</strong>
         </span>
         <span v-if="inactiveCount > 0" class="invitations-stat">
-          Неактивных: <strong>{{ inactiveCount }}</strong>
+          {{ t('admin.invitations.inactiveLabel') }} <strong>{{ inactiveCount }}</strong>
         </span>
       </div>
 
       <div class="table-header invitations-toolbar">
         <div class="filters-wrapper">
-          <SearchInput id="invitations-search" :model-value="searchQuery" layout="fixed" placeholder="Email, примечание, кто пригласил..." :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
+          <SearchInput id="invitations-search" :model-value="searchQuery" layout="fixed" :placeholder="t('admin.invitations.searchPlaceholder')" :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
           <div class="status-filter">
-            <HoverTooltip text="Статус приглашений">
+            <HoverTooltip :text="t('admin.invitations.statusTooltip')">
               <SelectBox id="invitations-status" v-model="statusFilter" :options="STATUS_OPTIONS" value-key="id" label-key="name" :include-all-option="false" @update:model-value="handleStatusFilterChange"/>
             </HoverTooltip>
           </div>
         </div>
 
         <div class="actions-wrapper">
-          <HoverTooltip text="Одно приглашение">
+          <HoverTooltip :text="t('admin.invitations.oneInvitation')">
             <span class="invitations-icon-btn-wrap">
-              <button type="button" class="btn invitations-toolbar-icon-btn" aria-label="Одно приглашение" :disabled="isLoading" @click="openCreateModal">
+              <button type="button" class="btn invitations-toolbar-icon-btn" :aria-label="t('admin.invitations.oneInvitation')" :disabled="isLoading" @click="openCreateModal">
                 <MailPlus :size="20" aria-hidden="true" />
               </button>
             </span>
           </HoverTooltip>
-          <HoverTooltip text="Загрузить из Excel">
+          <HoverTooltip :text="t('admin.invitations.importExcel')">
             <span class="invitations-icon-btn-wrap">
-              <button type="button" class="btn invitations-toolbar-icon-btn" aria-label="Загрузить из Excel" :disabled="isLoading" @click="openBulkModal">
+              <button type="button" class="btn invitations-toolbar-icon-btn" :aria-label="t('admin.invitations.importExcel')" :disabled="isLoading" @click="openBulkModal">
                 <FileSpreadsheet :size="20" aria-hidden="true" />
               </button>
             </span>
           </HoverTooltip>
-          <HoverTooltip text="Очистить неактивные">
+          <HoverTooltip :text="t('admin.invitations.clearInactive')">
             <span class="invitations-icon-btn-wrap">
-              <button type="button" class="btn invitations-toolbar-icon-btn" aria-label="Очистить неактивные" :disabled="isLoading || inactiveCount === 0" @click="openClearConfirm('inactive')">
+              <button type="button" class="btn invitations-toolbar-icon-btn" :aria-label="t('admin.invitations.clearInactive')" :disabled="isLoading || inactiveCount === 0" @click="openClearConfirm('inactive')">
                 <Eraser :size="20" aria-hidden="true" />
               </button>
             </span>
           </HoverTooltip>
-          <HoverTooltip text="Очистить все">
+          <HoverTooltip :text="t('admin.invitations.clearAll')">
             <span class="invitations-icon-btn-wrap">
-              <button type="button" class="btn invitations-toolbar-icon-btn invitations-toolbar-icon-btn--danger" aria-label="Очистить все" :disabled="isLoading || totalAll === 0" @click="openClearConfirm('all')">
+              <button type="button" class="btn invitations-toolbar-icon-btn invitations-toolbar-icon-btn--danger" :aria-label="t('admin.invitations.clearAll')" :disabled="isLoading || totalAll === 0" @click="openClearConfirm('all')">
                 <Trash2 :size="20" aria-hidden="true" />
               </button>
             </span>
@@ -377,7 +381,7 @@ const openClearConfirm = async (scope) => {
           <div class="invitations-email-cell">
             <div class="d-flex align-items-center gap-2">
               <span class="invitations-email-text">{{ item.email }}</span>
-              <button type="button" class="btn-action" title="Скопировать email" aria-label="Скопировать email" @click.stop="copyEmail(item.email)">
+              <button type="button" class="btn-action" :title="t('admin.invitations.copyEmail')" :aria-label="t('admin.invitations.copyEmail')" @click.stop="copyEmail(item.email)">
                 <Copy :size="15" />
               </button>
             </div>
@@ -405,13 +409,13 @@ const openClearConfirm = async (scope) => {
 
         <template #cell-actions="{ item }">
           <div class="actions-cell">
-            <button type="button" class="btn-action" :disabled="item.status === 'revoked'" :title="item.status === 'revoked' ? 'Ссылка недоступна: приглашение отозвано' : 'Скопировать ссылку на регистрацию'" aria-label="Скопировать ссылку" @click.stop="copyInviteLink(item)">
+            <button type="button" class="btn-action" :disabled="item.status === 'revoked'" :title="item.status === 'revoked' ? t('admin.invitations.linkRevokedTitle') : t('admin.invitations.copyLinkTitle')" :aria-label="t('admin.invitations.copyLink')" @click.stop="copyInviteLink(item)">
               <Copy :size="15" />
             </button>
-            <button v-if="item.status === 'pending'" type="button" class="btn-action" title="Отправить письмо с приглашением" aria-label="Отправить письмо" @click.stop="handleResend(item)">
+            <button v-if="item.status === 'pending'" type="button" class="btn-action" :title="t('admin.invitations.sendEmailTitle')" :aria-label="t('admin.invitations.sendEmail')" @click.stop="handleResend(item)">
               <Mail :size="15" />
             </button>
-            <button v-if="item.status === 'pending'" type="button" class="btn-action btn-action--delete" title="Отозвать приглашение" aria-label="Отозвать приглашение" @click.stop="handleRevoke(item)">
+            <button v-if="item.status === 'pending'" type="button" class="btn-action btn-action--delete" :title="t('admin.invitations.revokeTitle')" :aria-label="t('admin.invitations.revoke')" @click.stop="handleRevoke(item)">
               <Ban :size="15" />
             </button>
           </div>

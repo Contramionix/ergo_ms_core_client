@@ -1,4 +1,5 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, watch } from 'vue'
 import { Copy, Mail } from 'lucide-vue-next'
 import { createInvitation } from '@/core/cms/adp/admin/js/invitationService'
@@ -6,6 +7,9 @@ import { copyTextToClipboard } from '@/js/utils/clipboard.js'
 import { extractApiError } from '@/js/utils/apiErrorMessage.js'
 import { logError } from '@/js/utils/logError.js'
 import ModalCenter from '@/components/ModalCenter.vue'
+
+const { t } = useAppI18n()
+
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -45,7 +49,7 @@ const close = () => {
 const submit = async (sendEmail) => {
   error.value = ''
   if (!email.value.trim()) {
-    error.value = 'Укажите email'
+    error.value = t('admin.invitations.emailRequired')
     return
   }
 
@@ -75,7 +79,7 @@ const submit = async (sendEmail) => {
     close()
   } catch (apiError) {
     logError('Ошибка создания приглашения', apiError)
-    error.value = extractApiError(apiError, 'Не удалось создать приглашение')
+    error.value = extractApiError(apiError, t('admin.invitations.createFailed'))
     isSubmitting.value = false
   }
 }
@@ -85,7 +89,7 @@ const submit = async (sendEmail) => {
   <ModalCenter
     standalone
     modal-id="invitationCreateModal"
-    title="Новое приглашение"
+    :title="t('admin.invitations.newTitle')"
     size="md"
     scrollable
     :visible="visible"
@@ -94,7 +98,7 @@ const submit = async (sendEmail) => {
   >
     <form :id="formId" class="invitation-create-modal" @submit.prevent>
       <p class="invitation-create-modal__hint">
-        Создайте ссылку для ручной отправки или сразу отправьте письмо на указанный email.
+        {{ t('admin.invitations.createHint') }}
       </p>
 
       <div v-if="error" class="invitation-create-modal__error">{{ error }}</div>
@@ -113,16 +117,16 @@ const submit = async (sendEmail) => {
       </div>
 
       <div class="invitation-create-modal__field">
-        <label class="invitation-create-modal__label" for="invite-note">Примечание</label>
+        <label class="invitation-create-modal__label" for="invite-note">{{ t('admin.invitations.note') }}</label>
         <input
           id="invite-note"
           v-model="note"
           type="text"
           class="invitation-create-modal__input"
-          placeholder="Например: отдел аналитики"
+          :placeholder="t('admin.invitations.notePlaceholder')"
           :disabled="isSubmitting || disabled"
         />
-        <p class="invitation-create-modal__help">Необязательно. Видно только администраторам в списке.</p>
+        <p class="invitation-create-modal__help">{{ t('admin.invitations.noteHelp') }}</p>
       </div>
     </form>
 
@@ -133,7 +137,7 @@ const submit = async (sendEmail) => {
         :disabled="isSubmitting"
         @click="close"
       >
-        Отмена
+        {{ t('admin.invitations.cancel') }}
       </button>
       <button
         type="button"
@@ -142,7 +146,7 @@ const submit = async (sendEmail) => {
         @click="submit(false)"
       >
         <Copy :size="16" />
-        <span>{{ isSubmitting ? 'Создание...' : 'Создать и скопировать ссылку' }}</span>
+        <span>{{ isSubmitting ? t('admin.invitations.creating') : t('admin.invitations.createCopy') }}</span>
       </button>
       <button
         type="button"
@@ -151,7 +155,7 @@ const submit = async (sendEmail) => {
         @click="submit(true)"
       >
         <Mail :size="16" />
-        <span>{{ isSubmitting ? 'Отправка...' : 'Создать и отправить письмо' }}</span>
+        <span>{{ isSubmitting ? t('admin.invitations.sending') : t('admin.invitations.createSend') }}</span>
       </button>
     </template>
   </ModalCenter>

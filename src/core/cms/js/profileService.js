@@ -1,6 +1,7 @@
 import { apiClient } from '../../../js/api/manager'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import { formatDateTime, getRelativeTime } from '@/js/utils/timeUtils.js'
+import { getDefaultLocale } from '@/i18n/supportedLocales.js'
 
 export const profileService = {
   // Получить полный профиль пользователя
@@ -87,7 +88,7 @@ export const profileService = {
       // Профиль пользователя
       phone: profile.phone || '',
       bio: profile.bio || '',
-      language: profile.language || 'ru',
+      language: profile.language || getDefaultLocale(),
       timezone: profile.timezone || 'Europe/Moscow',
 
       // Метаданные

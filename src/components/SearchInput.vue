@@ -22,7 +22,7 @@
         :value="modelValue"
         :type="inputType"
         class="form-control search-input__control"
-        :placeholder="placeholder"
+        :placeholder="resolvedPlaceholder"
         :disabled="disabled"
         :aria-label="ariaLabel"
         @input="onInput"
@@ -36,6 +36,9 @@
 <script setup>
 import { computed, useId } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   modelValue: {
@@ -44,7 +47,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: 'Поиск...',
+    default: undefined,
   },
   label: {
     type: String,
@@ -87,7 +90,10 @@ const emit = defineEmits(['update:modelValue', 'input', 'focus', 'blur'])
 
 const generatedId = useId()
 const inputId = computed(() => props.id || generatedId)
-const ariaLabel = computed(() => props.label || props.placeholder)
+const resolvedPlaceholder = computed(
+  () => props.placeholder ?? t('components.searchInput.placeholder'),
+)
+const ariaLabel = computed(() => props.label || resolvedPlaceholder.value)
 const iconSize = 16
 
 function onInput(event) {

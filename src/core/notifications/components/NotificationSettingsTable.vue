@@ -1,4 +1,7 @@
 <script setup>
+import { computed } from 'vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
 const props = defineProps({
   events: { type: Array, required: true },
   sourceModule: { type: String, required: true },
@@ -6,11 +9,12 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['toggle'])
+const { t } = useAppI18n()
 
-const CHANNELS = [
-  { key: 'email', label: 'По эл. почте' },
-  { key: 'in_app', label: 'В клиенте' },
-]
+const CHANNELS = computed(() => [
+  { key: 'email', label: t('settings.notifications.channelEmail') },
+  { key: 'in_app', label: t('settings.notifications.channelInApp') },
+])
 
 function isChannelMuted(channelKey) {
   return props.globalSwitches?.[channelKey] === false
@@ -28,10 +32,10 @@ function onToggle(event, channelKey, checked) {
 
 <template>
   <div class="notif-table-wrap">
-    <table class="notif-table" aria-label="Настройки уведомлений">
+    <table class="notif-table" :aria-label="t('settings.notifications.tableAria')">
       <thead>
         <tr>
-          <th scope="col" class="notif-table__th notif-table__th--label">Получать уведомления о</th>
+          <th scope="col" class="notif-table__th notif-table__th--label">{{ t('settings.notifications.receiveAbout') }}</th>
           <th
             v-for="channel in CHANNELS"
             :key="channel.key"
@@ -56,14 +60,14 @@ function onToggle(event, channelKey, checked) {
               class="form-check-input notif-table__checkbox"
               :checked="event.channels[channel.key].enabled"
               :disabled="isChannelMuted(channel.key)"
-              :title="isChannelMuted(channel.key) ? 'Канал отключён глобальным переключателем' : ''"
+              :title="isChannelMuted(channel.key) ? t('settings.notifications.channelMuted') : ''"
               :aria-label="`${event.label} — ${channel.label}`"
               @change="onToggle(event, channel.key, $event.target.checked)"
             />
             <span
               v-else
               class="notif-table__unavailable"
-              title="Недоступно для этого типа уведомлений"
+              :title="t('settings.notifications.unavailable')"
             >—</span>
           </td>
         </tr>

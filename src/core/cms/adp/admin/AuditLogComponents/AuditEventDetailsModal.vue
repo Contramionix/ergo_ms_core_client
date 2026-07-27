@@ -2,6 +2,7 @@
 import ModalCenter from '@/components/ModalCenter.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 defineProps({
   visible: { type: Boolean, default: false },
@@ -9,6 +10,8 @@ defineProps({
 })
 
 defineEmits(['close'])
+
+const { t } = useAppI18n()
 
 function formatValue(value) {
   if (value === null || value === undefined || value === '') return '—'
@@ -20,7 +23,7 @@ function ipLocationTooltip(event) {
   const ip = (event?.ip_address || '').trim()
   if (!ip) return ''
   const location = (event?.ip_location || '').trim()
-  return location || 'Местоположение неизвестно'
+  return location || t('admin.audit.locationUnknown')
 }
 </script>
 
@@ -28,17 +31,17 @@ function ipLocationTooltip(event) {
   <ModalCenter
     standalone
     modal-id="auditEventDetails"
-    :title="event?.action_label || 'Подробности события'"
+    :title="event?.action_label || t('admin.audit.detailsTitle')"
     :visible="visible"
     size="lg"
     @close="$emit('close')"
   >
     <template v-if="event">
       <div class="audit-detail-meta">
-        <div><span class="text-muted">Время:</span> {{ formatDateTime(event.created_at) }}</div>
-        <div><span class="text-muted">Инициатор:</span> {{ event.actor_label || '—' }}</div>
+        <div><span class="text-muted">{{ t('admin.audit.timeLabel') }}</span> {{ formatDateTime(event.created_at) }}</div>
+        <div><span class="text-muted">{{ t('admin.audit.initiatorLabel') }}</span> {{ event.actor_label || '—' }}</div>
         <div v-if="event.entity_label">
-          <span class="text-muted">Объект:</span> {{ event.entity_label }}
+          <span class="text-muted">{{ t('admin.audit.objectLabel') }}</span> {{ event.entity_label }}
         </div>
         <div v-if="event.ip_address" class="audit-detail-meta__ip">
           <span class="text-muted">IP:</span>
@@ -49,14 +52,14 @@ function ipLocationTooltip(event) {
       </div>
 
       <div v-if="event.changes?.length" class="audit-changes">
-        <h6 class="audit-detail-heading">Изменения</h6>
+        <h6 class="audit-detail-heading">{{ t('admin.audit.changes') }}</h6>
         <div class="table-responsive">
           <table class="table table-sm align-middle mb-0 audit-changes__table">
             <thead>
               <tr>
-                <th>Поле</th>
-                <th>Было</th>
-                <th>Стало</th>
+                <th>{{ t('admin.audit.field') }}</th>
+                <th>{{ t('admin.audit.before') }}</th>
+                <th>{{ t('admin.audit.after') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -71,7 +74,7 @@ function ipLocationTooltip(event) {
       </div>
 
       <div v-if="event.meta && Object.keys(event.meta).length" class="audit-meta">
-        <h6 class="audit-detail-heading">Метаданные</h6>
+        <h6 class="audit-detail-heading">{{ t('admin.audit.metadata') }}</h6>
         <pre class="audit-meta__pre">{{ JSON.stringify(event.meta, null, 2) }}</pre>
       </div>
 
@@ -79,12 +82,12 @@ function ipLocationTooltip(event) {
         v-if="!(event.changes?.length) && !(event.meta && Object.keys(event.meta).length)"
         class="audit-detail-empty text-muted mb-0"
       >
-        Дополнительных сведений об этом событии нет.
+        {{ t('admin.audit.noExtraDetails') }}
       </p>
     </template>
 
     <template #footer>
-      <button type="button" class="btn btn-secondary" @click="$emit('close')">Закрыть</button>
+      <button type="button" class="btn btn-secondary" @click="$emit('close')">{{ t('common.close') }}</button>
     </template>
   </ModalCenter>
 </template>

@@ -8,6 +8,25 @@
   box-sizing: border-box;
 }
 
+// Режим «без анимаций» обнуляет duration у * — bounce vue-toastification
+// может оставить toast в кадре from (opacity:0 / off-screen).
+html[data-ergo-motion='reduce'] {
+  .Vue-Toastification__bounce-enter-active,
+  .Vue-Toastification__fade-enter-active,
+  .Vue-Toastification__slideBlurred-enter-active {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .Vue-Toastification__bounce-leave-active,
+  .Vue-Toastification__fade-leave-active,
+  .Vue-Toastification__slideBlurred-leave-active {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 // Дикторы: контейнер тостов — live region (vue-toastification + assist mode)
 html[data-ergo-a11y='assist'] .Vue-Toastification__container,
 html[data-ergo-a11y='assist'] .ergo-toast-container {

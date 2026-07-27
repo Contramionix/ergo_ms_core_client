@@ -1,0 +1,48 @@
+export default {
+  toolbar: {
+    notifications: 'Notifications',
+    apps: 'Applications',
+    settings: 'Paramètres',
+    profile: 'Profil',
+    logout: 'Se déconnecter',
+    search: 'Rechercher',
+    theme: 'Thème',
+  },
+  sidebar: {
+    collapse: 'Réduire le menu',
+    expand: 'Développer le menu',
+    empty: 'Aucun élément de menu',
+    ariaLabel: 'Menu latéral',
+    open: 'Ouvrir le menu',
+    close: 'Fermer le menu',
+    notConfigured: "Le menu n'est pas encore configuré. Contactez un administrateur.",
+    loadFailed: 'Échec du chargement du menu. Essayez d’actualiser la page.',
+    measureNameSample: 'Prénom Nom',
+    measureOnlineStatus: 'En ligne',
+  },
+  separators: {
+    settings: 'Paramètres',
+    modules: 'Modules',
+  },
+  apps: {
+    title: 'Applications',
+    empty: 'Aucune application disponible',
+  },
+  notifications: {
+    title: 'Notifications',
+    empty: 'Aucune notification pour le moment',
+    markRead: 'Marquer comme lu',
+    markAllRead: 'Tout marquer comme lu',
+    viewAll: 'Toutes les notifications',
+    openPage: 'Ouvrir la page des notifications',
+  },
+  userMenu: {
+    account: 'Compte',
+    profile: 'Profil',
+    settings: 'Paramètres',
+    logout: 'Se déconnecter',
+    ariaLabel: 'Menu utilisateur',
+    emailMissing: 'e-mail non défini',
+    loading: 'Chargement...',
+  },
+}

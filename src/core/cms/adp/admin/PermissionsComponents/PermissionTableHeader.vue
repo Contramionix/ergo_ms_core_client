@@ -2,6 +2,9 @@
 import { ref, defineAsyncComponent } from 'vue'
 import SearchInput from '@/components/SearchInput.vue'
 import { Plus } from 'lucide-vue-next'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const SubmitForm = defineAsyncComponent(() =>
   import('@/core/cms/adp/admin/PermissionsComponents/SubmitPermissionAdd.vue'),
@@ -33,14 +36,14 @@ const handleSearchQuery = (query) => {
   <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
     <SearchInput
       :model-value="searchQuery"
-      placeholder="Поиск по названию или пути..."
+      :placeholder="t('admin.policies.searchPages')"
       layout="fixed"
       :show-icon="true"
       @update:model-value="handleSearchQuery"
     />
     <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" @click="showAddModal = true">
       <Plus :size="16" />
-      Добавить политику
+      {{ t('admin.policies.addPolicy') }}
     </button>
     <SubmitForm
       v-if="showAddModal"

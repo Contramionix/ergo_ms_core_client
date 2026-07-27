@@ -10,8 +10,8 @@
       <AlertTriangle :size="26" class="permission-unsaved-toast__icon" aria-hidden="true" />
       <div class="permission-unsaved-toast__content">
         <div class="permission-unsaved-toast__text">
-          <p>{{ title }}</p>
-          <span>{{ description }}</span>
+          <p>{{ resolvedTitle }}</p>
+          <span>{{ resolvedDescription }}</span>
         </div>
         <div class="permission-unsaved-toast__actions">
           <button
@@ -20,7 +20,7 @@
             :disabled="saving"
             @click="$emit('cancel')"
           >
-            {{ cancelLabel }}
+            {{ resolvedCancelLabel }}
           </button>
           <button
             type="button"
@@ -28,7 +28,7 @@
             :disabled="saving"
             @click="$emit('save')"
           >
-            {{ saving ? savingLabel : saveLabel }}
+            {{ saving ? resolvedSavingLabel : resolvedSaveLabel }}
           </button>
         </div>
       </div>
@@ -37,9 +37,13 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
-defineProps({
+const { t } = useAppI18n()
+
+const props = defineProps({
   visible: {
     type: Boolean,
     default: false,
@@ -50,27 +54,39 @@ defineProps({
   },
   title: {
     type: String,
-    default: 'Внимание — есть несохраненные изменения',
+    default: undefined,
   },
   description: {
     type: String,
-    default: 'Сохраните или отмените изменения перед выходом.',
+    default: undefined,
   },
   cancelLabel: {
     type: String,
-    default: 'Отменить',
+    default: undefined,
   },
   saveLabel: {
     type: String,
-    default: 'Сохранить',
+    default: undefined,
   },
   savingLabel: {
     type: String,
-    default: 'Сохранение...',
+    default: undefined,
   },
 })
 
 defineEmits(['save', 'cancel'])
+
+const resolvedTitle = computed(() => props.title ?? t('components.unsavedChanges.title'))
+const resolvedDescription = computed(
+  () => props.description ?? t('components.unsavedChanges.message'),
+)
+const resolvedCancelLabel = computed(
+  () => props.cancelLabel ?? t('components.unsavedChanges.discard'),
+)
+const resolvedSaveLabel = computed(() => props.saveLabel ?? t('components.unsavedChanges.save'))
+const resolvedSavingLabel = computed(
+  () => props.savingLabel ?? t('components.unsavedChanges.saving'),
+)
 </script>
 
 <style scoped lang="scss">
@@ -223,4 +239,3 @@ defineEmits(['save', 'cancel'])
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
 }
 </style>
-

@@ -2,18 +2,25 @@
 import { AlertTriangle } from 'lucide-vue-next'
 import { ref, computed, watch, onUnmounted } from 'vue'
 import ModalCenter from '@/components/ModalCenter.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   show: { type: Boolean, default: false },
-  title: { type: String, default: 'Подтверждение' },
+  title: { type: String, default: undefined },
   message: { type: String, default: '' },
-  confirmText: { type: String, default: 'Удалить' },
-  cancelText: { type: String, default: 'Отмена' },
+  confirmText: { type: String, default: undefined },
+  cancelText: { type: String, default: undefined },
   variant: { type: String, default: 'danger', validator: (value) => ['danger', 'warning', 'primary'].includes(value) },
   loading: { type: Boolean, default: false },
   confirmCountdownSeconds: { type: Number, default: 0 },
   zIndex: { type: [Number, String], default: null },
 })
+
+const resolvedTitle = computed(() => props.title ?? t('components.confirm.title'))
+const resolvedConfirmText = computed(() => props.confirmText ?? t('components.confirm.deleteConfirm'))
+const resolvedCancelText = computed(() => props.cancelText ?? t('components.confirm.cancel'))
 
 const emit = defineEmits(['confirm', 'cancel', 'close'])
 
@@ -24,9 +31,9 @@ let countdownTimer = null
 
 const confirmButtonText = computed(() => {
   if (countdown.value > 0) {
-    return `${props.confirmText} (${countdown.value})`
+    return `${resolvedConfirmText.value} (${countdown.value})`
   }
-  return props.confirmText
+  return resolvedConfirmText.value
 })
 
 const isConfirmDisabled = computed(() => props.loading || countdown.value > 0)
@@ -99,14 +106,14 @@ function handleClose() {
   >
     <template #title>
       <AlertTriangle v-if="variant === 'danger' || variant === 'warning'" :size="24" :class="variant === 'danger' ? 'text-danger' : 'text-warning'" />
-      <span>{{ title }}</span>
+      <span>{{ resolvedTitle }}</span>
     </template>
 
     <p class="mb-0 cd-message">{{ message }}</p>
 
     <template #footer>
       <button type="button" class="ui-btn ui-btn--secondary" @click="handleCancel" :disabled="loading">
-        {{ cancelText }}
+        {{ resolvedCancelText }}
       </button>
       <button
         type="button"
@@ -114,7 +121,7 @@ function handleClose() {
         @click="handleConfirm"
         :disabled="isConfirmDisabled"
       >
-        <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-label="Загрузка"></span>
+        <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" :aria-label="t('common.loading')"></span>
         {{ confirmButtonText }}
       </button>
     </template>

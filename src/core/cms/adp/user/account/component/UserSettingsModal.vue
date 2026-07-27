@@ -1,12 +1,13 @@
 <script setup>
 import { ref, computed, watch, onUnmounted, provide } from 'vue'
 import ModalCenter from '@/components/ModalCenter.vue'
-import UserSettingsNav from './UserSettingsNav.vue'
-import { TAB_SECTIONS } from './userSettingsTabs.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import {
   NOTIFICATION_NAV_KEY,
   createNotificationNavController,
 } from '@/core/notifications/js/useNotificationSettingsNav.js'
+import UserSettingsNav from './UserSettingsNav.vue'
+import { TAB_SECTIONS } from './userSettingsTabs.js'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -14,6 +15,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close'])
+const { t } = useAppI18n()
 
 const panelWrapRef = ref(null)
 const notificationNav = createNotificationNavController(panelWrapRef)
@@ -23,17 +25,18 @@ const notificationSections = computed(() => notificationNav.sections.value)
 const notificationActiveAnchorId = computed(() => notificationNav.activeAnchorId.value)
 
 function tabById(tabId) {
-  for (const section of TAB_SECTIONS) {
-    const tab = section.items.find((t) => t.id === tabId)
+  const sections = TAB_SECTIONS.value
+  for (const section of sections) {
+    const tab = section.items.find((item) => item.id === tabId)
     if (tab) return tab
   }
-  return TAB_SECTIONS[0].items[0]
+  return sections[0].items[0]
 }
 
 const activeTabId = ref(
-  TAB_SECTIONS.some((s) => s.items.some((t) => t.id === props.initialTab))
+  TAB_SECTIONS.value.some((s) => s.items.some((t) => t.id === props.initialTab))
     ? props.initialTab
-    : TAB_SECTIONS[0].items[0].id,
+    : TAB_SECTIONS.value[0].items[0].id,
 )
 
 const activePanel = computed(() => tabById(activeTabId.value).component)
@@ -42,9 +45,9 @@ watch(
   () => props.show,
   (isOpen) => {
     if (isOpen) {
-      activeTabId.value = TAB_SECTIONS.some((s) => s.items.some((t) => t.id === props.initialTab))
+      activeTabId.value = TAB_SECTIONS.value.some((s) => s.items.some((t) => t.id === props.initialTab))
         ? props.initialTab
-        : TAB_SECTIONS[0].items[0].id
+        : TAB_SECTIONS.value[0].items[0].id
     } else {
       notificationNav.teardownObserver()
     }
@@ -80,7 +83,7 @@ function handleClose() {
     :visible="show"
     modal-id="userSettingsModal"
     :show-title="false"
-    modal-aria-label="Настройки пользователя"
+    :modal-aria-label="t('settings.sections.user')"
     :show-footer="false"
     custom-class="user-settings-modal-root"
     dialog-class="modal-xl"

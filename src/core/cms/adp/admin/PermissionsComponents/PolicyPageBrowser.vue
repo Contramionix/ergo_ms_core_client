@@ -1,6 +1,9 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import SearchInput from '@/components/SearchInput.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   groups: { type: Array, default: () => [] },
@@ -115,22 +118,22 @@ function selectPage(path) {
     <div class="policy-page-browser__toolbar">
       <SearchInput
         v-model="searchQuery"
-        placeholder="Поиск по модулю, названию или пути..."
+        :placeholder="t('admin.policies.searchBrowser')"
         layout="grow"
         :show-icon="true"
       />
       <div class="policy-page-browser__stats text-muted small">
-        {{ groups.length }} модулей · {{ totalPagesCount }} страниц
+        {{ t('admin.policies.modulesPagesStats', { modules: groups.length, pages: totalPagesCount }) }}
       </div>
     </div>
 
     <div v-if="!hasGroups" class="alert alert-warning py-2 small mb-0">
-      Каталог маршрутов пуст. Синхронизируйте маршруты, чтобы увидеть список модулей и страниц.
+      {{ t('admin.policies.catalogEmpty') }}
     </div>
 
     <template v-else>
       <div v-if="isSearchActive" class="policy-page-browser__search-results">
-        <div class="policy-page-browser__section-title">Результаты поиска</div>
+        <div class="policy-page-browser__section-title">{{ t('admin.policies.searchResults') }}</div>
         <div class="policy-page-browser__pages-list">
           <button
             v-for="page in visiblePages"
@@ -147,14 +150,14 @@ function selectPage(path) {
             </span>
           </button>
           <div v-if="visiblePages.length === 0" class="text-muted small px-2 py-3">
-            Ничего не найдено.
+            {{ t('admin.policies.nothingFound') }}
           </div>
         </div>
       </div>
 
       <div v-else class="policy-page-browser__layout">
         <div class="policy-page-browser__modules">
-          <div class="policy-page-browser__section-title">Модули</div>
+          <div class="policy-page-browser__section-title">{{ t('admin.policies.modules') }}</div>
           <div class="policy-page-browser__modules-list">
             <button
               v-for="group in groups"
@@ -172,7 +175,7 @@ function selectPage(path) {
 
         <div class="policy-page-browser__pages">
           <div class="policy-page-browser__section-title">
-            Страницы
+            {{ t('admin.policies.pages') }}
             <span v-if="activeGroup" class="text-muted fw-normal">· {{ activeGroup.label }}</span>
           </div>
           <div class="policy-page-browser__pages-list">
@@ -188,7 +191,7 @@ function selectPage(path) {
               <span class="policy-page-browser__page-path">{{ page.path }}</span>
             </button>
             <div v-if="visiblePages.length === 0" class="text-muted small px-2 py-3">
-              В этом модуле нет страниц.
+              {{ t('admin.policies.noPagesInModule') }}
             </div>
           </div>
         </div>

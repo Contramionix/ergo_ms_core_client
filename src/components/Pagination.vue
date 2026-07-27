@@ -11,17 +11,17 @@
     <p v-if="showRangeInfo && rangeText" class="ergo-pagination__info text-muted small">
       {{ rangeText }}
       <span v-if="showPagePosition && totalPages > 1" class="ergo-pagination__position">
-        (страница {{ modelValue }} из {{ totalPages }})
+        ({{ t('components.pagination.pagePosition', { page: modelValue, total: totalPages }) }})
       </span>
     </p>
 
-    <nav class="ergo-pagination__nav" aria-label="Навигация по страницам">
+    <nav class="ergo-pagination__nav" :aria-label="t('components.pagination.navLabel')">
       <ul class="ergo-pagination__list">
         <li v-if="showFirstLast" class="ergo-pagination__item" :class="{ 'is-disabled': isFirstDisabled }">
           <button
             type="button"
             class="ergo-pagination__button ergo-pagination__button--icon"
-            aria-label="Первая страница"
+            :aria-label="t('components.pagination.first')"
             :disabled="isFirstDisabled"
             @click="goToPage(1)"
           >
@@ -33,7 +33,7 @@
           <button
             type="button"
             class="ergo-pagination__button ergo-pagination__button--icon"
-            aria-label="Предыдущая страница"
+            :aria-label="t('components.pagination.previous')"
             :disabled="isPrevDisabled"
             @click="goToPage(modelValue - 1)"
           >
@@ -74,7 +74,7 @@
           <button
             type="button"
             class="ergo-pagination__button ergo-pagination__button--icon"
-            aria-label="Следующая страница"
+            :aria-label="t('components.pagination.next')"
             :disabled="isNextDisabled"
             @click="goToPage(modelValue + 1)"
           >
@@ -86,7 +86,7 @@
           <button
             type="button"
             class="ergo-pagination__button ergo-pagination__button--icon"
-            aria-label="Последняя страница"
+            :aria-label="t('components.pagination.last')"
             :disabled="isLastDisabled"
             @click="goToPage(totalPages)"
           >
@@ -101,6 +101,9 @@
 <script setup>
 import { computed } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   modelValue: {
@@ -220,14 +223,23 @@ const endIndex = computed(() => {
 const rangeText = computed(() => {
   if (props.totalItems === null) {
     if (props.visibleCount && props.visibleCount > 0) {
-      return `Показано ${startIndex.value + 1}–${endIndex.value}`
+      return t('components.pagination.shownRangeNoTotal', {
+        from: startIndex.value + 1,
+        to: endIndex.value,
+      })
     }
-    return props.modelValue > 0 ? `Страница ${props.modelValue}` : ''
+    return props.modelValue > 0
+      ? t('components.pagination.pageOnly', { page: props.modelValue })
+      : ''
   }
   if (props.totalItems === 0) {
-    return 'Записей нет'
+    return t('components.pagination.noRecords')
   }
-  return `Показано ${startIndex.value + 1}–${endIndex.value} из ${props.totalItems}`
+  return t('components.pagination.shownRange', {
+    from: startIndex.value + 1,
+    to: endIndex.value,
+    total: props.totalItems,
+  })
 })
 
 const visiblePages = computed(() => {

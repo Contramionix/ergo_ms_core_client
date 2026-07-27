@@ -33,6 +33,8 @@ import { computed, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import MenuItem from './MenuItem.vue'
 import { iconMapping } from '@/config/icons-mapping.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { resolveMenuItemTitle } from '@/i18n/resolveMenuItemTitle.js'
 import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
 import { isMenuItemActive } from './composables/isMenuItemActive.js'
 import { canNavigateToRoute, isSameMenuRoutePath, safeNavigateByName } from './composables/safeMenuNavigate.js'
@@ -98,7 +100,13 @@ const hasMenuItems = computed(() => {
 
 const router = useRouter()
 const route = useRoute()
+const { locale } = useAppI18n()
 const emit = defineEmits(['toggle', 'navigate', 'toggle-nested'])
+
+const displayTitle = computed(() => {
+  void locale.value
+  return resolveMenuItemTitle(props.data, router)
+})
 
 const checkChildrenActiveRecursive = (children) => {
   if (!children || children.length === 0) return false
@@ -223,9 +231,9 @@ function routeClick(event) {
           <Dot v-else :size="iconSizes.item" />
         </div>
         <MenuPeekLabel
-          :text="data.title"
+          :text="displayTitle"
           :visible="isHovering"
-          :title="data.title"
+          :title="displayTitle"
           class="side-title__name"
         />
       </div>

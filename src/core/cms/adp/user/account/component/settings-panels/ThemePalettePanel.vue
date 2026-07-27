@@ -2,9 +2,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { Check, RotateCcw } from 'lucide-vue-next'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
-import { useToast } from '@/js/utils/toast.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useUserThemePreference } from '@/core/cms/js/userThemePreference.js'
+import { useToast } from '@/js/utils/toast.js'
 
+const { t } = useAppI18n()
 const toast = useToast()
 const {
   selectedThemeId,
@@ -46,9 +48,8 @@ async function onSelect(theme) {
   busyId.value = theme.id
   try {
     await selectUserTheme(theme.id)
-    toast.success(`Палитра «${theme.name}» применена`)
   } catch (e) {
-    toast.error(e.message || 'Не удалось выбрать тему')
+    toast.error(e.message || t('settings.themes.selectFailed'))
   } finally {
     busyId.value = null
   }
@@ -61,9 +62,8 @@ async function onResetSite() {
   busyId.value = 'reset'
   try {
     await resetUserThemeToSiteDefault()
-    toast.success('Используется стандарт сайта')
   } catch (e) {
-    toast.error(e.message || 'Не удалось сбросить палитру')
+    toast.error(e.message || t('settings.themes.resetFailed'))
   } finally {
     busyId.value = null
   }
@@ -78,9 +78,9 @@ onMounted(() => {
   <div class="theme-palette-panel">
     <div class="theme-palette-panel__head">
       <div>
-        <h2 class="theme-palette-panel__title">Палитра</h2>
+        <h2 class="theme-palette-panel__title">{{ t('settings.themes.palette') }}</h2>
         <p class="theme-palette-panel__hint">
-          Выберите тему из каталога, опубликованного администратором.
+          {{ t('settings.themes.paletteHint') }}
         </p>
       </div>
       <div class="theme-palette-panel__head-actions">
@@ -91,7 +91,7 @@ onMounted(() => {
           @click="onResetSite"
         >
           <RotateCcw :size="14" aria-hidden="true" />
-          Как на сайте
+          {{ t('settings.themes.siteDefaultBtn') }}
         </button>
       </div>
     </div>
@@ -101,7 +101,7 @@ onMounted(() => {
         v-if="!catalog.length"
         class="theme-palette-panel__empty"
       >
-        Администратор ещё не открыл темы для выбора.
+        {{ t('settings.themes.emptyCatalog') }}
       </p>
       <div
         v-else
@@ -121,7 +121,7 @@ onMounted(() => {
             type="button"
             class="theme-palette-card__main"
             :aria-pressed="effectiveSelectedId === theme.id && !usingSiteDefault ? 'true' : 'false'"
-            :aria-label="`Выбрать тему ${theme.name}`"
+            :aria-label="t('settings.themes.selectTheme', { name: theme.name })"
             :disabled="Boolean(busyId)"
             @click="onSelect(theme)"
           >
@@ -142,7 +142,7 @@ onMounted(() => {
                 v-if="theme.id === defaultThemeId"
                 class="theme-palette-card__badge"
               >
-                Стандарт сайта
+                {{ t('settings.themes.badgeSiteDefault') }}
               </span>
               <span
                 v-if="effectiveSelectedId === theme.id && !usingSiteDefault"
@@ -159,9 +159,9 @@ onMounted(() => {
         v-if="usingSiteDefault && defaultThemeId"
         class="theme-palette-panel__status"
       >
-        Сейчас используется стандарт сайта
-        <template v-if="catalog.find((t) => t.id === defaultThemeId)">
-          «{{ catalog.find((t) => t.id === defaultThemeId)?.name }}»
+        {{ t('settings.themes.siteDefault') }}
+        <template v-if="catalog.find((theme) => theme.id === defaultThemeId)">
+          «{{ catalog.find((theme) => theme.id === defaultThemeId)?.name }}»
         </template>
       </p>
     </LoadingContentArea>

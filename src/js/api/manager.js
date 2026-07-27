@@ -5,6 +5,7 @@ import { performServerLogout } from '@/core/cms/js/tokenRefresh.js'
 import { applyMaintenanceFromResponse, isMaintenanceResponse } from '@/composables/useMaintenanceMode.js'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
 import { logError, sanitizeError } from '@/js/utils/logError.js'
+import { getCurrentLocale } from '@/i18n/index.js'
 
 /**
  * Класс для работы с API
@@ -37,6 +38,9 @@ class ApiClient {
           /* игнор, дадим серверу ответить 401 */
         }
       }
+      const headers = config.headers || {}
+      headers['Accept-Language'] = getCurrentLocale()
+      config.headers = headers
       return config
     })
 

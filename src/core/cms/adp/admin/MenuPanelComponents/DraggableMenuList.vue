@@ -14,14 +14,14 @@
           
           <div class="separator-row-inline__actions-wrapper">
             <div class="separator-row-inline__actions">
-            <button type="button" class="separator-row-inline__visibility-btn" :class="{ 'separator-row-inline__visibility-btn--hidden': !item.is_active }" @click.stop="$emit('toggle-visibility-separator', getOriginalSeparator(item))" :title="item.is_active ? 'Скрыть разделитель' : 'Показать разделитель'" :aria-label="item.is_active ? 'Скрыть разделитель' : 'Показать разделитель'">
+            <button type="button" class="separator-row-inline__visibility-btn" :class="{ 'separator-row-inline__visibility-btn--hidden': !item.is_active }" @click.stop="$emit('toggle-visibility-separator', getOriginalSeparator(item))" :title="item.is_active ? t('admin.menu.hideSeparator') : t('admin.menu.showSeparator')" :aria-label="item.is_active ? t('admin.menu.hideSeparator') : t('admin.menu.showSeparator')">
               <Eye v-if="item.is_active" :size="20" aria-hidden="true" />
               <EyeOff v-else :size="20" aria-hidden="true" />
             </button>
-            <button type="button" class="separator-row-inline__action-btn separator-row-inline__action-btn--edit" @click.stop="$emit('edit-separator', getOriginalSeparator(item))" title="Редактировать" aria-label="Редактировать разделитель">
+            <button type="button" class="separator-row-inline__action-btn separator-row-inline__action-btn--edit" @click.stop="$emit('edit-separator', getOriginalSeparator(item))" :title="t('admin.menu.editItem')" :aria-label="t('admin.menu.editSeparator')">
               <Settings :size="20" class="separator-row-inline__settings-icon" aria-hidden="true" />
             </button>
-            <button type="button" class="separator-row-inline__action-btn separator-row-inline__action-btn--delete" @click.stop="$emit('delete-separator', getOriginalSeparator(item))" title="Удалить" aria-label="Удалить разделитель">
+            <button type="button" class="separator-row-inline__action-btn separator-row-inline__action-btn--delete" @click.stop="$emit('delete-separator', getOriginalSeparator(item))" :title="t('admin.menu.deleteItem')" :aria-label="t('admin.menu.deleteSeparator')">
               <Trash :size="20" aria-hidden="true" />
             </button>
             </div>
@@ -35,10 +35,13 @@
 </template>
 
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, watch, nextTick } from 'vue'
 import { SlickList, SlickItem, HandleDirective as vHandle } from 'vue-slicksort'
 import { Minus, GripVertical, Settings, Trash, Eye, EyeOff } from 'lucide-vue-next'
 import DraggableMenuRow from './DraggableMenuRow.vue'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   items: {

@@ -1,17 +1,20 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
-import { useToast } from '@/js/utils/toast.js'
 import SelectBox from '@/components/SelectBox.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useProfile } from '@/core/cms/js/profileService.js'
+import { useToast } from '@/js/utils/toast.js'
 import ChangePasswordModal from './ChangePasswordModal.vue'
 import SessionCard from './SessionCard.vue'
 
-const PROFILE_VISIBILITY_OPTIONS = [
-  { id: 'public', name: 'Публичный' },
-  { id: 'friends', name: 'Только друзья' },
-  { id: 'private', name: 'Приватный' },
-]
+const { t } = useAppI18n()
+
+const PROFILE_VISIBILITY_OPTIONS = computed(() => [
+  { id: 'public', name: t('settings.security.visibilityPublic') },
+  { id: 'friends', name: t('settings.security.visibilityFriends') },
+  { id: 'private', name: t('settings.security.visibilityPrivate') },
+])
 
 const PAGE_SIZE = 5
 
@@ -55,7 +58,7 @@ const fetchDevices = async () => {
     devices.value = response.map((device) => formatDeviceData(device))
   } catch (error) {
     logError('Не удалось загрузить сессии', error)
-    toast.error('Не удалось загрузить сессии')
+    toast.error(t('settings.security.loadSessionsFailed'))
   } finally {
     loading.value = false
   }
@@ -66,7 +69,7 @@ const handleRevoke = async (id) => {
 
   const target = devices.value.find((device) => device.id === id)
   if (target?.isCurrent) {
-    toast.warning('Нельзя завершить текущую сессию')
+    toast.warning(t('settings.security.cannotRevokeCurrent'))
     return
   }
 
@@ -74,14 +77,14 @@ const handleRevoke = async (id) => {
     deletingDeviceId.value = id
     await deleteDevice(id)
     devices.value = devices.value.filter((device) => device.id !== id)
-    toast.success('Сессия отозвана')
+    toast.success(t('settings.security.sessionRevoked'))
     const maxPage = Math.max(1, Math.ceil(devices.value.length / PAGE_SIZE) || 1)
     if (currentPage.value > maxPage) {
       currentPage.value = maxPage
     }
   } catch (error) {
     logError('Не удалось отозвать сессию', error)
-    const message = error.response?.data?.error || 'Не удалось отозвать сессию'
+    const message = error.response?.data?.error || t('settings.security.revokeFailed')
     toast.error(message)
   } finally {
     deletingDeviceId.value = null
@@ -112,11 +115,11 @@ onMounted(() => {
 
 <template>
   <div class="settings-panel">
-    <h1 class="settings-panel__title">Безопасность</h1>
+    <h1 class="settings-panel__title">{{ t('settings.security.title') }}</h1>
 
     <div class="settings-card settings-card--stack">
       <div class="settings-card__row">
-        <label class="settings-card__label" for="security-privacy">Приватность профиля</label>
+        <label class="settings-card__label" for="security-privacy">{{ t('settings.security.privacy') }}</label>
         <div class="settings-card__control">
           <SelectBox id="security-privacy" v-model="privacyLockedValue" :options="PROFILE_VISIBILITY_OPTIONS" :include-all-option="false" disabled />
         </div>
@@ -124,22 +127,22 @@ onMounted(() => {
 
       <div class="settings-card__row settings-card__row--last">
         <div class="settings-card__label-block">
-          <span class="settings-card__label">Пароль</span>
-          <span class="settings-card__hint">Смена пароля в отдельном окне</span>
+          <span class="settings-card__label">{{ t('settings.security.password') }}</span>
+          <span class="settings-card__hint">{{ t('settings.security.passwordHint') }}</span>
         </div>
         <div class="settings-card__control settings-card__control--actions">
           <button type="button" class="btn btn-sm profile-card__save" @click="showPasswordModal = true">
-            Изменить пароль
+            {{ t('settings.security.changePasswordBtn') }}
           </button>
         </div>
       </div>
     </div>
 
-    <p class="sessions-block__caption">Активные сессии</p>
+    <p class="sessions-block__caption">{{ t('settings.security.activeSessions') }}</p>
     <div class="settings-card settings-card--sessions">
       <LoadingContentArea :loading="loading" min-height="6rem">
       <div v-if="paginationTotal === 0" class="sessions__empty text-muted small py-3 px-2">
-          Нет активных сессий
+          {{ t('settings.security.noSessions') }}
         </div>
 
         <div v-else class="sessions__list">
@@ -154,15 +157,15 @@ onMounted(() => {
 
         <div v-if="paginationTotal > 0" class="sessions__footer">
           <span class="sessions__range text-muted small">
-            Показано {{ paginationFrom }}–{{ paginationTo }} из {{ paginationTotal }}
+            {{ t('settings.security.shownRange', { from: paginationFrom, to: paginationTo, total: paginationTotal }) }}
           </span>
           <div class="sessions__pager">
             <button type="button" class="btn btn-link btn-sm sessions__pager-btn" :disabled="!canPrev" @click="goPrev">
-              Назад
+              {{ t('settings.security.prev') }}
             </button>
             <span class="sessions__page-indicator small text-muted">{{ currentPage }} / {{ totalPages }}</span>
             <button type="button" class="btn btn-link btn-sm sessions__pager-btn" :disabled="!canNext" @click="goNext">
-              Вперёд
+              {{ t('settings.security.next') }}
             </button>
           </div>
         </div>
@@ -170,7 +173,7 @@ onMounted(() => {
     </div>
 
     <p class="sessions__disclaimer text-muted small mt-2 mb-0">
-      Отображаются только активные сессии. Отзыв завершает вход на выбранном устройстве сразу.
+      {{ t('settings.security.sessionsDisclaimer') }}
     </p>
 
     <ChangePasswordModal :show="showPasswordModal" @close="showPasswordModal = false" />

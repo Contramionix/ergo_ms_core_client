@@ -20,10 +20,12 @@ import HoverTooltip from '@/components/HoverTooltip.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { confirmDelete } from '@/js/utils/confirm.js'
 import { useToast } from '@/js/utils/toast.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
+const { t } = useAppI18n()
 
 const HIGHLIGHT_DURATION_MS = 4000
 const highlightedId = ref(null)
@@ -101,10 +103,10 @@ const headerBadge = computed(() => {
 })
 
 const emptyTitle = computed(() => {
-  if (showArchived.value) return 'Архив пуст'
-  if (showOnlyUnread.value) return 'Нет непрочитанных'
-  if (sourceFilter.value) return 'Ничего не найдено'
-  return 'Пока нет уведомлений'
+  if (showArchived.value) return t('settings.inbox.archiveEmpty')
+  if (showOnlyUnread.value) return t('settings.inbox.noUnread')
+  if (sourceFilter.value) return t('settings.inbox.nothingFound')
+  return t('settings.inbox.empty')
 })
 
 function groupHasUnread(group) {
@@ -153,8 +155,8 @@ async function runGroupAction(group, action) {
 
   if (action === 'delete') {
     const ok = await confirmDelete(
-      'Удаление уведомлений',
-      `Удалить ${snapshot.length} уведомлений из группы «${group.label}»?`,
+      t('settings.inbox.deleteGroupTitle'),
+      t('settings.inbox.deleteGroupMessage', { count: snapshot.length, label: group.label }),
     )
     if (!ok) return
   }
@@ -188,16 +190,16 @@ async function runGroupAction(group, action) {
   }
 
   const labels = {
-    read: 'Прочитано',
-    archive: 'В архиве',
-    unarchive: 'Возвращено из архива',
-    delete: 'Удалено',
+    read: t('settings.inbox.read'),
+    archive: t('settings.inbox.archived'),
+    unarchive: t('settings.inbox.unarchived'),
+    delete: t('settings.inbox.deleted'),
   }
-  const label = labels[action] || 'Готово'
+  const label = labels[action] || t('settings.inbox.done')
   if (success > 0) {
     toast.success(`${label}: ${success}`)
   } else {
-    toast.error('Не удалось выполнить действие')
+    toast.error(t('settings.inbox.actionFailed'))
   }
 }
 
@@ -237,7 +239,7 @@ onMounted(async () => {
     <div class="card-header notif-page__header">
       <h1 class="notif-page__title">
         <Bell :size="20" aria-hidden="true" />
-        <span>Уведомления</span>
+        <span>{{ t('settings.inbox.title') }}</span>
         <span
           v-if="headerBadge"
           class="notif-page__badge"
@@ -247,12 +249,12 @@ onMounted(async () => {
         </span>
       </h1>
       <div class="notif-page__header-actions">
-        <HoverTooltip text="Обновить">
+        <HoverTooltip :text="t('settings.inbox.refresh')">
           <button
             type="button"
             class="notif-page__icon-btn"
             :disabled="loading"
-            aria-label="Обновить"
+            :aria-label="t('settings.inbox.refresh')"
             @click="refresh"
           >
             <RefreshCw :size="16" :class="{ spin: loading }" aria-hidden="true" />
@@ -265,14 +267,14 @@ onMounted(async () => {
           @click="handleMarkAllRead"
         >
           <CheckCheck :size="16" aria-hidden="true" />
-          {{ sourceFilter ? 'Прочитать по фильтру' : 'Прочитать все' }}
+          {{ sourceFilter ? t('settings.inbox.readByFilter') : t('settings.inbox.readAll') }}
         </button>
       </div>
     </div>
 
     <div class="card-body notif-page__body">
-      <div class="notif-page__filters" role="toolbar" aria-label="Фильтры уведомлений">
-        <div class="notif-page__seg" role="group" aria-label="Статус">
+      <div class="notif-page__filters" role="toolbar" :aria-label="t('settings.inbox.filtersAria')">
+        <div class="notif-page__seg" role="group" :aria-label="t('settings.inbox.statusAria')">
           <button
             type="button"
             class="notif-page__seg-btn"
@@ -280,7 +282,7 @@ onMounted(async () => {
             :aria-pressed="!showOnlyUnread"
             @click="showOnlyUnread = false"
           >
-            Все
+            {{ t('settings.inbox.all') }}
           </button>
           <button
             type="button"
@@ -289,7 +291,7 @@ onMounted(async () => {
             :aria-pressed="showOnlyUnread"
             @click="showOnlyUnread = true"
           >
-            Непрочитанные
+            {{ t('settings.inbox.unreadOnly') }}
             <span
               v-if="hasUnread"
               class="notif-page__seg-count"
@@ -298,7 +300,7 @@ onMounted(async () => {
           </button>
         </div>
 
-        <div class="notif-page__seg" role="group" aria-label="Область">
+        <div class="notif-page__seg" role="group" :aria-label="t('settings.inbox.scopeAria')">
           <button
             type="button"
             class="notif-page__seg-btn"
@@ -306,7 +308,7 @@ onMounted(async () => {
             :aria-pressed="!showArchived"
             @click="showArchived = false"
           >
-            Активные
+            {{ t('settings.inbox.active') }}
           </button>
           <button
             type="button"
@@ -315,18 +317,18 @@ onMounted(async () => {
             :aria-pressed="showArchived"
             @click="showArchived = true"
           >
-            Архив
+            {{ t('settings.inbox.archive') }}
           </button>
         </div>
 
         <div v-if="sourceSelectOptions.length" class="notif-page__source">
           <SelectBox
             v-model="sourceFilter"
-            aria-label="Модуль"
+            :aria-label="t('settings.inbox.moduleAria')"
             :options="sourceSelectOptions"
             value-key="id"
             label-key="name"
-            all-label="Все"
+            :all-label="t('settings.inbox.all')"
             :full-width="false"
           />
         </div>
@@ -354,7 +356,7 @@ onMounted(async () => {
               <div
                 class="notif-page__group-actions"
                 role="group"
-                :aria-label="`Действия для группы ${group.label}`"
+                :aria-label="t('settings.inbox.groupActionsAria', { label: group.label })"
               >
                 <Loader2
                   v-if="groupBusyKey === group.key"
@@ -365,13 +367,13 @@ onMounted(async () => {
 
                 <HoverTooltip
                   v-if="!showArchived && groupHasUnread(group)"
-                  text="Прочитать группу"
+                  :text="t('settings.inbox.readGroup')"
                 >
                   <button
                     type="button"
                     class="notif-page__icon-btn"
                     :disabled="groupBusyKey === group.key"
-                    :aria-label="`Прочитать группу ${group.label}`"
+                    :aria-label="t('settings.inbox.readGroupAria', { label: group.label })"
                     @click="runGroupAction(group, 'read')"
                   >
                     <CheckCheck :size="14" aria-hidden="true" />
@@ -380,13 +382,13 @@ onMounted(async () => {
 
                 <HoverTooltip
                   v-if="showArchived"
-                  text="Вернуть группу из архива"
+                  :text="t('settings.inbox.unarchiveGroup')"
                 >
                   <button
                     type="button"
                     class="notif-page__icon-btn"
                     :disabled="groupBusyKey === group.key"
-                    :aria-label="`Вернуть группу ${group.label} из архива`"
+                    :aria-label="t('settings.inbox.unarchiveGroupAria', { label: group.label })"
                     @click="runGroupAction(group, 'unarchive')"
                   >
                     <ArchiveRestore :size="14" aria-hidden="true" />
@@ -394,25 +396,25 @@ onMounted(async () => {
                 </HoverTooltip>
                 <HoverTooltip
                   v-else
-                  text="Архивировать группу"
+                  :text="t('settings.inbox.archiveGroup')"
                 >
                   <button
                     type="button"
                     class="notif-page__icon-btn"
                     :disabled="groupBusyKey === group.key"
-                    :aria-label="`Архивировать группу ${group.label}`"
+                    :aria-label="t('settings.inbox.archiveGroupAria', { label: group.label })"
                     @click="runGroupAction(group, 'archive')"
                   >
                     <Archive :size="14" aria-hidden="true" />
                   </button>
                 </HoverTooltip>
 
-                <HoverTooltip text="Удалить группу">
+                <HoverTooltip :text="t('settings.inbox.deleteGroup')">
                   <button
                     type="button"
                     class="notif-page__icon-btn notif-page__icon-btn--danger"
                     :disabled="groupBusyKey === group.key"
-                    :aria-label="`Удалить группу ${group.label}`"
+                    :aria-label="t('settings.inbox.deleteGroupAria', { label: group.label })"
                     @click="runGroupAction(group, 'delete')"
                   >
                     <Trash2 :size="14" aria-hidden="true" />
@@ -446,7 +448,7 @@ onMounted(async () => {
               @click="loadMore"
             >
               <span v-if="loadingMore" class="spinner-border spinner-border-sm me-2" aria-hidden="true" />
-              Загрузить ещё
+              {{ t('settings.inbox.loadMore') }}
             </button>
           </div>
         </template>

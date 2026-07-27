@@ -1,4 +1,5 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { computed } from 'vue'
 import {
   Check,
@@ -10,6 +11,8 @@ import {
   Sun,
   Trash2,
 } from 'lucide-vue-next'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   theme: {
@@ -80,7 +83,7 @@ function onCardKeydown(event) {
     :style="previewStyle"
     tabindex="0"
     :aria-current="selected ? 'true' : undefined"
-    :aria-label="`Тема ${theme.name}`"
+    :aria-label="t('settings.themes.themeAria', { name: theme.name })"
     @click="emit('select', theme)"
     @keydown="onCardKeydown"
   >
@@ -117,7 +120,7 @@ function onCardKeydown(event) {
         <span
           v-if="isModuleScope ? theme.is_active : theme.is_default"
           class="theme-picker-card__check"
-          :title="isModuleScope ? 'Активна' : 'Стандарт сайта'"
+          :title="isModuleScope ? t('settings.themes.badgeActive') : t('settings.themes.badgeSiteDefault')"
           aria-hidden="true"
         >
           <Check :size="12" />
@@ -126,48 +129,48 @@ function onCardKeydown(event) {
 
       <div class="theme-picker-card__badges">
         <span v-if="theme.is_draft" class="theme-picker-card__badge theme-picker-card__badge--draft">
-          Черновик
+          {{ t('settings.themes.badgeDraft') }}
         </span>
         <span
           v-if="theme.is_draft_pair"
           class="theme-picker-card__badge theme-picker-card__badge--draft"
         >
-          Черновик пары
+          {{ t('settings.themes.badgeDraftPair') }}
         </span>
         <span
           v-if="presentation.isAccessibility"
           class="theme-picker-card__badge theme-picker-card__badge--a11y"
         >
-          Доступность
+          {{ t('settings.themes.badgeA11y') }}
         </span>
         <span
           v-if="theme.is_system"
           class="theme-picker-card__badge theme-picker-card__badge--muted"
         >
-          Системная
+          {{ t('settings.themes.badgeSystem') }}
         </span>
         <span
           v-if="!isModuleScope && theme.is_default"
           class="theme-picker-card__badge theme-picker-card__badge--active"
         >
-          Стандарт
+          {{ t('settings.themes.badgeStandard') }}
         </span>
         <span
           v-else-if="theme.is_active"
           class="theme-picker-card__badge theme-picker-card__badge--active"
         >
-          Активна
+          {{ t('settings.themes.badgeActive') }}
         </span>
         <span
           v-if="!isModuleScope && theme.is_available"
           class="theme-picker-card__badge theme-picker-card__badge--catalog"
         >
-          В каталоге
+          {{ t('settings.themes.badgeInCatalog') }}
         </span>
       </div>
 
       <p class="theme-picker-card__desc">
-        {{ theme.description || 'Без описания' }}
+        {{ theme.description || t('settings.themes.noDescription') }}
       </p>
 
       <div class="theme-picker-card__swatches" aria-hidden="true">
@@ -212,7 +215,7 @@ function onCardKeydown(event) {
         class="theme-picker-card__apply"
         @click="emit('activate', theme)"
       >
-        Применить
+        {{ t('settings.themes.apply') }}
       </button>
       <button
         v-else-if="!isModuleScope && !theme.is_default && !theme.is_draft && !theme.is_draft_pair"
@@ -220,15 +223,15 @@ function onCardKeydown(event) {
         class="theme-picker-card__apply"
         @click="emit('activate', theme)"
       >
-        Стандарт сайта
+        {{ t('settings.themes.siteDefaultShort') }}
       </button>
       <div class="theme-picker-card__icon-actions">
         <button
           v-if="!isModuleScope && !theme.is_draft && !theme.is_draft_pair"
           type="button"
           class="theme-picker-card__icon-btn"
-          :title="theme.is_available ? 'Убрать из быстрого выбора' : 'Добавить в быстрый выбор'"
-          :aria-label="theme.is_available ? 'Убрать из быстрого выбора' : 'Добавить в быстрый выбор'"
+          :title="theme.is_available ? t('settings.themes.removeFromQuick') : t('settings.themes.addToQuick')"
+          :aria-label="theme.is_available ? t('settings.themes.removeFromQuick') : t('settings.themes.addToQuick')"
           :disabled="theme.is_default && theme.is_available"
           @click="emit('toggle-available', theme)"
         >
@@ -238,8 +241,8 @@ function onCardKeydown(event) {
           v-if="theme.is_system && !theme.is_draft_pair"
           type="button"
           class="theme-picker-card__icon-btn"
-          title="Сбросить к начальным значениям"
-          aria-label="Сбросить к начальным значениям"
+          :title="t('settings.themes.resetToDefaults')"
+          :aria-label="t('settings.themes.resetToDefaults')"
           :disabled="resetting"
           @click="emit('reset', theme)"
         >
@@ -249,8 +252,8 @@ function onCardKeydown(event) {
           v-if="!theme.is_draft && !isModuleScope"
           type="button"
           class="theme-picker-card__icon-btn"
-          title="Дублировать"
-          aria-label="Дублировать тему"
+          :title="t('settings.themes.duplicate')"
+          :aria-label="t('settings.themes.duplicateThemeAria')"
           @click="emit('duplicate', theme)"
         >
           <Copy :size="15" />
@@ -259,8 +262,8 @@ function onCardKeydown(event) {
           v-if="theme.is_draft_pair"
           type="button"
           class="theme-picker-card__icon-btn theme-picker-card__icon-btn--danger"
-          title="Удалить черновик пары"
-          aria-label="Удалить черновик пары"
+          :title="t('settings.themes.deleteDraftPair')"
+          :aria-label="t('settings.themes.deleteDraftPair')"
           @click="emit('discard-pair-draft')"
         >
           <Trash2 :size="15" />
@@ -269,8 +272,8 @@ function onCardKeydown(event) {
           v-if="theme.is_draft"
           type="button"
           class="theme-picker-card__icon-btn theme-picker-card__icon-btn--danger"
-          title="Удалить черновик"
-          aria-label="Удалить черновик"
+          :title="t('settings.themes.deleteDraft')"
+          :aria-label="t('settings.themes.deleteDraft')"
           @click="emit('discard-draft')"
         >
           <Trash2 :size="15" />
@@ -279,8 +282,8 @@ function onCardKeydown(event) {
           v-if="!theme.is_system && !theme.is_draft && !theme.is_pair"
           type="button"
           class="theme-picker-card__icon-btn theme-picker-card__icon-btn--danger"
-          title="Удалить"
-          aria-label="Удалить тему"
+          :title="t('common.delete')"
+          :aria-label="t('settings.themes.deleteThemeAria')"
           @click="emit('delete', theme)"
         >
           <Trash2 :size="15" />

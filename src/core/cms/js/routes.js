@@ -5,6 +5,7 @@ export default {
     "component": "@/pages/AppHomePage.vue",
     "meta": {
       "title": "Главная",
+      "titleKey": "routes.home",
       "requiresAuth": true,
       "flushContent": true,
       "shellBackdrop": true
@@ -24,6 +25,7 @@ export default {
         "component": "@/core/cms/adp/user/account/component/UserProfileView.vue",
         "meta": {
           "title": "Личный кабинет",
+          "titleKey": "routes.account",
           "requiresAuth": true
         }
       },
@@ -33,6 +35,7 @@ export default {
         "component": "@/core/cms/adp/user/notifications/ParentLayout.vue",
         "meta": {
           "title": "Уведомления",
+          "titleKey": "routes.notifications",
           "requiresAuth": true
         }
       }
@@ -43,6 +46,8 @@ export default {
     "component": "@/core/cms/adp/settings/ParentLayout.vue",
     "redirect": "AdminPanel",
     "meta": {
+      "title": "Настройки системы",
+      "titleKey": "routes.systemSettings",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -53,6 +58,7 @@ export default {
     "redirect": "UsersPanel",
     "meta": {
       "title": "Админ-панель",
+      "titleKey": "routes.adminPanel",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -62,6 +68,7 @@ export default {
     "component": "@/core/cms/adp/admin/Users.vue",
     "meta": {
       "title": "Панель пользователей",
+      "titleKey": "routes.users",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -71,6 +78,7 @@ export default {
     "component": "@/core/cms/adp/admin/ImportUsers.vue",
     "meta": {
       "title": "Загрузка пользователей",
+      "titleKey": "routes.importUsers",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -80,6 +88,7 @@ export default {
     "component": "@/core/cms/adp/admin/Invitations.vue",
     "meta": {
       "title": "Управление приглашениями",
+      "titleKey": "routes.invitations",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -89,6 +98,7 @@ export default {
     "component": "@/core/cms/adp/admin/ProfileChangeRequests.vue",
     "meta": {
       "title": "Заявки на изменение данных профиля",
+      "titleKey": "routes.profileChangeRequests",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -98,6 +108,7 @@ export default {
     "component": "@/core/cms/adp/admin/Categories.vue",
     "meta": {
       "title": "Панель ролей",
+      "titleKey": "routes.roles",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -107,6 +118,7 @@ export default {
     "component": "@/core/cms/adp/admin/Groups.vue",
     "meta": {
       "title": "Панель ролевых групп",
+      "titleKey": "routes.roleGroups",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -116,6 +128,7 @@ export default {
     "component": "@/core/cms/adp/admin/AccessControl.vue",
     "meta": {
       "title": "Доступ и права",
+      "titleKey": "routes.accessControl",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -125,6 +138,7 @@ export default {
     "component": "@/core/cms/adp/admin/MenuPanel.vue",
     "meta": {
       "title": "Управление меню",
+      "titleKey": "routes.menu",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -134,6 +148,7 @@ export default {
     "component": "@/core/cms/adp/admin/AuditLog.vue",
     "meta": {
       "title": "Журнал действий",
+      "titleKey": "routes.audit",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -143,6 +158,7 @@ export default {
     "component": "@/core/cms/adp/settings/themeEditor/ParentLayout.vue",
     "meta": {
       "title": "Темы оформления",
+      "titleKey": "routes.themes",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }
@@ -152,9 +168,9 @@ export default {
     "component": "@/components/AccessDenied.vue",
     "meta": {
       "title": "Ошибка доступа",
+      "titleKey": "components.accessDenied.deniedTitle",
       "requiresAuth": true,
       "shellBackdrop": true
     }
   }
 }
-

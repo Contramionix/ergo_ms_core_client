@@ -1,17 +1,25 @@
-export const POLICY_TYPE_OPTIONS = [
-  { id: 'url', name: 'URL' },
-  { id: 'component', name: 'Компонент' },
-]
+import { getCurrentBcp47, tGlobal } from '@/i18n/index.js'
 
-export const POLICY_ACTION_OPTIONS = [
-  { id: 'allow', name: 'Разрешить' },
-  { id: 'deny', name: 'Запретить' },
-]
+export function getPolicyTypeOptions() {
+  return [
+    { id: 'url', name: tGlobal('admin.policies.typeUrl') },
+    { id: 'component', name: tGlobal('admin.policies.typeComponent') },
+  ]
+}
 
-export const PRESENCE_FILTER_OPTIONS = [
-  { id: 'all', name: 'Все пользователи' },
-  { id: 'online', name: 'В сети' },
-]
+export function getPolicyActionOptions() {
+  return [
+    { id: 'allow', name: tGlobal('admin.policies.allow') },
+    { id: 'deny', name: tGlobal('admin.policies.deny') },
+  ]
+}
+
+export function getPresenceFilterOptions() {
+  return [
+    { id: 'all', name: tGlobal('admin.users.presenceAll') },
+    { id: 'online', name: tGlobal('admin.users.presenceOnline') },
+  ]
+}
 
 export function mapRoleSelectOptions(roles = []) {
   return roles.map((role) => ({
@@ -51,7 +59,7 @@ export function formatModuleLabel(moduleName, moduleCatalog = []) {
   }
 
   if (moduleName === 'core') {
-    return 'Ядро'
+    return tGlobal('admin.policies.coreModule')
   }
 
   if (moduleName === 'cms') {
@@ -66,6 +74,7 @@ export function formatModuleLabel(moduleName, moduleCatalog = []) {
 
 export function buildModulePageGroups(pages = [], moduleCatalog = []) {
   const groups = new Map()
+  const locale = getCurrentBcp47()
 
   for (const module of moduleCatalog) {
     if (!module?.module_name) {
@@ -98,9 +107,9 @@ export function buildModulePageGroups(pages = [], moduleCatalog = []) {
   return Array.from(groups.values())
     .map((group) => ({
       ...group,
-      pages: group.pages.sort((left, right) => left.label.localeCompare(right.label, 'ru')),
+      pages: group.pages.sort((left, right) => left.label.localeCompare(right.label, locale)),
     }))
-    .sort((left, right) => left.label.localeCompare(right.label, 'ru'))
+    .sort((left, right) => left.label.localeCompare(right.label, locale))
 }
 
 export function mapModuleSelectOptions(pages = [], moduleCatalog = []) {

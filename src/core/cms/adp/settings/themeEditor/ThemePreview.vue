@@ -1,4 +1,5 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { computed } from 'vue'
 import {
   Home,
@@ -10,6 +11,9 @@ import {
   MoreVertical,
 } from 'lucide-vue-next'
 import { useThemeEditor } from './useThemeEditor.js'
+
+const { t } = useAppI18n()
+
 
 const {
   previewMeta,
@@ -26,7 +30,7 @@ const colors = computed(() => currentTheme.colors || {})
 <template>
   <div class="theme-preview">
     <div class="theme-preview__meta">
-      <span class="theme-preview__meta-label">Вариант</span>
+      <span class="theme-preview__meta-label">{{ t('settings.themes.previewVariant') }}</span>
       <strong>{{ previewMeta.variantLabel }}</strong>
     </div>
 
@@ -57,19 +61,19 @@ const colors = computed(() => currentTheme.colors || {})
                     class="preview-nav-link"
                     :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
                     @click.prevent
-                  >Главная</a>
+                  >{{ t('settings.themes.previewHome') }}</a>
                   <a
                     href="#"
                     class="preview-nav-link"
                     :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
                     @click.prevent
-                  >О нас</a>
+                  >{{ t('settings.themes.previewAbout') }}</a>
                   <a
                     href="#"
                     class="preview-nav-link"
                     :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
                     @click.prevent
-                  >Контакты</a>
+                  >{{ t('settings.themes.previewContacts') }}</a>
                 </nav>
               </div>
               <div class="d-flex align-items-center gap-2">
@@ -77,7 +81,7 @@ const colors = computed(() => currentTheme.colors || {})
                   type="button"
                   class="preview-btn-icon"
                   :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
-                  aria-label="Поиск"
+                  :aria-label="t('settings.themes.previewSearch')"
                 >
                   <Search :size="20" />
                 </button>
@@ -85,7 +89,7 @@ const colors = computed(() => currentTheme.colors || {})
                   type="button"
                   class="preview-btn-icon"
                   :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
-                  aria-label="Уведомления"
+                  :aria-label="t('settings.themes.previewNotifications')"
                 >
                   <Bell :size="20" />
                 </button>
@@ -93,7 +97,7 @@ const colors = computed(() => currentTheme.colors || {})
                   type="button"
                   class="preview-btn-icon"
                   :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
-                  aria-label="Профиль"
+                  :aria-label="t('settings.themes.previewProfile')"
                 >
                   <User :size="20" />
                 </button>
@@ -124,19 +128,19 @@ const colors = computed(() => currentTheme.colors || {})
                     :style="{ borderColor: colors.border || 'var(--color-border)' }"
                   >
                     <h5 :style="{ color: colors.primaryText || 'var(--color-primary-text)' }">
-                      Карточка 1
+                      {{ t('settings.themes.previewCard1') }}
                     </h5>
                   </div>
                   <div class="preview-card-body">
                     <p :style="{ color: colors.secondaryText || 'var(--color-secondary-text)' }">
-                      Пример текста в карточке. Здесь может быть любой контент.
+                      {{ t('settings.themes.previewCard1Text') }}
                     </p>
                     <button
                       type="button"
                       class="preview-btn"
                       :style="{ background: colors.accent || 'var(--color-accent)', color: '#fff' }"
                     >
-                      Действие
+                      {{ t('settings.themes.previewAction') }}
                     </button>
                   </div>
                 </div>
@@ -155,12 +159,12 @@ const colors = computed(() => currentTheme.colors || {})
                     :style="{ borderColor: colors.border || 'var(--color-border)' }"
                   >
                     <h5 :style="{ color: colors.primaryText || 'var(--color-primary-text)' }">
-                      Карточка 2
+                      {{ t('settings.themes.previewCard2') }}
                     </h5>
                   </div>
                   <div class="preview-card-body">
                     <p :style="{ color: colors.secondaryText || 'var(--color-secondary-text)' }">
-                      Ещё одна карточка с контентом для демонстрации темы.
+                      {{ t('settings.themes.previewCard2Text') }}
                     </p>
                     <button
                       type="button"
@@ -170,7 +174,7 @@ const colors = computed(() => currentTheme.colors || {})
                         color: colors.primaryText || 'var(--color-primary-text)',
                       }"
                     >
-                      Вторичная кнопка
+                      {{ t('settings.themes.previewSecondaryBtn') }}
                     </button>
                   </div>
                 </div>
@@ -189,12 +193,12 @@ const colors = computed(() => currentTheme.colors || {})
                     :style="{ borderColor: colors.border || 'var(--color-border)' }"
                   >
                     <h5 :style="{ color: colors.primaryText || 'var(--color-primary-text)' }">
-                      Карточка 3
+                      {{ t('settings.themes.previewCard3') }}
                     </h5>
                   </div>
                   <div class="preview-card-body">
                     <p :style="{ color: colors.secondaryText || 'var(--color-secondary-text)' }">
-                      Карточка с вторичным фоном для разнообразия.
+                      {{ t('settings.themes.previewCard3Text') }}
                     </p>
                   </div>
                 </div>
@@ -215,7 +219,7 @@ const colors = computed(() => currentTheme.colors || {})
                     :style="{ borderColor: colors.border || 'var(--color-border)' }"
                   >
                     <h5 :style="{ color: colors.primaryText || 'var(--color-primary-text)' }">
-                      Форма
+                      {{ t('settings.themes.previewForm') }}
                     </h5>
                   </div>
                   <div class="preview-card-body">
@@ -224,7 +228,7 @@ const colors = computed(() => currentTheme.colors || {})
                         class="form-label"
                         for="preview-name"
                         :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
-                      >Имя</label>
+                      >{{ t('settings.themes.previewName') }}</label>
                       <input
                         id="preview-name"
                         type="text"
@@ -234,7 +238,7 @@ const colors = computed(() => currentTheme.colors || {})
                           borderColor: colors.border || 'var(--color-border)',
                           color: colors.primaryText || 'var(--color-primary-text)',
                         }"
-                        placeholder="Введите имя"
+                        :placeholder="t('settings.themes.previewNamePlaceholder')"
                       />
                     </div>
                     <button
@@ -242,7 +246,7 @@ const colors = computed(() => currentTheme.colors || {})
                       class="preview-btn"
                       :style="{ background: colors.accent || 'var(--color-accent)', color: '#fff' }"
                     >
-                      Отправить
+                      {{ t('settings.themes.previewSubmit') }}
                     </button>
                   </div>
                 </div>
@@ -261,7 +265,7 @@ const colors = computed(() => currentTheme.colors || {})
                     :style="{ borderColor: colors.border || 'var(--color-border)' }"
                   >
                     <h5 :style="{ color: colors.primaryText || 'var(--color-primary-text)' }">
-                      Список элементов
+                      {{ t('settings.themes.previewList') }}
                     </h5>
                   </div>
                   <div class="preview-list">
@@ -292,7 +296,7 @@ const colors = computed(() => currentTheme.colors || {})
                               fontWeight: 500,
                             }"
                           >
-                            Элемент списка {{ i }}
+                            {{ t('settings.themes.previewListItem', { n: i }) }}
                           </div>
                           <div
                             :style="{
@@ -300,7 +304,7 @@ const colors = computed(() => currentTheme.colors || {})
                               fontSize: '0.875rem',
                             }"
                           >
-                            Описание элемента
+                            {{ t('settings.themes.previewListItemDesc') }}
                           </div>
                         </div>
                         <ChevronRight
@@ -326,7 +330,7 @@ const colors = computed(() => currentTheme.colors || {})
                 :style="{ borderColor: colors.border || 'var(--color-border)' }"
               >
                 <h5 :style="{ color: colors.primaryText || 'var(--color-primary-text)' }">
-                  Кнопки и элементы управления
+                  {{ t('settings.themes.previewControls') }}
                 </h5>
               </div>
               <div class="preview-card-body">
@@ -336,7 +340,7 @@ const colors = computed(() => currentTheme.colors || {})
                     class="preview-btn"
                     :style="{ background: colors.accent || 'var(--color-accent)', color: '#fff' }"
                   >
-                    Основная кнопка
+                    {{ t('settings.themes.previewPrimaryBtn') }}
                   </button>
                   <button
                     type="button"
@@ -346,13 +350,13 @@ const colors = computed(() => currentTheme.colors || {})
                       color: colors.primaryText || 'var(--color-primary-text)',
                     }"
                   >
-                    Вторичная кнопка
+                    {{ t('settings.themes.previewSecondaryBtn') }}
                   </button>
                   <button
                     type="button"
                     class="preview-btn-icon-sm"
                     :style="{ color: colors.primaryText || 'var(--color-primary-text)' }"
-                    aria-label="Ещё"
+                    :aria-label="t('settings.themes.previewMore')"
                   >
                     <MoreVertical :size="16" />
                   </button>

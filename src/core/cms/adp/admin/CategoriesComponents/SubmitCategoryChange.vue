@@ -2,6 +2,9 @@
 import { ref, watch, computed } from 'vue'
 import ModalCenter from '@/components/ModalCenter.vue'
 import { updateRole } from '@/core/cms/adp/admin/js/adminAccessApi.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -84,7 +87,7 @@ const submitForm = async () => {
     :modal-id="modalId"
     standalone
     :visible="visible"
-    title="Редактировать роль"
+    :title="t('admin.roles.editTitle')"
     size="md"
     scrollable
     @closemodal="closeModal"
@@ -97,10 +100,10 @@ const submitForm = async () => {
           class="form-control"
           v-model="name"
           :class="{ 'is-invalid': showErrorName }"
-          placeholder="Введите название роли"
+          :placeholder="t('admin.roles.namePlaceholder')"
         />
-        <label for="nameInput">Введите название роли</label>
-        <div v-if="showErrorName" class="invalid-feedback">Название обязательно для заполнения.</div>
+        <label for="nameInput">{{ t('admin.roles.namePlaceholder') }}</label>
+        <div v-if="showErrorName" class="invalid-feedback">{{ t('admin.roles.nameRequired') }}</div>
       </div>
 
       <div class="form-floating mb-3" v-auto-animate>
@@ -109,18 +112,18 @@ const submitForm = async () => {
           class="form-control"
           style="height: 100px"
           v-model="description"
-          placeholder="Описание роли"
+          :placeholder="t('admin.roles.descriptionPlaceholder')"
         ></textarea>
-        <label for="descriptionInputChange">Описание роли</label>
+        <label for="descriptionInputChange">{{ t('admin.roles.descriptionPlaceholder') }}</label>
       </div>
     </form>
 
     <template #footer>
       <button type="button" class="ui-btn ui-btn--secondary" :disabled="isSubmitting" @click="closeModal">
-        Отмена
+        {{ t('common.cancel') }}
       </button>
       <button type="submit" :form="formId" class="ui-btn ui-btn--primary" :disabled="isSubmitting">
-        {{ isSubmitting ? 'Сохранение...' : 'Изменить' }}
+        {{ isSubmitting ? t('admin.roles.saving') : t('common.edit') }}
       </button>
     </template>
   </ModalCenter>

@@ -5,6 +5,9 @@ import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { getRoles } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { ref, computed, onMounted } from 'vue'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const { t } = useAppI18n()
 
 const rows = ref([])
 const isLoading = ref(false)
@@ -51,8 +54,8 @@ const handleSearchQuery = (query) => {
 <template>
   <div class="admin-page">
     <div class="page-header">
-      <h1 class="page-title">Роли</h1>
-      <p class="page-subtitle">Управление ролями пользователей системы</p>
+      <h1 class="page-title">{{ t('admin.roles.title') }}</h1>
+      <p class="page-subtitle">{{ t('admin.roles.subtitle') }}</p>
     </div>
 
     <div class="content-card">
@@ -66,7 +69,7 @@ const handleSearchQuery = (query) => {
       <LoadingContentArea :loading="isLoading">
         <CategoryTable
           :rows="rows"
-          :headers="['Название роли', 'Описание', 'Системная', 'Действия']"
+          :headers="[t('admin.roles.headers.name'), t('admin.roles.headers.description'), t('admin.roles.headers.system'), t('admin.roles.headers.actions')]"
           :rowsPerPage="rowsPerPage"
           :searchQuery="searchQuery"
           @updateCategories="updateCategories"

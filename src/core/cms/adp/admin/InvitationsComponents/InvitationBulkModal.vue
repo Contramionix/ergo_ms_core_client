@@ -1,6 +1,8 @@
 <script setup>
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, computed } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
+import { tGlobal } from '@/i18n/index.js'
 import {
   Download,
   Upload,
@@ -28,6 +30,8 @@ import { extractApiError } from '@/js/utils/apiErrorMessage.js'
 import { formatFileSize } from '@/js/utils/file-helpers.js'
 import { logError } from '@/js/utils/logError.js'
 import ModalCenter from '@/components/ModalCenter.vue'
+
+const { t } = useAppI18n()
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -119,7 +123,7 @@ const processFile = async (file) => {
 
   const fileName = file.name.toLowerCase()
   if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls') && !fileName.endsWith('.csv')) {
-    parseError.value = 'Поддерживаются только файлы Excel (.xlsx, .xls) и CSV (.csv)'
+    parseError.value = tGlobal('admin.invitations.fileTypeError')
     return
   }
 
@@ -136,10 +140,10 @@ const processFile = async (file) => {
     const rawEmails = await parseInvitationEmailsFromFile(file)
     emailPreview.value = buildEmailPreviewList(rawEmails)
     if (!emailPreview.value.length) {
-      parseError.value = 'В файле не найдено email-адресов'
+      parseError.value = tGlobal('admin.invitations.noEmailsInFile')
     }
   } catch (error) {
-    parseError.value = error.message || 'Не удалось прочитать файл'
+    parseError.value = error.message || tGlobal('admin.invitations.readFileError')
     emailPreview.value = []
   } finally {
     isParsing.value = false
@@ -168,7 +172,7 @@ const handleDownloadTemplate = async () => {
   try {
     await downloadInvitationTemplate()
   } catch {
-    parseError.value = 'Не удалось сформировать шаблон'
+    parseError.value = tGlobal('admin.invitations.templateError')
   }
 }
 
@@ -194,7 +198,7 @@ const createInvitations = async () => {
       ...(result.skipped || []),
     ]
     if (createdInvitations.value.length) {
-      toast.success(`Создано приглашений: ${createdInvitations.value.length}`)
+      toast.success(tGlobal('admin.invitations.createdCount', { count: createdInvitations.value.length }))
     }
     if (shouldSendEmail) {
       emailsAlreadySent.value = true
@@ -205,15 +209,15 @@ const createInvitations = async () => {
         failed: warnings.map((item) => ({ email: item.email, error: item.warning })),
       }
       if (sentItems.length) {
-        toast.success(`Отправлено писем: ${sentItems.length}`)
+        toast.success(tGlobal('admin.invitations.sentCount', { count: sentItems.length }))
       }
       if (warnings.length) {
-        toast.warning(`Не удалось отправить: ${warnings.length}`)
+        toast.warning(tGlobal('admin.invitations.sendFailedCount', { count: warnings.length }))
       }
     }
   } catch (apiError) {
     logError('Ошибка массового создания приглашений', apiError)
-    parseError.value = extractApiError(apiError, 'Не удалось создать приглашения')
+    parseError.value = extractApiError(apiError, tGlobal('admin.invitations.createBulkFailed'))
   } finally {
     isCreating.value = false
   }
@@ -235,14 +239,14 @@ const sendEmails = async () => {
     emailsAlreadySent.value = true
     const sentCount = result.sent?.length || 0
     if (sentCount) {
-      toast.success(`Отправлено писем: ${sentCount}`)
+      toast.success(tGlobal('admin.invitations.sentCount', { count: sentCount }))
     }
     if (result.failed?.length) {
-      toast.warning(`Не удалось отправить: ${result.failed.length}`)
+      toast.warning(tGlobal('admin.invitations.sendFailedCount', { count: result.failed.length }))
     }
   } catch (apiError) {
     logError('Ошибка отправки приглашений', apiError)
-    parseError.value = extractApiError(apiError, 'Не удалось отправить письма')
+    parseError.value = extractApiError(apiError, tGlobal('admin.invitations.sendMailFailed'))
   } finally {
     isSending.value = false
   }
@@ -251,15 +255,15 @@ const sendEmails = async () => {
 const copyInviteLink = async (inviteUrl) => {
   const normalizedUrl = inviteUrl?.trim()
   if (!normalizedUrl) {
-    toast.error('Ссылка приглашения недоступна')
+    toast.error(tGlobal('admin.invitations.linkUnavailable'))
     return
   }
 
   try {
     await copyTextToClipboard(normalizedUrl)
-    toast.success('Ссылка скопирована')
+    toast.success(tGlobal('admin.invitations.linkCopied'))
   } catch {
-    toast.error('Не удалось скопировать ссылку')
+    toast.error(tGlobal('admin.invitations.linkCopyFailed'))
   }
 }
 
@@ -286,9 +290,9 @@ const previewStatusClass = {
           <Users :size="22" />
         </span>
         <span>
-          <span class="ibm-header__title">Массовая рассылка приглашений</span>
+          <span class="ibm-header__title">{{ t('admin.invitations.bulkTitle') }}</span>
           <span class="ibm-header__subtitle">
-            Загрузите Excel, проверьте адреса и создайте приглашения
+            {{ t('admin.invitations.bulkSubtitle') }}
           </span>
         </span>
       </span>
@@ -298,26 +302,26 @@ const previewStatusClass = {
       <div class="ibm-steps" aria-hidden="true">
             <div class="ibm-step" :class="{ 'ibm-step--active': currentStep >= 0, 'ibm-step--done': currentStep > 0 }">
               <span class="ibm-step__num">1</span>
-              <span class="ibm-step__label">Файл</span>
+              <span class="ibm-step__label">{{ t('admin.invitations.bulkStepFile') }}</span>
             </div>
             <div class="ibm-step__line" :class="{ 'ibm-step__line--done': currentStep > 0 }" />
             <div class="ibm-step" :class="{ 'ibm-step--active': currentStep >= 1, 'ibm-step--done': currentStep > 1 }">
               <span class="ibm-step__num">2</span>
-              <span class="ibm-step__label">Проверка</span>
+              <span class="ibm-step__label">{{ t('admin.invitations.bulkStepCheck') }}</span>
             </div>
             <div class="ibm-step__line" :class="{ 'ibm-step__line--done': currentStep > 1 }" />
             <div class="ibm-step" :class="{ 'ibm-step--active': currentStep >= 2, 'ibm-step--done': currentStep > 2 }">
               <span class="ibm-step__num">3</span>
-              <span class="ibm-step__label">Готово</span>
+              <span class="ibm-step__label">{{ t('admin.invitations.bulkStepReady') }}</span>
             </div>
           </div>
 
           <section class="ibm-section">
             <div class="ibm-section__head">
               <div>
-                <h6 class="ibm-section__title">Шаблон и загрузка</h6>
+                <h6 class="ibm-section__title">{{ t('admin.invitations.bulkTemplateTitle') }}</h6>
                 <p class="ibm-section__desc mb-0">
-                  В файле один столбец — <code>Email</code>. Поддерживаются .xlsx, .xls и .csv.
+                  <span v-html="t('admin.invitations.bulkTemplateHintAlt')"></span>
                 </p>
               </div>
               <button
@@ -327,7 +331,7 @@ const previewStatusClass = {
                 @click="handleDownloadTemplate"
               >
                 <Download :size="15" />
-                <span>Шаблон</span>
+                <span>{{ t('admin.invitations.bulkDownloadTemplate') }}</span>
               </button>
             </div>
 
@@ -351,15 +355,15 @@ const previewStatusClass = {
 
               <template v-if="isParsing">
                 <Loader2 :size="32" class="ibm-upload__loader" />
-                <p class="mb-0 fw-medium">Чтение файла...</p>
+                <p class="mb-0 fw-medium">{{ t('admin.invitations.bulkReading') }}</p>
               </template>
 
               <template v-else-if="!selectedFile">
                 <div class="ibm-upload__icon-wrap">
                   <Upload :size="28" />
                 </div>
-                <p class="ibm-upload__title mb-1">Перетащите файл или нажмите для выбора</p>
-                <p class="ibm-upload__hint mb-0">Excel или CSV с колонкой email</p>
+                <p class="ibm-upload__title mb-1">{{ t('admin.invitations.bulkDropTitle') }}</p>
+                <p class="ibm-upload__hint mb-0">{{ t('admin.invitations.bulkDropHint') }}</p>
               </template>
 
               <template v-else>
@@ -374,7 +378,7 @@ const previewStatusClass = {
                   <button
                     type="button"
                     class="btn-action btn-action--delete"
-                    aria-label="Удалить файл"
+                    :aria-label="t('admin.invitations.bulkRemoveFile')"
                     :disabled="isParsing || isCreating || isSending"
                     @click.stop="removeFile"
                   >
@@ -392,25 +396,25 @@ const previewStatusClass = {
 
           <section v-if="hasPreview && !isParsing" class="ibm-section">
             <div class="ibm-section__head">
-              <h6 class="ibm-section__title mb-0">Адреса из файла</h6>
+              <h6 class="ibm-section__title mb-0">{{ t('admin.invitations.bulkParsedTitleAlt') }}</h6>
             </div>
 
             <div class="ibm-stats">
               <div class="ibm-stat">
                 <span class="ibm-stat__value">{{ previewStats.total }}</span>
-                <span class="ibm-stat__label">Всего</span>
+                <span class="ibm-stat__label">{{ t('admin.invitations.bulkStatTotal') }}</span>
               </div>
               <div class="ibm-stat ibm-stat--success">
                 <span class="ibm-stat__value">{{ previewStats.ready }}</span>
-                <span class="ibm-stat__label">Готово</span>
+                <span class="ibm-stat__label">{{ t('admin.invitations.bulkStatReady') }}</span>
               </div>
               <div class="ibm-stat ibm-stat--warning">
                 <span class="ibm-stat__value">{{ previewStats.duplicate }}</span>
-                <span class="ibm-stat__label">Дубликаты</span>
+                <span class="ibm-stat__label">{{ t('admin.invitations.bulkStatDup') }}</span>
               </div>
               <div class="ibm-stat ibm-stat--danger">
                 <span class="ibm-stat__value">{{ previewStats.invalid }}</span>
-                <span class="ibm-stat__label">Ошибки</span>
+                <span class="ibm-stat__label">{{ t('admin.invitations.bulkStatErr') }}</span>
               </div>
             </div>
 
@@ -419,7 +423,7 @@ const previewStatusClass = {
                 <thead>
                   <tr>
                     <th>Email</th>
-                    <th class="ibm-table__status-col">Статус</th>
+                    <th class="ibm-table__status-col">{{ t('admin.invitations.bulkColStatus') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -452,8 +456,8 @@ const previewStatusClass = {
               <label class="form-check-label ibm-email-option__label" for="sendEmailsOnCreate">
                 <Mail :size="18" />
                 <span>
-                  <strong>Отправить письма сразу при создании</strong>
-                  <small>Если выключено — письма можно отправить отдельной кнопкой ниже</small>
+                  <strong>{{ t('admin.invitations.bulkSendReadyTitle') }}</strong>
+                  <small>{{ t('admin.invitations.bulkSendReadyHintAlt') }}</small>
                 </span>
               </label>
             </div>
@@ -463,7 +467,7 @@ const previewStatusClass = {
             <div class="ibm-section__head">
               <h6 class="ibm-section__title mb-0 d-flex align-items-center gap-2">
                 <CheckCircle2 :size="18" class="text-success" />
-                Созданные приглашения
+                {{ t('admin.invitations.bulkCreateInvites') }}
               </h6>
               <span class="ibm-badge">{{ createdInvitations.length }}</span>
             </div>
@@ -473,7 +477,7 @@ const previewStatusClass = {
                 <thead>
                   <tr>
                     <th>Email</th>
-                    <th class="ibm-table__action-col">Ссылка</th>
+                    <th class="ibm-table__action-col">{{ t('admin.invitations.copyLink') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -483,11 +487,11 @@ const previewStatusClass = {
                       <button
                         type="button"
                         class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
-                        title="Копировать ссылку"
+                        :title="t('admin.invitations.copyLink')"
                         @click.stop="copyInviteLink(item.invite_url)"
                       >
                         <Copy :size="14" />
-                        <span>Копировать</span>
+                        <span>{{ t('admin.invitations.bulkCopy') }}</span>
                       </button>
                     </td>
                   </tr>
@@ -499,13 +503,13 @@ const previewStatusClass = {
           <div v-if="skippedInvitations.length" class="ibm-alert ibm-alert--warning">
             <AlertTriangle :size="18" class="flex-shrink-0" />
             <div>
-              <strong>Пропущено: {{ skippedInvitations.length }}</strong>
+              <strong>{{ t('admin.invitations.bulkSkipped') }} {{ skippedInvitations.length }}</strong>
               <ul class="mb-0 mt-2 ps-3">
                 <li v-for="item in skippedInvitations.slice(0, 5)" :key="`${item.email}-${item.reason}`">
                   {{ item.email }} — {{ item.reason }}
                 </li>
                 <li v-if="skippedInvitations.length > 5" class="text-muted">
-                  и ещё {{ skippedInvitations.length - 5 }}...
+                  {{ t('admin.invitations.bulkAndMore', { count: skippedInvitations.length - 5 }) }}..
                 </li>
               </ul>
             </div>
@@ -514,9 +518,9 @@ const previewStatusClass = {
           <div v-if="sendResults" class="ibm-alert ibm-alert--success">
             <CheckCircle2 :size="18" class="flex-shrink-0" />
             <span>
-              Отправлено писем: {{ sendResults.sent?.length || 0 }}.
+              {{ t('admin.invitations.bulkResultSent').split(':')[0] }}: {{ sendResults.sent?.length || 0 }}.
               <template v-if="sendResults.failed?.length">
-                Ошибок отправки: {{ sendResults.failed.length }}.
+                {{ t('admin.invitations.bulkResultFailed', { count: sendResults.failed.length }) }}.
               </template>
             </span>
       </div>
@@ -530,7 +534,7 @@ const previewStatusClass = {
           :disabled="isCreating || isSending"
           @click="close"
         >
-          {{ createdInvitations.length ? 'Закрыть' : 'Отмена' }}
+          {{ createdInvitations.length ? t('admin.invitations.bulkDone') : t('admin.invitations.bulkCancel') }}
         </button>
 
         <div class="ibm-footer-actions">
@@ -542,7 +546,7 @@ const previewStatusClass = {
             @click="createInvitations"
           >
             <Loader2 v-if="isCreating" :size="16" class="ibm-upload__loader" />
-            <span>{{ isCreating ? 'Создание...' : `Создать приглашения (${readyEmails.length})` }}</span>
+            <span>{{ isCreating ? t('admin.invitations.bulkCreating') : t('admin.invitations.bulkCreateReady', { count: readyEmails.length }) }}</span>
           </button>
 
           <button
@@ -554,7 +558,7 @@ const previewStatusClass = {
           >
             <Loader2 v-if="isSending" :size="16" class="spinner" />
             <Mail v-else :size="16" />
-            <span>{{ isSending ? 'Отправка...' : `Отправить письма (${createdInvitations.length})` }}</span>
+            <span>{{ isSending ? t('admin.invitations.bulkSending') : t('admin.invitations.bulkSendEmails', { count: createdInvitations.length }) }}</span>
           </button>
         </div>
       </div>
