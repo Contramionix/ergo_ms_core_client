@@ -1,34 +1,103 @@
 /**
- * Ленивая загрузка иконок Lucide без import * в стартовом бандле.
+ * Ленивая загрузка иконок Lucide по одной (dist/esm/icons/*.js),
+ * без import всего barrel lucide-vue-next в критический путь.
  */
 
-let lucideModulePromise = null
-const iconComponentCache = new Map()
+/**
+ * Vite разбивает каждый файл на отдельный чанк при dynamic import через glob.
+ * Путь от src/js к virtual_env/npm/node_modules (см. npm-workspace).
+ */
+const iconModules = import.meta.glob(
+  '../../../../virtual_env/npm/node_modules/lucide-vue-next/dist/esm/icons/*.js',
+)
 
-async function ensureLucideModule() {
-  if (!lucideModulePromise) {
-    lucideModulePromise = import('lucide-vue-next')
+/** file (kebab) → loader */
+const iconLoaderByFile = new Map()
+for (const [key, loader] of Object.entries(iconModules)) {
+  const normalized = key.replace(/\\/g, '/')
+  const match = normalized.match(/\/icons\/([^/]+)\.js$/)
+  if (match) {
+    iconLoaderByFile.set(match[1], loader)
   }
-  return lucideModulePromise
 }
 
-export function preloadLucideIcons() {
-  return ensureLucideModule()
+const iconComponentCache = new Map()
+/** file (kebab) → component — общие алиасы Home/House */
+const iconComponentByFile = new Map()
+/** @type {Map<string, Promise<unknown>>} */
+const iconLoadPromises = new Map()
+
+/** @type {Promise<{ LUCIDE_ICON_FILES: Record<string, string>, LUCIDE_ICON_NAMES: string[] }>|null} */
+let iconMapPromise = null
+
+function loadIconMapModule() {
+  if (!iconMapPromise) {
+    iconMapPromise = import('@/js/lucideIconFiles.generated.js')
+  }
+  return iconMapPromise
 }
 
-export async function getLucideIconAsync(iconName) {
-  if (!iconName) {
+function resolveIconLoader(file) {
+  return iconLoaderByFile.get(file) || null
+}
+
+/**
+ * @param {string} iconName PascalCase (Home, Settings, …)
+ * @returns {Promise<import('vue').Component|null>}
+ */
+async function loadIconComponent(iconName) {
+  if (!iconName || typeof iconName !== 'string') {
     return null
   }
   if (iconComponentCache.has(iconName)) {
     return iconComponentCache.get(iconName)
   }
-  const module = await ensureLucideModule()
-  const component = module[iconName] || null
-  if (component) {
-    iconComponentCache.set(iconName, component)
+  if (iconLoadPromises.has(iconName)) {
+    return iconLoadPromises.get(iconName)
   }
-  return component
+
+  const promise = (async () => {
+    const { LUCIDE_ICON_FILES } = await loadIconMapModule()
+    const file = LUCIDE_ICON_FILES[iconName]
+    if (!file) {
+      return null
+    }
+
+    if (iconComponentByFile.has(file)) {
+      const cached = iconComponentByFile.get(file)
+      iconComponentCache.set(iconName, cached)
+      return cached
+    }
+
+    const loader = resolveIconLoader(file)
+    if (!loader) {
+      return null
+    }
+
+    const mod = await loader()
+    const component = mod.default || null
+    if (component) {
+      iconComponentByFile.set(file, component)
+      iconComponentCache.set(iconName, component)
+    }
+    return component
+  })()
+
+  iconLoadPromises.set(iconName, promise)
+  try {
+    return await promise
+  } finally {
+    iconLoadPromises.delete(iconName)
+  }
+}
+
+/** @deprecated больше не тянет весь barrel; no-op для совместимости IconManager */
+export function preloadLucideIcons() {
+  return Promise.resolve()
+}
+
+export async function getLucideIconAsync(iconName) {
+  return loadIconComponent(iconName)
 }
 
 export function getLucideIconSync(iconName) {
@@ -38,37 +107,17 @@ export function getLucideIconSync(iconName) {
   return iconComponentCache.get(iconName) || null
 }
 
-let lucideIconNamesCache = null
-
 export async function getLucideIconNames() {
-  if (lucideIconNamesCache) {
-    return lucideIconNamesCache
-  }
-  const module = await ensureLucideModule()
-  lucideIconNamesCache = Object.keys(module)
-    .filter(
-      (key) =>
-        key !== 'default' &&
-        !key.endsWith('Icon') &&
-        /^[A-Z]/.test(key) &&
-        (typeof module[key] === 'function' ||
-          (typeof module[key] === 'object' && module[key] !== null)),
-    )
-    .sort()
-  return lucideIconNamesCache
+  const { LUCIDE_ICON_NAMES } = await loadIconMapModule()
+  return [...LUCIDE_ICON_NAMES]
 }
 
 export async function preloadLucideIconNames(iconNames) {
-  const module = await ensureLucideModule()
-  for (const iconName of iconNames) {
-    if (!iconName || iconComponentCache.has(iconName)) {
-      continue
-    }
-    const component = module[iconName]
-    if (component) {
-      iconComponentCache.set(iconName, component)
-    }
+  if (!Array.isArray(iconNames) || iconNames.length === 0) {
+    return
   }
+  const unique = [...new Set(iconNames.filter(Boolean))]
+  await Promise.all(unique.map((name) => loadIconComponent(name)))
 }
 
 export function getLoadedLucideIconMapping() {
@@ -77,5 +126,6 @@ export function getLoadedLucideIconMapping() {
 
 export function clearLucideIconCache() {
   iconComponentCache.clear()
-  lucideIconNamesCache = null
+  iconComponentByFile.clear()
+  iconLoadPromises.clear()
 }

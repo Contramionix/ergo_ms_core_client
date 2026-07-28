@@ -49,7 +49,7 @@
   &__bar {
     height: 100%;
     width: 100%;
-    background: var(--bs-primary, #0d6efd);
+    background: var(--color-accent, var(--bs-primary, #d0322d));
     transform: scaleX(0);
     transform-origin: left center;
   }

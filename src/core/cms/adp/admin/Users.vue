@@ -21,6 +21,7 @@ import { fetchProfileSettings } from '@/core/cms/adp/js/profileSettings.js'
 import { fetchAdminProfileChangeRequests } from '@/core/cms/adp/admin/js/profileChangeRequestService.js'
 import { accessDeniedState } from '@/js/accessDeniedState'
 import { tGlobal } from '@/i18n/index.js'
+import { prefetchRouteByName } from '@/js/utils/prefetchRoute.js'
 
 const AdminUserSettingsModal = defineAsyncComponent(() =>
   import('@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue'),
@@ -324,6 +325,14 @@ const goToProfileChangeRequests = () => {
   router.push({ name: 'ProfileChangeRequestsPanel' })
 }
 
+function prefetchAdminRoute(name) {
+  prefetchRouteByName(router, name)
+}
+
+function prefetchUserCreateModal() {
+  void import('@/core/cms/adp/admin/UsersComponent/AdminUserCreateModal.vue')
+}
+
 const loadProfileChangeMeta = async () => {
   try {
     const settings = await fetchProfileSettings(true)
@@ -373,22 +382,22 @@ const getItemKey = (item) => item.user_id
           </div>
           <div class="actions-wrapper">
             <HoverTooltip :text="tGlobal('admin.users.createTooltip')">
-              <button type="button" class="btn users-toolbar-icon-btn" :aria-label="tGlobal('admin.users.createTooltip')" @click="openUserCreate">
+              <button type="button" class="btn users-toolbar-icon-btn" :aria-label="tGlobal('admin.users.createTooltip')" @mouseenter="prefetchUserCreateModal" @focus="prefetchUserCreateModal" @click="openUserCreate">
                 <UserPlus :size="20" aria-hidden="true" />
               </button>
             </HoverTooltip>
             <HoverTooltip :text="tGlobal('admin.users.invitationsTooltip')">
-              <button type="button" class="btn users-toolbar-icon-btn" :aria-label="tGlobal('admin.users.invitationsTooltip')" @click="goToInvitations">
+              <button type="button" class="btn users-toolbar-icon-btn" :aria-label="tGlobal('admin.users.invitationsTooltip')" @mouseenter="prefetchAdminRoute('InvitationsPanel')" @focus="prefetchAdminRoute('InvitationsPanel')" @click="goToInvitations">
                 <MailPlus :size="20" aria-hidden="true" />
               </button>
             </HoverTooltip>
             <HoverTooltip v-if="!profileSelfEditEnabled" :text="profileChangeRequestsTooltip">
-              <button type="button" class="btn users-toolbar-icon-btn" :aria-label="profileChangeRequestsTooltip" @click="goToProfileChangeRequests">
+              <button type="button" class="btn users-toolbar-icon-btn" :aria-label="profileChangeRequestsTooltip" @mouseenter="prefetchAdminRoute('ProfileChangeRequestsPanel')" @focus="prefetchAdminRoute('ProfileChangeRequestsPanel')" @click="goToProfileChangeRequests">
                 <FilePenLine :size="20" aria-hidden="true" />
               </button>
             </HoverTooltip>
             <HoverTooltip :text="tGlobal('admin.users.importTooltip')">
-              <button type="button" class="btn users-toolbar-icon-btn" :aria-label="tGlobal('admin.users.importTooltip')" @click="goToImport">
+              <button type="button" class="btn users-toolbar-icon-btn" :aria-label="tGlobal('admin.users.importTooltip')" @mouseenter="prefetchAdminRoute('ImportUsersPanel')" @focus="prefetchAdminRoute('ImportUsersPanel')" @click="goToImport">
                 <Upload :size="20" aria-hidden="true" />
               </button>
             </HoverTooltip>

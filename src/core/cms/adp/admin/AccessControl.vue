@@ -35,6 +35,14 @@ function selectTab(tabId) {
     query: { ...route.query, tab: tabId },
   })
 }
+
+function prefetchTab(tabId) {
+  if (tabId === 'modules') {
+    void import('@/core/cms/adp/admin/AccessControlComponents/AccessControlModulePermissionsTab.vue')
+  } else if (tabId === 'policies') {
+    void import('@/core/cms/adp/admin/AccessControlComponents/AccessControlPoliciesTab.vue')
+  }
+}
 </script>
 
 <template>
@@ -54,6 +62,8 @@ function selectTab(tabId) {
           :class="{ active: activeTab === tab.id }"
           role="tab"
           :aria-selected="activeTab === tab.id"
+          @mouseenter="prefetchTab(tab.id)"
+          @focus="prefetchTab(tab.id)"
           @click="selectTab(tab.id)"
         >
           {{ tab.label }}

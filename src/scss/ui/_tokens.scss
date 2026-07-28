@@ -56,6 +56,10 @@
   /* Shell desktop breakpoint (синхрон с SHELL_DESKTOP_MIN / Bootstrap xl). */
   --ui-shell-desktop-min: 1200px;
 
+  /* Единая ширина рабочей области страниц ядра (LayoutMenu + app-shell). */
+  --ui-page-width: 100%;
+  --ui-page-inline: 4%;
+
   /* Compact shell: фиксированная шапка + notch / Dynamic Island. */
   --shell-mobile-header-base: 56px;
   --shell-mobile-header-offset: calc(

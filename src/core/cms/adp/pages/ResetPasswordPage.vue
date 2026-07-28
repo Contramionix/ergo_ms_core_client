@@ -8,10 +8,15 @@ import { validateFieldValue, validateFieldsOnEquality } from '@/js/validation'
 import { validatePasswordValue } from '@/js/passwordPolicy.js'
 import { resetPassword, fetchPasswordResetSettings } from '@/core/cms/adp/js/auth-index'
 import { logError } from '@/js/utils/logError.js'
+import { prefetchRouteByName } from '@/js/utils/prefetchRoute.js'
 
 const router = useRouter()
 const route = useRoute()
 const { t } = useAppI18n()
+
+function prefetchLogin() {
+  prefetchRouteByName(router, 'Login')
+}
 const isLoading = ref(false)
 const isSuccess = ref(false)
 const isBootstrapping = ref(true)
@@ -215,7 +220,12 @@ const submitForm = async () => {
           <i class="bi bi-info-circle-fill me-2"></i>
           {{ t('auth.forgot.contactAdmin') }}
         </div>
-        <RouterLink :to="{ name: 'Login' }" class="btn btn-outline-primary">
+        <RouterLink
+          :to="{ name: 'Login' }"
+          class="btn btn-outline-primary"
+          @mouseenter="prefetchLogin"
+          @focusin="prefetchLogin"
+        >
           <i class="bi bi-arrow-left me-2"></i>
           {{ t('auth.forgot.backToLogin') }}
         </RouterLink>
@@ -307,7 +317,12 @@ const submitForm = async () => {
         </button>
 
         <div class="text-center">
-          <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary">
+          <RouterLink
+            :to="{ name: 'Login' }"
+            class="text-decoration-none text-primary"
+            @mouseenter="prefetchLogin"
+            @focusin="prefetchLogin"
+          >
             <i class="bi bi-arrow-left me-2"></i>
             {{ t('auth.forgot.backToLogin') }}
           </RouterLink>

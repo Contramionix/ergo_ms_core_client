@@ -45,6 +45,14 @@ function selectTab(tabId) {
   })
 }
 
+function prefetchTab(tabId) {
+  if (tabId === 'client') {
+    void import('@/core/client_monitor/components/ClientMonitorPanel.vue')
+  } else if (tabId === 'audit') {
+    void import('@/core/audit/components/AuditLogPanel.vue')
+  }
+}
+
 onMounted(async () => {
   // Пока идёт access-check — прогреваем чанк панели (иначе waterfall: check → chunk → API).
   const panelPrefetch = import('@/core/audit/components/AuditLogPanel.vue')
@@ -89,6 +97,8 @@ onMounted(async () => {
           :class="{ active: activeTab === tab.id }"
           role="tab"
           :aria-selected="activeTab === tab.id"
+          @mouseenter="prefetchTab(tab.id)"
+          @focus="prefetchTab(tab.id)"
           @click="selectTab(tab.id)"
         >
           {{ tab.label }}

@@ -1,8 +1,5 @@
 import { createI18n } from 'vue-i18n'
 
-import ru from './locales/ru/index.js'
-import en from './locales/en/index.js'
-import fr from './locales/fr/index.js'
 import {
   FALLBACK_LOCALE,
   getDefaultLocale,
@@ -26,23 +23,6 @@ function readInitialLocale() {
 }
 
 const initialLocale = readInitialLocale()
-
-export const i18n = createI18n({
-  legacy: false,
-  globalInjection: true,
-  locale: initialLocale,
-  fallbackLocale: FALLBACK_LOCALE,
-  messages: {
-    ru,
-    en,
-    fr,
-  },
-  pluralRules: {
-    ru: russianPluralRule,
-    en: englishPluralRule,
-    fr: englishPluralRule,
-  },
-})
 
 /** Правила множественного числа для vue-i18n (ru: 3 формы). */
 function russianPluralRule(choice, choicesLength) {
@@ -71,6 +51,85 @@ function englishPluralRule(choice, choicesLength) {
   return choice === 1 ? 0 : 1
 }
 
+const localeLoaders = {
+  ru: () => import('./locales/ru/index.js'),
+  en: () => import('./locales/en/index.js'),
+  fr: () => import('./locales/fr/index.js'),
+}
+
+const loadedCoreLocales = new Set()
+const coreLocalePromises = new Map()
+
+/**
+ * Подгружает каталог ядра для locale (кэш промисов).
+ * @param {string} locale
+ * @returns {Promise<string>}
+ */
+export async function ensureLocaleLoaded(locale) {
+  const normalized = normalizeLocale(locale)
+  if (loadedCoreLocales.has(normalized)) {
+    return normalized
+  }
+  if (coreLocalePromises.has(normalized)) {
+    await coreLocalePromises.get(normalized)
+    return normalized
+  }
+
+  const loader = localeLoaders[normalized]
+  if (!loader) {
+    return ensureLocaleLoaded(FALLBACK_LOCALE)
+  }
+
+  const promise = (async () => {
+    const mod = await loader()
+    const messages = mod.default || mod
+    i18n.global.setLocaleMessage(normalized, messages)
+    loadedCoreLocales.add(normalized)
+  })()
+
+  coreLocalePromises.set(normalized, promise)
+  try {
+    await promise
+  } finally {
+    coreLocalePromises.delete(normalized)
+  }
+  return normalized
+}
+
+/**
+ * Стартовые каталоги: активный язык + fallback (если другой).
+ * @returns {Promise<string>} активный locale
+ */
+export async function ensureBootLocales() {
+  const active = readInitialLocale()
+  const tasks = [ensureLocaleLoaded(active)]
+  if (active !== FALLBACK_LOCALE) {
+    tasks.push(ensureLocaleLoaded(FALLBACK_LOCALE))
+  }
+  await Promise.all(tasks)
+  applyLocale(active)
+  return active
+}
+
+export const i18n = createI18n({
+  legacy: false,
+  globalInjection: true,
+  locale: initialLocale,
+  fallbackLocale: FALLBACK_LOCALE,
+  messages: {},
+  pluralRules: {
+    ru: russianPluralRule,
+    en: englishPluralRule,
+    fr: englishPluralRule,
+  },
+})
+
+/**
+ * Стартует при оценке модуля i18n — не ждать body main.js.
+ * На Vite dev + Slow 3G иначе locale оказывается в конце очереди HTTP/1.1 (~40s в HAR).
+ */
+export const bootLocalesPromise = ensureBootLocales()
+
 export function getI18n() {
   return i18n
 }
@@ -93,11 +152,11 @@ export function getCurrentBcp47() {
 }
 
 /**
- * Устанавливает язык UI: vue-i18n, <html lang>, событие ergo:locale-change.
+ * Синхронно применяет locale (без загрузки каталогов).
  * @param {string} locale
- * @returns {string} нормализованный код
+ * @returns {string}
  */
-export function setAppLocale(locale) {
+export function applyLocale(locale) {
   const normalized = normalizeLocale(locale)
   const current = i18n.global.locale
   if (typeof current === 'object' && 'value' in current) {
@@ -116,6 +175,39 @@ export function setAppLocale(locale) {
     )
   }
 
+  return normalized
+}
+
+let onLocaleMessagesReady = null
+
+/**
+ * Хук для догрузки модульных каталогов при смене языка (LocaleManager).
+ * @param {(locale: string) => Promise<void>} handler
+ */
+export function setLocaleMessagesReadyHandler(handler) {
+  onLocaleMessagesReady = typeof handler === 'function' ? handler : null
+}
+
+/**
+ * Устанавливает язык UI: подгрузка каталогов, vue-i18n, <html lang>, событие.
+ * @param {string} locale
+ * @returns {Promise<string>} нормализованный код
+ */
+export async function setAppLocale(locale) {
+  const normalized = normalizeLocale(locale)
+  const tasks = [ensureLocaleLoaded(normalized)]
+  if (normalized !== FALLBACK_LOCALE) {
+    tasks.push(ensureLocaleLoaded(FALLBACK_LOCALE))
+  }
+  await Promise.all(tasks)
+  applyLocale(normalized)
+  if (onLocaleMessagesReady) {
+    try {
+      await onLocaleMessagesReady(normalized)
+    } catch {
+      /* модульные каталоги не блокируют смену языка ядра */
+    }
+  }
   return normalized
 }
 

@@ -6,6 +6,7 @@ import {
 } from '@/js/theme-manager.js'
 import { syncUiPreferencesFromStorage } from '@/core/cms/js/uiPreferencesSettings.js'
 import {
+  applyLocale,
   getCurrentLocale,
   getDefaultLocale,
   getLanguageOptions,
@@ -85,7 +86,7 @@ watch(language, (val) => {
     return
   }
   localStorage.setItem(LANGUAGE_BASE_KEY, normalized)
-  setAppLocale(normalized)
+  void setAppLocale(normalized)
   if (!skipLanguagePersist) {
     void persistLanguageToProfile(normalized)
   }
@@ -109,14 +110,14 @@ async function persistLanguageToProfile(locale) {
 export function applyLanguageFromProfile(locale) {
   const normalized = normalizeLocale(locale)
   if (language.value === normalized) {
-    setAppLocale(normalized)
+    void setAppLocale(normalized)
     return
   }
   skipLanguagePersist = true
   try {
     language.value = normalized
     localStorage.setItem(LANGUAGE_BASE_KEY, normalized)
-    setAppLocale(normalized)
+    void setAppLocale(normalized)
   } finally {
     skipLanguagePersist = false
   }
@@ -130,7 +131,7 @@ export function syncUiSettingsFromStorage() {
   skipLanguagePersist = true
   try {
     language.value = stored
-    setAppLocale(stored)
+    void setAppLocale(stored)
   } finally {
     skipLanguagePersist = false
   }
@@ -146,8 +147,8 @@ export function initUserSettings(userId) {
   syncUiSettingsFromStorage()
 }
 
-/** Начальная синхронизация locale при загрузке модуля. */
-setAppLocale(language.value)
+/** Начальная синхронизация locale (каталоги подгружает ensureBootLocales в main). */
+applyLocale(language.value)
 
 export function useUiSettings() {
   return {

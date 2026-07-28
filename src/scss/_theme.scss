@@ -51,7 +51,9 @@ $dark-accent: #f14336;
   --color-accent: #{$accent};
 }
 
-@mixin bootstrap-theme-bridge() {
+// $accent-rgb — «r, g, b» для утилит Bootstrap (.text-primary и т.п.),
+// иначе остаётся дефолт сборки 13,110,253 и кружок/ссылки синие при красном accent.
+@mixin bootstrap-theme-bridge($accent-rgb) {
   --bs-body-bg: var(--color-background);
   --bs-body-color: var(--color-primary-text);
   --bs-emphasis-color: var(--color-primary-text);
@@ -63,6 +65,7 @@ $dark-accent: #f14336;
   --bs-secondary-bg: var(--color-secondary-background);
   --bs-tertiary-bg: var(--color-secondary-background);
   --bs-primary: var(--color-accent);
+  --bs-primary-rgb: #{$accent-rgb};
   --bs-link-color: var(--color-accent);
   --bs-link-hover-color: var(--color-accent);
   --bs-heading-color: var(--color-primary-text);
@@ -95,7 +98,7 @@ body {
     $light-hover-background,
     $light-accent
   );
-  @include bootstrap-theme-bridge();
+  @include bootstrap-theme-bridge('208, 50, 45'); // #d0322d
 }
 
 [data-bs-theme='dark'] {
@@ -111,5 +114,5 @@ body {
     $dark-hover-background,
     $dark-accent
   );
-  @include bootstrap-theme-bridge();
+  @include bootstrap-theme-bridge('241, 67, 54'); // #f14336
 }

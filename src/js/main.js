@@ -1,47 +1,23 @@
-import { initRouter } from '@/js/routers.js'
-
 import '@/js/utils/logger.js'
 
 import 'vue-toastification/dist/index.css'
 import '@/scss/styles.scss'
 
-import Toast from 'vue-toastification'
-import { getToastPluginOptions, syncToastPluginWithSettings } from '@/js/utils/toast.js'
-import { gatedAutoAnimatePlugin } from '@/js/utils/autoAnimatePlugin.js'
-
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
-import App from '@/App.vue'
-import { initEndpoints } from '@/js/api/endpoints.js'
 import { hideBootstrapMask } from '@/js/bootstrapMask.js'
-import { DEFAULT_SITE_NAME } from '@/js/siteWordmark.js'
-import { bootstrapAppSession } from '@/js/bootstrapSession.js'
-import { initTheme } from '@/js/theme-manager.js'
 import { initUiPreferences } from '@/js/uiPreferences.js'
-import { logError } from '@/js/utils/logError.js'
-import { i18n, tGlobal } from '@/i18n/index.js'
-import '@/core/cms/js/uiSettings.js'
+import { bootLocalesPromise, i18n, tGlobal } from '@/i18n/index.js'
 
-const app = createApp(App)
-const pinia = createPinia()
-
-app.use(pinia)
-app.use(i18n)
-app.use(gatedAutoAnimatePlugin)
-app.use(Toast, getToastPluginOptions())
-syncToastPluginWithSettings()
-
-if (typeof document !== 'undefined') {
-  document.title = DEFAULT_SITE_NAME
-}
-
-initTheme()
+// initTheme — в color-theme.js (head), до main; здесь не тянем theme-manager повторно.
 initUiPreferences()
 
 function showBootFailure(error) {
   hideBootstrapMask()
-  logError(tGlobal('errors.boot.failedLog'), error)
+  void import('@/js/utils/logError.js')
+    .then(({ logError }) => logError(tGlobal('errors.boot.failedLog'), error))
+    .catch(() => {})
   if (typeof document !== 'undefined') {
     const root = document.getElementById('app')
     if (root) {
@@ -51,38 +27,99 @@ function showBootFailure(error) {
 }
 
 /**
+ * Откладывает некритичную работу после первого paint (не конкурирует с layout/session на 3G).
+ * @param {() => void} fn
+ */
+function runWhenIdle(fn) {
+  if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(() => fn(), { timeout: 4000 })
+    return
+  }
+  setTimeout(fn, 1)
+}
+
+/**
  * Без top-level await: иначе evaluation чанка index не завершается, пока
  * initEndpoints/initRouter ждут dynamic import integrations/routes, а те
  * статически импортируют index → ESM-дедлок (сеть 200, SPA навсегда в boot-loader).
  *
- * Модульные каталоги i18n — до initEndpoints/initRouter: permission-rules
- * с getters title/message вызывают tGlobal при отказе в доступе и в DEV validateAll.
+ * Фазы (Vite dev + Slow 3G / HTTP/1.1):
+ * 0) boot-locale-prefetch.js в head — прогрев locales/* до очереди main
+ * 1) bootLocalesPromise (i18n) — без sync logError/client_monitor/api
+ * 2) App/toast/uiSettings → module locales → endpoints+router → mount
+ * 3) session / monitor / themes — idle
  */
-import('@/modules/i18n/LocaleManager.js')
-  .then(({ preloadModuleLocales }) => preloadModuleLocales())
-  .catch(() => {})
-  .then(() => Promise.all([initEndpoints(), initRouter()]))
-  .then(([, router]) => {
+bootLocalesPromise
+  .then(() =>
+    Promise.all([
+      import('@/App.vue'),
+      import('vue-toastification'),
+      import('@/js/utils/toast.js'),
+      import('@/js/utils/autoAnimatePlugin.js'),
+      import('@/js/siteWordmark.js'),
+      import('@/core/cms/js/uiSettings.js'),
+    ]),
+  )
+  .then(
+    ([
+      appModule,
+      toastModule,
+      toastUtils,
+      autoAnimateModule,
+      wordmarkModule,
+    ]) => {
+      const app = createApp(appModule.default)
+      const pinia = createPinia()
+
+      app.use(pinia)
+      app.use(i18n)
+      app.use(autoAnimateModule.gatedAutoAnimatePlugin)
+      app.use(toastModule.default, toastUtils.getToastPluginOptions())
+      toastUtils.syncToastPluginWithSettings()
+
+      if (typeof document !== 'undefined') {
+        document.title = wordmarkModule.DEFAULT_SITE_NAME
+      }
+
+      return app
+    },
+  )
+  .then((app) =>
+    import('@/modules/i18n/LocaleManager.js')
+      .then(({ preloadModuleLocales }) => preloadModuleLocales())
+      .catch(() => {})
+      .then(() => app),
+  )
+  .then((app) =>
+    Promise.all([
+      import('@/js/api/endpoints.js').then((m) => m.initEndpoints()),
+      import('@/js/routers.js').then((m) => m.initRouter()),
+    ]).then(([, router]) => ({ app, router })),
+  )
+  .then(({ app, router }) => {
     app.use(router)
     app.mount('#app')
 
-    // warmupAvatar — после applySessionBootstrapData (на F5 avatarUrl ещё null)
-    void bootstrapAppSession()
+    void import('@/js/bootstrapSession.js').then(({ bootstrapAppSession }) => {
+      void bootstrapAppSession()
+    })
 
-    void import('@/core/client_monitor/index.js')
-      .then(({ initClientMonitor }) => {
-        void import('@/js/api/manager.js').then(({ apiClient }) => {
-          initClientMonitor({ app, router, axiosInstance: apiClient.client })
+    runWhenIdle(() => {
+      void import('@/core/client_monitor/index.js')
+        .then(({ initClientMonitor }) => {
+          void import('@/js/api/manager.js').then(({ apiClient }) => {
+            initClientMonitor({ app, router, axiosInstance: apiClient.client })
+          })
         })
-      })
-      .catch(() => {})
+        .catch(() => {})
 
-    void import('@/js/theme-service.js')
-      .then(({ syncSiteThemeFromApi }) => syncSiteThemeFromApi())
-      .catch(() => {})
+      void import('@/js/theme-service.js')
+        .then(({ syncSiteThemeFromApi }) => syncSiteThemeFromApi())
+        .catch(() => {})
 
-    void import('@/modules/themes/ThemeDefaultsManager.js')
-      .then(({ preloadModuleThemeManifests }) => preloadModuleThemeManifests())
-      .catch(() => {})
+      void import('@/modules/themes/ThemeDefaultsManager.js')
+        .then(({ preloadModuleThemeManifests }) => preloadModuleThemeManifests())
+        .catch(() => {})
+    })
   })
   .catch(showBootFailure)

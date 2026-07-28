@@ -35,6 +35,10 @@ const displayText = computed(() => {
 
 const ringClass = computed(() => {
   const c = props.color?.toLowerCase?.() ?? 'primary'
+  // primary — через --color-accent (не .text-primary / --bs-primary-rgb Bootstrap)
+  if (c === 'primary') {
+    return ''
+  }
   if (BOOTSTRAP_VARIANTS.includes(c)) {
     return `text-${c}`
   }
@@ -43,7 +47,11 @@ const ringClass = computed(() => {
 
 const ringStyle = computed(() => {
   const c = props.color?.trim?.() ?? 'primary'
-  if (BOOTSTRAP_VARIANTS.includes(c.toLowerCase())) {
+  const lower = c.toLowerCase()
+  if (lower === 'primary') {
+    return {}
+  }
+  if (BOOTSTRAP_VARIANTS.includes(lower)) {
     return {}
   }
   return { '--spinner-color': c }
@@ -97,9 +105,22 @@ const ringStyle = computed(() => {
   width: 48px;
   height: 48px;
   border: 3px solid transparent;
-  border-top-color: var(--spinner-color, currentColor);
+  border-top-color: var(
+    --spinner-color,
+    var(--color-accent, var(--bs-primary, #d0322d))
+  );
   border-radius: 50%;
   animation: spinner-loading-spin 0.9s linear infinite;
+
+  &.text-secondary,
+  &.text-success,
+  &.text-danger,
+  &.text-warning,
+  &.text-info,
+  &.text-light,
+  &.text-dark {
+    border-top-color: var(--spinner-color, currentColor);
+  }
 }
 
 .spinner-loading__text {

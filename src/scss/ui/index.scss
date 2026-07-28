@@ -16,6 +16,19 @@
   }
 }
 
+/* Единая горизонтальная геометрия контента страниц ядра. */
+.ui-page-shell {
+  width: var(--ui-page-width);
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-inline: auto;
+  padding-inline: var(--ui-page-inline);
+
+  @media (width < $ui-bp-sm) {
+    padding-inline: 1rem;
+  }
+}
+
 .ui-divider {
   height: 1px;
   background: var(--ui-border);

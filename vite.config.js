@@ -319,9 +319,8 @@ function resolveManualChunk(id) {
   if (normalizedId.includes('@vuepic/vue-datepicker')) {
     return 'vendor_datepicker'
   }
-  if (normalizedId.includes('lucide-vue-next')) {
-    return 'vendor_lucide'
-  }
+  // lucide: не форсируем один vendor_lucide — иначе barrel+все named icons
+  // склеиваются в ~900KB; menu грузит icons/*.js точечно через lucideIconLoader.
   if (normalizedId.includes('axios')) {
     return 'vendor_axios'
   }

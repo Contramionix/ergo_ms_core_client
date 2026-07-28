@@ -37,12 +37,12 @@ const { t } = useAppI18n()
 
 const props = defineProps({
   title: {
-    type: String,
-    default: undefined,
+    type: [String, null],
+    default: null,
   },
   message: {
-    type: String,
-    default: undefined,
+    type: [String, null],
+    default: null,
   },
   showActions: {
     type: Boolean,
@@ -57,12 +57,12 @@ const props = defineProps({
     default: true,
   },
   backText: {
-    type: String,
-    default: undefined,
+    type: [String, null],
+    default: null,
   },
   homeText: {
-    type: String,
-    default: undefined,
+    type: [String, null],
+    default: null,
   },
   homeRouteName: {
     type: String,
@@ -75,7 +75,9 @@ const props = defineProps({
 })
 
 const resolvedTitle = computed(() => props.title ?? t('components.accessDenied.title'))
-const resolvedMessage = computed(() => props.message ?? t('components.accessDenied.description'))
+const resolvedMessage = computed(
+  () => props.message ?? t('components.accessDenied.description'),
+)
 const resolvedBackText = computed(() => props.backText ?? t('common.back'))
 const resolvedHomeText = computed(() => props.homeText ?? t('components.notFound.goHome'))
 
@@ -110,7 +112,7 @@ const goHome = () => {
 }
 
 .card {
-  max-width: 720px;
   width: 100%;
+  max-width: 100%;
 }
 </style>

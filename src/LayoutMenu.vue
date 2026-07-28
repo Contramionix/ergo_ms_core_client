@@ -205,21 +205,30 @@ onBeforeUnmount(() => {
           иначе краткий accessDeniedState.active размонтирует страницу,
           onMounted снова дергает checkAccess → ложный /access-denied.
         -->
-        <AccessDenied
-          v-show="accessDeniedState.active"
-          bordered
-          :title="accessDeniedState.title"
-          :message="accessDeniedState.message"
-        />
         <template v-if="route.meta?.fullPage">
+          <AccessDenied
+            v-show="accessDeniedState.active"
+            bordered
+            :title="accessDeniedState.title"
+            :message="accessDeniedState.message"
+          />
           <RouteViewAnimated v-show="!accessDeniedState.active" />
         </template>
         <div
           v-else
-          v-show="!accessDeniedState.active"
-          :class="route.meta?.flushContent ? 'layout-content--flush' : 'layout-content-shell py-4 container-xxl'"
+          :class="
+            route.meta?.flushContent && !accessDeniedState.active
+              ? 'layout-content--flush'
+              : 'layout-content-shell py-4'
+          "
         >
-          <RouteViewAnimated />
+          <AccessDenied
+            v-show="accessDeniedState.active"
+            bordered
+            :title="accessDeniedState.title"
+            :message="accessDeniedState.message"
+          />
+          <RouteViewAnimated v-show="!accessDeniedState.active" />
         </div>
       </main>
     </div>
@@ -336,10 +345,16 @@ onBeforeUnmount(() => {
 }
 
 .layout-content-shell {
+  width: var(--ui-page-width);
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-inline: auto;
+  padding-inline: var(--ui-page-inline);
+
   @media (width < $ui-bp-sm) {
-    --bs-gutter-x: 1rem;
     padding-top: 1rem !important;
     padding-bottom: 1rem !important;
+    padding-inline: 1rem;
   }
 }
 

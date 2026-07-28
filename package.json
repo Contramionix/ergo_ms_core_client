@@ -5,10 +5,10 @@
   "type": "module",
   "description": "Ядро системы ErgoMS - клиентская часть",
   "scripts": {
-    "predev": "node scripts/generate-module-globs.js",
+    "predev": "node scripts/generate-module-globs.js && node scripts/generate-lucide-icon-map.js",
     "dev": "vite --host",
     "stop-dev": "node scripts/stop-dev.js",
-    "prebuild": "node scripts/generate-module-globs.js",
+    "prebuild": "node scripts/generate-module-globs.js && node scripts/generate-lucide-icon-map.js",
     "build": "vite build",
     "build:analyze": "npm run prebuild && cross-env ANALYZE=true vite build",
     "preview": "vite preview",

@@ -1,46 +1,104 @@
 /**
  * Загрузка client/js/locales.js из модулей и merge в vue-i18n.
+ * На старте и при смене языка merge только нужных locale (active + fallback).
  */
 import { ModuleLoader } from '@/modules/core/ModuleLoader.js'
-import { i18n, SUPPORTED_LOCALES } from '@/i18n/index.js'
+import {
+  FALLBACK_LOCALE,
+  getCurrentLocale,
+  i18n,
+  setLocaleMessagesReadyHandler,
+  SUPPORTED_LOCALES,
+} from '@/i18n/index.js'
 
-let mergePromise = null
+let sharedManager = null
+let modulesPacksPromise = null
+/** @type {Map<string, object>|null} moduleKey → pack { ru, en, fr } */
+let cachedModulePacks = null
+/** locale → уже смержены в vue-i18n */
+const mergedLocales = new Set()
 
 export class LocaleManager extends ModuleLoader {
   /**
-   * Подхватывает packs модулей и вызывает mergeLocaleMessage для каждого языка.
+   * Один раз подхватывает packs модулей (без merge).
+   * @returns {Promise<Map<string, object>>}
    */
-  async mergeModuleLocales() {
-    if (mergePromise) {
-      return mergePromise
+  async loadModulePacks() {
+    if (cachedModulePacks) {
+      return cachedModulePacks
+    }
+    if (modulesPacksPromise) {
+      return modulesPacksPromise
     }
 
-    mergePromise = (async () => {
+    modulesPacksPromise = (async () => {
       const modules = await this.loadAllModulesAsync('js/locales.js')
-      for (const [, mod] of Object.entries(modules)) {
+      const packs = new Map()
+      for (const [key, mod] of Object.entries(modules)) {
         const pack = mod.default || mod
-        if (!pack || typeof pack !== 'object') {
-          continue
-        }
-        for (const locale of SUPPORTED_LOCALES) {
-          const messages = pack[locale]
-          if (messages && typeof messages === 'object') {
-            i18n.global.mergeLocaleMessage(locale, messages)
-          }
+        if (pack && typeof pack === 'object') {
+          packs.set(key, pack)
         }
       }
-      return true
+      cachedModulePacks = packs
+      return packs
     })()
 
-    return mergePromise
+    try {
+      return await modulesPacksPromise
+    } finally {
+      modulesPacksPromise = null
+    }
+  }
+
+  /**
+   * Merge модульных сообщений для указанных locale (идемпотентно по locale).
+   * @param {string[]} locales
+   */
+  async mergeLocales(locales) {
+    const wanted = [...new Set(locales.map((l) => String(l || '').trim()).filter(Boolean))]
+      .filter((l) => SUPPORTED_LOCALES.includes(l))
+    const pending = wanted.filter((l) => !mergedLocales.has(l))
+    if (pending.length === 0) {
+      return true
+    }
+
+    const packs = await this.loadModulePacks()
+    for (const locale of pending) {
+      for (const pack of packs.values()) {
+        const messages = pack[locale]
+        if (messages && typeof messages === 'object') {
+          i18n.global.mergeLocaleMessage(locale, messages)
+        }
+      }
+      mergedLocales.add(locale)
+    }
+    return true
+  }
+
+  /**
+   * Подхватывает packs и merge для active (+ fallback при необходимости).
+   */
+  async mergeModuleLocales() {
+    const active = getCurrentLocale()
+    const locales = [active]
+    if (active !== FALLBACK_LOCALE) {
+      locales.push(FALLBACK_LOCALE)
+    }
+    return this.mergeLocales(locales)
   }
 }
-
-let sharedManager = null
 
 export function getLocaleManager() {
   if (!sharedManager) {
     sharedManager = new LocaleManager()
+    setLocaleMessagesReadyHandler(async (locale) => {
+      const locales = [locale]
+      if (locale !== FALLBACK_LOCALE) {
+        locales.push(FALLBACK_LOCALE)
+      }
+      await sharedManager.mergeLocales(locales)
+    })
   }
   return sharedManager
 }

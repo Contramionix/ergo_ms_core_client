@@ -32,3 +32,6 @@ coverage
 
 # Генерируется перед dev/build (scripts/generate-module-globs.js)
 src/modules/core/sharedGlobs.generated.js
+
+# Генерируется перед dev/build (scripts/generate-lucide-icon-map.js)
+src/js/lucideIconFiles.generated.js

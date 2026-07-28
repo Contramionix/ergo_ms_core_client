@@ -7,7 +7,6 @@ export default {
       "title": "Главная",
       "titleKey": "routes.home",
       "requiresAuth": true,
-      "flushContent": true,
       "shellBackdrop": true
     }
   },
@@ -171,8 +170,7 @@ export default {
       "title": "Темы оформления",
       "titleKey": "routes.themes",
       "requiresAuth": true,
-      "requiresGlobalAdmin": true,
-      "flushContent": true
+      "requiresGlobalAdmin": true
     }
   },
   "AccessDenied": {

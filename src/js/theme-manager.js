@@ -137,7 +137,8 @@ export function applyTheme(theme, saveToStorage = true) {
   if (!styleElement) {
     styleElement = document.createElement('style')
     styleElement.id = 'custom-theme-styles'
-    document.body.appendChild(styleElement)
+    const parent = document.head || document.body || document.documentElement
+    parent.appendChild(styleElement)
   }
 
   const cssRules = buildThemeCss({

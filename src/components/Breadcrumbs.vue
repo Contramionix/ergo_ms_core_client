@@ -4,7 +4,13 @@
       <template v-for="(item, index) in breadcrumbs" :key="index">
         <li class="breadcrumb-item" :class="{ active: index === breadcrumbs.length - 1 }" :aria-current="index === breadcrumbs.length - 1 ? 'page' : undefined">
           <template v-if="index < breadcrumbs.length - 1">
-            <router-link v-if="item.to" :to="item.to" class="breadcrumb-link">
+            <router-link
+              v-if="item.to"
+              :to="item.to"
+              class="breadcrumb-link"
+              @mouseenter="prefetchItem(item)"
+              @focusin="prefetchItem(item)"
+            >
               <component v-if="item.icon" :is="item.icon" class="lucide breadcrumb-leading-icon" :size="18"/>
               {{ item.label }}
             </router-link>
@@ -33,9 +39,12 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { prefetchRouteByName } from '@/js/utils/prefetchRoute.js'
 
 const { t } = useAppI18n()
+const router = useRouter()
 
 const props = defineProps({
   items: {
@@ -63,6 +72,13 @@ const breadcrumbs = computed(() =>
     icon: item.icon || null,
   })),
 )
+
+function prefetchItem(item) {
+  const name = item?.to?.name
+  if (typeof name === 'string') {
+    prefetchRouteByName(router, name)
+  }
+}
 </script>
 
 <style scoped lang="scss">

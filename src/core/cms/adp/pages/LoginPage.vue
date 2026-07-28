@@ -12,12 +12,17 @@ import { useRegistrationSettings } from '@/core/cms/adp/js/useRegistrationSettin
 import { usePasswordResetSettings } from '@/core/cms/adp/js/usePasswordResetSettings.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { logError } from '@/js/utils/logError.js'
+import { prefetchRouteByName } from '@/js/utils/prefetchRoute.js'
 
 const { t } = useAppI18n()
 const router = useRouter()
 const isLoading = ref(false)
 const { showRegisterLink } = useRegistrationSettings()
 const { showForgotPasswordLink } = usePasswordResetSettings()
+
+function prefetchAuthRoute(name) {
+  prefetchRouteByName(router, name)
+}
 
 const form = reactive({
   login: '',
@@ -185,6 +190,8 @@ const submitForm = async () => {
               v-if="showForgotPasswordLink"
               :to="{ name: 'ForgotPassword' }"
               class="text-decoration-none text-primary"
+              @mouseenter="prefetchAuthRoute('ForgotPassword')"
+              @focusin="prefetchAuthRoute('ForgotPassword')"
             >
               {{ t('auth.login.forgotPassword') }}
             </RouterLink>
@@ -203,7 +210,12 @@ const submitForm = async () => {
 
           <div v-if="showRegisterLink" class="text-center">
             <span class="text-muted">{{ t('auth.login.noAccount') }}</span>
-            <RouterLink :to="{ name: 'Register' }" class="text-decoration-none text-primary fw-semibold ms-1">
+            <RouterLink
+              :to="{ name: 'Register' }"
+              class="text-decoration-none text-primary fw-semibold ms-1"
+              @mouseenter="prefetchAuthRoute('Register')"
+              @focusin="prefetchAuthRoute('Register')"
+            >
               {{ t('auth.login.register') }}
             </RouterLink>
           </div>

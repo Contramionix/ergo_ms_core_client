@@ -5,10 +5,15 @@ import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
 import { registration, fetchRegistrationSettings, validateInvitationToken } from '@/core/cms/adp/js/auth-index'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { validateRegistrationForm } from '@/js/validation'
+import { prefetchRouteByName } from '@/js/utils/prefetchRoute.js'
 
 const router = useRouter()
 const route = useRoute()
 const { t } = useAppI18n()
+
+function prefetchLogin() {
+  prefetchRouteByName(router, 'Login')
+}
 const isLoading = ref(false)
 const isSuccess = ref(false)
 const isBootstrapping = ref(true)
@@ -265,7 +270,7 @@ const showSuccessMessage = () => {
       </div>
 
       <div v-if="registrationClosed" class="text-center">
-        <RouterLink :to="{ name: 'Login' }" class="btn btn-primary">
+        <RouterLink :to="{ name: 'Login' }" class="btn btn-primary" @mouseenter="prefetchLogin" @focusin="prefetchLogin">
           {{ t('auth.register.goToLogin') }}
         </RouterLink>
       </div>
@@ -274,7 +279,7 @@ const showSuccessMessage = () => {
         <div class="alert alert-info" role="alert">
           {{ t('auth.register.inviteContactAdmin') }}
         </div>
-        <RouterLink :to="{ name: 'Login' }" class="btn btn-outline-primary">
+        <RouterLink :to="{ name: 'Login' }" class="btn btn-outline-primary" @mouseenter="prefetchLogin" @focusin="prefetchLogin">
           {{ t('auth.register.login') }}
         </RouterLink>
       </div>
@@ -444,7 +449,12 @@ const showSuccessMessage = () => {
 
         <div class="text-center">
           <span class="text-muted">{{ t('auth.register.hasAccount') }}</span>
-          <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary fw-semibold ms-1">
+          <RouterLink
+            :to="{ name: 'Login' }"
+            class="text-decoration-none text-primary fw-semibold ms-1"
+            @mouseenter="prefetchLogin"
+            @focusin="prefetchLogin"
+          >
             {{ t('auth.register.login') }}
           </RouterLink>
         </div>

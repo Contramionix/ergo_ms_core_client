@@ -22,5 +22,8 @@ function cachedRouteKey(activeRoute) {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 </style>

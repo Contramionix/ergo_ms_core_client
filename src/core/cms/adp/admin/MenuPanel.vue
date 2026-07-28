@@ -673,12 +673,14 @@ function loadExpandAllGroupsFromCookie() {
 
 onMounted(async () => {
   loadExpandAllGroupsFromCookie()
+  const listPrefetch = import('./MenuPanelComponents/DraggableMenuList.vue')
   await initEndpoints()
   await Promise.all([
     loadMenuItems(),
     loadSeparators(),
     loadRoles(),
-    loadRoleGroups()
+    loadRoleGroups(),
+    listPrefetch,
   ])
   syncInitialCombinedOrder()
   window.addEventListener('beforeunload', onBeforeUnload)
@@ -693,7 +695,9 @@ onUnmounted(() => {
 @import './admin-page.scss';
 
 .menu-panel {
-  padding: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 
   &__title-row {
     display: flex;
@@ -736,8 +740,6 @@ onUnmounted(() => {
 
 @media (width < $ui-bp-md) {
   .menu-panel {
-    padding: 0.75rem;
-    
     &__actions {
       flex-direction: column;
       

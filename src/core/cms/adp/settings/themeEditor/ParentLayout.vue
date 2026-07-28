@@ -33,6 +33,10 @@ function setView(view) {
   }
 }
 
+function prefetchPreview() {
+  void import('./ThemePreview.vue')
+}
+
 onMounted(() => {
   // Параллельно: чанк галереи (defineAsyncComponent) + список тем с API.
   void import('./ThemeEditor.vue')
@@ -91,6 +95,8 @@ onBeforeRouteLeave(async () => {
           :class="{ active: activeView === 'preview' }"
           role="tab"
           :aria-selected="activeView === 'preview'"
+          @mouseenter="prefetchPreview"
+          @focus="prefetchPreview"
           @click="setView('preview')"
         >
           <Eye :size="16" aria-hidden="true" />
@@ -127,9 +133,9 @@ onBeforeRouteLeave(async () => {
   --theme-editor-motion: 320ms;
   --theme-editor-ease: cubic-bezier(0.22, 1, 0.36, 1);
   width: 100%;
-  max-width: none;
+  max-width: 100%;
   box-sizing: border-box;
-  padding: 1.5rem clamp(1rem, 2.5vw, 2.5rem) 2rem;
+  padding: 0;
 }
 
 .theme-editor-shell {

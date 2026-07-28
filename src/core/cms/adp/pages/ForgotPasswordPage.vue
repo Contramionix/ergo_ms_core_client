@@ -5,9 +5,14 @@ import AuthPageShell from '@/core/cms/adp/components/AuthPageShell.vue'
 import { sendConfirmationCode, fetchPasswordResetSettings } from '@/core/cms/adp/js/auth-index'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { validateFieldValue, validateFieldWithRegex, emailRegex } from '@/js/validation'
+import { prefetchRouteByName } from '@/js/utils/prefetchRoute.js'
 
 const router = useRouter()
 const { t } = useAppI18n()
+
+function prefetchLogin() {
+  prefetchRouteByName(router, 'Login')
+}
 const isLoading = ref(false)
 const isSuccess = ref(false)
 const isBootstrapping = ref(true)
@@ -155,7 +160,13 @@ const goToLogin = () => {
           <i class="bi bi-info-circle-fill me-2"></i>
           {{ t('auth.forgot.contactAdmin') }}
         </div>
-        <button type="button" class="btn btn-outline-primary" @click="goToLogin">
+        <button
+          type="button"
+          class="btn btn-outline-primary"
+          @mouseenter="prefetchLogin"
+          @focus="prefetchLogin"
+          @click="goToLogin"
+        >
           <i class="bi bi-arrow-left me-2"></i>
           {{ t('auth.forgot.backToLogin') }}
         </button>
@@ -171,7 +182,13 @@ const goToLogin = () => {
           {{ t('auth.forgot.checkInbox') }}
         </p>
 
-        <button type="button" class="btn btn-outline-primary" @click="goToLogin">
+        <button
+          type="button"
+          class="btn btn-outline-primary"
+          @mouseenter="prefetchLogin"
+          @focus="prefetchLogin"
+          @click="goToLogin"
+        >
           <i class="bi bi-arrow-left me-2"></i>
           {{ t('auth.forgot.backToLogin') }}
         </button>
@@ -214,7 +231,12 @@ const goToLogin = () => {
         </button>
 
         <div class="text-center">
-          <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary">
+          <RouterLink
+            :to="{ name: 'Login' }"
+            class="text-decoration-none text-primary"
+            @mouseenter="prefetchLogin"
+            @focusin="prefetchLogin"
+          >
             <i class="bi bi-arrow-left me-2"></i>
             {{ t('auth.forgot.backToLogin') }}
           </RouterLink>
