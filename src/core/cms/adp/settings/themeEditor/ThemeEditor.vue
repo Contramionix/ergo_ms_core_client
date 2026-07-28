@@ -292,7 +292,7 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
               <button
                 v-if="isEditingModulePair"
                 type="button"
-                class="btn btn-outline-primary d-inline-flex align-items-center gap-2"
+                class="ui-btn ui-btn--secondary"
                 :disabled="saving || !canEditCurrentTheme"
                 @click="saveModulePair"
               >
@@ -301,33 +301,33 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
               </button>
               <button
                 type="button"
-                class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
+                class="ui-btn ui-btn--secondary"
                 :disabled="!canEditCurrentTheme"
                 :title="t('settings.themes.resetVariantColors')"
                 @click="resetToDefaults"
               >
                 <RotateCcw :size="16" aria-hidden="true" />
-<span>{{ t('settings.themes.reset') }}</span>
+                <span>{{ t('settings.themes.reset') }}</span>
               </button>
               <button
                 type="button"
-                class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
+                class="ui-btn ui-btn--secondary"
                 @click="importTheme"
               >
                 <Upload :size="16" aria-hidden="true" />
-<span>{{ t('settings.themes.import') }}</span>
+                <span>{{ t('settings.themes.import') }}</span>
               </button>
               <button
                 type="button"
-                class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
+                class="ui-btn ui-btn--secondary"
                 @click="exportTheme"
               >
                 <Download :size="16" aria-hidden="true" />
-<span>{{ t('settings.themes.export') }}</span>
+                <span>{{ t('settings.themes.export') }}</span>
               </button>
               <button
                 type="button"
-                class="btn btn-primary d-inline-flex align-items-center gap-2"
+                class="ui-btn ui-btn--primary"
                 :disabled="saving || !canEditCurrentTheme"
                 @click="saveTheme"
               >
