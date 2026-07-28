@@ -14,8 +14,8 @@ export default {
   importUsers: 'Загрузка пользователей',
   roles: 'Роли',
   roleGroups: 'Ролевые группы',
-  audit: 'Журнал аудита',
-  clientMonitor: 'Мониторинг клиентов',
+  audit: 'Журнал действий',
+  clientMonitor: 'Журнал действий',
 
   invitations: 'Приглашения',
   menu: 'Меню',

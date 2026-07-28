@@ -216,9 +216,11 @@ export default {
     activeLabel: 'Group is active',
   },
   audit: {
-    title: 'Audit log',
+    title: 'Action log',
     pageTitle: 'Action log',
-    pageSubtitle: 'Centralized audit of user actions in the core and modules',
+    pageSubtitle: 'User action audit and web client session journal',
+    tabAudit: 'User actions',
+    tabClient: 'Web client sessions',
     search: 'Search audit log...',
     searchPlaceholder: 'Actor or object...',
     empty: 'No records found',

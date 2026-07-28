@@ -216,9 +216,11 @@ export default {
     activeLabel: 'Le groupe est actif',
   },
   audit: {
-    title: "Journal d'audit",
+    title: 'Journal des actions',
     pageTitle: 'Journal des actions',
-    pageSubtitle: 'Audit centralisé des actions utilisateur dans le noyau et les modules',
+    pageSubtitle: 'Audit des actions utilisateur et journal des sessions du client web',
+    tabAudit: 'Actions utilisateur',
+    tabClient: 'Sessions du client web',
     search: "Rechercher dans le journal d'audit...",
     searchPlaceholder: 'Acteur ou objet...',
     empty: 'Aucun enregistrement trouvé',

@@ -155,10 +155,10 @@ export default {
   },
   "ClientMonitorPanel": {
     "path": "/admin-panel/client-monitor",
-    "component": "@/core/cms/adp/admin/ClientMonitor.vue",
+    "redirect": { "name": "AuditLogPanel", "query": { "tab": "client" } },
     "meta": {
-      "title": "Мониторинг клиентов",
-      "titleKey": "routes.clientMonitor",
+      "title": "Журнал действий",
+      "titleKey": "routes.audit",
       "requiresAuth": true,
       "requiresGlobalAdmin": true
     }

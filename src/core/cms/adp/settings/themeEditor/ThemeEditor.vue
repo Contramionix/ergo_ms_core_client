@@ -168,8 +168,8 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
 
     <div class="theme-editor__workspace">
       <section class="theme-editor__section theme-editor__section--list">
-          <div class="theme-editor__section-head">
-            <div class="table-header theme-editor__list-heading">
+          <div class="content-card content-card--flush theme-editor__list-card">
+            <header class="theme-editor__panel-header">
               <h2 class="admin-section-heading theme-editor__list-title">{{ t('settings.themes.listTitle') }}</h2>
               <div class="actions-wrapper">
                 <HoverTooltip :text="t('settings.themes.newTheme')" wrap>
@@ -183,9 +183,9 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                   </button>
                 </HoverTooltip>
               </div>
-            </div>
+            </header>
 
-            <div class="theme-list-toolbar">
+            <div class="theme-editor__panel-toolbar theme-list-toolbar">
               <div
                 class="theme-editor__mode-filter"
                 role="group"
@@ -216,9 +216,7 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
                 />
               </div>
             </div>
-          </div>
 
-          <div class="content-card content-card--flush theme-editor__list-card">
             <div class="theme-editor__list-loading">
               <LoadingContentArea :loading="loading" min-height="8rem">
                 <div
@@ -269,81 +267,82 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
       </section>
 
       <section class="theme-editor__section theme-editor__section--form">
-          <div class="theme-editor__toolbar table-header mb-3">
-            <h2 class="admin-section-heading mb-0">
-              <template v-if="isEditingModulePair">
-                {{ t('settings.themes.editingPair') }}
-                <span class="theme-editor__variant-label">
-                  ({{ editingVariant === 'dark' ? t('settings.themes.darkVariantParen') : t('settings.themes.lightVariantParen') }})
-                </span>
-              </template>
-              <template v-else>
-                {{ isNewTheme ? t('settings.themes.newTheme') : t('settings.themes.editing') }}
-              </template>
-              <span
-                class="theme-editor__dirty-dot"
-                :class="{ 'is-visible': isDirty }"
-                :title="t('settings.themes.dirtyHint')"
-                :aria-label="t('settings.themes.dirtyHint')"
-                :aria-hidden="!isDirty"
-              />
-            </h2>
-            <div class="actions-wrapper theme-editor__actions">
-              <button
-                v-if="isEditingModulePair"
-                type="button"
-                class="ui-btn ui-btn--secondary"
-                :disabled="saving || !canEditCurrentTheme"
-                @click="saveModulePair"
-              >
-                <Save :size="16" aria-hidden="true" />
-                <span>{{ saving ? t('settings.themes.saving') : t('settings.themes.savePair') }}</span>
-              </button>
-              <button
-                type="button"
-                class="ui-btn ui-btn--secondary"
-                :disabled="!canEditCurrentTheme"
-                :title="t('settings.themes.resetVariantColors')"
-                @click="resetToDefaults"
-              >
-                <RotateCcw :size="16" aria-hidden="true" />
-                <span>{{ t('settings.themes.reset') }}</span>
-              </button>
-              <button
-                type="button"
-                class="ui-btn ui-btn--secondary"
-                @click="importTheme"
-              >
-                <Upload :size="16" aria-hidden="true" />
-                <span>{{ t('settings.themes.import') }}</span>
-              </button>
-              <button
-                type="button"
-                class="ui-btn ui-btn--secondary"
-                @click="exportTheme"
-              >
-                <Download :size="16" aria-hidden="true" />
-                <span>{{ t('settings.themes.export') }}</span>
-              </button>
-              <button
-                type="button"
-                class="ui-btn ui-btn--primary"
-                :disabled="saving || !canEditCurrentTheme"
-                @click="saveTheme"
-              >
-                <Save :size="16" aria-hidden="true" />
-                <span>
-                  {{
-                    saving
-                      ? t('settings.themes.saving')
-                      : (isEditingModulePair ? t('settings.themes.saveVariant') : t('common.save'))
-                  }}
-                </span>
-              </button>
-            </div>
-          </div>
+          <div class="content-card content-card--flush theme-editor__form-card">
+            <header class="theme-editor__panel-header theme-editor__toolbar">
+              <h2 class="admin-section-heading mb-0">
+                <template v-if="isEditingModulePair">
+                  {{ t('settings.themes.editingPair') }}
+                  <span class="theme-editor__variant-label">
+                    ({{ editingVariant === 'dark' ? t('settings.themes.darkVariantParen') : t('settings.themes.lightVariantParen') }})
+                  </span>
+                </template>
+                <template v-else>
+                  {{ isNewTheme ? t('settings.themes.newTheme') : t('settings.themes.editing') }}
+                </template>
+                <span
+                  class="theme-editor__dirty-dot"
+                  :class="{ 'is-visible': isDirty }"
+                  :title="t('settings.themes.dirtyHint')"
+                  :aria-label="t('settings.themes.dirtyHint')"
+                  :aria-hidden="!isDirty"
+                />
+              </h2>
+              <div class="actions-wrapper theme-editor__actions">
+                <button
+                  v-if="isEditingModulePair"
+                  type="button"
+                  class="ui-btn ui-btn--secondary"
+                  :disabled="saving || !canEditCurrentTheme"
+                  @click="saveModulePair"
+                >
+                  <Save :size="16" aria-hidden="true" />
+                  <span>{{ saving ? t('settings.themes.saving') : t('settings.themes.savePair') }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="ui-btn ui-btn--secondary"
+                  :disabled="!canEditCurrentTheme"
+                  :title="t('settings.themes.resetVariantColors')"
+                  @click="resetToDefaults"
+                >
+                  <RotateCcw :size="16" aria-hidden="true" />
+                  <span>{{ t('settings.themes.reset') }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="ui-btn ui-btn--secondary"
+                  @click="importTheme"
+                >
+                  <Upload :size="16" aria-hidden="true" />
+                  <span>{{ t('settings.themes.import') }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="ui-btn ui-btn--secondary"
+                  @click="exportTheme"
+                >
+                  <Download :size="16" aria-hidden="true" />
+                  <span>{{ t('settings.themes.export') }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="ui-btn ui-btn--primary"
+                  :disabled="saving || !canEditCurrentTheme"
+                  @click="saveTheme"
+                >
+                  <Save :size="16" aria-hidden="true" />
+                  <span>
+                    {{
+                      saving
+                        ? t('settings.themes.saving')
+                        : (isEditingModulePair ? t('settings.themes.saveVariant') : t('common.save'))
+                    }}
+                  </span>
+                </button>
+              </div>
+            </header>
 
-          <div class="content-card theme-editor__form-card">
+            <div class="theme-editor__form-body">
             <div
               class="theme-editor__banner-slot"
               :class="{ 'is-empty': !showSystemBanner }"
@@ -616,6 +615,7 @@ const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleS
               </template>
               </div>
             </Transition>
+            </div>
           </div>
       </section>
     </div>

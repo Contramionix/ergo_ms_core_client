@@ -443,8 +443,8 @@ const showSuccessMessage = () => {
         </button>
 
         <div class="text-center">
-          <span class="text-muted">{{ t('auth.register.hasAccount') }} </span>
-          <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary fw-semibold">
+          <span class="text-muted">{{ t('auth.register.hasAccount') }}</span>
+          <RouterLink :to="{ name: 'Login' }" class="text-decoration-none text-primary fw-semibold ms-1">
             {{ t('auth.register.login') }}
           </RouterLink>
         </div>

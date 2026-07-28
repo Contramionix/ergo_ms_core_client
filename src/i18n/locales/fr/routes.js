@@ -14,8 +14,8 @@ export default {
   importUsers: 'Importer des utilisateurs',
   roles: 'Rôles',
   roleGroups: 'Groupes de rôles',
-  audit: "Journal d'audit",
-  clientMonitor: 'Surveillance des clients',
+  audit: 'Journal des actions',
+  clientMonitor: 'Journal des actions',
 
   invitations: 'Invitations',
   menu: 'Menu',

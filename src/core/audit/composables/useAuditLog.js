@@ -130,7 +130,7 @@ export function useAuditLog(options = {}) {
       actor: { default: '' },
       date_from: { default: '' },
       date_to: { default: '' },
-    }, { debounceKeys: ['q'] })
+    }, { debounceKeys: ['q'], preserveKeys: ['tab'] })
     : null
 
   const localState = ref({

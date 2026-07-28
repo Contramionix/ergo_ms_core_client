@@ -202,8 +202,8 @@ const submitForm = async () => {
           </button>
 
           <div v-if="showRegisterLink" class="text-center">
-            <span class="text-muted">{{ t('auth.login.noAccount') }} </span>
-            <RouterLink :to="{ name: 'Register' }" class="text-decoration-none text-primary fw-semibold">
+            <span class="text-muted">{{ t('auth.login.noAccount') }}</span>
+            <RouterLink :to="{ name: 'Register' }" class="text-decoration-none text-primary fw-semibold ms-1">
               {{ t('auth.login.register') }}
             </RouterLink>
           </div>

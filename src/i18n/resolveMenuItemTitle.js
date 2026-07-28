@@ -24,7 +24,7 @@ const STORED_MENU_LABEL_KEYS = {
   Темы: 'routes.themes',
   'Журнал аудита': 'routes.audit',
   'Журнал действий': 'routes.audit',
-  'Мониторинг клиентов': 'routes.clientMonitor',
+  'Мониторинг клиентов': 'routes.audit',
 
   Приглашения: 'routes.invitations',
   'Запросы на изменение профиля': 'routes.profileChangeRequests',
