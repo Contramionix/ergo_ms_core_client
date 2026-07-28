@@ -1,14 +1,14 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { Save } from 'lucide-vue-next'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useToast } from '@/js/utils/toast.js'
+import { logError } from '@/js/utils/logError.js'
 import AvatarBlock from './AvatarBlock.vue'
 import UserProfileFields from './UserProfileFields.vue'
-import ProfileChangeRequestBlock from './ProfileChangeRequestBlock.vue'
 import {
   USER_PROFILE_MAIN_FIELDS,
   USER_PROFILE_ADDITIONAL_FIELDS,
@@ -20,6 +20,10 @@ import {
   applyProfileApiErrors,
 } from '@/core/cms/adp/js/userProfileForm.js'
 import { fetchProfileSettings } from '@/core/cms/adp/js/profileSettings.js'
+
+const ProfileChangeRequestBlock = defineAsyncComponent(() =>
+  import('./ProfileChangeRequestBlock.vue'),
+)
 
 const { t } = useAppI18n()
 const toast = useToast()

@@ -1,5 +1,12 @@
 <script setup>
-import UserNotifications from '@/core/cms/adp/user/notifications/UserNotifications.vue'
+import { defineAsyncComponent } from 'vue'
+import SpinnerLoading from '@/components/SpinnerLoading.vue'
+
+const UserNotifications = defineAsyncComponent({
+  loader: () => import('@/core/cms/adp/user/notifications/UserNotifications.vue'),
+  loadingComponent: SpinnerLoading,
+  delay: 80,
+})
 </script>
 
 <template>

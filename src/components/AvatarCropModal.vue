@@ -1,11 +1,12 @@
 <script setup>
-import { ref, onUnmounted, onMounted, computed } from 'vue'
+import { ref, onUnmounted, onMounted, computed, defineAsyncComponent } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import { logError } from '@/js/utils/logError.js'
 import { RotateCw, RotateCcw, Check } from 'lucide-vue-next'
 import ModalCenter from './ModalCenter.vue'
-import ImageCropper from './ImageCropper.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
+
+const ImageCropper = defineAsyncComponent(() => import('./ImageCropper.vue'))
 
 const { t } = useAppI18n()
 const toast = useToast()

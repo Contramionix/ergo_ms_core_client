@@ -2,7 +2,14 @@
 import SelectBox from '@/components/SelectBox.vue'
 import { useUiSettings } from '@/core/cms/js/uiSettings.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
-import ThemePalettePanel from './ThemePalettePanel.vue'
+import { defineAsyncComponent } from 'vue'
+import SpinnerLoading from '@/components/SpinnerLoading.vue'
+
+const ThemePalettePanel = defineAsyncComponent({
+  loader: () => import('./ThemePalettePanel.vue'),
+  loadingComponent: SpinnerLoading,
+  delay: 80,
+})
 
 const { t } = useAppI18n()
 const { theme, THEME_OPTIONS } = useUiSettings()

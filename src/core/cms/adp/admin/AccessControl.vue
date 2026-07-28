@@ -87,8 +87,13 @@ function selectTab(tabId) {
   flex-wrap: nowrap;
   border-bottom: 1px solid var(--color-border);
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 
   .nav-item {
     flex: 0 0 auto;

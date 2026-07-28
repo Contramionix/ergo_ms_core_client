@@ -1,12 +1,14 @@
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch, defineAsyncComponent } from 'vue'
 import SelectBox from '@/components/SelectBox.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import { useToast } from '@/js/utils/toast.js'
-import ChangePasswordModal from './ChangePasswordModal.vue'
+import { logError } from '@/js/utils/logError.js'
 import SessionCard from './SessionCard.vue'
+
+const ChangePasswordModal = defineAsyncComponent(() => import('./ChangePasswordModal.vue'))
 
 const { t } = useAppI18n()
 
@@ -176,7 +178,11 @@ onMounted(() => {
       {{ t('settings.security.sessionsDisclaimer') }}
     </p>
 
-    <ChangePasswordModal :show="showPasswordModal" @close="showPasswordModal = false" />
+    <ChangePasswordModal
+      v-if="showPasswordModal"
+      :show="showPasswordModal"
+      @close="showPasswordModal = false"
+    />
   </div>
 </template>
 

@@ -185,7 +185,6 @@ const displayColumns = computed(() => {
           <AuditActorCell
             :actor-label="item.actor_label"
             :actor-ref="item.actor_ref"
-            :actor-id="item.actor"
             :actor-first-name="item.actor_first_name"
             :actor-last-name="item.actor_last_name"
             :actor-middle-name="item.actor_middle_name"

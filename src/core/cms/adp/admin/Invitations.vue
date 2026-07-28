@@ -158,6 +158,7 @@ onMounted(async () => {
     }
     hasAdminAccess.value = true
     isCheckingAccess.value = false
+    void import('@/core/cms/adp/admin/InvitationsComponents/InvitationCreateModal.vue')
     await loadInvitations()
   } catch (error) {
     logError('Ошибка проверки прав доступа:', error)

@@ -1,11 +1,19 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, defineAsyncComponent, useId } from 'vue'
+import { Keyboard, ListTree } from 'lucide-vue-next'
 import SelectBox from '@/components/SelectBox.vue'
-import PolicyPageBrowser from '@/core/cms/adp/admin/PermissionsComponents/PolicyPageBrowser.vue'
-import { mapModuleSelectOptions } from '@/core/cms/js/adminSelectOptions.js'
+import {
+  getPolicyPathModeOptions,
+  mapModuleSelectOptions,
+} from '@/core/cms/js/adminSelectOptions.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const PolicyPageBrowser = defineAsyncComponent(() =>
+  import('@/core/cms/adp/admin/PermissionsComponents/PolicyPageBrowser.vue'),
+)
+
 const { t } = useAppI18n()
+const fieldId = useId()
 
 const props = defineProps({
   pages: { type: Array, default: () => [] },
@@ -22,6 +30,7 @@ const resourceMode = ref(props.isPattern ? 'pattern' : 'page')
 const selectedModule = ref(null)
 const showManualInput = ref(false)
 
+const pathModeOptions = computed(() => getPolicyPathModeOptions())
 const moduleOptions = computed(() => mapModuleSelectOptions(props.pages, props.moduleCatalog))
 
 const groups = computed(() =>
@@ -45,6 +54,10 @@ const patternPresets = computed(() => {
   ]
 })
 
+const manualPathId = computed(() => `${fieldId}-manual-path`)
+const patternPathId = computed(() => `${fieldId}-pattern-path`)
+const pathModeId = computed(() => `${fieldId}-path-mode`)
+
 watch(
   () => props.isPattern,
   (value) => {
@@ -53,9 +66,9 @@ watch(
 )
 
 watch(resourceMode, (mode) => {
-  const isPattern = mode === 'pattern'
-  if (props.isPattern !== isPattern) {
-    emit('update:isPattern', isPattern)
+  const nextIsPattern = mode === 'pattern'
+  if (props.isPattern !== nextIsPattern) {
+    emit('update:isPattern', nextIsPattern)
   }
   if (mode === 'page') {
     showManualInput.value = false
@@ -81,10 +94,6 @@ watch(
   { immediate: true },
 )
 
-function setResourceMode(mode) {
-  resourceMode.value = mode
-}
-
 function toggleManualInput() {
   showManualInput.value = !showManualInput.value
 }
@@ -99,66 +108,54 @@ function applyPatternPreset(presetPath) {
 
 <template>
   <div class="policy-resource-path">
-    <label class="form-label d-block">{{ t('admin.policies.path') }}</label>
-    <div class="btn-group mb-3" role="group" :aria-label="t('admin.policies.pathModeAria')">
-      <input
-        id="resourceModePage"
-        type="radio"
-        class="btn-check"
-        name="resourceMode"
-        value="page"
-        :checked="resourceMode === 'page'"
-        @change="setResourceMode('page')"
-      />
-      <label class="btn btn-outline-primary" for="resourceModePage">{{ t('admin.policies.page') }}</label>
+    <SelectBox
+      :id="pathModeId"
+      v-model="resourceMode"
+      :label="t('admin.policies.path')"
+      :options="pathModeOptions"
+      value-key="id"
+      label-key="name"
+      :include-all-option="false"
+    />
 
-      <input
-        id="resourceModePattern"
-        type="radio"
-        class="btn-check"
-        name="resourceMode"
-        value="pattern"
-        :checked="resourceMode === 'pattern'"
-        @change="setResourceMode('pattern')"
-      />
-      <label class="btn btn-outline-primary" for="resourceModePattern">{{ t('admin.policies.pattern') }}</label>
-    </div>
-
-    <template v-if="resourceMode === 'page'">
-      <template v-if="!showManualInput">
+    <div class="policy-resource-path__body">
+      <template v-if="resourceMode === 'page'">
         <PolicyPageBrowser
+          v-if="!showManualInput"
           :groups="groups"
           :model-value="resourcePath"
           @update:model-value="emit('update:resourcePath', $event)"
-        />
+        >
+          <template #actions>
+            <button type="button" class="ui-btn ui-btn--secondary" @click="toggleManualInput">
+              <Keyboard :size="16" aria-hidden="true" />
+              <span>{{ t('admin.policies.enterPathManually') }}</span>
+            </button>
+          </template>
+        </PolicyPageBrowser>
 
-        <button type="button" class="btn btn-link btn-sm px-0 mt-2" @click="toggleManualInput">
-          {{ t('admin.policies.enterPathManually') }}
-        </button>
+        <div v-else class="policy-resource-path__manual">
+          <div>
+            <label class="form-label" :for="manualPathId">{{ t('admin.policies.pagePath') }}</label>
+            <input
+              :id="manualPathId"
+              type="text"
+              class="form-control"
+              :class="{ 'is-invalid': invalid }"
+              :value="resourcePath"
+              placeholder="/example/path"
+              @input="emit('update:resourcePath', $event.target.value)"
+            />
+          </div>
+          <button type="button" class="ui-btn ui-btn--secondary" @click="toggleManualInput">
+            <ListTree :size="16" aria-hidden="true" />
+            <span>{{ t('admin.policies.chooseFromCatalog') }}</span>
+          </button>
+        </div>
       </template>
 
       <template v-else>
-        <div class="form-floating mb-2" v-auto-animate>
-          <input
-            id="manualResourcePath"
-            type="text"
-            class="form-control"
-            :class="{ 'is-invalid': invalid }"
-            :value="resourcePath"
-            placeholder="/example/path"
-            @input="emit('update:resourcePath', $event.target.value)"
-          />
-          <label for="manualResourcePath">{{ t('admin.policies.pagePath') }}</label>
-        </div>
-        <button type="button" class="btn btn-link btn-sm px-0 mb-2" @click="toggleManualInput">
-          {{ t('admin.policies.chooseFromCatalog') }}
-        </button>
-      </template>
-    </template>
-
-    <template v-else>
-      <div class="row g-3 mb-3">
-        <div class="col-md-5">
+        <div class="policy-resource-path__row">
           <SelectBox
             v-model="selectedModule"
             :label="t('admin.policies.modulePresets')"
@@ -169,8 +166,6 @@ function applyPatternPreset(presetPath) {
             :all-label="t('admin.policies.noModule')"
             searchable
           />
-        </div>
-        <div class="col-md-7">
           <SelectBox
             :label="t('admin.policies.quickPatterns')"
             :model-value="null"
@@ -182,35 +177,62 @@ function applyPatternPreset(presetPath) {
             @update:model-value="applyPatternPreset"
           />
         </div>
-      </div>
 
-      <div class="form-floating mb-2" v-auto-animate>
-        <input
-          id="patternResourcePath"
-          type="text"
-          class="form-control"
-          :class="{ 'is-invalid': invalid }"
-          :value="resourcePath"
-          placeholder="/module/*"
-          @input="emit('update:resourcePath', $event.target.value)"
-        />
-        <label for="patternResourcePath">{{ t('admin.policies.pathPattern') }}</label>
-      </div>
-      <small class="text-muted d-block">
-        <span v-html="t('admin.policies.pathPatternHelp')"></span>
-      </small>
-    </template>
+        <div>
+          <label class="form-label" :for="patternPathId">{{ t('admin.policies.pathPattern') }}</label>
+          <input
+            :id="patternPathId"
+            type="text"
+            class="form-control"
+            :class="{ 'is-invalid': invalid }"
+            :value="resourcePath"
+            placeholder="/module/*"
+            @input="emit('update:resourcePath', $event.target.value)"
+          />
+          <small class="form-text text-muted d-block">
+            <span v-html="t('admin.policies.pathPatternHelp')"></span>
+          </small>
+        </div>
+      </template>
 
-    <div v-if="invalid" class="invalid-feedback d-block">
-      {{ t('admin.policies.pathRequired') }}
+      <div v-if="invalid" class="invalid-feedback d-block">
+        {{ t('admin.policies.pathRequired') }}
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss">
 .policy-resource-path {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
   code {
     font-size: 0.85em;
   }
+}
+
+.policy-resource-path__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.policy-resource-path__row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 0.75rem;
+
+  @media (width < $ui-bp-md) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.policy-resource-path__manual {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
 }
 </style>

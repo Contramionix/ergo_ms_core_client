@@ -655,8 +655,8 @@ export default {
     modulesTabHint1: 'Permissions pour les actions dans les modules pour les groupes de rôles. La liste des modules est construite automatiquement',
     modulesTabHint2: 'depuis le dossier modules/ — pour tout module vous pouvez ajouter des permissions manuellement ou les choisir dans le catalogue du module.',
     modulesTabHint3: 'L’accès aux routes se configure dans l’onglet Accès aux routes.',
-    policiesTabHint1: 'Politiques d’accès aux routes : dans la modale vous pouvez parcourir tous les modules et leurs pages.',
-    policiesTabHint2: 'La synchronisation met à jour les enregistrements CMS dans la base de données.',
+    policiesTabHint1: 'Politiques d’accès aux routes : lors du choix du chemin vous pouvez parcourir tous les modules et leurs pages.',
+    policiesTabHint2: 'La synchronisation met à jour le catalogue des pages dans la base de données.',
   },
   policies: {
     typeUrl: 'URL',
@@ -723,7 +723,7 @@ export default {
   },
   modulePermissions: {
     title: 'Permissions des modules',
-    subtitle: 'Les modules sont découverts depuis le dossier modules/. Choisissez les permissions dans la liste ou saisissez-les manuellement.',
+    subtitle: 'Seuls les modules installés (avec api/ ou client/) sont listés. Choisissez les permissions dans le catalogue ou saisissez-les manuellement.',
     allGroups: 'Tous les groupes',
     module: 'Module',
     selectModule: 'Sélectionner un module',

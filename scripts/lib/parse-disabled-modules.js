@@ -55,7 +55,13 @@ export function listEnabledModuleNames(modulesRoot, disabledModules) {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .filter((name) => !disabledModules.has(name))
-    .filter((name) => fs.existsSync(path.join(modulesRoot, name, 'client')))
+    .filter((name) => {
+      const moduleDir = path.join(modulesRoot, name)
+      return (
+        fs.existsSync(path.join(moduleDir, 'client')) ||
+        fs.existsSync(path.join(moduleDir, 'api'))
+      )
+    })
     .sort()
 }
 

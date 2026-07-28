@@ -339,9 +339,21 @@ export function useAuditLog(options = {}) {
       modules.value = data.modules || []
       actionsCatalog.value = data.actions || []
       severities.value = data.severities || []
-      actors.value = data.actors || []
     } catch (error) {
       logError('Аудит: не удалось загрузить каталог', error)
+    }
+  }
+
+  async function loadActors() {
+    try {
+      const result = await apiClient.get(
+        auditEndpoints.audit.actors,
+        resolveScopeParams(),
+        true,
+      )
+      actors.value = result?.data?.actors || []
+    } catch (error) {
+      logError('Аудит: не удалось загрузить инициаторов', error)
     }
   }
 
@@ -437,8 +449,15 @@ export function useAuditLog(options = {}) {
   }
 
   async function initialize() {
-    await loadCatalog()
-    await loadEvents()
+    // Таблица + лёгкий каталог параллельно. Инициаторы (до 500) — после первого
+    // экрана, кроме случая когда фильтр actor уже в URL и нужен для подписи.
+    const needsActorsUpfront = Boolean(listState.value.actor)
+    if (needsActorsUpfront) {
+      await Promise.all([loadCatalog(), loadEvents(), loadActors()])
+    } else {
+      await Promise.all([loadCatalog(), loadEvents()])
+      loadActors()
+    }
     isReady.value = true
     isQueryWatchReady.value = true
   }
@@ -471,6 +490,7 @@ export function useAuditLog(options = {}) {
     hasIpLocationTooltip,
     getItemKey,
     loadCatalog,
+    loadActors,
     loadEvents,
     initialize,
     openDetails,

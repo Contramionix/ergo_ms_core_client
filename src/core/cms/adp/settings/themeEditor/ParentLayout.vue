@@ -1,12 +1,17 @@
 <script setup>
 import { ref, provide, onMounted, computed, defineAsyncComponent } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import ThemeEditor from './ThemeEditor.vue'
 import { restoreSiteThemeAfterEditor } from '@/js/theme-service.js'
 import { createThemeEditor, THEME_EDITOR_KEY } from './useThemeEditor.js'
 import { Edit, Eye } from 'lucide-vue-next'
+import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const ThemeEditor = defineAsyncComponent({
+  loader: () => import('./ThemeEditor.vue'),
+  loadingComponent: SpinnerLoading,
+  delay: 80,
+})
 const ThemePreview = defineAsyncComponent(() => import('./ThemePreview.vue'))
 
 const { t } = useAppI18n()
@@ -29,6 +34,8 @@ function setView(view) {
 }
 
 onMounted(() => {
+  // Параллельно: чанк галереи (defineAsyncComponent) + список тем с API.
+  void import('./ThemeEditor.vue')
   init()
 })
 
@@ -119,6 +126,10 @@ onBeforeRouteLeave(async () => {
 .theme-editor-layout {
   --theme-editor-motion: 320ms;
   --theme-editor-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  padding: 1.5rem clamp(1rem, 2.5vw, 2.5rem) 2rem;
 }
 
 .theme-editor-shell {

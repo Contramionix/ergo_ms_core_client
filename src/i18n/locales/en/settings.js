@@ -5,6 +5,10 @@ export default {
     user: 'User settings',
     system: 'System settings',
   },
+  nav: {
+    searchPlaceholder: 'Quick search',
+    noResults: 'No results found',
+  },
   tabs: {
     profile: 'Profile',
     security: 'Security',
@@ -266,6 +270,10 @@ export default {
     pageSubtitle: 'Create, edit and activate interface color schemes',
     modeAria: 'Theme page mode',
     listTitle: 'Theme list',
+    backToList: 'Back to themes',
+    backToListAria: 'Back to theme list',
+    editTheme: 'Edit',
+    editThemeAria: 'Edit theme {name}',
     newTheme: 'New theme',
     filterModeAria: 'Filter by theme mode',
     searchPlaceholder: 'Search by name...',

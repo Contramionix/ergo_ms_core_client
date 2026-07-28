@@ -5,6 +5,10 @@ export default {
     user: 'Настройки пользователя',
     system: 'Настройки системы',
   },
+  nav: {
+    searchPlaceholder: 'Быстрый поиск',
+    noResults: 'Ничего не найдено',
+  },
   tabs: {
     profile: 'Профиль',
     security: 'Безопасность',
@@ -266,6 +270,10 @@ export default {
     pageSubtitle: 'Создание, редактирование и активация цветовых схем интерфейса',
     modeAria: 'Режим страницы тем',
     listTitle: 'Список тем',
+    backToList: 'К списку тем',
+    backToListAria: 'Вернуться к списку тем',
+    editTheme: 'Редактировать',
+    editThemeAria: 'Редактировать тему {name}',
     newTheme: 'Новая тема',
     filterModeAria: 'Фильтр по режиму темы',
     searchPlaceholder: 'Поиск по названию...',

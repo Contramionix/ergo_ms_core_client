@@ -163,12 +163,12 @@ onMounted(loadPrefs)
     <div class="browser-notif-settings__actions">
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm"
+        class="ui-btn ui-btn--secondary"
         :disabled="previewing"
         @click="handlePreview"
       >
-        <Bell :size="14" class="me-1" aria-hidden="true" />
-        {{ t('settings.browserNotifications.preview') }}
+        <Bell :size="16" aria-hidden="true" />
+        <span>{{ t('settings.browserNotifications.preview') }}</span>
       </button>
     </div>
     <p v-if="permissionHint" class="browser-notif-settings__permission text-muted">

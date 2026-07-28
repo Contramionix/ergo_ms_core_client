@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
+import { ChevronDown } from 'lucide-vue-next'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SelectBox from '@/components/SelectBox.vue'
 import PolicyResourcePathField from '@/core/cms/adp/admin/PermissionsComponents/PolicyResourcePathField.vue'
@@ -8,6 +9,7 @@ import { buildDefaultPolicyName } from '@/core/cms/adp/admin/js/policyNameUtils.
 import {
   getPolicyTypeOptions,
   getPolicyActionOptions,
+  getPolicyTargetTypeOptions,
   mapRoleSelectOptions,
   mapRoleGroupSelectOptions,
 } from '@/core/cms/js/adminSelectOptions.js'
@@ -16,6 +18,7 @@ import { useAppI18n } from '@/i18n/useAppI18n.js'
 const { t } = useAppI18n()
 const policyTypeOptions = computed(() => getPolicyTypeOptions())
 const policyActionOptions = computed(() => getPolicyActionOptions())
+const targetTypeOptions = computed(() => getPolicyTargetTypeOptions())
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -43,6 +46,7 @@ const selectedRoleGroupId = ref(null)
 const isSubmitting = ref(false)
 const showAdvanced = ref(false)
 const nameManuallyEdited = ref(false)
+const syncingRow = ref(false)
 
 const roleSelectOptions = computed(() => mapRoleSelectOptions(props.roles))
 const roleGroupSelectOptions = computed(() => mapRoleGroupSelectOptions(props.roleGroups))
@@ -72,6 +76,7 @@ const suggestedPolicyName = computed(() =>
 )
 
 const syncWithRow = (newRow) => {
+  syncingRow.value = true
   policyId.value = newRow.id
   name.value = newRow.name || ''
   const typeMatch = getPolicyTypeOptions().find(
@@ -101,6 +106,7 @@ const syncWithRow = (newRow) => {
     selectedRoleId.value = null
     selectedRoleGroupId.value = null
   }
+  syncingRow.value = false
 }
 
 watch(
@@ -133,6 +139,18 @@ watch(
     }
   },
 )
+
+watch(targetType, (type) => {
+  if (syncingRow.value) {
+    return
+  }
+  if (type === 'role_group') {
+    selectedRoleId.value = null
+  } else {
+    selectedRoleGroupId.value = null
+  }
+  showErrorTarget.value = false
+})
 
 const closeModal = () => {
   if (props.row?.id) {
@@ -186,32 +204,28 @@ const submitForm = async () => {
     :title="t('admin.policies.editTitle')"
     size="xl"
     scrollable
-    @closemodal="closeModal"
+    @close="closeModal"
   >
-    <form :id="formId" @submit.prevent="submitForm" novalidate>
-      <div class="row g-3 mb-3">
-        <div class="col-md-6">
-          <SelectBox
-            id="actionEdit"
-            v-model="action"
-            :label="t('admin.policies.action')"
-            :options="policyActionOptions"
-            value-key="id"
-            label-key="name"
-            :include-all-option="false"
-          />
-        </div>
-        <div class="col-md-6">
-          <SelectBox
-            id="policyTypeEdit"
-            v-model="policyType"
-            :label="t('admin.policies.type')"
-            :options="policyTypeOptions"
-            value-key="id"
-            label-key="name"
-            :include-all-option="false"
-          />
-        </div>
+    <form :id="formId" class="policy-form" @submit.prevent="submitForm" novalidate>
+      <div class="policy-form__row">
+        <SelectBox
+          id="actionEdit"
+          v-model="action"
+          :label="t('admin.policies.action')"
+          :options="policyActionOptions"
+          value-key="id"
+          label-key="name"
+          :include-all-option="false"
+        />
+        <SelectBox
+          id="policyTypeEdit"
+          v-model="policyType"
+          :label="t('admin.policies.type')"
+          :options="policyTypeOptions"
+          value-key="id"
+          label-key="name"
+          :include-all-option="false"
+        />
       </div>
 
       <PolicyResourcePathField
@@ -225,29 +239,16 @@ const submitForm = async () => {
         @update:is-pattern="isPattern = $event"
       />
 
-      <div class="mb-3 mt-3">
-        <label class="form-label d-block">{{ t('admin.policies.applyTo') }}</label>
-        <div class="btn-group mb-2" role="group">
-          <input
-            type="radio"
-            class="btn-check"
-            name="targetTypeEdit"
-            id="targetGroupEdit"
-            value="role_group"
-            v-model="targetType"
-          />
-          <label class="btn btn-outline-primary" for="targetGroupEdit">{{ t('admin.policies.targetGroup') }}</label>
-
-          <input
-            type="radio"
-            class="btn-check"
-            name="targetTypeEdit"
-            id="targetRoleEdit"
-            value="role"
-            v-model="targetType"
-          />
-          <label class="btn btn-outline-primary" for="targetRoleEdit">{{ t('admin.policies.targetRole') }}</label>
-        </div>
+      <div class="policy-form__section">
+        <SelectBox
+          id="targetTypeEdit"
+          v-model="targetType"
+          :label="t('admin.policies.applyTo')"
+          :options="targetTypeOptions"
+          value-key="id"
+          label-key="name"
+          :include-all-option="false"
+        />
 
         <SelectBox
           v-if="targetType === 'role_group'"
@@ -274,39 +275,44 @@ const submitForm = async () => {
         </div>
       </div>
 
-      <div class="mb-3">
+      <div
+        class="policy-form__disclosure"
+        :class="{ 'policy-form__disclosure--open': showAdvanced }"
+      >
         <button
           type="button"
-          class="btn btn-link btn-sm px-0"
+          class="policy-form__disclosure-toggle"
+          :aria-expanded="showAdvanced"
           @click="showAdvanced = !showAdvanced"
         >
-          {{ showAdvanced ? t('admin.policies.hideAdvanced') : t('admin.policies.showAdvanced') }}
+          <ChevronDown :size="18" class="policy-form__disclosure-icon" aria-hidden="true" />
+          <span>{{ t('admin.policies.showAdvanced') }}</span>
         </button>
-      </div>
 
-      <div v-if="showAdvanced" class="border rounded p-3 mb-2">
-        <div class="form-floating mb-3" v-auto-animate>
-          <input
-            type="text"
-            id="policyNameEdit"
-            class="form-control"
-            v-model="name"
-            :class="{ 'is-invalid': showErrorName }"
-            :placeholder="t('admin.policies.namePlaceholder')"
-            @input="nameManuallyEdited = true"
-          />
-          <label for="policyNameEdit">{{ t('admin.policies.nameLabel') }}</label>
-          <div v-if="showErrorName" class="invalid-feedback">{{ t('admin.policies.nameRequired') }}</div>
-        </div>
+        <div v-show="showAdvanced" class="policy-form__disclosure-body">
+          <div>
+            <label class="form-label" for="policyNameEdit">{{ t('admin.policies.nameLabel') }}</label>
+            <input
+              id="policyNameEdit"
+              type="text"
+              class="form-control"
+              v-model="name"
+              :class="{ 'is-invalid': showErrorName }"
+              :placeholder="t('admin.policies.namePlaceholder')"
+              @input="nameManuallyEdited = true"
+            />
+            <div v-if="showErrorName" class="invalid-feedback d-block">{{ t('admin.policies.nameRequired') }}</div>
+          </div>
 
-        <div class="mb-0">
-          <label for="priorityEdit" class="form-label">{{ t('admin.policies.priority') }}</label>
-          <input
-            type="number"
-            id="priorityEdit"
-            class="form-control"
-            v-model.number="priority"
-          />
+          <div>
+            <label class="form-label" for="priorityEdit">{{ t('admin.policies.priority') }}</label>
+            <input
+              id="priorityEdit"
+              type="number"
+              class="form-control"
+              v-model.number="priority"
+            />
+          </div>
         </div>
       </div>
     </form>
@@ -321,3 +327,72 @@ const submitForm = async () => {
     </template>
   </ModalCenter>
 </template>
+
+<style scoped lang="scss">
+.policy-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.policy-form__row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+
+  @media (width < $ui-bp-md) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.policy-form__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.policy-form__disclosure {
+  border: 1px solid var(--color-border);
+  border-radius: 0.625rem;
+  background: var(--color-primary-background);
+  overflow: hidden;
+}
+
+.policy-form__disclosure-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: var(--color-secondary-background);
+  color: var(--color-primary-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    background: var(--color-hover-background);
+  }
+}
+
+.policy-form__disclosure-icon {
+  flex-shrink: 0;
+  color: var(--color-accent);
+  transition: transform 0.15s ease;
+}
+
+.policy-form__disclosure--open .policy-form__disclosure-icon {
+  transform: rotate(180deg);
+}
+
+.policy-form__disclosure-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+</style>

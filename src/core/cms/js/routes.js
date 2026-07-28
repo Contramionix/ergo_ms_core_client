@@ -171,7 +171,8 @@ export default {
       "title": "Темы оформления",
       "titleKey": "routes.themes",
       "requiresAuth": true,
-      "requiresGlobalAdmin": true
+      "requiresGlobalAdmin": true,
+      "flushContent": true
     }
   },
   "AccessDenied": {

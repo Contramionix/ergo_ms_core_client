@@ -91,7 +91,15 @@ function handleClose() {
     @close="handleClose"
   >
     <div class="user-settings-modal__layout">
-      <UserSettingsNav :sections="TAB_SECTIONS" :active-tab-id="activeTabId" :notification-sections="notificationSections" :notification-active-anchor-id="notificationActiveAnchorId" @select="selectTab" @notification-navigate="handleNotificationNavigate"/>
+      <UserSettingsNav
+        :sections="TAB_SECTIONS"
+        :active-tab-id="activeTabId"
+        :notification-sections="notificationSections"
+        :notification-active-anchor-id="notificationActiveAnchorId"
+        :reset-key="show"
+        @select="selectTab"
+        @notification-navigate="handleNotificationNavigate"
+      />
       <div ref="panelWrapRef" class="user-settings-modal__panel-wrap">
         <KeepAlive>
           <component :is="activePanel" :key="activeTabId" />

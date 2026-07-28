@@ -7,6 +7,7 @@ import {
   Eye,
   EyeOff,
   Moon,
+  Pencil,
   RotateCcw,
   Sun,
   Trash2,
@@ -43,6 +44,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'select',
+  'edit',
   'activate',
   'toggle-available',
   'reset',
@@ -75,6 +77,11 @@ const displayDescription = computed(() => (
 ))
 
 function onCardKeydown(event) {
+  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault()
+    emit('edit', props.theme)
+    return
+  }
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
     emit('select', props.theme)
@@ -95,6 +102,7 @@ function onCardKeydown(event) {
     :aria-current="selected ? 'true' : undefined"
     :aria-label="t('settings.themes.themeAria', { name: displayName })"
     @click="emit('select', theme)"
+    @dblclick="emit('edit', theme)"
     @keydown="onCardKeydown"
   >
     <div class="theme-picker-card__preview" aria-hidden="true">
@@ -236,6 +244,15 @@ function onCardKeydown(event) {
         {{ t('settings.themes.siteDefaultShort') }}
       </button>
       <div class="theme-picker-card__icon-actions">
+        <button
+          type="button"
+          class="theme-picker-card__icon-btn theme-picker-card__icon-btn--edit"
+          :title="t('settings.themes.editTheme')"
+          :aria-label="t('settings.themes.editThemeAria', { name: displayName })"
+          @click="emit('edit', theme)"
+        >
+          <Pencil :size="15" />
+        </button>
         <button
           v-if="!isModuleScope && !theme.is_draft && !theme.is_draft_pair"
           type="button"
@@ -615,6 +632,11 @@ function onCardKeydown(event) {
   &--danger:hover:not(:disabled) {
     color: var(--bs-danger, #dc3545);
     background: color-mix(in srgb, var(--bs-danger, #dc3545) 10%, transparent);
+  }
+
+  &--edit:hover:not(:disabled) {
+    color: var(--theme-card-accent, var(--color-accent));
+    background: color-mix(in srgb, var(--theme-card-accent, var(--color-accent)) 12%, transparent);
   }
 }
 

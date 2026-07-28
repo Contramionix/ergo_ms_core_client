@@ -1,19 +1,50 @@
 <template>
   <div class="menu-panel">
     <div class="menu-panel__header mb-4">
-      <div class="d-flex align-items-center gap-2 mb-3">
-        <h1 class="h3 mb-0">{{ t('admin.menu.pageTitle') }}</h1>
-        <button type="button" class="menu-panel__settings-btn" @click="showSettingsModal = true" :title="t('admin.menu.pageSettings')" :aria-label="t('admin.menu.pageSettings')"><Settings :size="20" class="menu-panel__settings-icon" aria-hidden="true" /></button>
+      <div class="menu-panel__title-row">
+        <h1 class="menu-panel__title">{{ t('admin.menu.pageTitle') }}</h1>
+        <HoverTooltip :text="t('admin.menu.pageSettings')" wrap>
+          <button
+            type="button"
+            class="btn-action"
+            :aria-label="t('admin.menu.pageSettings')"
+            @click="showSettingsModal = true"
+          >
+            <Settings :size="20" aria-hidden="true" />
+          </button>
+        </HoverTooltip>
       </div>
       <p class="text-muted mb-0">{{ t('admin.menu.pageSubtitle') }}</p>
     </div>
 
     <div class="menu-panel__actions d-flex gap-3 mb-4 flex-wrap">
-      <button class="btn" :disabled="isSaving || isRestoring" @click="showAddModal"><LayersPlus :size="18" class="me-2" style="vertical-align: middle;" />{{ t('admin.menu.addItem') }}</button>
-      <button class="btn" :disabled="isSaving || isRestoring" @click="showAddSeparatorModal"><SeparatorHorizontal :size="18" class="me-2" style="vertical-align: middle;" />{{ t('admin.menu.addSeparator') }}</button>
-      <button class="btn btn-outline-secondary" :disabled="isSaving || isRestoring" @click="handleRestoreMenu">
-        <span v-if="isRestoring" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-        {{ isRestoring ? t('admin.menu.restoring') : t('admin.menu.restoreFromMigrations') }}
+      <button
+        type="button"
+        class="ui-btn ui-btn--secondary"
+        :disabled="isSaving || isRestoring"
+        @click="showAddModal"
+      >
+        <LayersPlus :size="16" aria-hidden="true" />
+        <span>{{ t('admin.menu.addItem') }}</span>
+      </button>
+      <button
+        type="button"
+        class="ui-btn ui-btn--secondary"
+        :disabled="isSaving || isRestoring"
+        @click="showAddSeparatorModal"
+      >
+        <SeparatorHorizontal :size="16" aria-hidden="true" />
+        <span>{{ t('admin.menu.addSeparator') }}</span>
+      </button>
+      <button
+        type="button"
+        class="ui-btn ui-btn--secondary"
+        :disabled="isSaving || isRestoring"
+        @click="handleRestoreMenu"
+      >
+        <span v-if="isRestoring" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        <RotateCcw v-else :size="16" aria-hidden="true" />
+        <span>{{ isRestoring ? t('admin.menu.restoring') : t('admin.menu.restoreFromMigrations') }}</span>
       </button>
     </div>
 
@@ -25,8 +56,15 @@
       <LoadingContentArea :loading="isLoading" :loading-text="t('admin.menu.loading')">
         <div v-if="menuItems.length === 0" class="alert alert-info d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
           <span>{{ t('admin.menu.empty') }}</span>
-          <button class="btn btn-primary" :disabled="isRestoring" @click="handleRestoreMenu">
-            {{ isRestoring ? t('admin.menu.restoring') : t('admin.menu.restoreFromMigrations') }}
+          <button
+            type="button"
+            class="ui-btn ui-btn--primary"
+            :disabled="isRestoring"
+            @click="handleRestoreMenu"
+          >
+            <span v-if="isRestoring" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            <RotateCcw v-else :size="16" aria-hidden="true" />
+            <span>{{ isRestoring ? t('admin.menu.restoring') : t('admin.menu.restoreFromMigrations') }}</span>
           </button>
         </div>
         <div v-else>
@@ -47,12 +85,12 @@
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, onMounted, onUnmounted, computed, nextTick, defineAsyncComponent } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { LayersPlus, SeparatorHorizontal, Settings } from 'lucide-vue-next'
+import { LayersPlus, SeparatorHorizontal, Settings, RotateCcw } from 'lucide-vue-next'
 import { useToast } from '@/js/utils/toast.js'
 import { confirmAction } from '@/js/utils/confirm.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import UnsavedChangesToast from '@/components/UnsavedChangesToast.vue'
-import DraggableMenuList from './MenuPanelComponents/DraggableMenuList.vue'
+import HoverTooltip from '@/components/HoverTooltip.vue'
 import { tGlobal } from '@/i18n/index.js'
 import {
   getMenuItems,
@@ -79,6 +117,9 @@ const MenuSeparatorModal = defineAsyncComponent(() =>
 )
 const MenuSettingsModal = defineAsyncComponent(() =>
   import('./MenuPanelComponents/MenuSettingsModal.vue'),
+)
+const DraggableMenuList = defineAsyncComponent(() =>
+  import('./MenuPanelComponents/DraggableMenuList.vue'),
 )
 
 const toast = useToast()
@@ -649,46 +690,43 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.btn {
-  display: flex;
-  align-items: center;
-  background: var(--color-primary-background);
+@import './admin-page.scss';
 
-  &:hover {
-    background: var(--color-hover-background);
-  }
-}
 .menu-panel {
   padding: 1.5rem;
-  
-  &__header {
-    .menu-panel__settings-btn {
-      background: none;
-      border: none;
-      padding: 0.25rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--color-secondary-text);
-      transition: color 0.3s ease;
-      flex-shrink: 0;
-      
-      &:hover {
-        color: var(--color-accent);
-        
-        .menu-panel__settings-icon {
-          transform: rotate(180deg);
-        }
-      }
+
+  &__title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-primary-text);
+  }
+
+  &__title-row :deep(.btn-action) {
+    width: 2.25rem;
+    height: 2.25rem;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+
+    svg {
+      display: block;
+      width: 1.25rem;
+      height: 1.25rem;
     }
-    
-    .menu-panel__settings-icon {
-      transition: transform 0.5s ease;
-      transform: rotate(0deg);
+
+    &:hover {
+      color: var(--color-accent);
     }
   }
-  
+
   &__items,
   &__separators {
     background: var(--color-secondary-background);
@@ -703,7 +741,7 @@ onUnmounted(() => {
     &__actions {
       flex-direction: column;
       
-      .btn {
+      .ui-btn {
         width: 100%;
       }
     }

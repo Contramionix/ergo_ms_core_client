@@ -252,12 +252,11 @@ export function useImportUsers() {
       }
       hasAdminAccess.value = true
       restoreWelcomeEmailSettings()
-      await loadWelcomeEmailDefaults()
       try {
         const stored = sessionStorage.getItem(STORAGE_KEY_TASK_ID)
         if (stored) savedTaskId.value = stored
       } catch (_e) { /* sessionStorage unavailable */ }
-      await restorePasswordsDownloadState()
+      await Promise.all([loadWelcomeEmailDefaults(), restorePasswordsDownloadState()])
     } catch (error) {
       logError('Ошибка проверки прав доступа:', error)
       toast.error(tGlobal('admin.importUsers.accessCheckError'))

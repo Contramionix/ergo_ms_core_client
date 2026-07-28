@@ -65,13 +65,14 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, computed } from 'vue'
+import { ref, watch, nextTick, computed, defineAsyncComponent } from 'vue'
 import { Paperclip, Smile, SendHorizonal, Pencil, X, Check, FileText, CornerDownLeft } from 'lucide-vue-next'
 import ContentImage from '@/components/ContentImage.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { getSafeHref } from '@/js/utils/urlUtils.js'
-import AttachmentPreview from './AttachmentPreview.vue'
-import EmojiPicker from './EmojiPicker.vue'
+
+const AttachmentPreview = defineAsyncComponent(() => import('./AttachmentPreview.vue'))
+const EmojiPicker = defineAsyncComponent(() => import('./EmojiPicker.vue'))
 
 const { t } = useAppI18n()
 

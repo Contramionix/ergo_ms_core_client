@@ -84,7 +84,7 @@ const {
           </div>
           <button
             type="button"
-            class="btn btn-primary d-inline-flex align-items-center gap-2 flex-shrink-0"
+            class="ui-btn ui-btn--primary flex-shrink-0"
             @click="resumeImport"
           >
             {{ t('admin.importUsers.resumeTracking') }}
@@ -132,12 +132,12 @@ const {
             </div>
             <button
               type="button"
-              class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2 flex-shrink-0"
+              class="ui-btn ui-btn--secondary flex-shrink-0"
               :disabled="isImporting || downloadingTemplate"
               @click="handleDownloadTemplate"
             >
-              <Loader2 v-if="downloadingTemplate" :size="15" class="iu-spinner" />
-              <Download v-else :size="15" />
+              <Loader2 v-if="downloadingTemplate" :size="16" class="iu-spinner" aria-hidden="true" />
+              <Download v-else :size="16" aria-hidden="true" />
               <span>{{ downloadingTemplate ? t('admin.importUsers.downloadingTemplate') : t('admin.importUsers.downloadTemplate') }}</span>
             </button>
           </div>
@@ -216,34 +216,32 @@ const {
             </div>
           </div>
 
-          <div
-            class="iu-email-option"
-            :class="{ 'iu-email-option--active': sendWelcomeEmails }"
-          >
-            <div class="iu-email-option__row">
+          <div class="iu-toggle-row">
+            <div class="iu-toggle-row__text">
+              <label class="iu-toggle-row__label" for="sendWelcomeEmails">
+                {{ t('admin.importUsers.welcomeToggle') }}
+              </label>
+              <span class="iu-toggle-row__hint">{{ t('admin.importUsers.welcomeToggleHint') }}</span>
+            </div>
+            <div class="form-check form-switch m-0 iu-toggle-row__switch">
               <input
                 id="sendWelcomeEmails"
                 v-model="sendWelcomeEmails"
                 type="checkbox"
-                class="iu-email-option__input"
+                class="form-check-input"
+                role="switch"
                 :disabled="isImporting"
                 @change="persistWelcomeEmailSettings"
               />
-              <label class="iu-email-option__label" for="sendWelcomeEmails">
-                <span class="iu-email-option__text">
-                  <strong>{{ t('admin.importUsers.welcomeToggle') }}</strong>
-                  <small>{{ t('admin.importUsers.welcomeToggleHint') }}</small>
-                </span>
-              </label>
             </div>
           </div>
 
           <div v-if="sendWelcomeEmails" class="iu-email-settings">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="iu-email-settings__head">
               <h3 class="iu-section__title mb-0">{{ t('admin.importUsers.welcomeTextTitle') }}</h3>
               <button
                 type="button"
-                class="btn btn-outline-secondary btn-sm"
+                class="ui-btn ui-btn--secondary"
                 :disabled="isImporting"
                 @click="resetWelcomeEmailTemplate"
               >
@@ -277,12 +275,12 @@ const {
               />
             </div>
 
-            <p v-if="welcomePlaceholders.length" class="form-text text-muted mb-0">
-              {{ t('admin.importUsers.placeholders') }}
+            <p v-if="welcomePlaceholders.length" class="iu-placeholders mb-0">
+              <span class="iu-placeholders__label">{{ t('admin.importUsers.placeholders') }}</span>
               <code
                 v-for="placeholder in welcomePlaceholders"
                 :key="placeholder.key"
-                class="me-2"
+                class="iu-placeholders__token"
               >{{ '{' + placeholder.key + '}' }}</code>
             </p>
           </div>
@@ -291,12 +289,12 @@ const {
         <div class="iu-actions">
           <button
             type="button"
-            class="btn btn-primary d-inline-flex align-items-center gap-2"
+            class="ui-btn ui-btn--primary"
             :disabled="!selectedFile || isImporting"
             @click="startImport"
           >
-            <Loader2 v-if="isImporting" :size="16" class="iu-spinner" />
-            <Users v-else :size="16" />
+            <Loader2 v-if="isImporting" :size="16" class="iu-spinner" aria-hidden="true" />
+            <Users v-else :size="16" aria-hidden="true" />
             <span>{{ isImporting ? t('admin.importUsers.importing') : t('admin.importUsers.startImport') }}</span>
           </button>
         </div>
@@ -378,12 +376,12 @@ const {
             </div>
             <button
               type="button"
-              class="btn btn-warning d-inline-flex align-items-center gap-2 flex-shrink-0"
+              class="ui-btn ui-btn--warning flex-shrink-0"
               :disabled="downloadingPasswords"
               @click="downloadPasswords"
             >
-              <Loader2 v-if="downloadingPasswords" :size="16" class="iu-spinner" />
-              <Download v-else :size="16" />
+              <Loader2 v-if="downloadingPasswords" :size="16" class="iu-spinner" aria-hidden="true" />
+              <Download v-else :size="16" aria-hidden="true" />
               <span>{{ downloadingPasswords ? t('admin.importUsers.downloading') : t('admin.importUsers.downloadPasswords') }}</span>
             </button>
           </div>

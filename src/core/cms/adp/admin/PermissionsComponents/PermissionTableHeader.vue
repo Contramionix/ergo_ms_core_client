@@ -33,17 +33,18 @@ const handleSearchQuery = (query) => {
 </script>
 
 <template>
-  <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+  <div class="permission-table-header">
     <SearchInput
+      id="policies-search"
       :model-value="searchQuery"
       :placeholder="t('admin.policies.searchPages')"
-      layout="fixed"
+      layout="grow"
       :show-icon="true"
       @update:model-value="handleSearchQuery"
     />
-    <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" @click="showAddModal = true">
-      <Plus :size="16" />
-      {{ t('admin.policies.addPolicy') }}
+    <button class="ui-btn ui-btn--primary flex-shrink-0" type="button" @click="showAddModal = true">
+      <Plus :size="16" aria-hidden="true" />
+      <span>{{ t('admin.policies.addPolicy') }}</span>
     </button>
     <SubmitForm
       v-if="showAddModal"
@@ -58,3 +59,27 @@ const handleSearchQuery = (query) => {
     />
   </div>
 </template>
+
+<style scoped lang="scss">
+.permission-table-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
+
+  :deep(.search-input) {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  @media (width < $ui-bp-md) {
+    grid-template-columns: 1fr;
+
+    .ui-btn {
+      width: 100%;
+    }
+  }
+}
+</style>

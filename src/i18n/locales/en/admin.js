@@ -655,8 +655,8 @@ export default {
     modulesTabHint1: 'Permissions for actions inside modules for role groups. The module list is built automatically',
     modulesTabHint2: 'from the modules/ folder — for any module you can add permissions manually or pick from the module catalog.',
     modulesTabHint3: 'Route access is configured on the Route access tab.',
-    policiesTabHint1: 'Route access policies: in the modal you can browse all modules and their pages.',
-    policiesTabHint2: 'Sync updates CMS records in the database.',
+    policiesTabHint1: 'Route access policies: when choosing a path you can browse all modules and their pages.',
+    policiesTabHint2: 'Sync updates the page catalog in the database.',
   },
   policies: {
     typeUrl: 'URL',
@@ -723,7 +723,7 @@ export default {
   },
   modulePermissions: {
     title: 'Module permissions',
-    subtitle: 'Modules are discovered from the modules/ folder. Pick permissions from the list or enter them manually.',
+    subtitle: 'Only installed modules (with api/ or client/) are listed. Pick permissions from the catalog or enter them manually.',
     allGroups: 'All groups',
     module: 'Module',
     selectModule: 'Select module',

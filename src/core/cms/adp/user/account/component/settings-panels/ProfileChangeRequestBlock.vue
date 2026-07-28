@@ -240,28 +240,30 @@ onMounted(async () => {
 }
 
 .profile-change-request__row {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: minmax(9.5rem, 12rem) minmax(0, 1fr);
+  align-items: start;
+  column-gap: 1rem;
   padding: 0.875rem 1rem;
   border-top: 1px solid var(--color-border);
 
   @media (width < $ui-bp-sm) {
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    row-gap: 0.5rem;
   }
 }
 
 .profile-change-request__label {
-  flex: 0 0 auto;
-  min-width: 6.5rem;
+  min-width: 0;
   padding-top: 0.35rem;
   font-size: 0.875rem;
+  line-height: 1.3;
   color: var(--color-secondary-text);
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .profile-change-request__control {
-  flex: 1 1 60%;
   min-width: 0;
 }
 

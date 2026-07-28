@@ -1,13 +1,12 @@
 <script setup>
 import { useAppI18n } from '@/i18n/useAppI18n.js'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, defineAsyncComponent } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { confirmAction, confirmDelete } from '@/js/utils/confirm.js'
 import AvatarBlock from '@/core/cms/adp/user/account/component/settings-panels/AvatarBlock.vue'
 import UserProfileFields from '@/core/cms/adp/user/account/component/settings-panels/UserProfileFields.vue'
-import AdminUserSecuritySection from '@/core/cms/adp/admin/UsersComponent/AdminUserSecuritySection.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { tGlobal } from '@/i18n/index.js'
 import {
@@ -27,6 +26,11 @@ import {
 import { assignRoleToUser } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import SelectBox from '@/components/SelectBox.vue'
 import { mapRoleSelectOptions, mapRoleGroupSelectOptions } from '@/core/cms/js/adminSelectOptions.js'
+
+const AdminUserSecuritySection = defineAsyncComponent({
+  loader: () => import('@/core/cms/adp/admin/UsersComponent/AdminUserSecuritySection.vue'),
+  delay: 80,
+})
 
 const { t } = useAppI18n()
 

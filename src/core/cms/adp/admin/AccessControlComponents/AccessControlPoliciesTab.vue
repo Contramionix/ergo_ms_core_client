@@ -59,8 +59,9 @@ const updatePermissions = async () => {
 }
 
 const loadRefs = async () => {
-  roles.value = await getRoles()
-  roleGroups.value = await getRoleGroups()
+  const [nextRoles, nextGroups] = await Promise.all([getRoles(), getRoleGroups()])
+  roles.value = nextRoles
+  roleGroups.value = nextGroups
 }
 
 const handleSyncRoutes = async () => {
@@ -106,35 +107,33 @@ const handleSearchQuery = (query) => {
       </p>
       <button
         type="button"
-        class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2 flex-shrink-0"
+        class="ui-btn ui-btn--secondary flex-shrink-0"
         :disabled="isSyncing || isCatalogLoading"
         @click="handleSyncRoutes"
       >
         <Loader2
           v-if="isSyncing"
-          :size="15"
+          :size="16"
           class="access-control-sync-spinner"
           aria-hidden="true"
         />
-        <RefreshCw v-else :size="15" aria-hidden="true" />
+        <RefreshCw v-else :size="16" aria-hidden="true" />
         <span>{{ isSyncing ? t('admin.access.syncing') : t('admin.access.syncRoutes') }}</span>
       </button>
     </div>
 
-    <div class="card">
-      <div class="mb-3">
-        <PermissionTableHeader
-          :roles="roles"
-          :role-groups="roleGroups"
-          :pages="pages"
-          :module-page-groups="modulePageGroups"
-          :module-catalog="moduleCatalog"
-          :search-query="searchQuery"
-          @changeRowsPerPage="handleChangeRows"
-          @searchRowData="handleSearchQuery"
-          @updatePermissions="updatePermissions"
-        />
-      </div>
+    <div class="access-control-panel">
+      <PermissionTableHeader
+        :roles="roles"
+        :role-groups="roleGroups"
+        :pages="pages"
+        :module-page-groups="modulePageGroups"
+        :module-catalog="moduleCatalog"
+        :search-query="searchQuery"
+        @changeRowsPerPage="handleChangeRows"
+        @searchRowData="handleSearchQuery"
+        @updatePermissions="updatePermissions"
+      />
 
       <LoadingContentArea :loading="isLoading || isCatalogLoading">
         <PermissionTable
@@ -160,6 +159,17 @@ const handleSearchQuery = (query) => {
 .access-control-tab-desc {
   font-size: 0.875rem;
   color: var(--color-secondary-text);
+}
+
+.access-control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1.25rem;
+  background: var(--color-primary-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
 }
 
 .access-control-sync-spinner {

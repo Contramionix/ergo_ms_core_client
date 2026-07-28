@@ -5,6 +5,10 @@ export default {
     user: 'Paramètres utilisateur',
     system: 'Paramètres système',
   },
+  nav: {
+    searchPlaceholder: 'Recherche rapide',
+    noResults: 'Aucun résultat',
+  },
   tabs: {
     profile: 'Profil',
     security: 'Sécurité',
@@ -266,6 +270,10 @@ export default {
     pageSubtitle: 'Créer, modifier et activer les schémas de couleurs de l’interface',
     modeAria: 'Mode de la page des thèmes',
     listTitle: 'Liste des thèmes',
+    backToList: 'Retour aux thèmes',
+    backToListAria: 'Retour à la liste des thèmes',
+    editTheme: 'Modifier',
+    editThemeAria: 'Modifier le thème {name}',
     newTheme: 'Nouveau thème',
     filterModeAria: 'Filtrer par mode de thème',
     searchPlaceholder: 'Rechercher par nom...',

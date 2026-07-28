@@ -68,12 +68,10 @@ watch(sections, () => {
 })
 
 onMounted(async () => {
-  if (!userStore.isInitialized) {
-    try {
-      await userStore.ensureUserReady()
-    } catch { /* email в заголовке опционален */ }
-  }
-  await load()
+  const readyPromise = userStore.isInitialized
+    ? Promise.resolve()
+    : userStore.ensureUserReady().catch(() => { /* email в заголовке опционален */ })
+  await Promise.all([readyPromise, load()])
   await syncNavAnchors()
 })
 

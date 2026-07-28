@@ -204,6 +204,8 @@ onMounted(async () => {
     }
     hasAdminAccess.value = true
     isCheckingAccess.value = false
+    // Prefetch чанка модалки пока грузится список — открытие пользователя без waterfall.
+    void import('@/core/cms/adp/admin/UsersComponent/AdminUserSettingsModal.vue')
     await Promise.all([loadRefs(), loadUsers(), loadProfileChangeMeta()])
     connectAdminPresenceFeed()
   } catch (error) {

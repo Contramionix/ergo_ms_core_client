@@ -14,6 +14,20 @@ export function getPolicyActionOptions() {
   ]
 }
 
+export function getPolicyTargetTypeOptions() {
+  return [
+    { id: 'role_group', name: tGlobal('admin.policies.targetGroup') },
+    { id: 'role', name: tGlobal('admin.policies.targetRole') },
+  ]
+}
+
+export function getPolicyPathModeOptions() {
+  return [
+    { id: 'page', name: tGlobal('admin.policies.page') },
+    { id: 'pattern', name: tGlobal('admin.policies.pattern') },
+  ]
+}
+
 export function getPresenceFilterOptions() {
   return [
     { id: 'all', name: tGlobal('admin.users.presenceAll') },
@@ -53,23 +67,29 @@ export function mapPagePathOptions(pages = []) {
 }
 
 export function formatModuleLabel(moduleName, moduleCatalog = []) {
-  const catalogEntry = moduleCatalog.find((item) => item.module_name === moduleName)
-  if (catalogEntry?.module_label) {
-    return catalogEntry.module_label
-  }
+  const key = !moduleName || moduleName === 'cms' ? 'core' : moduleName
 
-  if (moduleName === 'core') {
+  if (key === 'core') {
     return tGlobal('admin.policies.coreModule')
   }
 
-  if (moduleName === 'cms') {
-    return 'CMS'
+  const catalogEntry = moduleCatalog.find((item) => item.module_name === key)
+  if (catalogEntry?.module_label) {
+    const label = String(catalogEntry.module_label).trim()
+    if (label && label.toUpperCase() !== 'CMS') {
+      return label
+    }
   }
 
-  return moduleName
+  return key
     .split('-')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
+}
+
+function resolvePageModuleKey(moduleName) {
+  const key = moduleName || 'core'
+  return key === 'cms' ? 'core' : key
 }
 
 export function buildModulePageGroups(pages = [], moduleCatalog = []) {
@@ -80,15 +100,19 @@ export function buildModulePageGroups(pages = [], moduleCatalog = []) {
     if (!module?.module_name) {
       continue
     }
-    groups.set(module.module_name, {
-      key: module.module_name,
-      label: formatModuleLabel(module.module_name, moduleCatalog),
+    const key = resolvePageModuleKey(module.module_name)
+    if (groups.has(key)) {
+      continue
+    }
+    groups.set(key, {
+      key,
+      label: formatModuleLabel(key, moduleCatalog),
       pages: [],
     })
   }
 
   for (const page of pages) {
-    const moduleKey = page.module_name || page.module || 'core'
+    const moduleKey = resolvePageModuleKey(page.module_name || page.module)
     if (!groups.has(moduleKey)) {
       groups.set(moduleKey, {
         key: moduleKey,
@@ -122,7 +146,7 @@ export function mapModuleSelectOptions(pages = [], moduleCatalog = []) {
 export function mapModuleCatalogSelectOptions(modules = []) {
   return modules.map((module) => ({
     id: module.module_name,
-    name: module.module_label || module.module_name,
+    name: formatModuleLabel(module.module_name, modules),
   }))
 }
 

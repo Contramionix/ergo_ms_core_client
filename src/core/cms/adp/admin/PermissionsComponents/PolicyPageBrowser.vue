@@ -122,8 +122,13 @@ function selectPage(path) {
         layout="grow"
         :show-icon="true"
       />
-      <div class="policy-page-browser__stats text-muted small">
-        {{ t('admin.policies.modulesPagesStats', { modules: groups.length, pages: totalPagesCount }) }}
+      <div class="policy-page-browser__toolbar-meta">
+        <div class="policy-page-browser__stats small">
+          {{ t('admin.policies.modulesPagesStats', { modules: groups.length, pages: totalPagesCount }) }}
+        </div>
+        <div v-if="$slots.actions" class="policy-page-browser__actions">
+          <slot name="actions" />
+        </div>
       </div>
     </div>
 
@@ -149,7 +154,7 @@ function selectPage(path) {
               <span class="policy-page-browser__page-path">{{ page.path }}</span>
             </span>
           </button>
-          <div v-if="visiblePages.length === 0" class="text-muted small px-2 py-3">
+          <div v-if="visiblePages.length === 0" class="policy-page-browser__empty small px-2 py-3">
             {{ t('admin.policies.nothingFound') }}
           </div>
         </div>
@@ -168,7 +173,7 @@ function selectPage(path) {
               @click="selectModule(group.key)"
             >
               <span class="policy-page-browser__module-label">{{ group.label }}</span>
-              <span class="badge bg-secondary rounded-pill">{{ group.pages.length }}</span>
+              <span class="policy-page-browser__count">{{ group.pages.length }}</span>
             </button>
           </div>
         </div>
@@ -176,7 +181,7 @@ function selectPage(path) {
         <div class="policy-page-browser__pages">
           <div class="policy-page-browser__section-title">
             {{ t('admin.policies.pages') }}
-            <span v-if="activeGroup" class="text-muted fw-normal">· {{ activeGroup.label }}</span>
+            <span v-if="activeGroup">· {{ activeGroup.label }}</span>
           </div>
           <div class="policy-page-browser__pages-list">
             <button
@@ -190,7 +195,7 @@ function selectPage(path) {
               <span class="policy-page-browser__page-title">{{ page.title || page.label }}</span>
               <span class="policy-page-browser__page-path">{{ page.path }}</span>
             </button>
-            <div v-if="visiblePages.length === 0" class="text-muted small px-2 py-3">
+            <div v-if="visiblePages.length === 0" class="policy-page-browser__empty small px-2 py-3">
               {{ t('admin.policies.noPagesInModule') }}
             </div>
           </div>
@@ -213,8 +218,24 @@ function selectPage(path) {
   gap: 0.5rem;
 }
 
+.policy-page-browser__toolbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.policy-page-browser__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .policy-page-browser__stats {
   padding-left: 0.125rem;
+  color: var(--color-primary-text);
+  opacity: 0.72;
 }
 
 .policy-page-browser__layout {
@@ -230,16 +251,21 @@ function selectPage(path) {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--color-secondary-text);
+  color: var(--color-primary-text);
   margin-bottom: 0.5rem;
+
+  span {
+    color: var(--color-primary-text);
+    opacity: 0.65;
+  }
 }
 
 .policy-page-browser__modules,
 .policy-page-browser__pages,
 .policy-page-browser__search-results {
   border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  background: var(--color-secondary-background);
+  border-radius: 0.625rem;
+  background: var(--color-primary-background);
   padding: 0.75rem;
   min-height: 0;
 }
@@ -260,11 +286,11 @@ function selectPage(path) {
   justify-content: space-between;
   gap: 0.5rem;
   width: 100%;
-  border: 1px solid transparent;
-  border-radius: 0.375rem;
-  background: var(--ui-surface, var(--color-primary-background));
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-primary-background);
   color: var(--color-primary-text);
-  padding: 0.5rem 0.625rem;
+  padding: 0.55rem 0.7rem;
   text-align: left;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
@@ -277,18 +303,44 @@ function selectPage(path) {
 .policy-page-browser__module-btn:hover,
 .policy-page-browser__page-btn:hover {
   background: var(--color-hover-background);
+  border-color: color-mix(in srgb, var(--color-primary-text) 22%, var(--color-border));
 }
 
 .policy-page-browser__module-btn--active,
 .policy-page-browser__page-btn--active {
   border-color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 12%, var(--ui-surface, var(--color-primary-background)));
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-primary-background));
 }
 
 .policy-page-browser__module-label,
 .policy-page-browser__page-title {
   font-size: 0.875rem;
   font-weight: 600;
+  color: var(--color-primary-text);
+}
+
+.policy-page-browser__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-secondary-background);
+  color: var(--color-primary-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.policy-page-browser__module-btn--active .policy-page-browser__count {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 16%, var(--color-primary-background));
+  color: var(--color-accent);
 }
 
 .policy-page-browser__page-meta {
@@ -300,22 +352,21 @@ function selectPage(path) {
 
 .policy-page-browser__page-module {
   font-size: 0.75rem;
-  color: var(--color-secondary-text);
+  color: var(--color-primary-text);
+  opacity: 0.7;
 }
 
 .policy-page-browser__page-path {
   font-size: 0.75rem;
-  color: var(--color-secondary-text);
-  font-family: var(
-    --bs-font-monospace,
-    ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    Monaco,
-    Consolas,
-    monospace
-  );
+  color: var(--color-primary-text);
+  opacity: 0.68;
+  font-family: var(--font-family-mono);
   word-break: break-all;
+}
+
+.policy-page-browser__empty {
+  color: var(--color-primary-text);
+  opacity: 0.7;
 }
 
 @media (width < $ui-bp-md) {

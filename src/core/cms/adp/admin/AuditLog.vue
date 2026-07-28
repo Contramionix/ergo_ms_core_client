@@ -46,6 +46,8 @@ function selectTab(tabId) {
 }
 
 onMounted(async () => {
+  // Пока идёт access-check — прогреваем чанк панели (иначе waterfall: check → chunk → API).
+  const panelPrefetch = import('@/core/audit/components/AuditLogPanel.vue')
   try {
     const accessData = await checkAccessToAdminPanel()
     if (!accessData.access_to_panel) {
@@ -56,6 +58,7 @@ onMounted(async () => {
       return
     }
     hasAdminAccess.value = true
+    await panelPrefetch
   } catch (error) {
     logError('Аудит: ошибка проверки прав', error)
     accessDeniedState.active = true
@@ -115,8 +118,13 @@ onMounted(async () => {
   flex-wrap: nowrap;
   border-bottom: 1px solid var(--color-border);
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 
   .nav-item {
     flex: 0 0 auto;
