@@ -173,11 +173,11 @@ export class ModuleLoader {
    */
   extractModuleName(path, isExternal = false) {
     if (isExternal) {
-      // ../../../../../modules/my_module/client/js/... -> my_module
+      // …/modules/<name>/client/js/… → <name>
       const match = path.match(/modules\/([^/]+)\/client/)
       return match ? match[1] : null
     } else {
-      // ../../core/cms/js/... -> cms
+      // …/core/<area>/… → <area>
       const match = path.match(/core\/([^/]+)/)
       return match ? match[1] : null
     }
