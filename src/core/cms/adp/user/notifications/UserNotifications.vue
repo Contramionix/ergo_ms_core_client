@@ -427,7 +427,6 @@ onMounted(async () => {
               <NotificationItem
                 v-for="item in group.items"
                 :key="item.id"
-                v-memo="[item.id, item.is_read, item.archived_at, item.actions_state, item.id === highlightedId, group.key]"
                 :notification="item"
                 :highlighted="item.id === highlightedId"
                 :archived-view="showArchived"

@@ -15,6 +15,8 @@ export default {
   roles: 'Rôles',
   roleGroups: 'Groupes de rôles',
   audit: "Journal d'audit",
+  clientMonitor: 'Surveillance des clients',
+
   invitations: 'Invitations',
   menu: 'Menu',
   accessControl: "Contrôle d'accès",

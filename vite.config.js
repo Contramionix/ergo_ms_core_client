@@ -2,7 +2,7 @@ import { fileURLToPath, URL } from 'node:url'
 import path from 'path'
 import fs from 'fs'
 import { createRequire, isBuiltin } from 'node:module'
-import { mergeModuleEnv } from './scripts/lib/module-env.js'
+import { loadProjectEnv, mergeModuleEnv } from './scripts/lib/module-env.js'
 import { loadDisabledModules } from './scripts/lib/parse-disabled-modules.js'
 
 const require = createRequire(import.meta.url)
@@ -19,7 +19,6 @@ const vue = requireFromNpm('@vitejs/plugin-vue')
 const AutoImport = requireFromNpm('unplugin-auto-import/vite')
 const { defineConfig } = requireFromNpm('vite')
 const { visualizer } = requireFromNpm('rollup-plugin-visualizer')
-const dotenv = requireFromNpm('dotenv')
 
 /** Пакеты лежат в virtual_env/npm/node_modules (не предок core/client). */
 function resolveFromNpmRootPlugin() {
@@ -79,11 +78,15 @@ const externalModuleAliases = fs.existsSync(modulesRoot)
       }))
   : []
 
-const mainEnvPath = path.resolve(__dirname, '../../.env')
-if (fs.existsSync(mainEnvPath)) {
-  dotenv.config({ path: mainEnvPath })
+const projectEnv = loadProjectEnv(path.resolve(__dirname, '../..'))
+if (Object.keys(projectEnv).length === 0) {
+  console.warn('Файл .env / env/*.env не найдены в корне проекта')
 } else {
-  console.warn('Файл .env не найден в корне проекта:', mainEnvPath)
+  for (const [key, value] of Object.entries(projectEnv)) {
+    if (process.env[key] === undefined || process.env[key] === '') {
+      process.env[key] = value
+    }
+  }
 }
 
 const env = mergeModuleEnv(modulesRoot, process.env)
@@ -174,21 +177,40 @@ function resolveApiProxyHost(envValues) {
   return '127.0.0.1'
 }
 
+function resolveDeployType(envValues) {
+  const raw = String(
+    envValues.CLIENT_DEPLOY_TYPE || envValues.ERGO_ENV || 'development',
+  ).toLowerCase()
+  if (raw === 'prod' || raw === 'production') {
+    return 'production'
+  }
+  return 'development'
+}
+
+function resolveUseRelativeApi(envValues) {
+  const explicit = envValues.CLIENT_USE_RELATIVE_API
+  if (explicit !== undefined && explicit !== null && String(explicit).trim() !== '') {
+    return String(explicit).trim()
+  }
+  // ERGO_PROXY=nginx / NGINX_ENABLED — тот же origin, что SPA
+  return nginxEnabled(envValues) ? 'true' : 'false'
+}
+
 function buildClientEnvDefines(envValues) {
-  const useRelativeApi = envValues.CLIENT_USE_RELATIVE_API
-    || (nginxEnabled(envValues) ? 'true' : '')
+  const useRelativeApi = resolveUseRelativeApi(envValues)
   const logLevel = envValues.CLIENT_LOG_LEVEL
-    || (envValues.CLIENT_DEPLOY_TYPE === 'production' ? 'critical' : 'debug')
+    || (resolveDeployType(envValues) === 'production' ? 'critical' : 'debug')
 
   const coreValues = {
     CLIENT_API_HOST: resolveBrowserApiHost(envValues),
     CLIENT_API_PORT: envValues.API_PORT || '8000',
     CLIENT_USE_RELATIVE_API: useRelativeApi,
-    CLIENT_DEFAULT_THEME: envValues.CLIENT_DEFAULT_THEME || 'light',
     CLIENT_DEFAULT_LANGUAGE:
       envValues.CLIENT_DEFAULT_LANGUAGE || envValues.DEFAULT_LANGUAGE || 'ru',
     CLIENT_LOG_LEVEL: logLevel,
     CLIENT_BROWSER_LOG_ENABLED: envValues.CLIENT_BROWSER_LOG_ENABLED ?? 'true',
+    CLIENT_MONITORING_ENABLED: envValues.CLIENT_MONITORING_ENABLED ?? 'false',
+
     CLIENT_DISABLED_MODULES: envValues.DISABLED_MODULES || '',
     CLIENT_PASSWORD_MIN_LENGTH: envValues.API_PASSWORD_MIN_LENGTH || '8',
     CLIENT_PASSWORD_MAX_LENGTH: envValues.API_PASSWORD_MAX_LENGTH || '128',
@@ -196,7 +218,8 @@ function buildClientEnvDefines(envValues) {
     CLIENT_PASSWORD_REQUIRE_UPPERCASE: envValues.API_PASSWORD_REQUIRE_UPPERCASE ?? 'false',
     CLIENT_PASSWORD_REQUIRE_DIGIT: envValues.API_PASSWORD_REQUIRE_DIGIT ?? 'true',
     CLIENT_PASSWORD_REQUIRE_SPECIAL: envValues.API_PASSWORD_REQUIRE_SPECIAL ?? 'false',
-    CLIENT_REALTIME_TRANSPORT: envValues.REALTIME_TRANSPORT || 'websocket',
+    CLIENT_REALTIME_TRANSPORT:
+      envValues.REALTIME_TRANSPORT || envValues.ERGO_REALTIME || 'websocket',
     CLIENT_REALTIME_POLL_PRESENCE_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_PRESENCE_INTERVAL', 45000),
     CLIENT_REALTIME_POLL_NOTIFICATIONS_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_NOTIFICATIONS_INTERVAL', 15000),
     CLIENT_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_ADMIN_PRESENCE_INTERVAL', 10000),

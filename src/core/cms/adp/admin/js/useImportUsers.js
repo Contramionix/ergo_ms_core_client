@@ -13,7 +13,7 @@ import { checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.
 import { accessDeniedState } from '@/js/accessDeniedState'
 import { tGlobal } from '@/i18n/index.js'
 import { downloadImportUsersTemplate } from '@/core/cms/adp/admin/js/importUsersExcel.js'
-import { downloadBlob, extractFilenameFromHeaders, formatFileSize } from '@/js/utils/file-helpers.js'
+import { downloadBlob, extractFilenameFromHeaders } from '@/js/utils/file-helpers.js'
 import {
   loadWelcomeEmailDraft,
   saveWelcomeEmailDraft,
@@ -105,14 +105,14 @@ export function useImportUsers() {
   const clearStorageTaskId = () => {
     try {
       sessionStorage.removeItem(STORAGE_KEY_TASK_ID)
-    } catch (_) {}
+    } catch (_e) { /* sessionStorage unavailable */ }
     savedTaskId.value = null
   }
 
   const clearPasswordsTaskStorage = () => {
     try {
       sessionStorage.removeItem(STORAGE_KEY_PASSWORDS_TASK_ID)
-    } catch (_) {}
+    } catch (_e) { /* sessionStorage unavailable */ }
   }
 
   const markPasswordsDownloaded = (taskId) => {
@@ -120,7 +120,7 @@ export function useImportUsers() {
     passwordsAvailable.value = false
     try {
       sessionStorage.setItem(STORAGE_KEY_PASSWORDS_DOWNLOADED, taskId)
-    } catch (_) {}
+    } catch (_e) { /* sessionStorage unavailable */ }
     clearPasswordsTaskStorage()
   }
 
@@ -135,7 +135,7 @@ export function useImportUsers() {
   const storePasswordsTaskId = (taskId) => {
     try {
       sessionStorage.setItem(STORAGE_KEY_PASSWORDS_TASK_ID, taskId)
-    } catch (_) {}
+    } catch (_e) { /* sessionStorage unavailable */ }
   }
 
   const persistWelcomeEmailSettings = () => {
@@ -192,7 +192,7 @@ export function useImportUsers() {
     let taskId = null
     try {
       taskId = sessionStorage.getItem(STORAGE_KEY_PASSWORDS_TASK_ID)
-    } catch (_) {}
+    } catch (_e) { /* sessionStorage unavailable */ }
 
     if (!taskId) return
 
@@ -256,7 +256,7 @@ export function useImportUsers() {
       try {
         const stored = sessionStorage.getItem(STORAGE_KEY_TASK_ID)
         if (stored) savedTaskId.value = stored
-      } catch (_) {}
+      } catch (_e) { /* sessionStorage unavailable */ }
       await restorePasswordsDownloadState()
     } catch (error) {
       logError('Ошибка проверки прав доступа:', error)
@@ -540,7 +540,7 @@ export function useImportUsers() {
       const taskId = response.data.task_id
       try {
         sessionStorage.setItem(STORAGE_KEY_TASK_ID, taskId)
-      } catch (_) {}
+      } catch (_e) { /* sessionStorage unavailable */ }
       savedTaskId.value = taskId
       importStatus.value = tGlobal('admin.importUsers.processingFile')
     

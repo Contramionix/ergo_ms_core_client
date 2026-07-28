@@ -11,7 +11,6 @@ export function useWebSocket() {
   let currentContentType = null
   let currentObjectId = null
   let messageHandler = null
-  let intentionalClose = false
 
   function connect(contentType, objectId, onMessage) {
     disconnect()
@@ -28,7 +27,6 @@ export function useWebSocket() {
       return
     }
 
-    intentionalClose = false
     const path = `/ws/messenger/${contentType}/${objectId}/`
     wsConnection = createWebSocketTransport(path, {
       onAuthenticated: () => {
@@ -82,7 +80,6 @@ export function useWebSocket() {
   }
 
   async function disconnect() {
-    intentionalClose = true
     if (isSseMode() && currentContentType && currentObjectId) {
       const client = getRealtimeClient()
       await client.unsubscribe(messengerTopic(currentContentType, currentObjectId))
@@ -96,7 +93,6 @@ export function useWebSocket() {
     connected.value = false
     currentContentType = null
     currentObjectId = null
-    intentionalClose = false
   }
 
   onUnmounted(disconnect)

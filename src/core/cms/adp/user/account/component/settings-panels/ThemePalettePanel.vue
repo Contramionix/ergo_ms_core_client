@@ -5,8 +5,13 @@ import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useUserThemePreference } from '@/core/cms/js/userThemePreference.js'
 import { useToast } from '@/js/utils/toast.js'
+import { resolveThemeDisplayName } from '@/core/cms/adp/settings/themeEditor/resolveSystemThemeLabel.js'
 
-const { t } = useAppI18n()
+const { t, tm } = useAppI18n()
+
+function themeLabel(theme) {
+  return resolveThemeDisplayName(theme?.name, tm)
+}
 const toast = useToast()
 const {
   selectedThemeId,
@@ -86,12 +91,12 @@ onMounted(() => {
       <div class="theme-palette-panel__head-actions">
         <button
           type="button"
-          class="btn btn-sm theme-palette-panel__action"
+          class="btn btn-sm theme-palette-panel__action d-inline-flex align-items-center"
           :disabled="usingSiteDefault || Boolean(busyId)"
           @click="onResetSite"
         >
-          <RotateCcw :size="14" aria-hidden="true" />
-          {{ t('settings.themes.siteDefaultBtn') }}
+          <RotateCcw :size="14" class="theme-palette-panel__action-icon" aria-hidden="true" />
+          <span>{{ t('settings.themes.siteDefaultBtn') }}</span>
         </button>
       </div>
     </div>
@@ -121,7 +126,7 @@ onMounted(() => {
             type="button"
             class="theme-palette-card__main"
             :aria-pressed="effectiveSelectedId === theme.id && !usingSiteDefault ? 'true' : 'false'"
-            :aria-label="t('settings.themes.selectTheme', { name: theme.name })"
+            :aria-label="t('settings.themes.selectTheme', { name: themeLabel(theme) })"
             :disabled="Boolean(busyId)"
             @click="onSelect(theme)"
           >
@@ -137,7 +142,7 @@ onMounted(() => {
               />
             </div>
             <div class="theme-palette-card__meta">
-              <span class="theme-palette-card__name">{{ theme.name }}</span>
+              <span class="theme-palette-card__name">{{ themeLabel(theme) }}</span>
               <span
                 v-if="theme.id === defaultThemeId"
                 class="theme-palette-card__badge"
@@ -161,7 +166,7 @@ onMounted(() => {
       >
         {{ t('settings.themes.siteDefault') }}
         <template v-if="catalog.find((theme) => theme.id === defaultThemeId)">
-          «{{ catalog.find((theme) => theme.id === defaultThemeId)?.name }}»
+          «{{ themeLabel(catalog.find((theme) => theme.id === defaultThemeId)) }}»
         </template>
       </p>
     </LoadingContentArea>
@@ -211,21 +216,22 @@ onMounted(() => {
 .theme-palette-panel__action {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
   font-weight: 400;
   font-size: 0.8125rem;
-  line-height: 1;
+  line-height: 1.2;
   min-height: 30px;
-  padding: 0.25rem 0.65rem;
+  padding: 0.25rem 0.5rem;
+  --bs-btn-font-size: 0.8125rem;
+  --bs-btn-line-height: 1.2;
+  --bs-btn-padding-y: 0.25rem;
+  --bs-btn-padding-x: 0.5rem;
+  text-align: center;
   background: var(--color-primary-background);
   color: var(--color-primary-text);
   border: 1px solid var(--color-border);
   border-radius: 0.375rem;
-
-  :deep(svg) {
-    display: block;
-    flex-shrink: 0;
-  }
 
   &:hover:not(:disabled) {
     background: var(--color-secondary-background);
@@ -235,6 +241,13 @@ onMounted(() => {
   &:disabled {
     opacity: 0.55;
   }
+}
+
+.theme-palette-panel__action-icon {
+  display: block;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
 }
 
 .theme-palette-panel__empty,

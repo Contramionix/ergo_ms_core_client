@@ -151,7 +151,7 @@ export const profileService = {
     }
 
     // Проверка телефона
-    if (profileData.phone && !/^[\+]?[\d\s().-]{7,20}$/.test(String(profileData.phone).replace(/\s/g, ''))) {
+    if (profileData.phone && !/^[+]?[\d\s().-]{7,20}$/.test(String(profileData.phone).replace(/\s/g, ''))) {
       errors.phone = 'Некорректный формат телефона'
     }
 

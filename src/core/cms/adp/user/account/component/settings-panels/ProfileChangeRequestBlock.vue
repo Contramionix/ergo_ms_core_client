@@ -149,7 +149,7 @@ onMounted(async () => {
       <template v-else>
         <UserProfileFields
           :fields="USER_PROFILE_IDENTITY_FIELDS"
-          :form-data="requestFormData"
+          v-model:form-data="requestFormData"
           :errors="requestErrors"
           id-prefix="profile-change-request"
         />

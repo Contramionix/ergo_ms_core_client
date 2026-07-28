@@ -9,6 +9,7 @@ import {
 } from '@/js/theme-manager'
 import { isColorLikeToken } from './themeContrast.js'
 import { normalizeColorToHex } from './colorFormat.js'
+import { resolveThemeDisplayName } from './resolveSystemThemeLabel.js'
 
 export function createThemeEditorActions(ctx) {
   const {
@@ -16,9 +17,7 @@ export function createThemeEditorActions(ctx) {
     apiClient,
     applyActivatedTheme,
     applyEditorPreview,
-    applyThemeToCurrent,
     canEditCurrentTheme,
-    captureBaseline,
     changeEditingVariant,
     confirmAction,
     createEmptyDraft,
@@ -30,15 +29,11 @@ export function createThemeEditorActions(ctx) {
     fileInput,
     isDraftSelected,
     isModuleScope,
-    isNewTheme,
     loadThemes,
-    loading,
-    logError,
     mediaApiClient,
     modulePairHasUnsavedVariant,
     persistCurrentVariantToPair,
     persistVariantRecord,
-    resettingThemeId,
     saving,
     selectModulePair,
     selectTheme,
@@ -46,6 +41,7 @@ export function createThemeEditorActions(ctx) {
     selectedScope,
     selectedThemeId,
     snapshotTheme,
+    syncCurrentToDraft,
     syncPairMetadataToSibling,
     themes,
     toast,
@@ -373,10 +369,11 @@ export function createThemeEditorActions(ctx) {
         : endpoints.themes.setDefault(themeId)
       const res = await apiClient.post(endpoint)
       if (res.success) {
+        const displayName = resolveThemeDisplayName(theme.name)
         toast.success(
           isModuleScope.value
-            ? tGlobal('settings.themes.activated', { name: theme.name })
-            : tGlobal('settings.themes.setAsSiteDefault', { name: theme.name }),
+            ? tGlobal('settings.themes.activated', { name: displayName })
+            : tGlobal('settings.themes.setAsSiteDefault', { name: displayName }),
         )
         await loadThemes()
         if (!isModuleScope.value) {
@@ -430,7 +427,9 @@ export function createThemeEditorActions(ctx) {
     }
     try {
       const res = await apiClient.post(endpoints.themes.duplicate(theme.id), {
-        name: tGlobal('settings.themes.copySuffix', { name: theme.name })
+        name: tGlobal('settings.themes.copySuffix', {
+          name: resolveThemeDisplayName(theme.name),
+        }),
       })
       if (res.success) {
         toast.success(tGlobal('settings.themes.copyCreated'))
@@ -450,7 +449,9 @@ export function createThemeEditorActions(ctx) {
 
     const ok = await confirmAction({
       title: tGlobal('settings.themes.deleteThemeTitle'),
-      message: tGlobal('settings.themes.deleteThemeMessage', { name: theme.name }),
+      message: tGlobal('settings.themes.deleteThemeMessage', {
+        name: resolveThemeDisplayName(theme.name),
+      }),
       confirmText: tGlobal('common.delete'),
       cancelText: tGlobal('common.cancel'),
       variant: 'danger',

@@ -18,10 +18,23 @@ import { accessDeniedState } from './accessDeniedState'
 import { finishRouteProgress, startRouteProgress } from '@/js/routeProgressState.js'
 import { runSessionScopeGuard } from '@/js/session/sessionScopeGuard.js'
 import { whenSessionReady } from '@/js/sessionReady.js'
-import { tGlobal } from '@/i18n/index.js'
+import { teGlobal, tGlobal } from '@/i18n/index.js'
 
 let cachedPermissionRules = null
 let cachedRouteGuards = null
+
+/**
+ * Подпись из permission-rules: ключ i18n (titleKey/messageKey) или литерал title/message.
+ * @param {string|undefined} key
+ * @param {string|undefined} fallback
+ * @returns {string}
+ */
+function resolvePermissionRuleText(key, fallback = '') {
+  if (typeof key === 'string' && key && teGlobal(key)) {
+    return tGlobal(key)
+  }
+  return typeof fallback === 'string' ? fallback : ''
+}
 
 /** @type {import('vue-router').Router|null} */
 export let router = null
@@ -128,8 +141,8 @@ async function checkRouteAccess(to) {
 
         if (!hasAccess) {
           accessDeniedState.active = true
-          accessDeniedState.title = rule.title
-          accessDeniedState.message = rule.message
+          accessDeniedState.title = resolvePermissionRuleText(rule.titleKey, rule.title)
+          accessDeniedState.message = resolvePermissionRuleText(rule.messageKey, rule.message)
           return { allowed: false, redirect: 'AccessDenied' }
         }
 
@@ -143,8 +156,14 @@ async function checkRouteAccess(to) {
           )
           if (isDenied) {
             accessDeniedState.active = true
-            accessDeniedState.title = rule.denyTitle || rule.title
-            accessDeniedState.message = rule.denyMessage || rule.message
+            accessDeniedState.title = resolvePermissionRuleText(
+              rule.denyTitleKey || rule.titleKey,
+              rule.denyTitle || rule.title,
+            )
+            accessDeniedState.message = resolvePermissionRuleText(
+              rule.denyMessageKey || rule.messageKey,
+              rule.denyMessage || rule.message,
+            )
             return { allowed: false, redirect: 'AccessDenied' }
           }
         }

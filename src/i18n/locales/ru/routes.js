@@ -15,6 +15,8 @@ export default {
   roles: 'Роли',
   roleGroups: 'Ролевые группы',
   audit: 'Журнал аудита',
+  clientMonitor: 'Мониторинг клиентов',
+
   invitations: 'Приглашения',
   menu: 'Меню',
   accessControl: 'Управление доступом',

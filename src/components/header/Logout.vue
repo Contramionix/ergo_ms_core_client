@@ -1,4 +1,5 @@
 <template>
+  <span class="visually-hidden" aria-hidden="true" />
 </template>
 <script setup>
 import { onMounted } from 'vue';

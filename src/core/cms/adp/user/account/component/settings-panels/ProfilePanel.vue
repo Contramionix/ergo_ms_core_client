@@ -126,7 +126,7 @@ onMounted(() => {
 
         <UserProfileFields
           :fields="USER_PROFILE_MAIN_FIELDS"
-          :form-data="formData"
+          v-model:form-data="formData"
           :errors="errors"
           id-prefix="profile"
           :readonly-fields="identityReadonly ? USER_PROFILE_IDENTITY_FIELDS : []"
@@ -153,7 +153,7 @@ onMounted(() => {
       <div class="profile-card">
         <UserProfileFields
           :fields="identityReadonly ? USER_PROFILE_SELF_EDITABLE_ADDITIONAL_FIELDS : USER_PROFILE_ADDITIONAL_FIELDS"
-          :form-data="formData"
+          v-model:form-data="formData"
           :errors="errors"
           id-prefix="profile"
         />

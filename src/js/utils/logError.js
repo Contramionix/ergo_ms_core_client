@@ -1,5 +1,7 @@
 import { parseApiErrorData } from '@/js/utils/apiErrorMessage.js'
 import { sendBrowserError } from '@/js/utils/clientBrowserLog.js'
+import { trackMonitorError, trackMonitorWarn } from '@/core/client_monitor/collector.js'
+
 
 const SENSITIVE_KEYS = new Set([
   'password',
@@ -125,6 +127,9 @@ function writeLog(level, context, error, options = {}) {
       writer(`${context} [no response]:`, context)
       if (level === 'error') {
         sendBrowserError(context, context)
+        trackMonitorError(context, { context: 'client' })
+      } else {
+        trackMonitorWarn(context, { context: 'client' })
       }
       return
     }
@@ -134,6 +139,15 @@ function writeLog(level, context, error, options = {}) {
     writer(`${label} ${formatStatus(sanitized.status, sanitized.statusText)}:`, sanitized.message)
     if (level === 'error') {
       sendBrowserError(sanitized.message, label)
+      trackMonitorError(sanitized.message, {
+        context: label,
+        status: sanitized.status,
+      })
+    } else {
+      trackMonitorWarn(sanitized.message, {
+        context: label,
+        status: sanitized.status,
+      })
     }
     return
   }
@@ -143,8 +157,20 @@ function writeLog(level, context, error, options = {}) {
   writer(`${prefix} ${formatStatus(status, statusText)}:`, message)
   if (level === 'error') {
     sendBrowserError(message, context, options)
+    trackMonitorError(message, {
+      context: typeof context === 'string' ? context : 'client',
+      endpoint: options.endpoint,
+      status,
+    })
+  } else {
+    trackMonitorWarn(message, {
+      context: typeof context === 'string' ? context : 'client',
+      endpoint: options.endpoint,
+      status,
+    })
   }
 }
+
 
 /**
  * Безопасное логирование ошибки: контекст, HTTP status и сообщение.

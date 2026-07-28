@@ -51,7 +51,6 @@ export const LANGUAGE_OPTIONS = computed(() => {
   }))
 })
 
-const THEME_BASE_KEY = 'theme'
 const ACTION_BUTTON_BASE_KEY = 'actionButton'
 const LANGUAGE_BASE_KEY = 'language'
 

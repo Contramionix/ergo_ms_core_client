@@ -3,9 +3,10 @@ import { computed } from 'vue'
 import { BIO_MAX_LENGTH } from '@/core/cms/adp/js/userProfileForm.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const formData = defineModel('formData', { type: Object, required: true })
+
 const props = defineProps({
   fields: { type: Array, required: true },
-  formData: { type: Object, required: true },
   errors: { type: Object, default: () => ({}) },
   idPrefix: { type: String, default: 'user-profile' },
   emailReadonly: { type: Boolean, default: false },
@@ -13,7 +14,7 @@ const props = defineProps({
 })
 
 const { t } = useAppI18n()
-const bioCharCount = computed(() => (props.formData.bio || '').length)
+const bioCharCount = computed(() => (formData.value.bio || '').length)
 
 const fieldMeta = computed(() => ({
   email: {

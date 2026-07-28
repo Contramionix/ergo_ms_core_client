@@ -69,6 +69,14 @@ import('@/modules/i18n/LocaleManager.js')
     // warmupAvatar — после applySessionBootstrapData (на F5 avatarUrl ещё null)
     void bootstrapAppSession()
 
+    void import('@/core/client_monitor/index.js')
+      .then(({ initClientMonitor }) => {
+        void import('@/js/api/manager.js').then(({ apiClient }) => {
+          initClientMonitor({ app, router, axiosInstance: apiClient.client })
+        })
+      })
+      .catch(() => {})
+
     void import('@/js/theme-service.js')
       .then(({ syncSiteThemeFromApi }) => syncSiteThemeFromApi())
       .catch(() => {})

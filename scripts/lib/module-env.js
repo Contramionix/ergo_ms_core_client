@@ -13,9 +13,67 @@ const requireFromNpm = createRequire(
 )
 const dotenv = requireFromNpm('dotenv')
 
+const FRAGMENT_PRIORITY = [
+  'nginx.env',
+  'docker.env',
+  'jupyter.env',
+  'smtp.env',
+  'logging.env',
+  'mcp.env',
+  'media.env',
+  'realtime.env',
+  'cache.env',
+  'celery.env',
+]
+
 function parseDisabledModules(baseEnv) {
   const raw = baseEnv.DISABLED_MODULES || ''
   return new Set(raw.split(',').map((item) => item.trim()).filter(Boolean))
+}
+
+/**
+ * Корневой .env + env/*.env (приоритетные фрагменты, затем остальные по имени).
+ */
+export function loadProjectEnv(rootDir = projectRoot) {
+  const merged = {}
+  const mainEnvPath = path.join(rootDir, '.env')
+  if (fs.existsSync(mainEnvPath)) {
+    Object.assign(merged, dotenv.parse(fs.readFileSync(mainEnvPath)))
+  }
+
+  const fragmentsDir = path.join(rootDir, 'env')
+  if (!fs.existsSync(fragmentsDir)) {
+    return merged
+  }
+
+  const byName = {}
+  for (const entry of fs.readdirSync(fragmentsDir, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.env') || entry.name.endsWith('.example')) {
+      continue
+    }
+    byName[entry.name] = path.join(fragmentsDir, entry.name)
+  }
+
+  const ordered = []
+  for (const name of FRAGMENT_PRIORITY) {
+    if (byName[name]) {
+      ordered.push(byName[name])
+      delete byName[name]
+    }
+  }
+  for (const name of Object.keys(byName).sort()) {
+    ordered.push(byName[name])
+  }
+
+  for (const filePath of ordered) {
+    try {
+      Object.assign(merged, dotenv.parse(fs.readFileSync(filePath)))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(`Не удалось прочитать фрагмент env/: ${filePath}`, message)
+    }
+  }
+  return merged
 }
 
 function isModuleEnvFile(fileName) {

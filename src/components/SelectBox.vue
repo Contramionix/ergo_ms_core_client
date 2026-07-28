@@ -273,7 +273,7 @@ const normalizedOptions = computed(() => {
 })
 
 function matchesFirstLetters(label, query) {
-    const words = (label || '').split(/[\s\-]+/).filter(Boolean)
+    const words = (label || '').split(/[\s-]+/).filter(Boolean)
     const q = query.toLowerCase()
     let wordIdx = 0
     let charIdx = 0

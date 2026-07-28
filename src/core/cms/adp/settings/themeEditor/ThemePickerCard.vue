@@ -11,8 +11,12 @@ import {
   Sun,
   Trash2,
 } from 'lucide-vue-next'
+import {
+  resolveThemeDisplayDescription,
+  resolveThemeDisplayName,
+} from './resolveSystemThemeLabel.js'
 
-const { t } = useAppI18n()
+const { t, tm } = useAppI18n()
 
 const props = defineProps({
   theme: {
@@ -64,6 +68,12 @@ const previewStyle = computed(() => {
 
 const isDark = computed(() => props.theme.base_theme === 'dark')
 
+const displayName = computed(() => resolveThemeDisplayName(props.theme.name, tm))
+
+const displayDescription = computed(() => (
+  resolveThemeDisplayDescription(props.theme.name, props.theme.description || '', tm)
+))
+
 function onCardKeydown(event) {
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
@@ -83,7 +93,7 @@ function onCardKeydown(event) {
     :style="previewStyle"
     tabindex="0"
     :aria-current="selected ? 'true' : undefined"
-    :aria-label="t('settings.themes.themeAria', { name: theme.name })"
+    :aria-label="t('settings.themes.themeAria', { name: displayName })"
     @click="emit('select', theme)"
     @keydown="onCardKeydown"
   >
@@ -116,7 +126,7 @@ function onCardKeydown(event) {
           class="theme-picker-card__icon"
           aria-hidden="true"
         />
-        <h3 class="theme-picker-card__name">{{ theme.name }}</h3>
+        <h3 class="theme-picker-card__name">{{ displayName }}</h3>
         <span
           v-if="isModuleScope ? theme.is_active : theme.is_default"
           class="theme-picker-card__check"
@@ -170,7 +180,7 @@ function onCardKeydown(event) {
       </div>
 
       <p class="theme-picker-card__desc">
-        {{ theme.description || t('settings.themes.noDescription') }}
+        {{ displayDescription || t('settings.themes.noDescription') }}
       </p>
 
       <div class="theme-picker-card__swatches" aria-hidden="true">

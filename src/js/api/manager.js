@@ -1,5 +1,6 @@
 import axios from 'axios'
 
+import { installAxiosMonitor } from '@/core/client_monitor/collector.js'
 import tokenService from '@/core/cms/js/tokenService'
 import { performServerLogout } from '@/core/cms/js/tokenRefresh.js'
 import { applyMaintenanceFromResponse, isMaintenanceResponse } from '@/composables/useMaintenanceMode.js'
@@ -24,7 +25,12 @@ class ApiClient {
     })
 
     this._setupInterceptors()
+
+    // Сессионный мониторинг API (CLIENT_MONITORING_ENABLED) — без петли на ingest.
+    // Static import: collector уже в бандле через logError / tokenService.
+    installAxiosMonitor(this.client)
   }
+
 
   /**
    * Настройка интерцепторов axios
@@ -255,7 +261,7 @@ class ApiClient {
    */
   handleError(error) {
     const requestUrl = String(error?.config?.url || '')
-    if (requestUrl.includes('client-log')) {
+    if (requestUrl.includes('client-log') || requestUrl.includes('client-monitor')) {
       return {
         success: false,
         message: error.message,
@@ -263,6 +269,7 @@ class ApiClient {
         errors: error.response?.data,
       }
     }
+
 
     const status = error.response?.status
     const hadAuthHeader = Boolean(error?.config?.headers?.Authorization)

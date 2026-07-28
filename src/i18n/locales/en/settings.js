@@ -1,3 +1,5 @@
+import themeCatalog from './themeCatalog.js'
+
 export default {
   sections: {
     user: 'User settings',
@@ -244,7 +246,7 @@ export default {
     editor: 'Theme editor',
     active: 'Active theme',
     scope: 'Scope',
-    site: 'Site',
+    site: 'System',
     save: 'Save theme',
     reset: 'Reset',
     preview: 'Preview',
@@ -254,8 +256,8 @@ export default {
     paletteHint: 'Choose a theme from the catalog published by the administrator.',
     paletteApplied: 'Palette “{name}” applied',
     selectFailed: 'Failed to select theme',
-    siteDefault: 'Using site default',
-    siteDefaultBtn: 'Site default',
+    siteDefault: 'Using system default',
+    siteDefaultBtn: 'Reset to system default',
     resetFailed: 'Failed to reset palette',
     selectTheme: 'Select theme {name}',
     emptyCatalog: 'The administrator has not opened themes for selection yet.',
@@ -290,7 +292,7 @@ export default {
     darkThemes: 'Dark',
     a11y: 'Accessibility',
     variantHint:
-      'Colors and tokens are set separately for each variant. The site shows the variant from the user’s global theme.',
+      'Colors and tokens are set separately for each variant. The system shows the variant from the user’s global theme.',
     name: 'Name',
     namePairSuffix: ' pair',
     namePlaceholder: 'Theme name',
@@ -311,7 +313,7 @@ export default {
     nonColorToken: 'Non-color token — edit as text',
     themeAria: 'Theme {name}',
     badgeActive: 'Active',
-    badgeSiteDefault: 'Site default',
+    badgeSiteDefault: 'System default',
     badgeDraft: 'Draft',
     badgeDraftPair: 'Pair draft',
     badgeA11y: 'Accessibility',
@@ -320,7 +322,7 @@ export default {
     badgeInCatalog: 'In catalog',
     noDescription: 'No description',
     apply: 'Apply',
-    siteDefaultShort: 'Site default',
+    siteDefaultShort: 'System default',
     removeFromQuick: 'Remove from quick pick',
     addToQuick: 'Add to quick pick',
     resetToDefaults: 'Reset to defaults',
@@ -383,11 +385,11 @@ export default {
     pairSaveError: 'Failed to save pair',
     activateVariantMissing: 'No theme variant found to activate',
     activated: 'Theme "{name}" activated',
-    setAsSiteDefault: '“{name}” — site default',
+    setAsSiteDefault: '“{name}” — system default',
     activateError: 'Failed to activate theme',
-    siteDefaultError: 'Failed to set site default',
+    siteDefaultError: 'Failed to set system default',
     cannotRemoveSiteDefault:
-      'Cannot remove the site default from the catalog. Assign another default first.',
+      'Cannot remove the system default from the catalog. Assign another default first.',
     addedToQuick: 'Theme added to quick pick',
     removedFromQuick: 'Theme removed from quick pick',
     availabilityError: 'Failed to change availability',
@@ -413,6 +415,8 @@ export default {
     resetThemeSuccess: 'Theme “{name}” reset to defaults',
     newThemeName: 'New theme',
     newPairName: 'New pair ({name})',
+    systemNames: themeCatalog.systemNames,
+    systemDescriptions: themeCatalog.systemDescriptions,
   },
   toasts: {
     title: 'Toast notifications',

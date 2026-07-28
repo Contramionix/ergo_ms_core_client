@@ -33,7 +33,7 @@ import ModalCenter from '@/components/ModalCenter.vue'
 
 const { t } = useAppI18n()
 
-const props = defineProps({
+defineProps({
   visible: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
 })

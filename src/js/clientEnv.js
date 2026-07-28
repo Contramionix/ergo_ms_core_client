@@ -29,11 +29,13 @@ export const clientEnv = {
   apiHost: readEnv('CLIENT_API_HOST', 'localhost'),
   apiPort: readEnv('CLIENT_API_PORT', '8000'),
   useRelativeApi: readBool('CLIENT_USE_RELATIVE_API', false),
-  defaultTheme: readEnv('CLIENT_DEFAULT_THEME', 'light'),
   /** Язык UI по умолчанию (из DEFAULT_LANGUAGE / CLIENT_DEFAULT_LANGUAGE в .env). */
   defaultLanguage: readEnv('CLIENT_DEFAULT_LANGUAGE', 'ru'),
   logLevel: readEnv('CLIENT_LOG_LEVEL', 'debug'),
   browserLogEnabled: readBool('CLIENT_BROWSER_LOG_ENABLED', true),
+  /** Сессионный мониторинг клиента → БД (POST client-monitor). */
+  monitoringEnabled: readBool('CLIENT_MONITORING_ENABLED', false),
+
   disabledModules: readEnv('CLIENT_DISABLED_MODULES', ''),
   passwordMinLength: readInt('CLIENT_PASSWORD_MIN_LENGTH', 8),
   passwordMaxLength: readInt('CLIENT_PASSWORD_MAX_LENGTH', 128),

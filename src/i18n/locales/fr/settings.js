@@ -1,3 +1,5 @@
+import themeCatalog from './themeCatalog.js'
+
 export default {
   sections: {
     user: 'Paramètres utilisateur',
@@ -244,7 +246,7 @@ export default {
     editor: 'Éditeur de thèmes',
     active: 'Thème actif',
     scope: 'Portée',
-    site: 'Site',
+    site: 'Système',
     save: 'Enregistrer le thème',
     reset: 'Réinitialiser',
     preview: 'Aperçu',
@@ -254,8 +256,8 @@ export default {
     paletteHint: 'Choisissez un thème dans le catalogue publié par l’administrateur.',
     paletteApplied: 'Palette « {name} » appliquée',
     selectFailed: 'Échec de la sélection du thème',
-    siteDefault: 'Utilisation du thème par défaut du site',
-    siteDefaultBtn: 'Par défaut du site',
+    siteDefault: 'Utilisation du thème par défaut du système',
+    siteDefaultBtn: 'Réinitialiser au défaut du système',
     resetFailed: 'Échec de la réinitialisation de la palette',
     selectTheme: 'Sélectionner le thème {name}',
     emptyCatalog: 'L’administrateur n’a pas encore ouvert les thèmes à la sélection.',
@@ -290,7 +292,7 @@ export default {
     darkThemes: 'Sombres',
     a11y: 'Accessibilité',
     variantHint:
-      'Les couleurs et jetons sont définis séparément pour chaque variante. Le site affiche la variante selon le thème global de l’utilisateur.',
+      'Les couleurs et jetons sont définis séparément pour chaque variante. Le système affiche la variante selon le thème global de l’utilisateur.',
     name: 'Nom',
     namePairSuffix: ' paire',
     namePlaceholder: 'Nom du thème',
@@ -311,7 +313,7 @@ export default {
     nonColorToken: 'Jeton non coloré — modifier en texte',
     themeAria: 'Thème {name}',
     badgeActive: 'Actif',
-    badgeSiteDefault: 'Par défaut du site',
+    badgeSiteDefault: 'Par défaut du système',
     badgeDraft: 'Brouillon',
     badgeDraftPair: 'Brouillon de paire',
     badgeA11y: 'Accessibilité',
@@ -320,7 +322,7 @@ export default {
     badgeInCatalog: 'Dans le catalogue',
     noDescription: 'Aucune description',
     apply: 'Appliquer',
-    siteDefaultShort: 'Par défaut du site',
+    siteDefaultShort: 'Par défaut du système',
     removeFromQuick: 'Retirer de la sélection rapide',
     addToQuick: 'Ajouter à la sélection rapide',
     resetToDefaults: 'Réinitialiser aux valeurs par défaut',
@@ -383,11 +385,11 @@ export default {
     pairSaveError: "Échec de l'enregistrement de la paire",
     activateVariantMissing: 'Aucune variante de thème trouvée à activer',
     activated: 'Thème « {name} » activé',
-    setAsSiteDefault: '« {name} » — par défaut du site',
+    setAsSiteDefault: '« {name} » — par défaut du système',
     activateError: "Échec de l'activation du thème",
-    siteDefaultError: 'Échec de la définition du thème par défaut du site',
+    siteDefaultError: 'Échec de la définition du thème par défaut du système',
     cannotRemoveSiteDefault:
-      'Impossible de retirer le thème par défaut du site du catalogue. Assignez d’abord un autre thème par défaut.',
+      'Impossible de retirer le thème par défaut du système du catalogue. Assignez d’abord un autre thème par défaut.',
     addedToQuick: 'Thème ajouté à la sélection rapide',
     removedFromQuick: 'Thème retiré de la sélection rapide',
     availabilityError: 'Échec de la modification de la disponibilité',
@@ -413,6 +415,8 @@ export default {
     resetThemeSuccess: 'Thème « {name} » réinitialisé aux valeurs par défaut',
     newThemeName: 'Nouveau thème',
     newPairName: 'Nouvelle paire ({name})',
+    systemNames: themeCatalog.systemNames,
+    systemDescriptions: themeCatalog.systemDescriptions,
   },
   toasts: {
     title: 'Notifications toast',

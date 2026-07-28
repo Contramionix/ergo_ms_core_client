@@ -1,5 +1,5 @@
 <script setup>
-import { Settings, Cog, Contrast, ChevronRight } from 'lucide-vue-next'
+import { Cog, Contrast, ChevronRight } from 'lucide-vue-next'
 import SelectBox from '@/components/SelectBox.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import LucideIcon from '@/components/LucideIcon.vue'

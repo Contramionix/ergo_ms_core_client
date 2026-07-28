@@ -83,7 +83,7 @@ export default {
   roles: 'Roles',
   module: 'Module',
   modules: 'Modules',
-  site: 'Site',
+  site: 'System',
   system: 'System',
   copied: 'Copied',
   saved: 'Saved',

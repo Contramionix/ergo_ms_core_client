@@ -10,7 +10,7 @@ import { useAppI18n } from '@/i18n/useAppI18n.js'
 const { t } = useAppI18n()
 const toast = useToast()
 
-const props = defineProps({
+defineProps({
   show: {
     type: Boolean,
     default: false

@@ -1,10 +1,12 @@
 <script setup>
+import { Loader2, RefreshCw } from 'lucide-vue-next'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import PermissionTableHeader from '@/core/cms/adp/admin/PermissionsComponents/PermissionTableHeader.vue'
 import PermissionTable from '@/core/cms/adp/admin/PermissionsComponents/PermissionTable.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { getPolicies, getRoles, getRoleGroups } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { useCmsPageCatalog } from '@/core/cms/adp/admin/js/useCmsPageCatalog.js'
+import { logError } from '@/js/utils/logError.js'
 import { ref, computed, onMounted } from 'vue'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 
@@ -104,17 +106,18 @@ const handleSearchQuery = (query) => {
       </p>
       <button
         type="button"
-        class="btn btn-outline-secondary btn-sm flex-shrink-0"
+        class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2 flex-shrink-0"
         :disabled="isSyncing || isCatalogLoading"
         @click="handleSyncRoutes"
       >
-        <span
+        <Loader2
           v-if="isSyncing"
-          class="spinner-border spinner-border-sm me-2"
-          role="status"
+          :size="15"
+          class="access-control-sync-spinner"
           aria-hidden="true"
-        ></span>
-        {{ isSyncing ? t('admin.access.syncing') : t('admin.access.syncRoutes') }}
+        />
+        <RefreshCw v-else :size="15" aria-hidden="true" />
+        <span>{{ isSyncing ? t('admin.access.syncing') : t('admin.access.syncRoutes') }}</span>
       </button>
     </div>
 
@@ -157,5 +160,15 @@ const handleSearchQuery = (query) => {
 .access-control-tab-desc {
   font-size: 0.875rem;
   color: var(--color-secondary-text);
+}
+
+.access-control-sync-spinner {
+  animation: access-control-spin 0.75s linear infinite;
+}
+
+@keyframes access-control-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

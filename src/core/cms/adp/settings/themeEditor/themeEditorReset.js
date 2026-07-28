@@ -2,6 +2,7 @@
 
 import { getThemeDefaultsManager, preloadModuleThemeManifests } from '@/modules/themes/ThemeDefaultsManager.js'
 import { tGlobal } from '@/i18n/index.js'
+import { resolveThemeDisplayName } from './resolveSystemThemeLabel.js'
 
 export async function resetSystemThemeRecord(theme, ctx) {
   const {
@@ -26,7 +27,9 @@ export async function resetSystemThemeRecord(theme, ctx) {
 
   const ok = await confirmAction({
     title: tGlobal('settings.themes.resetTitle'),
-    message: tGlobal('settings.themes.resetMessage', { name: theme.name }),
+    message: tGlobal('settings.themes.resetMessage', {
+      name: resolveThemeDisplayName(theme.name),
+    }),
     confirmText: tGlobal('settings.themes.resetConfirm'),
     cancelText: tGlobal('common.cancel'),
     variant: 'warning',
@@ -67,7 +70,9 @@ export async function resetSystemThemeRecord(theme, ctx) {
         }
       }
     }
-    toast.success(tGlobal('settings.themes.resetThemeSuccess', { name: theme.name }))
+    toast.success(tGlobal('settings.themes.resetThemeSuccess', {
+      name: resolveThemeDisplayName(theme.name),
+    }))
     await loadThemes()
     if (theme.is_pair) {
       const refreshed = themes.value.find((p) => p.module_pair === theme.module_pair)

@@ -1,6 +1,7 @@
 /**
  * Загрузка theme-defaults.js из модулей (hook для модульных тем).
  */
+import { tGlobal } from '@/i18n/index.js'
 import { ModuleLoader } from '@/modules/core/ModuleLoader.js'
 
 let registryPromise = null
@@ -51,7 +52,7 @@ export class ThemeDefaultsManager extends ModuleLoader {
   async getScopeOptions() {
     const modules = await this.getAll()
     return [
-      { id: 'site', name: 'Сайт' },
+      { id: 'site', name: tGlobal('settings.themes.site') },
       ...modules.map((m) => ({ id: m.moduleKey, name: m.displayName })),
     ]
   }

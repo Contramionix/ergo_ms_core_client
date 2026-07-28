@@ -252,7 +252,7 @@ const requestDelete = async () => {
       <div class="profile-card">
         <UserProfileFields
           :fields="PROFILE_FIELDS"
-          :form-data="formData"
+          v-model:form-data="formData"
           :errors="errors"
           id-prefix="admin-user"
         />

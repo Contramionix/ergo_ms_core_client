@@ -83,7 +83,7 @@ export default {
   roles: 'Роли',
   module: 'Модуль',
   modules: 'Модули',
-  site: 'Сайт',
+  site: 'Система',
   system: 'Система',
   copied: 'Скопировано',
   saved: 'Сохранено',

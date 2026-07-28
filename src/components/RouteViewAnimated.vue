@@ -41,7 +41,7 @@ function cachedRouteKey(activeRoute) {
           <KeepAlive v-if="useKeepAlive" :max="keepAliveMax">
             <component :is="Component" v-if="Component" />
           </KeepAlive>
-          <component v-else :is="Component" v-if="Component" />
+          <component v-else-if="Component" :is="Component" />
         </ModuleThemeScope>
       </div>
     </Transition>

@@ -1,5 +1,5 @@
 <script setup>
-import { confirmDialog, choiceDialog, closeConfirmDialog, cancelConfirmDialog, closeChoiceDialog, cancelChoiceDialog } from '@/js/utils/confirm.js'
+import { confirmDialog, choiceDialog, cancelConfirmDialog, cancelChoiceDialog } from '@/js/utils/confirm.js'
 import ConfirmDialog from './ConfirmDialog.vue'
 import ChoiceDialog from './ChoiceDialog.vue'
 </script>

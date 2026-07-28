@@ -2,7 +2,7 @@ import { clientEnv } from '@/js/clientEnv.js'
 
 /**
  * Запросы к API через тот же origin, что и SPA (nginx проксирует /api/ и /ws/).
- * Включено явно через CLIENT_USE_RELATIVE_API (при NGINX_ENABLED выставляется автоматически).
+ * Включается при ERGO_PROXY=nginx (или NGINX_ENABLED); явный CLIENT_USE_RELATIVE_API перекрывает.
  *
  * Не сравниваем порты SPA и API: в dev (Vite :8001, API :8000) это ломало WebSocket
  * и гоняло весь трафик через прокси Vite без гарантии, что API уже слушает порт.

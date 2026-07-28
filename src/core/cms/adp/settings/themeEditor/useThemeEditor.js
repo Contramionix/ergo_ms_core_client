@@ -631,6 +631,7 @@ export function createThemeEditor() {
     selectedScope,
     selectedThemeId,
     snapshotTheme,
+    syncCurrentToDraft,
     syncPairMetadataToSibling,
     themes,
     toast,

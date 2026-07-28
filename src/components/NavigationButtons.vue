@@ -1,13 +1,10 @@
 <!-- NavigationButtons.vue -->
 <script setup>
 import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
 
 const props = defineProps({
   data: { type: Array, default: () => [] },
 })
-
-const route = useRoute()
 const scrollContainer = ref(null)
 const isScrolledToEnd = ref(false)
 const isScrolledToStart = ref(true)

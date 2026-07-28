@@ -1,3 +1,5 @@
+import themeCatalog from './themeCatalog.js'
+
 export default {
   sections: {
     user: 'Настройки пользователя',
@@ -244,7 +246,7 @@ export default {
     editor: 'Редактор тем',
     active: 'Активная тема',
     scope: 'Область',
-    site: 'Сайт',
+    site: 'Система',
     save: 'Сохранить тему',
     reset: 'Сбросить',
     preview: 'Предпросмотр',
@@ -254,8 +256,8 @@ export default {
     paletteHint: 'Выберите тему из каталога, опубликованного администратором.',
     paletteApplied: 'Палитра «{name}» применена',
     selectFailed: 'Не удалось выбрать тему',
-    siteDefault: 'Используется стандарт сайта',
-    siteDefaultBtn: 'Как на сайте',
+    siteDefault: 'Используется стандарт системы',
+    siteDefaultBtn: 'Сбросить к стандарту системы',
     resetFailed: 'Не удалось сбросить палитру',
     selectTheme: 'Выбрать тему {name}',
     emptyCatalog: 'Администратор ещё не открыл темы для выбора.',
@@ -290,7 +292,7 @@ export default {
     darkThemes: 'Тёмные',
     a11y: 'Доступность',
     variantHint:
-      'Цвета и токены задаются отдельно для каждого варианта. На сайте показывается вариант по глобальной теме пользователя.',
+      'Цвета и токены задаются отдельно для каждого варианта. В системе показывается вариант по глобальной теме пользователя.',
     name: 'Название',
     namePairSuffix: ' пары',
     namePlaceholder: 'Название темы',
@@ -311,7 +313,7 @@ export default {
     nonColorToken: 'Не цветовой токен — редактируется текстом',
     themeAria: 'Тема {name}',
     badgeActive: 'Активна',
-    badgeSiteDefault: 'Стандарт сайта',
+    badgeSiteDefault: 'Стандарт системы',
     badgeDraft: 'Черновик',
     badgeDraftPair: 'Черновик пары',
     badgeA11y: 'Доступность',
@@ -320,7 +322,7 @@ export default {
     badgeInCatalog: 'В каталоге',
     noDescription: 'Без описания',
     apply: 'Применить',
-    siteDefaultShort: 'Стандарт сайта',
+    siteDefaultShort: 'Стандарт системы',
     removeFromQuick: 'Убрать из быстрого выбора',
     addToQuick: 'Добавить в быстрый выбор',
     resetToDefaults: 'Сбросить к начальным значениям',
@@ -383,11 +385,11 @@ export default {
     pairSaveError: 'Ошибка сохранения пары',
     activateVariantMissing: 'Не найден вариант темы для активации',
     activated: 'Тема "{name}" активирована',
-    setAsSiteDefault: '«{name}» — стандарт сайта',
+    setAsSiteDefault: '«{name}» — стандарт системы',
     activateError: 'Ошибка активации темы',
-    siteDefaultError: 'Ошибка назначения стандарта сайта',
+    siteDefaultError: 'Ошибка назначения стандарта системы',
     cannotRemoveSiteDefault:
-      'Нельзя убрать из каталога стандарт сайта. Сначала назначьте другой стандарт.',
+      'Нельзя убрать из каталога стандарт системы. Сначала назначьте другой стандарт.',
     addedToQuick: 'Тема добавлена в быстрый выбор',
     removedFromQuick: 'Тема убрана из быстрого выбора',
     availabilityError: 'Не удалось изменить доступность',
@@ -413,6 +415,8 @@ export default {
     resetThemeSuccess: 'Тема «{name}» сброшена к начальным значениям',
     newThemeName: 'Новая тема',
     newPairName: 'Новая пара ({name})',
+    systemNames: themeCatalog.systemNames,
+    systemDescriptions: themeCatalog.systemDescriptions,
   },
   toasts: {
     title: 'Всплывающие уведомления',

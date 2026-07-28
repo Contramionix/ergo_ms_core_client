@@ -153,6 +153,17 @@ export default {
       "requiresGlobalAdmin": true
     }
   },
+  "ClientMonitorPanel": {
+    "path": "/admin-panel/client-monitor",
+    "component": "@/core/cms/adp/admin/ClientMonitor.vue",
+    "meta": {
+      "title": "Мониторинг клиентов",
+      "titleKey": "routes.clientMonitor",
+      "requiresAuth": true,
+      "requiresGlobalAdmin": true
+    }
+  },
+
   "ThemeEditor": {
     "path": "/settings/themes",
     "component": "@/core/cms/adp/settings/themeEditor/ParentLayout.vue",

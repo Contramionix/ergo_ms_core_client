@@ -19,6 +19,10 @@ import ColorPicker from './ColorPicker.vue'
 import ThemePickerCard from './ThemePickerCard.vue'
 import { useThemeEditor, isColorLikeToken } from './useThemeEditor.js'
 import { isAccessibilityTheme, resolveThemePresentation } from './themeCategories.js'
+import {
+  resolveThemeDisplayDescription,
+  resolveThemeDisplayName,
+} from './resolveSystemThemeLabel.js'
 
 const {
   BASE_THEME_OPTIONS,
@@ -63,7 +67,7 @@ const {
   updateModuleToken,
 } = useThemeEditor()
 
-const { t } = useAppI18n()
+const { t, tm } = useAppI18n()
 
 const listSearch = ref('')
 const modeFilter = ref('all')
@@ -100,7 +104,13 @@ const filteredThemes = computed(() => {
     }
     const name = String(theme.name || '').toLowerCase()
     const desc = String(theme.description || '').toLowerCase()
-    return name.includes(q) || desc.includes(q)
+    const label = resolveThemeDisplayName(theme.name, tm).toLowerCase()
+    const labelDesc = resolveThemeDisplayDescription(
+      theme.name,
+      theme.description || '',
+      tm,
+    ).toLowerCase()
+    return name.includes(q) || desc.includes(q) || label.includes(q) || labelDesc.includes(q)
   })
 })
 

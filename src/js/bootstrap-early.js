@@ -25,7 +25,7 @@ document.documentElement.classList.add('app-bootstrapping')
           window.matchMedia('(prefers-contrast: more)').matches ||
           window.matchMedia('(prefers-contrast: custom)').matches ||
           window.matchMedia('(forced-colors: active)').matches
-      } catch (e2) {
+      } catch (_e2) {
         contrastMore = false
       }
     } else if (contrast === 'normal') {
@@ -68,7 +68,7 @@ document.documentElement.classList.add('app-bootstrapping')
         }
       }, 400)
     }
-  } catch (e) {
+  } catch (_e) {
     /* private mode / blocked storage */
   }
 })()
