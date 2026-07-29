@@ -413,6 +413,10 @@ const plugins = [
         '@/js/utils/logError.js': ['logError', 'logWarn', 'sanitizeError'],
       },
     ],
+    // Ранний boot (head): auto-import logError тянет api/monitor и убивает Slow 3G.
+    exclude: [
+      /[\\/]src[\\/]js[\\/](theme-manager|color-theme|boot-locale-prefetch|bootstrap-early|bootFailure)\.js$/,
+    ],
     dts: 'src/auto-imports.d.ts',
     eslintrc: {
       enabled: true,

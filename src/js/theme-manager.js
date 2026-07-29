@@ -122,7 +122,7 @@ export function applyThemeModePreference(mode) {
 
 export function applyTheme(theme, saveToStorage = true) {
   if (!theme) {
-    logWarn('Тема не передана')
+    console.warn('[theme-manager] Тема не передана')
     return
   }
 
@@ -204,7 +204,7 @@ export function saveThemeToLocalStorage(theme) {
   try {
     localStorage.setItem(ACTIVE_THEME_STORAGE_KEY, JSON.stringify(theme))
   } catch (e) {
-    logError('Ошибка сохранения темы:', e)
+    console.error('[theme-manager] Ошибка сохранения темы:', e)
   }
 }
 
@@ -215,7 +215,7 @@ export function loadThemeFromLocalStorage() {
       return JSON.parse(stored)
     }
   } catch (e) {
-    logError('Ошибка загрузки темы:', e)
+    console.error('[theme-manager] Ошибка загрузки темы:', e)
   }
   return null
 }

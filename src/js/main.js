@@ -6,25 +6,11 @@ import '@/scss/styles.scss'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
-import { hideBootstrapMask } from '@/js/bootstrapMask.js'
 import { initUiPreferences } from '@/js/uiPreferences.js'
-import { bootLocalesPromise, i18n, tGlobal } from '@/i18n/index.js'
+import { bootLocalesPromise, i18n } from '@/i18n/index.js'
 
-// initTheme — в color-theme.js (head), до main; здесь не тянем theme-manager повторно.
+// initTheme — в color-theme.js (head), до main.
 initUiPreferences()
-
-function showBootFailure(error) {
-  hideBootstrapMask()
-  void import('@/js/utils/logError.js')
-    .then(({ logError }) => logError(tGlobal('errors.boot.failedLog'), error))
-    .catch(() => {})
-  if (typeof document !== 'undefined') {
-    const root = document.getElementById('app')
-    if (root) {
-      root.textContent = tGlobal('errors.boot.failed')
-    }
-  }
-}
 
 /**
  * Откладывает некритичную работу после первого paint (не конкурирует с layout/session на 3G).
@@ -39,13 +25,11 @@ function runWhenIdle(fn) {
 }
 
 /**
- * Без top-level await: иначе evaluation чанка index не завершается, пока
- * initEndpoints/initRouter ждут dynamic import integrations/routes, а те
- * статически импортируют index → ESM-дедлок (сеть 200, SPA навсегда в boot-loader).
+ * Без top-level await / без sync logError: иначе на Vite dev + Slow 3G
+ * client_monitor/api занимают HTTP/1.1 слоты раньше App (см. localhost.har).
  *
- * Фазы (Vite dev + Slow 3G / HTTP/1.1):
- * 0) boot-locale-prefetch.js в head — прогрев locales/* до очереди main
- * 1) bootLocalesPromise (i18n) — без sync logError/client_monitor/api
+ * 0) boot-locale-prefetch.js в head
+ * 1) bootLocalesPromise
  * 2) App/toast/uiSettings → module locales → endpoints+router → mount
  * 3) session / monitor / themes — idle
  */
@@ -58,6 +42,7 @@ bootLocalesPromise
       import('@/js/utils/autoAnimatePlugin.js'),
       import('@/js/siteWordmark.js'),
       import('@/core/cms/js/uiSettings.js'),
+      import('@/js/bootstrapMask.js'),
     ]),
   )
   .then(
@@ -122,4 +107,6 @@ bootLocalesPromise
         .catch(() => {})
     })
   })
-  .catch(showBootFailure)
+  .catch((error) => {
+    void import('@/js/bootFailure.js').then(({ showBootFailure }) => showBootFailure(error))
+  })
