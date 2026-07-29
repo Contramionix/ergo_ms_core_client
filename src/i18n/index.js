@@ -181,7 +181,7 @@ export function applyLocale(locale) {
 let onLocaleMessagesReady = null
 
 /**
- * Хук для догрузки модульных каталогов при смене языка (LocaleManager).
+ * Хук для догрузки модульных каталогов до applyLocale (LocaleManager).
  * @param {(locale: string) => Promise<void>} handler
  */
 export function setLocaleMessagesReadyHandler(handler) {
@@ -189,7 +189,9 @@ export function setLocaleMessagesReadyHandler(handler) {
 }
 
 /**
- * Устанавливает язык UI: подгрузка каталогов, vue-i18n, <html lang>, событие.
+ * Устанавливает язык UI: подгрузка каталогов (ядро + модули), затем vue-i18n / <html lang> / событие.
+ * Модульные ключи должны быть в каталоге до applyLocale — иначе пункты меню с titleKey
+ * модуля пересчитаются по старому fallback и не обновятся до перезагрузки страницы.
  * @param {string} locale
  * @returns {Promise<string>} нормализованный код
  */
@@ -200,7 +202,6 @@ export async function setAppLocale(locale) {
     tasks.push(ensureLocaleLoaded(FALLBACK_LOCALE))
   }
   await Promise.all(tasks)
-  applyLocale(normalized)
   if (onLocaleMessagesReady) {
     try {
       await onLocaleMessagesReady(normalized)
@@ -208,6 +209,7 @@ export async function setAppLocale(locale) {
       /* модульные каталоги не блокируют смену языка ядра */
     }
   }
+  applyLocale(normalized)
   return normalized
 }
 
