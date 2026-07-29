@@ -62,10 +62,10 @@ export function resolveMenuItemTitle(item, router) {
   const routeName = item?.routeName
   if (routeName && router && typeof router.hasRoute === 'function' && router.hasRoute(routeName)) {
     try {
-      const resolved = router.resolve({ name: routeName })
-      const record =
-        resolved?.matched?.find((entry) => entry.name === routeName)
-        || resolved?.matched?.[resolved.matched.length - 1]
+      // getRoutes — без follow redirect: иначе shell (MCT/LMS → dashboard)
+      // подменяет title на «Дашборд»/«Сводка».
+      const routes = typeof router.getRoutes === 'function' ? router.getRoutes() : []
+      const record = routes.find((entry) => entry.name === routeName)
       if (record) {
         const fromRoute = resolveRouteTitle(record, '')
         if (fromRoute) {
