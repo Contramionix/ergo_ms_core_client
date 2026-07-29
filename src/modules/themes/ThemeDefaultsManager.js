@@ -18,25 +18,41 @@ export class ThemeDefaultsManager extends ModuleLoader {
       const modules = await this.loadAllModulesAsync('js/theme-defaults.js')
       for (const [, mod] of Object.entries(modules)) {
         const manifest = mod.default || mod
-        const moduleKey = manifest?.moduleKey || manifest?.module_key
-        if (!moduleKey) {
-          continue
-        }
-        registry.set(moduleKey, {
-          moduleKey,
-          displayName: manifest.displayName || manifest.display_name || moduleKey,
-          modulePair: manifest.modulePair || manifest.module_pair || 'default',
-          baseTheme: manifest.baseTheme || manifest.base_theme || 'light',
-          colors: manifest.colors || {},
-          bootstrap_colors: manifest.bootstrap_colors || manifest.bootstrapColors || {},
-          moduleTokens: manifest.moduleTokens || manifest.module_tokens || {},
-          systemThemes: manifest.systemThemes || manifest.system_themes || null,
-        })
+        this._putManifest(manifest)
       }
       return registry
     })()
 
     return registryPromise
+  }
+
+  /**
+   * @param {object} manifest
+   * @param {string} [fallbackKey]
+   */
+  _putManifest(manifest, fallbackKey = '') {
+    const moduleKey = manifest?.moduleKey || manifest?.module_key || fallbackKey
+    if (!moduleKey) {
+      return
+    }
+    registry.set(moduleKey, {
+      moduleKey,
+      displayName: manifest.displayName || manifest.display_name || moduleKey,
+      modulePair: manifest.modulePair || manifest.module_pair || 'default',
+      baseTheme: manifest.baseTheme || manifest.base_theme || 'light',
+      colors: manifest.colors || {},
+      bootstrap_colors: manifest.bootstrap_colors || manifest.bootstrapColors || {},
+      moduleTokens: manifest.moduleTokens || manifest.module_tokens || {},
+      systemThemes: manifest.systemThemes || manifest.system_themes || null,
+    })
+  }
+
+  /**
+   * @param {object} themeDefaults
+   * @param {string} moduleKey
+   */
+  registerThemeDefaultsFromManifest(themeDefaults, moduleKey) {
+    this._putManifest(themeDefaults, moduleKey)
   }
 
   async getAll() {

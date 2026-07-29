@@ -65,6 +65,20 @@ export class RouteGuardsManager extends ModuleLoader {
     this.guards = entries
   }
 
+  /**
+   * @param {Function} guard
+   * @param {string} moduleName
+   * @param {string} pathTag
+   */
+  registerGuardFromManifest(guard, moduleName, pathTag) {
+    if (typeof guard !== 'function') {
+      logWarn(`[RouteGuardsManager] ${pathTag} не экспортирует функцию routeGuard`)
+      return
+    }
+    this.guards.push({ moduleName: moduleName || 'module', path: pathTag, guard })
+    this.guards.sort((a, b) => a.moduleName.localeCompare(b.moduleName, 'ru'))
+  }
+
   getAllGuards() {
     return this.guards.map((entry) => entry.guard)
   }

@@ -95,19 +95,30 @@ export class EndpointManager extends ModuleLoader {
       const exportedEndpoints = Object.values(module)[0]
 
       if (exportedEndpoints && typeof exportedEndpoints === 'object') {
-        // Разворачиваем вложенную структуру эндпоинтов для индексации
-        const flatEndpoints = this.flattenEndpoints(exportedEndpoints)
+        this.registerEndpointsFromManifest(exportedEndpoints, path)
+      }
+    })
+  }
 
-        Object.entries(flatEndpoints).forEach(([name, endpoint]) => {
-          if (!this.endpoints.has(name)) {
-            this.endpoints.set(name, {
-              value: endpoint,
-              _modulePath: path
-            })
-          } else {
-            logWarn(`Дублирующийся эндпоинт: ${name} в ${path}`)
-          }
+  /**
+   * @param {Record<string, unknown>} exportedEndpoints
+   * @param {string} pathTag
+   */
+  registerEndpointsFromManifest(exportedEndpoints, pathTag) {
+    if (!exportedEndpoints || typeof exportedEndpoints !== 'object') {
+      return
+    }
+
+    const flatEndpoints = this.flattenEndpoints(exportedEndpoints)
+
+    Object.entries(flatEndpoints).forEach(([name, endpoint]) => {
+      if (!this.endpoints.has(name)) {
+        this.endpoints.set(name, {
+          value: endpoint,
+          _modulePath: pathTag,
         })
+      } else {
+        logWarn(`Дублирующийся эндпоинт: ${name} в ${pathTag}`)
       }
     })
   }

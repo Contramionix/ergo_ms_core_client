@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "description": "Ядро системы ErgoMS - клиентская часть",
+  "exports": {
+    ".": "./src/shell/index.js",
+    "./shell": "./src/shell/index.js",
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "predev": "node scripts/generate-module-globs.js && node scripts/generate-lucide-icon-map.js",
     "dev": "vite --host",
@@ -11,6 +16,9 @@
     "prebuild": "node scripts/generate-module-globs.js && node scripts/generate-lucide-icon-map.js",
     "build": "vite build",
     "build:analyze": "npm run prebuild && cross-env ANALYZE=true vite build",
+    "build:remote": "node scripts/build-client-remote.js",
+    "build:standalone": "node scripts/build-client-standalone.js",
+    "pack:shell": "node scripts/pack-client-shell.js",
     "preview": "vite preview",
     "lint": "eslint . --fix",
     "lint:check": "node scripts/run-eslint-check.js",

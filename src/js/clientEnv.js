@@ -37,6 +37,13 @@ export const clientEnv = {
   monitoringEnabled: readBool('CLIENT_MONITORING_ENABLED', false),
 
   disabledModules: readEnv('CLIENT_DISABLED_MODULES', ''),
+  /** bundled | federated | standalone */
+  modularity: readEnv('CLIENT_MODULARITY', 'bundled').toLowerCase() || 'bundled',
+  /** CSV allow-list модулей (пусто = все кроме disabled). */
+  clientModules: readEnv('CLIENT_MODULES', ''),
+  /** federated: name=url,name2=url2 */
+  moduleRemotes: readEnv('CLIENT_MODULE_REMOTES', ''),
+  federationShared: readEnv('CLIENT_FEDERATION_SHARED', 'vue,vue-router,pinia'),
   passwordMinLength: readInt('CLIENT_PASSWORD_MIN_LENGTH', 8),
   passwordMaxLength: readInt('CLIENT_PASSWORD_MAX_LENGTH', 128),
   passwordRequireLowercase: readBool('CLIENT_PASSWORD_REQUIRE_LOWERCASE', true),

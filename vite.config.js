@@ -3,7 +3,10 @@ import path from 'path'
 import fs from 'fs'
 import { createRequire, isBuiltin } from 'node:module'
 import { loadProjectEnv, mergeModuleEnv } from './scripts/lib/module-env.js'
-import { loadDisabledModules } from './scripts/lib/parse-disabled-modules.js'
+import {
+  loadClientModularityConfig,
+  listEnabledModuleNames,
+} from './scripts/lib/parse-disabled-modules.js'
 
 const require = createRequire(import.meta.url)
 const { applyNginxClientEnv, nginxEnabled } = require('../deployment/nginx/nginx-env.cjs')
@@ -66,12 +69,17 @@ function resolveFromNpmRootPlugin() {
 }
 
 const modulesRoot = path.resolve(__dirname, '../../modules')
-const disabledModules = loadDisabledModules()
+const clientModularity = loadClientModularityConfig()
+const disabledModules = clientModularity.disabled
+const enabledModuleNames = new Set(
+  listEnabledModuleNames(modulesRoot, disabledModules, clientModularity.allowlist),
+)
+const isFederatedHost = clientModularity.modularity === 'federated'
 
 const externalModuleAliases = fs.existsSync(modulesRoot)
   ? fs.readdirSync(modulesRoot, { withFileTypes: true })
       .filter((d) => d.isDirectory())
-      .filter((d) => !disabledModules.has(d.name))
+      .filter((d) => enabledModuleNames.has(d.name))
       .map((d) => ({
         find: `@/modules/${d.name}`,
         replacement: path.join(modulesRoot, d.name),
@@ -212,6 +220,10 @@ function buildClientEnvDefines(envValues) {
     CLIENT_MONITORING_ENABLED: envValues.CLIENT_MONITORING_ENABLED ?? 'false',
 
     CLIENT_DISABLED_MODULES: envValues.DISABLED_MODULES || '',
+    CLIENT_MODULARITY: (envValues.CLIENT_MODULARITY || 'bundled').toLowerCase(),
+    CLIENT_MODULES: envValues.CLIENT_MODULES || '',
+    CLIENT_MODULE_REMOTES: envValues.CLIENT_MODULE_REMOTES || '',
+    CLIENT_FEDERATION_SHARED: envValues.CLIENT_FEDERATION_SHARED || 'vue,vue-router,pinia',
     CLIENT_PASSWORD_MIN_LENGTH: envValues.API_PASSWORD_MIN_LENGTH || '8',
     CLIENT_PASSWORD_MAX_LENGTH: envValues.API_PASSWORD_MAX_LENGTH || '128',
     CLIENT_PASSWORD_REQUIRE_LOWERCASE: envValues.API_PASSWORD_REQUIRE_LOWERCASE ?? 'true',
@@ -458,6 +470,36 @@ if (analyzeBuild) {
   )
 }
 
+/** Import map + shared entries для federated remotes (один Vue / ModuleBridge). */
+function federationSharedPlugin() {
+  if (!isFederatedHost) {
+    return null
+  }
+  return {
+    name: 'ergo-federation-shared',
+    transformIndexHtml(html, ctx) {
+      const isServe = Boolean(ctx?.server)
+      const importMap = {
+        imports: {
+          vue: isServe ? '/src/shell/shared/vue.js' : '/shared/vue.js',
+          'vue-router': isServe ? '/src/shell/shared/vue-router.js' : '/shared/vue-router.js',
+          pinia: isServe ? '/src/shell/shared/pinia.js' : '/shared/pinia.js',
+          'ergo-shared/module-bridge': isServe
+            ? '/src/shell/shared/module-bridge.js'
+            : '/shared/module-bridge.js',
+        },
+      }
+      const tag = `<script type="importmap">${JSON.stringify(importMap)}</script>`
+      return html.replace('<head>', `<head>\n    ${tag}`)
+    },
+  }
+}
+
+const federationShared = federationSharedPlugin()
+if (federationShared) {
+  plugins.push(federationShared)
+}
+
 export default defineConfig(() => ({
   build: {
     // Согласовано с browserslist: последние 2 версии современных браузеров (без IE)
@@ -469,7 +511,24 @@ export default defineConfig(() => ({
       treeshake: {
         preset: 'recommended',
       },
+      ...(isFederatedHost
+        ? {
+            input: {
+              main: path.resolve(__dirname, 'index.html'),
+              'shared/vue': path.resolve(__dirname, 'src/shell/shared/vue.js'),
+              'shared/vue-router': path.resolve(__dirname, 'src/shell/shared/vue-router.js'),
+              'shared/pinia': path.resolve(__dirname, 'src/shell/shared/pinia.js'),
+              'shared/module-bridge': path.resolve(__dirname, 'src/shell/shared/module-bridge.js'),
+            },
+          }
+        : {}),
       output: {
+        entryFileNames: (chunk) => {
+          if (chunk.name && String(chunk.name).startsWith('shared/')) {
+            return '[name].js'
+          }
+          return 'assets/[name]-[hash].js'
+        },
         manualChunks(id) {
           return resolveManualChunk(id)
         },

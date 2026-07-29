@@ -34,26 +34,34 @@ export class PermissionSectionsManager extends ModuleLoader {
 
     Object.entries(modules).forEach(([path, module]) => {
       const exported = module?.default ?? module
-      if (!exported) {
+      this.registerSectionsFromManifest(exported, path)
+    })
+  }
+
+  /**
+   * @param {unknown} exported
+   * @param {string} pathTag
+   */
+  registerSectionsFromManifest(exported, pathTag) {
+    if (!exported) {
+      return
+    }
+
+    const items = Array.isArray(exported) ? exported : [exported]
+
+    items.forEach((section) => {
+      if (!this.validateSection(section)) {
+        logWarn(`[PermissionSectionsManager] Невалидная секция в ${pathTag}`)
         return
       }
 
-      const items = Array.isArray(exported) ? exported : [exported]
+      if (this.sectionsMap.has(section.id)) {
+        return
+      }
 
-      items.forEach((section) => {
-        if (!this.validateSection(section)) {
-          logWarn(`[PermissionSectionsManager] Невалидная секция в ${path}`)
-          return
-        }
-
-        if (this.sectionsMap.has(section.id)) {
-          return
-        }
-
-        const entry = { ...section, _modulePath: path }
-        this.sections.push(entry)
-        this.sectionsMap.set(section.id, entry)
-      })
+      const entry = { ...section, _modulePath: pathTag }
+      this.sections.push(entry)
+      this.sectionsMap.set(section.id, entry)
     })
   }
 

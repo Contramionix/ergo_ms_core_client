@@ -37,27 +37,31 @@ export class PermissionRulesManager extends ModuleLoader {
     const rulesModules = await this.loadAllModulesAsync('js/permission-rules.js')
 
     Object.entries(rulesModules).forEach(([path, module]) => {
-      // loadAllModulesAsync уже разворачивает default; поддерживаем оба формата
       const moduleRules = module?.default ?? module
-
-      if (Array.isArray(moduleRules)) {
-        moduleRules.forEach((rule) => {
-          if (this.validateRule(rule)) {
-            // Не ...rule: spread вызывает getters (title/message → tGlobal)
-            // до merge модульных каталогов i18n и даёт [intlify] Not found.
-            const entry = Object.defineProperties(
-              { _modulePath: path },
-              Object.getOwnPropertyDescriptors(rule),
-            )
-            this.rules.push(entry)
-          } else {
-            logWarn(`[PermissionRulesManager] Невалидное правило в ${path}`)
-          }
-        })
-      } else {
-        logWarn(`[PermissionRulesManager] Модуль ${path} не экспортирует массив правил`)
-      }
+      this.registerRulesFromManifest(moduleRules, path)
     })
+  }
+
+  /**
+   * @param {unknown} moduleRules
+   * @param {string} pathTag
+   */
+  registerRulesFromManifest(moduleRules, pathTag) {
+    if (Array.isArray(moduleRules)) {
+      moduleRules.forEach((rule) => {
+        if (this.validateRule(rule)) {
+          const entry = Object.defineProperties(
+            { _modulePath: pathTag },
+            Object.getOwnPropertyDescriptors(rule),
+          )
+          this.rules.push(entry)
+        } else {
+          logWarn(`[PermissionRulesManager] Невалидное правило в ${pathTag}`)
+        }
+      })
+    } else if (moduleRules != null) {
+      logWarn(`[PermissionRulesManager] Модуль ${pathTag} не экспортирует массив правил`)
+    }
   }
 
   /**

@@ -32,6 +32,32 @@ export class IntegrationsManager extends ModuleLoader {
     this.initialized = true
   }
 
+  /**
+   * Активирует integrations из манифеста (side-effect import или функция).
+   * @param {unknown} integrations
+   * @param {string} pathTag
+   */
+  async activateIntegrationsFromManifest(integrations, pathTag) {
+    if (!integrations) {
+      return
+    }
+    if (typeof integrations === 'function') {
+      await integrations()
+      this.loadedModules.push(pathTag)
+      return
+    }
+    if (typeof integrations === 'object') {
+      const maybeInit = /** @type {{ default?: unknown, activate?: unknown }} */ (integrations)
+      if (typeof maybeInit.activate === 'function') {
+        await maybeInit.activate()
+      } else if (typeof maybeInit.default === 'function') {
+        await maybeInit.default()
+      }
+      // side-effect модуль уже исполнен при import federation-entry
+      this.loadedModules.push(pathTag)
+    }
+  }
+
   getLoadedIntegrations() {
     return this.loadedModules.slice()
   }

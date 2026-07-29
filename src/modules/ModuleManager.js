@@ -17,6 +17,11 @@ import { PermissionSectionsManager } from './permissions/PermissionSectionsManag
 import { RouteGuardsManager } from './routing/RouteGuardsManager.js'
 import { IntegrationsManager } from './integrations/IntegrationsManager.js'
 import { fetchDisabledModules } from './core/disabledModules.js'
+import { registerClientModule } from './core/registerClientModule.js'
+import { loadFederatedModules } from './core/federatedModules.js'
+import { clientEnv } from '@/js/clientEnv.js'
+import { getLocaleManager } from './i18n/LocaleManager.js'
+import { getThemeDefaultsManager } from './themes/ThemeDefaultsManager.js'
 
 export class ModuleManager {
   constructor() {
@@ -28,6 +33,8 @@ export class ModuleManager {
     this.routeGuardsManager = new RouteGuardsManager()
     this.integrationsManager = new IntegrationsManager()
     this.routeGenerator = null
+    /** @type {import('./core/clientModuleManifest.js').ClientModuleManifest[]} */
+    this.registeredManifests = []
 
     this.initialized = false
     this._initPromise = null
@@ -49,9 +56,43 @@ export class ModuleManager {
       this.integrationsManager.initialize(),
     ])
 
+    if (clientEnv.modularity === 'federated') {
+      const remotes = await loadFederatedModules()
+      for (const manifest of remotes) {
+        await this.registerModule(manifest, `remote:${manifest.moduleKey}`)
+      }
+    }
+
     this.routeGenerator = new RouteGenerator(this.routeManager)
 
     this.initialized = true
+  }
+
+  /**
+   * Регистрирует клиентский манифест модуля (federated / standalone / ручной).
+   * @param {object} manifest
+   * @param {string} [sourcePath]
+   */
+  async registerModule(manifest, sourcePath = 'manifest') {
+    const registered = await registerClientModule(manifest, {
+      routeManager: this.routeManager,
+      endpointManager: this.endpointManager,
+      permissionRulesManager: this.permissionRulesManager,
+      permissionSectionsManager: this.permissionSectionsManager,
+      routeGuardsManager: this.routeGuardsManager,
+      integrationsManager: this.integrationsManager,
+      localeManager: getLocaleManager(),
+      themeDefaultsManager: getThemeDefaultsManager(),
+    }, sourcePath)
+    if (registered) {
+      this.registeredManifests.push(registered)
+      try {
+        await getLocaleManager().mergeModuleLocales()
+      } catch {
+        /* locales optional at early boot */
+      }
+    }
+    return registered
   }
 
   /**
@@ -174,7 +215,8 @@ export class ModuleManager {
       permissionRules: this.permissionRulesManager.getStatistics(),
       permissionSections: this.permissionSectionsManager.getStatistics(),
       routeGuards: this.routeGuardsManager.getStatistics(),
-      integrations: this.integrationsManager.getStatistics()
+      integrations: this.integrationsManager.getStatistics(),
+      manifests: this.registeredManifests.length,
     }
   }
 
@@ -188,6 +230,7 @@ export class ModuleManager {
     this.permissionSectionsManager.clearCache()
     this.routeGuardsManager.clearCache()
     this.integrationsManager.clearCache()
+    this.registeredManifests = []
     this.initialized = false
     this._initPromise = null
   }

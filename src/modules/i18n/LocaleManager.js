@@ -77,6 +77,26 @@ export class LocaleManager extends ModuleLoader {
   }
 
   /**
+   * Регистрирует pack локалей из манифеста (federated / standalone).
+   * @param {object} pack — { ru: {...}, en: {...} }
+   * @param {string} moduleKey
+   */
+  registerLocalesFromManifest(pack, moduleKey) {
+    if (!pack || typeof pack !== 'object') {
+      return
+    }
+    if (!cachedModulePacks) {
+      cachedModulePacks = new Map()
+    }
+    const key = `manifest:${moduleKey}`
+    cachedModulePacks.set(key, pack)
+    // Сбросить «уже смержено», чтобы mergeLocales подхватил новый pack
+    for (const locale of Object.keys(pack)) {
+      mergedLocales.delete(locale)
+    }
+  }
+
+  /**
    * Подхватывает packs и merge для active (+ fallback при необходимости).
    */
   async mergeModuleLocales() {

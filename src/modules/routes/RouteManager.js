@@ -13,7 +13,7 @@ import {
   findComponentLoader,
 } from './resolveComponentLoader.js'
 
-import { logWarn } from '@/js/utils/logError.js'
+import { logError, logWarn } from '@/js/utils/logError.js'
 
 export class RouteManager extends ModuleLoader {
   constructor() {
@@ -46,17 +46,34 @@ export class RouteManager extends ModuleLoader {
       const autoModuleKey = isExternal ? this.extractModuleName(path, true) : null
 
       if (routes && typeof routes === 'object') {
-        Object.entries(routes).forEach(([routeName, routeConfig]) => {
-          if (!this.routes.has(routeName)) {
-            this.routes.set(routeName, {
-              ...routeConfig,
-              _modulePath: path,
-              meta: {
-                ...(routeConfig.meta || {}),
-                moduleKey: routeConfig.meta?.moduleKey || autoModuleKey || undefined,
-              },
-            })
-          }
+        this.registerRoutesFromManifest(routes, path, autoModuleKey)
+      }
+    })
+  }
+
+  /**
+   * Регистрирует роуты из клиентского манифеста (bundled / federated / standalone).
+   * @param {Record<string, object>} routes
+   * @param {string} pathTag
+   * @param {string|null} [moduleKey]
+   */
+  registerRoutesFromManifest(routes, pathTag, moduleKey = null) {
+    if (!routes || typeof routes !== 'object') {
+      return
+    }
+
+    Object.entries(routes).forEach(([routeName, routeConfig]) => {
+      if (!routeConfig || typeof routeConfig !== 'object') {
+        return
+      }
+      if (!this.routes.has(routeName)) {
+        this.routes.set(routeName, {
+          ...routeConfig,
+          _modulePath: pathTag,
+          meta: {
+            ...(routeConfig.meta || {}),
+            moduleKey: routeConfig.meta?.moduleKey || moduleKey || undefined,
+          },
         })
       }
     })
@@ -148,8 +165,10 @@ export class RouteManager extends ModuleLoader {
       }
     }
 
-    // Устанавливаем компонент только если он указан
-    if (routeConfig.component) {
+    // Строка — путь для glob; function — уже готовый lazy/async component (federated/standalone)
+    if (typeof routeConfig.component === 'function') {
+      route.component = routeConfig.component
+    } else if (routeConfig.component) {
       route.component = this.createLazyImport(routeConfig.component)
     }
 
@@ -187,7 +206,9 @@ export class RouteManager extends ModuleLoader {
           }
         }
 
-        if (childConfig.component) {
+        if (typeof childConfig.component === 'function') {
+          childRoute.component = childConfig.component
+        } else if (childConfig.component) {
           childRoute.component = this.createLazyImport(childConfig.component)
         }
 
