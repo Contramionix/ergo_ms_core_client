@@ -143,6 +143,10 @@ const openEyeDropper = async () => {
   </div>
 </template>
 
+<style lang="scss">
+@import '@/core/cms/adp/admin/admin-page.scss';
+</style>
+
 <style scoped lang="scss">
 .color-picker {
   margin-bottom: 1rem;
@@ -224,30 +228,6 @@ const openEyeDropper = async () => {
 
   &:disabled {
     opacity: 0.65;
-  }
-}
-
-.btn-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.375rem;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  color: var(--ui-text);
-
-  &:hover:not(:disabled) {
-    background-color: var(--ui-hover);
-    color: var(--ui-text);
-  }
-
-  &:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
   }
 }
 </style>

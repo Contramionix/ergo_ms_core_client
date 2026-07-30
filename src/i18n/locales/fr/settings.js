@@ -292,7 +292,7 @@ export default {
     saveVariant: 'Enregistrer la variante',
     systemThemeStrong: 'Thème système.',
     systemThemeHint:
-      'La palette ne peut pas être modifiée — vous pouvez l’activer ou la réinitialiser aux valeurs par défaut. Pour modifier les couleurs, créez une copie.',
+      'Vous pouvez modifier la palette et la description. La réinitialisation restaure les valeurs du catalogue. Les thèmes système ne peuvent pas être supprimés.',
     editableVariant: 'Variante modifiable',
     light: 'Clair',
     dark: 'Sombre',
@@ -305,6 +305,7 @@ export default {
     namePairSuffix: ' paire',
     namePlaceholder: 'Nom du thème',
     author: 'Auteur',
+    authorSystem: 'Système',
     baseTheme: 'Thème de base',
     description: 'Description',
     descriptionPlaceholder: 'Description du thème',

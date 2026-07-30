@@ -292,7 +292,7 @@ export default {
     saveVariant: 'Сохранить вариант',
     systemThemeStrong: 'Системная тема.',
     systemThemeHint:
-      'Палитру менять нельзя — можно активировать или сбросить к начальным значениям. Чтобы править цвета, создайте копию темы.',
+      'Палитру и описание можно менять. Сброс вернёт начальные значения каталога. Удалить системную тему нельзя.',
     editableVariant: 'Редактируемый вариант',
     light: 'Светлый',
     dark: 'Тёмный',
@@ -305,6 +305,7 @@ export default {
     namePairSuffix: ' пары',
     namePlaceholder: 'Название темы',
     author: 'Автор',
+    authorSystem: 'Система',
     baseTheme: 'Базовая тема',
     description: 'Описание',
     descriptionPlaceholder: 'Описание темы',

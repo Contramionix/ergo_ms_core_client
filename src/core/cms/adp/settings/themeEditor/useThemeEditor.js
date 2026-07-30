@@ -30,6 +30,10 @@ import {
   pickEditableFields,
   snapshotTheme,
 } from './themeEditorModel.js'
+import {
+  normalizeThemeAuthorForSave,
+  resolveThemeDisplayAuthor,
+} from './resolveSystemThemeLabel.js'
 
 export const THEME_EDITOR_KEY = 'ergoThemeEditor'
 
@@ -237,12 +241,12 @@ export function createThemeEditor() {
   const isDraftSelected = computed(() => selectedThemeId.value === DRAFT_THEME_ID)
   const isNewTheme = computed(() => isDraftSelected.value)
 
-  /** Системные темы сайта — только активация; модульные — палитра редактируется. */
+  /** Темы сайта (включая системные) и модульные пары — палитра редактируется. */
   const canEditCurrentTheme = computed(() => {
     if (isModuleScope.value) {
       return Boolean(selectedPairKey.value)
     }
-    return !currentTheme.is_system
+    return Boolean(selectedThemeId.value)
   })
 
   const isEditingModulePair = computed(() => isModuleScope.value && Boolean(selectedPairKey.value))
@@ -495,7 +499,7 @@ export function createThemeEditor() {
       id: theme.id,
       name: theme.name,
       description: theme.description || '',
-      author: theme.author || '',
+      author: resolveThemeDisplayAuthor(theme.author || ''),
       base_theme: theme.base_theme,
       module_key: theme.module_key || null,
       module_pair: theme.module_pair || 'default',
@@ -530,7 +534,7 @@ export function createThemeEditor() {
     await apiClient.put(endpoints.themes.update(sibling.id), {
       name: currentTheme.name,
       description: currentTheme.description,
-      author: currentTheme.author,
+      author: normalizeThemeAuthorForSave(currentTheme.author),
       base_theme: otherVariant,
       module_key: currentTheme.module_key || selectedScope.value,
       module_pair: currentTheme.module_pair || selectedPairKey.value,
@@ -560,7 +564,7 @@ export function createThemeEditor() {
     const payload = {
       name: variantData.name || currentTheme.name,
       description: variantData.description ?? currentTheme.description,
-      author: variantData.author ?? currentTheme.author,
+      author: normalizeThemeAuthorForSave(variantData.author ?? currentTheme.author),
       base_theme: variantKey,
       module_key: variantData.module_key || selectedScope.value,
       module_pair: variantData.module_pair || selectedPairKey.value,

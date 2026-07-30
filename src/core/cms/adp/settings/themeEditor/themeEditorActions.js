@@ -9,7 +9,10 @@ import {
 } from '@/js/theme-manager'
 import { isColorLikeToken } from './themeContrast.js'
 import { normalizeColorToHex } from './colorFormat.js'
-import { resolveThemeDisplayName } from './resolveSystemThemeLabel.js'
+import {
+  normalizeThemeAuthorForSave,
+  resolveThemeDisplayName,
+} from './resolveSystemThemeLabel.js'
 
 export function createThemeEditorActions(ctx) {
   const {
@@ -247,7 +250,7 @@ export function createThemeEditorActions(ctx) {
       const data = {
         name: currentTheme.name,
         description: currentTheme.description,
-        author: currentTheme.author,
+        author: normalizeThemeAuthorForSave(currentTheme.author),
         base_theme: isModuleScope.value ? editingVariant.value : currentTheme.base_theme,
         module_key: currentTheme.module_key || null,
         module_pair: currentTheme.module_pair || 'default',
@@ -476,7 +479,7 @@ export function createThemeEditorActions(ctx) {
       const data = {
         name: currentTheme.name,
         description: currentTheme.description,
-        author: currentTheme.author,
+        author: normalizeThemeAuthorForSave(currentTheme.author),
         base_theme: currentTheme.base_theme,
         module_key: currentTheme.module_key,
         colors: currentTheme.colors,

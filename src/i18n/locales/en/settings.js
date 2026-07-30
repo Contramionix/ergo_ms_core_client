@@ -292,7 +292,7 @@ export default {
     saveVariant: 'Save variant',
     systemThemeStrong: 'System theme.',
     systemThemeHint:
-      'The palette cannot be changed — you can activate it or reset to defaults. To edit colors, create a copy.',
+      'You can edit the palette and description. Reset restores catalog defaults. System themes cannot be deleted.',
     editableVariant: 'Editable variant',
     light: 'Light',
     dark: 'Dark',
@@ -305,6 +305,7 @@ export default {
     namePairSuffix: ' pair',
     namePlaceholder: 'Theme name',
     author: 'Author',
+    authorSystem: 'System',
     baseTheme: 'Base theme',
     description: 'Description',
     descriptionPlaceholder: 'Theme description',

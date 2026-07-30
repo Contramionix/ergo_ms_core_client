@@ -23,6 +23,11 @@ const { isDirty, confirmLeaveIfDirty, applyEditorPreview, init } = editor
 
 const dirtyHint = computed(() => (isDirty.value ? t('settings.themes.dirtyHint') : ''))
 
+const viewTabs = computed(() => [
+  { id: 'editor', label: t('settings.themes.editor'), icon: Edit },
+  { id: 'preview', label: t('settings.themes.preview'), icon: Eye },
+])
+
 function setView(view) {
   if (view === activeView.value) {
     return
@@ -38,7 +43,6 @@ function prefetchPreview() {
 }
 
 onMounted(() => {
-  // Параллельно: чанк галереи (defineAsyncComponent) + список тем с API.
   void import('./ThemeEditor.vue')
   init()
 })
@@ -55,57 +59,51 @@ onBeforeRouteLeave(async () => {
 
 <template>
   <div class="admin-page theme-editor-layout">
-    <div class="theme-editor-shell">
-      <div class="page-header">
-        <div class="theme-editor-layout__title-row">
-          <h1 class="page-title mb-0">{{ t('settings.themes.panelTitle') }}</h1>
-          <span
-            class="theme-editor-layout__dirty"
-            :class="{ 'is-visible': isDirty }"
-            :title="dirtyHint"
-            :aria-hidden="!isDirty"
-          >
-            {{ t('settings.themes.dirtyBanner') }}
-          </span>
-        </div>
-        <p class="page-subtitle">
-          {{ t('settings.themes.pageSubtitle') }}
-        </p>
+    <div class="page-header">
+      <div class="theme-editor-layout__title-row">
+        <h1 class="page-title mb-0">{{ t('settings.themes.panelTitle') }}</h1>
+        <span
+          class="theme-editor-layout__dirty"
+          :class="{ 'is-visible': isDirty }"
+          :title="dirtyHint"
+          :aria-hidden="!isDirty"
+        >
+          {{ t('settings.themes.dirtyBanner') }}
+        </span>
       </div>
+      <p class="page-subtitle">
+        {{ t('settings.themes.pageSubtitle') }}
+      </p>
+    </div>
 
-      <div
-        class="theme-editor-layout__segment"
-        role="tablist"
-        :aria-label="t('settings.themes.modeAria')"
+    <ul
+      class="nav nav-tabs theme-editor-tabs"
+      role="tablist"
+      :aria-label="t('settings.themes.modeAria')"
+    >
+      <li
+        v-for="tab in viewTabs"
+        :key="tab.id"
+        class="nav-item"
+        role="presentation"
       >
         <button
           type="button"
-          class="theme-editor-layout__segment-btn"
-          :class="{ active: activeView === 'editor' }"
+          class="nav-link"
+          :class="{ active: activeView === tab.id }"
           role="tab"
-          :aria-selected="activeView === 'editor'"
-          @click="setView('editor')"
+          :aria-selected="activeView === tab.id"
+          @mouseenter="tab.id === 'preview' && prefetchPreview()"
+          @focus="tab.id === 'preview' && prefetchPreview()"
+          @click="setView(tab.id)"
         >
-          <Edit :size="16" aria-hidden="true" />
-          <span>{{ t('settings.themes.editor') }}</span>
+          <component :is="tab.icon" :size="16" aria-hidden="true" />
+          <span>{{ tab.label }}</span>
         </button>
-        <button
-          type="button"
-          class="theme-editor-layout__segment-btn"
-          :class="{ active: activeView === 'preview' }"
-          role="tab"
-          :aria-selected="activeView === 'preview'"
-          @mouseenter="prefetchPreview"
-          @focus="prefetchPreview"
-          @click="setView('preview')"
-        >
-          <Eye :size="16" aria-hidden="true" />
-          <span>{{ t('settings.themes.preview') }}</span>
-        </button>
-      </div>
-    </div>
+      </li>
+    </ul>
 
-    <div class="theme-editor-layout__view-host">
+    <div class="theme-editor-layout__view-host" role="tabpanel">
       <Transition name="theme-view" mode="out-in">
         <div
           v-if="activeView === 'editor'"
@@ -216,48 +214,52 @@ onBeforeRouteLeave(async () => {
   }
 }
 
-.theme-editor-layout__segment {
-  display: inline-flex;
-  align-items: stretch;
-  padding: 0.25rem;
-  gap: 0.25rem;
-  border: 1px solid var(--ui-border);
-  border-radius: 0.625rem;
-  background: var(--ui-surface-2);
-  width: fit-content;
-  max-width: 100%;
-}
+.theme-editor-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 
-.theme-editor-layout__segment-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.5rem;
-  background: transparent;
-  color: var(--ui-text);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background-color var(--theme-editor-motion) var(--theme-editor-ease),
-    color var(--theme-editor-motion) var(--theme-editor-ease),
-    box-shadow var(--theme-editor-motion) var(--theme-editor-ease);
-
-  &:hover {
-    background: var(--ui-hover);
+  &::-webkit-scrollbar {
+    display: none;
   }
 
-  &.active {
-    background: var(--ui-surface);
-    color: var(--ui-text);
-    box-shadow: 0 0 0 1px var(--ui-border);
+  .nav-item {
+    flex: 0 0 auto;
   }
 
-  &:focus-visible {
-    outline: 2px solid var(--ui-accent, var(--bs-primary));
-    outline-offset: 2px;
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-secondary-text);
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    background: transparent;
+    white-space: nowrap;
+
+    &:hover {
+      color: var(--color-primary-text);
+      border-bottom-color: var(--color-border);
+    }
+
+    &.active {
+      color: var(--color-primary-text);
+      border-bottom-color: var(--color-accent, var(--bs-primary));
+      background: transparent;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-accent, var(--bs-primary));
+      outline-offset: 2px;
+    }
   }
 }
 
@@ -266,7 +268,6 @@ onBeforeRouteLeave(async () => {
     --theme-editor-motion: 0ms;
   }
 
-  .theme-editor-layout__segment-btn,
   .theme-editor-layout__dirty {
     transition: none !important;
   }

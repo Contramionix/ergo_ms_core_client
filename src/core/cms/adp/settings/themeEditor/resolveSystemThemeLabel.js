@@ -33,3 +33,37 @@ export function resolveThemeDisplayName(name, tmFn = null) {
 export function resolveThemeDisplayDescription(name, fallback = '', tmFn = null) {
   return lookup('systemDescriptions', name, tmFn) || String(fallback || '').trim()
 }
+
+const SYSTEM_AUTHOR_SENTINEL = 'system'
+
+function tThemes(key, tFn) {
+  const t = tFn || ((k) => getI18n().global.t(k))
+  return String(t(`settings.themes.${key}`) || '').trim()
+}
+
+/** Автор для UI: sentinel System → локализованная подпись. */
+export function resolveThemeDisplayAuthor(author, tFn = null) {
+  const raw = String(author || '').trim()
+  if (raw.toLowerCase() === SYSTEM_AUTHOR_SENTINEL) {
+    return tThemes('authorSystem', tFn)
+  }
+  return raw
+}
+
+/**
+ * Автор для API/БД: локализованная «Система» / System → канонический sentinel.
+ * Кастомный текст сохраняется как есть.
+ */
+export function normalizeThemeAuthorForSave(author, tFn = null) {
+  const raw = String(author || '').trim()
+  if (!raw) {
+    return ''
+  }
+  if (raw.toLowerCase() === SYSTEM_AUTHOR_SENTINEL) {
+    return 'System'
+  }
+  if (raw === tThemes('authorSystem', tFn)) {
+    return 'System'
+  }
+  return raw
+}

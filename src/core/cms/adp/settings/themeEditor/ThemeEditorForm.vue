@@ -54,7 +54,9 @@ const {
 
 const liveColors = computed(() => currentTheme.colors || {})
 const formPanelKey = computed(() => `${selectedThemeId.value || 'none'}-${editingVariant.value}`)
-const showSystemBanner = computed(() => !canEditCurrentTheme.value && !isModuleScope.value)
+const showSystemBanner = computed(
+  () => Boolean(currentTheme.is_system) && !isModuleScope.value && !isNewTheme.value,
+)
 
 function onVariantTabKeydown(event) {
   if (!isEditingModulePair.value) {
@@ -76,7 +78,7 @@ function onVariantTabKeydown(event) {
 </script>
 
 <template>
-  <div class="content-card content-card--flush theme-editor__form-card">
+  <div class="content-card theme-editor__form-card">
     <header class="theme-editor__panel-header theme-editor__toolbar">
       <div class="theme-editor__form-heading">
         <button
@@ -256,13 +258,14 @@ function onVariantTabKeydown(event) {
               />
             </div>
             <div v-if="!isModuleScope" class="col-12 col-md-4">
+              <label class="form-label" for="theme-base">{{ t('settings.themes.baseTheme') }}</label>
               <SelectBox
                 id="theme-base"
-                :label="t('settings.themes.baseTheme')"
                 :model-value="currentTheme.base_theme"
                 :options="BASE_THEME_OPTIONS"
                 :include-all-option="false"
                 :disabled="!canEditCurrentTheme"
+                :aria-label="t('settings.themes.baseTheme')"
                 @update:model-value="changeBaseTheme"
               >
                 <template #selected="{ option, label }">
@@ -295,32 +298,35 @@ function onVariantTabKeydown(event) {
           <div class="theme-editor__live mb-4" :aria-label="t('settings.themes.livePreviewAria')">
             <div
               class="theme-editor__live-header"
-              :style="{ background: liveColors.headerBackground || '#ccc' }"
+              :style="{ background: liveColors.headerBackground || 'var(--color-secondary-background)' }"
             >
-              <span :style="{ color: liveColors.primaryText || '#222' }">{{ t('settings.themes.header') }}</span>
+              <span :style="{ color: liveColors.primaryText || 'var(--color-primary-text)' }">{{ t('settings.themes.header') }}</span>
               <span
                 class="theme-editor__live-accent"
-                :style="{ background: liveColors.accent || '#888' }"
+                :style="{ background: liveColors.accent || 'var(--color-accent)' }"
               />
             </div>
             <div
               class="theme-editor__live-body"
-              :style="{ background: liveColors.background || '#f5f5f5' }"
+              :style="{ background: liveColors.background || 'var(--color-background)' }"
             >
               <div
                 class="theme-editor__live-card"
                 :style="{
-                  background: liveColors.primaryBackground || '#fff',
-                  borderColor: liveColors.border || '#ddd',
-                  color: liveColors.primaryText || '#222',
+                  background: liveColors.primaryBackground || 'var(--color-primary-background)',
+                  borderColor: liveColors.border || 'var(--color-border)',
+                  color: liveColors.primaryText || 'var(--color-primary-text)',
                 }"
               >
                 <span>{{ t('settings.themes.card') }}</span>
-                <small :style="{ color: liveColors.secondaryText || '#666' }">{{ t('settings.themes.secondaryText') }}</small>
+                <small :style="{ color: liveColors.secondaryText || 'var(--color-secondary-text)' }">{{ t('settings.themes.secondaryText') }}</small>
                 <button
                   type="button"
                   class="theme-editor__live-btn"
-                  :style="{ background: liveColors.accent || '#888', color: '#fff' }"
+                  :style="{
+                    background: liveColors.accent || 'var(--color-accent)',
+                    color: 'var(--color-accent-text, var(--color-primary-background))',
+                  }"
                   tabindex="-1"
                 >
                   {{ t('settings.themes.button') }}
@@ -444,6 +450,17 @@ function onVariantTabKeydown(event) {
 </style>
 
 <style lang="scss">
+/* Вне .theme-editor: слот опций SelectBox рендерится в teleport → body */
+.theme-editor__select-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
 .theme-panel-enter-active,
 .theme-panel-leave-active {
   transition:

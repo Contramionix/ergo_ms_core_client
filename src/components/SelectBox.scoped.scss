@@ -169,8 +169,11 @@
     font-size: 1em;
     line-height: 1.5;
     padding: var(--select-box-item-padding-y) var(--select-box-item-padding-x);
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
     width: 100%;
+    box-sizing: border-box;
     clear: both;
     font-weight: 400;
     text-align: left;
@@ -188,7 +191,6 @@
     width: 1em;
     height: 1em;
     flex-shrink: 0;
-    vertical-align: middle;
 }
 
 .dropdown-item:hover {

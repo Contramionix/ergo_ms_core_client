@@ -3,6 +3,7 @@ import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { Plus } from 'lucide-vue-next'
 import SearchInput from '@/components/SearchInput.vue'
+import SelectBox from '@/components/SelectBox.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
@@ -85,10 +86,10 @@ async function backToList() {
 }
 
 const modeFilterOptions = computed(() => [
-  { id: 'all', label: t('common.all') },
-  { id: 'light', label: t('settings.themes.lightThemes') },
-  { id: 'dark', label: t('settings.themes.darkThemes') },
-  { id: 'a11y', label: t('settings.themes.a11y') },
+  { id: 'all', name: t('common.all') },
+  { id: 'light', name: t('settings.themes.lightThemes') },
+  { id: 'dark', name: t('settings.themes.darkThemes') },
+  { id: 'a11y', name: t('settings.themes.a11y') },
 ])
 
 function themeMatchesMode(theme, mode) {
@@ -137,8 +138,6 @@ const themePresentations = computed(() => {
   return map
 })
 
-const showListSearch = computed(() => displayThemes.value.length > 4)
-
 function isThemeResetting(theme) {
   return resettingThemeId.value === theme.id || resettingThemeId.value === theme.module_pair
 }
@@ -164,54 +163,45 @@ function isThemeResetting(theme) {
           key="list"
           class="theme-editor__section theme-editor__section--list"
         >
-          <div class="content-card content-card--flush theme-editor__list-card">
-            <header class="theme-editor__panel-header">
-              <h2 class="admin-section-heading theme-editor__list-title">{{ t('settings.themes.listTitle') }}</h2>
+          <div class="content-card theme-editor__list-card">
+            <div class="table-header theme-list-toolbar">
+              <div class="theme-list-toolbar__filters">
+                <SearchInput
+                  id="themes-search"
+                  v-model="listSearch"
+                  :placeholder="t('settings.themes.searchPlaceholder')"
+                  layout="grow"
+                  :show-icon="true"
+                  background="primary"
+                  focus-border="primary"
+                />
+                <div class="theme-list-toolbar__mode">
+                  <HoverTooltip :text="t('settings.themes.filterModeAria')" wrap>
+                    <SelectBox
+                      id="themes-mode-filter"
+                      v-model="modeFilter"
+                      :options="modeFilterOptions"
+                      value-key="id"
+                      label-key="name"
+                      :include-all-option="false"
+                      :aria-label="t('settings.themes.filterModeAria')"
+                    />
+                  </HoverTooltip>
+                </div>
+              </div>
               <div class="actions-wrapper">
                 <HoverTooltip :text="t('settings.themes.newTheme')" wrap>
                   <button
                     type="button"
-                    class="theme-list-add-btn"
+                    class="btn theme-toolbar-icon-btn"
                     :aria-label="t('settings.themes.newTheme')"
                     @mouseenter="prefetchFormChunk"
                     @focus="prefetchFormChunk"
                     @click="openNewTheme"
                   >
-                    <Plus :size="18" aria-hidden="true" />
+                    <Plus :size="20" aria-hidden="true" />
                   </button>
                 </HoverTooltip>
-              </div>
-            </header>
-
-            <div class="theme-editor__panel-toolbar theme-list-toolbar">
-              <div
-                class="theme-editor__mode-filter"
-                role="group"
-                :aria-label="t('settings.themes.filterModeAria')"
-              >
-                <button
-                  v-for="option in modeFilterOptions"
-                  :key="option.id"
-                  type="button"
-                  class="theme-editor__mode-filter-btn"
-                  :class="{ 'is-active': modeFilter === option.id }"
-                  :aria-pressed="modeFilter === option.id ? 'true' : 'false'"
-                  @click="modeFilter = option.id"
-                >
-                  {{ option.label }}
-                </button>
-              </div>
-              <div
-                class="theme-editor__search-slot"
-                :class="{ 'theme-editor__search-slot--empty': !showListSearch }"
-              >
-                <SearchInput
-                  v-if="showListSearch"
-                  v-model="listSearch"
-                  :placeholder="t('settings.themes.searchPlaceholder')"
-                  layout="grow"
-                  :show-icon="true"
-                />
               </div>
             </div>
 
@@ -221,7 +211,7 @@ function isThemeResetting(theme) {
                   v-if="!filteredThemes.length"
                   class="theme-editor__empty"
                 >
-                  <p class="mb-2">
+                  <p class="mb-3">
                     {{
                       listSearch.trim() || modeFilter !== 'all'
                         ? t('settings.themes.emptyFilter')
@@ -231,11 +221,12 @@ function isThemeResetting(theme) {
                   <button
                     v-if="!listSearch.trim() && modeFilter === 'all'"
                     type="button"
-                    class="btn btn-outline-primary btn-sm"
+                    class="ui-btn ui-btn--primary"
                     @mouseenter="prefetchFormChunk"
                     @click="openNewTheme"
                   >
-                    {{ t('settings.themes.createTheme') }}
+                    <Plus :size="16" aria-hidden="true" />
+                    <span>{{ t('settings.themes.createTheme') }}</span>
                   </button>
                 </div>
                 <div

@@ -64,7 +64,7 @@ const previewStyle = computed(() => {
     '--picker-muted': p.muted,
     '--picker-accent': p.accent,
     '--picker-border': p.border,
-    '--theme-card-accent': props.presentation.accent || p.accent || '#888',
+    '--theme-card-accent': props.presentation.accent || p.accent || 'var(--color-accent)',
   }
 })
 
@@ -230,23 +230,23 @@ function onCardKeydown(event) {
       <button
         v-if="isModuleScope && !theme.is_active && !theme.is_draft && !theme.is_draft_pair"
         type="button"
-        class="theme-picker-card__apply"
+        class="ui-btn ui-btn--secondary theme-picker-card__apply"
         @click="emit('activate', theme)"
       >
-        {{ t('settings.themes.apply') }}
+        <span>{{ t('settings.themes.apply') }}</span>
       </button>
       <button
         v-else-if="!isModuleScope && !theme.is_default && !theme.is_draft && !theme.is_draft_pair"
         type="button"
-        class="theme-picker-card__apply"
+        class="ui-btn ui-btn--secondary theme-picker-card__apply"
         @click="emit('activate', theme)"
       >
-        {{ t('settings.themes.siteDefaultShort') }}
+        <span>{{ t('settings.themes.siteDefaultShort') }}</span>
       </button>
-      <div class="theme-picker-card__icon-actions">
+      <div class="actions-cell theme-picker-card__icon-actions">
         <button
           type="button"
-          class="theme-picker-card__icon-btn theme-picker-card__icon-btn--edit"
+          class="btn-action"
           :title="t('settings.themes.editTheme')"
           :aria-label="t('settings.themes.editThemeAria', { name: displayName })"
           @click="emit('edit', theme)"
@@ -256,7 +256,7 @@ function onCardKeydown(event) {
         <button
           v-if="!isModuleScope && !theme.is_draft && !theme.is_draft_pair"
           type="button"
-          class="theme-picker-card__icon-btn"
+          class="btn-action"
           :title="theme.is_available ? t('settings.themes.removeFromQuick') : t('settings.themes.addToQuick')"
           :aria-label="theme.is_available ? t('settings.themes.removeFromQuick') : t('settings.themes.addToQuick')"
           :disabled="theme.is_default && theme.is_available"
@@ -267,7 +267,7 @@ function onCardKeydown(event) {
         <button
           v-if="theme.is_system && !theme.is_draft_pair"
           type="button"
-          class="theme-picker-card__icon-btn"
+          class="btn-action"
           :title="t('settings.themes.resetToDefaults')"
           :aria-label="t('settings.themes.resetToDefaults')"
           :disabled="resetting"
@@ -278,7 +278,7 @@ function onCardKeydown(event) {
         <button
           v-if="!theme.is_draft && !isModuleScope"
           type="button"
-          class="theme-picker-card__icon-btn"
+          class="btn-action"
           :title="t('settings.themes.duplicate')"
           :aria-label="t('settings.themes.duplicateThemeAria')"
           @click="emit('duplicate', theme)"
@@ -288,7 +288,7 @@ function onCardKeydown(event) {
         <button
           v-if="theme.is_draft_pair"
           type="button"
-          class="theme-picker-card__icon-btn theme-picker-card__icon-btn--danger"
+          class="btn-action btn-action--delete"
           :title="t('settings.themes.deleteDraftPair')"
           :aria-label="t('settings.themes.deleteDraftPair')"
           @click="emit('discard-pair-draft')"
@@ -298,7 +298,7 @@ function onCardKeydown(event) {
         <button
           v-if="theme.is_draft"
           type="button"
-          class="theme-picker-card__icon-btn theme-picker-card__icon-btn--danger"
+          class="btn-action btn-action--delete"
           :title="t('settings.themes.deleteDraft')"
           :aria-label="t('settings.themes.deleteDraft')"
           @click="emit('discard-draft')"
@@ -308,7 +308,7 @@ function onCardKeydown(event) {
         <button
           v-if="!theme.is_system && !theme.is_draft && !theme.is_pair"
           type="button"
-          class="theme-picker-card__icon-btn theme-picker-card__icon-btn--danger"
+          class="btn-action btn-action--delete"
           :title="t('common.delete')"
           :aria-label="t('settings.themes.deleteThemeAria')"
           @click="emit('delete', theme)"
@@ -319,6 +319,10 @@ function onCardKeydown(event) {
     </div>
   </article>
 </template>
+
+<style lang="scss">
+@import '@/core/cms/adp/admin/admin-page.scss';
+</style>
 
 <style lang="scss" scoped>
 .theme-picker-card {
@@ -359,9 +363,9 @@ function onCardKeydown(event) {
     border-color: color-mix(in srgb, var(--bs-success, #198754) 55%, var(--color-border));
   }
 
-  &:hover .theme-picker-card__icon-btn,
-  &:focus-within .theme-picker-card__icon-btn {
-    color: var(--ui-text);
+  &:hover :deep(.btn-action),
+  &:focus-within :deep(.btn-action) {
+    color: var(--color-primary-text);
   }
 }
 
@@ -469,8 +473,9 @@ function onCardKeydown(event) {
   border-radius: 999px;
   flex-shrink: 0;
   margin-left: auto;
-  background: var(--bs-success, #198754);
-  color: #fff;
+  background: color-mix(in srgb, var(--bs-success, #198754) 18%, var(--color-primary-background));
+  color: var(--bs-success, #198754);
+  border: 1px solid color-mix(in srgb, var(--bs-success, #198754) 40%, var(--color-border));
 }
 
 .theme-picker-card__badges {
@@ -499,8 +504,9 @@ function onCardKeydown(event) {
   }
 
   &--active {
-    background: var(--bs-success, #198754);
-    color: #fff;
+    background: color-mix(in srgb, var(--bs-success, #198754) 16%, var(--color-primary-background));
+    color: var(--bs-success, #198754);
+    border: 1px solid color-mix(in srgb, var(--bs-success, #198754) 35%, var(--color-border));
     font-weight: 600;
   }
 
@@ -567,77 +573,13 @@ function onCardKeydown(event) {
 
 .theme-picker-card__apply {
   margin-right: auto;
+  min-height: 1.85rem;
   padding: 0.3rem 0.7rem;
-  border: 1px solid color-mix(in srgb, var(--theme-card-accent, var(--color-accent)) 55%, var(--color-border));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--theme-card-accent, var(--color-accent)) 14%, var(--color-primary-background));
-  color: var(--color-primary-text);
   font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1.2;
-  cursor: pointer;
-  transition:
-    background-color var(--picker-motion) var(--picker-ease),
-    border-color var(--picker-motion) var(--picker-ease);
-
-  &:hover {
-    background: color-mix(in srgb, var(--theme-card-accent, var(--color-accent)) 22%, var(--color-primary-background));
-    border-color: var(--theme-card-accent, var(--color-accent));
-  }
-
-  &:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--theme-card-accent, var(--color-accent)) 50%, transparent);
-    outline-offset: 2px;
-  }
 }
 
 .theme-picker-card__icon-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.15rem;
   margin-left: auto;
-}
-
-.theme-picker-card__icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.85rem;
-  height: 1.85rem;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ui-text-muted);
-  cursor: pointer;
-  transition:
-    background-color var(--picker-motion) var(--picker-ease),
-    color var(--picker-motion) var(--picker-ease);
-
-  &:hover:not(:disabled) {
-    background: var(--color-hover-background);
-    color: var(--color-primary-text);
-  }
-
-  &:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--theme-card-accent, var(--color-accent)) 50%, transparent);
-    outline-offset: 1px;
-  }
-
-  &:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-  }
-
-  &--danger:hover:not(:disabled) {
-    color: var(--bs-danger, #dc3545);
-    background: color-mix(in srgb, var(--bs-danger, #dc3545) 10%, transparent);
-  }
-
-  &--edit:hover:not(:disabled) {
-    color: var(--theme-card-accent, var(--color-accent));
-    background: color-mix(in srgb, var(--theme-card-accent, var(--color-accent)) 12%, transparent);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
