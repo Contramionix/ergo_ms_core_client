@@ -63,11 +63,12 @@ export function scheduleHideHoverTooltip(ownerHide, delayMs = 100) {
   }, delayMs)
 }
 
-export function buildHoverTooltipStyle(triggerRect, popupWidth = 0) {
+export function buildHoverTooltipStyle(triggerRect, popupWidth = 0, popupHeight = 0) {
   if (!triggerRect) {
     return {}
   }
 
+  const gap = 6
   const centerX = triggerRect.left + triggerRect.width / 2
   let left = centerX
 
@@ -78,9 +79,21 @@ export function buildHoverTooltipStyle(triggerRect, popupWidth = 0) {
     left = Math.max(minCenter, Math.min(maxCenter, centerX))
   }
 
+  const spaceAbove = triggerRect.top - VIEWPORT_PADDING
+  const placeBelow = popupHeight > 0 && spaceAbove < popupHeight + gap
+
+  if (placeBelow) {
+    return {
+      position: 'fixed',
+      top: `${triggerRect.bottom + gap}px`,
+      left: `${left}px`,
+      transform: 'translate(-50%, 0)',
+    }
+  }
+
   return {
     position: 'fixed',
-    top: `${triggerRect.top - 6}px`,
+    top: `${triggerRect.top - gap}px`,
     left: `${left}px`,
     transform: 'translate(-50%, -100%)',
   }

@@ -17,8 +17,10 @@ function updatePosition() {
     return
   }
 
-  const popupWidth = popupEl.value?.getBoundingClientRect().width ?? 0
-  hoverTooltipState.style = buildHoverTooltipStyle(triggerRect, popupWidth)
+  const popupRect = popupEl.value?.getBoundingClientRect()
+  const popupWidth = popupRect?.width ?? 0
+  const popupHeight = popupRect?.height ?? 0
+  hoverTooltipState.style = buildHoverTooltipStyle(triggerRect, popupWidth, popupHeight)
 }
 
 watch(
