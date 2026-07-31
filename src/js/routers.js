@@ -19,6 +19,7 @@ import { finishRouteProgress, startRouteProgress } from '@/js/routeProgressState
 import { runSessionScopeGuard } from '@/js/session/sessionScopeGuard.js'
 import { whenSessionReady } from '@/js/sessionReady.js'
 import { teGlobal, tGlobal } from '@/i18n/index.js'
+import { logError } from '@/js/utils/logError.js'
 
 let cachedPermissionRules = null
 let cachedRouteGuards = null
@@ -289,7 +290,8 @@ function setupRouterGuards(router) {
       }
 
       return safeNext()
-    } catch {
+    } catch (error) {
+      logError('[routers] beforeEach failed; clearing session', error)
       import('@/core/cms/js/tokenRefresh.js').then(({ performServerLogout }) => {
         performServerLogout()
       })

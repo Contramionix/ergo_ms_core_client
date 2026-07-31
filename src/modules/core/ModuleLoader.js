@@ -197,6 +197,7 @@ export class ModuleLoader {
    */
   clearCache() {
     this.cache.clear()
+    asyncModulesCache.clear()
   }
 
   /**
@@ -213,6 +214,12 @@ export class ModuleLoader {
     }
 
     keysToDelete.forEach(key => this.cache.delete(key))
+
+    for (const key of asyncModulesCache.keys()) {
+      if (key.includes(pattern)) {
+        asyncModulesCache.delete(key)
+      }
+    }
   }
 }
 

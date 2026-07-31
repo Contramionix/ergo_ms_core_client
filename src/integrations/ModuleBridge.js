@@ -33,6 +33,8 @@
  * При отсутствии провайдера `bridge.call` тихо возвращает default (или null).
  */
 
+import { logError, logWarn } from '@/js/utils/logError.js'
+
 const isPlainObject = (value) =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
 
@@ -45,6 +47,10 @@ function extractDefault(args) {
     return [args.slice(0, -1), last.default]
   }
   return [args, undefined]
+}
+
+function isThenable(value) {
+  return value != null && typeof value.then === 'function'
 }
 
 class ModuleBridge {
@@ -79,7 +85,14 @@ class ModuleBridge {
       return defaultValue ?? null
     }
     try {
-      return handler(...actualArgs)
+      const result = handler(...actualArgs)
+      if (isThenable(result)) {
+        return result.catch((error) => {
+          logError(`[ModuleBridge] error calling '${name}':`, error)
+          return defaultValue ?? null
+        })
+      }
+      return result
     } catch (error) {
       logError(`[ModuleBridge] error calling '${name}':`, error)
       return defaultValue ?? null

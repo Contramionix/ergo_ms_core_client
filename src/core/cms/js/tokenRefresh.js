@@ -8,6 +8,7 @@ import {
   isExpired,
   setTokens,
 } from '@/core/cms/js/tokenStorage.js'
+import { logWarn } from '@/js/utils/logError.js'
 
 const AUTH_REFRESH_PATH = 'cms/adp/token-refresh/'
 const AUTH_LOGOUT_PATH = 'cms/adp/logout/'
@@ -155,7 +156,8 @@ export async function performTokenRefresh() {
       setTokens(newAccess)
       markSessionRestoreResult(true)
       return newAccess
-    } catch {
+    } catch (error) {
+      logWarn('[tokenRefresh] unexpected refresh failure', error)
       return null
     } finally {
       refreshInProgress = null
