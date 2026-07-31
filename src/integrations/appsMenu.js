@@ -3,6 +3,9 @@
  *
  * Модули регистрируют приложения через bridge.provideMany(APPS_MENU_ITEMS_GROUP, ...).
  * Ядро собирает их через collectVisibleAppsMenuItems().
+ *
+ * Пункт может открывать маршрут (`route`) и/или выполнять действие (`onClick`) —
+ * например offcanvas мини-чат без смены URL.
  */
 
 import bridge from '@/integrations/ModuleBridge.js'
@@ -16,7 +19,8 @@ export const APPS_MENU_ITEMS_GROUP = 'apps.menu.items'
  * @property {number} [order]
  * @property {string} title
  * @property {import('vue').Component} [icon]
- * @property {import('vue-router').RouteLocationRaw} route
+ * @property {import('vue-router').RouteLocationRaw} [route]
+ * @property {() => void | Promise<void>} [onClick]
  * @property {() => boolean | Promise<boolean>} [isVisible]
  */
 
@@ -36,7 +40,12 @@ export async function collectVisibleAppsMenuItems() {
   const visible = []
 
   for (const item of items) {
-    if (!item?.id || !item?.route) {
+    if (!item?.id) {
+      continue
+    }
+    const hasRoute = Boolean(item.route)
+    const hasAction = typeof item.onClick === 'function'
+    if (!hasRoute && !hasAction) {
       continue
     }
     if (typeof item.isVisible === 'function') {
@@ -51,7 +60,8 @@ export async function collectVisibleAppsMenuItems() {
       order: item.order ?? 0,
       title: typeof item.title === 'function' ? item.title() : item.title,
       icon: item.icon || null,
-      route: item.route,
+      route: item.route || null,
+      onClick: hasAction ? item.onClick : null,
     })
   }
 

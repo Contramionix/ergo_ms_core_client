@@ -1,5 +1,5 @@
 import { ref, watch, markRaw, computed } from 'vue'
-import { Sun, Moon, LaptopMinimal, Bell, Grid3x3, Languages } from 'lucide-vue-next'
+import { Sun, Moon, LaptopMinimal, Languages } from 'lucide-vue-next'
 import {
   applyThemeModePreference,
   readThemePreference,
@@ -28,22 +28,6 @@ export const THEME_OPTIONS = computed(() => {
   ]
 })
 
-export const ACTION_BUTTON_OPTIONS = computed(() => {
-  getCurrentLocale()
-  return [
-    {
-      id: 'notifications',
-      name: tGlobal('settings.system.actionNotifications'),
-      icon: markRaw(Bell),
-    },
-    {
-      id: 'apps',
-      name: tGlobal('settings.system.actionApps'),
-      icon: markRaw(Grid3x3),
-    },
-  ]
-})
-
 export const LANGUAGE_OPTIONS = computed(() => {
   getCurrentLocale()
   return getLanguageOptions().map((opt) => ({
@@ -52,14 +36,10 @@ export const LANGUAGE_OPTIONS = computed(() => {
   }))
 })
 
-const ACTION_BUTTON_BASE_KEY = 'actionButton'
 const LANGUAGE_BASE_KEY = 'language'
-
 const DEFAULT_THEME = 'auto'
-const DEFAULT_ACTION_BUTTON = 'apps'
 
 const theme = ref(readThemePreference() || DEFAULT_THEME)
-const actionButton = ref(localStorage.getItem(ACTION_BUTTON_BASE_KEY) || DEFAULT_ACTION_BUTTON)
 const language = ref(
   normalizeLocale(localStorage.getItem(LANGUAGE_BASE_KEY) || getDefaultLocale()),
 )
@@ -74,10 +54,6 @@ watch(
   },
   { immediate: false },
 )
-
-watch(actionButton, (val) => {
-  localStorage.setItem(ACTION_BUTTON_BASE_KEY, val)
-})
 
 watch(language, (val) => {
   const normalized = normalizeLocale(val)
@@ -126,7 +102,6 @@ export function applyLanguageFromProfile(locale) {
 /** Синхронизирует реактивное состояние с localStorage (без сброса в дефолты). */
 export function syncUiSettingsFromStorage() {
   theme.value = readThemePreference() || DEFAULT_THEME
-  actionButton.value = localStorage.getItem(ACTION_BUTTON_BASE_KEY) || DEFAULT_ACTION_BUTTON
   const stored = normalizeLocale(localStorage.getItem(LANGUAGE_BASE_KEY) || getDefaultLocale())
   skipLanguagePersist = true
   try {
@@ -153,10 +128,8 @@ applyLocale(language.value)
 export function useUiSettings() {
   return {
     theme,
-    actionButton,
     language,
     THEME_OPTIONS,
-    ACTION_BUTTON_OPTIONS,
     LANGUAGE_OPTIONS,
   }
 }

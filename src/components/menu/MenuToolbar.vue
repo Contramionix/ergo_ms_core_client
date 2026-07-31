@@ -22,9 +22,11 @@
         }"
       >
         <div class="menu-toolbar__sync-inner tools-buttons">
+          <div class="tools__apps">
+            <AppsMenu ref="appsMenuRef" @dropdown-toggle="(active) => setDropdownActive('apps', active)"/>
+          </div>
           <div class="tools__notifications">
-            <SidebarNotifications v-if="actionButton === 'notifications'" ref="notificationsMenuRef" @dropdown-toggle="(active) => setDropdownActive('notifications', active)"/>
-            <AppsMenu v-else ref="appsMenuRef" @dropdown-toggle="(active) => setDropdownActive('apps', active)"/>
+            <SidebarNotifications ref="notificationsMenuRef" @dropdown-toggle="(active) => setDropdownActive('notifications', active)"/>
           </div>
           <div class="tools__settings">
             <SettingsMenu ref="settingsMenuRef" @dropdown-toggle="(active) => setDropdownActive('settings', active)" @open-user-settings="openUserSettingsModal('profile')"/>
@@ -47,7 +49,7 @@ import UserMenu from '@/components/header/UserMenu.vue'
 import SettingsMenu from '@/components/menu/SettingsMenu.vue'
 import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { useUiSettings, initUserSettings } from '@/core/cms/js/uiSettings.js'
+import { initUserSettings } from '@/core/cms/js/uiSettings.js'
 
 const SidebarNotifications = defineAsyncComponent(() =>
   import('@/components/menu/SidebarNotifications.vue'),
@@ -106,8 +108,6 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('ergo:open-user-settings', onOpenUserSettingsEvent)
 })
-
-const { actionButton } = useUiSettings()
 
 watch(
   () => userStore.user?.id,

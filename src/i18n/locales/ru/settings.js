@@ -76,7 +76,6 @@ export default {
   },
   system: {
     title: 'Система',
-    actionButton: 'Кнопка действия',
     language: 'Язык интерфейса',
     motion: 'Анимации',
     images: 'Картинки',
@@ -86,8 +85,6 @@ export default {
     themeLight: 'Светлая',
     themeDark: 'Тёмная',
     themeAuto: 'Системная',
-    actionNotifications: 'Уведомления',
-    actionApps: 'Меню приложений',
     motionSystem: 'Как в системе',
     motionFull: 'С анимациями',
     motionReduce: 'Без анимаций',

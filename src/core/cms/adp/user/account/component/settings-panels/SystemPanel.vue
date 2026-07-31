@@ -7,9 +7,7 @@ import { useAppI18n } from '@/i18n/useAppI18n.js'
 const { t } = useAppI18n()
 
 const {
-  actionButton,
   language,
-  ACTION_BUTTON_OPTIONS,
   LANGUAGE_OPTIONS,
 } = useUiSettings()
 
@@ -30,26 +28,6 @@ const {
     <h1 class="settings-panel__title">{{ t('settings.system.title') }}</h1>
 
     <div class="settings-card">
-      <div class="settings-card__row">
-        <label class="settings-card__label" for="system-action-button">{{ t('settings.system.actionButton') }}</label>
-        <div class="settings-card__control">
-          <SelectBox id="system-action-button" v-model="actionButton" :options="ACTION_BUTTON_OPTIONS" :include-all-option="false">
-            <template #selected="{ option, label }">
-              <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
-                <span class="settings-card__option-label">{{ label }}</span>
-              </span>
-            </template>
-            <template #option="{ option, label }">
-              <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
-                <span class="settings-card__option-label">{{ label }}</span>
-              </span>
-            </template>
-          </SelectBox>
-        </div>
-      </div>
-
       <div class="settings-card__row">
         <label class="settings-card__label" for="system-language">{{ t('settings.system.language') }}</label>
         <div class="settings-card__control">

@@ -32,11 +32,19 @@ defineExpose({
   closeDropdown,
 })
 
-const goToApp = (app) => {
+const goToApp = async (app) => {
+  closeDropdown()
+  if (typeof app.onClick === 'function') {
+    try {
+      await app.onClick()
+    } catch (error) {
+      logError('Ошибка открытия приложения:', error)
+    }
+    return
+  }
   if (app.route) {
     router.push(app.route)
   }
-  closeDropdown()
 }
 
 onMounted(async () => {

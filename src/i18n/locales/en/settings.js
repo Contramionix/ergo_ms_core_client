@@ -76,7 +76,6 @@ export default {
   },
   system: {
     title: 'System',
-    actionButton: 'Action button',
     language: 'Interface language',
     motion: 'Animations',
     images: 'Images',
@@ -86,8 +85,6 @@ export default {
     themeLight: 'Light',
     themeDark: 'Dark',
     themeAuto: 'System',
-    actionNotifications: 'Notifications',
-    actionApps: 'Apps menu',
     motionSystem: 'Follow system',
     motionFull: 'With animations',
     motionReduce: 'Reduced motion',
