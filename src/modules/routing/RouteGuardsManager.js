@@ -45,6 +45,32 @@ export class RouteGuardsManager extends ModuleLoader {
     return null
   }
 
+  /**
+   * @param {unknown} moduleExports
+   * @returns {number}
+   */
+  _extractOrder(moduleExports) {
+    if (!moduleExports || typeof moduleExports !== 'object') {
+      return 100
+    }
+    if (typeof moduleExports.order === 'number') {
+      return moduleExports.order
+    }
+    if (typeof moduleExports.routeGuardOrder === 'number') {
+      return moduleExports.routeGuardOrder
+    }
+    return 100
+  }
+
+  _sortGuardEntries(entries) {
+    entries.sort((a, b) => {
+      if (a.order !== b.order) {
+        return a.order - b.order
+      }
+      return a.moduleName.localeCompare(b.moduleName, 'ru')
+    })
+  }
+
   async loadRouteGuards() {
     const guardModules = await this.loadAllModulesAsync('js/routeGuard.js')
     const entries = []
@@ -58,10 +84,15 @@ export class RouteGuardsManager extends ModuleLoader {
 
       const isExternal = this.isExternalModule(path)
       const moduleName = this.extractModuleName(path, isExternal) || 'core'
-      entries.push({ moduleName, path, guard })
+      entries.push({
+        moduleName,
+        path,
+        guard,
+        order: this._extractOrder(moduleExports),
+      })
     })
 
-    entries.sort((a, b) => a.moduleName.localeCompare(b.moduleName, 'ru'))
+    this._sortGuardEntries(entries)
     this.guards = entries
   }
 
@@ -69,14 +100,20 @@ export class RouteGuardsManager extends ModuleLoader {
    * @param {Function} guard
    * @param {string} moduleName
    * @param {string} pathTag
+   * @param {number} [order=100]
    */
-  registerGuardFromManifest(guard, moduleName, pathTag) {
+  registerGuardFromManifest(guard, moduleName, pathTag, order = 100) {
     if (typeof guard !== 'function') {
       logWarn(`[RouteGuardsManager] ${pathTag} не экспортирует функцию routeGuard`)
       return
     }
-    this.guards.push({ moduleName: moduleName || 'module', path: pathTag, guard })
-    this.guards.sort((a, b) => a.moduleName.localeCompare(b.moduleName, 'ru'))
+    this.guards.push({
+      moduleName: moduleName || 'module',
+      path: pathTag,
+      guard,
+      order: typeof order === 'number' ? order : 100,
+    })
+    this._sortGuardEntries(this.guards)
   }
 
   getAllGuards() {

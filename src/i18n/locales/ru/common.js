@@ -78,6 +78,7 @@ export default {
   unknown: 'Неизвестно',
   untitled: 'Без названия',
   user: 'Пользователь',
+  emailNotSpecified: 'email не указан',
   users: 'Пользователи',
   role: 'Роль',
   roles: 'Роли',

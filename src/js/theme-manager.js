@@ -3,6 +3,7 @@
  * Начальные значения — из bootstrap-variables.js (синхронизированы с _theme.scss).
  */
 
+import { logError, logWarn } from '@/js/utils/logError.js'
 import {
   COLOR_DESCRIPTIONS,
   BOOTSTRAP_VARIABLES,
@@ -122,7 +123,7 @@ export function applyThemeModePreference(mode) {
 
 export function applyTheme(theme, saveToStorage = true) {
   if (!theme) {
-    console.warn('[theme-manager] Тема не передана')
+    logWarn('[theme-manager] Тема не передана')
     return
   }
 
@@ -204,7 +205,7 @@ export function saveThemeToLocalStorage(theme) {
   try {
     localStorage.setItem(ACTIVE_THEME_STORAGE_KEY, JSON.stringify(theme))
   } catch (e) {
-    console.error('[theme-manager] Ошибка сохранения темы:', e)
+    logError('[theme-manager] Ошибка сохранения темы:', e)
   }
 }
 
@@ -215,7 +216,7 @@ export function loadThemeFromLocalStorage() {
       return JSON.parse(stored)
     }
   } catch (e) {
-    console.error('[theme-manager] Ошибка загрузки темы:', e)
+    logError('[theme-manager] Ошибка загрузки темы:', e)
   }
   return null
 }

@@ -7,15 +7,16 @@ import {
   MAINTENANCE_POLL_INTERVAL_MS,
   normalizeMaintenancePollIntervalMs,
 } from '@/js/maintenanceConfig.js'
+import { tGlobal } from '@/i18n/index.js'
 
 const STATIC_STATUS_URL = '/maintenance.json'
-const DEFAULT_DETAIL = 'Система временно недоступна. Мы проводим обновление и скоро вернёмся.'
 const BROADCAST_CHANNEL_NAME = 'ergo-maintenance'
 /** В покое (OFF) не дёргать статус чаще этого интервала. */
 const IDLE_EVENT_CHECK_MIN_INTERVAL_MS = 30000
 
 const maintenanceActive = ref(false)
-const maintenanceDetail = ref(DEFAULT_DETAIL)
+/** Не вызывать tGlobal на уровне модуля — locale ещё может быть не загружен. */
+const maintenanceDetail = ref('')
 let checkPromise = null
 let pollTimer = null
 let pollIntervalMs = MAINTENANCE_POLL_INTERVAL_MS
@@ -27,9 +28,15 @@ let broadcastChannel = null
 let applyingFromBroadcast = false
 let lastEventCheckAt = 0
 
+function defaultMaintenanceDetail() {
+  return tGlobal('components.maintenance.detail')
+}
+
 function applyDetail(detail) {
   if (typeof detail === 'string' && detail.trim()) {
     maintenanceDetail.value = detail.trim()
+  } else if (!maintenanceDetail.value) {
+    maintenanceDetail.value = defaultMaintenanceDetail()
   }
 }
 

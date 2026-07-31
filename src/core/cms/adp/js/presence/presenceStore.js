@@ -4,8 +4,8 @@ import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
 
 /**
- * Переиспользуемый store онлайн-статуса пользователей.
- * Для UI (аватарки, таблицы): usePresenceStatus(userId) или getStatus(userId).
+ * Store онлайн-статуса пользователей.
+ * Ключи — public_id (UUID-строка), не числовой pk.
  */
 const state = reactive({
   entries: {},
@@ -27,13 +27,13 @@ function flushFetchQueue() {
   void fetchBatch(ids)
 }
 
-export function enqueueFetch(userId) {
-  const id = normalizeUserId(userId)
-  if (!id || hasStatus(Number(id))) {
+export function enqueueFetch(publicId) {
+  const id = normalizePublicId(publicId)
+  if (!id || hasStatus(id)) {
     return
   }
 
-  fetchQueue.add(Number(id))
+  fetchQueue.add(id)
 
   if (flushTimer) {
     return
@@ -49,9 +49,15 @@ function normalizeEntry(raw) {
   }
 }
 
-function normalizeUserId(userId) {
-  const parsed = Number(userId)
-  return Number.isFinite(parsed) ? String(Math.trunc(parsed)) : null
+function normalizePublicId(value) {
+  if (value == null || value === '') {
+    return null
+  }
+  const raw = String(value).trim()
+  if (!raw || /^\d+$/.test(raw)) {
+    return null
+  }
+  return raw
 }
 
 export function mergeSnapshot(users) {
@@ -60,7 +66,7 @@ export function mergeSnapshot(users) {
   }
 
   for (const user of users) {
-    const id = normalizeUserId(user?.user_id)
+    const id = normalizePublicId(user?.public_id)
     if (!id) {
       continue
     }
@@ -73,8 +79,8 @@ export function applyBatch(presenceObject) {
     return
   }
 
-  for (const [userId, entry] of Object.entries(presenceObject)) {
-    const id = normalizeUserId(userId)
+  for (const [publicId, entry] of Object.entries(presenceObject)) {
+    const id = normalizePublicId(publicId)
     if (!id) {
       continue
     }
@@ -82,31 +88,31 @@ export function applyBatch(presenceObject) {
   }
 }
 
-export function getStatus(userId) {
-  const id = normalizeUserId(userId)
+export function getStatus(publicId) {
+  const id = normalizePublicId(publicId)
   if (!id) {
     return { isOnline: false, lastSeen: null }
   }
   return state.entries[id] ?? { isOnline: false, lastSeen: null }
 }
 
-export function hasStatus(userId) {
-  const id = normalizeUserId(userId)
+export function hasStatus(publicId) {
+  const id = normalizePublicId(publicId)
   return Boolean(id && state.entries[id])
 }
 
-export async function fetchBatch(userIds) {
+export async function fetchBatch(publicIds) {
   const ids = [...new Set(
-    (userIds || [])
-      .map((id) => Number(id))
-      .filter((id) => Number.isFinite(id) && id > 0),
+    (publicIds || [])
+      .map((id) => normalizePublicId(id))
+      .filter(Boolean),
   )]
 
   if (!ids.length) {
     return
   }
 
-  const cacheKey = ids.slice().sort((a, b) => a - b).join(',')
+  const cacheKey = ids.slice().sort().join(',')
   if (pendingBatches.has(cacheKey)) {
     return pendingBatches.get(cacheKey)
   }
@@ -115,7 +121,7 @@ export async function fetchBatch(userIds) {
     try {
       const response = await apiClient.get(
         endpoints.cms.presence.batch,
-        { user_ids: ids.join(',') },
+        { public_ids: ids.join(',') },
         true,
       )
       if (response.success) {
@@ -137,7 +143,7 @@ export function seedFromUsers(users) {
 
   mergeSnapshot(
     users.map((user) => ({
-      user_id: user.user_id,
+      public_id: user.public_id,
       is_online: user.is_online,
       last_seen: user.last_seen,
     })),

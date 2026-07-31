@@ -12,11 +12,9 @@ import '@/js/utils/logger.js'
 import 'vue-toastification/dist/index.css'
 import '@/scss/styles.scss'
 
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
 import { initUiPreferences } from '@/js/uiPreferences.js'
-import { bootLocalesPromise, i18n } from '@/i18n/index.js'
 import { normalizeClientModuleManifest } from '@/modules/core/clientModuleManifest.js'
+import { runClientBoot } from '@/shell/runClientBoot.js'
 
 /**
  * @typedef {object} BootstrapErgoClientOptions
@@ -32,68 +30,24 @@ import { normalizeClientModuleManifest } from '@/modules/core/clientModuleManife
 export async function bootstrapErgoClient(options = {}) {
   initUiPreferences()
 
-  await bootLocalesPromise
-
-  const [
-    appModule,
-    toastModule,
-    toastUtils,
-    autoAnimateModule,
-    wordmarkModule,
-  ] = await Promise.all([
-    import('@/App.vue'),
-    import('vue-toastification'),
-    import('@/js/utils/toast.js'),
-    import('@/js/utils/autoAnimatePlugin.js'),
-    import('@/js/siteWordmark.js'),
-    import('@/core/cms/js/uiSettings.js'),
-    import('@/js/bootstrapMask.js'),
-  ])
-
-  const app = createApp(appModule.default)
-  const pinia = createPinia()
-
-  app.use(pinia)
-  app.use(i18n)
-  app.use(autoAnimateModule.gatedAutoAnimatePlugin)
-  app.use(toastModule.default, toastUtils.getToastPluginOptions())
-  toastUtils.syncToastPluginWithSettings()
-
-  if (typeof document !== 'undefined') {
-    document.title = wordmarkModule.DEFAULT_SITE_NAME
-  }
-
-  const { moduleManager } = await import('@/modules/index.js')
-
   const loaders = Array.isArray(options.modules) ? options.modules : []
-  for (const item of loaders) {
-    const raw = typeof item === 'function' ? await item() : item
-    const payload = raw?.default && typeof raw.default === 'object' ? raw.default : raw
-    const manifest = normalizeClientModuleManifest(payload)
-    if (manifest) {
-      await moduleManager.registerModule(manifest, `standalone:${manifest.moduleKey}`)
-    }
-  }
 
-  await import('@/modules/i18n/LocaleManager.js')
-    .then(({ preloadModuleLocales }) => preloadModuleLocales())
-    .catch(() => {})
+  return runClientBoot({
+    mount: options.mount || '#app',
+    enableIdlePostBoot: true,
+    beforeMount: async () => {
+      const { moduleManager } = await import('@/modules/index.js')
 
-  const [, router] = await Promise.all([
-    import('@/js/api/endpoints.js').then((m) => m.initEndpoints()),
-    import('@/js/routers.js').then((m) => m.initRouter()),
-  ])
-
-  app.use(router)
-
-  const mountTarget = options.mount || '#app'
-  app.mount(mountTarget)
-
-  void import('@/js/bootstrapSession.js').then(({ bootstrapAppSession }) => {
-    void bootstrapAppSession()
+      for (const item of loaders) {
+        const raw = typeof item === 'function' ? await item() : item
+        const payload = raw?.default && typeof raw.default === 'object' ? raw.default : raw
+        const manifest = normalizeClientModuleManifest(payload)
+        if (manifest) {
+          await moduleManager.registerModule(manifest, `standalone:${manifest.moduleKey}`)
+        }
+      }
+    },
   })
-
-  return { app, router }
 }
 
 export { normalizeClientModuleManifest } from '@/modules/core/clientModuleManifest.js'

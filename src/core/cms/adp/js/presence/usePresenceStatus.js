@@ -3,23 +3,29 @@ import { computed, ref, toValue, watch } from 'vue'
 import { enqueueFetch, getStatus, hasStatus, presenceStore } from './presenceStore.js'
 
 /**
- * Composable для отображения онлайн-статуса пользователя.
+ * Composable для отображения онлайн-статуса пользователя по public_id.
  * Используется с UserAvatar (prop presence) и PresenceIndicator.
  */
-export function usePresenceStatus(userIdSource) {
+export function usePresenceStatus(publicIdSource) {
   const isLoading = ref(false)
 
-  const userId = computed(() => {
-    const raw = toValue(userIdSource)
-    const parsed = Number(raw)
-    return Number.isFinite(parsed) ? Math.trunc(parsed) : null
+  const publicId = computed(() => {
+    const raw = toValue(publicIdSource)
+    if (raw == null || raw === '') {
+      return null
+    }
+    const value = String(raw).trim()
+    if (!value || /^\d+$/.test(value)) {
+      return null
+    }
+    return value
   })
 
-  const status = computed(() => getStatus(userId.value))
-  const isKnown = computed(() => userId.value != null && hasStatus(userId.value))
+  const status = computed(() => getStatus(publicId.value))
+  const isKnown = computed(() => publicId.value != null && hasStatus(publicId.value))
 
   watch(
-    userId,
+    publicId,
     (id) => {
       if (id == null || hasStatus(id)) {
         isLoading.value = false

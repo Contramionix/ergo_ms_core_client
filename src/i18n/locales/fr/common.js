@@ -78,6 +78,7 @@ export default {
   unknown: 'Inconnu',
   untitled: 'Sans titre',
   user: 'Utilisateur',
+  emailNotSpecified: 'email non renseigné',
   users: 'Utilisateurs',
   role: 'Rôle',
   roles: 'Rôles',

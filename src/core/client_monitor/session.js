@@ -1,4 +1,5 @@
 import { clientEnv } from '@/js/clientEnv.js'
+import { createClientUuid } from '@/js/createClientUuid.js'
 import { getSessionClaim } from '@/core/cms/js/tokenStorage.js'
 import { getSessionScopeGatingClaims } from '@/integrations/sessionScopeGating.js'
 
@@ -15,11 +16,11 @@ export function isMonitoringEnabled() {
 
 export function getOrCreateMonitorSessionId() {
   if (!canUseStorage()) {
-    return crypto.randomUUID()
+    return createClientUuid()
   }
   let sid = sessionStorage.getItem(STORAGE_KEY)
   if (!sid) {
-    sid = crypto.randomUUID()
+    sid = createClientUuid()
     sessionStorage.setItem(STORAGE_KEY, sid)
   }
   return sid

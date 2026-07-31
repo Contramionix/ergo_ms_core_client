@@ -96,15 +96,17 @@ const schedulePresenceReload = () => {
 watch(
   () => presenceStore.state.entries,
   (entries) => {
+    const statusFor = (row) => (row.public_id ? entries[String(row.public_id)] : null)
+
     if (isOnlineFilter.value) {
       const prevCount = rows.value.length
       rows.value = rows.value
         .filter((row) => {
-          const status = entries[String(row.user_id)]
+          const status = statusFor(row)
           return status ? status.isOnline : row.is_online
         })
         .map((row) => {
-          const status = entries[String(row.user_id)]
+          const status = statusFor(row)
           if (!status) {
             return row
           }
@@ -119,9 +121,11 @@ watch(
         totalUsers.value = Math.max(0, totalUsers.value - (prevCount - rows.value.length))
       }
 
-      const rowIds = new Set(rows.value.map((row) => row.user_id))
+      const rowIds = new Set(
+        rows.value.map((row) => row.public_id).filter(Boolean).map(String),
+      )
       const hasNewOnline = Object.entries(entries).some(
-        ([id, status]) => status?.isOnline && !rowIds.has(Number(id)),
+        ([id, status]) => status?.isOnline && !rowIds.has(String(id)),
       )
       if (hasNewOnline) {
         schedulePresenceReload()
@@ -130,7 +134,7 @@ watch(
     }
 
     rows.value = rows.value.map((row) => {
-      const status = entries[String(row.user_id)]
+      const status = statusFor(row)
       if (!status) {
         return row
       }
@@ -408,7 +412,7 @@ const getItemKey = (item) => item.user_id
     <DataTable :items="rows" :columns="columns" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalUsers" :get-item-key="getItemKey" :enable-pagination="true" @update:current-page="handlePageChange">
       <template #cell-user="{ item }">
         <div class="d-flex align-items-center gap-3">
-          <UserAvatar :user-ref="item.public_id" :presence-user-id="item.user_id" :custom-avatar-url="item.avatar_url" :title="item.user" :size="32" :first-name="item.first_name" :last-name="item.last_name" show-online-status show-presence-tooltip />
+          <UserAvatar :user-ref="item.public_id" :custom-avatar-url="item.avatar_url" :title="item.user" :size="32" :first-name="item.first_name" :last-name="item.last_name" show-online-status show-presence-tooltip />
           <div class="d-flex flex-column">
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <span class="fw-semibold">{{ item.user }}</span>

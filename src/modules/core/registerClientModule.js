@@ -47,10 +47,17 @@ export async function registerClientModule(rawManifest, managers, sourcePath = '
   }
 
   if (manifest.routeGuard && managers.routeGuardsManager?.registerGuardFromManifest) {
+    const guardOrder =
+      typeof manifest.routeGuardOrder === 'number'
+        ? manifest.routeGuardOrder
+        : typeof manifest.order === 'number'
+          ? manifest.order
+          : 100
     managers.routeGuardsManager.registerGuardFromManifest(
       manifest.routeGuard,
       manifest.moduleKey,
       pathTag,
+      guardOrder,
     )
   }
 

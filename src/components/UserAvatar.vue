@@ -73,6 +73,7 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  /** @deprecated Используйте userRef (public_id); prop оставлен как alias. */
   presenceUserId: {
     type: [Number, String, null],
     default: null,
@@ -103,30 +104,31 @@ const isCurrentUser = computed(() => {
   return !props.userRef
 })
 
-const presenceUserId = computed(() => {
+const presencePublicId = computed(() => {
   if (!props.showOnlineStatus) {
     return null
   }
 
-  const explicit = Number(props.presenceUserId)
-  if (Number.isFinite(explicit)) {
-    return Math.trunc(explicit)
+  // Явный prop: только non-numeric public_id (числовой pk игнорируем).
+  const explicit = props.presenceUserId != null ? String(props.presenceUserId).trim() : ''
+  if (explicit && !/^\d+$/.test(explicit)) {
+    return explicit
+  }
+
+  if (props.userRef) {
+    return String(props.userRef)
   }
 
   if (isCurrentUser.value) {
-    const storeUserId = Number(userStore.user?.id)
-    return Number.isFinite(storeUserId) ? storeUserId : null
+    const storeRef = userStore.user?.public_id
+    return storeRef ? String(storeRef) : null
   }
 
-  const fromLoaded = loadedPublicInfo.value?.userId
-  if (fromLoaded != null && Number.isFinite(Number(fromLoaded))) {
-    return Math.trunc(Number(fromLoaded))
-  }
-
-  return null
+  const fromLoaded = loadedPublicInfo.value?.publicId || loadedPublicInfo.value?.public_id
+  return fromLoaded ? String(fromLoaded) : null
 })
 
-const { isOnline, lastSeen, isKnown } = usePresenceStatus(presenceUserId)
+const { isOnline, lastSeen, isKnown } = usePresenceStatus(presencePublicId)
 
 const effectiveFirstName = computed(() => {
   if (props.firstName) return props.firstName

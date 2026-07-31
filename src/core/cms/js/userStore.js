@@ -27,6 +27,7 @@ import {
 } from '@/js/avatarCache.js'
 import { logError } from '@/js/utils/logError.js'
 import { applyLanguageFromProfile } from '@/core/cms/js/uiSettings.js'
+import { tGlobal } from '@/i18n/index.js'
 
 export const useUserStore = defineStore('userStore', () => {
   const toast = useToast()
@@ -45,7 +46,7 @@ export const useUserStore = defineStore('userStore', () => {
 
   const isAuthenticated = computed(() => !!user.value)
   const fullName = computed(() => {
-    if (!user.value) return 'Гость'
+    if (!user.value) return tGlobal('components.profileCard.guest')
     
     // Сначала проверяем полное имя из профиля (собирается из отдельных полей)
     if (profile.value?.fullName && profile.value.fullName !== user.value.username) {
@@ -58,19 +59,22 @@ export const useUserStore = defineStore('userStore', () => {
     const lastName = user.value.last_name?.trim() || ''
     
     const nameParts = [firstName, middleName, lastName].filter(part => part && part.trim())
-    const fullName = nameParts.join(' ')
+    const fullNameValue = nameParts.join(' ')
 
-    // Если нет ни имени, ни фамилии, возвращаем username или "Гость"
-    if (!fullName) {
-      return user.value.username || 'Гость'
+    // Если нет ни имени, ни фамилии, возвращаем username или «Гость»
+    if (!fullNameValue) {
+      return user.value.username || tGlobal('components.profileCard.guest')
     }
     
-    return fullName
+    return fullNameValue
   })
   
   const displayName = computed(() => {
+    if (!user.value) return tGlobal('components.profileCard.guest')
+
     const name = fullName.value
-    if (name === 'Гость') return name
+    const guestLabel = tGlobal('components.profileCard.guest')
+    if (name === guestLabel) return name
     
     // Если имя длинное, сокращаем до "Имя Ф."
     const parts = name.split(' ')
@@ -81,7 +85,7 @@ export const useUserStore = defineStore('userStore', () => {
   })
 
   const greetingName = computed(() => {
-    if (!user.value) return 'пользователь'
+    if (!user.value) return tGlobal('settings.profile.userFallback')
 
     const firstName =
       user.value.first_name?.trim() || profile.value?.firstName?.trim() || ''
@@ -90,11 +94,11 @@ export const useUserStore = defineStore('userStore', () => {
 
     if (firstName && middleName) return `${firstName} ${middleName}`
     if (firstName) return firstName
-    return user.value.username || 'пользователь'
+    return user.value.username || tGlobal('settings.profile.userFallback')
   })
 
   const menuUserName = computed(() => {
-    if (!user.value) return 'Гость'
+    if (!user.value) return tGlobal('components.profileCard.guest')
 
     if (user.value.initials_name?.trim()) {
       return user.value.initials_name
@@ -113,7 +117,7 @@ export const useUserStore = defineStore('userStore', () => {
     return name
   })
 
-  const userEmail = computed(() => user.value?.email || 'email не указан')
+  const userEmail = computed(() => user.value?.email || tGlobal('common.emailNotSpecified'))
   const userRole = computed(() => roleName.value || DEFAULT_ROLE_NAME)
   const hasCustomAvatar = computed(() => !!avatarUrl.value)
 
@@ -286,12 +290,12 @@ export const useUserStore = defineStore('userStore', () => {
       isLoading.value = true
       await profileService.updateProfile(profileData)
       await loadProfile(true)
-      toast.success('Профиль успешно обновлен')
+      toast.success(tGlobal('settings.profile.updated'))
       return profile.value
 
     } catch (error) {
       logError('Ошибка обновления профиля:', error)
-      toast.error('Ошибка обновления профиля')
+      toast.error(tGlobal('settings.profile.saveError'))
       throw error
     } finally {
       isLoading.value = false
@@ -302,7 +306,7 @@ export const useUserStore = defineStore('userStore', () => {
   const updateAvatar = async (file) => {
     try {
       if (!file || !file.type.startsWith('image/')) {
-        toast.error('Пожалуйста, выберите изображение!')
+        toast.error(tGlobal('settings.profile.selectImage'))
         return false
       }
 
@@ -319,12 +323,12 @@ export const useUserStore = defineStore('userStore', () => {
       // Сбрасываем кеш старой аватарки, затем перезагружаем новую
       invalidateAvatar(avatarUrl.value)
       await loadAvatar()
-      toast.success('Аватар успешно обновлён')
+      toast.success(tGlobal('settings.profile.avatarUpdated'))
       return true
 
     } catch (error) {
       logError('Ошибка обновления аватара:', error)
-      toast.error('Ошибка загрузки аватара')
+      toast.error(tGlobal('settings.profile.avatarUploadError'))
       return false
     }
   }
@@ -335,12 +339,12 @@ export const useUserStore = defineStore('userStore', () => {
       await apiClient.delete(endpoints.userAvatars.deleteCurrent)
       invalidateAvatar(avatarUrl.value)
       avatarUrl.value = null // Используем стандартный аватар
-      toast.success('Аватар сброшен')
+      toast.success(tGlobal('settings.profile.avatarReset'))
       return true
 
     } catch (error) {
       logError('Ошибка сброса аватара:', error)
-      toast.error('Ошибка сброса аватара')
+      toast.error(tGlobal('settings.profile.avatarResetError'))
       return false
     }
   }
