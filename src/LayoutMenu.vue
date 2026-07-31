@@ -38,6 +38,7 @@ import LayoutBackdrop from '@/components/LayoutBackdrop.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import SkipLink from '@/components/SkipLink.vue'
+import FloatingWidgetsHost from '@/components/FloatingWidgetsHost.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
@@ -243,6 +244,7 @@ onBeforeUnmount(() => {
     :menuWidth="menuWidth"
     :menuRightEdge="menuRightEdge"
   />
+  <FloatingWidgetsHost :menu-right-edge="menuRightEdge" />
 </template>
 
 <style scoped lang="scss">
