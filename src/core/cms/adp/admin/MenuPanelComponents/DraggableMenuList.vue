@@ -127,9 +127,19 @@ function onSortEnd() {
           order: newOrder
         })
       } else if (item._type === 'separator') {
+        // Якорь — следующий пункт меню в списке (или null, если разделитель в конце)
+        let beforeCatalogKey = null
+        for (let i = index + 1; i < combinedList.value.length; i++) {
+          const next = combinedList.value[i]
+          if (next._type === 'menu_item' && next.catalog_key) {
+            beforeCatalogKey = next.catalog_key
+            break
+          }
+        }
         reorderedSeparators.push({
           id: item.id,
-          before_order: newOrder
+          before_order: newOrder,
+          before_catalog_key: beforeCatalogKey
         })
       }
     })

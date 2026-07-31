@@ -1,11 +1,11 @@
 <script setup>
 import LucideIcon from '@/components/LucideIcon.vue'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { moduleManager } from '@/modules/index.js'
 import { useDropdown } from '@/composables/useDropdown.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
+import { collectVisibleAppsMenuItems } from '@/integrations/appsMenu.js'
 import { logError } from '@/js/utils/logError.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
@@ -19,12 +19,7 @@ const isLoading = ref(true)
 const loadApps = async () => {
   try {
     isLoading.value = true
-
-    if (!moduleManager.initialized) {
-      await moduleManager.initialize()
-    }
-
-    apps.value = []
+    apps.value = await collectVisibleAppsMenuItems()
   } catch (error) {
     logError('Ошибка загрузки приложений:', error)
     apps.value = []
@@ -46,6 +41,12 @@ const goToApp = (app) => {
 
 onMounted(async () => {
   await loadApps()
+})
+
+watch(isOpen, async (open) => {
+  if (open) {
+    await loadApps()
+  }
 })
 </script>
 

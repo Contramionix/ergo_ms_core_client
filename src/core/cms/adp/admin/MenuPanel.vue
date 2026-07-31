@@ -403,10 +403,14 @@ function handleMenuReorder(reorderedItems) {
 function handleSeparatorReorderFromList(reorderedSeparators) {
   pendingSeparatorReorder.value = reorderedSeparators
   
-  const orderMap = new Map(reorderedSeparators.map(sep => [sep.id, sep.before_order]))
+  const orderMap = new Map(reorderedSeparators.map(sep => [sep.id, sep]))
   for (const sep of separators.value) {
     if (orderMap.has(sep.id)) {
-      sep.before_order = orderMap.get(sep.id)
+      const next = orderMap.get(sep.id)
+      sep.before_order = next.before_order
+      if (next.before_catalog_key !== undefined) {
+        sep.before_catalog_key = next.before_catalog_key
+      }
     }
   }
   separators.value.sort((a, b) => a.before_order - b.before_order)
@@ -449,7 +453,11 @@ function getSeparatorsToSave() {
   if (pendingSeparatorReorder.value.length > 0) {
     return pendingSeparatorReorder.value
   }
-  return separators.value.map(sep => ({ id: sep.id, before_order: sep.before_order }))
+  return separators.value.map(sep => ({
+    id: sep.id,
+    before_order: sep.before_order,
+    before_catalog_key: sep.before_catalog_key ?? null,
+  }))
 }
 
 async function saveAllChanges() {
@@ -465,7 +473,10 @@ async function saveAllChanges() {
     
     if (shouldSaveSep) {
       for (const sep of getSeparatorsToSave()) {
-        await updateMenuSeparator(sep.id, { before_order: sep.before_order })
+        await updateMenuSeparator(sep.id, {
+          before_order: sep.before_order,
+          before_catalog_key: sep.before_catalog_key ?? null,
+        })
       }
     }
     

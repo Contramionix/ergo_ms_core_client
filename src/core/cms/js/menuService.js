@@ -284,21 +284,24 @@ export function filterMenuSectionsForSessionScope(sections, resolveRouteMeta) {
 export function transformSeparators(separators, menuItems = []) {
   const byOrderIndex = {}
   
-  // Сортируем разделители по before_order
+  // Сортируем разделители по before_order (layout материализован на сервере)
   const sortedSeparators = [...separators]
     .filter(sep => sep.is_active)
     .sort((a, b) => a.before_order - b.before_order)
   
-  // Для каждого разделителя находим индекс первого элемента с order >= before_order
   sortedSeparators.forEach(sep => {
-    // Ищем индекс первого элемента меню с order >= before_order
-    const index = menuItems.findIndex(item => item.order >= sep.before_order)
+    let index = -1
+    // Предпочтительно якорь catalog_key — не плывёт при sync
+    if (sep.before_catalog_key) {
+      index = menuItems.findIndex(item => item.catalog_key === sep.before_catalog_key)
+    }
+    if (index === -1) {
+      index = menuItems.findIndex(item => item.order >= sep.before_order)
+    }
     
     if (index !== -1) {
       byOrderIndex[index] = sep.name
     } else if (menuItems.length > 0) {
-      // Если разделитель должен быть после всех элементов,
-      // показываем его после последнего
       byOrderIndex[menuItems.length] = sep.name
     }
   })

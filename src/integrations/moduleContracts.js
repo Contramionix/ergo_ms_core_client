@@ -9,6 +9,7 @@ export const CORE_AUTH_CLEAR_LEGACY_STORAGE = 'core.auth.clear_legacy_storage'
 
 export { LAYOUT_PLUGIN_REGISTRY_GROUP } from '@/integrations/layoutPluginRegistry.js'
 export { HEADER_USER_MENU_ITEMS_GROUP } from '@/integrations/headerUserMenu.js'
+export { APPS_MENU_ITEMS_GROUP } from '@/integrations/appsMenu.js'
 export {
   MENU_SCOPE_REQUIRED_ROUTE_PREFIXES_GROUP,
   MENU_REMOVED_ROUTE_NAMES_GROUP,

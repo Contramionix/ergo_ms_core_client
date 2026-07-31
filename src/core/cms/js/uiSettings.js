@@ -56,7 +56,7 @@ const ACTION_BUTTON_BASE_KEY = 'actionButton'
 const LANGUAGE_BASE_KEY = 'language'
 
 const DEFAULT_THEME = 'auto'
-const DEFAULT_ACTION_BUTTON = 'notifications'
+const DEFAULT_ACTION_BUTTON = 'apps'
 
 const theme = ref(readThemePreference() || DEFAULT_THEME)
 const actionButton = ref(localStorage.getItem(ACTION_BUTTON_BASE_KEY) || DEFAULT_ACTION_BUTTON)
