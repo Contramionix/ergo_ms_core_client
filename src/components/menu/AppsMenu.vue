@@ -9,8 +9,15 @@ import { collectVisibleAppsMenuItems } from '@/integrations/appsMenu.js'
 import { logError } from '@/js/utils/logError.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const props = defineProps({
+  iconSize: {
+    type: Number,
+    default: 20,
+  },
+})
+
 const { t } = useAppI18n()
-const emit = defineEmits(['dropdown-toggle'])
+const emit = defineEmits(['dropdown-toggle', 'visibility-change'])
 const router = useRouter()
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 const apps = ref([])
@@ -62,18 +69,27 @@ watch(isOpen, async (open) => {
 })
 
 watch(isButtonVisible, (visible) => {
+  emit('visibility-change', visible)
   if (!visible) {
     closeDropdown()
   }
-})
+}, { immediate: true })
 </script>
 
 <template>
   <div v-if="isButtonVisible" ref="dropdownRef" class="apps-menu-wrapper">
     <HoverTooltip :text="t('menu.apps.title')">
-      <div @click.stop="toggleDropdown" class="header-btn">
-        <Grid3x3 :size="20" aria-hidden="true" />
-      </div>
+      <button
+        type="button"
+        class="header-btn apps-menu-btn"
+        :class="{ 'apps-menu-btn--open': isOpen }"
+        :aria-label="t('menu.apps.title')"
+        :aria-expanded="isOpen"
+        aria-haspopup="true"
+        @click.stop="toggleDropdown"
+      >
+        <Grid3x3 :size="props.iconSize" aria-hidden="true" />
+      </button>
     </HoverTooltip>
     <Transition name="dropdown">
       <div v-if="isOpen" class="apps-dropdown-menu">
@@ -107,6 +123,17 @@ watch(isButtonVisible, (visible) => {
 .apps-menu-wrapper {
   position: relative;
   display: inline-block;
+}
+
+.apps-menu-btn {
+  border: none;
+  background-color: transparent;
+  color: inherit;
+  // Scoped background перекрывает глобальный .header-btn:hover
+  &:hover,
+  &--open {
+    background-color: var(--color-hover-background);
+  }
 }
 
 .apps-dropdown-menu {

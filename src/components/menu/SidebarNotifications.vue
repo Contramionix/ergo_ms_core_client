@@ -13,6 +13,13 @@ import { useAppI18n } from '@/i18n/useAppI18n.js'
 const HOVER_READ_DELAY_MS = 1000
 const PANEL_ID = 'sidebar-notifications-panel'
 
+const props = defineProps({
+  iconSize: {
+    type: Number,
+    default: 20,
+  },
+})
+
 const { t } = useAppI18n()
 const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
@@ -127,7 +134,7 @@ async function onDelete(id) {
         :aria-label="t('menu.notifications.title')"
         @click.stop="handleToggle"
       >
-        <Bell :size="20" aria-hidden="true" />
+        <Bell :size="props.iconSize" aria-hidden="true" />
         <span
           v-if="hasUnread"
           class="notifications-badge"

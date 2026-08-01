@@ -6,6 +6,13 @@ import { useDropdown } from '@/composables/useDropdown.js'
 import { useUiSettings } from '@/core/cms/js/uiSettings.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const props = defineProps({
+  iconSize: {
+    type: Number,
+    default: 20,
+  },
+})
+
 const { t } = useAppI18n()
 const emit = defineEmits(['dropdown-toggle', 'openUserSettings'])
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
@@ -25,9 +32,17 @@ function openUserSettings() {
 <template>
   <div ref="dropdownRef" class="settings-menu-wrapper">
     <HoverTooltip :text="t('menu.toolbar.settings')">
-      <div @click.stop="toggleDropdown" class="header-btn">
-        <Settings :size="20" aria-hidden="true" />
-      </div>
+      <button
+        type="button"
+        class="header-btn settings-menu-btn"
+        :class="{ 'settings-menu-btn--open': isOpen }"
+        :aria-label="t('menu.toolbar.settings')"
+        :aria-expanded="isOpen"
+        aria-haspopup="true"
+        @click.stop="toggleDropdown"
+      >
+        <Settings :size="props.iconSize" aria-hidden="true" />
+      </button>
     </HoverTooltip>
     <Transition name="dropdown">
       <ul v-if="isOpen" class="settings-dropdown-menu">
@@ -80,6 +95,17 @@ function openUserSettings() {
 .settings-menu-wrapper {
   position: relative;
   display: inline-block;
+}
+
+.settings-menu-btn {
+  border: none;
+  background-color: transparent;
+  color: inherit;
+
+  &:hover,
+  &--open {
+    background-color: var(--color-hover-background);
+  }
 }
 
 .settings-dropdown-menu {

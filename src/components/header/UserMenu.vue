@@ -10,6 +10,19 @@ import { collectVisibleHeaderUserMenuItems } from '@/integrations/headerUserMenu
 import { logError } from '@/js/utils/logError.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
+const props = defineProps({
+  showName: {
+    type: Boolean,
+    default: true,
+  },
+  compact: {
+    type: Boolean,
+    default: false,
+  },
+})
+
+const avatarSize = computed(() => (props.compact ? 36 : 40))
+
 const { t } = useAppI18n()
 const userStore = useUserStore()
 const router = useRouter()
@@ -19,6 +32,7 @@ const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 const extensionItems = ref([])
 
 const userName = computed(() => userStore.menuUserName)
+const userNameTruncated = computed(() => userStore.menuUserNameTruncated)
 
 const userEmail = computed(() => {
   return userStore.user?.email || t('menu.userMenu.emailMissing')
@@ -94,13 +108,32 @@ watch(isOpen, async (newValue) => {
   <div ref="dropdownRef" class="user-menu-wrapper">
     <button
       type="button"
-      class="tools__avatar avatar user-menu-trigger"
+      class="user-menu-trigger"
+      :class="{
+        'user-menu-trigger--open': isOpen,
+        'user-menu-trigger--name-hidden': !props.showName,
+      }"
       :aria-label="`${t('menu.userMenu.ariaLabel')}: ${userName}`"
       :aria-expanded="isOpen"
       aria-haspopup="menu"
       @click.stop="toggleDropdown"
     >
-      <UserAvatar :size="40" :clickable="false" :title="userName"/>
+      <span class="user-menu-trigger__avatar" aria-hidden="true">
+        <UserAvatar
+          :size="avatarSize"
+          :clickable="false"
+          :title="userName"
+          show-online-status
+        />
+      </span>
+      <span
+        class="user-menu-trigger__name"
+        :class="{ 'user-menu-trigger__name--hidden': !props.showName }"
+      >
+        <span class="user-menu-trigger__name-inner">
+          <span class="user-menu-trigger__fio" :title="userName">{{ userNameTruncated }}</span>
+        </span>
+      </span>
     </button>
     <Transition name="dropdown-left">
       <ul v-if="isOpen" class="user-dropdown-menu" role="menu" :aria-label="t('menu.userMenu.ariaLabel')">
@@ -158,32 +191,108 @@ watch(isOpen, async (newValue) => {
 <style scoped lang="scss">
 .user-menu-wrapper {
   position: relative;
-  display: inline-block;
+  display: block;
+  min-width: 0;
   width: 100%;
-  height: 100%;
-}
-
-.tools__avatar {
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .user-menu-trigger {
-  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 8px 2px 2px;
   border: 0;
+  border-radius: 8px;
   background: transparent;
   color: inherit;
   appearance: none;
+  cursor: pointer;
+  overflow: visible;
+  transition: background-color 0.2s ease, padding 0.2s ease;
+
+  &:hover,
+  &--open {
+    background-color: var(--color-hover-background);
+  }
+
+  &--name-hidden {
+    padding-right: 2px;
+  }
 
   &:focus-visible {
     outline: 2px solid rgba(var(--bs-primary-rgb), 0.85);
     outline-offset: 2px;
+  }
+}
+
+.user-menu-trigger__avatar {
+  position: relative;
+  flex-shrink: 0;
+  width: var(--toolbar-avatar-size, 40px);
+  height: var(--toolbar-avatar-size, 40px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: transparent;
+  overflow: visible;
+  // Раньше серый фон обёртки давал «кольцо»; теперь явная обводка в цвет темы.
+  box-shadow: 0 0 0 1px var(--color-border, var(--ui-border, #dee2e6));
+  transition: width 0.2s ease, height 0.2s ease;
+
+  :deep(.user-avatar-wrap) {
+    overflow: visible;
+  }
+
+  :deep(.user-avatar) {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+
+  :deep(.user-avatar-image) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     border-radius: 50%;
   }
+
+  // Тулбар на secondary-фоне — кольцо PresenceIndicator под него, не под primary.
+  :deep(.presence-indicator) {
+    border-color: var(--color-secondary-background);
+    z-index: 2;
+  }
+}
+
+.user-menu-trigger__name {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-width: 0;
+  overflow: hidden;
+  transition: grid-template-columns var(--menu-label-transition, #{$menu-collapsed-peek-transition});
+
+  &--hidden {
+    grid-template-columns: 0fr;
+    pointer-events: none;
+  }
+}
+
+.user-menu-trigger__name-inner {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.user-menu-trigger__fio {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: left;
 }
 
 .user-dropdown-menu {
@@ -204,16 +313,6 @@ watch(isOpen, async (newValue) => {
 
 .min-width-0 {
   min-width: 0;
-}
-
-.avatar :deep(.user-avatar-image) {
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.avatar :deep(.user-avatar--clickable:hover .user-avatar-image) {
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .dropdown-header :deep(.user-avatar-image) {

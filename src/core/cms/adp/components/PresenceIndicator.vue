@@ -14,7 +14,7 @@ const props = defineProps({
 
 const EDGE_ANGLE = Math.PI / 4
 
-const dotSize = computed(() => Math.max(8, Math.round(props.size * 0.28)))
+const dotSize = computed(() => Math.max(7, Math.round(props.size * 0.22)))
 
 const dotStyle = computed(() => {
   const avatarRadius = props.size / 2
