@@ -1,6 +1,6 @@
 <script setup>
-import LucideIcon from '@/components/LucideIcon.vue'
-import { ref, onMounted, watch } from 'vue'
+import { Grid3x3 } from 'lucide-vue-next'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDropdown } from '@/composables/useDropdown.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
@@ -15,6 +15,9 @@ const router = useRouter()
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 const apps = ref([])
 const isLoading = ref(true)
+const hasLoaded = ref(false)
+
+const isButtonVisible = computed(() => hasLoaded.value && apps.value.length > 0)
 
 const loadApps = async () => {
   try {
@@ -25,6 +28,7 @@ const loadApps = async () => {
     apps.value = []
   } finally {
     isLoading.value = false
+    hasLoaded.value = true
   }
 }
 
@@ -56,13 +60,19 @@ watch(isOpen, async (open) => {
     await loadApps()
   }
 })
+
+watch(isButtonVisible, (visible) => {
+  if (!visible) {
+    closeDropdown()
+  }
+})
 </script>
 
 <template>
-  <div ref="dropdownRef" class="apps-menu-wrapper">
+  <div v-if="isButtonVisible" ref="dropdownRef" class="apps-menu-wrapper">
     <HoverTooltip :text="t('menu.apps.title')">
       <div @click.stop="toggleDropdown" class="header-btn">
-        <LucideIcon name="Grid3x3" :size="20" />
+        <Grid3x3 :size="20" aria-hidden="true" />
       </div>
     </HoverTooltip>
     <Transition name="dropdown">

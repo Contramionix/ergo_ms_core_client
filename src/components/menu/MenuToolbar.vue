@@ -47,13 +47,11 @@
 <script setup>
 import UserMenu from '@/components/header/UserMenu.vue'
 import SettingsMenu from '@/components/menu/SettingsMenu.vue'
+import SidebarNotifications from '@/components/menu/SidebarNotifications.vue'
 import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { initUserSettings } from '@/core/cms/js/uiSettings.js'
 
-const SidebarNotifications = defineAsyncComponent(() =>
-  import('@/components/menu/SidebarNotifications.vue'),
-)
 const AppsMenu = defineAsyncComponent(() => import('@/components/menu/AppsMenu.vue'))
 const UserSettingsModal = defineAsyncComponent(() =>
   import('@/core/cms/adp/user/account/component/UserSettingsModal.vue'),

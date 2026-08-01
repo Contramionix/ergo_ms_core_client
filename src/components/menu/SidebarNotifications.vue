@@ -8,7 +8,6 @@ import { groupNotificationsByDate } from '@/core/notifications/js/groupByDate.js
 import NotificationItem from '@/core/notifications/components/NotificationItem.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
-import LucideIcon from '@/components/LucideIcon.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const HOVER_READ_DELAY_MS = 1000
@@ -128,7 +127,7 @@ async function onDelete(id) {
         :aria-label="t('menu.notifications.title')"
         @click.stop="handleToggle"
       >
-        <LucideIcon name="Bell" :size="20" />
+        <Bell :size="20" aria-hidden="true" />
         <span
           v-if="hasUnread"
           class="notifications-badge"

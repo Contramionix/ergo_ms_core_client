@@ -1,8 +1,7 @@
 <script setup>
-import { Cog, Contrast, ChevronRight } from 'lucide-vue-next'
+import { Cog, Contrast, ChevronRight, Settings } from 'lucide-vue-next'
 import SelectBox from '@/components/SelectBox.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
-import LucideIcon from '@/components/LucideIcon.vue'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { useUiSettings } from '@/core/cms/js/uiSettings.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
@@ -27,7 +26,7 @@ function openUserSettings() {
   <div ref="dropdownRef" class="settings-menu-wrapper">
     <HoverTooltip :text="t('menu.toolbar.settings')">
       <div @click.stop="toggleDropdown" class="header-btn">
-        <LucideIcon name="Settings" :size="20" />
+        <Settings :size="20" aria-hidden="true" />
       </div>
     </HoverTooltip>
     <Transition name="dropdown">
