@@ -93,7 +93,7 @@ watch(isButtonVisible, (visible) => {
     </HoverTooltip>
     <Transition name="dropdown">
       <div v-if="isOpen" class="apps-dropdown-menu">
-        <LoadingContentArea :loading="isLoading" min-height="6rem">
+        <LoadingContentArea :loading="isLoading" min-height="3rem">
           <div v-if="apps.length === 0" class="apps-menu__empty text-muted text-center py-3">
             {{ t('menu.apps.empty') }}
           </div>
@@ -107,8 +107,8 @@ watch(isButtonVisible, (visible) => {
               :style="{ transitionDelay: `${index * 30}ms` }"
             >
               <div class="apps-menu__icon">
-                <component v-if="app.icon" :is="app.icon" :size="24" />
-                <div v-else class="apps-menu__icon-placeholder">{{ app.title.charAt(0) }}</div>
+                <component v-if="app.icon" :is="app.icon" :size="18" stroke-width="1.75" />
+                <span v-else class="apps-menu__icon-placeholder">{{ app.title.charAt(0) }}</span>
               </div>
               <div class="apps-menu__title">{{ app.title }}</div>
             </div>
@@ -140,26 +140,29 @@ watch(isButtonVisible, (visible) => {
   @include dropdown-menu-base;
   left: 50%;
   transform: translate(-50%, -8px);
-  min-width: min(280px, calc(100vw - 1rem));
-  max-width: min(400px, calc(100vw - 1rem));
-  padding: 1rem;
+  min-width: min(240px, calc(100vw - 1rem));
+  max-width: min(320px, calc(100vw - 1rem));
+  padding: 0.375rem;
+
+  :deep(.loading-content-area--content) {
+    min-height: 0 !important;
+  }
 }
 
 .apps-menu__empty {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 2rem;
+  padding: 1.25rem;
 }
 
 .apps-menu__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  gap: 0.25rem;
 
   @media (width < $ui-bp-sm) {
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
   }
 }
 
@@ -168,57 +171,67 @@ watch(isButtonVisible, (visible) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  border-radius: 8px;
+  gap: 0.375rem;
+  padding: 0.625rem 0.375rem;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, transform 0.15s ease;
   text-align: center;
-  min-height: 90px;
+  min-height: 0;
 
   &:hover {
     background-color: var(--color-hover-background);
-    transform: translateY(-2px);
+
+    .apps-menu__icon {
+      background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-secondary-background, #f8f9fa));
+      border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-border, #dee2e6));
+      color: var(--color-accent);
+    }
   }
 
   &:active {
-    transform: translateY(0);
+    transform: scale(0.97);
   }
+
+  @include ui-reduced-motion;
 }
 
 .apps-menu__icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
   color: var(--color-primary-text);
-  border: 2px solid var(--color-border, #dee2e6);
-  border-radius: 8px;
-  background-color: var(--color-secondary-background, #f8f9fa);
-  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--color-border, #dee2e6) 80%, transparent);
+  border-radius: 9px;
+  background-color: color-mix(
+    in srgb,
+    var(--color-secondary-background, #f8f9fa) 88%,
+    var(--color-accent) 12%
+  );
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .apps-menu__icon-placeholder {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background-color: var(--color-secondary-background);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 1rem;
-  color: var(--color-primary-text);
+  font-size: 0.8125rem;
+  line-height: 1;
+  color: inherit;
 }
 
 .apps-menu__title {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: var(--color-primary-text);
   text-align: center;
   word-break: break-word;
-  line-height: 1.2;
+  line-height: 1.25;
   font-weight: 500;
+  max-width: 100%;
 }
 </style>
 
