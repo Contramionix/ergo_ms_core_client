@@ -30,93 +30,102 @@
             <teleport to="body">
                 <div
                     v-if="isOpen"
-                    ref="menuEl"
-                    :id="listboxId"
-                    role="listbox"
-                    :aria-labelledby="triggerId"
-                    :class="dropdownTeleportMenuClass"
-                    :style="fixedMenuStyle"
+                    class="select-box-menu-anchor"
+                    :class="{
+                        'select-box-menu-anchor--up': menuOpensUpward,
+                        'select-box-menu-anchor--side': placement === 'right',
+                    }"
+                    :style="menuAnchorStyle"
                     @mouseenter="onHoverZoneEnter"
                     @mouseleave="onHoverZoneLeave"
                 >
-                    <input
-                        v-if="searchable"
-                        ref="searchInputEl"
-                        v-model="searchQuery"
-                        type="text"
-                        class="select-box-search"
-                        :placeholder="resolvedSearchPlaceholder"
-                        :aria-label="resolvedSearchPlaceholder || t('components.selectBox.search')"
-                        autocomplete="off"
-                    />
-                    <template v-if="!virtualized">
-                        <ul class="dropdown-menu-list" role="presentation">
-                            <li v-if="includeAllOption && !hasActiveSearch">
-                                <a class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" @click.prevent="choose(null)">{{ resolvedAllLabel }}</a>
-                            </li>
-                            <li v-for="opt in filteredOptions" :key="opt.key">
-                                <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" :style="getDropdownItemStyle(opt)" @click.prevent="choose(opt.value)">
-                                    <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)" :depth="getOptionDepth(opt.raw)">
-                                        <div v-if="multiple && showCheckboxesWhenMultiple" class="select-box-option-row">
-                                            <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input select-box-option-checkbox" @change="() => {}" />
-                                            <span class="select-box-option-label">
-                                                <template v-if="hasNestedLayout(opt)">
-                                                    <span class="select-box-nested-option" :title="getOptionTitle(opt)">
-                                                        <span v-if="getSecondaryLabel(opt.raw)" class="select-box-nested-option__secondary">{{ getSecondaryLabel(opt.raw) }}</span>
-                                                        <span class="select-box-nested-option__primary">{{ opt.label }}</span>
-                                                    </span>
-                                                </template>
-                                                <template v-else>{{ opt.label }}</template>
-                                            </span>
-                                        </div>
-                                        <template v-else-if="hasNestedLayout(opt)">
-                                            <span class="select-box-nested-option" :title="getOptionTitle(opt)">
-                                                <span v-if="getSecondaryLabel(opt.raw)" class="select-box-nested-option__secondary">{{ getSecondaryLabel(opt.raw) }}</span>
-                                                <span class="select-box-nested-option__primary">{{ opt.label }}</span>
-                                            </span>
-                                        </template>
-                                        <span v-else>{{ opt.label }}</span>
-                                    </slot>
-                                </a>
-                            </li>
-                        </ul>
-                    </template>
-                    <template v-else>
-                        <div class="dropdown-menu-list-virtual-wrap">
-                            <div ref="listContainerRef" class="dropdown-menu-list virtual-list-container" @scroll="onListScroll">
-                                <div class="virtual-list-spacer" :style="{ height: totalHeight + 'px', position: 'relative' }">
-                                    <div class="virtual-list-inner" :style="{ position: 'absolute', top: 0, left: 0, right: 0, transform: 'translateY(' + virtualOffsetY + 'px)' }">
-                                        <template v-for="opt in visibleOptions" :key="opt.key">
-                                            <a v-if="opt.key === '__all__'" class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" :style="{ minHeight: itemHeight + 'px' }" @click.prevent="choose(null)">{{ opt.label }}</a>
-                                            <a v-else class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" :style="{ minHeight: itemHeight + 'px', ...getDropdownItemStyle(opt) }" @click.prevent="choose(opt.value)">
-                                                <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)" :depth="getOptionDepth(opt.raw)">
-                                                    <div v-if="multiple && showCheckboxesWhenMultiple" class="select-box-option-row">
-                                                        <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input select-box-option-checkbox" @change="() => {}" />
-                                                        <span class="select-box-option-label">
-                                                            <template v-if="hasNestedLayout(opt)">
-                                                                <span class="select-box-nested-option" :title="getOptionTitle(opt)">
-                                                                    <span v-if="getSecondaryLabel(opt.raw)" class="select-box-nested-option__secondary">{{ getSecondaryLabel(opt.raw) }}</span>
-                                                                    <span class="select-box-nested-option__primary">{{ opt.label }}</span>
-                                                                </span>
-                                                            </template>
-                                                            <template v-else>{{ opt.label }}</template>
-                                                        </span>
-                                                    </div>
-                                                    <template v-else-if="hasNestedLayout(opt)">
+                    <div
+                        ref="menuEl"
+                        :id="listboxId"
+                        role="listbox"
+                        :aria-labelledby="triggerId"
+                        :class="dropdownTeleportMenuClass"
+                        :style="fixedMenuStyle"
+                    >
+                        <input
+                            v-if="searchable"
+                            ref="searchInputEl"
+                            v-model="searchQuery"
+                            type="text"
+                            class="select-box-search"
+                            :placeholder="resolvedSearchPlaceholder"
+                            :aria-label="resolvedSearchPlaceholder || t('components.selectBox.search')"
+                            autocomplete="off"
+                        />
+                        <template v-if="!virtualized">
+                            <ul class="dropdown-menu-list" role="presentation">
+                                <li v-if="includeAllOption && !hasActiveSearch">
+                                    <a class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" @click.prevent="choose(null)">{{ resolvedAllLabel }}</a>
+                                </li>
+                                <li v-for="opt in filteredOptions" :key="opt.key">
+                                    <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" :style="getDropdownItemStyle(opt)" @click.prevent="choose(opt.value)">
+                                        <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)" :depth="getOptionDepth(opt.raw)">
+                                            <div v-if="multiple && showCheckboxesWhenMultiple" class="select-box-option-row">
+                                                <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input select-box-option-checkbox" @change="() => {}" />
+                                                <span class="select-box-option-label">
+                                                    <template v-if="hasNestedLayout(opt)">
                                                         <span class="select-box-nested-option" :title="getOptionTitle(opt)">
                                                             <span v-if="getSecondaryLabel(opt.raw)" class="select-box-nested-option__secondary">{{ getSecondaryLabel(opt.raw) }}</span>
                                                             <span class="select-box-nested-option__primary">{{ opt.label }}</span>
                                                         </span>
                                                     </template>
-                                                    <span v-else>{{ opt.label }}</span>
-                                                </slot>
-                                            </a>
-                                        </template>
+                                                    <template v-else>{{ opt.label }}</template>
+                                                </span>
+                                            </div>
+                                            <template v-else-if="hasNestedLayout(opt)">
+                                                <span class="select-box-nested-option" :title="getOptionTitle(opt)">
+                                                    <span v-if="getSecondaryLabel(opt.raw)" class="select-box-nested-option__secondary">{{ getSecondaryLabel(opt.raw) }}</span>
+                                                    <span class="select-box-nested-option__primary">{{ opt.label }}</span>
+                                                </span>
+                                            </template>
+                                            <span v-else>{{ opt.label }}</span>
+                                        </slot>
+                                    </a>
+                                </li>
+                            </ul>
+                        </template>
+                        <template v-else>
+                            <div class="dropdown-menu-list-virtual-wrap">
+                                <div ref="listContainerRef" class="dropdown-menu-list virtual-list-container" @scroll="onListScroll">
+                                    <div class="virtual-list-spacer" :style="{ height: totalHeight + 'px', position: 'relative' }">
+                                        <div class="virtual-list-inner" :style="{ position: 'absolute', top: 0, left: 0, right: 0, transform: 'translateY(' + virtualOffsetY + 'px)' }">
+                                            <template v-for="opt in visibleOptions" :key="opt.key">
+                                                <a v-if="opt.key === '__all__'" class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" :style="{ minHeight: itemHeight + 'px' }" @click.prevent="choose(null)">{{ opt.label }}</a>
+                                                <a v-else class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" :style="{ minHeight: itemHeight + 'px', ...getDropdownItemStyle(opt) }" @click.prevent="choose(opt.value)">
+                                                    <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)" :depth="getOptionDepth(opt.raw)">
+                                                        <div v-if="multiple && showCheckboxesWhenMultiple" class="select-box-option-row">
+                                                            <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input select-box-option-checkbox" @change="() => {}" />
+                                                            <span class="select-box-option-label">
+                                                                <template v-if="hasNestedLayout(opt)">
+                                                                    <span class="select-box-nested-option" :title="getOptionTitle(opt)">
+                                                                        <span v-if="getSecondaryLabel(opt.raw)" class="select-box-nested-option__secondary">{{ getSecondaryLabel(opt.raw) }}</span>
+                                                                        <span class="select-box-nested-option__primary">{{ opt.label }}</span>
+                                                                    </span>
+                                                                </template>
+                                                                <template v-else>{{ opt.label }}</template>
+                                                            </span>
+                                                        </div>
+                                                        <template v-else-if="hasNestedLayout(opt)">
+                                                            <span class="select-box-nested-option" :title="getOptionTitle(opt)">
+                                                                <span v-if="getSecondaryLabel(opt.raw)" class="select-box-nested-option__secondary">{{ getSecondaryLabel(opt.raw) }}</span>
+                                                                <span class="select-box-nested-option__primary">{{ opt.label }}</span>
+                                                            </span>
+                                                        </template>
+                                                        <span v-else>{{ opt.label }}</span>
+                                                    </slot>
+                                                </a>
+                                            </template>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </template>
+                        </template>
+                    </div>
                 </div>
             </teleport>
         </div>
@@ -320,7 +329,10 @@ const filteredOptions = computed(() => {
 })
 
 const isOpen = ref(false)
-const fixedMenuStyle = ref({ top: '0px', left: '0px', width: '0px' })
+const menuOpensUpward = ref(false)
+const menuAnchorStyle = ref({})
+const fixedMenuStyle = ref({})
+
 function resolveContextFontSize(trigger, root) {
     if (!trigger) return '1rem'
     const triggerStyle = getComputedStyle(trigger)
@@ -330,6 +342,32 @@ function resolveContextFontSize(trigger, root) {
         if (rootStyle.fontSize) return rootStyle.fontSize
     }
     return '1rem'
+}
+
+function buildMenuCssVars(trigger, root) {
+    const triggerStyle = getComputedStyle(trigger)
+    const rootStyle = root ? getComputedStyle(root) : null
+    const menuFontSize = resolveContextFontSize(trigger, root)
+    const customFontSize = rootStyle?.getPropertyValue('--select-box-font-size').trim()
+    const resolvedMenuFontSize = customFontSize || menuFontSize
+    const menuLineHeight = triggerStyle.lineHeight || rootStyle?.lineHeight || '1.5'
+    return {
+        fontSize: resolvedMenuFontSize,
+        lineHeight: menuLineHeight,
+        '--select-box-font-size': resolvedMenuFontSize,
+        '--select-box-search-font-size': rootStyle?.getPropertyValue('--select-box-search-font-size').trim() || '1em',
+        '--select-box-compact-font-size': rootStyle?.getPropertyValue('--select-box-compact-font-size').trim() || '1em',
+        '--select-box-item-padding-y': rootStyle?.getPropertyValue('--select-box-item-padding-y').trim() || '0.375rem',
+        '--select-box-item-padding-x': rootStyle?.getPropertyValue('--select-box-item-padding-x').trim() || '0.75rem',
+        '--select-box-nested-indent-per-level': rootStyle?.getPropertyValue('--select-box-nested-indent-per-level').trim() || `${props.optionIndentPerLevel}rem`,
+        '--select-box-nested-font-size': props.nestedOptionFontSize
+            || rootStyle?.getPropertyValue('--select-box-nested-font-size').trim()
+            || '1em',
+        '--select-box-nested-secondary-font-size': props.nestedSecondaryFontSize
+            || rootStyle?.getPropertyValue('--select-box-nested-secondary-font-size').trim()
+            || props.nestedOptionFontSize
+            || '1em',
+    }
 }
 
 function updateMenuPosition() {
@@ -347,11 +385,11 @@ function updateMenuPosition() {
     let top
     let left
     let width
-    let maxWidth
+    let openUp = false
 
     if (props.placement === 'right') {
         const sideGap = props.placementGap
-        maxWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
+        const maxWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
         width = Math.min(Math.max(minDropdownWidth, props.dropdownMinWidth || 0), maxWidth)
         const fitsRight = triggerRect.right + sideGap + width <= window.innerWidth - viewportPadding
         left = fitsRight
@@ -372,53 +410,30 @@ function updateMenuPosition() {
             )
         }
     } else {
-        maxWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
-        const minW = Math.max(minDropdownWidth, props.dropdownMinWidth || 0, rect.width)
+        const maxWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
+        const triggerWidth = Math.max(0, rect.width)
+        const minW = Math.max(minDropdownWidth, props.dropdownMinWidth || 0, triggerWidth)
         width = Math.min(minW, maxWidth)
-        left = Math.min(
-            rect.left,
-            window.innerWidth - viewportPadding - width
-        )
+        left = Math.abs(width - triggerWidth) < 0.5
+            ? rect.left
+            : Math.min(rect.left, window.innerWidth - viewportPadding - width)
         const menuHeight = menuEl.value?.getBoundingClientRect().height || 0
         const spaceBelow = window.innerHeight - viewportPadding - triggerRect.bottom
         const spaceAbove = triggerRect.top - viewportPadding
-        const openUp = menuHeight > 0
+        openUp = menuHeight > 0
             && spaceBelow < menuHeight
             && spaceAbove > spaceBelow
-        top = openUp
-            ? Math.max(viewportPadding, triggerRect.top - menuHeight)
-            : triggerRect.bottom
+        top = openUp ? triggerRect.top : triggerRect.bottom
     }
 
-    const triggerStyle = getComputedStyle(trigger)
-    const rootStyle = root ? getComputedStyle(root) : null
-    const menuFontSize = resolveContextFontSize(trigger, root)
-    const customFontSize = rootStyle?.getPropertyValue('--select-box-font-size').trim()
-    const resolvedMenuFontSize = customFontSize || menuFontSize
-    const menuLineHeight = triggerStyle.lineHeight || rootStyle?.lineHeight || '1.5'
-    fixedMenuStyle.value = {
+    menuOpensUpward.value = openUp
+    menuAnchorStyle.value = {
         top: `${top}px`,
         left: `${left}px`,
         width: `${width}px`,
-        maxWidth: `${maxWidth}px`,
         zIndex: OVERLAY_MENU_Z_INDEX,
-        boxSizing: 'border-box',
-        fontSize: resolvedMenuFontSize,
-        lineHeight: menuLineHeight,
-        '--select-box-font-size': resolvedMenuFontSize,
-        '--select-box-search-font-size': rootStyle?.getPropertyValue('--select-box-search-font-size').trim() || '1em',
-        '--select-box-compact-font-size': rootStyle?.getPropertyValue('--select-box-compact-font-size').trim() || '1em',
-        '--select-box-item-padding-y': rootStyle?.getPropertyValue('--select-box-item-padding-y').trim() || '0.375rem',
-        '--select-box-item-padding-x': rootStyle?.getPropertyValue('--select-box-item-padding-x').trim() || '0.75rem',
-        '--select-box-nested-indent-per-level': rootStyle?.getPropertyValue('--select-box-nested-indent-per-level').trim() || `${props.optionIndentPerLevel}rem`,
-        '--select-box-nested-font-size': props.nestedOptionFontSize
-            || rootStyle?.getPropertyValue('--select-box-nested-font-size').trim()
-            || '1em',
-        '--select-box-nested-secondary-font-size': props.nestedSecondaryFontSize
-            || rootStyle?.getPropertyValue('--select-box-nested-secondary-font-size').trim()
-            || props.nestedOptionFontSize
-            || '1em',
     }
+    fixedMenuStyle.value = buildMenuCssVars(trigger, root)
 }
 const searchInputEl = ref(null)
 let hoverCloseTimer = null

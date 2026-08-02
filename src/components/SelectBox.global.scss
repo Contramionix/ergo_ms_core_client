@@ -1,3 +1,48 @@
+/* Teleport: якорь = ширина триггера, меню на 100% якоря.
+   left/right: -1px — компенсация визуального «утопа» границы относительно .btn. */
+.select-box-menu-anchor {
+    position: fixed;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow: visible;
+    pointer-events: none;
+    box-sizing: border-box;
+
+    > .dropdown-menu.fixed-menu {
+        pointer-events: auto;
+        position: absolute !important;
+        top: 0;
+        bottom: auto;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        box-shadow: 0 10px 18px -10px rgba(34, 48, 62, 0.22) !important;
+    }
+
+    &:not(.select-box-menu-anchor--side) > .dropdown-menu.fixed-menu {
+        left: -1px !important;
+        right: -1px !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+    }
+
+    &--side > .dropdown-menu.fixed-menu {
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        box-shadow: 0 0.25rem 0.75rem 0 rgba(34, 48, 62, 0.14) !important;
+    }
+
+    &--up > .dropdown-menu.fixed-menu {
+        top: auto;
+        bottom: 0;
+    }
+}
+
 .fixed-menu {
     .select-box-nested-option {
         display: flex;
