@@ -1,6 +1,9 @@
 export default {
   boot: {
-    failed: "Échec du chargement de l'application. Actualisez la page ou vérifiez que l'API est en cours d'exécution.",
+    badge: 'Erreur de démarrage',
+    title: "Échec du chargement de l'application",
+    failed: "Actualisez la page ou vérifiez que l'API est en cours d'exécution.",
+    hint: "Si l'erreur persiste, assurez-vous que le serveur API est disponible et réessayez.",
     failedLog: 'Échec du démarrage du client :',
   },
   api: {

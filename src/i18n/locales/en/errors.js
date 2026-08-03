@@ -1,6 +1,9 @@
 export default {
   boot: {
-    failed: 'Failed to load the application. Refresh the page or check that the API is running.',
+    badge: 'Startup error',
+    title: 'Failed to load the application',
+    failed: 'Refresh the page or check that the API is running.',
+    hint: 'If this keeps happening, make sure the API server is available and try again.',
     failedLog: 'Failed to start the client:',
   },
   api: {

@@ -1,0 +1,206 @@
+/* Экран сбоя boot: static HTML в #app (Vue может быть не смонтирован). */
+.boot-failure-page {
+  --boot-accent: var(--color-accent, var(--bs-primary, var(--ui-accent, #d0322d)));
+  --boot-accent-soft: var(--ui-accent-soft, rgba(208, 50, 45, 0.12));
+  --boot-accent-glow: color-mix(in srgb, var(--boot-accent) 22%, transparent);
+
+  position: relative;
+  box-sizing: border-box;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 4vw, 2.5rem);
+  overflow: hidden;
+  background: var(--ui-bg, var(--color-background, #f5f6f8));
+  color: var(--ui-text, var(--color-primary-text, #14151a));
+  font-family: var(--font-family-base, system-ui, sans-serif);
+}
+
+.boot-failure-page *,
+.boot-failure-page *::before,
+.boot-failure-page *::after {
+  box-sizing: border-box;
+}
+
+.boot-failure-page__backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.boot-failure-page__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+  opacity: 0.55;
+  animation: boot-failure-float 14s ease-in-out infinite;
+}
+
+.boot-failure-page__orb--1 {
+  top: -8%;
+  left: -6%;
+  width: min(42vw, 320px);
+  height: min(42vw, 320px);
+  background: var(--boot-accent-glow);
+}
+
+.boot-failure-page__orb--2 {
+  right: -4%;
+  bottom: -10%;
+  width: min(48vw, 360px);
+  height: min(48vw, 360px);
+  background: var(--ui-info-soft, rgba(13, 110, 253, 0.18));
+  animation-delay: -4s;
+}
+
+.boot-failure-page__orb--3 {
+  top: 38%;
+  right: 18%;
+  width: min(28vw, 200px);
+  height: min(28vw, 200px);
+  background: var(--ui-warning-soft, rgba(255, 193, 7, 0.16));
+  animation-delay: -8s;
+}
+
+.boot-failure-page__card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 28rem);
+  padding: clamp(1.5rem, 5vw, 2.25rem);
+  text-align: center;
+  background: color-mix(in srgb, var(--ui-surface, #fff) 92%, transparent);
+  border: 1px solid var(--ui-border, rgba(17, 18, 35, 0.14));
+  border-radius: var(--ui-radius-lg, 14px);
+  box-shadow: var(--ui-shadow-lg, 0 8px 24px rgba(17, 18, 35, 0.08));
+  backdrop-filter: blur(12px);
+}
+
+.boot-failure-page__wordmark {
+  display: flex;
+  width: 100%;
+  margin: 0 0 1.25rem;
+  justify-content: center;
+  color: inherit;
+}
+
+.boot-failure-page__logo {
+  display: block;
+  width: min(100%, 14rem);
+  height: auto;
+  color: var(--color-primary-text, currentColor);
+}
+
+.boot-failure-page__logo .ergoms-logo__cog {
+  fill: none;
+  stroke: var(--color-accent, var(--boot-accent));
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 240px 66px;
+  animation: boot-failure-cog 8s linear infinite;
+}
+
+.boot-failure-page__badge {
+  display: inline-block;
+  margin: 0 0 0.75rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--boot-accent);
+  background: var(--boot-accent-soft);
+  border-radius: var(--ui-pill, 999px);
+}
+
+.boot-failure-page__title {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.5rem, 4.5vw, 1.875rem);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.boot-failure-page__text {
+  margin: 0;
+  font-size: clamp(0.95rem, 2.5vw, 1.05rem);
+  line-height: 1.65;
+  color: var(--ui-text-muted, var(--color-secondary-text, #5b616e));
+}
+
+.boot-failure-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin: 1.5rem 0 1rem;
+}
+
+.boot-failure-page__reload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius, 8px);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #fff;
+  background: var(--boot-accent);
+  cursor: pointer;
+}
+
+.boot-failure-page__reload:hover {
+  filter: brightness(1.05);
+}
+
+.boot-failure-page__reload:focus-visible {
+  outline: 2px solid var(--boot-accent);
+  outline-offset: 2px;
+}
+
+.boot-failure-page__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ui-text-muted, var(--color-secondary-text, #5b616e));
+  opacity: 0.85;
+}
+
+@keyframes boot-failure-float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(2%, -3%) scale(1.04);
+  }
+}
+
+@keyframes boot-failure-cog {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+html[data-ergo-motion='reduce'] {
+  .boot-failure-page__orb,
+  .boot-failure-page__logo .ergoms-logo__cog {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-failure-page__orb,
+  .boot-failure-page__logo .ergoms-logo__cog {
+    animation: none !important;
+  }
+}
