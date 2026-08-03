@@ -342,8 +342,40 @@ onBeforeUnmount(() => {
 .layout-content--flush {
   padding: 0;
   max-width: none;
-  overflow-x: clip;
-  overflow-y: visible;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  :deep(.layout-route-view) {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Desktop: flush-страница заполняет область контента рядом с меню */
+@media (width >= $ui-shell-desktop-min) {
+  .layout-page:has(.layout-content--flush) {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .layout-page__content:has(.layout-content--flush) {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 }
 
 .layout-content-shell {
@@ -391,6 +423,9 @@ onBeforeUnmount(() => {
     /* Flush/full-height экраны сами учитывают safe-area (messenger и т.п.) */
     &:has(.layout-content--flush) {
       padding-bottom: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
     &--full-page {
@@ -401,13 +436,12 @@ onBeforeUnmount(() => {
   }
 
   .layout-page__content:has(.layout-content--flush) {
+    flex: 1 1 auto;
     height: 100%;
     min-height: 0;
-  }
-
-  .layout-content--flush {
-    height: 100%;
-    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
   :deep(.side-menu__toggle) {
     display: none !important;

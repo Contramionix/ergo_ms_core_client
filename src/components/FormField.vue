@@ -102,6 +102,10 @@ const resolvedOptional = computed(
 }
 
 .form-field__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.35rem;
   min-width: 0;
   padding-top: 0.35rem;
   font-size: 0.875rem;
@@ -113,16 +117,18 @@ const resolvedOptional = computed(
 
 .form-field__optional {
   display: inline-block;
-  margin-left: 0.35rem;
-  padding: 0.1rem 0.45rem;
+  flex: 0 1 auto;
+  max-width: 100%;
+  padding: 0.1rem 0.4rem;
   border-radius: 999px;
   background: var(--color-border);
   color: var(--color-secondary-text);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  vertical-align: middle;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .form-field__control {

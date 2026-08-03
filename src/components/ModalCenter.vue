@@ -272,12 +272,17 @@ onBeforeUnmount(() => {
 }
 
 .modal-header {
+  flex-shrink: 0;
   color: var(--color-primary-text);
   border-bottom: 1px solid var(--color-secondary-background);
 
   .btn-close:focus {
     box-shadow: none;
   }
+}
+
+.modal-footer {
+  flex-shrink: 0;
 }
 
 .modal-content {
