@@ -190,10 +190,17 @@ export async function performServerLogout() {
 
   serverLogoutPromise = (async () => {
     try {
+      // Bearer до clearTokens: logout без refresh всё равно узнаёт user_id для ergo_prev_user.
+      const headers = {}
+      const access = getAccess()
+      if (access && !isExpired(access)) {
+        headers.Authorization = `Bearer ${access}`
+      }
       await axios.post(
         `${resolveApiClientBaseUrl()}${AUTH_LOGOUT_PATH}`,
         {},
         {
+          headers,
           withCredentials: true,
           validateStatus: (status) =>
             (status >= 200 && status < 300) || status === 401 || status === 429,

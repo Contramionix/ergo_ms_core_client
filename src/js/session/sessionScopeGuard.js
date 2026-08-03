@@ -1,7 +1,7 @@
 /**
  * Platform session-scope guard — проверка активного session-scope на маршрутах.
  *
- * Доменные redirect (welcome route, validateSession API) передаются через options.
+ * Welcome/home — через options или session.scope_entry_routes.
  * Само понятие scope (какой claim гейтит) — за модулем-владельцем домена.
  */
 
@@ -140,7 +140,6 @@ function redirectToModuleOverview(next, to, welcomeRoute) {
  * @param {object} [options]
  * @param {string} [options.welcomeRoute] — маршрут welcome; по умолчанию из session.scope_entry_routes
  * @param {string} [options.defaultHomeRoute] — fallback home
- * @param {() => Promise<{valid?: boolean, needsReauth?: boolean}>} [options.validateSession]
  */
 export async function runSessionScopeGuard(to, from, next, options = {}) {
   const welcomeRoute = options.welcomeRoute ?? getSessionScopeWelcomeRoute('AppHome')
@@ -169,24 +168,6 @@ export async function runSessionScopeGuard(to, from, next, options = {}) {
       return next()
     }
     // empty-state: остаёмся на запрошенной вкладке (вход без ухода на overview)
-    if (allowsEmptyStateWithoutSessionScope(to)) {
-      return next()
-    }
-    if (getModuleOverviewRoute(to.path)) {
-      return redirectToModuleOverview(next, to, welcomeRoute)
-    }
-    return redirectToWelcome(next, to.fullPath, welcomeRoute)
-  }
-
-  if (typeof options.validateSession === 'function') {
-    try {
-      const validation = await options.validateSession()
-      if (validation?.valid && !validation?.needsReauth) {
-        return next()
-      }
-    } catch {
-      // API недоступен или ошибка валидации — не пускаем в scope-маршрут
-    }
     if (allowsEmptyStateWithoutSessionScope(to)) {
       return next()
     }

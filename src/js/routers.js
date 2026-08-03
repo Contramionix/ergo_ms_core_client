@@ -77,8 +77,7 @@ async function runModuleRouteGuards(to, from) {
 
 /**
  * Platform session-scope: meta.requiresSessionScope / requiresActiveSessionScope.
- * Welcome/home — из bridge (session.scope_entry_routes); доменная validateSession —
- * опционально в модульном routeGuard после этого шага.
+ * Welcome/home — из bridge (session.scope_entry_routes).
  * @returns {Promise<object|false|null>}
  */
 async function runPlatformSessionScopeGuard(to, from) {

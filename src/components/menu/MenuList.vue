@@ -511,12 +511,14 @@ const loadMenu = async (forceRefresh = false) => {
 const handleMenuUpdate = () => loadMenu(true)
 
 function handleSessionScopeChange() {
-  if (!appliedMenuData) {
-    return
+  // Сразу перефильтровать уже загруженное меню по JWT,
+  // затем подтянуть дерево с API под новый session-scope.
+  if (appliedMenuData) {
+    menuSections.value = buildMenuSections(appliedMenuData)
+    applyInitialMenuLayout()
+    scheduleLayoutOffsetSync()
   }
-  menuSections.value = buildMenuSections(appliedMenuData)
-  applyInitialMenuLayout()
-  scheduleLayoutOffsetSync()
+  loadMenu(true)
 }
 
 // Инициализация при монтировании
