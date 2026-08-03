@@ -35,3 +35,6 @@ src/modules/core/sharedGlobs.generated.js
 
 # Генерируется перед dev/build (scripts/generate-lucide-icon-map.js)
 src/js/lucideIconFiles.generated.js
+
+# Генерируется unplugin-auto-import при dev/build (vite.config.js)
+src/auto-imports.d.ts
