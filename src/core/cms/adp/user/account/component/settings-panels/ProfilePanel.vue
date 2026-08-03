@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { Save } from 'lucide-vue-next'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
+import FormCard from '@/components/FormCard.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useProfile } from '@/core/cms/js/profileService.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
@@ -125,7 +126,7 @@ onMounted(() => {
 
     <LoadingContentArea :loading="loading" min-height="8rem">
     <template v-if="profileData">
-      <div class="profile-card">
+      <FormCard>
         <AvatarBlock :saving="savingMain || savingAdditional" />
 
         <UserProfileFields
@@ -136,7 +137,7 @@ onMounted(() => {
           :readonly-fields="identityReadonly ? USER_PROFILE_IDENTITY_FIELDS : []"
         />
 
-        <div v-if="!identityReadonly" class="profile-card__footer">
+        <template v-if="!identityReadonly" #footer>
           <button
             type="button"
             class="btn btn-sm profile-card__save"
@@ -147,14 +148,14 @@ onMounted(() => {
             <span v-if="savingMain">{{ t('settings.profile.saving') }}</span>
             <span v-else>{{ t('common.save') }}</span>
           </button>
-        </div>
-      </div>
+        </template>
+      </FormCard>
 
       <ProfileChangeRequestBlock v-if="identityReadonly" :profile-data="profileData" />
 
       <h1 class="settings-panel__title settings-panel__title--secondary">{{ t('settings.profile.additionalTitle') }}</h1>
 
-      <div class="profile-card">
+      <FormCard>
         <UserProfileFields
           :fields="identityReadonly ? USER_PROFILE_SELF_EDITABLE_ADDITIONAL_FIELDS : USER_PROFILE_ADDITIONAL_FIELDS"
           v-model:form-data="formData"
@@ -162,7 +163,7 @@ onMounted(() => {
           id-prefix="profile"
         />
 
-        <div class="profile-card__footer">
+        <template #footer>
           <button
             type="button"
             class="btn btn-sm profile-card__save"
@@ -173,8 +174,8 @@ onMounted(() => {
             <span v-if="savingAdditional">{{ t('settings.profile.saving') }}</span>
             <span v-else>{{ t('common.save') }}</span>
           </button>
-        </div>
-      </div>
+        </template>
+      </FormCard>
     </template>
 
     <div v-else class="profile-panel__empty text-center py-4">
@@ -201,21 +202,6 @@ onMounted(() => {
 
 .settings-panel__title--secondary {
   margin-top: 1.25rem;
-}
-
-.profile-card {
-  width: 100%;
-  background: var(--color-primary-background);
-  border: 1px solid var(--color-border);
-  border-radius: 0.625rem;
-  overflow: hidden;
-}
-
-.profile-card__footer {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0.75rem 1rem 1rem;
-  background: var(--color-primary-background);
 }
 
 .profile-card__save {
