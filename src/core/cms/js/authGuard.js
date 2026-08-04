@@ -1,5 +1,7 @@
 import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
+import { isTransientNetworkError } from '@/core/cms/js/isTransientNetworkError.js'
+import { logError, logWarn } from '@/js/utils/logError.js'
 
 /**
  * Утилита для управления аутентификацией и автоматического logout
@@ -66,7 +68,7 @@ export class AuthGuard {
       // Это позволяет избежать лишних запросов к API
       try {
         const userStore = useUserStore()
-        
+
         // Если пользователь инициализирован, считаем токен валидным
         // (initializeUser уже проверил сессию через session-bootstrap / restore)
         if (userStore.isInitialized && userStore.isAuthenticated) {
@@ -82,9 +84,15 @@ export class AuthGuard {
       const isValid = await authService.checkToken()
       if (!isValid) this.forceLogout()
     } catch (error) {
+      if (isTransientNetworkError(error)) {
+        logWarn('Проверка токена пропущена: API временно недоступен', error)
+        return
+      }
       logError('Ошибка при проверке токена:', error)
-      // При ошибке проверки также выполняем logout
-      this.forceLogout()
+      // Явный отказ auth / неожиданная ошибка с ответом сервера
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        this.forceLogout()
+      }
     } finally {
       this.isCheckingToken = false
     }
@@ -97,17 +105,17 @@ export class AuthGuard {
     // Очищаем токены (динамический импорт для избежания циркулярной зависимости)
     const { authService } = await import('@/core/cms/adp/js/auth')
     authService.logout()
-    
+
     // Останавливаем проверку токена
     this.stopTokenValidation()
-    
+
     // Перенаправляем на стартовую страницу
     if (typeof window !== 'undefined' && window.location) {
       const path = window.location.pathname || ''
       if (
-        !path.includes('/start-page') &&
-        !path.includes('/login') &&
-        !path.includes('/register')
+        !path.includes('/start-page')
+        && !path.includes('/login')
+        && !path.includes('/register')
       ) {
         window.location.href = '/start-page'
       }
@@ -125,4 +133,4 @@ export class AuthGuard {
 // Создаем глобальный экземпляр
 export const authGuard = new AuthGuard()
 
-// Запуск проверки токена вынесен в main.js для избежания циркулярных зависимостей при инициализации 
+// Запуск проверки токена вынесен в main.js для избежания циркулярных зависимостей при инициализации

@@ -2,6 +2,7 @@ import { apiClient } from '@/js/api/manager.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import tokenService from '@/core/cms/js/tokenService'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
+import { isTransientNetworkError } from '@/core/cms/js/isTransientNetworkError.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { performServerLogout, restoreSession, invalidateSessionRestoreCache, resetServerLogoutGate } from '@/core/cms/js/tokenRefresh.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
@@ -114,9 +115,14 @@ export const authService = {
                     tokenService.clear()
                     invalidateSessionRestoreCache()
                     await performServerLogout()
-                } else {
-                    resetTokenCheckCache()
+                    return false
                 }
+                // API мигнул (reload / refused): локальный JWT ещё валиден — не сбрасываем сессию
+                if (isTransientNetworkError(error) && access && !isExpired(access)) {
+                    resetTokenCheckCache()
+                    return true
+                }
+                resetTokenCheckCache()
                 return false
             }
         }
