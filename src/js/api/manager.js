@@ -40,8 +40,12 @@ class ApiClient {
     this.client.interceptors.request.use(async (config) => {
       if (tokenService.shouldRefresh()) {
         const access = await tokenService.tryRefresh()
-        if (!access) {
-          /* игнор, дадим серверу ответить 401 */
+        if (access) {
+          // Токен мог уже истечь к моменту _addAuthToken — подставляем свежий
+          // в текущий запрос, иначе уйдёт просроченный Bearer.
+          const headers = config.headers || {}
+          headers.Authorization = `Bearer ${access}`
+          config.headers = headers
         }
       }
       const headers = config.headers || {}
