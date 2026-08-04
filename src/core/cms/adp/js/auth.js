@@ -4,7 +4,7 @@ import tokenService from '@/core/cms/js/tokenService'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
 import { isTransientNetworkError } from '@/core/cms/js/isTransientNetworkError.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { performServerLogout, restoreSession, invalidateSessionRestoreCache, resetServerLogoutGate } from '@/core/cms/js/tokenRefresh.js'
+import { performServerLogout, restoreSession, invalidateSessionRestoreCache, resetServerLogoutGate, ensureAccessToken } from '@/core/cms/js/tokenRefresh.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
 import { showBootstrapMask } from '@/js/bootstrapMask.js'
@@ -111,10 +111,23 @@ export const authService = {
                 // Не auth.logout() (redirect): иначе 401 → /login → restore → AppHome → 401…
                 // Серверный logout делает интерцептор apiClient / guard.
                 if (error.response?.status === 401) {
+                    const recovered = await ensureAccessToken()
+                    if (recovered) {
+                        try {
+                            const retry = await apiClient.get(endpoints.auth.sessionBootstrap)
+                            tokenCheckCache = { at: Date.now(), result: retry.success }
+                            return retry.success
+                        } catch (retryError) {
+                            if (retryError.response?.status !== 401) {
+                                resetTokenCheckCache()
+                                return false
+                            }
+                        }
+                    }
                     resetTokenCheckCache()
                     tokenService.clear()
                     invalidateSessionRestoreCache()
-                    await performServerLogout()
+                    await performServerLogout('checkToken-401')
                     return false
                 }
                 // API мигнул (reload / refused): локальный JWT ещё валиден — не сбрасываем сессию
@@ -139,12 +152,12 @@ export const authService = {
         }
     },
     
-    async logout() {
+    async logout(reason = 'authService.logout') {
         resetTokenCheckCache()
         showBootstrapMask()
         resetPresenceConnection()
         resetPresenceStore()
-        await performServerLogout()
+        await performServerLogout(reason)
         invalidateSessionRestoreCache()
         tokenService.clear()
         try {

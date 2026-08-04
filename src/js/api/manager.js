@@ -2,10 +2,15 @@ import axios from 'axios'
 
 import { installAxiosMonitor } from '@/core/client_monitor/collector.js'
 import tokenService from '@/core/cms/js/tokenService'
-import { performServerLogout } from '@/core/cms/js/tokenRefresh.js'
+import {
+  canAttemptTokenRefresh,
+  ensureAccessToken,
+  performServerLogout,
+} from '@/core/cms/js/tokenRefresh.js'
+import { hasSessionHintCookie } from '@/core/cms/js/tokenStorage.js'
 import { applyMaintenanceFromResponse, isMaintenanceResponse } from '@/composables/useMaintenanceMode.js'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
-import { logError, sanitizeError } from '@/js/utils/logError.js'
+import { logError, logWarn, sanitizeError } from '@/js/utils/logError.js'
 import { getCurrentLocale } from '@/i18n/index.js'
 
 /**
@@ -38,7 +43,18 @@ class ApiClient {
   _setupInterceptors() {
     // Интерцептор запросов: тихий refresh перед отправкой
     this.client.interceptors.request.use(async (config) => {
-      if (tokenService.shouldRefresh()) {
+      if (config._needToken && !tokenService.getAccess()) {
+        const access = await ensureAccessToken()
+        if (access) {
+          const headers = config.headers || {}
+          headers.Authorization = `Bearer ${access}`
+          config.headers = headers
+        } else if (!canAttemptTokenRefresh() && hasSessionHintCookie()) {
+          logWarn('[apiClient] защищённый запрос без токена: refresh-гейт закрыт', {
+            url: config.url,
+          })
+        }
+      } else if (tokenService.shouldRefresh()) {
         const access = await tokenService.tryRefresh()
         if (access) {
           // Токен мог уже истечь к моменту _addAuthToken — подставляем свежий
@@ -76,6 +92,21 @@ class ApiClient {
         if (error.response?.status === 401 && !originalRequest?._retry) {
           const headers = originalRequest?.headers || {}
           const hadAuthHeader = Boolean(headers.Authorization || headers.authorization)
+
+          // Защищённый запрос без Bearer: access пропал из памяти, сессия на сервере может жить.
+          if (!hadAuthHeader && originalRequest?._needToken) {
+            originalRequest._retry = true
+            const access = await ensureAccessToken()
+            if (access) {
+              this._addAuthToken(originalRequest)
+              return this.client(originalRequest)
+            }
+            logWarn('[apiClient] 401 без Bearer: не удалось восстановить access', {
+              url: requestUrl,
+            })
+            return Promise.reject(error)
+          }
+
           // Гостевой 401 без Bearer — ожидаемо для публичных эндпоинтов
           if (!hadAuthHeader) {
             return Promise.reject(error)
@@ -113,7 +144,10 @@ class ApiClient {
   async _request(method, endpoint, dataOrParams = {}, needToken = true, requestConfig = {}, options = {}) {
     try {
       const config = { ...requestConfig }
-      
+      if (needToken) {
+        config._needToken = true
+      }
+
       if (needToken) {
         this._addAuthToken(config)
       }
@@ -184,7 +218,10 @@ class ApiClient {
       const config = { 
         responseType: 'blob'
       }
-      
+      if (needToken) {
+        config._needToken = true
+      }
+
       if (needToken) {
         this._addAuthToken(config)
       }
@@ -242,7 +279,7 @@ class ApiClient {
   async logout() {
     // Сначала локально — параллельные 401 перестают слать Authorization
     tokenService.clear()
-    await performServerLogout()
+    await performServerLogout('apiClient-401')
   }
 
   /**

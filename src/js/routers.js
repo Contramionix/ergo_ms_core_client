@@ -240,7 +240,7 @@ function setupRouterGuards(router) {
         // Локальный сброс + один серверный logout (дедуп в tokenRefresh).
         // Не auth.logout() с location.href — иначе цикл со startRoute → AppHome.
         import('@/core/cms/js/tokenRefresh.js').then(({ performServerLogout }) => {
-          performServerLogout()
+          performServerLogout('router.requiresAuth')
         })
         import('@/core/cms/js/tokenService').then(({ tokenService }) => {
           tokenService.clear()
@@ -292,7 +292,7 @@ function setupRouterGuards(router) {
     } catch (error) {
       logError('[routers] beforeEach failed; clearing session', error)
       import('@/core/cms/js/tokenRefresh.js').then(({ performServerLogout }) => {
-        performServerLogout()
+        performServerLogout('router.beforeEach-error')
       })
       import('@/core/cms/js/tokenService').then(({ tokenService }) => {
         tokenService.clear()

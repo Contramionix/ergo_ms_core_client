@@ -105,6 +105,22 @@ export async function restoreSession() {
 }
 
 /**
+ * Живой access из памяти или тихий refresh при открытом гейте.
+ * Не использует restoreSession: его кэш sessionRestoreResolved=false блокирует повторы.
+ * @returns {Promise<string|null>}
+ */
+export async function ensureAccessToken() {
+  const access = getAccess()
+  if (access && !isExpired(access)) {
+    return access
+  }
+  if (!canAttemptTokenRefresh()) {
+    return null
+  }
+  return performTokenRefresh()
+}
+
+/**
  * Обновляет access-токен через SimpleJWT без apiClient (разрыв цикла tokenService ↔ manager).
  * @returns {Promise<string|null>} access или null при отсутствии/истечении сессии (без throw)
  */
@@ -179,13 +195,15 @@ export function isServerLogoutFinalized() {
 
 /**
  * Один POST /logout/ на волну истечения сессии до следующего login.
+ * @param {string} [reason] — кто закрыл гейт (для client-browser.log)
  */
-export async function performServerLogout() {
+export async function performServerLogout(reason = 'unspecified') {
   if (serverLogoutPromise) {
     return serverLogoutPromise
   }
 
   logoutFinalized = true
+  logWarn('[tokenRefresh] refresh-гейт закрыт', { reason })
   invalidateSessionRestoreCache()
 
   serverLogoutPromise = (async () => {

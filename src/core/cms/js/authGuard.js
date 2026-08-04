@@ -104,7 +104,7 @@ export class AuthGuard {
   async forceLogout() {
     // Очищаем токены (динамический импорт для избежания циркулярной зависимости)
     const { authService } = await import('@/core/cms/adp/js/auth')
-    authService.logout()
+    authService.logout('authGuard.forceLogout')
 
     // Останавливаем проверку токена
     this.stopTokenValidation()
