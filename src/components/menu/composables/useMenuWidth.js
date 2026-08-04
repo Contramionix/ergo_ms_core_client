@@ -62,7 +62,13 @@ export function useMenuWidth() {
     }
   }
 
-  const calculateOptimalWidth = (menuSections, userStore, getSeparator, shouldShowSeparator) => {
+  const calculateOptimalWidth = (
+    menuSections,
+    userStore,
+    getSeparator,
+    shouldShowSeparator,
+    brandMeasureText = null,
+  ) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
       return minMenuWidth
     }
@@ -75,6 +81,10 @@ export function useMenuWidth() {
     context.font = SITE_BRAND_MEASURE_FONT
     const siteNameWidth = context.measureText(getSiteWordmarkText()).width + 100
     maxWidth = Math.max(maxWidth, siteNameWidth)
+    if (typeof brandMeasureText === 'string' && brandMeasureText.trim()) {
+      const moduleBrandWidth = context.measureText(brandMeasureText.trim()).width + 100
+      maxWidth = Math.max(maxWidth, moduleBrandWidth)
+    }
 
     context.font = MENU_ITEM_MEASURE_FONT
 
@@ -114,14 +124,28 @@ export function useMenuWidth() {
     return Math.max(capped, minMenuWidth)
   }
 
-  const updateMenuWidth = (menuSections, userStore, getSeparator, shouldShowSeparator, onChange, isCollapsed) => {
+  const updateMenuWidth = (
+    menuSections,
+    userStore,
+    getSeparator,
+    shouldShowSeparator,
+    onChange,
+    isCollapsed,
+    brandMeasureText = null,
+  ) => {
     if (typeof window !== 'undefined') {
       if (widthUpdateTimeout) {
         clearTimeout(widthUpdateTimeout)
       }
 
       widthUpdateTimeout = setTimeout(() => {
-        const newWidth = calculateOptimalWidth(menuSections, userStore, getSeparator, shouldShowSeparator)
+        const newWidth = calculateOptimalWidth(
+          menuSections,
+          userStore,
+          getSeparator,
+          shouldShowSeparator,
+          brandMeasureText,
+        )
         if (newWidth !== menuWidth.value) {
           menuWidth.value = newWidth
           onChange?.(isCollapsed, menuWidth.value)
@@ -130,7 +154,15 @@ export function useMenuWidth() {
     }
   }
 
-  const initializeMenuWidth = (menuSections, userStore, getSeparator, shouldShowSeparator, onChange, isCollapsed) => {
+  const initializeMenuWidth = (
+    menuSections,
+    userStore,
+    getSeparator,
+    shouldShowSeparator,
+    onChange,
+    isCollapsed,
+    brandMeasureText = null,
+  ) => {
     if (typeof window === 'undefined') {
       return
     }
@@ -140,6 +172,7 @@ export function useMenuWidth() {
       userStore,
       getSeparator,
       shouldShowSeparator,
+      brandMeasureText,
     )
 
     if (newWidth !== menuWidth.value) {

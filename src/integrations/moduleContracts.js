@@ -11,6 +11,7 @@ export { LAYOUT_PLUGIN_REGISTRY_GROUP } from '@/integrations/layoutPluginRegistr
 export { HEADER_USER_MENU_ITEMS_GROUP } from '@/integrations/headerUserMenu.js'
 export { APPS_MENU_ITEMS_GROUP } from '@/integrations/appsMenu.js'
 export { FLOATING_WIDGETS_GROUP } from '@/integrations/floatingWidgets.js'
+export { SHELL_SIDEBAR_BRAND_GROUP } from '@/integrations/sidebarBrand.js'
 export {
   MENU_SCOPE_REQUIRED_ROUTE_PREFIXES_GROUP,
   MENU_REMOVED_ROUTE_NAMES_GROUP,

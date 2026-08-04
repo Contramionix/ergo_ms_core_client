@@ -45,12 +45,24 @@ import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import RouteViewAnimated from '@/components/RouteViewAnimated.vue'
+import { resolveSidebarBrand } from '@/integrations/sidebarBrand.js'
 
 const { t } = useAppI18n()
 const userStore = useUserStore()
 const route = useRoute()
 const { bootstrapping: sessionBootstrapping, whenSessionReady } = useAppBootstrap()
 const { isShellDesktop, width: viewportWidth } = useBreakpoint()
+
+const activeSidebarBrand = computed(() =>
+  resolveSidebarBrand({
+    route,
+    compact: false,
+  }),
+)
+
+const sidebarBrandTo = computed(() =>
+  activeSidebarBrand.value?.to ?? { name: 'AppHome' },
+)
 
 let resizeTimeout = null
 
@@ -176,8 +188,17 @@ onBeforeUnmount(() => {
       <button class="btn btn-link d-flex align-items-center justify-content-center mobile-header__btn" type="button" :aria-label="isMenuVisible ? t('menu.sidebar.close') : t('menu.sidebar.open')" :title="isMenuVisible ? t('menu.sidebar.close') : t('menu.sidebar.open')" :aria-expanded="isMenuVisible" aria-controls="side-menu" @click="onHamburgerClick">
         <LucideIcon name="Menu" :size="24" aria-hidden="true" />
       </button>
-      <RouterLink :to="{ name: 'AppHome' }" class="mobile-header__brand text-decoration-none">
-        <SiteWordmark class="site-wordmark--mobile site-wordmark--centered" />
+      <RouterLink :to="sidebarBrandTo" class="mobile-header__brand text-decoration-none">
+        <component
+          v-if="activeSidebarBrand"
+          :is="activeSidebarBrand.component"
+          :compact="false"
+          class="mobile-header__module-brand"
+        />
+        <SiteWordmark
+          v-else
+          class="site-wordmark--mobile site-wordmark--centered"
+        />
       </RouterLink>
     </header>
   </Teleport>
