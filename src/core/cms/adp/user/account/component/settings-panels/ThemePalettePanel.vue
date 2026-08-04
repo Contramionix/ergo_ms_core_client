@@ -3,19 +3,21 @@ import { computed, onMounted, ref } from 'vue'
 import { Check, RotateCcw } from 'lucide-vue-next'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { useThemeMode } from '@/composables/useThemeMode.js'
 import { useUserThemePreference } from '@/core/cms/js/userThemePreference.js'
 import { useToast } from '@/js/utils/toast.js'
 import { resolveThemeDisplayName } from '@/core/cms/adp/settings/themeEditor/resolveSystemThemeLabel.js'
 
 const { t, tm } = useAppI18n()
 
-function themeLabel(theme) {
-  return resolveThemeDisplayName(theme?.name, tm)
+function themeLabel(pair) {
+  return resolveThemeDisplayName(pair?.name, tm)
 }
 const toast = useToast()
 const {
   selectedThemeId,
-  defaultThemeId,
+  selectedThemePair,
+  defaultThemePair,
   catalog,
   loading,
   loadThemeCatalog,
@@ -24,16 +26,23 @@ const {
   resetUserThemeToSiteDefault,
 } = useUserThemePreference()
 
+const { resolvedMode } = useThemeMode()
+
 const busyId = ref(null)
 
 const usingSiteDefault = computed(() => selectedThemeId.value == null)
 
-const effectiveSelectedId = computed(() => (
-  selectedThemeId.value ?? defaultThemeId.value
+const effectiveSelectedPair = computed(() => (
+  selectedThemePair.value ?? defaultThemePair.value
 ))
 
-function swatches(theme) {
-  const c = theme?.colors || {}
+/** Вариант пары под текущий режим (light/dark); одиночная тема — какой есть. */
+function resolveVariant(pair) {
+  return pair?.variants?.[resolvedMode.value] || pair?.variants?.light || pair?.variants?.dark || null
+}
+
+function swatches(pair) {
+  const c = resolveVariant(pair)?.colors || {}
   return [
     c.background || '#f5f5f5',
     c.primaryBackground || '#fff',
@@ -46,13 +55,14 @@ async function refresh() {
   await Promise.all([loadThemeCatalog(), loadUserThemePreference()])
 }
 
-async function onSelect(theme) {
-  if (!theme?.id || busyId.value) {
+async function onSelect(pair) {
+  const variant = resolveVariant(pair)
+  if (!variant?.id || busyId.value) {
     return
   }
-  busyId.value = theme.id
+  busyId.value = pair.pair_key
   try {
-    await selectUserTheme(theme.id)
+    await selectUserTheme(variant.id)
   } catch (e) {
     toast.error(e.message || t('settings.themes.selectFailed'))
   } finally {
@@ -114,43 +124,43 @@ onMounted(() => {
         role="list"
       >
         <article
-          v-for="theme in catalog"
-          :key="theme.id"
+          v-for="pair in catalog"
+          :key="pair.pair_key"
           class="theme-palette-card"
           :class="{
-            'is-selected': effectiveSelectedId === theme.id && !usingSiteDefault,
+            'is-selected': effectiveSelectedPair === pair.pair_key && !usingSiteDefault,
           }"
           role="listitem"
         >
           <button
             type="button"
             class="theme-palette-card__main"
-            :aria-pressed="effectiveSelectedId === theme.id && !usingSiteDefault ? 'true' : 'false'"
-            :aria-label="t('settings.themes.selectTheme', { name: themeLabel(theme) })"
+            :aria-pressed="effectiveSelectedPair === pair.pair_key && !usingSiteDefault ? 'true' : 'false'"
+            :aria-label="t('settings.themes.selectTheme', { name: themeLabel(pair) })"
             :disabled="Boolean(busyId)"
-            @click="onSelect(theme)"
+            @click="onSelect(pair)"
           >
             <div
               class="theme-palette-card__swatches"
               aria-hidden="true"
             >
               <span
-                v-for="(color, idx) in swatches(theme)"
+                v-for="(color, idx) in swatches(pair)"
                 :key="idx"
                 class="theme-palette-card__swatch"
                 :style="{ background: color }"
               />
             </div>
             <div class="theme-palette-card__meta">
-              <span class="theme-palette-card__name">{{ themeLabel(theme) }}</span>
+              <span class="theme-palette-card__name">{{ themeLabel(pair) }}</span>
               <span
-                v-if="theme.id === defaultThemeId"
+                v-if="pair.is_default"
                 class="theme-palette-card__badge"
               >
                 {{ t('settings.themes.badgeSiteDefault') }}
               </span>
               <span
-                v-if="effectiveSelectedId === theme.id && !usingSiteDefault"
+                v-if="effectiveSelectedPair === pair.pair_key && !usingSiteDefault"
                 class="theme-palette-card__check"
                 aria-hidden="true"
               >
@@ -161,12 +171,12 @@ onMounted(() => {
         </article>
       </div>
       <p
-        v-if="usingSiteDefault && defaultThemeId"
+        v-if="usingSiteDefault && defaultThemePair"
         class="theme-palette-panel__status"
       >
         {{ t('settings.themes.siteDefault') }}
-        <template v-if="catalog.find((theme) => theme.id === defaultThemeId)">
-          «{{ themeLabel(catalog.find((theme) => theme.id === defaultThemeId)) }}»
+        <template v-if="catalog.find((pair) => pair.pair_key === defaultThemePair)">
+          «{{ themeLabel(catalog.find((pair) => pair.pair_key === defaultThemePair)) }}»
         </template>
       </p>
     </LoadingContentArea>

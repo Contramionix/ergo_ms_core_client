@@ -6,6 +6,8 @@ import {
   applyThemeModePreference,
   initTheme,
   readThemePreference,
+  resolveThemeMode,
+  saveSiteThemePairToCache,
   saveThemeToLocalStorage,
   THEME_MODES,
 } from '@/js/theme-manager.js'
@@ -30,14 +32,30 @@ function normalizeThemePayload(data) {
   }
 }
 
+/** Ответ /themes/active/ (сайт): пара {pair_key, name, is_default, variants: {light, dark}}. */
+function normalizeSiteThemePairPayload(data) {
+  if (!data || typeof data !== 'object' || !data.variants) {
+    return null
+  }
+  return {
+    pair_key: data.pair_key || null,
+    name: data.name || '',
+    is_default: Boolean(data.is_default),
+    variants: {
+      light: data.variants.light ? normalizeThemePayload(data.variants.light) : null,
+      dark: data.variants.dark ? normalizeThemePayload(data.variants.dark) : null,
+    },
+  }
+}
+
 /**
- * Загружает эффективную тему с API и применяет её.
+ * Загружает эффективную тему (пару light+dark) с API и применяет её.
  * Для авторизованного — личная палитра или стандарт сайта; для анонима — стандарт.
  * Публичный endpoint — работает и на странице входа.
  *
- * Режим — из шестерёнки (localStorage `theme`). Палитра
- * подстраивается под него. Явной записи в localStorage ещё нет — берём
- * base_theme темы, чтобы тёмная палитра не схлопывалась в light.
+ * Сервер возвращает пару вариантов — кэшируем её целиком (для точного
+ * подбора при последующей смене режима) и применяем вариант под текущий
+ * режим шестерёнки (localStorage `theme`), а не только под base_theme темы.
  */
 export async function syncSiteThemeFromApi() {
   await initEndpoints()
@@ -48,15 +66,19 @@ export async function syncSiteThemeFromApi() {
     // needToken=true: для авторизованного — личная палитра; без токена — стандарт сайта.
     const res = await apiClient.get(endpoints.themes.active, {}, true)
     if (res.success && res.data && !res.data.detail) {
-      const theme = normalizeThemePayload(res.data)
-      if (theme) {
-        saveThemeToLocalStorage(theme)
+      const pair = normalizeSiteThemePairPayload(res.data)
+      const anchorVariant = pair?.variants.light || pair?.variants.dark
+      if (pair && anchorVariant) {
+        saveSiteThemePairToCache(pair)
         const stored = localStorage.getItem('theme')
         const preference = (stored && THEME_MODES.includes(stored))
           ? stored
-          : (theme.base_theme === 'dark' ? 'dark' : readThemePreference())
+          : (anchorVariant.base_theme === 'dark' ? 'dark' : readThemePreference())
+        const resolvedMode = resolveThemeMode(preference)
+        const variant = pair.variants[resolvedMode] || anchorVariant
+        saveThemeToLocalStorage(variant)
         applyThemeModePreference(preference)
-        return theme
+        return variant
       }
     }
   } catch (e) {

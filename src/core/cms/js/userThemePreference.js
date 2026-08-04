@@ -8,8 +8,10 @@ import { syncSiteThemeFromApi } from '@/js/theme-service.js'
 import { logWarn } from '@/js/utils/logError.js'
 
 const selectedThemeId = ref(null)
+const selectedThemePair = ref(null)
 const favoriteIds = ref([])
 const defaultThemeId = ref(null)
+const defaultThemePair = ref(null)
 const catalog = ref([])
 const loading = ref(false)
 
@@ -18,8 +20,10 @@ function applyPreferencePayload(data) {
     return
   }
   selectedThemeId.value = data.selected_theme_id ?? null
+  selectedThemePair.value = data.selected_theme_pair ?? null
   favoriteIds.value = Array.isArray(data.favorite_ids) ? [...data.favorite_ids] : []
   defaultThemeId.value = data.default_theme_id ?? null
+  defaultThemePair.value = data.default_theme_pair ?? null
 }
 
 function apiErrorMessage(error, fallback) {
@@ -106,8 +110,10 @@ export async function ensureThemePreferenceLoaded() {
 export function useUserThemePreference() {
   return {
     selectedThemeId,
+    selectedThemePair,
     favoriteIds,
     defaultThemeId,
+    defaultThemePair,
     catalog,
     loading,
     loadThemeCatalog,

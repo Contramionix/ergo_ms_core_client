@@ -8,7 +8,6 @@ import {
   applyTheme,
   applyThemeModePreference,
   getCurrentThemeMode,
-  loadThemeFromLocalStorage,
   readThemePreference,
 } from '@/js/theme-manager.js'
 import { getHighContrastColors } from '@/js/highContrastPalette.js'
@@ -59,18 +58,8 @@ export function clearContrastPaletteOverride() {
   try {
     contrastOverrideActive = false
     lastAppliedBase = null
-
-    const saved = loadThemeFromLocalStorage()
-    if (saved?.colors && Object.keys(saved.colors).length) {
-      applyTheme(
-        {
-          ...saved,
-          base_theme: getCurrentThemeMode(),
-        },
-        false,
-      )
-      return
-    }
+    // Тот же путь, что и обычное переключение режима: подбирает точный
+    // вариант из закэшированной пары light+dark, если она известна.
     applyThemeModePreference(readThemePreference())
   } finally {
     applying = false

@@ -21,6 +21,7 @@ export { COLOR_VAR_MAP, BOOTSTRAP_BRIDGE_FROM_COLORS, hasCustomColors }
 
 const THEME_STORAGE_KEY = 'theme'
 const ACTIVE_THEME_STORAGE_KEY = 'activeTheme'
+const ACTIVE_SITE_PAIR_STORAGE_KEY = 'activeSiteThemePair'
 
 export const THEME_MODES = ['light', 'dark', 'auto']
 export const THEME_CHANGE_EVENT = 'ergo:theme-change'
@@ -97,8 +98,35 @@ function resolveColorsForAppearanceMode(savedTheme, resolvedMode) {
 }
 
 /**
+ * Точный вариант из закэшированной пары light+dark темы сайта (если применим к savedTheme).
+ * Возвращает null, если пары нет, она устарела или не содержит нужного варианта.
+ */
+function resolveExactVariantForMode(savedTheme, resolvedMode) {
+  const pair = loadSiteThemePairFromCache()
+  const variant = pair?.variants?.[resolvedMode]
+  if (!variant) {
+    return null
+  }
+  // Пара актуальна для текущей активной темы: совпадает id хотя бы одного из вариантов.
+  const pairThemeIds = [pair.variants.light?.id, pair.variants.dark?.id].filter((id) => id != null)
+  if (savedTheme?.id != null && pairThemeIds.length && !pairThemeIds.includes(savedTheme.id)) {
+    return null
+  }
+  return {
+    ...savedTheme,
+    id: variant.id,
+    name: variant.name,
+    base_theme: resolvedMode,
+    colors: variant.colors || {},
+    bootstrap_colors: variant.bootstrap_colors || variant.bootstrapColors || {},
+  }
+}
+
+/**
  * Применить предпочтение light/dark/auto с учётом активной кастомной темы.
  * Режим из шестерёнки всегда задаёт data-bs-theme; палитра подстраивается под него.
+ * Если для активной темы известна пара light+dark — берётся точный вариант,
+ * иначе — приближение через resolveColorsForAppearanceMode.
  */
 export function applyThemeModePreference(mode) {
   writeThemePreference(mode)
@@ -106,8 +134,9 @@ export function applyThemeModePreference(mode) {
   const savedTheme = loadThemeFromLocalStorage()
 
   if (savedTheme && hasCustomColors(savedTheme.colors)) {
+    const exactVariant = resolveExactVariantForMode(savedTheme, resolvedMode)
     applyTheme(
-      {
+      exactVariant || {
         ...savedTheme,
         base_theme: resolvedMode,
         colors: resolveColorsForAppearanceMode(savedTheme, resolvedMode),
@@ -223,6 +252,34 @@ export function loadThemeFromLocalStorage() {
 
 export function clearCachedActiveTheme() {
   localStorage.removeItem(ACTIVE_THEME_STORAGE_KEY)
+}
+
+/**
+ * Кэш активной пары light+dark темы сайта (аналог кэша модульных тем).
+ * Позволяет при смене режима подставить точный вариант вместо приближения.
+ */
+export function saveSiteThemePairToCache(pair) {
+  try {
+    if (pair) {
+      localStorage.setItem(ACTIVE_SITE_PAIR_STORAGE_KEY, JSON.stringify(pair))
+    } else {
+      localStorage.removeItem(ACTIVE_SITE_PAIR_STORAGE_KEY)
+    }
+  } catch (e) {
+    logError('[theme-manager] Ошибка сохранения пары темы сайта:', e)
+  }
+}
+
+export function loadSiteThemePairFromCache() {
+  try {
+    const stored = localStorage.getItem(ACTIVE_SITE_PAIR_STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (e) {
+    logError('[theme-manager] Ошибка загрузки пары темы сайта:', e)
+  }
+  return null
 }
 
 let systemThemeListenerAttached = false
