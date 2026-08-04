@@ -334,7 +334,14 @@ export async function initRouter() {
   const routerInstance = createRouter({
     history: createWebHistory(),
     routes,
-    scrollBehavior() {
+    scrollBehavior(to, from, savedPosition) {
+      if (savedPosition) {
+        return savedPosition
+      }
+      // Фильтры / сортировка / page в query не должны дёргать страницу вверх.
+      if (from && to.path === from.path) {
+        return false
+      }
       return { top: 0 }
     },
   })
