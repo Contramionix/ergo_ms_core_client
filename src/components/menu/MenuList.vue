@@ -1,13 +1,14 @@
 <script setup>
 import { onMounted, onBeforeUnmount, provide, ref, watch, nextTick, computed } from 'vue'
 import { ChevronLeft, Minus } from 'lucide-vue-next'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useToast } from '@/js/utils/toast.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { resolveMenuSeparatorTitle } from '@/i18n/resolveMenuItemTitle.js'
 
 import SiteWordmark from '@/components/SiteWordmark.vue'
+import { resolveSidebarBrand } from '@/integrations/sidebarBrand.js'
 
 import {
   getUserMenu,
@@ -48,6 +49,7 @@ const props = defineProps({
 const emit = defineEmits(['left-padding', 'menu-right-edge', 'menu-state-change', 'layout-sync-transition'])
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const toast = useToast()
 const { t, locale } = useAppI18n()
@@ -70,6 +72,22 @@ const showCompactWordmark = computed(() => {
   }
   return isCollapsed.value && !showMenuLabels.value
 })
+
+const activeSidebarBrand = computed(() =>
+  resolveSidebarBrand({
+    route,
+    compact: showCompactWordmark.value,
+  }),
+)
+
+const sidebarBrandTo = computed(() =>
+  activeSidebarBrand.value?.to ?? { name: 'AppHome' },
+)
+
+const sidebarBrandMeasureText = computed(() =>
+  activeSidebarBrand.value?.measureText || null,
+)
+
 const isToolbarDropdownActive = ref(false)
 const menuSections = ref([])
 const isMenuReady = ref(false)
@@ -282,6 +300,7 @@ const updateWidth = () => {
     shouldShowSeparator,
     handleMenuMetricsChange,
     isCollapsed.value,
+    sidebarBrandMeasureText.value,
   )
 }
 
@@ -293,6 +312,7 @@ function applyInitialMenuLayout() {
     shouldShowSeparator,
     handleMenuMetricsChange,
     isCollapsed.value,
+    sidebarBrandMeasureText.value,
   )
 }
 
@@ -470,6 +490,12 @@ watch(menuSections, () => {
   }
 }, { deep: true })
 
+watch(sidebarBrandMeasureText, () => {
+  if (allowMenuTransitions.value) {
+    updateWidth()
+  }
+})
+
 // Следим за изменениями имени пользователя (только имя, не весь объект)
 watch(() => userStore.fullName, (newName, oldName) => {
   if (allowMenuTransitions.value && oldName !== newName && newName) {
@@ -591,9 +617,20 @@ onBeforeUnmount(() => {
   >
     <div class="side-menu__header side-header">
       <div class="side-header__brand-row">
-        <RouterLink :to="{ name: 'AppHome' }" class="side-menu__logo">
+        <RouterLink :to="sidebarBrandTo" class="side-menu__logo">
           <div class="side-header__title text-smooth-animation">
-            <SiteWordmark :compact="showCompactWordmark" :compact-icon-size="menuIconSizes.item" class="site-wordmark--menu"/>
+            <component
+              v-if="activeSidebarBrand"
+              :is="activeSidebarBrand.component"
+              :compact="showCompactWordmark"
+              :compact-icon-size="menuIconSizes.item"
+            />
+            <SiteWordmark
+              v-else
+              :compact="showCompactWordmark"
+              :compact-icon-size="menuIconSizes.item"
+              class="site-wordmark--menu"
+            />
           </div>
         </RouterLink>
         <div class="side-menu__toggle">
