@@ -1,6 +1,10 @@
 export default {
   save: 'Сохранить',
   cancel: 'Отмена',
+  undo: 'Отменить',
+  undoAll: 'Отменить все ({count})',
+  undoAllConfirmTitle: 'Отменить все изменения?',
+  undoAllConfirmMessage: 'Будет отменено изменений: {count}. Это действие нельзя отменить.',
   delete: 'Удалить',
   edit: 'Редактировать',
   create: 'Создать',

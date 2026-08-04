@@ -1,6 +1,10 @@
 export default {
   save: 'Enregistrer',
   cancel: 'Annuler',
+  undo: 'Annuler',
+  undoAll: 'Tout annuler ({count})',
+  undoAllConfirmTitle: 'Annuler toutes les modifications ?',
+  undoAllConfirmMessage: '{count} modification(s) seront annulées. Cette action est irréversible.',
   delete: 'Supprimer',
   edit: 'Modifier',
   create: 'Créer',

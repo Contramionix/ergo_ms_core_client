@@ -24,9 +24,20 @@ const router = useRouter()
 const isCheckingAccess = ref(true)
 const hasAdminAccess = ref(false)
 
+// Основной журнал — без отмен (они только на вкладке «Хранение отмен»).
+const AUDIT_FIXED_FILTERS = Object.freeze({
+  exclude_actions: 'undo.performed,theme.undone',
+})
+
+// Все отмены (новое undo.performed + старые theme.undone).
+const UNDO_FIXED_FILTERS = Object.freeze({
+  actions: 'undo.performed,theme.undone',
+})
+
 const tabs = computed(() => [
   { id: 'audit', label: t('admin.audit.tabAudit') },
   { id: 'client', label: t('admin.audit.tabClient') },
+  { id: 'undos', label: t('admin.audit.tabUndos') },
 ])
 
 const activeTab = computed(() => {
@@ -48,7 +59,7 @@ function selectTab(tabId) {
 function prefetchTab(tabId) {
   if (tabId === 'client') {
     void import('@/core/client_monitor/components/ClientMonitorPanel.vue')
-  } else if (tabId === 'audit') {
+  } else if (tabId === 'audit' || tabId === 'undos') {
     void import('@/core/audit/components/AuditLogPanel.vue')
   }
 }
@@ -110,8 +121,15 @@ onMounted(async () => {
       <AuditLogPanel
         v-if="activeTab === 'audit'"
         search-input-id="audit-search-admin"
+        :fixed-filters="AUDIT_FIXED_FILTERS"
       />
       <ClientMonitorPanel v-else-if="activeTab === 'client'" />
+      <AuditLogPanel
+        v-else-if="activeTab === 'undos'"
+        search-input-id="audit-search-undos"
+        :fixed-filters="UNDO_FIXED_FILTERS"
+        :sync-route-query="false"
+      />
     </div>
   </div>
 </template>

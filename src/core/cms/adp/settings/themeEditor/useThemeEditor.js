@@ -185,6 +185,18 @@ export function createThemeEditor() {
     })
   }
 
+  /** 'list' — галерея выбора; 'form' — страница редактирования */
+  const editorStep = ref('list')
+
+  function openEditorForm() {
+    editorStep.value = 'form'
+  }
+
+  /** Возврат к выбору тем (в т.ч. из onUndo тоста). */
+  function goToThemeList() {
+    editorStep.value = 'list'
+  }
+
   function applyActivatedTheme(themeData) {
     const normalized = normalizeModuleThemeSetPayload(themeData)
     if (normalized?.module_key) {
@@ -397,6 +409,7 @@ export function createThemeEditor() {
     editingVariant,
     endpoints,
     fileInput,
+    goToThemeList,
     isDraftSelected,
     isModuleScope,
     isNewTheme,
@@ -442,6 +455,8 @@ export function createThemeEditor() {
     selectedScope,
     scopeOptions,
     scopeLabel,
+    editorStep,
+    goToThemeList,
     isModuleScope,
     isDirty,
     colorDescriptions,
@@ -463,6 +478,7 @@ export function createThemeEditor() {
     moduleTokenEntries,
     isEditingModulePair,
     modulePairHasUnsavedVariant,
+    openEditorForm,
     previewMeta,
     previewModuleKey,
     resetSystemTheme,
