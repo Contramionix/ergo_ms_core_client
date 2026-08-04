@@ -39,10 +39,14 @@ function isDuplicateMessage(message) {
 
 /** POST без handleError apiClient — иначе ошибка client-log снова вызывает logError. */
 function postBrowserLogSilent(payload) {
-  const headers = { 'Content-Type': 'application/json' }
+  // Эндпоинт требует auth; без токена POST даёт 401 и раньше рвал guest-flow через интерцептор.
   const token = tokenService.getAccess()
-  if (token) {
-    headers.Authorization = `Bearer ${token}`
+  if (!token) {
+    return
+  }
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
   }
   apiClient.client.post(CLIENT_LOG_ENDPOINT, payload, { headers }).catch(() => {})
 }

@@ -7,7 +7,7 @@ import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { validateFieldValue, validateFieldsOnEquality } from '@/js/validation'
 import { validatePasswordValue } from '@/js/passwordPolicy.js'
 import { resetPassword, fetchPasswordResetSettings } from '@/core/cms/adp/js/auth-index'
-import { logError } from '@/js/utils/logError.js'
+import { logError, sanitizeError } from '@/js/utils/logError.js'
 import { prefetchRouteByName } from '@/js/utils/prefetchRoute.js'
 
 const router = useRouter()
@@ -20,7 +20,11 @@ function prefetchLogin() {
 const isLoading = ref(false)
 const isSuccess = ref(false)
 const isBootstrapping = ref(true)
-const passwordResetSettings = ref({ password_reset_enabled: false })
+const passwordResetSettings = ref({
+  password_reset_enabled: false,
+  email_delivery_ready: false,
+  password_reset_available: false,
+})
 
 const form = reactive({
   email: '',
@@ -37,7 +41,7 @@ const errors = reactive({
 })
 
 const passwordResetDisabled = computed(
-  () => passwordResetSettings.value.password_reset_enabled === false,
+  () => passwordResetSettings.value.password_reset_available !== true,
 )
 
 onMounted(async () => {
@@ -139,7 +143,6 @@ const submitForm = async () => {
       }
     }
   } catch (error) {
-    logError('Ошибка сброса пароля', error)
     if (error.response) {
       if (error.response.status === 400) {
         const errorData = error.response.data
@@ -179,6 +182,8 @@ const submitForm = async () => {
     } else {
       errors.general = error.message || t('auth.login.unknownError')
     }
+
+    logError('Ошибка сброса пароля', error)
   } finally {
     isLoading.value = false
   }
@@ -319,11 +324,11 @@ const submitForm = async () => {
         <div class="text-center">
           <RouterLink
             :to="{ name: 'Login' }"
-            class="text-decoration-none text-primary"
+            class="auth-page__back-link text-decoration-none text-primary"
             @mouseenter="prefetchLogin"
             @focusin="prefetchLogin"
           >
-            <i class="bi bi-arrow-left me-2"></i>
+            <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>
             {{ t('auth.forgot.backToLogin') }}
           </RouterLink>
         </div>

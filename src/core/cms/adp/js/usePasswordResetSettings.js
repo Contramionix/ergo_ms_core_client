@@ -11,7 +11,7 @@ export function usePasswordResetSettings() {
   const ready = ref(initial !== null)
 
   const showForgotPasswordLink = computed(
-    () => ready.value && settings.value?.password_reset_enabled === true,
+    () => ready.value && settings.value?.password_reset_available === true,
   )
 
   // В setup, не в onMounted: успеваем присоединиться к preload до первой отрисовки.
