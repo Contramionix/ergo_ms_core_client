@@ -58,7 +58,25 @@ class ApiClient {
         if (applyMaintenanceFromResponse(error)) {
           return Promise.reject(error)
         }
+
+        const requestUrl = String(originalRequest?.url || '')
+        // Ingest логов/монитора: 401 гостя не должен рвать сессию и уводить со страницы
+        // (forgot-password: send-code 500 → logError → client-log 401 → ложный logout).
+        if (
+          requestUrl.includes('client-log')
+          || requestUrl.includes('client-monitor')
+        ) {
+          return Promise.reject(error)
+        }
+
         if (error.response?.status === 401 && !originalRequest?._retry) {
+          const headers = originalRequest?.headers || {}
+          const hadAuthHeader = Boolean(headers.Authorization || headers.authorization)
+          // Гостевой 401 без Bearer — ожидаемо для публичных эндпоинтов
+          if (!hadAuthHeader) {
+            return Promise.reject(error)
+          }
+
           originalRequest._retry = true
           const access = await tokenService.tryRefresh()
           if (access) {
@@ -72,7 +90,9 @@ class ApiClient {
             if (
               !path.includes('/start-page') &&
               !path.includes('/login') &&
-              !path.includes('/register')
+              !path.includes('/register') &&
+              !path.includes('/forgot-password') &&
+              !path.includes('/reset-password')
             ) {
               window.location.href = '/start-page'
             }
