@@ -57,7 +57,7 @@ export const clientEnv = {
   realtimePollMessengerMs: readInt('CLIENT_REALTIME_POLL_MESSENGER_INTERVAL', 5000),
   systemVersion: readEnv('CLIENT_SYSTEM_VERSION', '2.7.8'),
   /** Кнопка «Отменить» в toast (редактор тем и др.). */
-  toastUndoEnabled: readBool('CLIENT_TOAST_UNDO_ENABLED', true),
+  toastUndoEnabled: readBool('CLIENT_TOAST_UNDO_ENABLED', false),
   /** Глубина стека отмен для «Стандарт системы» (минимум 1). */
   toastUndoStackMax: Math.max(1, readInt('CLIENT_TOAST_UNDO_STACK_MAX', 3)),
   /** Vite: режим разработки (сборка dev). */
