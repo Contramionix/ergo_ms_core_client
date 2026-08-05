@@ -1,6 +1,10 @@
 export default {
   save: 'Save',
   cancel: 'Cancel',
+  undo: 'Undo',
+  undoAll: 'Undo all ({count})',
+  undoAllConfirmTitle: 'Undo all changes?',
+  undoAllConfirmMessage: '{count} change(s) will be undone. This cannot be reversed.',
   delete: 'Delete',
   edit: 'Edit',
   create: 'Create',

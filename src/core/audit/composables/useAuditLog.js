@@ -99,7 +99,22 @@ export function useAuditLog(options = {}) {
   const toast = useToast()
 
   const scopeParamsOption = options.scopeParams ?? null
+  const fixedFiltersOption = options.fixedFilters ?? null
   const syncRouteQuery = options.syncRouteQuery !== false
+
+  function resolveFixedFilters() {
+    const raw = unref(fixedFiltersOption)
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return {}
+    }
+    const fixed = {}
+    for (const [key, value] of Object.entries(raw)) {
+      if (value == null || value === '') continue
+      if (typeof value === 'object') continue
+      fixed[key] = value
+    }
+    return fixed
+  }
 
   const isLoading = ref(false)
   const isRefreshing = ref(false)
@@ -201,56 +216,64 @@ export function useAuditLog(options = {}) {
     }),
   )
 
-  const auditFilterFields = computed(() => [
-    { type: 'heading', label: tGlobal('admin.audit.event') },
-    {
-      type: 'select',
-      key: 'module',
-      label: tGlobal('admin.audit.module'),
-      options: moduleOptions.value,
-      valueKey: 'value',
-      labelKey: 'label',
-      includeAllOption: true,
-      allLabel: tGlobal('admin.audit.allModules'),
-      searchable: true,
-    },
-    {
-      type: 'select',
-      key: 'action',
-      label: tGlobal('admin.audit.action'),
-      options: actionOptions.value,
-      valueKey: 'value',
-      labelKey: 'label',
-      includeAllOption: true,
-      allLabel: tGlobal('admin.audit.allActions'),
-      searchable: true,
-    },
-    {
-      type: 'select',
-      key: 'severity',
-      label: tGlobal('admin.audit.severity'),
-      options: severityOptions.value,
-      valueKey: 'value',
-      labelKey: 'label',
-      includeAllOption: true,
-      allLabel: tGlobal('admin.audit.anySeverity'),
-    },
-    {
-      type: 'select',
-      key: 'actor',
-      label: tGlobal('admin.audit.initiator'),
-      options: actorOptions.value,
-      valueKey: 'value',
-      labelKey: 'label',
-      includeAllOption: true,
-      allLabel: tGlobal('admin.audit.allInitiators'),
-      searchable: true,
-      showOptionAvatars: true,
-    },
-    { type: 'heading', label: tGlobal('admin.audit.period') },
-    { type: 'date', key: 'dateFrom', label: tGlobal('admin.audit.dateFrom') },
-    { type: 'date', key: 'dateTo', label: tGlobal('admin.audit.dateTo') },
-  ])
+  const auditFilterFields = computed(() => {
+    const fixed = resolveFixedFilters()
+    const fields = [
+      { type: 'heading', label: tGlobal('admin.audit.event') },
+      {
+        type: 'select',
+        key: 'module',
+        label: tGlobal('admin.audit.module'),
+        options: moduleOptions.value,
+        valueKey: 'value',
+        labelKey: 'label',
+        includeAllOption: true,
+        allLabel: tGlobal('admin.audit.allModules'),
+        searchable: true,
+      },
+    ]
+    if (!fixed.action && !fixed.actions) {
+      fields.push({
+        type: 'select',
+        key: 'action',
+        label: tGlobal('admin.audit.action'),
+        options: actionOptions.value,
+        valueKey: 'value',
+        labelKey: 'label',
+        includeAllOption: true,
+        allLabel: tGlobal('admin.audit.allActions'),
+        searchable: true,
+      })
+    }
+    fields.push(
+      {
+        type: 'select',
+        key: 'severity',
+        label: tGlobal('admin.audit.severity'),
+        options: severityOptions.value,
+        valueKey: 'value',
+        labelKey: 'label',
+        includeAllOption: true,
+        allLabel: tGlobal('admin.audit.anySeverity'),
+      },
+      {
+        type: 'select',
+        key: 'actor',
+        label: tGlobal('admin.audit.initiator'),
+        options: actorOptions.value,
+        valueKey: 'value',
+        labelKey: 'label',
+        includeAllOption: true,
+        allLabel: tGlobal('admin.audit.allInitiators'),
+        searchable: true,
+        showOptionAvatars: true,
+      },
+      { type: 'heading', label: tGlobal('admin.audit.period') },
+      { type: 'date', key: 'dateFrom', label: tGlobal('admin.audit.dateFrom') },
+      { type: 'date', key: 'dateTo', label: tGlobal('admin.audit.dateTo') },
+    )
+    return fields
+  })
 
   const auditFiltersTooltip = computed(() => {
     const parts = []
@@ -283,13 +306,23 @@ export function useAuditLog(options = {}) {
   }
 
   function buildListParams() {
+    const fixed = resolveFixedFilters()
     const params = {
       page: currentPage.value,
       page_size: rowsPerPage.value,
       ...resolveScopeParams(),
     }
     if (auditFilters.value.module) params.source_module = auditFilters.value.module
-    if (auditFilters.value.action) params.action = auditFilters.value.action
+    if (fixed.actions) {
+      params.actions = fixed.actions
+    } else if (fixed.action) {
+      params.action = fixed.action
+    } else if (auditFilters.value.action) {
+      params.action = auditFilters.value.action
+    }
+    if (fixed.exclude_actions) {
+      params.exclude_actions = fixed.exclude_actions
+    }
     if (auditFilters.value.severity) params.severity = auditFilters.value.severity
     Object.assign(params, resolveActorQueryParams(auditFilters.value.actor))
     if (searchQuery.value.trim()) params.q = searchQuery.value.trim()

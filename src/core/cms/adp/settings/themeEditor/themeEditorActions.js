@@ -7,12 +7,16 @@ import {
   getBootstrapByCategories,
   resetPreviewToDefaults,
 } from '@/js/theme-manager'
+import { clientEnv } from '@/js/clientEnv.js'
+import { showUndoableSuccess } from '@/js/utils/toast.js'
 import { isColorLikeToken } from './themeContrast.js'
 import { normalizeColorToHex } from './colorFormat.js'
 import {
   normalizeThemeAuthorForSave,
   resolveThemeDisplayName,
 } from './resolveSystemThemeLabel.js'
+import { themeUndoAudit } from './themeUndoAudit.js'
+import { THEME_UNDO_GROUPS } from './themeUndoGroups.js'
 
 export function createThemeEditorActions(ctx) {
   const {
@@ -30,6 +34,7 @@ export function createThemeEditorActions(ctx) {
     editingVariant,
     endpoints,
     fileInput,
+    goToThemeList,
     isDraftSelected,
     isModuleScope,
     loadThemes,
@@ -49,6 +54,63 @@ export function createThemeEditorActions(ctx) {
     themes,
     toast,
   } = ctx
+
+  function patchSiteDefaultLocally(restoreId, serverTheme = null) {
+    themes.value = themes.value.map((t) => {
+      if (t.is_pair) {
+        return t
+      }
+      if (t.id === restoreId) {
+        return {
+          ...t,
+          ...(serverTheme || {}),
+          id: restoreId,
+          is_default: true,
+          is_active: true,
+          is_available: true,
+        }
+      }
+      if (t.is_default || t.is_active) {
+        return { ...t, is_default: false, is_active: false }
+      }
+      return t
+    })
+    return themes.value.find((t) => t.id === restoreId) || serverTheme
+  }
+
+  function patchThemeAvailableLocally(themeId, available, serverTheme = null) {
+    themes.value = themes.value.map((t) => {
+      if (t.id !== themeId) {
+        return t
+      }
+      return {
+        ...t,
+        ...(serverTheme || {}),
+        id: themeId,
+        is_available: available,
+      }
+    })
+    return themes.value.find((t) => t.id === themeId) || serverTheme
+  }
+
+  async function restoreSiteDefaultTheme(restoreId, restoreSnapshot) {
+    const optimistic = patchSiteDefaultLocally(restoreId, restoreSnapshot)
+    if (optimistic) {
+      applyActivatedTheme(optimistic)
+      selectTheme(optimistic, { preview: false })
+    }
+    const undoRes = await apiClient.post(endpoints.themes.setDefault(restoreId))
+    if (!undoRes.success) {
+      toast.error(tGlobal('settings.themes.undoError'))
+      throw new Error('undo set-default failed')
+    }
+    const restored = patchSiteDefaultLocally(restoreId, undoRes.data)
+    if (restored) {
+      applyActivatedTheme(restored)
+      selectTheme(restored, { preview: false })
+    }
+    return restored
+  }
 
   const createNewTheme = () => {
     if (isModuleScope.value) {
@@ -194,11 +256,29 @@ export function createThemeEditorActions(ctx) {
       return
     }
     const base = isModuleScope.value ? editingVariant.value : currentTheme.base_theme
+    const previousColors = { ...(currentTheme.colors || {}) }
+    const previousBootstrap = { ...(currentTheme.bootstrap_colors || {}) }
     const defaults = resetPreviewToDefaults(base)
     currentTheme.colors = { ...defaults.colors }
     currentTheme.bootstrap_colors = {}
     applyEditorPreview()
-    toast.success(tGlobal('settings.themes.variantResetSuccess', { variant: base === 'dark' ? tGlobal('settings.themes.darkVariantParen') : tGlobal('settings.themes.lightVariantParen') }))
+    const variantLabel = base === 'dark'
+      ? tGlobal('settings.themes.darkVariantParen')
+      : tGlobal('settings.themes.lightVariantParen')
+    showUndoableSuccess(
+      tGlobal('settings.themes.variantResetSuccess', { variant: variantLabel }),
+      {
+        group: THEME_UNDO_GROUPS.preview,
+        kind: 'theme.variant_reset',
+        undoAudit: themeUndoAudit('variant_reset', currentTheme.name || ''),
+        onUndo: async () => {
+          currentTheme.colors = { ...previousColors }
+          currentTheme.bootstrap_colors = { ...previousBootstrap }
+          applyEditorPreview()
+          toast.success(tGlobal('settings.themes.undoRestored'))
+        },
+      },
+    )
   }
 
   // Сохранение текущего варианта (модуль) или темы (сайт)
@@ -367,17 +447,59 @@ export function createThemeEditorActions(ctx) {
         toast.error(tGlobal('settings.themes.activateVariantMissing'))
         return
       }
+      const previousDefault = !isModuleScope.value
+        ? themes.value.find((t) => t.is_default && !t.is_pair && t.id !== themeId)
+        : null
       const endpoint = isModuleScope.value
         ? endpoints.themes.activate(themeId)
         : endpoints.themes.setDefault(themeId)
       const res = await apiClient.post(endpoint)
       if (res.success) {
         const displayName = resolveThemeDisplayName(theme.name)
-        toast.success(
-          isModuleScope.value
-            ? tGlobal('settings.themes.activated', { name: displayName })
-            : tGlobal('settings.themes.setAsSiteDefault', { name: displayName }),
-        )
+        const successMessage = isModuleScope.value
+          ? tGlobal('settings.themes.activated', { name: displayName })
+          : tGlobal('settings.themes.setAsSiteDefault', { name: displayName })
+
+        if (!isModuleScope.value && previousDefault?.id) {
+          const restoreId = previousDefault.id
+          const restoreSnapshot = { ...previousDefault }
+          showUndoableSuccess(successMessage, {
+            group: THEME_UNDO_GROUPS.siteDefault,
+            kind: 'theme.set_default',
+            stackMax: clientEnv.toastUndoStackMax,
+            undoAudit: themeUndoAudit('set_default', restoreSnapshot.name || ''),
+            onStackEmpty: () => {
+              toast.success(tGlobal('settings.themes.undoRestored'))
+            },
+            onUndo: async () => {
+              try {
+                await restoreSiteDefaultTheme(restoreId, restoreSnapshot)
+              } catch (e) {
+                await loadThemes()
+                if (e?.message !== 'undo set-default failed') {
+                  toast.error(tGlobal('settings.themes.undoError'))
+                }
+                throw e
+              }
+            },
+            batchUndo: async (oldestEntry) => {
+              const baseline = oldestEntry?.batchContext
+              if (!baseline?.restoreId) {
+                throw new Error('undo batch baseline missing')
+              }
+              try {
+                await restoreSiteDefaultTheme(baseline.restoreId, baseline.restoreSnapshot)
+              } catch (e) {
+                await loadThemes()
+                throw e
+              }
+            },
+            batchContext: { restoreId, restoreSnapshot },
+          })
+        } else {
+          toast.success(successMessage)
+        }
+
         await loadThemes()
         if (!isModuleScope.value) {
           applyActivatedTheme(res.data)
@@ -405,13 +527,52 @@ export function createThemeEditorActions(ctx) {
       return
     }
     try {
-      const res = await apiClient.patch(endpoints.themes.update(theme.id), {
+      const themeId = theme.id
+      const res = await apiClient.patch(endpoints.themes.update(themeId), {
         is_available: next,
       })
       if (res.success) {
-        toast.success(next ? tGlobal('settings.themes.addedToQuick') : tGlobal('settings.themes.removedFromQuick'))
+        const restoreAvailable = !next
+        showUndoableSuccess(
+          next
+            ? tGlobal('settings.themes.addedToQuick')
+            : tGlobal('settings.themes.removedFromQuick'),
+          {
+            group: THEME_UNDO_GROUPS.quickPick,
+            kind: 'theme.availability',
+            undoAudit: themeUndoAudit('availability', theme.name || ''),
+            onUndo: async () => {
+              const optimistic = patchThemeAvailableLocally(themeId, restoreAvailable)
+              if (selectedThemeId?.value === themeId || currentTheme?.id === themeId) {
+                selectTheme(optimistic || { ...theme, is_available: restoreAvailable }, {
+                  preview: false,
+                })
+              }
+              try {
+                const undoRes = await apiClient.patch(endpoints.themes.update(themeId), {
+                  is_available: restoreAvailable,
+                })
+                if (!undoRes.success) {
+                  toast.error(tGlobal('settings.themes.undoError'))
+                  throw new Error('undo availability failed')
+                }
+                const restored = patchThemeAvailableLocally(themeId, restoreAvailable, undoRes.data)
+                if (selectedThemeId?.value === themeId || currentTheme?.id === themeId) {
+                  selectTheme(restored || undoRes.data, { preview: false })
+                }
+                toast.success(tGlobal('settings.themes.undoRestored'))
+              } catch (e) {
+                await loadThemes()
+                if (e?.message !== 'undo availability failed') {
+                  toast.error(tGlobal('settings.themes.undoError'))
+                }
+                throw e
+              }
+            },
+          },
+        )
         await loadThemes()
-        if (selectedThemeId?.value === theme.id || currentTheme?.id === theme.id) {
+        if (selectedThemeId?.value === themeId || currentTheme?.id === themeId) {
           selectTheme(res.data, { preview: false })
         }
       } else {
@@ -429,15 +590,56 @@ export function createThemeEditorActions(ctx) {
       return
     }
     try {
-      const res = await apiClient.post(endpoints.themes.duplicate(theme.id), {
+      const sourceId = theme.id
+      const res = await apiClient.post(endpoints.themes.duplicate(sourceId), {
         name: tGlobal('settings.themes.copySuffix', {
           name: resolveThemeDisplayName(theme.name),
         }),
       })
       if (res.success) {
-        toast.success(tGlobal('settings.themes.copyCreated'))
+        const copyId = res.data?.id
+        if (copyId) {
+          showUndoableSuccess(tGlobal('settings.themes.copyCreated'), {
+            group: THEME_UNDO_GROUPS.duplicate,
+            kind: 'theme.duplicate',
+            undoAudit: themeUndoAudit(
+              'duplicate',
+              res.data?.name || tGlobal('settings.themes.copySuffix', {
+                name: resolveThemeDisplayName(theme.name),
+              }),
+            ),
+            onUndo: async () => {
+              const siteDefaultBefore = themes.value.find((t) => t.is_default && t.id !== copyId)
+                || themes.value.find((t) => t.is_active && t.id !== copyId)
+              themes.value = themes.value.filter((t) => t.id !== copyId)
+              if (siteDefaultBefore) {
+                selectTheme(siteDefaultBefore, { preview: false })
+                applyActivatedTheme(siteDefaultBefore)
+              }
+              goToThemeList?.()
+              try {
+                const undoRes = await apiClient.delete(endpoints.themes.delete(copyId))
+                if (!undoRes.success) {
+                  toast.error(tGlobal('settings.themes.undoError'))
+                  throw new Error('undo duplicate failed')
+                }
+                toast.success(tGlobal('settings.themes.undoRestored'))
+              } catch (e) {
+                await loadThemes()
+                if (e?.message !== 'undo duplicate failed') {
+                  toast.error(tGlobal('settings.themes.undoError'))
+                }
+                throw e
+              }
+            },
+          })
+        } else {
+          toast.success(tGlobal('settings.themes.copyCreated'))
+        }
         await loadThemes()
-        selectTheme(res.data)
+        const copy = themes.value.find((t) => t.id === copyId) || res.data
+        selectTheme(copy, { preview: false })
+        applyActivatedTheme(copy)
       }
     } catch {
       toast.error(tGlobal('settings.themes.copyError'))
@@ -461,10 +663,53 @@ export function createThemeEditorActions(ctx) {
     })
     if (!ok) return
 
+    const deletedSnapshot = snapshotTheme(theme)
+
     try {
       const res = await apiClient.delete(endpoints.themes.delete(theme.id))
       if (res.success) {
-        toast.success(tGlobal('settings.themes.themeDeleted'))
+        showUndoableSuccess(tGlobal('settings.themes.themeDeleted'), {
+          group: THEME_UNDO_GROUPS.delete,
+          kind: 'theme.delete',
+          undoAudit: themeUndoAudit('delete', deletedSnapshot.name || ''),
+          onUndo: async () => {
+            try {
+              const createRes = await apiClient.post(endpoints.themes.create, {
+                name: deletedSnapshot.name,
+                description: deletedSnapshot.description,
+                author: deletedSnapshot.author,
+                base_theme: deletedSnapshot.base_theme,
+                module_key: deletedSnapshot.module_key,
+                module_pair: deletedSnapshot.module_pair,
+                colors: deletedSnapshot.colors,
+                bootstrap_colors: deletedSnapshot.bootstrap_colors,
+                module_tokens: deletedSnapshot.module_tokens,
+              })
+              if (!createRes.success || !createRes.data?.id) {
+                toast.error(tGlobal('settings.themes.undoError'))
+                throw new Error('undo delete failed')
+              }
+              let restored = createRes.data
+              if (deletedSnapshot.is_available && !restored.is_available) {
+                const availRes = await apiClient.patch(endpoints.themes.update(restored.id), {
+                  is_available: true,
+                })
+                if (availRes.success) {
+                  restored = availRes.data
+                }
+              }
+              await loadThemes()
+              const fromList = themes.value.find((t) => t.id === restored.id) || restored
+              selectTheme(fromList, { preview: false })
+              toast.success(tGlobal('settings.themes.undoRestored'))
+            } catch (e) {
+              if (e?.message !== 'undo delete failed') {
+                toast.error(tGlobal('settings.themes.undoError'))
+              }
+              throw e
+            }
+          },
+        })
         await loadThemes()
       }
     } catch {

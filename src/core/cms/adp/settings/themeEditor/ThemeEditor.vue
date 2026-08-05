@@ -25,6 +25,8 @@ const {
   activateTheme,
   toggleThemeAvailable,
   confirmLeaveIfDirty,
+  editorStep,
+  goToThemeList,
   isModuleScope,
   createNewTheme,
   currentTheme,
@@ -36,6 +38,7 @@ const {
   fileInput,
   handleFileImport,
   loading,
+  openEditorForm,
   resetSystemTheme,
   resettingThemeId,
   selectTheme,
@@ -44,8 +47,6 @@ const {
 
 const { t, tm } = useAppI18n()
 
-/** 'list' — галерея на всю ширину; 'form' — редактор выбранной темы */
-const editorStep = ref('list')
 const listSearch = ref('')
 const modeFilter = ref('all')
 
@@ -56,7 +57,7 @@ function prefetchFormChunk() {
 function openTheme(theme) {
   prefetchFormChunk()
   selectTheme(theme)
-  editorStep.value = 'form'
+  openEditorForm()
 }
 
 function selectThemeInList(theme) {
@@ -66,14 +67,14 @@ function selectThemeInList(theme) {
 function openNewTheme() {
   prefetchFormChunk()
   createNewTheme()
-  editorStep.value = 'form'
+  openEditorForm()
 }
 
 async function onDuplicateTheme(theme) {
   await duplicateTheme(theme)
   if (selectedThemeId.value) {
     prefetchFormChunk()
-    editorStep.value = 'form'
+    openEditorForm()
   }
 }
 
@@ -82,7 +83,7 @@ async function backToList() {
   if (!ok) {
     return
   }
-  editorStep.value = 'list'
+  goToThemeList()
 }
 
 const modeFilterOptions = computed(() => [

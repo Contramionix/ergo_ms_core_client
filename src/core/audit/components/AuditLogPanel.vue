@@ -25,6 +25,11 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  /** Жёсткие фильтры: include { actions }, exclude { exclude_actions } */
+  fixedFilters: {
+    type: Object,
+    default: null,
+  },
   syncRouteQuery: {
     type: Boolean,
     default: true,
@@ -41,6 +46,12 @@ const props = defineProps({
 
 const scopeParamsForLog = computed(() => {
   const raw = props.scopeParams
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  return raw
+})
+
+const fixedFiltersForLog = computed(() => {
+  const raw = props.fixedFilters
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
   return raw
 })
@@ -72,6 +83,7 @@ const {
   exportCsv,
 } = useAuditLog({
   scopeParams: scopeParamsForLog,
+  fixedFilters: fixedFiltersForLog,
   syncRouteQuery: props.syncRouteQuery,
 })
 

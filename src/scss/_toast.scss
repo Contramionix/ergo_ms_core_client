@@ -42,7 +42,7 @@ html[data-ergo-a11y='assist'] .ergo-toast-container {
   align-items: stretch;
   justify-content: flex-start;
   min-width: min(100%, 320px);
-  max-width: 400px;
+  max-width: 440px;
   min-height: unset;
   padding: 0;
   border-radius: 8px;
@@ -87,6 +87,11 @@ html[data-ergo-a11y='assist'] .ergo-toast-container {
   align-items: center;
   padding: 10px 14px;
   margin: 0;
+}
+
+.ergo-toast--with-action .ergo-toast__body,
+.ergo-toast--with-action .Vue-Toastification__toast-component-body {
+  align-items: stretch;
 }
 
 .Vue-Toastification__progress-bar {
