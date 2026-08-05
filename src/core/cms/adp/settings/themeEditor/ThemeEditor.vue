@@ -14,6 +14,7 @@ import {
   resolveThemeDisplayDescription,
   resolveThemeDisplayName,
 } from './resolveSystemThemeLabel.js'
+import { matchSearchQuery } from '@/js/utils/searchQuery.js'
 
 const ThemeEditorForm = defineAsyncComponent({
   loader: () => import('./ThemeEditorForm.vue'),
@@ -107,24 +108,27 @@ function themeMatchesMode(theme, mode) {
 }
 
 const filteredThemes = computed(() => {
-  const q = listSearch.value.trim().toLowerCase()
+  const query = listSearch.value
   const mode = modeFilter.value
   return displayThemes.value.filter((theme) => {
     if (!themeMatchesMode(theme, mode)) {
       return false
     }
-    if (!q) {
+    if (!String(query || '').trim()) {
       return true
     }
-    const name = String(theme.name || '').toLowerCase()
-    const desc = String(theme.description || '').toLowerCase()
-    const label = resolveThemeDisplayName(theme.name, tm).toLowerCase()
+    const name = String(theme.name || '')
+    const desc = String(theme.description || '')
+    const label = resolveThemeDisplayName(theme.name, tm)
     const labelDesc = resolveThemeDisplayDescription(
       theme.name,
       theme.description || '',
       tm,
-    ).toLowerCase()
-    return name.includes(q) || desc.includes(q) || label.includes(q) || labelDesc.includes(q)
+    )
+    return matchSearchQuery(name, query)
+      || matchSearchQuery(desc, query)
+      || matchSearchQuery(label, query)
+      || matchSearchQuery(labelDesc, query)
   })
 })
 

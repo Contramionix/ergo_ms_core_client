@@ -126,7 +126,7 @@ const loadInvitations = async () => {
     const data = await fetchInvitations({
       page: currentPage.value,
       page_size: rowsPerPage.value,
-      search: searchQuery.value.trim() || undefined,
+      q: searchQuery.value.trim() || undefined,
       status: statusFilter.value === 'all' ? undefined : statusFilter.value,
     })
     rows.value = data.invitations || []

@@ -8,7 +8,7 @@ import {
   anchorIdGlobal,
   anchorIdModule,
 } from '@/core/notifications/js/useNotificationSettingsNav.js'
-import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { matchSearchQuery } from '@/js/utils/searchQuery.js'
 
 const { t } = useAppI18n()
 
@@ -28,15 +28,10 @@ const notificationNav = inject(NOTIFICATION_NAV_KEY, null)
 const isNotificationsExpanded = ref(false)
 const searchQuery = ref('')
 
-const normalizedQuery = computed(() => searchQuery.value.trim().toLowerCase())
-const hasSearchQuery = computed(() => normalizedQuery.value.length > 0)
+const hasSearchQuery = computed(() => Boolean(searchQuery.value.trim()))
 
 function matchesQuery(text) {
-  const query = normalizedQuery.value
-  if (!query) return true
-  return String(text || '')
-    .toLowerCase()
-    .includes(query)
+  return matchSearchQuery(text, searchQuery.value)
 }
 
 function filterNotificationCategories(moduleSection) {

@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import SearchInput from '@/components/SearchInput.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { matchSearchQuery } from '@/js/utils/searchQuery.js'
 
 const { t } = useAppI18n()
 
@@ -17,21 +18,20 @@ const searchQuery = ref('')
 
 const hasGroups = computed(() => props.groups.length > 0)
 
-const normalizedSearch = computed(() => searchQuery.value.trim().toLowerCase())
-
-const isSearchActive = computed(() => normalizedSearch.value.length > 0)
+const isSearchActive = computed(() => Boolean(searchQuery.value.trim()))
 
 const filteredGroups = computed(() => {
   if (!isSearchActive.value) {
     return props.groups
   }
 
+  const query = searchQuery.value
   return props.groups
     .map((group) => ({
       ...group,
       pages: group.pages.filter((page) => {
-        const haystack = `${page.label} ${page.title} ${page.path}`.toLowerCase()
-        return haystack.includes(normalizedSearch.value)
+        const haystack = `${page.label} ${page.title} ${page.path}`
+        return matchSearchQuery(haystack, query)
       }),
     }))
     .filter((group) => group.pages.length > 0)

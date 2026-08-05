@@ -3,7 +3,6 @@ import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { computed, ref, watch, defineAsyncComponent } from 'vue'
 import { Settings, Trash2 } from 'lucide-vue-next'
 import { deleteRoleGroup } from '@/core/cms/adp/admin/js/adminAccessApi.js'
-import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import Pagination from '@/components/Pagination.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint.js'
 
@@ -19,9 +18,12 @@ const props = defineProps({
   rows: { type: Array, required: true },
   rowsPerPage: { type: Number, default: 5 },
   searchQuery: { type: String, default: '' },
+  serverPaginated: { type: Boolean, default: false },
+  totalItems: { type: Number, default: 0 },
+  currentPage: { type: Number, default: 1 },
 })
 
-const emit = defineEmits(['updateGroups'])
+const emit = defineEmits(['updateGroups', 'pageChange'])
 const data = ref(props.rows)
 const { isMdUp, isSmUp } = useBreakpoint()
 const showDescription = computed(() => isMdUp.value)
@@ -34,15 +36,10 @@ watch(
   }
 )
 
-const { state: listState, patchState } = useRouteQueryState({
-  q: { default: '' },
-  page: { default: 1, type: 'number' },
-})
-
-const currentPage = computed(() => listState.value.page)
+const currentPage = computed(() => props.currentPage)
 
 const goToPage = (page) => {
-  patchState({ page }, { immediate: true })
+  emit('pageChange', page)
 }
 
 const rowSelected = ref({
@@ -58,20 +55,18 @@ const changingRow = row => {
   rowSelected.value = { ...row }
 }
 
-const filteredRows = computed(() => {
-  return data.value.filter(row =>
-    row.name.toLowerCase().includes(props.searchQuery.toLowerCase())
-  )
-})
-
 const paginatedRows = computed(() => {
+  if (props.serverPaginated) {
+    return data.value
+  }
   const start = (currentPage.value - 1) * props.rowsPerPage
   const end = start + props.rowsPerPage
-  return filteredRows.value.slice(start, end)
+  return data.value.slice(start, end)
 })
 
 const totalPages = computed(() => {
-  return Math.ceil(filteredRows.value.length / props.rowsPerPage)
+  const total = props.serverPaginated ? props.totalItems : data.value.length
+  return Math.max(1, Math.ceil(total / props.rowsPerPage))
 })
 
 const showEditModal = ref(false)
@@ -183,7 +178,7 @@ const deleteGroup = async groupId => {
       v-if="totalPages > 1"
       :model-value="currentPage"
       :total-pages="totalPages"
-      :total-items="filteredRows.length"
+      :total-items="serverPaginated ? totalItems : data.length"
       :page-size="rowsPerPage"
       :visible-count="paginatedRows.length"
       variant="simple"

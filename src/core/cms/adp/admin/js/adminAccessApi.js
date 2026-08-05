@@ -14,6 +14,29 @@ import { whenSessionReady } from '@/js/sessionReady.js'
 
 export { invalidateAdminAccessCache }
 
+function usesServerListParams(params = {}) {
+  return ['q', 'search', 'page', 'page_size'].some(
+    (key) => params[key] != null && params[key] !== '',
+  )
+}
+
+export function normalizePaginatedList(data) {
+  if (Array.isArray(data)) {
+    return {
+      items: data,
+      total: data.length,
+      page: 1,
+      page_size: data.length,
+    }
+  }
+  return {
+    items: data.items ?? [],
+    total: data.total ?? 0,
+    page: data.page ?? 1,
+    page_size: data.page_size ?? 20,
+  }
+}
+
 function readAccessFromBootstrap() {
   const bootstrap = getSessionBootstrapCache()
   if (bootstrap && typeof bootstrap.access_to_panel === 'boolean') {
@@ -57,9 +80,12 @@ export async function getPages() {
   return response.data
 }
 
-export async function getRoles() {
-  const response = await apiClient.get(endpoints.cms.roles.list, {}, true)
-  return response.data
+export async function getRoles(params = {}) {
+  const response = await apiClient.get(endpoints.cms.roles.list, params, true)
+  if (usesServerListParams(params)) {
+    return normalizePaginatedList(response.data)
+  }
+  return Array.isArray(response.data) ? response.data : normalizePaginatedList(response.data).items
 }
 
 export async function createRole(payload) {
@@ -77,9 +103,12 @@ export async function deleteRole(roleId) {
   return response.data
 }
 
-export async function getRoleGroups() {
-  const response = await apiClient.get(endpoints.cms.roleGroups.list, {}, true)
-  return response.data
+export async function getRoleGroups(params = {}) {
+  const response = await apiClient.get(endpoints.cms.roleGroups.list, params, true)
+  if (usesServerListParams(params)) {
+    return normalizePaginatedList(response.data)
+  }
+  return Array.isArray(response.data) ? response.data : normalizePaginatedList(response.data).items
 }
 
 export async function getRoleGroupOptions() {
@@ -132,10 +161,16 @@ export async function getAdminUsers(params = {}) {
   return response.data
 }
 
-export async function getModulePermissions(roleGroupId = null) {
-  const params = roleGroupId ? { role_group_id: roleGroupId } : {}
-  const response = await apiClient.get(endpoints.cms.modulePermissions, params, true)
-  return response.data
+export async function getModulePermissions(roleGroupId = null, params = {}) {
+  const query = { ...params }
+  if (roleGroupId) {
+    query.role_group_id = roleGroupId
+  }
+  const response = await apiClient.get(endpoints.cms.modulePermissions, query, true)
+  if (usesServerListParams(params)) {
+    return normalizePaginatedList(response.data)
+  }
+  return Array.isArray(response.data) ? response.data : normalizePaginatedList(response.data).items
 }
 
 export async function createModulePermission(payload) {

@@ -171,7 +171,7 @@ const loadUsers = async () => {
     const data = await getAdminUsers({
       page: currentPage.value,
       page_size: rowsPerPage.value,
-      search: searchQuery.value.trim() || undefined,
+      q: searchQuery.value.trim() || undefined,
       online_only: isOnlineFilter.value || undefined,
     })
     rows.value = (data.users || []).map(mapUserToRow)

@@ -3,6 +3,7 @@ import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { computed, ref, watch, defineAsyncComponent } from 'vue'
 import { Pencil, Trash2 } from 'lucide-vue-next'
 import { deletePolicy } from '@/core/cms/adp/admin/js/adminAccessApi.js'
+import { matchSearchQuery } from '@/js/utils/searchQuery.js'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import Pagination from '@/components/Pagination.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint.js'
@@ -71,18 +72,17 @@ const goToPage = (page) => {
 }
 
 const filteredRows = computed(() => {
-  const query = props.searchQuery.trim().toLowerCase()
-  if (!query) {
+  const query = props.searchQuery
+  if (!String(query || '').trim()) {
     return data.value
   }
 
   return data.value.filter((row) => {
-    const resourceLabel = resolveResourceLabel(row.resource_path).toLowerCase()
-    return (
-      row.name.toLowerCase().includes(query) ||
-      (row.resource_path || '').toLowerCase().includes(query) ||
-      resourceLabel.includes(query)
-    )
+    const resourceLabel = resolveResourceLabel(row.resource_path)
+    return matchSearchQuery(row.name, query)
+      || matchSearchQuery(resourceLabel, query)
+      || matchSearchQuery(row.action, query)
+      || matchSearchQuery(row.target_type, query)
   })
 })
 

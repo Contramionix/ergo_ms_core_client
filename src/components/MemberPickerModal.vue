@@ -243,7 +243,7 @@ async function loadCandidates() {
   try {
     isLoading.value = true
     const list = await props.fetchUsers({
-      search: searchQuery.value || '',
+      q: searchQuery.value || '',
       activeTab: activeTab.value,
       roleGroupId: activeRoleGroupId.value,
     })
