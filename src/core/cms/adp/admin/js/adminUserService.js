@@ -1,5 +1,6 @@
 import { apiClient } from '@/js/api/manager.js'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
+import { buildMediaUploadOptions } from '@/js/mediaUploadLimits.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import { invalidateUserPublicInfoByRef } from '@/js/userAvatar.js'
 import {
@@ -24,11 +25,14 @@ export async function deleteAdminUser(userRef) {
 }
 
 export async function uploadAdminUserAvatar(userRef, file) {
-  const uploadResult = await mediaApiClient.upload(file, {
-    targetDir: 'avatars/',
-    allowedTypes: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
-    maxSize: 5 * 1024 * 1024,
-  })
+  const uploadResult = await mediaApiClient.upload(
+    file,
+    buildMediaUploadOptions({
+      targetDir: 'avatars/',
+      allowedTypes: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
+      feature: 'avatar',
+    }),
+  )
   const response = await apiClient.post(
     endpoints.cms.adminUserAvatar(userRef),
     { image_path: uploadResult.path },

@@ -2,6 +2,7 @@
 
 import { computed } from 'vue'
 import { tGlobal } from '@/i18n/index.js'
+import { buildMediaUploadOptions } from '@/js/mediaUploadLimits.js'
 import {
   getDefaultColors,
   getBootstrapByCategories,
@@ -774,10 +775,13 @@ export function createThemeEditorActions(ctx) {
     if (!file) return
   
     try {
-      const uploadResult = await mediaApiClient.upload(file, {
-        targetDir: 'imports/themes',
-        allowedTypes: ['json'],
-      })
+      const uploadResult = await mediaApiClient.upload(
+        file,
+        buildMediaUploadOptions({
+          targetDir: 'imports/themes',
+          allowedTypes: ['json'],
+        }),
+      )
 
       const res = await apiClient.post(endpoints.themes.import, {
         file_path: uploadResult.path,

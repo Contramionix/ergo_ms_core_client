@@ -8,6 +8,7 @@ import {
 import { apiClient } from '@/js/api/manager'
 import { logError } from '@/js/utils/logError.js'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
+import { buildMediaUploadOptions } from '@/js/mediaUploadLimits.js'
 import { cmsEndpoints } from '@/core/cms/js/endpoints'
 import { tGlobal } from '@/i18n/index.js'
 import { downloadBlob, extractFilenameFromHeaders } from '@/js/utils/file-helpers.js'
@@ -352,10 +353,13 @@ export function useImportUsersImportTask(welcomeEmail) {
     importStatus.value = tGlobal('admin.importUsers.starting')
 
     try {
-      const uploadResult = await mediaApiClient.upload(selectedFile.value, {
-        targetDir: 'imports/users',
-        allowedTypes: ['xlsx', 'xls', 'csv'],
-      })
+      const uploadResult = await mediaApiClient.upload(
+        selectedFile.value,
+        buildMediaUploadOptions({
+          targetDir: 'imports/users',
+          allowedTypes: ['xlsx', 'xls', 'csv'],
+        }),
+      )
 
       const response = await apiClient.post(cmsEndpoints.cms.importUsers, {
         file_path: uploadResult.path,

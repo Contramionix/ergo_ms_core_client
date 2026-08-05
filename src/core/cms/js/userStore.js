@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import { apiClient } from '@/js/api/manager.js'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
+import { buildMediaUploadOptions } from '@/js/mediaUploadLimits.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import { profileService } from '@/core/cms/js/profileService.js'
 import { applyMenuBootstrap } from '@/core/cms/js/menuService.js'
@@ -310,11 +311,14 @@ export const useUserStore = defineStore('userStore', () => {
         return false
       }
 
-      const uploadResult = await mediaApiClient.upload(file, {
-        targetDir: 'avatars/',
-        allowedTypes: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
-        maxSize: 5 * 1024 * 1024,
-      })
+      const uploadResult = await mediaApiClient.upload(
+        file,
+        buildMediaUploadOptions({
+          targetDir: 'avatars/',
+          allowedTypes: ['png', 'jpg', 'jpeg', 'gif', 'webp'],
+          feature: 'avatar',
+        }),
+      )
 
       await apiClient.post(endpoints.userAvatars.create, {
         image_path: uploadResult.path,

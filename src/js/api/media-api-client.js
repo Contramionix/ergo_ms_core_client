@@ -5,8 +5,15 @@ const UPLOAD_TOKEN_ENDPOINT = 'utils/media/upload-token/'
 /**
  * Клиент для работы с media_api (загрузка файлов через CDN-сервис).
  *
+ * Лимиты размера — через buildMediaUploadOptions из `@/js/mediaUploadLimits.js`
+ * (дефолт CLIENT_MEDIA_UPLOAD_MAX_SIZE; модуль может выше — до HARD_MAX).
+ *
  * Типичный flow:
- *   const result = await mediaApiClient.upload(file, { targetDir: 'avatars/' })
+ *   import { buildMediaUploadOptions } from '@/js/mediaUploadLimits.js'
+ *   const result = await mediaApiClient.upload(
+ *     file,
+ *     buildMediaUploadOptions({ targetDir: 'avatars/', feature: 'avatar' }),
+ *   )
  *   // result = { uuid, path, original_name, size, content_type }
  */
 class MediaApiClient {

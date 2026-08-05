@@ -1,5 +1,6 @@
 import { apiClient } from '@/js/api/manager'
 import { mediaApiClient } from '@/js/api/media-api-client.js'
+import { buildMediaUploadOptions } from '@/js/mediaUploadLimits.js'
 
 const BASE_URL = '/messenger'
 
@@ -39,10 +40,13 @@ export const messengerApi = {
   },
 
   async uploadAttachment(messageId, file) {
-    const uploadResult = await mediaApiClient.upload(file, {
-      targetDir: 'messenger/attachments',
-      maxSize: 25 * 1024 * 1024,
-    })
+    const uploadResult = await mediaApiClient.upload(
+      file,
+      buildMediaUploadOptions({
+        targetDir: 'messenger/attachments',
+        feature: 'messengerAttachment',
+      }),
+    )
     return apiClient.post(`${BASE_URL}/attachments/`, {
       message: messageId,
       file_path: uploadResult.path,

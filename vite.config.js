@@ -237,6 +237,10 @@ function buildClientEnvDefines(envValues) {
     CLIENT_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_ADMIN_PRESENCE_INTERVAL', 10000),
     CLIENT_REALTIME_POLL_MESSENGER_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_MESSENGER_INTERVAL', 5000),
     CLIENT_SYSTEM_VERSION: envValues.VERSION || '2.7.8',
+    // Байты; те же ключи, что media_api (env/media.env)
+    CLIENT_MEDIA_UPLOAD_MAX_SIZE: envValues.MEDIA_UPLOAD_MAX_SIZE || '524288000',
+    CLIENT_MEDIA_UPLOAD_HARD_MAX_SIZE:
+      envValues.MEDIA_UPLOAD_HARD_MAX_SIZE || String(5 * 1024 * 1024 * 1024),
   }
 
   const values = { ...coreValues }
