@@ -8,6 +8,7 @@ import {
   anchorIdGlobal,
   anchorIdModule,
 } from '@/core/notifications/js/useNotificationSettingsNav.js'
+import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { matchSearchQuery } from '@/js/utils/searchQuery.js'
 
 const { t } = useAppI18n()
