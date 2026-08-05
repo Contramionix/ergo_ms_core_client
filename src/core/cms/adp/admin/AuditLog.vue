@@ -24,7 +24,7 @@ const router = useRouter()
 const isCheckingAccess = ref(true)
 const hasAdminAccess = ref(false)
 
-// Основной журнал — без отмен (они только на вкладке «Хранение отмен»).
+// Основной журнал — без отмен (они только на вкладке «Отмененные действия»).
 const AUDIT_FIXED_FILTERS = Object.freeze({
   exclude_actions: 'undo.performed,theme.undone',
 })

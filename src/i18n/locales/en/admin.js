@@ -221,7 +221,7 @@ export default {
     pageSubtitle: 'User action audit and web client session journal',
     tabAudit: 'User actions',
     tabClient: 'Web client sessions',
-    tabUndos: 'Undone changes',
+    tabUndos: 'Undone actions',
     search: 'Search audit log...',
     searchPlaceholder: 'Actor or object...',
     empty: 'No records found',

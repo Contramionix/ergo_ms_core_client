@@ -221,7 +221,7 @@ export default {
     pageSubtitle: 'Audit des actions utilisateur et journal des sessions du client web',
     tabAudit: 'Actions utilisateur',
     tabClient: 'Sessions du client web',
-    tabUndos: 'Annulations',
+    tabUndos: 'Actions annulées',
     search: "Rechercher dans le journal d'audit...",
     searchPlaceholder: 'Acteur ou objet...',
     empty: 'Aucun enregistrement trouvé',
