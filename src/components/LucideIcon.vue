@@ -1,11 +1,16 @@
 <script setup>
+/**
+ * Единый рендер динамической Lucide-иконки по каноническому имени (PascalCase).
+ * Модули и декларации (меню, apps, settings) передают строку — не Vue-компонент.
+ */
 import { shallowRef, watch } from 'vue'
-import { getLucideIconAsync } from '@/js/lucideIconLoader.js'
+import { LUCIDE_STROKE_WIDTH } from '@/config/coreIconNames.js'
+import { getLucideIconAsync, normalizeLucideIconName } from '@/js/lucideIconLoader.js'
 
 const props = defineProps({
   name: {
     type: String,
-    required: true,
+    default: '',
   },
   size: {
     type: [Number, String],
@@ -13,7 +18,7 @@ const props = defineProps({
   },
   strokeWidth: {
     type: [Number, String],
-    default: 2,
+    default: LUCIDE_STROKE_WIDTH,
   },
   iconClass: {
     type: [String, Object, Array],
@@ -26,7 +31,8 @@ const IconComponent = shallowRef(null)
 watch(
   () => props.name,
   async (name) => {
-    IconComponent.value = name ? await getLucideIconAsync(name) : null
+    const key = normalizeLucideIconName(name)
+    IconComponent.value = key ? await getLucideIconAsync(key) : null
   },
   { immediate: true },
 )

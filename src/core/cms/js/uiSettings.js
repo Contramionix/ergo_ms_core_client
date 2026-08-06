@@ -1,5 +1,5 @@
-import { ref, watch, markRaw, computed } from 'vue'
-import { Sun, Moon, LaptopMinimal, Languages } from 'lucide-vue-next'
+import { ref, watch, computed } from 'vue'
+import { CORE_ICON } from '@/config/coreIconNames.js'
 import {
   applyThemeModePreference,
   readThemePreference,
@@ -22,9 +22,9 @@ import { logError } from '@/js/utils/logError.js'
 export const THEME_OPTIONS = computed(() => {
   getCurrentLocale()
   return [
-    { id: 'light', name: tGlobal('settings.system.themeLight'), icon: markRaw(Sun) },
-    { id: 'dark', name: tGlobal('settings.system.themeDark'), icon: markRaw(Moon) },
-    { id: 'auto', name: tGlobal('settings.system.themeAuto'), icon: markRaw(LaptopMinimal) },
+    { id: 'light', name: tGlobal('settings.system.themeLight'), icon: CORE_ICON.themeLight },
+    { id: 'dark', name: tGlobal('settings.system.themeDark'), icon: CORE_ICON.themeDark },
+    { id: 'auto', name: tGlobal('settings.system.themeAuto'), icon: CORE_ICON.themeAuto },
   ]
 })
 
@@ -32,7 +32,7 @@ export const LANGUAGE_OPTIONS = computed(() => {
   getCurrentLocale()
   return getLanguageOptions().map((opt) => ({
     ...opt,
-    icon: markRaw(Languages),
+    icon: CORE_ICON.language,
   }))
 })
 

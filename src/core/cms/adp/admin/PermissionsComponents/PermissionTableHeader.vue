@@ -16,6 +16,9 @@ const props = defineProps({
   pages: { type: Array, default: () => [] },
   modulePageGroups: { type: Array, default: () => [] },
   moduleCatalog: { type: Array, default: () => [] },
+  apiPages: { type: Array, default: () => [] },
+  apiModulePageGroups: { type: Array, default: () => [] },
+  apiModuleCatalog: { type: Array, default: () => [] },
   searchQuery: { type: String, default: '' },
 })
 
@@ -55,6 +58,9 @@ const handleSearchQuery = (query) => {
       :pages="props.pages"
       :module-page-groups="props.modulePageGroups"
       :module-catalog="props.moduleCatalog"
+      :api-pages="props.apiPages"
+      :api-module-page-groups="props.apiModulePageGroups"
+      :api-module-catalog="props.apiModuleCatalog"
       @add-permission="updatePermissions"
     />
   </div>

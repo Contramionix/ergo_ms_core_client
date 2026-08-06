@@ -1,9 +1,9 @@
-import { getCurrentBcp47, tGlobal } from '@/i18n/index.js'
+import { getCurrentBcp47, tGlobal, teGlobal } from '@/i18n/index.js'
 
 export function getPolicyTypeOptions() {
   return [
     { id: 'url', name: tGlobal('admin.policies.typeUrl') },
-    { id: 'component', name: tGlobal('admin.policies.typeComponent') },
+    { id: 'api', name: tGlobal('admin.policies.typeApi') },
   ]
 }
 
@@ -49,8 +49,16 @@ export function mapRoleGroupSelectOptions(groups = [], { withParent = true } = {
   }))
 }
 
+function resolvePageTitle(page) {
+  const titleKey = (page?.title_key || page?.titleKey || '').trim()
+  if (titleKey && teGlobal(titleKey)) {
+    return tGlobal(titleKey)
+  }
+  return (page?.title || page?.name || '').trim()
+}
+
 export function formatPageOptionLabel(page) {
-  const title = (page?.title || page?.name || '').trim()
+  const title = resolvePageTitle(page)
   const path = page?.path || ''
   if (title && title !== path) {
     return `${title} · ${path}`
@@ -66,30 +74,138 @@ export function mapPagePathOptions(pages = []) {
   }))
 }
 
+function formatModuleSlug(moduleName) {
+  return String(moduleName || '')
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function isSlugLikeModuleLabel(moduleName, label) {
+  const normalized = String(label || '').trim()
+  const key = String(moduleName || '').trim()
+  if (!normalized || !key) {
+    return true
+  }
+  if (normalized === key) {
+    return true
+  }
+  // Django AppConfig default: "bi_analysis".title() → "Bi_Analysis"
+  const djangoTitle = key.replace(
+    /[a-zA-Zа-яА-ЯёЁ]+/g,
+    (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+  )
+  if (normalized === djangoTitle) {
+    return true
+  }
+  if (normalized.toLowerCase() === formatModuleSlug(key).toLowerCase()) {
+    return true
+  }
+  return false
+}
+
+function resolveLocalizedModuleLabel(moduleName) {
+  const candidates = [
+    `${moduleName}.title`,
+    `${moduleName}.routes.shell`,
+    `${moduleName}.name`,
+  ]
+  for (const key of candidates) {
+    if (teGlobal(key)) {
+      const label = String(tGlobal(key) || '').trim()
+      if (label) {
+        return label
+      }
+    }
+  }
+  return ''
+}
+
+function resolveCatalogModuleKey(moduleName, moduleCatalog = []) {
+  const key = !moduleName || moduleName === 'cms' ? 'core' : String(moduleName).trim()
+  if (!key || key === 'core') {
+    return 'core'
+  }
+  if (moduleCatalog.some((item) => item?.module_name === key)) {
+    return key
+  }
+  const names = moduleCatalog
+    .map((item) => item?.module_name)
+    .filter(Boolean)
+    .sort((left, right) => right.length - left.length)
+  for (const name of names) {
+    if (key.startsWith(`${name}_`) || key.startsWith(`${name}-`)) {
+      return name
+    }
+  }
+  return key
+}
+
 export function formatModuleLabel(moduleName, moduleCatalog = []) {
-  const key = !moduleName || moduleName === 'cms' ? 'core' : moduleName
+  const key = resolveCatalogModuleKey(moduleName, moduleCatalog)
 
   if (key === 'core') {
     return tGlobal('admin.policies.coreModule')
   }
 
+  const localized = resolveLocalizedModuleLabel(key)
+  if (localized) {
+    return localized
+  }
+
   const catalogEntry = moduleCatalog.find((item) => item.module_name === key)
   if (catalogEntry?.module_label) {
     const label = String(catalogEntry.module_label).trim()
-    if (label && label.toUpperCase() !== 'CMS') {
+    if (label && label.toUpperCase() !== 'CMS' && !isSlugLikeModuleLabel(key, label)) {
       return label
     }
   }
 
-  return key
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
+  return formatModuleSlug(key)
 }
 
-function resolvePageModuleKey(moduleName) {
-  const key = moduleName || 'core'
-  return key === 'cms' ? 'core' : key
+function resolvePageModuleKey(moduleName, moduleCatalog = []) {
+  return resolveCatalogModuleKey(moduleName, moduleCatalog)
+}
+
+/**
+ * URL-префиксы модуля по каталогу страниц (не slug папки: impuls_analysis → /impuls-analysis).
+ */
+export function resolveModuleUrlPrefixes(moduleName, pages = []) {
+  const moduleKey = resolvePageModuleKey(moduleName)
+  const paths = pages
+    .filter((page) => resolvePageModuleKey(page.module_name || page.module) === moduleKey)
+    .map((page) => page.path)
+    .filter((path) => typeof path === 'string' && path.startsWith('/'))
+
+  if (!paths.length) {
+    return [`/${String(moduleKey).replace(/_/g, '-')}`]
+  }
+
+  const splitPaths = paths.map((path) => path.split('/').filter(Boolean))
+  const first = splitPaths[0]
+  const common = []
+  for (let index = 0; index < first.length; index += 1) {
+    const segment = first[index]
+    if (splitPaths.every((parts) => parts[index] === segment)) {
+      common.push(segment)
+    } else {
+      break
+    }
+  }
+
+  if (common.length > 0) {
+    return [`/${common.join('/')}`]
+  }
+
+  const roots = new Set()
+  for (const parts of splitPaths) {
+    if (parts[0]) {
+      roots.add(`/${parts[0]}`)
+    }
+  }
+  return roots.size > 0 ? Array.from(roots) : [`/${String(moduleKey).replace(/_/g, '-')}`]
 }
 
 export function buildModulePageGroups(pages = [], moduleCatalog = []) {
@@ -100,7 +216,7 @@ export function buildModulePageGroups(pages = [], moduleCatalog = []) {
     if (!module?.module_name) {
       continue
     }
-    const key = resolvePageModuleKey(module.module_name)
+    const key = resolvePageModuleKey(module.module_name, moduleCatalog)
     if (groups.has(key)) {
       continue
     }
@@ -112,7 +228,7 @@ export function buildModulePageGroups(pages = [], moduleCatalog = []) {
   }
 
   for (const page of pages) {
-    const moduleKey = resolvePageModuleKey(page.module_name || page.module)
+    const moduleKey = resolvePageModuleKey(page.module_name || page.module, moduleCatalog)
     if (!groups.has(moduleKey)) {
       groups.set(moduleKey, {
         key: moduleKey,
@@ -121,9 +237,10 @@ export function buildModulePageGroups(pages = [], moduleCatalog = []) {
       })
     }
 
+    const title = resolvePageTitle(page)
     groups.get(moduleKey).pages.push({
       path: page.path,
-      title: (page.title || '').trim(),
+      title,
       label: formatPageOptionLabel(page),
     })
   }
@@ -137,10 +254,12 @@ export function buildModulePageGroups(pages = [], moduleCatalog = []) {
 }
 
 export function mapModuleSelectOptions(pages = [], moduleCatalog = []) {
-  return buildModulePageGroups(pages, moduleCatalog).map((group) => ({
-    id: group.key,
-    name: `${group.label} (${group.pages.length})`,
-  }))
+  return buildModulePageGroups(pages, moduleCatalog)
+    .filter((group) => (group.pages || []).length > 0)
+    .map((group) => ({
+      id: group.key,
+      name: `${group.label} (${group.pages.length})`,
+    }))
 }
 
 export function mapModuleCatalogSelectOptions(modules = []) {

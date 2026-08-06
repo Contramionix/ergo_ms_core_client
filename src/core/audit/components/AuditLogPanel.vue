@@ -7,6 +7,7 @@ import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import SearchInput from '@/components/SearchInput.vue'
 import FilterMenu from '@/components/FilterMenu.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
+import LucideIcon from '@/components/LucideIcon.vue'
 import AuditActorCell from '@/core/cms/adp/admin/AuditLogComponents/AuditActorCell.vue'
 import {
   useAuditLog,
@@ -68,7 +69,6 @@ const {
   auditFilterFields,
   selectedEvent,
   showDetailsModal,
-  resolveIcon,
   severityMeta,
   hasDetails,
   ipLocationTooltip,
@@ -185,7 +185,7 @@ const displayColumns = computed(() => {
 
         <template #cell-action="{ item }">
           <div class="audit-action">
-            <component :is="resolveIcon(item.icon)" :size="18" class="audit-action__icon" />
+            <LucideIcon :name="item.icon || 'Activity'" :size="18" icon-class="audit-action__icon" />
             <div class="audit-action__text">
               <span class="audit-action__label">{{ item.action_label }}</span>
               <small class="audit-action__module">{{ item.module_label }}</small>

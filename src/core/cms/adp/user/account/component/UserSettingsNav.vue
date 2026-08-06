@@ -1,6 +1,7 @@
 <script setup>
 import { computed, inject, ref, watch } from 'vue'
 import { ChevronDown, ChevronUp } from 'lucide-vue-next'
+import LucideIcon from '@/components/LucideIcon.vue'
 import SearchInput from '@/components/SearchInput.vue'
 import {
   NOTIFICATION_NAV_KEY,
@@ -251,7 +252,7 @@ watch(hasSearchQuery, (searching) => {
               @click="handleTabClick(tab)"
             >
               <span class="user-settings-modal__nav-icon" aria-hidden="true">
-                <component :is="tab.icon" :size="18" />
+                <LucideIcon :name="tab.icon" :size="18" />
               </span>
               <span class="user-settings-modal__nav-label">{{ tab.label }}</span>
               <ChevronDown

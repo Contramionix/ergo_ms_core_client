@@ -32,7 +32,7 @@ import { ChevronRight, Dot } from 'lucide-vue-next'
 import { computed, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import MenuItem from './MenuItem.vue'
-import { iconMapping } from '@/config/icons-mapping.js'
+import LucideIcon from '@/components/LucideIcon.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { resolveMenuItemTitle } from '@/i18n/resolveMenuItemTitle.js'
 import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
@@ -52,19 +52,9 @@ const props = defineProps({
 const injectedIconSizes = inject(MENU_ICON_SIZES_KEY, null)
 const iconSizes = computed(() => injectedIconSizes?.value ?? getDefaultMenuIconSizes())
 
-// Иконка группы: поддерживаем как прямой компонент, так и строковый ключ из конфигурации
-const groupIcon = computed(() => {
-  const rawIcon = props.data.icon
-  if (!rawIcon) return null
-
-  // Если иконка задана строкой — пробуем взять из iconMapping
-  if (typeof rawIcon === 'string') {
-    return iconMapping[rawIcon] || null
-  }
-
-  // Если это уже компонент, возвращаем как есть
-  return rawIcon
-})
+const groupIconName = computed(() =>
+  typeof props.data.icon === 'string' ? props.data.icon : '',
+)
 
 // Объединяем list и children в один массив для отображения, сохраняя порядок по order
 const menuItems = computed(() => {
@@ -227,7 +217,7 @@ function routeClick(event) {
     >
       <div class="side-title__label">
         <div class="side-icon icon-flex">
-          <component v-if="groupIcon" :is="groupIcon" :size="iconSizes.item" />
+          <LucideIcon v-if="groupIconName" :name="groupIconName" :size="iconSizes.item" />
           <Dot v-else :size="iconSizes.item" />
         </div>
         <MenuPeekLabel

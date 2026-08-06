@@ -1,5 +1,6 @@
 <script setup>
 import SelectBox from '@/components/SelectBox.vue'
+import LucideIcon from '@/components/LucideIcon.vue'
 import { useUiSettings } from '@/core/cms/js/uiSettings.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { defineAsyncComponent } from 'vue'
@@ -26,13 +27,13 @@ const { theme, THEME_OPTIONS } = useUiSettings()
           <SelectBox id="themes-mode" v-model="theme" :options="THEME_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
               <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="14" icon-class="settings-card__option-icon" />
                 <span class="settings-card__option-label">{{ label }}</span>
               </span>
             </template>
             <template #option="{ option, label }">
               <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="14" icon-class="settings-card__option-icon" />
                 <span class="settings-card__option-label">{{ label }}</span>
               </span>
             </template>

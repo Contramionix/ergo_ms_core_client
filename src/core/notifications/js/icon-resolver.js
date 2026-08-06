@@ -6,9 +6,11 @@
  *   2. LEVEL_ICON_MAP[level]
  *   3. дефолт 'Bell'
  *
- * Возвращается строка — имя компонента из lucide-vue-next (PascalCase),
- * пригодная для moduleManager.icons.getIcon(name).
+ * Возвращается каноническая строка Lucide PascalCase для LucideIcon.
  */
+
+import { CORE_ICON } from '@/config/coreIconNames.js'
+import { normalizeLucideIconName } from '@/js/lucideIconLoader.js'
 
 export const LEVEL_ICON_MAP = {
   info: 'Info',
@@ -17,13 +19,13 @@ export const LEVEL_ICON_MAP = {
   error: 'AlertOctagon',
 }
 
-const DEFAULT_ICON = 'Bell'
+const DEFAULT_ICON = CORE_ICON.notifications
 
 export function resolveNotificationIconName(item) {
   if (!item || typeof item !== 'object') return DEFAULT_ICON
 
   if (typeof item.icon === 'string' && item.icon.trim()) {
-    return item.icon.trim()
+    return normalizeLucideIconName(item.icon) || DEFAULT_ICON
   }
 
   const level = (item.level || '').toString().trim()

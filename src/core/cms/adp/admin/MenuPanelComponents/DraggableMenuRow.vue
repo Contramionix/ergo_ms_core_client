@@ -31,12 +31,8 @@
       </div>
       
       <!-- Иконка элемента -->
-      <div v-if="item.icon && iconComponent" class="menu-row__icon">
-        <component 
-          :is="iconComponent" 
-          :size="18" 
-          class="text-muted"
-        />
+      <div v-if="item.icon" class="menu-row__icon">
+        <LucideIcon :name="item.icon" :size="18" icon-class="text-muted" />
       </div>
       
       <!-- Название -->
@@ -121,7 +117,7 @@
 
 <script setup>
 import { useAppI18n } from '@/i18n/useAppI18n.js'
-import { ref, computed, watch, shallowRef, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { SlickList, SlickItem, HandleDirective as vHandle } from 'vue-slicksort'
 import { 
   GripVertical, 
@@ -131,7 +127,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-vue-next'
-import { getLucideIconAsync } from '@/js/lucideIconLoader.js'
+import LucideIcon from '@/components/LucideIcon.vue'
 
 const { t } = useAppI18n()
 
@@ -192,13 +188,6 @@ watch(
   },
   { immediate: true, deep: true }
 )
-
-// Динамическая загрузка иконки
-const iconComponent = shallowRef(null)
-
-watch(() => props.item.icon, async (iconName) => {
-  iconComponent.value = iconName ? await getLucideIconAsync(iconName) : null
-}, { immediate: true })
 
 const itemTypeLabel = computed(() => {
   const labels = {

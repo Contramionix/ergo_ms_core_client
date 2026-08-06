@@ -25,6 +25,8 @@ export const cmsEndpoints = {
     },
     cms: {
         getpages: 'cms/get-cms-pages',
+        apiEndpoints: 'cms/api-endpoints',
+        syncApiEndpoints: 'cms/sync-api-endpoints',
 
         roles: {
             list: 'cms/adp/roles/',

@@ -1,12 +1,10 @@
 /**
- * МАППИНГ ИКОНОК ДЛЯ КОНФИГУРАЦИОННОГО МЕНЮ
- *
- * Управление иконками через модульную систему (IconManager).
- * Lucide подгружается лениво — в mapping попадают только уже загруженные иконки.
+ * Публичный фасад иконок меню: имена Lucide (PascalCase) → IconManager.
+ * Рендер в UI — через LucideIcon; здесь только resolve/preload для данных меню.
  */
 
 import { getIcon, moduleManager } from '@/modules/index.js'
-import { getLoadedLucideIconMapping } from '@/js/lucideIconLoader.js'
+import { getLoadedLucideIconMapping, normalizeLucideIconName } from '@/js/lucideIconLoader.js'
 
 export const iconMapping = new Proxy(
   {},
@@ -15,19 +13,20 @@ export const iconMapping = new Proxy(
       if (typeof prop !== 'string') {
         return undefined
       }
-      return getIcon(prop)
+      return getIcon(normalizeLucideIconName(prop) || prop)
     },
     has(_target, prop) {
       if (typeof prop !== 'string') {
         return false
       }
-      return Boolean(getIcon(prop))
+      return Boolean(getIcon(normalizeLucideIconName(prop) || prop))
     },
     ownKeys() {
       return Object.keys(getLoadedLucideIconMapping())
     },
     getOwnPropertyDescriptor(_target, prop) {
-      const icon = getIcon(prop)
+      const key = typeof prop === 'string' ? normalizeLucideIconName(prop) || prop : prop
+      const icon = typeof key === 'string' ? getIcon(key) : null
       if (!icon) {
         return undefined
       }
@@ -40,7 +39,7 @@ export const iconMapping = new Proxy(
   },
 )
 
-export { getIcon }
+export { getIcon, normalizeLucideIconName }
 
 export function preloadMenuIconsFromData(menuData) {
   const iconNames = collectMenuIconNames(menuData)
@@ -53,8 +52,9 @@ export function preloadMenuIconsFromData(menuData) {
 function collectMenuIconNames(menuData, bucket = []) {
   const items = menuData?.menu_items || menuData || []
   for (const item of items) {
-    if (item?.icon) {
-      bucket.push(item.icon)
+    const name = normalizeLucideIconName(item?.icon)
+    if (name) {
+      bucket.push(name)
     }
     if (item?.children?.length) {
       collectMenuIconNames({ menu_items: item.children }, bucket)

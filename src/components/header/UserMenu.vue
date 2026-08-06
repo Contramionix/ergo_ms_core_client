@@ -1,10 +1,11 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { CircleUserRound, Power } from 'lucide-vue-next'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import UserAvatar from '@/components/UserAvatar.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
+import LucideIcon from '@/components/LucideIcon.vue'
+import { CORE_ICON } from '@/config/coreIconNames.js'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { collectVisibleHeaderUserMenuItems } from '@/integrations/headerUserMenu.js'
 import { logError } from '@/js/utils/logError.js'
@@ -44,14 +45,14 @@ const menuItems = computed(() => {
       id: 'profile',
       order: 10,
       title: t('menu.userMenu.profile'),
-      icon: CircleUserRound,
+      icon: CORE_ICON.profile,
       link: { name: 'User' },
     },
     {
       id: 'logout',
       order: 100,
       title: t('menu.userMenu.logout'),
-      icon: Power,
+      icon: CORE_ICON.logout,
       link: { name: 'logout' },
     },
   ]
@@ -154,14 +155,14 @@ watch(isOpen, async (newValue) => {
       <li v-for="(item, index) in menuItems" :key="item.id">
         <button v-if="item.link?.name === 'logout'" type="button" class="dropdown-item header-dropdown-item w-100 text-start" :style="{ transitionDelay: `${(index + 1) * 50}ms` }" @click="handleLogout">
           <span class="icon-flex">
-            <component :is="item.icon" :size="22" />
+            <LucideIcon :name="item.icon" :size="22" />
           </span>
           <span>{{ item.title }}</span>
         </button>
         <div v-else-if="item.trailingAction" class="user-menu-item-row" :style="{ transitionDelay: `${(index + 1) * 50}ms` }">
           <RouterLink :to="item.link" class="dropdown-item header-dropdown-item user-menu-item-row__link" active-class="active" @click="closeDropdown">
             <span class="icon-flex">
-              <component :is="item.icon" :size="22" />
+              <LucideIcon :name="item.icon" :size="22" />
             </span>
             <span>{{ item.title }}</span>
           </RouterLink>
@@ -172,13 +173,13 @@ watch(isOpen, async (newValue) => {
               :aria-label="item.trailingAction.title"
               @click.stop="handleTrailingAction(item)"
             >
-              <component :is="item.trailingAction.icon" :size="18" />
+              <LucideIcon :name="item.trailingAction.icon" :size="18" />
             </button>
           </HoverTooltip>
         </div>
         <RouterLink v-else :to="item.link" class="dropdown-item header-dropdown-item" active-class="active" :style="{ transitionDelay: `${(index + 1) * 50}ms` }" @click="closeDropdown">
           <span class="icon-flex">
-            <component :is="item.icon" :size="22" />
+            <LucideIcon :name="item.icon" :size="22" />
           </span>
           <span>{{ item.title }}</span>
         </RouterLink>

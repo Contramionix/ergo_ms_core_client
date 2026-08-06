@@ -1,7 +1,7 @@
 <script setup>
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { computed, ref, watch, defineAsyncComponent } from 'vue'
-import { Pencil, Trash2 } from 'lucide-vue-next'
+import { Settings, Trash2 } from 'lucide-vue-next'
 import { deletePolicy } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { matchSearchQuery } from '@/js/utils/searchQuery.js'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
@@ -25,6 +25,9 @@ const props = defineProps({
   pages: { type: Array, default: () => [] },
   modulePageGroups: { type: Array, default: () => [] },
   moduleCatalog: { type: Array, default: () => [] },
+  apiPages: { type: Array, default: () => [] },
+  apiModulePageGroups: { type: Array, default: () => [] },
+  apiModuleCatalog: { type: Array, default: () => [] },
   getPageLabel: { type: Function, default: null },
   getPageTitle: { type: Function, default: null },
 })
@@ -147,12 +150,24 @@ const resolveResourceTitle = (path) => {
         </div>
         <div class="text-monospace small text-muted">{{ row.resource_path }}</div>
       </div>
-      <div class="d-flex align-items-center justify-content-end gap-2 admin-card__actions">
-        <button type="button" class="btn btn-sm btn-icon btn-outline-primary" @click="openEditModal(row)" :title="t('admin.policies.edit')" :aria-label="t('admin.policies.edit')">
-          <Pencil :size="14" aria-hidden="true" />
+      <div class="actions-cell admin-card__actions">
+        <button
+          type="button"
+          class="btn-action btn-action--edit"
+          @click="openEditModal(row)"
+          :title="t('admin.policies.edit')"
+          :aria-label="t('admin.policies.edit')"
+        >
+          <Settings :size="15" aria-hidden="true" />
         </button>
-        <button type="button" class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(row.id)" :title="t('admin.policies.delete')" :aria-label="t('admin.policies.delete')">
-          <Trash2 :size="14" aria-hidden="true" />
+        <button
+          type="button"
+          class="btn-action btn-action--delete"
+          @click="deletePermission(row.id)"
+          :title="t('admin.policies.delete')"
+          :aria-label="t('admin.policies.delete')"
+        >
+          <Trash2 :size="15" aria-hidden="true" />
         </button>
       </div>
     </article>
@@ -196,12 +211,24 @@ const resolveResourceTitle = (path) => {
           </td>
           <td v-if="showPatternPriority">{{ row.priority }}</td>
           <td>
-            <div class="d-flex align-items-center gap-2">
-              <button type="button" class="btn btn-sm btn-icon btn-outline-primary" @click="openEditModal(row)" :title="t('admin.policies.edit')" :aria-label="t('admin.policies.edit')">
-                <Pencil :size="14" aria-hidden="true" />
+            <div class="actions-cell">
+              <button
+                type="button"
+                class="btn-action btn-action--edit"
+                @click="openEditModal(row)"
+                :title="t('admin.policies.edit')"
+                :aria-label="t('admin.policies.edit')"
+              >
+                <Settings :size="15" aria-hidden="true" />
               </button>
-              <button type="button" class="btn btn-sm btn-icon btn-outline-danger" @click="deletePermission(row.id)" :title="t('admin.policies.delete')" :aria-label="t('admin.policies.delete')">
-                <Trash2 :size="14" aria-hidden="true" />
+              <button
+                type="button"
+                class="btn-action btn-action--delete"
+                @click="deletePermission(row.id)"
+                :title="t('admin.policies.delete')"
+                :aria-label="t('admin.policies.delete')"
+              >
+                <Trash2 :size="15" aria-hidden="true" />
               </button>
             </div>
           </td>
@@ -237,11 +264,16 @@ const resolveResourceTitle = (path) => {
     :pages="pages"
     :module-page-groups="modulePageGroups"
     :module-catalog="moduleCatalog"
+    :api-pages="apiPages"
+    :api-module-page-groups="apiModulePageGroups"
+    :api-module-catalog="apiModuleCatalog"
     @change-permission="changePermission()"
   />
 </template>
 
 <style scoped lang="scss">
+@import '../admin-page.scss';
+
 .permission-table {
   width: 100%;
   border-collapse: collapse;
@@ -271,24 +303,6 @@ const resolveResourceTitle = (path) => {
     &:hover {
       background-color: var(--color-hover-background);
     }
-  }
-}
-
-.btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  min-width: 2rem;
-  min-height: 2rem;
-  padding: 0;
-
-  @media (hover: none), (width < $ui-bp-sm) {
-    width: 2.75rem;
-    height: 2.75rem;
-    min-width: 2.75rem;
-    min-height: 2.75rem;
   }
 }
 

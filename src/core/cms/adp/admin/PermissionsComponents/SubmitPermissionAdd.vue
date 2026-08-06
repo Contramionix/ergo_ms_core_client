@@ -3,12 +3,12 @@ import { ref, computed, watch } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SelectBox from '@/components/SelectBox.vue'
+import PolicyActionToggle from '@/core/cms/adp/admin/PermissionsComponents/PolicyActionToggle.vue'
 import PolicyResourcePathField from '@/core/cms/adp/admin/PermissionsComponents/PolicyResourcePathField.vue'
 import { createPolicy } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { buildDefaultPolicyName } from '@/core/cms/adp/admin/js/policyNameUtils.js'
 import {
   getPolicyTypeOptions,
-  getPolicyActionOptions,
   getPolicyTargetTypeOptions,
   mapRoleSelectOptions,
   mapRoleGroupSelectOptions,
@@ -17,7 +17,6 @@ import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const { t } = useAppI18n()
 const policyTypeOptions = computed(() => getPolicyTypeOptions())
-const policyActionOptions = computed(() => getPolicyActionOptions())
 const targetTypeOptions = computed(() => getPolicyTargetTypeOptions())
 
 const props = defineProps({
@@ -28,13 +27,16 @@ const props = defineProps({
   pages: { type: Array, default: () => [] },
   modulePageGroups: { type: Array, default: () => [] },
   moduleCatalog: { type: Array, default: () => [] },
+  apiPages: { type: Array, default: () => [] },
+  apiModulePageGroups: { type: Array, default: () => [] },
+  apiModuleCatalog: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['update:visible', 'addPermission'])
 
 const name = ref('')
 const policyType = ref('url')
-const action = ref('allow')
+const action = ref('deny')
 const resourcePath = ref('')
 const isPattern = ref(false)
 const priority = ref(0)
@@ -47,6 +49,15 @@ const nameManuallyEdited = ref(false)
 
 const roleSelectOptions = computed(() => mapRoleSelectOptions(props.roles))
 const roleGroupSelectOptions = computed(() => mapRoleGroupSelectOptions(props.roleGroups))
+const isApiPolicy = computed(() => policyType.value === 'api')
+const catalogPages = computed(() => (isApiPolicy.value ? props.apiPages : props.pages))
+const catalogModulePageGroups = computed(() => (
+  isApiPolicy.value ? props.apiModulePageGroups : props.modulePageGroups
+))
+const catalogModuleCatalog = computed(() => (
+  isApiPolicy.value ? props.apiModuleCatalog : props.moduleCatalog
+))
+const catalogMode = computed(() => (isApiPolicy.value ? 'api' : 'url'))
 
 const showErrorName = ref(false)
 const showErrorResource = ref(false)
@@ -65,17 +76,23 @@ const selectedRoleGroup = computed(() =>
 const suggestedPolicyName = computed(() =>
   buildDefaultPolicyName({
     resourcePath: resourcePath.value,
-    pages: props.pages,
+    pages: catalogPages.value,
     targetType: targetType.value,
     role: selectedRole.value,
     roleGroup: selectedRoleGroup.value,
   }),
 )
 
+watch(policyType, () => {
+  resourcePath.value = ''
+  isPattern.value = false
+  showErrorResource.value = false
+})
+
 const resetForm = () => {
   name.value = ''
   policyType.value = 'url'
-  action.value = 'allow'
+  action.value = 'deny'
   resourcePath.value = ''
   isPattern.value = false
   priority.value = 0
@@ -159,14 +176,9 @@ const submitForm = async () => {
   >
     <form :id="formId" class="policy-form" @submit.prevent="submitForm" novalidate>
       <div class="policy-form__row">
-        <SelectBox
-          id="actionSelect"
+        <PolicyActionToggle
           v-model="action"
           :label="t('admin.policies.action')"
-          :options="policyActionOptions"
-          value-key="id"
-          label-key="name"
-          :include-all-option="false"
         />
         <SelectBox
           id="policyTypeSelect"
@@ -180,9 +192,10 @@ const submitForm = async () => {
       </div>
 
       <PolicyResourcePathField
-        :pages="pages"
-        :module-page-groups="modulePageGroups"
-        :module-catalog="moduleCatalog"
+        :pages="catalogPages"
+        :module-page-groups="catalogModulePageGroups"
+        :module-catalog="catalogModuleCatalog"
+        :catalog-mode="catalogMode"
         :resource-path="resourcePath"
         :is-pattern="isPattern"
         :invalid="showErrorResource"

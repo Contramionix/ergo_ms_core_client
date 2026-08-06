@@ -1,5 +1,5 @@
 import { computed, defineAsyncComponent, markRaw } from 'vue'
-import { Bell, MessageSquareText, Monitor, Palette, Shield, User } from 'lucide-vue-next'
+import { CORE_ICON } from '@/config/coreIconNames.js'
 import { tGlobal } from '@/i18n/index.js'
 
 const ProfilePanel = markRaw(defineAsyncComponent(() => import('./settings-panels/ProfilePanel.vue')))
@@ -15,12 +15,22 @@ export const TAB_SECTIONS = computed(() => [
   {
     title: tGlobal('settings.sections.user'),
     items: [
-      { id: 'profile', label: tGlobal('settings.tabs.profile'), icon: User, component: ProfilePanel },
-      { id: 'security', label: tGlobal('settings.tabs.security'), icon: Shield, component: SecurityPanel },
+      {
+        id: 'profile',
+        label: tGlobal('settings.tabs.profile'),
+        icon: CORE_ICON.profile,
+        component: ProfilePanel,
+      },
+      {
+        id: 'security',
+        label: tGlobal('settings.tabs.security'),
+        icon: CORE_ICON.security,
+        component: SecurityPanel,
+      },
       {
         id: 'notifications',
         label: tGlobal('settings.tabs.notifications'),
-        icon: Bell,
+        icon: CORE_ICON.notifications,
         component: NotificationsPanel,
       },
     ],
@@ -28,12 +38,22 @@ export const TAB_SECTIONS = computed(() => [
   {
     title: tGlobal('settings.sections.system'),
     items: [
-      { id: 'system', label: tGlobal('settings.tabs.system'), icon: Monitor, component: SystemPanel },
-      { id: 'themes', label: tGlobal('settings.tabs.themes'), icon: Palette, component: ThemesPanel },
+      {
+        id: 'system',
+        label: tGlobal('settings.tabs.system'),
+        icon: CORE_ICON.system,
+        component: SystemPanel,
+      },
+      {
+        id: 'themes',
+        label: tGlobal('settings.tabs.themes'),
+        icon: CORE_ICON.themes,
+        component: ThemesPanel,
+      },
       {
         id: 'toast',
         label: tGlobal('settings.tabs.toasts'),
-        icon: MessageSquareText,
+        icon: CORE_ICON.toasts,
         component: ToastPanel,
       },
     ],

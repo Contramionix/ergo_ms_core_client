@@ -7,12 +7,11 @@
     </td>
     <td>
       <span :style="{ paddingLeft: `${level * 20}px` }">
-        <component 
-          v-if="item.icon && iconComponent" 
-          :is="iconComponent" 
-          :size="16" 
-          class="me-2 text-muted"
-          style="vertical-align: middle;"
+        <LucideIcon
+          v-if="item.icon"
+          :name="item.icon"
+          :size="16"
+          icon-class="me-2 text-muted align-middle"
         />
         {{ item.name }}
       </span>
@@ -65,9 +64,9 @@
 
 <script setup>
 import { useAppI18n } from '@/i18n/useAppI18n.js'
-import { computed, shallowRef, watch } from 'vue'
+import { computed } from 'vue'
 import { Edit, Trash } from 'lucide-vue-next'
-import { getLucideIconAsync } from '@/js/lucideIconLoader.js'
+import LucideIcon from '@/components/LucideIcon.vue'
 
 const { t } = useAppI18n()
 
@@ -84,13 +83,6 @@ const props = defineProps({
 })
 
 defineEmits(['edit', 'delete'])
-
-// Динамическая загрузка иконки
-const iconComponent = shallowRef(null)
-
-watch(() => props.item.icon, async (iconName) => {
-  iconComponent.value = iconName ? await getLucideIconAsync(iconName) : null
-}, { immediate: true })
 
 const itemTypeLabel = computed(() => {
   const labels = {

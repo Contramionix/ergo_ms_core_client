@@ -19,7 +19,7 @@
 import { ChevronRight, Dot } from 'lucide-vue-next'
 import { computed, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { iconMapping } from '@/config/icons-mapping.js'
+import LucideIcon from '@/components/LucideIcon.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { resolveMenuItemTitle } from '@/i18n/resolveMenuItemTitle.js'
 import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useMenuIconSizes'
@@ -155,11 +155,9 @@ const handleClick = (event) => {
   }
 }
 
-// Иконка элемента
-const itemIcon = computed(() => {
-  if (!props.item.icon) return null
-  return typeof props.item.icon === 'string' ? iconMapping[props.item.icon] : props.item.icon
-})
+const itemIconName = computed(() =>
+  typeof props.item.icon === 'string' ? props.item.icon : '',
+)
 
 // Вычисление отступа в зависимости от уровня вложенности
 const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
@@ -177,7 +175,11 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
     >
       <div class="menu-item__label">
         <div class="menu-item__icon icon-flex">
-          <component v-if="itemIcon" :is="itemIcon" :size="iconSizes.item" />
+          <LucideIcon
+            v-if="itemIconName"
+            :name="itemIconName"
+            :size="iconSizes.item"
+          />
           <Dot v-else :size="iconSizes.item" />
         </div>
         <MenuPeekLabel

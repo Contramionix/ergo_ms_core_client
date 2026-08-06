@@ -4,16 +4,15 @@ import { useRouter } from 'vue-router'
 import {
   Archive,
   ArchiveRestore,
-  Bell,
   Check,
   EyeOff,
   ExternalLink,
   Trash2,
 } from 'lucide-vue-next'
-import { moduleManager } from '@/modules/index.js'
 import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
 import NotificationActions from '@/core/notifications/components/NotificationActions.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
+import LucideIcon from '@/components/LucideIcon.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { formatDateTime, getRelativeTime } from '@/js/utils/timeUtils.js'
 import { confirmDelete } from '@/js/utils/confirm.js'
@@ -82,10 +81,7 @@ const levelClass = computed(() => {
   }
 })
 
-const iconComponent = computed(() => {
-  const name = resolveNotificationIconName(props.notification)
-  return moduleManager?.icons?.getIcon?.(name) || Bell
-})
+const iconName = computed(() => resolveNotificationIconName(props.notification))
 
 const hasTarget = computed(() => {
   const item = props.notification
@@ -237,7 +233,7 @@ async function onDelete() {
     @mouseleave="emit('hover-end', notification)"
   >
     <div class="notif-item__icon" :class="levelClass" aria-hidden="true">
-      <component :is="iconComponent" :size="compact ? 18 : 20" />
+      <LucideIcon :name="iconName" :size="compact ? 18 : 20" />
     </div>
 
     <div class="notif-item__body-col">

@@ -7,8 +7,7 @@
 
 import { apiClient } from '@/js/api/manager'
 import { endpoints } from '@/js/api/endpoints'
-import { getIcon, preloadMenuIconsFromData } from '@/config/icons-mapping.js'
-import { markRaw } from 'vue'
+import { normalizeLucideIconName, preloadMenuIconsFromData } from '@/config/icons-mapping.js'
 import { logError, logWarn } from '@/js/utils/logError.js'
 import tokenService from '@/core/cms/js/tokenService.js'
 import {
@@ -118,20 +117,14 @@ export function transformMenuData(menuData) {
  * @param {Object} item - Элемент меню из API
  * @returns {Object} - Преобразованный элемент
  */
-function resolveMenuIcon(icon) {
-  if (!icon) return null
-  if (typeof icon !== 'string') return icon
-  const resolved = getIcon(icon)
-  return resolved ? markRaw(resolved) : null
-}
-
 function transformMenuItem(item) {
   const transformed = {
     id: item.id,
     routeName: item.route_name,
     name: item.name,
     title: item.name,
-    icon: resolveMenuIcon(item.icon),
+    // Канон: строка Lucide PascalCase; рендер — LucideIcon в MenuItem/MenuGroup
+    icon: normalizeLucideIconName(item.icon),
     order: item.order,
     item_type: item.item_type // Сохраняем тип элемента
   }
@@ -164,7 +157,7 @@ function transformMenuItem(item) {
         const listItem = {
           routeName: child.route_name,
           name: child.name,
-          icon: resolveMenuIcon(child.icon),
+          icon: normalizeLucideIconName(child.icon),
           page: child.page,
           isOffcanvas: child.item_type === 'offcanvas',
           item_type: child.item_type, // Сохраняем тип элемента

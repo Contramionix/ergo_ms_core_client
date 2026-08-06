@@ -1,16 +1,14 @@
 <script setup>
-import { computed, ref, watch, defineAsyncComponent, useId } from 'vue'
-import { Keyboard, ListTree } from 'lucide-vue-next'
+import { computed, ref, watch, useId } from 'vue'
 import SelectBox from '@/components/SelectBox.vue'
+import PolicyPageBrowser from '@/core/cms/adp/admin/PermissionsComponents/PolicyPageBrowser.vue'
 import {
+  formatModuleLabel,
   getPolicyPathModeOptions,
   mapModuleSelectOptions,
+  resolveModuleUrlPrefixes,
 } from '@/core/cms/js/adminSelectOptions.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
-
-const PolicyPageBrowser = defineAsyncComponent(() =>
-  import('@/core/cms/adp/admin/PermissionsComponents/PolicyPageBrowser.vue'),
-)
 
 const { t } = useAppI18n()
 const fieldId = useId()
@@ -22,40 +20,67 @@ const props = defineProps({
   resourcePath: { type: String, default: '' },
   isPattern: { type: Boolean, default: false },
   invalid: { type: Boolean, default: false },
+  /** 'url' — клиентские path; 'api' — HTTP API */
+  catalogMode: { type: String, default: 'url' },
 })
 
 const emit = defineEmits(['update:resourcePath', 'update:isPattern'])
 
 const resourceMode = ref(props.isPattern ? 'pattern' : 'page')
 const selectedModule = ref(null)
-const showManualInput = ref(false)
 
-const pathModeOptions = computed(() => getPolicyPathModeOptions())
+const pathModeOptions = computed(() => {
+  const options = getPolicyPathModeOptions()
+  if (props.catalogMode !== 'api') {
+    return options
+  }
+  return options.map((opt) => (
+    opt.id === 'page'
+      ? { ...opt, name: t('admin.policies.endpoint') }
+      : opt
+  ))
+})
 const moduleOptions = computed(() => mapModuleSelectOptions(props.pages, props.moduleCatalog))
 
 const groups = computed(() =>
-  props.modulePageGroups.length > 0
-    ? props.modulePageGroups
-    : [],
+  (props.modulePageGroups || []).filter((group) => (group.pages || []).length > 0),
 )
 
 const patternPresets = computed(() => {
+  if (props.catalogMode === 'api') {
+    if (!selectedModule.value || selectedModule.value === 'core') {
+      return [
+        { id: '/api/**', name: t('admin.policies.allApi') },
+        { id: '/api/cms/**', name: t('admin.policies.allCmsApi') },
+      ]
+    }
+    const moduleLabel = formatModuleLabel(selectedModule.value, props.moduleCatalog)
+    return resolveModuleUrlPrefixes(selectedModule.value, props.pages).map((prefix) => {
+      const pattern = `${prefix}/**`
+      return {
+        id: pattern,
+        name: t('admin.policies.wholeModule', { module: moduleLabel, pattern }),
+      }
+    })
+  }
+
   if (!selectedModule.value || selectedModule.value === 'core') {
     return [
-      { id: '/admin-panel/*', name: t('admin.policies.allAdmin') },
-      { id: '/settings/*', name: t('admin.policies.allSettings') },
+      { id: '/admin-panel/**', name: t('admin.policies.allAdmin') },
+      { id: '/settings/**', name: t('admin.policies.allSettings') },
     ]
   }
-  return [
-    {
-      id: `/${selectedModule.value}/*`,
-      name: t('admin.policies.wholeModule', { module: selectedModule.value }),
-    },
-  ]
+
+  const moduleLabel = formatModuleLabel(selectedModule.value, props.moduleCatalog)
+  return resolveModuleUrlPrefixes(selectedModule.value, props.pages).map((prefix) => {
+    const pattern = `${prefix}/**`
+    return {
+      id: pattern,
+      name: t('admin.policies.wholeModule', { module: moduleLabel, pattern }),
+    }
+  })
 })
 
-const manualPathId = computed(() => `${fieldId}-manual-path`)
-const patternPathId = computed(() => `${fieldId}-pattern-path`)
 const pathModeId = computed(() => `${fieldId}-path-mode`)
 
 watch(
@@ -70,9 +95,6 @@ watch(resourceMode, (mode) => {
   if (props.isPattern !== nextIsPattern) {
     emit('update:isPattern', nextIsPattern)
   }
-  if (mode === 'page') {
-    showManualInput.value = false
-  }
 })
 
 watch(
@@ -85,18 +107,17 @@ watch(
     const matchedPage = props.pages.find((page) => page.path === path)
     if (matchedPage) {
       selectedModule.value = matchedPage.module_name || matchedPage.module || 'core'
-      showManualInput.value = false
-      return
     }
-
-    showManualInput.value = true
   },
   { immediate: true },
 )
 
-function toggleManualInput() {
-  showManualInput.value = !showManualInput.value
-}
+watch(
+  () => props.catalogMode,
+  () => {
+    selectedModule.value = null
+  },
+)
 
 function applyPatternPreset(presetPath) {
   if (!presetPath) {
@@ -119,40 +140,13 @@ function applyPatternPreset(presetPath) {
     />
 
     <div class="policy-resource-path__body">
-      <template v-if="resourceMode === 'page'">
-        <PolicyPageBrowser
-          v-if="!showManualInput"
-          :groups="groups"
-          :model-value="resourcePath"
-          @update:model-value="emit('update:resourcePath', $event)"
-        >
-          <template #actions>
-            <button type="button" class="ui-btn ui-btn--secondary" @click="toggleManualInput">
-              <Keyboard :size="16" aria-hidden="true" />
-              <span>{{ t('admin.policies.enterPathManually') }}</span>
-            </button>
-          </template>
-        </PolicyPageBrowser>
-
-        <div v-else class="policy-resource-path__manual">
-          <div>
-            <label class="form-label" :for="manualPathId">{{ t('admin.policies.pagePath') }}</label>
-            <input
-              :id="manualPathId"
-              type="text"
-              class="form-control"
-              :class="{ 'is-invalid': invalid }"
-              :value="resourcePath"
-              placeholder="/example/path"
-              @input="emit('update:resourcePath', $event.target.value)"
-            />
-          </div>
-          <button type="button" class="ui-btn ui-btn--secondary" @click="toggleManualInput">
-            <ListTree :size="16" aria-hidden="true" />
-            <span>{{ t('admin.policies.chooseFromCatalog') }}</span>
-          </button>
-        </div>
-      </template>
+      <PolicyPageBrowser
+        v-if="resourceMode === 'page'"
+        :groups="groups"
+        :catalog-mode="catalogMode"
+        :model-value="resourcePath"
+        @update:model-value="emit('update:resourcePath', $event)"
+      />
 
       <template v-else>
         <div class="policy-resource-path__row">
@@ -168,7 +162,7 @@ function applyPatternPreset(presetPath) {
           />
           <SelectBox
             :label="t('admin.policies.quickPatterns')"
-            :model-value="null"
+            :model-value="resourcePath || null"
             :options="patternPresets"
             value-key="id"
             label-key="name"
@@ -178,21 +172,9 @@ function applyPatternPreset(presetPath) {
           />
         </div>
 
-        <div>
-          <label class="form-label" :for="patternPathId">{{ t('admin.policies.pathPattern') }}</label>
-          <input
-            :id="patternPathId"
-            type="text"
-            class="form-control"
-            :class="{ 'is-invalid': invalid }"
-            :value="resourcePath"
-            placeholder="/module/*"
-            @input="emit('update:resourcePath', $event.target.value)"
-          />
-          <small class="form-text text-muted d-block">
-            <span v-html="t('admin.policies.pathPatternHelp')"></span>
-          </small>
-        </div>
+        <small class="form-text text-muted d-block">
+          {{ t('admin.policies.pathPatternHelp') }}
+        </small>
       </template>
 
       <div v-if="invalid" class="invalid-feedback d-block">
@@ -227,12 +209,5 @@ function applyPatternPreset(presetPath) {
   @media (width < $ui-bp-md) {
     grid-template-columns: 1fr;
   }
-}
-
-.policy-resource-path__manual {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5rem;
 }
 </style>

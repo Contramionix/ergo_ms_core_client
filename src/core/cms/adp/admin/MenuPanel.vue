@@ -75,7 +75,7 @@
 
     <MenuItemModal v-if="showItemModal" :item="currentItem" :parent-options="parentOptions" :roles="roles" :role-groups="roleGroups" @save="saveItem" @close="closeItemModal"/>
     
-    <MenuSeparatorModal v-if="showSeparatorModal" :separator="currentSeparator" @save="saveSeparator" @close="closeSeparatorModal"/>
+    <MenuSeparatorModal v-if="showSeparatorModal" :separator="currentSeparator" :roles="roles" :role-groups="roleGroups" @save="saveSeparator" @close="closeSeparatorModal"/>
     
     <MenuSettingsModal v-if="showSettingsModal" :show="showSettingsModal" @close="showSettingsModal = false" @save="handleSettingsSave"/>
   </div>

@@ -1,5 +1,6 @@
 <script setup>
 import SelectBox from '@/components/SelectBox.vue'
+import LucideIcon from '@/components/LucideIcon.vue'
 import { useUiSettings } from '@/core/cms/js/uiSettings.js'
 import { useUiPreferencesSettings } from '@/core/cms/js/uiPreferencesSettings.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
@@ -34,13 +35,13 @@ const {
           <SelectBox id="system-language" v-model="language" :options="LANGUAGE_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
               <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="14" icon-class="settings-card__option-icon" />
                 <span class="settings-card__option-label">{{ label }}</span>
               </span>
             </template>
             <template #option="{ option, label }">
               <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="14" icon-class="settings-card__option-icon" />
                 <span class="settings-card__option-label">{{ label }}</span>
               </span>
             </template>
@@ -54,13 +55,13 @@ const {
           <SelectBox id="system-motion" v-model="motion" :options="MOTION_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
               <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="14" icon-class="settings-card__option-icon" />
                 <span class="settings-card__option-label">{{ label }}</span>
               </span>
             </template>
             <template #option="{ option, label }">
               <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="14" icon-class="settings-card__option-icon" />
                 <span class="settings-card__option-label">{{ label }}</span>
               </span>
             </template>
@@ -74,13 +75,13 @@ const {
           <SelectBox id="system-images" v-model="images" :options="IMAGES_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
               <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="14" icon-class="settings-card__option-icon" />
                 <span class="settings-card__option-label">{{ label }}</span>
               </span>
             </template>
             <template #option="{ option, label }">
               <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="14" icon-class="settings-card__option-icon" />
                 <span class="settings-card__option-label">{{ label }}</span>
               </span>
             </template>
@@ -94,13 +95,13 @@ const {
           <SelectBox id="system-contrast" v-model="contrast" :options="CONTRAST_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
               <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="14" icon-class="settings-card__option-icon" />
                 <span class="settings-card__option-label">{{ label }}</span>
               </span>
             </template>
             <template #option="{ option, label }">
               <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="14" icon-class="settings-card__option-icon" />
                 <span class="settings-card__option-label">{{ label }}</span>
               </span>
             </template>
@@ -114,13 +115,13 @@ const {
           <SelectBox id="system-a11y" v-model="a11y" :options="A11Y_OPTIONS" :include-all-option="false">
             <template #selected="{ option, label }">
               <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="14" icon-class="settings-card__option-icon" />
                 <span class="settings-card__option-label">{{ label }}</span>
               </span>
             </template>
             <template #option="{ option, label }">
               <span class="settings-card__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-card__option-icon" />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="14" icon-class="settings-card__option-icon" />
                 <span class="settings-card__option-label">{{ label }}</span>
               </span>
             </template>

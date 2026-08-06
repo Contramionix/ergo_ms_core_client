@@ -1,10 +1,11 @@
 <script setup>
-import { Grid3x3 } from 'lucide-vue-next'
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDropdown } from '@/composables/useDropdown.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
+import LucideIcon from '@/components/LucideIcon.vue'
+import { CORE_ICON } from '@/config/coreIconNames.js'
 import { collectVisibleAppsMenuItems } from '@/integrations/appsMenu.js'
 import { logError } from '@/js/utils/logError.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
@@ -88,7 +89,7 @@ watch(isButtonVisible, (visible) => {
         aria-haspopup="true"
         @click.stop="toggleDropdown"
       >
-        <Grid3x3 :size="props.iconSize" aria-hidden="true" />
+        <LucideIcon :name="CORE_ICON.apps" :size="props.iconSize" aria-hidden="true" />
       </button>
     </HoverTooltip>
     <Transition name="dropdown">
@@ -107,7 +108,7 @@ watch(isButtonVisible, (visible) => {
               :style="{ transitionDelay: `${index * 30}ms` }"
             >
               <div class="apps-menu__icon">
-                <component v-if="app.icon" :is="app.icon" :size="18" stroke-width="1.75" />
+                <LucideIcon v-if="app.icon" :name="app.icon" :size="18" />
                 <span v-else class="apps-menu__icon-placeholder">{{ app.title.charAt(0) }}</span>
               </div>
               <div class="apps-menu__title">{{ app.title }}</div>

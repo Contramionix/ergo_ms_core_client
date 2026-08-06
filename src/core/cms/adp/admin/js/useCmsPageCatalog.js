@@ -9,7 +9,7 @@ import {
   mapModuleSelectOptions,
   mapPagePathOptions,
 } from '@/core/cms/js/adminSelectOptions.js'
-import { tGlobal } from '@/i18n/index.js'
+import { tGlobal, teGlobal } from '@/i18n/index.js'
 
 export function useCmsPageCatalog() {
   const toast = useToast()
@@ -41,7 +41,14 @@ export function useCmsPageCatalog() {
 
   const getPageTitle = (path) => {
     const page = pageByPath.value.get(path)
-    return (page?.title || '').trim()
+    if (!page) {
+      return ''
+    }
+    const titleKey = (page.title_key || page.titleKey || '').trim()
+    if (titleKey && teGlobal(titleKey)) {
+      return tGlobal(titleKey)
+    }
+    return (page.title || '').trim()
   }
 
   const loadModuleCatalog = async () => {
@@ -74,7 +81,7 @@ export function useCmsPageCatalog() {
     await Promise.all([loadModuleCatalog(), loadPages()])
   }
 
-  const syncRoutes = async () => {
+  const syncRoutes = async ({ silent = false } = {}) => {
     if (isSyncing.value) {
       return false
     }
@@ -83,11 +90,15 @@ export function useCmsPageCatalog() {
       isSyncing.value = true
       await apiClient.post('cms/patch-all-project-pages', {}, true)
       await loadCatalog()
-      toast.success(tGlobal('admin.policies.syncSuccess'))
+      if (!silent) {
+        toast.success(tGlobal('admin.policies.syncSuccess'))
+      }
       return true
     } catch (error) {
       logError('Ошибка синхронизации маршрутов', error)
-      toast.error(tGlobal('admin.policies.syncError'))
+      if (!silent) {
+        toast.error(tGlobal('admin.policies.syncError'))
+      }
       return false
     } finally {
       isSyncing.value = false

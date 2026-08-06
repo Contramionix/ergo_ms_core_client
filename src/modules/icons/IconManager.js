@@ -9,6 +9,7 @@ import {
   getLucideIconSync,
   getLucideIconNames,
   getLoadedLucideIconMapping,
+  normalizeLucideIconName,
   preloadLucideIcons,
   preloadLucideIconNames,
 } from '@/js/lucideIconLoader.js'
@@ -27,21 +28,24 @@ export class IconManager {
   }
 
   getIcon(iconName) {
-    if (this.customIcons.has(iconName)) {
-      return this.customIcons.get(iconName)
+    const key = normalizeLucideIconName(iconName) || iconName
+    if (this.customIcons.has(key)) {
+      return this.customIcons.get(key)
     }
-    return getLucideIconSync(iconName)
+    return getLucideIconSync(key)
   }
 
   async getIconAsync(iconName) {
-    if (this.customIcons.has(iconName)) {
-      return this.customIcons.get(iconName)
+    const key = normalizeLucideIconName(iconName) || iconName
+    if (this.customIcons.has(key)) {
+      return this.customIcons.get(key)
     }
-    return getLucideIconAsync(iconName)
+    return getLucideIconAsync(key)
   }
 
   registerCustomIcon(name, component) {
-    this.customIcons.set(name, component)
+    const key = normalizeLucideIconName(name) || name
+    this.customIcons.set(key, component)
   }
 
   registerCustomIcons(icons) {
@@ -51,7 +55,8 @@ export class IconManager {
   }
 
   hasIcon(iconName) {
-    return this.customIcons.has(iconName) || !!getLucideIconSync(iconName)
+    const key = normalizeLucideIconName(iconName) || iconName
+    return this.customIcons.has(key) || !!getLucideIconSync(key)
   }
 
   async getAllLucideIconNames() {

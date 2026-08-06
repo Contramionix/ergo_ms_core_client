@@ -9,7 +9,34 @@ const { t } = useAppI18n()
 const props = defineProps({
   groups: { type: Array, default: () => [] },
   modelValue: { type: String, default: '' },
+  /** 'url' | 'api' — подписи каталога */
+  catalogMode: { type: String, default: 'url' },
 })
+
+const catalogStatsText = computed(() => {
+  if (props.catalogMode === 'api') {
+    return t('admin.policies.modulesEndpointsStats', {
+      modules: props.groups.length,
+      endpoints: totalPagesCount.value,
+    })
+  }
+  return t('admin.policies.modulesPagesStats', {
+    modules: props.groups.length,
+    pages: totalPagesCount.value,
+  })
+})
+
+const catalogEmptyText = computed(() => (
+  props.catalogMode === 'api'
+    ? t('admin.policies.apiCatalogEmpty')
+    : t('admin.policies.catalogEmpty')
+))
+
+const pagesSectionTitle = computed(() => (
+  props.catalogMode === 'api'
+    ? t('admin.policies.endpoints')
+    : t('admin.policies.pages')
+))
 
 const emit = defineEmits(['update:modelValue'])
 
@@ -72,6 +99,13 @@ const totalPagesCount = computed(() =>
 )
 
 watch(
+  () => props.catalogMode,
+  () => {
+    searchQuery.value = ''
+  },
+)
+
+watch(
   () => props.groups,
   (groups) => {
     if (!groups.length) {
@@ -124,7 +158,7 @@ function selectPage(path) {
       />
       <div class="policy-page-browser__toolbar-meta">
         <div class="policy-page-browser__stats small">
-          {{ t('admin.policies.modulesPagesStats', { modules: groups.length, pages: totalPagesCount }) }}
+          {{ catalogStatsText }}
         </div>
         <div v-if="$slots.actions" class="policy-page-browser__actions">
           <slot name="actions" />
@@ -133,7 +167,7 @@ function selectPage(path) {
     </div>
 
     <div v-if="!hasGroups" class="alert alert-warning py-2 small mb-0">
-      {{ t('admin.policies.catalogEmpty') }}
+      {{ catalogEmptyText }}
     </div>
 
     <template v-else>
@@ -180,7 +214,7 @@ function selectPage(path) {
 
         <div class="policy-page-browser__pages">
           <div class="policy-page-browser__section-title">
-            {{ t('admin.policies.pages') }}
+            {{ pagesSectionTitle }}
             <span v-if="activeGroup">· {{ activeGroup.label }}</span>
           </div>
           <div class="policy-page-browser__pages-list">
@@ -196,7 +230,11 @@ function selectPage(path) {
               <span class="policy-page-browser__page-path">{{ page.path }}</span>
             </button>
             <div v-if="visiblePages.length === 0" class="policy-page-browser__empty small px-2 py-3">
-              {{ t('admin.policies.noPagesInModule') }}
+              {{
+                catalogMode === 'api'
+                  ? t('admin.policies.noEndpointsInModule')
+                  : t('admin.policies.noPagesInModule')
+              }}
             </div>
           </div>
         </div>

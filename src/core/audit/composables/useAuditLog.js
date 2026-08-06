@@ -6,7 +6,6 @@ import {
 } from '@/composables/useRouteQueryState.js'
 import { apiClient } from '@/js/api/manager'
 import { auditEndpoints } from '@/core/audit/js/endpoints.js'
-import { moduleManager } from '@/modules/index.js'
 import { useToast } from '@/js/utils/toast.js'
 import { logError } from '@/js/utils/logError.js'
 import { buildActorNameVariants, parseErgoFullNameParts } from '@/js/userAvatar.js'
@@ -131,9 +130,6 @@ export function useAuditLog(options = {}) {
   const actors = ref([])
   const selectedEvent = ref(null)
   const showDetailsModal = ref(false)
-
-  // Не reactive: запись в кэш из resolveIcon во время render давала лишние re-render.
-  const iconCacheMap = new Map()
 
   const routeQuery = syncRouteQuery
     ? useRouteQueryState({
@@ -331,14 +327,6 @@ export function useAuditLog(options = {}) {
     return params
   }
 
-  function resolveIcon(name) {
-    const key = name || 'Activity'
-    if (iconCacheMap.has(key)) return iconCacheMap.get(key)
-    const icon = moduleManager?.icons?.getIcon?.(key) || moduleManager?.icons?.getIcon?.('Activity')
-    iconCacheMap.set(key, icon)
-    return icon
-  }
-
   function severityMeta(value) {
     const map = getSeverityMetaMap()
     return map[value] || map.info
@@ -516,7 +504,6 @@ export function useAuditLog(options = {}) {
     auditFiltersTooltip,
     selectedEvent,
     showDetailsModal,
-    resolveIcon,
     severityMeta,
     hasDetails,
     ipLocationTooltip,

@@ -1,7 +1,9 @@
 <script setup>
-import { Cog, Contrast, ChevronRight, Settings } from 'lucide-vue-next'
+import { ChevronRight } from 'lucide-vue-next'
 import SelectBox from '@/components/SelectBox.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
+import LucideIcon from '@/components/LucideIcon.vue'
+import { CORE_ICON } from '@/config/coreIconNames.js'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { useUiSettings } from '@/core/cms/js/uiSettings.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
@@ -41,7 +43,7 @@ function openUserSettings() {
         aria-haspopup="true"
         @click.stop="toggleDropdown"
       >
-        <Settings :size="props.iconSize" aria-hidden="true" />
+        <LucideIcon :name="CORE_ICON.settings" :size="props.iconSize" aria-hidden="true" />
       </button>
     </HoverTooltip>
     <Transition name="dropdown">
@@ -49,7 +51,7 @@ function openUserSettings() {
         <li>
           <button type="button" class="dropdown-item header-dropdown-item settings-menu__item-row settings-menu__item-row--settings w-100 text-start" @click.stop="openUserSettings">
             <span class="icon-flex settings-menu__item-icon">
-              <Cog :size="18" />
+              <LucideIcon :name="CORE_ICON.settings" :size="18" />
             </span>
             <span class="settings-menu__main-text">{{ t('menu.toolbar.settings') }}</span>
           </button>
@@ -71,7 +73,7 @@ function openUserSettings() {
             <template #selected="{ label }">
               <span class="settings-menu__theme-trigger">
                 <span class="icon-flex settings-menu__item-icon">
-                  <Contrast :size="18" />
+                  <LucideIcon :name="CORE_ICON.themeContrast" :size="18" />
                 </span>
                 <span class="settings-menu__main-text settings-menu__theme-label text-truncate">{{ t('menu.toolbar.theme') }}</span>
                 <span class="settings-menu__theme-value text-muted text-truncate">{{ label }}</span>
@@ -80,7 +82,12 @@ function openUserSettings() {
             </template>
             <template #option="{ option, label }">
               <span class="settings-menu__option">
-                <component v-if="option?.icon" :is="option.icon" class="settings-menu__option-icon" :size="15" />
+                <LucideIcon
+                  v-if="option?.icon"
+                  :name="option.icon"
+                  :size="15"
+                  icon-class="settings-menu__option-icon"
+                />
                 <span class="settings-menu__option-label">{{ label }}</span>
               </span>
             </template>

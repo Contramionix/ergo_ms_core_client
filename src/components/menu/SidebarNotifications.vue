@@ -1,7 +1,8 @@
 <script setup>
-import { Bell, BellOff, CheckCheck } from 'lucide-vue-next'
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import LucideIcon from '@/components/LucideIcon.vue'
+import { CORE_ICON } from '@/config/coreIconNames.js'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
 import { groupNotificationsByDate } from '@/core/notifications/js/groupByDate.js'
@@ -134,7 +135,7 @@ async function onDelete(id) {
         :aria-label="t('menu.notifications.title')"
         @click.stop="handleToggle"
       >
-        <Bell :size="props.iconSize" aria-hidden="true" />
+        <LucideIcon :name="CORE_ICON.notifications" :size="props.iconSize" aria-hidden="true" />
         <span
           v-if="hasUnread"
           class="notifications-badge"
@@ -167,7 +168,7 @@ async function onDelete(id) {
             :title="t('settings.notifications.markAllRead')"
             @click="markAllRead()"
           >
-            <CheckCheck :size="16" aria-hidden="true" />
+            <LucideIcon name="CheckCheck" :size="16" aria-hidden="true" />
             <span>{{ t('menu.notifications.markAllRead') }}</span>
           </button>
         </div>
@@ -175,7 +176,12 @@ async function onDelete(id) {
         <div class="notifications-dropdown__body">
           <LoadingContentArea :loading="sidebarLoading" min-height="6rem">
             <div v-if="sidebarItems.length === 0" class="notifications-dropdown__state">
-              <BellOff :size="28" class="notifications-dropdown__empty-icon" aria-hidden="true" />
+              <LucideIcon
+                :name="CORE_ICON.notificationsOff"
+                :size="28"
+                icon-class="notifications-dropdown__empty-icon"
+                aria-hidden="true"
+              />
               <p>{{ t('menu.notifications.empty') }}</p>
             </div>
 
@@ -206,7 +212,7 @@ async function onDelete(id) {
 
         <div class="notifications-dropdown__footer">
           <button type="button" class="notifications-dropdown__footer-link" @click="goToFullList">
-            <Bell :size="14" aria-hidden="true" />
+            <LucideIcon :name="CORE_ICON.notifications" :size="14" aria-hidden="true" />
             {{ t('menu.notifications.viewAll') }}
           </button>
         </div>

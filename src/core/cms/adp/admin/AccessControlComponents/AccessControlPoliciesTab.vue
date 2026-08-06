@@ -6,12 +6,16 @@ import PermissionTable from '@/core/cms/adp/admin/PermissionsComponents/Permissi
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { getPolicies, getRoles, getRoleGroups } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { useCmsPageCatalog } from '@/core/cms/adp/admin/js/useCmsPageCatalog.js'
+import { useApiEndpointCatalog } from '@/core/cms/adp/admin/js/useApiEndpointCatalog.js'
+import { invalidatePermissionsSnapshot } from '@/core/cms/adp/js/accessControl.js'
+import { clearMenuCache } from '@/core/cms/js/menuService.js'
 import { logError } from '@/js/utils/logError.js'
+import { useToast } from '@/js/utils/toast.js'
 import { ref, computed, onMounted } from 'vue'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 
 const { t } = useAppI18n()
-
+const toast = useToast()
 
 const {
   pages,
@@ -25,10 +29,40 @@ const {
   getPageTitle,
 } = useCmsPageCatalog()
 
+const {
+  pages: apiPages,
+  moduleCatalog: apiModuleCatalog,
+  modulePageGroups: apiModulePageGroups,
+  isLoading: isApiCatalogLoading,
+  isSyncing: isApiSyncing,
+  loadCatalog: loadApiCatalog,
+  syncEndpoints: syncApiEndpoints,
+  getEndpointLabel,
+} = useApiEndpointCatalog()
+
+const isCatalogSyncing = computed(() => isSyncing.value || isApiSyncing.value)
+
 const rows = ref([])
 const roles = ref([])
 const roleGroups = ref([])
 const isLoading = ref(false)
+
+const resolveResourceLabel = (path) => {
+  const endpointLabel = getEndpointLabel(path)
+  if (endpointLabel && endpointLabel !== path) {
+    return endpointLabel
+  }
+  return getPageLabel(path)
+}
+
+const resolveResourceTitle = (path) => {
+  const pageTitle = getPageTitle(path)
+  if (pageTitle) {
+    return pageTitle
+  }
+  const endpoint = apiPages.value.find((item) => item.path === path)
+  return (endpoint?.title || endpoint?.name || '').trim()
+}
 
 const loadPolicies = async () => {
   const policies = await getPolicies()
@@ -36,6 +70,7 @@ const loadPolicies = async () => {
     id: policy.id,
     name: policy.name,
     policy_type: policy.policy_type_display,
+    raw_policy_type: policy.policy_type,
     action: policy.action_display,
     resource_path: policy.resource_path,
     is_pattern: policy.is_pattern,
@@ -51,6 +86,9 @@ const updatePermissions = async () => {
   try {
     isLoading.value = true
     await loadPolicies()
+    invalidatePermissionsSnapshot()
+    clearMenuCache()
+    window.dispatchEvent(new CustomEvent('menu-updated'))
   } catch (error) {
     logError('Ошибка загрузки политик доступа', error)
   } finally {
@@ -64,17 +102,32 @@ const loadRefs = async () => {
   roleGroups.value = nextGroups
 }
 
-const handleSyncRoutes = async () => {
-  const synced = await syncRoutes()
-  if (synced) {
+const handleSyncCatalog = async () => {
+  if (isCatalogSyncing.value || isCatalogLoading.value || isApiCatalogLoading.value) {
+    return
+  }
+
+  const [routesOk, endpointsOk] = await Promise.all([
+    syncRoutes({ silent: true }),
+    syncApiEndpoints({ silent: true }),
+  ])
+
+  if (routesOk || endpointsOk) {
     await updatePermissions()
   }
+
+  if (routesOk && endpointsOk) {
+    toast.success(t('admin.policies.catalogSyncSuccess'))
+    return
+  }
+
+  toast.error(t('admin.policies.catalogSyncError'))
 }
 
 onMounted(async () => {
   try {
     isLoading.value = true
-    await Promise.all([loadRefs(), loadCatalog(), loadPolicies()])
+    await Promise.all([loadRefs(), loadCatalog(), loadApiCatalog(), loadPolicies()])
   } catch (error) {
     logError('Ошибка инициализации политик доступа', error)
   } finally {
@@ -96,30 +149,34 @@ const searchQuery = computed(() => listState.value.q)
 const handleSearchQuery = (query) => {
   patchState({ q: query })
 }
+
 </script>
 
 <template>
   <div class="d-flex flex-column gap-3">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-2">
       <p class="access-control-tab-desc mb-0">
         {{ t('admin.access.policiesTabHint1') }}
         {{ t('admin.access.policiesTabHint2') }}
+        {{ t('admin.access.policiesTabHintApi') }}
       </p>
-      <button
-        type="button"
-        class="ui-btn ui-btn--secondary flex-shrink-0"
-        :disabled="isSyncing || isCatalogLoading"
-        @click="handleSyncRoutes"
-      >
-        <Loader2
-          v-if="isSyncing"
-          :size="16"
-          class="access-control-sync-spinner"
-          aria-hidden="true"
-        />
-        <RefreshCw v-else :size="16" aria-hidden="true" />
-        <span>{{ isSyncing ? t('admin.access.syncing') : t('admin.access.syncRoutes') }}</span>
-      </button>
+      <div class="access-control-sync-actions flex-shrink-0">
+        <button
+          type="button"
+          class="ui-btn ui-btn--secondary"
+          :disabled="isCatalogSyncing || isCatalogLoading || isApiCatalogLoading"
+          @click="handleSyncCatalog"
+        >
+          <Loader2
+            v-if="isCatalogSyncing"
+            :size="16"
+            class="access-control-sync-spinner"
+            aria-hidden="true"
+          />
+          <RefreshCw v-else :size="16" aria-hidden="true" />
+          <span>{{ isCatalogSyncing ? t('admin.access.syncing') : t('admin.access.syncCatalog') }}</span>
+        </button>
+      </div>
     </div>
 
     <div class="access-control-panel">
@@ -129,13 +186,16 @@ const handleSearchQuery = (query) => {
         :pages="pages"
         :module-page-groups="modulePageGroups"
         :module-catalog="moduleCatalog"
+        :api-pages="apiPages"
+        :api-module-page-groups="apiModulePageGroups"
+        :api-module-catalog="apiModuleCatalog"
         :search-query="searchQuery"
         @changeRowsPerPage="handleChangeRows"
         @searchRowData="handleSearchQuery"
         @updatePermissions="updatePermissions"
       />
 
-      <LoadingContentArea :loading="isLoading || isCatalogLoading">
+      <LoadingContentArea :loading="isLoading || isCatalogLoading || isApiCatalogLoading">
         <PermissionTable
           :rows="rows"
           :roles="roles"
@@ -143,8 +203,11 @@ const handleSearchQuery = (query) => {
           :pages="pages"
           :module-page-groups="modulePageGroups"
           :module-catalog="moduleCatalog"
-          :get-page-label="getPageLabel"
-          :get-page-title="getPageTitle"
+          :api-pages="apiPages"
+          :api-module-page-groups="apiModulePageGroups"
+          :api-module-catalog="apiModuleCatalog"
+          :get-page-label="resolveResourceLabel"
+          :get-page-title="resolveResourceTitle"
           :headers="[t('admin.access.headers.name'), t('admin.access.headers.type'), t('admin.access.headers.action'), t('admin.access.headers.resource'), t('admin.access.headers.target'), t('admin.access.headers.pattern'), t('admin.access.headers.priority'), t('admin.access.headers.actions')]"
           :rowsPerPage="rowsPerPage"
           :searchQuery="searchQuery"
@@ -159,6 +222,13 @@ const handleSearchQuery = (query) => {
 .access-control-tab-desc {
   font-size: 0.875rem;
   color: var(--color-secondary-text);
+}
+
+.access-control-sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
 .access-control-panel {

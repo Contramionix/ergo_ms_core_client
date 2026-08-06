@@ -1,6 +1,9 @@
 /**
  * Ленивая загрузка иконок Lucide по одной (dist/esm/icons/*.js),
  * без import всего barrel lucide-vue-next в критический путь.
+ *
+ * Канонический формат имени — Lucide PascalCase (`User`, `MessageSquareText`).
+ * Модули и API передают строку; рендер — через LucideIcon / getLucideIconAsync.
  */
 
 /**
@@ -10,6 +13,46 @@
 const iconModules = import.meta.glob(
   '../../../../virtual_env/npm/node_modules/lucide-vue-next/dist/esm/icons/*.js',
 )
+
+/**
+ * Приводит произвольную строку к каноническому Lucide PascalCase.
+ * Принимает: `User`, `user`, `user-round`, `UserIcon`, `lucide:Bell`.
+ * Компоненты Vue и пустые значения → null.
+ *
+ * @param {unknown} name
+ * @returns {string|null}
+ */
+export function normalizeLucideIconName(name) {
+  if (typeof name !== 'string') {
+    return null
+  }
+  let s = name.trim()
+  if (!s) {
+    return null
+  }
+  if (s.startsWith('lucide:')) {
+    s = s.slice(7).trim()
+  }
+  if (!s) {
+    return null
+  }
+  if (s.endsWith('Icon') && s.length > 4 && s[s.length - 5] !== '-') {
+    const without = s.slice(0, -4)
+    if (/^[A-Za-z]/.test(without)) {
+      s = without
+    }
+  }
+  if (s.includes('-') || s.includes('_')) {
+    s = s
+      .split(/[-_]/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join('')
+  } else if (s.charAt(0) === s.charAt(0).toLowerCase()) {
+    s = s.charAt(0).toUpperCase() + s.slice(1)
+  }
+  return s || null
+}
 
 /** file (kebab) → loader */
 const iconLoaderByFile = new Map()
@@ -42,30 +85,31 @@ function resolveIconLoader(file) {
 }
 
 /**
- * @param {string} iconName PascalCase (Home, Settings, …)
+ * @param {string} iconName PascalCase или нормализуемая строка (Home, Settings, …)
  * @returns {Promise<import('vue').Component|null>}
  */
 async function loadIconComponent(iconName) {
-  if (!iconName || typeof iconName !== 'string') {
+  const key = normalizeLucideIconName(iconName)
+  if (!key) {
     return null
   }
-  if (iconComponentCache.has(iconName)) {
-    return iconComponentCache.get(iconName)
+  if (iconComponentCache.has(key)) {
+    return iconComponentCache.get(key)
   }
-  if (iconLoadPromises.has(iconName)) {
-    return iconLoadPromises.get(iconName)
+  if (iconLoadPromises.has(key)) {
+    return iconLoadPromises.get(key)
   }
 
   const promise = (async () => {
     const { LUCIDE_ICON_FILES } = await loadIconMapModule()
-    const file = LUCIDE_ICON_FILES[iconName]
+    const file = LUCIDE_ICON_FILES[key]
     if (!file) {
       return null
     }
 
     if (iconComponentByFile.has(file)) {
       const cached = iconComponentByFile.get(file)
-      iconComponentCache.set(iconName, cached)
+      iconComponentCache.set(key, cached)
       return cached
     }
 
@@ -78,16 +122,16 @@ async function loadIconComponent(iconName) {
     const component = mod.default || null
     if (component) {
       iconComponentByFile.set(file, component)
-      iconComponentCache.set(iconName, component)
+      iconComponentCache.set(key, component)
     }
     return component
   })()
 
-  iconLoadPromises.set(iconName, promise)
+  iconLoadPromises.set(key, promise)
   try {
     return await promise
   } finally {
-    iconLoadPromises.delete(iconName)
+    iconLoadPromises.delete(key)
   }
 }
 
@@ -101,10 +145,11 @@ export async function getLucideIconAsync(iconName) {
 }
 
 export function getLucideIconSync(iconName) {
-  if (!iconName) {
+  const key = normalizeLucideIconName(iconName)
+  if (!key) {
     return null
   }
-  return iconComponentCache.get(iconName) || null
+  return iconComponentCache.get(key) || null
 }
 
 export async function getLucideIconNames() {
@@ -116,7 +161,13 @@ export async function preloadLucideIconNames(iconNames) {
   if (!Array.isArray(iconNames) || iconNames.length === 0) {
     return
   }
-  const unique = [...new Set(iconNames.filter(Boolean))]
+  const unique = [
+    ...new Set(
+      iconNames
+        .map((name) => normalizeLucideIconName(name))
+        .filter(Boolean),
+    ),
+  ]
   await Promise.all(unique.map((name) => loadIconComponent(name)))
 }
 

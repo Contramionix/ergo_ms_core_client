@@ -6,10 +6,13 @@
  *
  * Пункт может открывать маршрут (`route`) и/или выполнять действие (`onClick`) —
  * например offcanvas мини-чат без смены URL.
+ *
+ * Иконка — строка Lucide PascalCase (`icon: 'Bot'`); рендер в AppsMenu через LucideIcon.
  */
 
 import bridge from '@/integrations/ModuleBridge.js'
 import { moduleManager } from '@/modules/index.js'
+import { normalizeLucideIconName } from '@/js/lucideIconLoader.js'
 
 export const APPS_MENU_ITEMS_GROUP = 'apps.menu.items'
 
@@ -18,7 +21,7 @@ export const APPS_MENU_ITEMS_GROUP = 'apps.menu.items'
  * @property {string} id
  * @property {number} [order]
  * @property {string} title
- * @property {import('vue').Component} [icon]
+ * @property {string|null} [icon] — Lucide PascalCase
  * @property {import('vue-router').RouteLocationRaw} [route]
  * @property {() => void | Promise<void>} [onClick]
  * @property {() => boolean | Promise<boolean>} [isVisible]
@@ -59,7 +62,7 @@ export async function collectVisibleAppsMenuItems() {
       name: item.id,
       order: item.order ?? 0,
       title: typeof item.title === 'function' ? item.title() : item.title,
-      icon: item.icon || null,
+      icon: normalizeLucideIconName(item.icon),
       route: item.route || null,
       onClick: hasAction ? item.onClick : null,
     })
