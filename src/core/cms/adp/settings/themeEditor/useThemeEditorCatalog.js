@@ -26,7 +26,6 @@ export function createThemeEditorCatalog(ctx) {
     activeModuleManifest,
     applyEditorPreview,
     applyThemeToCurrent,
-    baselineJson,
     captureBaseline,
     currentTheme,
     draftTheme,
