@@ -652,7 +652,7 @@
     denied: 'You do not have permission to view this page',
     deniedTitle: 'Access denied',
     adminRequired: 'Administrator permissions are required.',
-    title: 'Access and permissions',
+    title: 'Access control',
     subtitle: 'Configure route access and module permissions for roles and role groups.',
     tabPolicies: 'Route access',
     tabModules: 'Module permissions',

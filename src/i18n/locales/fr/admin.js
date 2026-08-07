@@ -652,7 +652,7 @@
     denied: 'Vous n’avez pas l’autorisation de consulter cette page',
     deniedTitle: 'Accès refusé',
     adminRequired: 'Les permissions administrateur sont requises.',
-    title: 'Accès et permissions',
+    title: "Contrôle d'accès",
     subtitle: 'Configurez l’accès aux routes et les permissions des modules pour les rôles et groupes de rôles.',
     tabPolicies: 'Accès aux routes',
     tabModules: 'Permissions des modules',

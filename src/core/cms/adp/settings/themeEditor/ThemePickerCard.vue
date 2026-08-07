@@ -335,6 +335,7 @@ function onCardKeydown(event) {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  min-width: 0;
   padding: 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: 0.75rem;
@@ -565,21 +566,35 @@ function onCardKeydown(event) {
 
 .theme-picker-card__actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.35rem;
   margin-top: auto;
-  min-height: 2rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .theme-picker-card__apply {
-  margin-right: auto;
+  flex: 1 1 100%;
+  min-width: 0;
   min-height: 1.85rem;
   padding: 0.3rem 0.7rem;
   font-size: 0.75rem;
+  justify-content: center;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .theme-picker-card__icon-actions {
-  margin-left: auto;
+  flex: 0 0 auto;
+  margin-left: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
 }
 
 @media (prefers-reduced-motion: reduce) {

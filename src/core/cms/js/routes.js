@@ -126,7 +126,7 @@ export default {
     "path": "/admin-panel/access",
     "component": "@/core/cms/adp/admin/AccessControl.vue",
     "meta": {
-      "title": "Доступ и права",
+      "title": "Управление доступом",
       "titleKey": "routes.accessControl",
       "requiresAuth": true,
       "requiresGlobalAdmin": true

@@ -48,7 +48,7 @@ function prefetchTab(tabId) {
 <template>
   <div class="access-control d-flex flex-column gap-4">
     <div class="access-control__header">
-      <h2 class="access-control__title">{{ t('admin.access.title') }}</h2>
+      <h2 class="access-control__title">{{ t('routes.accessControl') }}</h2>
       <p class="access-control__subtitle">
         {{ t('admin.access.subtitle') }}
       </p>
