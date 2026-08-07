@@ -229,6 +229,8 @@ const currentCombinedOrderForUnsaved = computed(() => {
 })
 
 const hasUnsavedChanges = computed(() =>
+  !isLoading.value &&
+  !isRestoring.value &&
   initialCombinedOrder.value.length > 0 &&
   !combinedOrderEquals(initialCombinedOrder.value, currentCombinedOrderForUnsaved.value)
 )
@@ -310,6 +312,11 @@ async function loadMenuItems() {
 
 async function reloadMenuPanel() {
   notifyMenuUpdated()
+  // Пока грузятся новые items/separators, не сравнивать со старым baseline —
+  // иначе UnsavedChangesToast мелькает на кадр после restore.
+  pendingMenuReorder.value = []
+  pendingSeparatorReorder.value = []
+  initialCombinedOrder.value = []
   await Promise.all([loadMenuItems(), loadSeparators()])
   syncInitialCombinedOrder()
 }
@@ -478,7 +485,8 @@ async function saveAllChanges() {
     
     pendingMenuReorder.value = []
     pendingSeparatorReorder.value = []
-    
+    initialCombinedOrder.value = []
+
     toast.success(tGlobal('admin.menu.orderSaved'))
     notifyMenuUpdated()
     await Promise.all([
@@ -497,6 +505,7 @@ async function saveAllChanges() {
 async function cancelChanges() {
   pendingMenuReorder.value = []
   pendingSeparatorReorder.value = []
+  initialCombinedOrder.value = []
   await Promise.all([
     loadMenuItems(),
     loadSeparators()

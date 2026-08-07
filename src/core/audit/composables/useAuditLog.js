@@ -186,10 +186,28 @@ export function useAuditLog(options = {}) {
   )
 
   const actionOptions = computed(() => {
-    const list = auditFilters.value.module
+    const fixed = resolveFixedFilters()
+    const excluded = new Set(
+      String(fixed.exclude_actions || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    )
+    let list = auditFilters.value.module
       ? actionsCatalog.value.filter((a) => a.module === auditFilters.value.module)
       : actionsCatalog.value
-    return list.map((a) => ({ value: a.action, label: a.label }))
+    if (excluded.size) {
+      list = list.filter((a) => !excluded.has(a.action))
+    }
+    // Уникальные action (undo.performed может быть в нескольких секциях каталога).
+    const seen = new Set()
+    const unique = []
+    for (const item of list) {
+      if (seen.has(item.action)) continue
+      seen.add(item.action)
+      unique.push(item)
+    }
+    return unique.map((a) => ({ value: a.action, label: a.label }))
   })
 
   const severityOptions = computed(() =>
