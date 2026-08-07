@@ -92,6 +92,7 @@ import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import UnsavedChangesToast from '@/components/UnsavedChangesToast.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import { tGlobal } from '@/i18n/index.js'
+import { logError } from '@/js/utils/logError.js'
 import {
   getMenuItems,
   createMenuItem,
@@ -103,8 +104,8 @@ import {
   deleteMenuSeparator,
   clearMenuCache,
   reorderMenuItems,
-  restoreMenuFromMigrations
 } from '@/core/cms/js/menuService.js'
+import { runRestoreMenuFromMigrations } from './MenuPanelComponents/menuRestoreActions.js'
 import { apiClient } from '@/js/api/manager'
 import { endpoints, initEndpoints } from '@/js/api/endpoints'
 import Cookies from 'js-cookie'
@@ -307,23 +308,18 @@ async function loadMenuItems() {
   }
 }
 
-async function handleRestoreMenu() {
-  if (isRestoring.value) {
-    return
-  }
+async function reloadMenuPanel() {
+  notifyMenuUpdated()
+  await Promise.all([loadMenuItems(), loadSeparators()])
+  syncInitialCombinedOrder()
+}
 
-  isRestoring.value = true
-  try {
-    await restoreMenuFromMigrations()
-    notifyMenuUpdated()
-    await Promise.all([loadMenuItems(), loadSeparators()])
-    toast.success(tGlobal('admin.menu.restored'))
-  } catch (error) {
-    logError('[MenuPanel] Restore menu error:', error)
-    toast.error(error.message || tGlobal('admin.menu.restoreError'))
-  } finally {
-    isRestoring.value = false
-  }
+function handleRestoreMenu() {
+  return runRestoreMenuFromMigrations({
+    isRestoring,
+    reloadMenuPanel,
+    toast,
+  })
 }
 
 function buildTree(items) {

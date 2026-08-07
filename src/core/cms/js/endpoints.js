@@ -83,6 +83,7 @@ export const cmsEndpoints = {
             accessLog: 'cms/adp/menu/access-log/',
             availableIcons: 'cms/adp/menu/available-icons/',
             restore: 'cms/adp/menu/restore/',
+            restoreUndo: 'cms/adp/menu/restore/undo/',
         },
     },
     themes: {
