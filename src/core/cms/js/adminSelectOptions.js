@@ -91,7 +91,7 @@ function isSlugLikeModuleLabel(moduleName, label) {
   if (normalized === key) {
     return true
   }
-  // Django AppConfig default: "bi_analysis".title() → "Bi_Analysis"
+  // Django AppConfig default: slug.title() → "Slug_With_Underscores"
   const djangoTitle = key.replace(
     /[a-zA-Zа-яА-ЯёЁ]+/g,
     (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
@@ -171,7 +171,7 @@ function resolvePageModuleKey(moduleName, moduleCatalog = []) {
 }
 
 /**
- * URL-префиксы модуля по каталогу страниц (не slug папки: impuls_analysis → /impuls-analysis).
+ * URL-префиксы модуля по каталогу страниц (slug папки с `_` → URL с `-`).
  */
 export function resolveModuleUrlPrefixes(moduleName, pages = []) {
   const moduleKey = resolvePageModuleKey(moduleName)
