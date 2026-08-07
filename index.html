@@ -7,73 +7,7 @@
     <meta name="description" content="ERGO MS — веб-приложение управления и совместной работы." />
     <meta name="theme-color" content="#d0322d" />
     <title>ERGOMS</title>
-    <style>
-      html.app-bootstrapping #app {
-        opacity: 0;
-      }
-      html #app {
-        transition: opacity 0.28s ease;
-      }
-      html.app-bootstrapping #app,
-      html.app-bootstrapping #app * {
-        transition: none !important;
-        animation: none !important;
-      }
-      #ergo-boot-loader {
-        position: fixed;
-        inset: 0;
-        z-index: 99999;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        background: var(--color-background, #f2f2f2);
-      }
-      html.app-bootstrapping #ergo-boot-loader {
-        display: flex;
-      }
-      #ergo-boot-loader[hidden] {
-        display: none !important;
-      }
-      .ergo-boot-loader__spinner {
-        width: 2.5rem;
-        height: 2.5rem;
-        border: 0.25rem solid rgba(0, 0, 0, 0.08);
-        border-top-color: var(--color-accent, #d0322d);
-        border-radius: 50%;
-        animation: ergo-boot-spin 0.75s linear infinite;
-      }
-      html[data-bs-theme='dark'] #ergo-boot-loader {
-        background: var(--color-background, #111112);
-      }
-      html[data-bs-theme='dark'] .ergo-boot-loader__spinner {
-        border-color: rgba(255, 255, 255, 0.12);
-        border-top-color: var(--color-accent, #f14336);
-      }
-      @keyframes ergo-boot-spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        html #app {
-          transition: none;
-        }
-        .ergo-boot-loader__spinner {
-          animation: none;
-          border-top-color: var(--color-accent, #d0322d);
-        }
-      }
-      html[data-ergo-motion='reduce'] #app {
-        transition: none;
-      }
-      html[data-ergo-motion='reduce'] .ergo-boot-loader__spinner {
-        animation: none;
-        border-top-color: var(--color-accent, #d0322d);
-      }
-      html[data-bs-theme='dark'][data-ergo-motion='reduce'] .ergo-boot-loader__spinner {
-        border-top-color: var(--color-accent, #f14336);
-      }
-    </style>
+    <link rel="stylesheet" href="/css/boot-loader.css" />
     <!-- ergo-bootstrap-early -->
     <script type="module" src="/src/js/boot-locale-prefetch.js"></script>
     <script type="module" src="/src/js/color-theme.js"></script>
