@@ -6,6 +6,7 @@ import PasswordInput from '@/core/cms/adp/components/PasswordInput.vue'
 import { authorization } from '@/core/cms/adp/js/auth-index'
 import { validateLoginForm } from '@/js/validation'
 import { authGuard } from '@/core/cms/js/authGuard'
+import { consumePostLoginReturnPath } from '@/core/cms/js/postLoginReturn.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { getUserMenu } from '@/core/cms/js/menuService.js'
 import { useRegistrationSettings } from '@/core/cms/adp/js/useRegistrationSettings.js'
@@ -73,9 +74,10 @@ const submitForm = async () => {
 
       // Запускаем проверку токена после успешной авторизации
       authGuard.startTokenValidation()
-      // replace — чтобы Back не возвращал на /login (guard всё равно
-      // отправит на AppHome и раньше зависала полоска загрузки).
-      router.replace({ name: 'AppHome' })
+      // replace — чтобы Back не возвращал на /login.
+      // После выкидывания из сессии — на сохранённый путь, иначе /home.
+      const returnPath = consumePostLoginReturnPath()
+      router.replace(returnPath || { name: 'AppHome' })
     } else {
       // Обработка ошибок от сервера
       if (authResult.errors && typeof authResult.errors === 'object') {

@@ -7,6 +7,7 @@ import {
   ensureAccessToken,
   performServerLogout,
 } from '@/core/cms/js/tokenRefresh.js'
+import { savePostLoginReturnPath } from '@/core/cms/js/postLoginReturn.js'
 import { hasSessionHintCookie } from '@/core/cms/js/tokenStorage.js'
 import { applyMaintenanceFromResponse, isMaintenanceResponse } from '@/composables/useMaintenanceMode.js'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
@@ -118,6 +119,7 @@ class ApiClient {
             this._addAuthToken(originalRequest)
             return this.client(originalRequest)
           }
+          savePostLoginReturnPath()
           this.logout()
           if (typeof window !== 'undefined' && window.location) {
             const path = window.location.pathname || ''

@@ -1,6 +1,7 @@
 import { apiClient } from '@/js/api/manager.js'
 import { cmsEndpoints as endpoints } from '@/core/cms/js/endpoints.js'
 import tokenService from '@/core/cms/js/tokenService'
+import { clearPostLoginReturnPath } from '@/core/cms/js/postLoginReturn.js'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
 import { isTransientNetworkError } from '@/core/cms/js/isTransientNetworkError.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
@@ -153,6 +154,11 @@ export const authService = {
     },
     
     async logout(reason = 'authService.logout') {
+        // Явный выход — не возвращать на старую страницу после следующего входа.
+        // При forceLogout путь уже сохранён; cookie не трогаем.
+        if (reason !== 'authGuard.forceLogout') {
+            clearPostLoginReturnPath()
+        }
         resetTokenCheckCache()
         showBootstrapMask()
         resetPresenceConnection()

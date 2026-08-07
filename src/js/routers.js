@@ -14,6 +14,10 @@ import {
 import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
+import {
+  consumePostLoginReturnPath,
+  savePostLoginReturnPath,
+} from '@/core/cms/js/postLoginReturn.js'
 import { accessDeniedState } from './accessDeniedState'
 import { finishRouteProgress, startRouteProgress } from '@/js/routeProgressState.js'
 import { runSessionScopeGuard } from '@/js/session/sessionScopeGuard.js'
@@ -233,12 +237,14 @@ function setupRouterGuards(router) {
       }
 
       if (to.meta?.startRoute === true && (await runCheckToken())) {
-        return safeNext({ name: 'AppHome' })
+        const returnPath = consumePostLoginReturnPath()
+        return safeNext(returnPath || { name: 'AppHome' })
       }
 
       if (to.meta.requiresAuth && !(await runCheckToken())) {
         // Локальный сброс + один серверный logout (дедуп в tokenRefresh).
         // Не auth.logout() с location.href — иначе цикл со startRoute → AppHome.
+        savePostLoginReturnPath(to.fullPath)
         import('@/core/cms/js/tokenRefresh.js').then(({ performServerLogout }) => {
           performServerLogout('router.requiresAuth')
         })
@@ -291,6 +297,7 @@ function setupRouterGuards(router) {
       return safeNext()
     } catch (error) {
       logError('[routers] beforeEach failed; clearing session', error)
+      savePostLoginReturnPath(to?.fullPath)
       import('@/core/cms/js/tokenRefresh.js').then(({ performServerLogout }) => {
         performServerLogout('router.beforeEach-error')
       })

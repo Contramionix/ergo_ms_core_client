@@ -360,6 +360,8 @@ export const useUserStore = defineStore('userStore', () => {
   }
 
   const logout = async () => {
+    const { clearPostLoginReturnPath } = await import('@/core/cms/js/postLoginReturn.js')
+    clearPostLoginReturnPath()
     const { authService } = await import('@/core/cms/adp/js/auth.js')
     await authService.logout()
   }

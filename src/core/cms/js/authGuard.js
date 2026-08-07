@@ -1,6 +1,7 @@
 import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { isTransientNetworkError } from '@/core/cms/js/isTransientNetworkError.js'
+import { savePostLoginReturnPath } from '@/core/cms/js/postLoginReturn.js'
 import { logError, logWarn } from '@/js/utils/logError.js'
 
 /**
@@ -102,6 +103,7 @@ export class AuthGuard {
    * Принудительно выполняет logout и перенаправляет на стартовую страницу
    */
   async forceLogout() {
+    savePostLoginReturnPath()
     // Очищаем токены (динамический импорт для избежания циркулярной зависимости)
     const { authService } = await import('@/core/cms/adp/js/auth')
     authService.logout('authGuard.forceLogout')
