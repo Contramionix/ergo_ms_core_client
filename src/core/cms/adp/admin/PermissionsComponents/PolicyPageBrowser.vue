@@ -8,7 +8,8 @@ const { t } = useAppI18n()
 
 const props = defineProps({
   groups: { type: Array, default: () => [] },
-  modelValue: { type: String, default: '' },
+  modelValue: { type: [String, Array], default: '' },
+  multiple: { type: Boolean, default: false },
   /** 'url' | 'api' — подписи каталога */
   catalogMode: { type: String, default: 'url' },
 })
@@ -120,9 +121,26 @@ watch(
   { immediate: true },
 )
 
+const selectedPaths = computed(() => {
+  if (!props.multiple) {
+    return []
+  }
+  return Array.isArray(props.modelValue) ? props.modelValue.filter(Boolean) : []
+})
+
+function isPathSelected(path) {
+  if (props.multiple) {
+    return selectedPaths.value.includes(path)
+  }
+  return props.modelValue === path
+}
+
 watch(
   () => props.modelValue,
-  (path) => {
+  (value) => {
+    const path = props.multiple
+      ? (Array.isArray(value) ? value.find(Boolean) : '')
+      : value
     if (!path) {
       return
     }
@@ -143,7 +161,18 @@ function selectModule(moduleKey) {
 }
 
 function selectPage(path) {
-  emit('update:modelValue', path)
+  if (!props.multiple) {
+    emit('update:modelValue', path)
+    return
+  }
+  const next = [...selectedPaths.value]
+  const index = next.indexOf(path)
+  if (index >= 0) {
+    next.splice(index, 1)
+  } else {
+    next.push(path)
+  }
+  emit('update:modelValue', next)
 }
 </script>
 
@@ -179,7 +208,7 @@ function selectPage(path) {
             :key="page.path"
             type="button"
             class="policy-page-browser__page-btn"
-            :class="{ 'policy-page-browser__page-btn--active': modelValue === page.path }"
+            :class="{ 'policy-page-browser__page-btn--active': isPathSelected(page.path) }"
             @click="selectPage(page.path)"
           >
             <span class="policy-page-browser__page-title">{{ page.title || page.label }}</span>
@@ -223,7 +252,7 @@ function selectPage(path) {
               :key="page.path"
               type="button"
               class="policy-page-browser__page-btn"
-              :class="{ 'policy-page-browser__page-btn--active': modelValue === page.path }"
+              :class="{ 'policy-page-browser__page-btn--active': isPathSelected(page.path) }"
               @click="selectPage(page.path)"
             >
               <span class="policy-page-browser__page-title">{{ page.title || page.label }}</span>

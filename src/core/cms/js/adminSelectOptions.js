@@ -16,15 +16,15 @@ export function getPolicyActionOptions() {
 
 export function getPolicyTargetTypeOptions() {
   return [
-    { id: 'role_group', name: tGlobal('admin.policies.targetGroup') },
     { id: 'role', name: tGlobal('admin.policies.targetRole') },
+    { id: 'role_group', name: tGlobal('admin.policies.targetGroup') },
   ]
 }
 
 export function getPolicyPathModeOptions() {
   return [
-    { id: 'page', name: tGlobal('admin.policies.page') },
     { id: 'pattern', name: tGlobal('admin.policies.pattern') },
+    { id: 'page', name: tGlobal('admin.policies.page') },
   ]
 }
 
@@ -123,7 +123,8 @@ function resolveLocalizedModuleLabel(moduleName) {
 }
 
 function resolveCatalogModuleKey(moduleName, moduleCatalog = []) {
-  const key = !moduleName || moduleName === 'cms' ? 'core' : String(moduleName).trim()
+  const raw = String(moduleName || '').trim()
+  const key = !raw || raw === 'cms' || raw === 'internal' ? 'core' : raw
   if (!key || key === 'core') {
     return 'core'
   }

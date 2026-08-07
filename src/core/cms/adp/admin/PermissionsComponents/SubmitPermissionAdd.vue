@@ -14,10 +14,17 @@ import {
   mapRoleGroupSelectOptions,
 } from '@/core/cms/js/adminSelectOptions.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { handleApiError } from '@/js/utils/toast.js'
 
 const { t } = useAppI18n()
 const policyTypeOptions = computed(() => getPolicyTypeOptions())
 const targetTypeOptions = computed(() => getPolicyTargetTypeOptions())
+
+function resolveDefaultUserRoleId(roles = []) {
+  const match = roles.find((role) => role.is_system && role.role_type === 'user')
+    || roles.find((role) => role.name === 'Пользователь')
+  return match?.id ?? null
+}
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -35,13 +42,13 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'addPermission'])
 
 const name = ref('')
-const policyType = ref('url')
+const policyTypes = ref(['url', 'api'])
 const action = ref('deny')
-const resourcePath = ref('')
-const isPattern = ref(false)
+const resources = ref([])
+const isPattern = ref(true)
 const priority = ref(0)
-const targetType = ref('role_group')
-const selectedRoleId = ref(null)
+const targetType = ref('role')
+const selectedRoleId = ref(resolveDefaultUserRoleId(props.roles))
 const selectedRoleGroupId = ref(null)
 const isSubmitting = ref(false)
 const showAdvanced = ref(false)
@@ -49,18 +56,10 @@ const nameManuallyEdited = ref(false)
 
 const roleSelectOptions = computed(() => mapRoleSelectOptions(props.roles))
 const roleGroupSelectOptions = computed(() => mapRoleGroupSelectOptions(props.roleGroups))
-const isApiPolicy = computed(() => policyType.value === 'api')
-const catalogPages = computed(() => (isApiPolicy.value ? props.apiPages : props.pages))
-const catalogModulePageGroups = computed(() => (
-  isApiPolicy.value ? props.apiModulePageGroups : props.modulePageGroups
-))
-const catalogModuleCatalog = computed(() => (
-  isApiPolicy.value ? props.apiModuleCatalog : props.moduleCatalog
-))
-const catalogMode = computed(() => (isApiPolicy.value ? 'api' : 'url'))
 
 const showErrorName = ref(false)
 const showErrorResource = ref(false)
+const showErrorType = ref(false)
 const showErrorTarget = ref(false)
 
 const formId = computed(() => `${props.modalId}-form`)
@@ -73,36 +72,41 @@ const selectedRoleGroup = computed(() =>
   props.roleGroups.find((group) => group.id === selectedRoleGroupId.value) || null,
 )
 
-const suggestedPolicyName = computed(() =>
-  buildDefaultPolicyName({
-    resourcePath: resourcePath.value,
-    pages: catalogPages.value,
+const primaryResource = computed(() => resources.value[0] || null)
+
+const pagesForResource = (resource) => (
+  resource?.policy_type === 'api' ? props.apiPages : props.pages
+)
+
+const suggestedPolicyName = computed(() => {
+  const resource = primaryResource.value
+  if (!resource) {
+    return ''
+  }
+  return buildDefaultPolicyName({
+    resourcePath: resource.path,
+    pages: pagesForResource(resource),
     targetType: targetType.value,
     role: selectedRole.value,
     roleGroup: selectedRoleGroup.value,
-  }),
-)
-
-watch(policyType, () => {
-  resourcePath.value = ''
-  isPattern.value = false
-  showErrorResource.value = false
+  })
 })
 
 const resetForm = () => {
   name.value = ''
-  policyType.value = 'url'
+  policyTypes.value = ['url', 'api']
   action.value = 'deny'
-  resourcePath.value = ''
-  isPattern.value = false
+  resources.value = []
+  isPattern.value = true
   priority.value = 0
-  targetType.value = 'role_group'
-  selectedRoleId.value = null
+  targetType.value = 'role'
+  selectedRoleId.value = resolveDefaultUserRoleId(props.roles)
   selectedRoleGroupId.value = null
   showAdvanced.value = false
   nameManuallyEdited.value = false
   showErrorName.value = false
   showErrorResource.value = false
+  showErrorType.value = false
   showErrorTarget.value = false
 }
 
@@ -112,7 +116,7 @@ const closeModal = () => {
 }
 
 watch(
-  [suggestedPolicyName, () => nameManuallyEdited.value],
+  [suggestedPolicyName, () => nameManuallyEdited.value, () => resources.value.length],
   ([suggestedName, manuallyEdited]) => {
     if (!manuallyEdited) {
       name.value = suggestedName
@@ -125,39 +129,77 @@ watch(targetType, (type) => {
     selectedRoleId.value = null
   } else {
     selectedRoleGroupId.value = null
+    if (!selectedRoleId.value) {
+      selectedRoleId.value = resolveDefaultUserRoleId(props.roles)
+    }
   }
   showErrorTarget.value = false
 })
 
-const submitForm = async () => {
-  const resolvedName = name.value.trim() || suggestedPolicyName.value.trim()
+watch(resources, (list) => {
+  if (Array.isArray(list) && list.length) {
+    showErrorResource.value = false
+  }
+}, { deep: true })
 
-  showErrorName.value = !resolvedName
-  showErrorResource.value = !resourcePath.value.trim()
+watch(policyTypes, (types) => {
+  if (Array.isArray(types) && types.length) {
+    showErrorType.value = false
+  }
+}, { deep: true })
+
+watch([selectedRoleId, selectedRoleGroupId], () => {
+  showErrorTarget.value = false
+})
+
+function resolvePolicyName(resource) {
+  if (nameManuallyEdited.value && resources.value.length === 1) {
+    return name.value.trim() || suggestedPolicyName.value.trim()
+  }
+  if (nameManuallyEdited.value && name.value.trim() && resources.value.length > 1) {
+    return `${name.value.trim()} · ${resource.path}`
+  }
+  return buildDefaultPolicyName({
+    resourcePath: resource.path,
+    pages: pagesForResource(resource),
+    targetType: targetType.value,
+    role: selectedRole.value,
+    roleGroup: selectedRoleGroup.value,
+  })
+}
+
+const submitForm = async () => {
+  showErrorType.value = !policyTypes.value.length
+  showErrorResource.value = !resources.value.length
   showErrorTarget.value =
     (targetType.value === 'role' && !selectedRoleId.value) ||
     (targetType.value === 'role_group' && !selectedRoleGroupId.value)
 
-  if (showErrorName.value || showErrorResource.value || showErrorTarget.value) {
+  const names = resources.value.map((resource) => resolvePolicyName(resource).trim())
+  showErrorName.value = names.some((item) => !item)
+
+  if (showErrorType.value || showErrorName.value || showErrorResource.value || showErrorTarget.value) {
     return
   }
 
   try {
     isSubmitting.value = true
-    await createPolicy({
-      name: resolvedName,
-      policy_type: policyType.value,
+    await Promise.all(resources.value.map((resource, index) => createPolicy({
+      name: names[index],
+      policy_type: resource.policy_type,
       action: action.value,
-      resource_path: resourcePath.value.trim(),
-      is_pattern: isPattern.value,
+      resource_path: resource.path.trim(),
+      is_pattern: Boolean(resource.is_pattern),
       priority: priority.value,
       role: targetType.value === 'role' ? selectedRoleId.value : null,
       role_group: targetType.value === 'role_group' ? selectedRoleGroupId.value : null,
-    })
+    })))
 
     emit('addPermission')
     resetForm()
     emit('update:visible', false)
+  } catch (error) {
+    await handleApiError(error, t('admin.policies.createFailed'))
   } finally {
     isSubmitting.value = false
   }
@@ -182,24 +224,34 @@ const submitForm = async () => {
         />
         <SelectBox
           id="policyTypeSelect"
-          v-model="policyType"
+          v-model="policyTypes"
           :label="t('admin.policies.type')"
           :options="policyTypeOptions"
           value-key="id"
           label-key="name"
+          multiple
+          show-checkboxes-when-multiple
           :include-all-option="false"
+          :class="{ 'is-invalid': showErrorType }"
         />
+      </div>
+      <div v-if="showErrorType" class="invalid-feedback d-block">
+        {{ t('admin.policies.typeRequired') }}
       </div>
 
       <PolicyResourcePathField
-        :pages="catalogPages"
-        :module-page-groups="catalogModulePageGroups"
-        :module-catalog="catalogModuleCatalog"
-        :catalog-mode="catalogMode"
-        :resource-path="resourcePath"
+        multiple
+        :policy-types="policyTypes"
+        :pages="pages"
+        :module-page-groups="modulePageGroups"
+        :module-catalog="moduleCatalog"
+        :api-pages="apiPages"
+        :api-module-page-groups="apiModulePageGroups"
+        :api-module-catalog="apiModuleCatalog"
+        :resources="resources"
         :is-pattern="isPattern"
         :invalid="showErrorResource"
-        @update:resource-path="resourcePath = $event"
+        @update:resources="resources = $event"
         @update:is-pattern="isPattern = $event"
       />
 
@@ -222,6 +274,7 @@ const submitForm = async () => {
           label-key="name"
           :all-label="t('admin.policies.selectGroup')"
           cast-to-number
+          :class="{ 'is-invalid': showErrorTarget }"
         />
 
         <SelectBox
@@ -232,6 +285,7 @@ const submitForm = async () => {
           label-key="name"
           :all-label="t('admin.policies.selectRole')"
           cast-to-number
+          :class="{ 'is-invalid': showErrorTarget }"
         />
 
         <div v-if="showErrorTarget" class="invalid-feedback d-block">
@@ -266,6 +320,9 @@ const submitForm = async () => {
               @input="nameManuallyEdited = true"
             />
             <div v-if="showErrorName" class="invalid-feedback d-block">{{ t('admin.policies.nameRequired') }}</div>
+            <small v-if="resources.length > 1" class="form-text text-muted">
+              {{ t('admin.policies.bulkNameHelp') }}
+            </small>
           </div>
 
           <div>
@@ -287,7 +344,13 @@ const submitForm = async () => {
         {{ t('common.cancel') }}
       </button>
       <button type="submit" :form="formId" class="ui-btn ui-btn--primary" :disabled="isSubmitting">
-        {{ isSubmitting ? t('common.saving') : t('common.add') }}
+        {{
+          isSubmitting
+            ? t('common.saving')
+            : (resources.length > 1
+              ? t('admin.policies.addMany', { count: resources.length })
+              : t('common.add'))
+        }}
       </button>
     </template>
   </ModalCenter>

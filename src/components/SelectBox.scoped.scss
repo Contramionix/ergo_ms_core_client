@@ -58,6 +58,10 @@
     }
 }
 
+.select-box.is-invalid .select-trigger {
+    border-color: var(--bs-form-invalid-border-color, var(--bs-danger, #dc3545));
+}
+
 .select-trigger :deep(svg) {
     filter: none;
 }
