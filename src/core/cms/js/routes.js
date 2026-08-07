@@ -7,7 +7,8 @@ export default {
       "title": "Главная",
       "titleKey": "routes.home",
       "requiresAuth": true,
-      "shellBackdrop": true
+      "shellBackdrop": true,
+      "flushContent": true
     }
   },
   "User": {

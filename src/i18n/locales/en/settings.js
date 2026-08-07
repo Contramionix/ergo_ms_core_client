@@ -498,6 +498,10 @@ export default {
     h5Text: 'Containerization and distribution of modules across servers: scaling, load balancing and component interaction without deep DevOps routine.',
     h6Title: 'Module versioning',
     h6Text: 'Version management with understanding of module structure and dependencies: updates, rollbacks and compatibility at the component level, not individual files.',
+    h7Title: 'Coordinated operations stack',
+    h7Text: 'Redis, nginx, databases, Celery and Docker come up as one scheme: ports, proxy, TLS and baseline security defaults are set together — not by hand across five separate configs.',
+    h8Title: 'Platform access control and audit',
+    h8Text: 'Roles, policies and an action log at system level: every module joins one trust model instead of inventing its own checks and logs.',
   },
   messenger: {
     user: 'User',

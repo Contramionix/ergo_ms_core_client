@@ -498,6 +498,10 @@ export default {
     h5Text: 'Conteneurisation et distribution des modules sur les serveurs : mise à l’échelle, équilibrage de charge et interaction des composants sans routine DevOps profonde.',
     h6Title: 'Versionnement des modules',
     h6Text: 'Gestion des versions avec compréhension de la structure et des dépendances des modules : mises à jour, retours arrière et compatibilité au niveau des composants, pas des fichiers individuels.',
+    h7Title: 'Contour opérationnel cohérent',
+    h7Text: 'Redis, nginx, bases de données, Celery et Docker démarrent comme un seul schéma : ports, proxy, TLS et defaults de sécurité de base sont définis ensemble — pas à la main dans cinq configs.',
+    h8Title: 'Contrôle d’accès et audit plateforme',
+    h8Text: 'Rôles, politiques et journal des actions au niveau système : chaque module entre dans un seul modèle de confiance au lieu d’inventer ses propres contrôles et logs.',
   },
   messenger: {
     user: 'Utilisateur',

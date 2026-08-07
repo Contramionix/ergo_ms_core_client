@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { Bot, Boxes, Cloud, Code2, GitBranch, Layers } from 'lucide-vue-next'
+import { Bot, Boxes, Cloud, Code2, GitBranch, Layers, ServerCog, ShieldCheck } from 'lucide-vue-next'
 
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
@@ -35,6 +35,16 @@ const highlights = computed(() => [
     icon: Boxes,
     title: t('settings.home.h2Title'),
     text: t('settings.home.h2Text'),
+  },
+  {
+    icon: ServerCog,
+    title: t('settings.home.h7Title'),
+    text: t('settings.home.h7Text'),
+  },
+  {
+    icon: ShieldCheck,
+    title: t('settings.home.h8Title'),
+    text: t('settings.home.h8Text'),
   },
   {
     icon: Bot,
@@ -94,7 +104,7 @@ const highlights = computed(() => [
         <ul class="app-home__highlights-list">
           <li v-for="(item, index) in highlights" :key="item.title" class="app-home__highlight" :style="{ '--item-delay': `${index * 80}ms` }">
             <span class="app-home__highlight-icon" aria-hidden="true">
-              <component :is="item.icon" :size="22" />
+              <component :is="item.icon" :size="20" />
             </span>
             <div>
               <div class="app-home__highlight-heading">
@@ -113,6 +123,10 @@ const highlights = computed(() => [
 <style scoped lang="scss">
 @import '@/scss/_app-shell-page.scss';
 
+:deep(.site-wordmark--hero) {
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+}
+
 .app-home__username {
   color: var(--color-primary-text);
   font-weight: 600;
@@ -129,13 +143,13 @@ const highlights = computed(() => [
   padding: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .app-home__highlight {
   display: flex;
-  gap: 0.875rem;
-  padding: 1.15rem 1.2rem;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
   border: 1px solid var(--color-border);
   border-radius: 1rem;
   background: color-mix(in srgb, var(--color-secondary-background) 55%, var(--color-primary-background));
@@ -148,16 +162,16 @@ const highlights = computed(() => [
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.75rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.7rem;
   color: var(--color-accent);
   background: color-mix(in srgb, var(--color-accent) 12%, var(--color-primary-background));
 }
 
 .app-home__highlight-title {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-primary-text);
 }
@@ -166,8 +180,8 @@ const highlights = computed(() => [
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.35rem;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
 }
 
 .app-home__highlight-badge {
@@ -186,8 +200,8 @@ const highlights = computed(() => [
 
 .app-home__highlight-text {
   margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-size: 0.8125rem;
+  line-height: 1.45;
   color: var(--color-secondary-text);
 }
 
