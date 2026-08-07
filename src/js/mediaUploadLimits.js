@@ -6,7 +6,7 @@
  *
  * HARD (CLIENT_MEDIA_UPLOAD_HARD_MAX_SIZE ← MEDIA_UPLOAD_HARD_MAX_SIZE) —
  * абсолютный потолок. Модуль может запросить maxSize выше PLATFORM, но не выше HARD.
- * maxSize === 0 означает «без модульного потолка» → HARD (как video_analysis).
+ * maxSize === 0 означает «без модульного потолка» → HARD.
  */
 
 export const PLATFORM_MEDIA_MAX_BYTES =
@@ -18,14 +18,10 @@ export const HARD_MEDIA_MAX_BYTES = Math.max(
   PLATFORM_MEDIA_MAX_BYTES,
 )
 
-/** Именованные UX/feature лимиты (байты); могут быть ниже PLATFORM. */
+/** Именованные UX/feature лимиты ядра (байты); могут быть ниже PLATFORM. */
 export const UPLOAD_FEATURE_LIMITS = {
   avatar: 5 * 1024 * 1024,
   messengerAttachment: 25 * 1024 * 1024,
-  impulsExcel: 50 * 1024 * 1024,
-  tpDocx: 50 * 1024 * 1024,
-  aiAssistantChat: 10 * 1024 * 1024,
-  lmsResource: 100 * 1024 * 1024,
 }
 
 /**
