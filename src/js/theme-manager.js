@@ -16,12 +16,14 @@ import {
   COLOR_VAR_MAP,
   BOOTSTRAP_BRIDGE_FROM_COLORS,
 } from './theme-css-builder.js'
+import { clearCspStyleSheet, setCspStyleSheet } from './cspStyleSheet.js'
 
 export { COLOR_VAR_MAP, BOOTSTRAP_BRIDGE_FROM_COLORS, hasCustomColors }
 
 const THEME_STORAGE_KEY = 'theme'
 const ACTIVE_THEME_STORAGE_KEY = 'activeTheme'
 const ACTIVE_SITE_PAIR_STORAGE_KEY = 'activeSiteThemePair'
+const CUSTOM_THEME_STYLE_ID = 'custom-theme-styles'
 
 export const THEME_MODES = ['light', 'dark', 'auto']
 export const THEME_CHANGE_EVENT = 'ergo:theme-change'
@@ -73,11 +75,7 @@ export function getDefaultThemeConfig() {
 export function applyBootstrapThemeMode(mode) {
   const resolved = resolveThemeMode(mode)
   document.documentElement.setAttribute('data-bs-theme', resolved)
-
-  const styleElement = document.getElementById('custom-theme-styles')
-  if (styleElement) {
-    styleElement.textContent = ''
-  }
+  clearCspStyleSheet(CUSTOM_THEME_STYLE_ID)
 }
 
 function resolveColorsForAppearanceMode(savedTheme, resolvedMode) {
@@ -163,21 +161,12 @@ export function applyTheme(theme, saveToStorage = true) {
 
   document.documentElement.setAttribute('data-bs-theme', baseTheme)
 
-  let styleElement = document.getElementById('custom-theme-styles')
-  if (!styleElement) {
-    styleElement = document.createElement('style')
-    styleElement.id = 'custom-theme-styles'
-    const parent = document.head || document.body || document.documentElement
-    parent.appendChild(styleElement)
-  }
-
   const cssRules = buildThemeCss({
     baseTheme,
     colors,
     bootstrapColors,
   })
-
-  styleElement.textContent = cssRules
+  setCspStyleSheet(CUSTOM_THEME_STYLE_ID, cssRules)
 
   if (saveToStorage) {
     saveThemeToLocalStorage(theme)
@@ -198,10 +187,7 @@ export function getCurrentThemeMode() {
  * Сброс превью редактора к SCSS-дефолтам (не трогает global activeTheme).
  */
 export function resetPreviewToDefaults(baseTheme = 'light') {
-  const styleElement = document.getElementById('custom-theme-styles')
-  if (styleElement) {
-    styleElement.textContent = ''
-  }
+  clearCspStyleSheet(CUSTOM_THEME_STYLE_ID)
   document.documentElement.setAttribute('data-bs-theme', baseTheme)
   return {
     base_theme: baseTheme,
@@ -212,10 +198,7 @@ export function resetPreviewToDefaults(baseTheme = 'light') {
 
 export function resetToInitialTheme(baseTheme = null) {
   const mode = baseTheme || getCurrentThemeMode()
-  const styleElement = document.getElementById('custom-theme-styles')
-  if (styleElement) {
-    styleElement.textContent = ''
-  }
+  clearCspStyleSheet(CUSTOM_THEME_STYLE_ID)
   document.documentElement.setAttribute('data-bs-theme', mode)
   localStorage.removeItem(ACTIVE_THEME_STORAGE_KEY)
   applyThemeModePreference(readThemePreference())

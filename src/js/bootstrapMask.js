@@ -1,8 +1,8 @@
 /**
  * МАСКА ЗАГРУЗКИ ПРИЛОЖЕНИЯ
  *
- * Класс `app-bootstrapping` на <html> делает #app прозрачным (см. критический инлайн-CSS
- * в index.html и bootstrap-early.js) и отключает переходы. Inline-loader `#ergo-boot-loader`
+ * Класс `app-bootstrapping` на <html> делает #app прозрачным (см. /css/boot-loader.css
+ * и bootstrap-early.js) и отключает переходы. Loader `#ergo-boot-loader`
  * показывается вместо белого экрана.
  *
  * Используется:

@@ -11,6 +11,7 @@ import {
   getCurrentThemeMode,
   THEME_CHANGE_EVENT,
 } from './theme-manager.js'
+import { clearCspStyleSheet, setCspStyleSheet } from './cspStyleSheet.js'
 import { logError } from '@/js/utils/logError.js'
 
 const ACTIVE_MODULE_THEMES_KEY = 'activeModuleThemes'
@@ -31,16 +32,6 @@ function notifyModuleThemeChange(moduleKey, baseTheme) {
   window.dispatchEvent(new CustomEvent(MODULE_THEME_CHANGE_EVENT, {
     detail: { moduleKey, baseTheme },
   }))
-}
-
-function getOrCreateStyleElement() {
-  let el = document.getElementById(MODULE_THEME_STYLE_ID)
-  if (!el) {
-    el = document.createElement('style')
-    el.id = MODULE_THEME_STYLE_ID
-    document.head.appendChild(el)
-  }
-  return el
 }
 
 export function normalizeModuleThemePayload(data) {
@@ -160,10 +151,9 @@ function resolvePreviewMode() {
 function applyResolvedVariant(moduleKey, themeSet) {
   const mode = resolvePreviewMode()
   const variant = resolveVariantFromSet(themeSet, mode)
-  const styleEl = getOrCreateStyleElement()
 
   if (!variant) {
-    styleEl.textContent = ''
+    clearCspStyleSheet(MODULE_THEME_STYLE_ID)
     notifyModuleThemeChange(moduleKey, mode)
     return
   }
@@ -179,7 +169,7 @@ function applyResolvedVariant(moduleKey, themeSet) {
     includeAccentComponentRules: true,
   })
 
-  styleEl.textContent = css
+  setCspStyleSheet(MODULE_THEME_STYLE_ID, css)
   notifyModuleThemeChange(moduleKey, mode)
 }
 
@@ -213,10 +203,7 @@ export function applyModuleThemeSet(moduleKey, themeSet, options = {}) {
   cachedModuleSet = themeSet ? normalizeModuleThemeSetPayload(themeSet) : null
 
   if (!moduleKey || !cachedModuleSet) {
-    const styleEl = document.getElementById(MODULE_THEME_STYLE_ID)
-    if (styleEl) {
-      styleEl.textContent = ''
-    }
+    clearCspStyleSheet(MODULE_THEME_STYLE_ID)
     notifyModuleThemeChange(null, null)
     return
   }
@@ -231,10 +218,7 @@ export function clearModuleTheme() {
   previewForceMode = null
   activeModuleKey = null
   cachedModuleSet = null
-  const styleEl = document.getElementById(MODULE_THEME_STYLE_ID)
-  if (styleEl) {
-    styleEl.textContent = ''
-  }
+  clearCspStyleSheet(MODULE_THEME_STYLE_ID)
   notifyModuleThemeChange(null, null)
 }
 

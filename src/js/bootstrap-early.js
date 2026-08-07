@@ -33,12 +33,6 @@ document.documentElement.classList.add('app-bootstrapping')
     if (!accent && !background) {
       return
     }
-    var style = document.getElementById('custom-theme-styles')
-    if (!style) {
-      style = document.createElement('style')
-      style.id = 'custom-theme-styles'
-      ;(document.head || root).appendChild(style)
-    }
     var css = 'html[data-bs-theme="' + resolved + '"]{'
     if (background) {
       css += '--color-background:' + background + '!important;'
@@ -62,7 +56,27 @@ document.documentElement.classList.add('app-bootstrapping')
       }
     }
     css += '}'
-    style.textContent = css
+    // CSP style-src 'self': без inline <style>, через adoptedStyleSheets
+    // (тот же реестр, что cspStyleSheet.js / theme-manager).
+    var styleId = 'custom-theme-styles'
+    var legacy = document.getElementById(styleId)
+    if (legacy && legacy.tagName === 'STYLE') {
+      legacy.remove()
+    }
+    if (typeof CSSStyleSheet !== 'undefined' && 'adoptedStyleSheets' in document) {
+      var registryKey = '__ERGO_CSP_STYLE_SHEETS__'
+      if (!window[registryKey]) {
+        window[registryKey] = Object.create(null)
+      }
+      var registry = window[registryKey]
+      var sheet = registry[styleId]
+      if (!sheet) {
+        sheet = new CSSStyleSheet()
+        registry[styleId] = sheet
+        document.adoptedStyleSheets = document.adoptedStyleSheets.concat(sheet)
+      }
+      sheet.replaceSync(css)
+    }
   } catch (_e) {
     /* private mode / blocked storage / bad cache */
   }
