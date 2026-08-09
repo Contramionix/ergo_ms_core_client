@@ -1,13 +1,16 @@
 <script setup>
-import { computed, inject, ref, watch } from 'vue'
+import { computed, inject, nextTick, ref, watch } from 'vue'
 import { ChevronDown, ChevronUp } from 'lucide-vue-next'
 import LucideIcon from '@/components/LucideIcon.vue'
 import SearchInput from '@/components/SearchInput.vue'
 import {
   NOTIFICATION_NAV_KEY,
+  anchorIdBrowser,
   anchorIdCategory,
   anchorIdGlobal,
   anchorIdModule,
+  anchorIdModules,
+  anchorIdRetention,
 } from '@/core/notifications/js/useNotificationSettingsNav.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { matchSearchQuery } from '@/js/utils/searchQuery.js'
@@ -29,6 +32,7 @@ const emit = defineEmits(['select', 'notification-navigate'])
 const notificationNav = inject(NOTIFICATION_NAV_KEY, null)
 const isNotificationsExpanded = ref(false)
 const searchQuery = ref('')
+const navBodyRef = ref(null)
 
 const hasSearchQuery = computed(() => Boolean(searchQuery.value.trim()))
 
@@ -63,7 +67,10 @@ function notificationsTabLabelMatches() {
 
 function notificationsMatchQuery() {
   if (notificationsTabLabelMatches()) return true
+  if (matchesQuery(t('settings.browserNotifications.caption'))) return true
+  if (matchesQuery(t('settings.notifications.inboxRetention'))) return true
   if (matchesQuery(t('settings.notifications.channels'))) return true
+  if (matchesQuery(t('settings.notifications.moduleNotifications'))) return true
   return props.notificationSections.some((section) => notificationSectionMatches(section))
 }
 
@@ -79,12 +86,44 @@ const filteredNotificationSections = computed(() => {
     }))
 })
 
-const showChannelsNavLink = computed(
-  () =>
-    !hasSearchQuery.value ||
-    notificationsTabLabelMatches() ||
-    matchesQuery(t('settings.notifications.channels')),
-)
+const coreNavLinks = computed(() => [
+  {
+    id: 'browser',
+    label: t('settings.browserNotifications.caption'),
+    anchorId: anchorIdBrowser(),
+  },
+  {
+    id: 'retention',
+    label: t('settings.notifications.inboxRetention'),
+    anchorId: anchorIdRetention(),
+  },
+  {
+    id: 'channels',
+    label: t('settings.notifications.channels'),
+    anchorId: anchorIdGlobal(),
+  },
+])
+
+const visibleCoreNavLinks = computed(() => {
+  if (!hasSearchQuery.value || notificationsTabLabelMatches()) {
+    return coreNavLinks.value
+  }
+  return coreNavLinks.value.filter((link) => matchesQuery(link.label))
+})
+
+const showModulesNavGroup = computed(() => {
+  if (!props.notificationSections.length && !filteredNotificationSections.value.length) {
+    return false
+  }
+  if (!hasSearchQuery.value || notificationsTabLabelMatches()) return true
+  if (matchesQuery(t('settings.notifications.moduleNotifications'))) return true
+  return filteredNotificationSections.value.length > 0
+})
+
+const isModulesGroupExpanded = computed(() => {
+  if (hasSearchQuery.value) return true
+  return notificationNav?.modulesGroupExpanded?.value ?? true
+})
 
 const filteredSections = computed(() => {
   if (!hasSearchQuery.value) return props.sections
@@ -136,10 +175,24 @@ function handleTabClick(tab) {
   emit('select', tab.id)
 }
 
-function handleGlobalNavClick() {
+function handleCoreNavClick(anchorId) {
   isNotificationsExpanded.value = true
   emit('select', NOTIFICATIONS_TAB_ID)
-  emit('notification-navigate', anchorIdGlobal())
+  emit('notification-navigate', anchorId)
+}
+
+function handleModulesGroupClick() {
+  isNotificationsExpanded.value = true
+  emit('select', NOTIFICATIONS_TAB_ID)
+  if (hasSearchQuery.value) {
+    emit('notification-navigate', anchorIdModules())
+    return
+  }
+  const wasExpanded = isModulesGroupExpanded.value
+  notificationNav?.toggleModulesGroupExpanded()
+  if (!wasExpanded) {
+    emit('notification-navigate', anchorIdModules())
+  }
 }
 
 function handleCategoryNavClick(module, category) {
@@ -163,16 +216,26 @@ function handleModuleHeaderClick(module) {
   }
 }
 
-function syncExpandFromAnchor(anchorId) {
+async function syncExpandFromAnchor(anchorId) {
   if (!anchorId) return
   if (props.activeTabId === NOTIFICATIONS_TAB_ID) {
     isNotificationsExpanded.value = true
   }
-  if (anchorId === anchorIdGlobal()) return
+  if (
+    anchorId === anchorIdBrowser()
+    || anchorId === anchorIdRetention()
+    || anchorId === anchorIdGlobal()
+  ) {
+    return
+  }
+  if (anchorId === anchorIdModules()) {
+    await notificationNav?.expandModulesGroup()
+    return
+  }
   for (const section of props.notificationSections) {
     const moduleAnchor = `notif-module-${section.module}`
     if (anchorId === moduleAnchor || anchorId.startsWith(`notif-${section.module}-`)) {
-      notificationNav?.expandModule(section.module)
+      await notificationNav?.expandModule(section.module)
     }
   }
 }
@@ -200,15 +263,28 @@ watch(
   { immediate: true },
 )
 
+async function scrollActiveNavLinkIntoView(anchorId) {
+  if (!anchorId || props.activeTabId !== NOTIFICATIONS_TAB_ID) return
+  await nextTick()
+  const root = navBodyRef.value
+  if (!root) return
+  const el = root.querySelector(`[data-notif-anchor="${CSS.escape(anchorId)}"]`)
+  el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+
 watch(
   () => props.notificationActiveAnchorId,
-  (anchorId) => syncExpandFromAnchor(anchorId),
+  async (anchorId) => {
+    await syncExpandFromAnchor(anchorId)
+    await scrollActiveNavLinkIntoView(anchorId)
+  },
   { immediate: true },
 )
 
 watch(hasSearchQuery, (searching) => {
   if (searching) {
     isNotificationsExpanded.value = true
+    notificationNav?.expandModulesGroup()
     for (const section of filteredNotificationSections.value) {
       notificationNav?.expandModule(section.module)
     }
@@ -219,111 +295,56 @@ watch(hasSearchQuery, (searching) => {
 <template>
   <nav class="user-settings-modal__nav" :aria-label="t('settings.sections.user')">
     <div class="user-settings-modal__nav-search">
-      <SearchInput
-        v-model="searchQuery"
-        :placeholder="t('settings.nav.searchPlaceholder')"
-        layout="grow"
-        :show-icon="true"
-        background="primary"
-        focus-border="primary"
-      />
+      <SearchInput v-model="searchQuery" :placeholder="t('settings.nav.searchPlaceholder')" layout="grow" :show-icon="true" background="primary" focus-border="primary"/>
     </div>
 
-    <div class="user-settings-modal__nav-body">
+    <div ref="navBodyRef" class="user-settings-modal__nav-body">
       <p v-if="hasNoResults" class="user-settings-modal__nav-empty">
         {{ t('settings.nav.noResults') }}
       </p>
 
-      <div
-        v-for="(section, sectionIndex) in filteredSections"
-        :key="section.title ?? sectionIndex"
-        class="user-settings-modal__nav-section"
-      >
+      <div v-for="(section, sectionIndex) in filteredSections" :key="section.title ?? sectionIndex" class="user-settings-modal__nav-section">
         <h3 class="user-settings-modal__nav-section-title">{{ section.title }}</h3>
         <ul class="user-settings-modal__nav-list list-unstyled mb-0">
           <li v-for="tab in section.items" :key="tab.id" class="user-settings-modal__nav-item-wrap">
-            <button
-              type="button"
-              class="user-settings-modal__nav-item"
-              :class="{
-                'user-settings-modal__nav-item--active': activeTabId === tab.id,
-                'user-settings-modal__nav-item--expandable': isNotificationsTab(tab.id),
-              }"
-              @click="handleTabClick(tab)"
-            >
+            <button type="button" class="user-settings-modal__nav-item" :class="{ 'user-settings-modal__nav-item--active': activeTabId === tab.id, 'user-settings-modal__nav-item--expandable': isNotificationsTab(tab.id), }" @click="handleTabClick(tab)">
               <span class="user-settings-modal__nav-icon" aria-hidden="true">
                 <LucideIcon :name="tab.icon" :size="18" />
               </span>
               <span class="user-settings-modal__nav-label">{{ tab.label }}</span>
-              <ChevronDown
-                v-if="isNotificationsTab(tab.id)"
-                :size="16"
-                class="user-settings-modal__nav-chevron"
-                :class="{
-                  'user-settings-modal__nav-chevron--rotated':
-                    showNotificationsSublist(tab.id),
-                }"
-              />
+              <ChevronDown v-if="isNotificationsTab(tab.id)" :size="16" class="user-settings-modal__nav-chevron" :class="{ 'user-settings-modal__nav-chevron--rotated': showNotificationsSublist(tab.id), }"/>
             </button>
 
             <Transition name="nav-sublist">
-              <ul
-                v-if="showNotificationsSublist(tab.id)"
-                class="user-settings-modal__nav-sublist list-unstyled mb-0"
-              >
-                <li v-if="showChannelsNavLink">
-                  <button
-                    type="button"
-                    class="user-settings-modal__nav-sublink"
-                    :class="{ 'user-settings-modal__nav-sublink--active': notificationActiveAnchorId === anchorIdGlobal() }"
-                    @click="handleGlobalNavClick"
-                  >
-                    {{ t('settings.notifications.channels') }}
+              <ul v-if="showNotificationsSublist(tab.id)" class="user-settings-modal__nav-sublist list-unstyled mb-0">
+                <li v-for="link in visibleCoreNavLinks" :key="link.id">
+                  <button type="button" class="user-settings-modal__nav-sublink" :data-notif-anchor="link.anchorId" :class="{ 'user-settings-modal__nav-sublink--active': notificationActiveAnchorId === link.anchorId, }" @click="handleCoreNavClick(link.anchorId)">
+                    {{ link.label }}
                   </button>
                 </li>
-                <li
-                  v-for="moduleSection in filteredNotificationSections"
-                  :key="moduleSection.module"
-                  class="user-settings-modal__nav-module-wrap"
-                >
-                  <button
-                    type="button"
-                    class="user-settings-modal__nav-sublink user-settings-modal__nav-sublink--module"
-                    :class="{ 'user-settings-modal__nav-sublink--expanded': isModuleExpanded(moduleSection.module) }"
-                    :aria-expanded="isModuleExpanded(moduleSection.module)"
-                    @click="handleModuleHeaderClick(moduleSection.module)"
-                  >
-                    <span>{{ moduleSection.module_label }}</span>
-                    <ChevronUp
-                      v-if="isModuleExpanded(moduleSection.module)"
-                      :size="14"
-                      class="user-settings-modal__nav-chevron user-settings-modal__nav-chevron--sm"
-                      aria-hidden="true"
-                    />
-                    <ChevronDown
-                      v-else
-                      :size="14"
-                      class="user-settings-modal__nav-chevron user-settings-modal__nav-chevron--sm"
-                      aria-hidden="true"
-                    />
+                <li v-if="showModulesNavGroup" class="user-settings-modal__nav-module-wrap">
+                  <button type="button" class="user-settings-modal__nav-sublink" :data-notif-anchor="anchorIdModules()" :class="{ 'user-settings-modal__nav-sublink--active': notificationActiveAnchorId === anchorIdModules(), 'user-settings-modal__nav-sublink--expanded': isModulesGroupExpanded, }" :aria-expanded="isModulesGroupExpanded" @click="handleModulesGroupClick">
+                    <span>{{ t('settings.notifications.moduleNotifications') }}</span>
+                    <ChevronUp v-if="isModulesGroupExpanded" :size="14" class="user-settings-modal__nav-chevron user-settings-modal__nav-chevron--sm" aria-hidden="true"/>
+                    <ChevronDown v-else :size="14" class="user-settings-modal__nav-chevron user-settings-modal__nav-chevron--sm" aria-hidden="true"/>
                   </button>
                   <Transition name="nav-sublist">
-                    <ul
-                      v-if="isModuleExpanded(moduleSection.module)"
-                      class="user-settings-modal__nav-sublist user-settings-modal__nav-sublist--nested list-unstyled mb-0"
-                    >
-                      <li v-for="category in moduleSection.categories" :key="category.category">
-                        <button
-                          type="button"
-                          class="user-settings-modal__nav-sublink user-settings-modal__nav-sublink--nested"
-                          :class="{
-                            'user-settings-modal__nav-sublink--active':
-                              notificationActiveAnchorId === anchorIdCategory(moduleSection.module, category.category),
-                          }"
-                          @click="handleCategoryNavClick(moduleSection.module, category.category)"
-                        >
-                          {{ category.category_label }}
+                    <ul v-if="isModulesGroupExpanded" class="user-settings-modal__nav-sublist user-settings-modal__nav-sublist--nested list-unstyled mb-0">
+                      <li v-for="moduleSection in filteredNotificationSections" :key="moduleSection.module" class="user-settings-modal__nav-module-wrap">
+                        <button type="button" class="user-settings-modal__nav-sublink user-settings-modal__nav-sublink--module" :data-notif-anchor="anchorIdModule(moduleSection.module)" :class="{ 'user-settings-modal__nav-sublink--expanded': isModuleExpanded(moduleSection.module), 'user-settings-modal__nav-sublink--active': notificationActiveAnchorId === anchorIdModule(moduleSection.module), }" :aria-expanded="isModuleExpanded(moduleSection.module)" @click="handleModuleHeaderClick(moduleSection.module)">
+                          <span>{{ moduleSection.module_label }}</span>
+                          <ChevronUp v-if="isModuleExpanded(moduleSection.module)" :size="14" class="user-settings-modal__nav-chevron user-settings-modal__nav-chevron--sm" aria-hidden="true"/>
+                          <ChevronDown v-else :size="14" class="user-settings-modal__nav-chevron user-settings-modal__nav-chevron--sm" aria-hidden="true"/>
                         </button>
+                        <Transition name="nav-sublist">
+                          <ul v-if="isModuleExpanded(moduleSection.module)" class="user-settings-modal__nav-sublist user-settings-modal__nav-sublist--nested list-unstyled mb-0">
+                            <li v-for="category in moduleSection.categories" :key="category.category">
+                              <button type="button" class="user-settings-modal__nav-sublink user-settings-modal__nav-sublink--nested" :data-notif-anchor="anchorIdCategory(moduleSection.module, category.category)" :class="{ 'user-settings-modal__nav-sublink--active': notificationActiveAnchorId === anchorIdCategory(moduleSection.module, category.category), }" @click="handleCategoryNavClick(moduleSection.module, category.category)">
+                                {{ category.category_label }}
+                              </button>
+                            </li>
+                          </ul>
+                        </Transition>
                       </li>
                     </ul>
                   </Transition>

@@ -8,6 +8,7 @@ import { useUserStore } from '@/core/cms/js/userStore.js'
 import { performServerLogout, restoreSession, invalidateSessionRestoreCache, resetServerLogoutGate, ensureAccessToken } from '@/core/cms/js/tokenRefresh.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
+import { resetNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
 import { showBootstrapMask } from '@/js/bootstrapMask.js'
 
 const TOKEN_CHECK_TTL_MS = 60 * 1000
@@ -163,6 +164,7 @@ export const authService = {
         showBootstrapMask()
         resetPresenceConnection()
         resetPresenceStore()
+        resetNotificationsInbox()
         await performServerLogout(reason)
         invalidateSessionRestoreCache()
         tokenService.clear()

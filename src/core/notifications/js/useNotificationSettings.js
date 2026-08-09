@@ -8,8 +8,32 @@
 
 import { computed, ref } from 'vue'
 import { notificationsApi } from './notifications-api'
+import { setSidebarActivityDays as applyInboxSidebarActivityDays } from './useNotificationsInbox.js'
 
 const SAVE_DEBOUNCE_MS = 400
+const SIDEBAR_ACTIVITY_DAYS_MIN = 1
+const SIDEBAR_ACTIVITY_DAYS_MAX = 7
+const SIDEBAR_ACTIVITY_DAYS_DEFAULT = 3
+const AUTO_ARCHIVE_DAYS_PRESETS = [7, 14, 30, 60, 90]
+const AUTO_ARCHIVE_DAYS_DEFAULT = 14
+
+function clampSidebarActivityDays(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return SIDEBAR_ACTIVITY_DAYS_DEFAULT
+  return Math.min(
+    SIDEBAR_ACTIVITY_DAYS_MAX,
+    Math.max(SIDEBAR_ACTIVITY_DAYS_MIN, Math.round(n)),
+  )
+}
+
+function clampAutoArchiveDays(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return AUTO_ARCHIVE_DAYS_DEFAULT
+  if (AUTO_ARCHIVE_DAYS_PRESETS.includes(n)) return n
+  return AUTO_ARCHIVE_DAYS_PRESETS.reduce((best, preset) => (
+    Math.abs(preset - n) < Math.abs(best - n) ? preset : best
+  ))
+}
 
 export function useNotificationSettings() {
   const loading = ref(true)
@@ -17,9 +41,13 @@ export function useNotificationSettings() {
   const loadError = ref(false)
   const globalSwitches = ref({ in_app: true, email: true })
   const sections = ref([])
+  const sidebarActivityDays = ref(SIDEBAR_ACTIVITY_DAYS_DEFAULT)
+  const autoArchiveDays = ref(AUTO_ARCHIVE_DAYS_DEFAULT)
 
   let pendingItems = new Map()
   let pendingGlobal = {}
+  let pendingSidebarActivityDays = null
+  let pendingAutoArchiveDays = null
   let saveTimer = null
   let onSaveError = null
 
@@ -33,6 +61,14 @@ export function useNotificationSettings() {
       const data = response?.data ?? {}
       globalSwitches.value = { in_app: true, email: true, ...(data.global || {}) }
       sections.value = Array.isArray(data.sections) ? data.sections : []
+      const days = clampSidebarActivityDays(
+        data.sidebar_activity_days ?? SIDEBAR_ACTIVITY_DAYS_DEFAULT,
+      )
+      sidebarActivityDays.value = days
+      applyInboxSidebarActivityDays(days, { reload: false })
+      autoArchiveDays.value = clampAutoArchiveDays(
+        data.auto_archive_days ?? AUTO_ARCHIVE_DAYS_DEFAULT,
+      )
     } catch {
       loadError.value = true
       sections.value = []
@@ -48,18 +84,45 @@ export function useNotificationSettings() {
 
   async function flush() {
     saveTimer = null
-    if (!pendingItems.size && !Object.keys(pendingGlobal).length) return
+    const hasSidebarDays = pendingSidebarActivityDays != null
+    const hasArchiveDays = pendingAutoArchiveDays != null
+    if (
+      !pendingItems.size
+      && !Object.keys(pendingGlobal).length
+      && !hasSidebarDays
+      && !hasArchiveDays
+    ) {
+      return
+    }
 
     const payload = {}
     if (Object.keys(pendingGlobal).length) payload.global = { ...pendingGlobal }
     if (pendingItems.size) payload.items = Array.from(pendingItems.values())
+    if (hasSidebarDays) payload.sidebar_activity_days = pendingSidebarActivityDays
+    if (hasArchiveDays) payload.auto_archive_days = pendingAutoArchiveDays
 
+    const savedSidebarDays = pendingSidebarActivityDays
+    const savedArchiveDays = pendingAutoArchiveDays
     pendingItems = new Map()
     pendingGlobal = {}
+    pendingSidebarActivityDays = null
+    pendingAutoArchiveDays = null
 
     saving.value = true
     try {
-      await notificationsApi.patchPreferences(payload)
+      const resp = await notificationsApi.patchPreferences(payload)
+      if (savedSidebarDays != null) {
+        const days = clampSidebarActivityDays(
+          resp?.data?.sidebar_activity_days ?? savedSidebarDays,
+        )
+        sidebarActivityDays.value = days
+        applyInboxSidebarActivityDays(days, { reload: true })
+      }
+      if (savedArchiveDays != null) {
+        autoArchiveDays.value = clampAutoArchiveDays(
+          resp?.data?.auto_archive_days ?? savedArchiveDays,
+        )
+      }
     } catch {
       if (typeof onSaveError === 'function') onSaveError()
       await load()
@@ -97,6 +160,22 @@ export function useNotificationSettings() {
     scheduleSave()
   }
 
+  function setSidebarActivityDays(value) {
+    const days = clampSidebarActivityDays(value)
+    if (days === sidebarActivityDays.value && pendingSidebarActivityDays == null) return
+    sidebarActivityDays.value = days
+    pendingSidebarActivityDays = days
+    scheduleSave()
+  }
+
+  function setAutoArchiveDays(value) {
+    const days = clampAutoArchiveDays(value)
+    if (days === autoArchiveDays.value && pendingAutoArchiveDays == null) return
+    autoArchiveDays.value = days
+    pendingAutoArchiveDays = days
+    scheduleSave()
+  }
+
   function setSaveErrorHandler(handler) {
     onSaveError = handler
   }
@@ -107,10 +186,14 @@ export function useNotificationSettings() {
     loadError,
     globalSwitches,
     sections,
+    sidebarActivityDays,
+    autoArchiveDays,
     hasSections,
     load,
     toggleEvent,
     toggleGlobal,
+    setSidebarActivityDays,
+    setAutoArchiveDays,
     setSaveErrorHandler,
   }
 }

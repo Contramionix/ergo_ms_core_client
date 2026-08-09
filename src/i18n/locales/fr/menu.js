@@ -31,10 +31,10 @@ export default {
   notifications: {
     title: 'Notifications',
     empty: 'Aucune notification pour le moment',
-    markRead: 'Marquer comme lu',
     markAllRead: 'Tout marquer comme lu',
     viewAll: 'Toutes les notifications',
     openPage: 'Ouvrir la page des notifications',
+    listAria: 'Liste des notifications',
   },
   userMenu: {
     account: 'Compte',

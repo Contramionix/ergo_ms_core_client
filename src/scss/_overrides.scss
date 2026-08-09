@@ -76,6 +76,15 @@ $form-check-input-checked-border-color: var(--color-accent, var(--bs-primary));
 $form-check-input-indeterminate-bg-color: var(--color-accent, var(--bs-primary));
 $form-check-input-indeterminate-border-color: var(--color-accent, var(--bs-primary));
 
+// Выкл. тумблер: Bootstrap даёт бледную ручку; в light при :focus ещё и
+// розовый tint от accent ($input-focus-border-color). Держим нейтральную ручку.
+$form-switch-color: rgba($black, 0.55);
+$form-switch-bg-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'><circle r='3' fill='#{$form-switch-color}'/></svg>");
+$form-switch-focus-color: rgba($black, 0.55);
+$form-switch-focus-bg-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'><circle r='3' fill='#{$form-switch-focus-color}'/></svg>");
+$form-switch-color-dark: rgba($white, 0.9);
+$form-switch-bg-image-dark: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'><circle r='3' fill='#{$form-switch-color-dark}'/></svg>");
+
 .form-check .form-check-input,
 .form-check .form-check-input:focus-within,
 .form-switch .form-check-input,
@@ -84,9 +93,35 @@ $form-check-input-indeterminate-border-color: var(--color-accent, var(--bs-prima
   box-shadow: none;
   border: none;
 }
-.form-switch .form-check-input:not(:checked):focus-within {
-  background-image: $form-switch-bg-image;
+
+.form-switch .form-check-input:not(:checked) {
+  background-color: color-mix(in srgb, var(--color-primary-text) 16%, var(--color-secondary-background));
+  border: 1px solid color-mix(in srgb, var(--color-primary-text) 32%, var(--color-border));
 }
+
+.form-switch .form-check-input:not(:checked):focus,
+.form-switch .form-check-input:not(:checked):focus-within {
+  border-color: color-mix(in srgb, var(--color-accent, var(--bs-primary)) 45%, var(--color-border));
+}
+
+// Ручка не должна менять цвет при фокусе (ни на чёрную, ни на розовую)
+:root,
+[data-bs-theme='light'] {
+  .form-switch .form-check-input:not(:checked),
+  .form-switch .form-check-input:not(:checked):focus,
+  .form-switch .form-check-input:not(:checked):focus-within {
+    --bs-form-switch-bg: #{escape-svg($form-switch-bg-image)};
+  }
+}
+
+[data-bs-theme='dark'] {
+  .form-switch .form-check-input:not(:checked),
+  .form-switch .form-check-input:not(:checked):focus,
+  .form-switch .form-check-input:not(:checked):focus-within {
+    --bs-form-switch-bg: #{escape-svg($form-switch-bg-image-dark)};
+  }
+}
+
 .form-check .form-check-input:checked,
 .form-switch .form-check-input:checked {
   cursor: pointer;

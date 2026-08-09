@@ -9,7 +9,6 @@ export const notificationsEndpoints = {
     archive: id => `notifications/${id}/archive/`,
     unarchive: id => `notifications/${id}/unarchive/`,
     hideFromSidebar: id => `notifications/${id}/hide_from_sidebar/`,
-    softDelete: id => `notifications/${id}/delete/`,
     executeAction: id => `notifications/${id}/execute_action/`,
     preferences: 'notifications/preferences/',
   },

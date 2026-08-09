@@ -1,13 +1,11 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { Bell } from 'lucide-vue-next'
+import SettingsCard from '@/components/SettingsCard.vue'
+import SettingsCardRow from '@/components/SettingsCardRow.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useToast } from '@/js/utils/toast.js'
-import {
-  BROWSER_NOTIFICATION_PREFS,
-  readBrowserNotificationPref,
-  writeBrowserNotificationPref,
-} from '@/core/notifications/js/browserNotificationPrefs.js'
+import { BROWSER_NOTIFICATION_PREFS, readBrowserNotificationPref, writeBrowserNotificationPref, } from '@/core/notifications/js/browserNotificationPrefs.js'
 
 const { t } = useAppI18n()
 const toast = useToast()
@@ -101,76 +99,37 @@ onMounted(loadPrefs)
 
 <template>
   <section class="browser-notif-settings">
-    <p class="browser-notif-settings__caption">{{ t('settings.browserNotifications.caption') }}</p>
     <p class="browser-notif-settings__hint">
       {{ t('settings.browserNotifications.intro') }}
     </p>
 
-    <div class="settings-card">
-      <div class="settings-card__row">
-        <div class="settings-card__label-block">
-          <span class="settings-card__label">{{ t('settings.browserNotifications.show') }}</span>
-          <span class="settings-card__hint">{{ t('settings.browserNotifications.showHint') }}</span>
-        </div>
+    <SettingsCard :show-footer="browserEnabled">
+      <SettingsCardRow :label="t('settings.browserNotifications.show')" :hint="t('settings.browserNotifications.showHint')" control-size="auto">
         <div class="form-check form-switch browser-notif-settings__switch">
-          <input
-            id="browser-notif-enabled"
-            type="checkbox"
-            class="form-check-input"
-            role="switch"
-            :checked="browserEnabled"
-            @change="setBrowserEnabled($event.target.checked)"
-          />
+          <input id="browser-notif-enabled" type="checkbox" class="form-check-input" role="switch" :checked="browserEnabled" @change="setBrowserEnabled($event.target.checked)"/>
         </div>
-      </div>
+      </SettingsCardRow>
 
-      <div class="settings-card__row">
-        <div class="settings-card__label-block">
-          <span class="settings-card__label">{{ t('settings.browserNotifications.hideDetails') }}</span>
-          <span class="settings-card__hint">{{ t('settings.browserNotifications.hideDetailsHint') }}</span>
-        </div>
+      <SettingsCardRow :label="t('settings.browserNotifications.hideDetails')" :hint="t('settings.browserNotifications.hideDetailsHint')" control-size="auto">
         <div class="form-check form-switch browser-notif-settings__switch">
-          <input
-            id="browser-notif-privacy"
-            type="checkbox"
-            class="form-check-input"
-            role="switch"
-            :checked="privacyEnabled"
-            @change="setPrivacyEnabled($event.target.checked)"
-          />
+          <input id="browser-notif-privacy" type="checkbox" class="form-check-input" role="switch" :checked="privacyEnabled" @change="setPrivacyEnabled($event.target.checked)"/>
         </div>
-      </div>
+      </SettingsCardRow>
 
-      <div class="settings-card__row settings-card__row--last">
-        <div class="settings-card__label-block">
-          <span class="settings-card__label">{{ t('settings.browserNotifications.sound') }}</span>
-          <span class="settings-card__hint">{{ t('settings.browserNotifications.soundHint') }}</span>
-        </div>
+      <SettingsCardRow :label="t('settings.browserNotifications.sound')" :hint="t('settings.browserNotifications.soundHint')" control-size="auto" last>
         <div class="form-check form-switch browser-notif-settings__switch">
-          <input
-            id="browser-notif-sound"
-            type="checkbox"
-            class="form-check-input"
-            role="switch"
-            :checked="soundEnabled"
-            :disabled="!browserEnabled"
-            @change="setSoundEnabled($event.target.checked)"
-          />
+          <input id="browser-notif-sound" type="checkbox" class="form-check-input" role="switch" :checked="soundEnabled" @change="setSoundEnabled($event.target.checked)"/>
         </div>
-      </div>
-    </div>
+      </SettingsCardRow>
 
-    <div class="browser-notif-settings__actions">
-      <button
-        type="button"
-        class="ui-btn ui-btn--secondary"
-        :disabled="previewing"
-        @click="handlePreview"
-      >
-        <Bell :size="16" aria-hidden="true" />
-        <span>{{ t('settings.browserNotifications.preview') }}</span>
-      </button>
-    </div>
+      <template #footer>
+        <button type="button" class="btn btn-sm browser-notif-settings__preview" :disabled="previewing" @click="handlePreview">
+          <Bell :size="14" class="browser-notif-settings__preview-icon" aria-hidden="true" />
+          <span>{{ t('settings.browserNotifications.preview') }}</span>
+        </button>
+      </template>
+    </SettingsCard>
+
     <p v-if="permissionHint" class="browser-notif-settings__permission text-muted">
       {{ permissionHint }}
     </p>
@@ -179,21 +138,12 @@ onMounted(loadPrefs)
 
 <style scoped lang="scss">
 .browser-notif-settings {
-  margin-bottom: 1.5rem;
-}
-
-.browser-notif-settings__caption {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ui-text-muted);
-  margin: 0 0 0.35rem;
+  margin-bottom: 0;
 }
 
 .browser-notif-settings__hint {
   font-size: 0.875rem;
-  color: var(--ui-text-muted);
+  color: var(--color-secondary-text);
   margin: 0 0 0.75rem;
 }
 
@@ -202,51 +152,37 @@ onMounted(loadPrefs)
   min-height: 1.5rem;
   display: flex;
   align-items: center;
+
+  .form-check-input {
+    cursor: pointer;
+  }
 }
 
-.browser-notif-settings__actions {
-  margin-top: 0.75rem;
+.browser-notif-settings__preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--color-primary-background);
+  color: var(--color-primary-text);
+  border: 1px solid var(--color-border);
+
+  &:hover:not(:disabled) {
+    background: var(--color-secondary-background);
+    color: var(--color-primary-text);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+  }
+}
+
+.browser-notif-settings__preview-icon {
+  flex-shrink: 0;
+  vertical-align: middle;
 }
 
 .browser-notif-settings__permission {
   margin-top: 0.5rem;
   font-size: 0.8125rem;
-}
-
-.settings-card {
-  border: 1px solid var(--ui-border);
-  border-radius: 8px;
-  background: var(--ui-surface);
-  overflow: hidden;
-}
-
-.settings-card__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.875rem 1rem;
-  border-bottom: 1px solid var(--ui-border);
-
-  &--last {
-    border-bottom: none;
-  }
-}
-
-.settings-card__label-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.settings-card__label {
-  font-size: 0.9375rem;
-  color: var(--ui-text);
-}
-
-.settings-card__hint {
-  font-size: 0.8125rem;
-  color: var(--ui-text-muted);
 }
 </style>

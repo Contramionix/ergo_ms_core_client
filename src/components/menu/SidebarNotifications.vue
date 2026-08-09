@@ -1,17 +1,17 @@
 <script setup>
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { CORE_ICON } from '@/config/coreIconNames.js'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
-import { groupNotificationsByDate } from '@/core/notifications/js/groupByDate.js'
+import { expandedNotificationId } from '@/core/notifications/js/expandedNotification.js'
 import NotificationItem from '@/core/notifications/components/NotificationItem.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
-const HOVER_READ_DELAY_MS = 1000
+const HOVER_READ_DELAY_MS = 500
 const PANEL_ID = 'sidebar-notifications-panel'
 
 const props = defineProps({
@@ -26,6 +26,10 @@ const emit = defineEmits(['dropdown-toggle'])
 const router = useRouter()
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 
+const triggerBtnRef = ref(null)
+const panelRef = ref(null)
+const listRef = ref(null)
+
 const {
   sidebarItems,
   unreadCount,
@@ -35,14 +39,22 @@ const {
   loadSidebar,
   markRead,
   markAllRead,
-  archive,
   hideFromSidebar,
-  softDelete,
 } = useNotificationsInbox()
 
 const hoverReadTimers = new Map()
 
-const groupedItems = computed(() => groupNotificationsByDate(sidebarItems.value))
+function itemDateStyle(item) {
+  if (!item?.created_at) return 'weekday'
+  const created = new Date(item.created_at)
+  if (Number.isNaN(created.getTime())) return 'weekday'
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const yesterdayStart = new Date(todayStart)
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1)
+  if (created >= yesterdayStart) return 'time'
+  return 'weekday'
+}
 
 const badgeLabel = computed(() => {
   const count = unreadCount.value
@@ -52,16 +64,98 @@ const badgeLabel = computed(() => {
 
 defineExpose({ closeDropdown })
 
+function getItemElements() {
+  return [...(listRef.value?.querySelectorAll('[data-notification-id]') || [])]
+}
+
+function focusTrigger() {
+  triggerBtnRef.value?.focus?.()
+}
+
+function focusItemAt(index) {
+  const items = getItemElements()
+  if (!items.length) return
+  const next = Math.max(0, Math.min(items.length - 1, index))
+  items.forEach((el, i) => {
+    el.tabIndex = i === next ? 0 : -1
+  })
+  const target = items[next]
+  target.focus()
+  target.scrollIntoView({ block: 'nearest' })
+}
+
+function onPanelKeydown(event) {
+  if (!isOpen.value) return
+
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    if (expandedNotificationId.value != null) {
+      expandedNotificationId.value = null
+      return
+    }
+    closeDropdown()
+    nextTick(() => focusTrigger())
+    return
+  }
+
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+
+  const tag = event.target?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target?.isContentEditable) return
+  if (!dropdownRef.value?.contains(event.target)) return
+
+  const items = getItemElements()
+  if (!items.length) return
+
+  event.preventDefault()
+  const active = document.activeElement
+  let index = items.findIndex((el) => el === active || el.contains(active))
+
+  if (event.key === 'Home') {
+    focusItemAt(0)
+    return
+  }
+  if (event.key === 'End') {
+    focusItemAt(items.length - 1)
+    return
+  }
+  if (event.key === 'ArrowDown') {
+    focusItemAt(index < 0 ? 0 : index + 1)
+    return
+  }
+  focusItemAt(index < 0 ? items.length - 1 : index - 1)
+}
+
+function bindPanelKeys() {
+  document.addEventListener('keydown', onPanelKeydown, true)
+}
+
+function unbindPanelKeys() {
+  document.removeEventListener('keydown', onPanelKeydown, true)
+}
+
 onMounted(() => {
   ensureInitialized()
 })
 
 onUnmounted(() => {
+  unbindPanelKeys()
   clearAllHoverTimers()
+  expandedNotificationId.value = null
 })
 
-watch(isOpen, (open) => {
-  if (!open) clearAllHoverTimers()
+watch(isOpen, async (open) => {
+  if (!open) {
+    unbindPanelKeys()
+    clearAllHoverTimers()
+    expandedNotificationId.value = null
+    return
+  }
+
+  bindPanelKeys()
+  await nextTick()
+  panelRef.value?.focus?.()
 })
 
 function clearAllHoverTimers() {
@@ -102,72 +196,36 @@ function handleToggle() {
 
 function goToFullList() {
   closeDropdown()
+  nextTick(() => focusTrigger())
   router.push({ name: 'UserNotifications' })
 }
 
 function onActivate() {
   closeDropdown()
-}
-
-async function onArchive(id) {
-  await archive(id)
+  nextTick(() => focusTrigger())
 }
 
 async function onHideSidebar(id) {
   await hideFromSidebar(id)
-}
-
-async function onDelete(id) {
-  await softDelete(id)
 }
 </script>
 
 <template>
   <div ref="dropdownRef" class="tools__notifications-wrapper">
     <HoverTooltip :text="t('menu.notifications.title')">
-      <button
-        type="button"
-        class="header-btn notifications-btn"
-        :class="{ 'has-unread': hasUnread }"
-        :aria-expanded="isOpen"
-        :aria-controls="PANEL_ID"
-        aria-haspopup="true"
-        :aria-label="t('menu.notifications.title')"
-        @click.stop="handleToggle"
-      >
+      <button ref="triggerBtnRef" type="button" class="header-btn notifications-btn" :class="{ 'has-unread': hasUnread }" :aria-expanded="isOpen" :aria-controls="PANEL_ID" aria-haspopup="dialog" :aria-label="t('menu.notifications.title')" @click.stop="handleToggle">
         <LucideIcon :name="CORE_ICON.notifications" :size="props.iconSize" aria-hidden="true" />
-        <span
-          v-if="hasUnread"
-          class="notifications-badge"
-          aria-live="polite"
-        >{{ badgeLabel }}</span>
+        <span v-if="hasUnread" class="notifications-badge" aria-live="polite">{{ badgeLabel }}</span>
       </button>
     </HoverTooltip>
 
     <Transition name="dropdown">
-      <div
-        v-if="isOpen"
-        :id="PANEL_ID"
-        class="notifications-dropdown"
-        role="dialog"
-        :aria-label="t('menu.notifications.title')"
-      >
+      <div v-if="isOpen" :id="PANEL_ID" ref="panelRef" class="notifications-dropdown" role="dialog" aria-modal="true" tabindex="-1" :aria-label="t('menu.notifications.title')">
         <div class="notifications-dropdown__header">
-          <button
-            type="button"
-            class="notifications-dropdown__title-link"
-            :title="t('menu.notifications.openPage')"
-            @click="goToFullList"
-          >
+          <button type="button" class="notifications-dropdown__title-link" :aria-label="t('menu.notifications.openPage')" :title="t('menu.notifications.openPage')" @click="goToFullList">
             <span>{{ t('menu.notifications.title') }}</span>
           </button>
-          <button
-            v-if="hasUnread"
-            class="notifications-dropdown__action"
-            type="button"
-            :title="t('settings.notifications.markAllRead')"
-            @click="markAllRead()"
-          >
+          <button v-if="hasUnread" class="notifications-dropdown__action" type="button" :aria-label="t('menu.notifications.markAllRead')" :title="t('settings.notifications.markAllRead')" @click="markAllRead()">
             <LucideIcon name="CheckCheck" :size="16" aria-hidden="true" />
             <span>{{ t('menu.notifications.markAllRead') }}</span>
           </button>
@@ -176,36 +234,14 @@ async function onDelete(id) {
         <div class="notifications-dropdown__body">
           <LoadingContentArea :loading="sidebarLoading" min-height="6rem">
             <div v-if="sidebarItems.length === 0" class="notifications-dropdown__state">
-              <LucideIcon
-                :name="CORE_ICON.notificationsOff"
-                :size="28"
-                icon-class="notifications-dropdown__empty-icon"
-                aria-hidden="true"
-              />
+              <LucideIcon :name="CORE_ICON.notificationsOff" :size="28" icon-class="notifications-dropdown__empty-icon" aria-hidden="true"/>
               <p>{{ t('menu.notifications.empty') }}</p>
             </div>
 
             <div v-else class="notifications-dropdown__scroll">
-              <template v-for="group in groupedItems" :key="group.key">
-                <div class="notifications-dropdown__group-label">{{ group.label }}</div>
-                <ul class="notifications-list">
-                  <NotificationItem
-                    v-for="item in group.items"
-                    :key="item.id"
-                    :notification="item"
-                    compact
-                    show-sidebar-hide
-                    :date-style="group.key === 'today' || group.key === 'yesterday' ? 'time' : group.key === 'week' ? 'weekday' : 'full'"
-                    @activate="onActivate"
-                    @mark-read="markRead"
-                    @archive="onArchive"
-                    @hide-sidebar="onHideSidebar"
-                    @delete="onDelete"
-                    @hover-start="onItemHoverStart"
-                    @hover-end="onItemHoverEnd"
-                  />
-                </ul>
-              </template>
+              <ul ref="listRef" class="notifications-list" role="list" :aria-label="t('menu.notifications.listAria')">
+                <NotificationItem v-for="item in sidebarItems" :key="item.id" :notification="item" compact show-sidebar-hide :date-style="itemDateStyle(item)" @activate="onActivate" @mark-read="markRead" @hide-sidebar="onHideSidebar" @hover-start="onItemHoverStart" @hover-end="onItemHoverEnd"/>
+              </ul>
             </div>
           </LoadingContentArea>
         </div>
@@ -243,7 +279,6 @@ async function onDelete(id) {
   border-radius: 6px;
   transition: background-color 0.2s ease;
 
-  // Scoped background перекрывает глобальный .header-btn:hover — повторяем здесь.
   &:hover,
   &[aria-expanded='true'] {
     background-color: var(--color-hover-background);
@@ -283,8 +318,16 @@ async function onDelete(id) {
   flex-direction: column;
   padding: 0;
   overflow: hidden;
-  background-color: var(--ui-surface);
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--color-border);
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent, var(--bs-primary));
+    outline-offset: 2px;
+  }
 }
 
 .notifications-dropdown__header {
@@ -294,8 +337,8 @@ async function onDelete(id) {
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--ui-border);
-  background-color: var(--ui-surface-2);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-secondary-background);
 }
 
 .notifications-dropdown__title-link {
@@ -308,13 +351,13 @@ async function onDelete(id) {
   border-radius: 4px;
   font-weight: 600;
   font-size: 0.95rem;
-  color: var(--ui-text);
+  color: var(--color-primary-text);
   cursor: pointer;
   text-align: left;
 
   &:hover {
     color: var(--color-accent, var(--bs-primary));
-    background-color: var(--color-hover-background, var(--ui-surface));
+    background-color: var(--color-hover-background);
   }
 
   &:focus-visible {
@@ -337,7 +380,7 @@ async function onDelete(id) {
   min-height: 32px;
 
   &:hover {
-    background-color: var(--color-hover-background, var(--ui-surface));
+    background-color: var(--color-hover-background);
   }
 
   &:focus-visible {
@@ -375,25 +418,11 @@ async function onDelete(id) {
   overscroll-behavior: contain;
 }
 
-.notifications-dropdown__group-label {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  padding: 0.4rem 1rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ui-text-muted);
-  background-color: var(--ui-surface-2);
-  border-bottom: 1px solid var(--ui-border);
-}
-
 .notifications-dropdown__state {
   padding: 1.5rem 1rem;
   text-align: center;
   font-size: 0.875rem;
-  color: var(--ui-text-muted);
+  color: var(--color-secondary-text);
 
   p {
     margin: 0.5rem 0 0;
@@ -402,7 +431,7 @@ async function onDelete(id) {
 
 .notifications-dropdown__empty-icon {
   opacity: 0.5;
-  color: var(--ui-text-muted);
+  color: var(--color-secondary-text);
 }
 
 .notifications-list {
@@ -413,8 +442,8 @@ async function onDelete(id) {
 
 .notifications-dropdown__footer {
   flex: 0 0 auto;
-  border-top: 1px solid var(--ui-border);
-  background-color: var(--ui-surface-2);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-secondary-background);
   padding: 0.5rem;
 }
 
@@ -434,7 +463,7 @@ async function onDelete(id) {
   cursor: pointer;
 
   &:hover {
-    background-color: var(--color-hover-background, var(--ui-surface));
+    background-color: var(--color-hover-background);
   }
 
   &:focus-visible {

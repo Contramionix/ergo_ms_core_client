@@ -1,6 +1,7 @@
 export default {
   searchInput: {
     placeholder: 'Rechercher...',
+    clear: 'Effacer la recherche',
   },
   selectBox: {
     all: 'Tous',

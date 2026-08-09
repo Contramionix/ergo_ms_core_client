@@ -2,24 +2,17 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
-import {
-  Archive,
-  ArchiveRestore,
-  Bell,
-  BellOff,
-  CheckCheck,
-  Loader2,
-  RefreshCw,
-  Trash2,
-} from 'lucide-vue-next'
+import { Archive, ArchiveRestore, Bell, BellOff, CheckCheck, FilterX, Loader2, RefreshCw, } from 'lucide-vue-next'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
 import { groupNotificationsByDate } from '@/core/notifications/js/groupByDate.js'
 import NotificationItem from '@/core/notifications/components/NotificationItem.vue'
+import SearchInput from '@/components/SearchInput.vue'
 import SelectBox from '@/components/SelectBox.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
-import { confirmDelete } from '@/js/utils/confirm.js'
-import { useToast } from '@/js/utils/toast.js'
+import Pagination from '@/components/Pagination.vue'
+import { showUndoableSuccess, useToast } from '@/js/utils/toast.js'
+import { clientEnv } from '@/js/clientEnv.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const router = useRouter()
@@ -28,6 +21,7 @@ const toast = useToast()
 const { t } = useAppI18n()
 
 const HIGHLIGHT_DURATION_MS = 4000
+const ARCHIVE_UNDO_GROUP = 'notifications.inbox.archive'
 const highlightedId = ref(null)
 const filtersReady = ref(false)
 const groupBusyKey = ref(null)
@@ -36,26 +30,35 @@ const {
   items,
   unreadCount,
   loading,
-  loadingMore,
-  hasMore,
   listTotal,
+  listPageSize,
   sourceModules,
   hasUnread,
   ensureInitialized,
-  loadInitial,
-  loadMore,
+  loadPage,
   markRead,
   markAllRead,
   archive,
   unarchive,
-  softDelete,
 } = useNotificationsInbox()
 
-const { state: filterState, patchState } = useRouteQueryState({
+const { state: filterState, patchState, resetState } = useRouteQueryState({
   unread: { default: '', enum: ['', '1'] },
   source: { default: '' },
   archived: { default: '', enum: ['', '1'] },
-})
+  q: { default: '' },
+  page: { default: 1, type: 'number', min: 1 },
+}, { debounceKeys: ['q'] })
+
+const searchDraft = ref('')
+
+watch(
+  () => filterState.value.q,
+  (q) => {
+    if (searchDraft.value !== q) searchDraft.value = q
+  },
+  { immediate: true },
+)
 
 const showOnlyUnread = computed({
   get: () => filterState.value.unread === '1',
@@ -78,6 +81,15 @@ const sourceFilter = computed({
   },
 })
 
+const searchQuery = computed({
+  get: () => searchDraft.value,
+  set: (value) => {
+    const next = String(value ?? '')
+    searchDraft.value = next
+    patchState({ q: next.trim() })
+  },
+})
+
 const sourceSelectOptions = computed(() => {
   return (sourceModules.value || [])
     .map((item) => {
@@ -96,13 +108,33 @@ const sourceSelectOptions = computed(() => {
 
 const groupedItems = computed(() => groupNotificationsByDate(items.value))
 
+const currentPage = computed({
+  get: () => filterState.value.page,
+  set: (value) => {
+    const page = Math.max(1, Number(value) || 1)
+    patchState({ page }, { immediate: true })
+  },
+})
+
+const totalPages = computed(() => {
+  const size = listPageSize || 30
+  const total = Number(listTotal.value) || 0
+  return Math.max(1, Math.ceil(total / size))
+})
+
 const headerBadge = computed(() => {
   if (hasUnread.value) return { text: String(unreadCount.value), tone: 'primary' }
   if (listTotal.value) return { text: String(listTotal.value), tone: 'muted' }
   return null
 })
 
+const hasActiveFilters = computed(() => {
+  const s = filterState.value
+  return Boolean(s.unread || s.source || s.archived || String(s.q || '').trim())
+})
+
 const emptyTitle = computed(() => {
+  if (filterState.value.q?.trim()) return t('settings.inbox.nothingFound')
   if (showArchived.value) return t('settings.inbox.archiveEmpty')
   if (showOnlyUnread.value) return t('settings.inbox.noUnread')
   if (sourceFilter.value) return t('settings.inbox.nothingFound')
@@ -120,15 +152,22 @@ function groupDateStyle(groupKey) {
 }
 
 function reloadFromFilters() {
-  return loadInitial({
+  return loadPage(filterState.value.page, {
     is_read: showOnlyUnread.value ? false : null,
     source_module: sourceFilter.value || '',
     archived: showArchived.value,
+    q: filterState.value.q || '',
   })
 }
 
 watch(
-  () => [filterState.value.unread, filterState.value.source, filterState.value.archived],
+  () => [
+    filterState.value.unread,
+    filterState.value.source,
+    filterState.value.archived,
+    filterState.value.q,
+    filterState.value.page,
+  ],
   () => {
     if (!filtersReady.value) return
     reloadFromFilters()
@@ -147,22 +186,53 @@ function refresh() {
   reloadFromFilters()
 }
 
+function resetFilters() {
+  searchDraft.value = ''
+  return resetState()
+}
+
+async function undoArchiveIds(ids) {
+  let failed = 0
+  for (const id of ids) {
+    if (!(await unarchive(id))) failed += 1
+  }
+  if (failed > 0) {
+    toast.error(t('settings.inbox.undoArchiveFailed'))
+    throw new Error('notifications.unarchive_undo_failed')
+  }
+}
+
+async function handleArchive(id) {
+  const ok = await archive(id)
+  if (!ok) {
+    toast.error(t('settings.inbox.actionFailed'))
+    return
+  }
+  showUndoableSuccess(t('settings.inbox.archived'), {
+    group: ARCHIVE_UNDO_GROUP,
+    kind: 'notifications.archived',
+    stackMax: clientEnv.toastUndoStackMax,
+    undoAudit: {
+      kind: 'notifications.archived',
+      label: t('settings.inbox.undoArchiveKind'),
+      entityType: 'notification',
+      sourceModule: 'core.notifications',
+    },
+    onUndo: async () => {
+      await undoArchiveIds([id])
+    },
+  })
+}
+
 async function runGroupAction(group, action) {
   if (!group?.key || groupBusyKey.value) return
 
   const snapshot = [...(group.items || [])]
   if (!snapshot.length) return
 
-  if (action === 'delete') {
-    const ok = await confirmDelete(
-      t('settings.inbox.deleteGroupTitle'),
-      t('settings.inbox.deleteGroupMessage', { count: snapshot.length, label: group.label }),
-    )
-    if (!ok) return
-  }
-
   groupBusyKey.value = group.key
   let success = 0
+  const archivedIds = []
 
   try {
     if (action === 'read') {
@@ -174,15 +244,14 @@ async function runGroupAction(group, action) {
       }
     } else if (action === 'archive') {
       for (const item of snapshot) {
-        if (await archive(item.id)) success += 1
+        if (await archive(item.id)) {
+          archivedIds.push(item.id)
+          success += 1
+        }
       }
     } else if (action === 'unarchive') {
       for (const item of snapshot) {
         if (await unarchive(item.id)) success += 1
-      }
-    } else if (action === 'delete') {
-      for (const item of snapshot) {
-        if (await softDelete(item.id)) success += 1
       }
     }
   } finally {
@@ -193,14 +262,32 @@ async function runGroupAction(group, action) {
     read: t('settings.inbox.read'),
     archive: t('settings.inbox.archived'),
     unarchive: t('settings.inbox.unarchived'),
-    delete: t('settings.inbox.deleted'),
   }
   const label = labels[action] || t('settings.inbox.done')
-  if (success > 0) {
-    toast.success(`${label}: ${success}`)
-  } else {
+  if (success <= 0) {
     toast.error(t('settings.inbox.actionFailed'))
+    return
   }
+
+  if (action === 'archive' && archivedIds.length) {
+    showUndoableSuccess(`${label}: ${success}`, {
+      group: ARCHIVE_UNDO_GROUP,
+      kind: 'notifications.archived.group',
+      stackMax: clientEnv.toastUndoStackMax,
+      undoAudit: {
+        kind: 'notifications.archived.group',
+        label: t('settings.inbox.undoArchiveKind'),
+        entityType: 'notification',
+        sourceModule: 'core.notifications',
+      },
+      onUndo: async () => {
+        await undoArchiveIds(archivedIds)
+      },
+    })
+    return
+  }
+
+  toast.success(`${label}: ${success}`)
 }
 
 async function handleOpenQueryParam() {
@@ -240,32 +327,17 @@ onMounted(async () => {
       <h1 class="notif-page__title">
         <Bell :size="20" aria-hidden="true" />
         <span>{{ t('settings.inbox.title') }}</span>
-        <span
-          v-if="headerBadge"
-          class="notif-page__badge"
-          :class="headerBadge.tone === 'primary' ? 'notif-page__badge--primary' : 'notif-page__badge--muted'"
-        >
+        <span v-if="headerBadge" class="notif-page__badge" :class="headerBadge.tone === 'primary' ? 'notif-page__badge--primary' : 'notif-page__badge--muted'">
           {{ headerBadge.text }}
         </span>
       </h1>
       <div class="notif-page__header-actions">
         <HoverTooltip :text="t('settings.inbox.refresh')">
-          <button
-            type="button"
-            class="notif-page__icon-btn"
-            :disabled="loading"
-            :aria-label="t('settings.inbox.refresh')"
-            @click="refresh"
-          >
+          <button type="button" class="notif-page__icon-btn" :disabled="loading" :aria-label="t('settings.inbox.refresh')" @click="refresh">
             <RefreshCw :size="16" :class="{ spin: loading }" aria-hidden="true" />
           </button>
         </HoverTooltip>
-        <button
-          v-if="hasUnread && !showArchived"
-          type="button"
-          class="btn btn-outline-primary btn-sm notif-page__mark-all"
-          @click="handleMarkAllRead"
-        >
+        <button v-if="hasUnread && !showArchived" type="button" class="btn btn-outline-primary btn-sm notif-page__mark-all" @click="handleMarkAllRead">
           <CheckCheck :size="16" aria-hidden="true" />
           {{ sourceFilter ? t('settings.inbox.readByFilter') : t('settings.inbox.readAll') }}
         </button>
@@ -275,181 +347,83 @@ onMounted(async () => {
     <div class="card-body notif-page__body">
       <div class="notif-page__filters" role="toolbar" :aria-label="t('settings.inbox.filtersAria')">
         <div class="notif-page__seg" role="group" :aria-label="t('settings.inbox.statusAria')">
-          <button
-            type="button"
-            class="notif-page__seg-btn"
-            :class="{ 'is-active': !showOnlyUnread }"
-            :aria-pressed="!showOnlyUnread"
-            @click="showOnlyUnread = false"
-          >
+          <button type="button" class="notif-page__seg-btn" :class="{ 'is-active': !showOnlyUnread }" :aria-pressed="!showOnlyUnread" @click="showOnlyUnread = false">
             {{ t('settings.inbox.all') }}
           </button>
-          <button
-            type="button"
-            class="notif-page__seg-btn"
-            :class="{ 'is-active': showOnlyUnread }"
-            :aria-pressed="showOnlyUnread"
-            @click="showOnlyUnread = true"
-          >
+          <button type="button" class="notif-page__seg-btn" :class="{ 'is-active': showOnlyUnread }" :aria-pressed="showOnlyUnread" @click="showOnlyUnread = true">
             {{ t('settings.inbox.unreadOnly') }}
-            <span
-              v-if="hasUnread"
-              class="notif-page__seg-count"
-              aria-hidden="true"
-            >{{ unreadCount }}</span>
+            <span v-if="hasUnread" class="notif-page__seg-count" aria-hidden="true">{{ unreadCount }}</span>
           </button>
         </div>
 
         <div class="notif-page__seg" role="group" :aria-label="t('settings.inbox.scopeAria')">
-          <button
-            type="button"
-            class="notif-page__seg-btn"
-            :class="{ 'is-active': !showArchived }"
-            :aria-pressed="!showArchived"
-            @click="showArchived = false"
-          >
+          <button type="button" class="notif-page__seg-btn" :class="{ 'is-active': !showArchived }" :aria-pressed="!showArchived" @click="showArchived = false">
             {{ t('settings.inbox.active') }}
           </button>
-          <button
-            type="button"
-            class="notif-page__seg-btn"
-            :class="{ 'is-active': showArchived }"
-            :aria-pressed="showArchived"
-            @click="showArchived = true"
-          >
+          <button type="button" class="notif-page__seg-btn" :class="{ 'is-active': showArchived }" :aria-pressed="showArchived" @click="showArchived = true">
             {{ t('settings.inbox.archive') }}
           </button>
         </div>
 
+        <SearchInput v-model="searchQuery" :placeholder="t('settings.inbox.searchPlaceholder')" :show-icon="true" layout="grow" background="secondary" focus-border="primary"/>
+
         <div v-if="sourceSelectOptions.length" class="notif-page__source">
-          <SelectBox
-            v-model="sourceFilter"
-            :aria-label="t('settings.inbox.moduleAria')"
-            :options="sourceSelectOptions"
-            value-key="id"
-            label-key="name"
-            :all-label="t('settings.inbox.all')"
-            :full-width="false"
-          />
+          <SelectBox v-model="sourceFilter" :aria-label="t('settings.inbox.moduleAria')" :options="sourceSelectOptions" value-key="id" label-key="name" :all-label="t('settings.inbox.allSources')" :full-width="false"/>
         </div>
+
+        <HoverTooltip v-if="hasActiveFilters" :text="t('settings.inbox.resetFilters')">
+          <button type="button" class="notif-page__icon-btn" :aria-label="t('settings.inbox.resetFilters')" @click="resetFilters">
+            <FilterX :size="16" aria-hidden="true" />
+          </button>
+        </HoverTooltip>
       </div>
 
       <LoadingContentArea :loading="loading" min-height="10rem">
         <div v-if="items.length === 0" class="notif-page__empty text-muted">
           <BellOff :size="40" class="opacity-50" aria-hidden="true" />
           <p>{{ emptyTitle }}</p>
+          <button v-if="hasActiveFilters" type="button" class="btn btn-outline-secondary btn-sm notif-page__reset-empty" @click="resetFilters">
+            <FilterX :size="14" aria-hidden="true" />
+            {{ t('settings.inbox.resetFilters') }}
+          </button>
         </div>
 
         <template v-else>
-          <section
-            v-for="group in groupedItems"
-            :key="group.key"
-            class="notif-page__group"
-            :aria-label="group.label"
-          >
+          <section v-for="group in groupedItems" :key="group.key" class="notif-page__group" :aria-label="group.label">
             <div class="notif-page__group-head">
               <h2 class="notif-page__group-label">
                 {{ group.label }}
                 <span class="notif-page__group-count">({{ group.items.length }})</span>
               </h2>
 
-              <div
-                class="notif-page__group-actions"
-                role="group"
-                :aria-label="t('settings.inbox.groupActionsAria', { label: group.label })"
-              >
-                <Loader2
-                  v-if="groupBusyKey === group.key"
-                  :size="14"
-                  class="notif-page__group-spinner spin"
-                  aria-hidden="true"
-                />
+              <div class="notif-page__group-actions" role="group" :aria-label="t('settings.inbox.groupActionsAria', { label: group.label })">
+                <Loader2 v-if="groupBusyKey === group.key" :size="14" class="notif-page__group-spinner spin" aria-hidden="true"/>
 
-                <HoverTooltip
-                  v-if="!showArchived && groupHasUnread(group)"
-                  :text="t('settings.inbox.readGroup')"
-                >
-                  <button
-                    type="button"
-                    class="notif-page__icon-btn"
-                    :disabled="groupBusyKey === group.key"
-                    :aria-label="t('settings.inbox.readGroupAria', { label: group.label })"
-                    @click="runGroupAction(group, 'read')"
-                  >
+                <HoverTooltip v-if="!showArchived && groupHasUnread(group)" :text="t('settings.inbox.readGroup')">
+                  <button type="button" class="notif-page__icon-btn" :disabled="groupBusyKey === group.key" :aria-label="t('settings.inbox.readGroupAria', { label: group.label })" @click="runGroupAction(group, 'read')">
                     <CheckCheck :size="14" aria-hidden="true" />
                   </button>
                 </HoverTooltip>
 
-                <HoverTooltip
-                  v-if="showArchived"
-                  :text="t('settings.inbox.unarchiveGroup')"
-                >
-                  <button
-                    type="button"
-                    class="notif-page__icon-btn"
-                    :disabled="groupBusyKey === group.key"
-                    :aria-label="t('settings.inbox.unarchiveGroupAria', { label: group.label })"
-                    @click="runGroupAction(group, 'unarchive')"
-                  >
+                <HoverTooltip v-if="showArchived" :text="t('settings.inbox.unarchiveGroup')">
+                  <button type="button" class="notif-page__icon-btn" :disabled="groupBusyKey === group.key" :aria-label="t('settings.inbox.unarchiveGroupAria', { label: group.label })" @click="runGroupAction(group, 'unarchive')">
                     <ArchiveRestore :size="14" aria-hidden="true" />
                   </button>
                 </HoverTooltip>
-                <HoverTooltip
-                  v-else
-                  :text="t('settings.inbox.archiveGroup')"
-                >
-                  <button
-                    type="button"
-                    class="notif-page__icon-btn"
-                    :disabled="groupBusyKey === group.key"
-                    :aria-label="t('settings.inbox.archiveGroupAria', { label: group.label })"
-                    @click="runGroupAction(group, 'archive')"
-                  >
+                <HoverTooltip v-else :text="t('settings.inbox.archiveGroup')">
+                  <button type="button" class="notif-page__icon-btn" :disabled="groupBusyKey === group.key" :aria-label="t('settings.inbox.archiveGroupAria', { label: group.label })" @click="runGroupAction(group, 'archive')">
                     <Archive :size="14" aria-hidden="true" />
-                  </button>
-                </HoverTooltip>
-
-                <HoverTooltip :text="t('settings.inbox.deleteGroup')">
-                  <button
-                    type="button"
-                    class="notif-page__icon-btn notif-page__icon-btn--danger"
-                    :disabled="groupBusyKey === group.key"
-                    :aria-label="t('settings.inbox.deleteGroupAria', { label: group.label })"
-                    @click="runGroupAction(group, 'delete')"
-                  >
-                    <Trash2 :size="14" aria-hidden="true" />
                   </button>
                 </HoverTooltip>
               </div>
             </div>
 
             <ul class="notif-page__list">
-              <NotificationItem
-                v-for="item in group.items"
-                :key="item.id"
-                :notification="item"
-                :highlighted="item.id === highlightedId"
-                :archived-view="showArchived"
-                :date-style="groupDateStyle(group.key)"
-                @mark-read="markRead"
-                @archive="archive"
-                @unarchive="unarchive"
-                @delete="softDelete"
-              />
+              <NotificationItem v-for="item in group.items" :key="item.id" :notification="item" :highlighted="item.id === highlightedId" :archived-view="showArchived" :date-style="groupDateStyle(group.key)" @mark-read="markRead" @archive="handleArchive" @unarchive="unarchive"/>
             </ul>
           </section>
 
-          <div v-if="hasMore" class="notif-page__more">
-            <button
-              type="button"
-              class="btn btn-outline-secondary"
-              :disabled="loadingMore"
-              @click="loadMore"
-            >
-              <span v-if="loadingMore" class="spinner-border spinner-border-sm me-2" aria-hidden="true" />
-              {{ t('settings.inbox.loadMore') }}
-            </button>
-          </div>
+          <Pagination v-if="listTotal > 0" v-model="currentPage" class="notif-page__pagination" :total-pages="totalPages" :total-items="listTotal" :page-size="listPageSize" :disabled="loading" variant="full" layout="toolbar"/>
         </template>
       </LoadingContentArea>
     </div>
@@ -458,9 +432,9 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .notif-page {
-  border: 1px solid var(--ui-border);
-  background-color: var(--ui-surface);
-  color: var(--ui-text);
+  border: 1px solid var(--color-border);
+  background-color: var(--bs-card-bg);
+  color: var(--color-primary-text);
 }
 
 .notif-page__header {
@@ -469,8 +443,8 @@ onMounted(async () => {
   gap: 0.75rem;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--ui-surface);
-  border-bottom: 1px solid var(--ui-border);
+  background-color: var(--bs-card-bg);
+  border-bottom: 1px solid var(--color-border);
   padding-top: 0.85rem;
   padding-bottom: 0.85rem;
 }
@@ -483,7 +457,7 @@ onMounted(async () => {
   margin: 0;
   font-size: 1.15rem;
   font-weight: 600;
-  color: var(--ui-text);
+  color: var(--color-primary-text);
 }
 
 .notif-page__badge {
@@ -499,15 +473,15 @@ onMounted(async () => {
   font-variant-numeric: tabular-nums;
 
   &--primary {
-    color: var(--bs-primary-text-emphasis, var(--ui-text));
-    background-color: var(--bs-primary-bg-subtle, var(--ui-surface-2));
-    border: 1px solid var(--bs-primary-border-subtle, var(--ui-border));
+    color: var(--bs-primary-text-emphasis, var(--color-primary-text));
+    background-color: var(--bs-primary-bg-subtle, var(--color-secondary-background));
+    border: 1px solid var(--bs-primary-border-subtle, var(--color-border));
   }
 
   &--muted {
-    color: var(--ui-text-muted);
-    background-color: var(--ui-surface-2);
-    border: 1px solid var(--ui-border);
+    color: var(--color-secondary-text);
+    background-color: var(--color-secondary-background);
+    border: 1px solid var(--color-border);
   }
 }
 
@@ -537,7 +511,13 @@ onMounted(async () => {
   align-items: center;
   margin: 0 0 1rem;
   padding: 0 0 0.85rem;
-  border-bottom: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--color-border);
+
+  :deep(.search-input) {
+    --search-input-height: 2.15rem;
+    --search-input-font-size: 0.8125rem;
+    min-width: 12rem;
+  }
 }
 
 .notif-page__seg {
@@ -546,9 +526,9 @@ onMounted(async () => {
   flex: 0 0 auto;
   padding: 0.2rem;
   gap: 0.15rem;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  background: var(--ui-surface-2);
+  background: var(--color-secondary-background);
 }
 
 .notif-page__seg-btn {
@@ -561,7 +541,7 @@ onMounted(async () => {
   border: none;
   border-radius: 0.375rem;
   background: transparent;
-  color: var(--ui-text-muted);
+  color: var(--color-secondary-text);
   font-size: 0.8125rem;
   font-weight: 500;
   line-height: 1.2;
@@ -573,14 +553,14 @@ onMounted(async () => {
     box-shadow 0.15s ease;
 
   &:hover:not(.is-active) {
-    color: var(--ui-text);
-    background: var(--ui-hover);
+    color: var(--color-primary-text);
+    background: var(--color-hover-background);
   }
 
   &.is-active {
-    background: var(--ui-surface);
-    color: var(--ui-text);
-    box-shadow: 0 0 0 1px var(--ui-border);
+    background: var(--bs-card-bg);
+    color: var(--color-primary-text);
+    box-shadow: 0 0 0 1px var(--color-border);
     font-weight: 600;
   }
 
@@ -602,14 +582,14 @@ onMounted(async () => {
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  color: var(--bs-primary-text-emphasis, var(--ui-text));
-  background: var(--bs-primary-bg-subtle, var(--ui-surface));
-  border: 1px solid var(--bs-primary-border-subtle, var(--ui-border));
+  color: var(--bs-primary-text-emphasis, var(--color-primary-text));
+  background: var(--bs-primary-bg-subtle, var(--bs-card-bg));
+  border: 1px solid var(--bs-primary-border-subtle, var(--color-border));
 }
 
 .notif-page__source {
+  flex: 0 0 auto;
   min-width: 160px;
-  margin-left: auto;
   display: flex;
   align-items: center;
 
@@ -636,14 +616,14 @@ onMounted(async () => {
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
-  color: var(--ui-text-muted);
+  color: var(--color-secondary-text);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 
   &:hover:not(:disabled) {
-    background-color: var(--ui-surface-2);
-    color: var(--ui-text);
-    border-color: var(--ui-border);
+    background-color: var(--color-secondary-background);
+    color: var(--color-primary-text);
+    border-color: var(--color-border);
   }
 
   &:focus-visible {
@@ -655,11 +635,6 @@ onMounted(async () => {
     opacity: 0.5;
     cursor: not-allowed;
   }
-
-  &--danger:hover:not(:disabled) {
-    color: var(--bs-danger);
-    border-color: var(--bs-danger-border-subtle, var(--ui-border));
-  }
 }
 
 .notif-page__empty {
@@ -669,6 +644,13 @@ onMounted(async () => {
   p {
     margin: 0.75rem 0 0;
   }
+}
+
+.notif-page__reset-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 1rem;
 }
 
 .notif-page__group {
@@ -687,11 +669,11 @@ onMounted(async () => {
 
 .notif-page__group-label {
   margin: 0;
-  font-size: 0.7rem;
+  font-size: 0.875rem;
   font-weight: 650;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ui-text-muted);
+  letter-spacing: 0.04em;
+  color: var(--color-secondary-text);
   display: flex;
   align-items: baseline;
   gap: 0.35rem;
@@ -713,7 +695,7 @@ onMounted(async () => {
 }
 
 .notif-page__group-spinner {
-  color: var(--ui-text-muted);
+  color: var(--color-secondary-text);
   margin-right: 0.15rem;
 }
 
@@ -721,14 +703,14 @@ onMounted(async () => {
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
-  background-color: var(--ui-surface);
+  background-color: var(--bs-card-bg);
 
   :deep(.notif-item) {
     border-radius: 0;
-    border-bottom: 1px solid var(--ui-border);
+    border-bottom: 1px solid var(--color-border);
 
     &:last-child {
       border-bottom: none;
@@ -736,10 +718,8 @@ onMounted(async () => {
   }
 }
 
-.notif-page__more {
-  display: flex;
-  justify-content: center;
-  padding: 1rem 0 0.25rem;
+.notif-page__pagination {
+  margin-top: 1rem;
 }
 
 .spin {

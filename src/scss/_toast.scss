@@ -31,7 +31,7 @@ html[data-ergo-motion='reduce'] {
 html[data-ergo-a11y='assist'] .Vue-Toastification__container,
 html[data-ergo-a11y='assist'] .ergo-toast-container {
   /* роль/aria-live задаёт библиотека; усиливаем видимость фокуса у close */
-  .Vue-Toastification__close-button:focus-visible {
+  .ergo-toast-body__close:focus-visible {
     outline: 3px solid rgba(var(--bs-primary-rgb), 0.85);
     outline-offset: 2px;
   }
@@ -46,10 +46,10 @@ html[data-ergo-a11y='assist'] .ergo-toast-container {
   min-height: unset;
   padding: 0;
   border-radius: 8px;
-  border: 1px solid var(--ui-border);
-  background: var(--ui-surface);
-  color: var(--ui-text);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--color-border);
+  background: var(--color-primary-background);
+  color: var(--color-primary-text);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary-text) 12%, transparent);
   overflow: hidden;
   font-family: inherit;
 }
@@ -60,25 +60,29 @@ html[data-ergo-a11y='assist'] .ergo-toast-container {
 .Vue-Toastification__toast--warning,
 .Vue-Toastification__toast--info,
 .Vue-Toastification__toast--default {
-  background: var(--ui-surface);
-  color: var(--ui-text);
+  background: var(--color-primary-background);
+  color: var(--color-primary-text);
 }
 
 .Vue-Toastification__toast--success {
-  border-color: color-mix(in srgb, var(--bs-success) 35%, var(--ui-border));
+  border-color: color-mix(in srgb, var(--bs-success) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--bs-success) 6%, var(--color-primary-background));
 }
 
 .Vue-Toastification__toast--error {
-  border-color: color-mix(in srgb, var(--bs-danger) 35%, var(--ui-border));
+  border-color: color-mix(in srgb, var(--bs-danger) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--bs-danger) 6%, var(--color-primary-background));
 }
 
 .Vue-Toastification__toast--warning {
-  border-color: color-mix(in srgb, var(--bs-warning) 35%, var(--ui-border));
+  border-color: color-mix(in srgb, var(--bs-warning) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--bs-warning) 6%, var(--color-primary-background));
 }
 
 .Vue-Toastification__toast--info,
 .Vue-Toastification__toast--default {
-  border-color: color-mix(in srgb, var(--bs-info) 35%, var(--ui-border));
+  border-color: color-mix(in srgb, var(--bs-info) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--bs-info) 6%, var(--color-primary-background));
 }
 
 .ergo-toast__body,

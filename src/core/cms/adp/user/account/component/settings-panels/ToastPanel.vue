@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-vue-next'
 import SelectBox from '@/components/SelectBox.vue'
+import SettingsCard from '@/components/SettingsCard.vue'
+import SettingsCardRow from '@/components/SettingsCardRow.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { showInfo, showSuccess, showWarning, showError } from '@/js/utils/toast.js'
 import { useToastSettings } from '@/js/utils/toastSettings.js'
@@ -61,111 +63,43 @@ function previewToast(button) {
       {{ t('settings.toasts.panelHint') }}
     </p>
 
-    <div class="settings-card">
-      <div class="settings-card__row">
-        <div class="settings-card__label-block">
-          <span class="settings-card__label">{{ t('settings.toasts.enabled') }}</span>
-          <span class="settings-card__hint">{{ t('settings.toasts.enabledHint') }}</span>
-        </div>
+    <SettingsCard>
+      <SettingsCardRow :label="t('settings.toasts.enabled')" :hint="t('settings.toasts.enabledHint')" control-size="auto">
         <div class="form-check form-switch toast-panel__switch">
-          <input
-            id="toast-enabled"
-            v-model="settings.enabled"
-            type="checkbox"
-            class="form-check-input"
-            role="switch"
-          />
+          <input id="toast-enabled" v-model="settings.enabled" type="checkbox" class="form-check-input" role="switch"/>
         </div>
-      </div>
+      </SettingsCardRow>
 
-      <div class="settings-card__row">
-        <label class="settings-card__label" for="toast-position">{{ t('settings.toasts.positionLabel') }}</label>
-        <div class="settings-card__control">
-          <SelectBox
-            id="toast-position"
-            v-model="settings.position"
-            :options="TOAST_POSITION_OPTIONS"
-            :include-all-option="false" :disabled="!settings.enabled"
-          />
-        </div>
-      </div>
+      <SettingsCardRow :label="t('settings.toasts.positionLabel')" label-for="toast-position">
+        <SelectBox id="toast-position" v-model="settings.position" :options="TOAST_POSITION_OPTIONS" :include-all-option="false" :disabled="!settings.enabled"/>
+      </SettingsCardRow>
 
-      <div class="settings-card__row">
-        <label class="settings-card__label" for="toast-duration">{{ t('settings.toasts.durationLabel') }}</label>
-        <div class="settings-card__control">
-          <SelectBox
-            id="toast-duration"
-            v-model="settings.durationPreset"
-            :options="TOAST_DURATION_PRESET_OPTIONS"
-            :include-all-option="false" :disabled="!settings.enabled"
-          />
-        </div>
-      </div>
+      <SettingsCardRow :label="t('settings.toasts.durationLabel')" label-for="toast-duration">
+        <SelectBox id="toast-duration" v-model="settings.durationPreset" :options="TOAST_DURATION_PRESET_OPTIONS" :include-all-option="false" :disabled="!settings.enabled"/>
+      </SettingsCardRow>
 
-      <div class="settings-card__row">
-        <label class="settings-card__label" for="toast-max">{{ t('settings.toasts.maxSimultaneous') }}</label>
-        <div class="settings-card__control">
-          <SelectBox
-            id="toast-max"
-            v-model="settings.maxToasts"
-            :options="TOAST_MAX_OPTIONS"
-            :include-all-option="false"
-            cast-to-number :disabled="!settings.enabled"
-          />
-        </div>
-      </div>
+      <SettingsCardRow :label="t('settings.toasts.maxSimultaneous')" label-for="toast-max">
+        <SelectBox id="toast-max" v-model="settings.maxToasts" :options="TOAST_MAX_OPTIONS" :include-all-option="false" cast-to-number :disabled="!settings.enabled"/>
+      </SettingsCardRow>
 
-      <div class="settings-card__row">
-        <div class="settings-card__label-block">
-          <span class="settings-card__label">{{ t('settings.toasts.pauseOnHover') }}</span>
-          <span class="settings-card__hint">{{ t('settings.toasts.pauseOnHoverHint') }}</span>
-        </div>
+      <SettingsCardRow :label="t('settings.toasts.pauseOnHover')" :hint="t('settings.toasts.pauseOnHoverHint')" control-size="auto">
         <div class="form-check form-switch toast-panel__switch">
-          <input
-            id="toast-pause-hover"
-            v-model="settings.pauseOnHover"
-            type="checkbox"
-            class="form-check-input"
-            role="switch"
-            :disabled="!settings.enabled"
-          />
+          <input id="toast-pause-hover" v-model="settings.pauseOnHover" type="checkbox" class="form-check-input" role="switch" :disabled="!settings.enabled"/>
         </div>
-      </div>
+      </SettingsCardRow>
 
-      <div class="settings-card__row">
-        <div class="settings-card__label-block">
-          <span class="settings-card__label">{{ t('settings.toasts.draggable') }}</span>
-          <span class="settings-card__hint">{{ t('settings.toasts.draggableHint') }}</span>
-        </div>
+      <SettingsCardRow :label="t('settings.toasts.draggable')" :hint="t('settings.toasts.draggableHint')" control-size="auto">
         <div class="form-check form-switch toast-panel__switch">
-          <input
-            id="toast-draggable"
-            v-model="settings.draggable"
-            type="checkbox"
-            class="form-check-input"
-            role="switch"
-            :disabled="!settings.enabled"
-          />
+          <input id="toast-draggable" v-model="settings.draggable" type="checkbox" class="form-check-input" role="switch" :disabled="!settings.enabled"/>
         </div>
-      </div>
+      </SettingsCardRow>
 
-      <div class="settings-card__row settings-card__row--last">
-        <div class="settings-card__label-block">
-          <span class="settings-card__label">{{ t('settings.toasts.hideProgress') }}</span>
-          <span class="settings-card__hint">{{ t('settings.toasts.hideProgressHint') }}</span>
-        </div>
+      <SettingsCardRow :label="t('settings.toasts.hideProgress')" :hint="t('settings.toasts.hideProgressHint')" control-size="auto" last>
         <div class="form-check form-switch toast-panel__switch">
-          <input
-            id="toast-hide-progress"
-            v-model="settings.hideProgressBar"
-            type="checkbox"
-            class="form-check-input"
-            role="switch"
-            :disabled="!settings.enabled"
-          />
+          <input id="toast-hide-progress" v-model="settings.hideProgressBar" type="checkbox" class="form-check-input" role="switch" :disabled="!settings.enabled"/>
         </div>
-      </div>
-    </div>
+      </SettingsCardRow>
+    </SettingsCard>
 
     <section class="toast-panel__preview">
       <div class="toast-panel__preview-header">
@@ -175,15 +109,7 @@ function previewToast(button) {
         </p>
       </div>
       <div class="toast-panel__preview-grid">
-        <button
-          v-for="button in PREVIEW_BUTTONS"
-          :key="button.type"
-          type="button"
-          class="toast-preview-btn"
-          :class="`toast-preview-btn--${button.type}`"
-          :disabled="!settings.enabled"
-          @click="previewToast(button)"
-        >
+        <button v-for="button in PREVIEW_BUTTONS" :key="button.type" type="button" class="toast-preview-btn" :class="`toast-preview-btn--${button.type}`" :disabled="!settings.enabled" @click="previewToast(button)">
           <span class="toast-preview-btn__icon" aria-hidden="true">
             <component :is="button.icon" :size="20" />
           </span>
@@ -215,75 +141,6 @@ function previewToast(button) {
 .settings-panel__hint {
   font-size: 0.9375rem;
   margin-bottom: 1rem;
-}
-
-.settings-card {
-  width: 100%;
-  background: var(--color-primary-background);
-  border: 1px solid var(--color-border);
-  border-radius: 0.625rem;
-  overflow: hidden;
-}
-
-.settings-card__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.875rem 1rem;
-  border-bottom: 1px solid var(--color-border);
-
-  @media (width < $ui-bp-sm) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-  }
-}
-
-.settings-card__row--last {
-  border-bottom: none;
-}
-
-.settings-card__label-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.settings-card__label {
-  font-size: 0.875rem;
-  color: var(--color-primary-text);
-  margin: 0;
-}
-
-.settings-card__hint {
-  font-size: 0.75rem;
-  color: var(--color-secondary-text);
-  opacity: 0.85;
-}
-
-.settings-card__control {
-  flex: 0 0 auto;
-  width: clamp(11rem, 50%, 14rem);
-  min-width: 0;
-
-  @media (width < $ui-bp-sm) {
-    width: 100%;
-  }
-
-  :deep(.select-box) {
-    --select-box-font-size: 0.8125rem;
-    --select-box-icon-size: 14px;
-    --select-box-trigger-min-height: 30px;
-    --select-box-item-padding-y: 0.25rem;
-    --select-box-item-padding-x: 0.5rem;
-  }
-
-  :deep(.select-trigger) {
-    line-height: 1.2;
-  }
 }
 
 .toast-panel__switch {
@@ -337,7 +194,7 @@ function previewToast(button) {
   padding: 0.75rem 0.875rem;
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  background: var(--ui-surface, var(--color-primary-background));
+  background: var(--color-primary-background);
   color: var(--color-primary-text);
   text-align: left;
   cursor: pointer;
@@ -349,7 +206,7 @@ function previewToast(button) {
 
   &:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary-text) 8%, transparent);
   }
 
   &:active:not(:disabled) {
@@ -398,6 +255,7 @@ function previewToast(button) {
 
 .toast-preview-btn--success {
   border-color: color-mix(in srgb, var(--bs-success) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--bs-success) 6%, var(--color-primary-background));
 
   .toast-preview-btn__icon {
     color: var(--bs-success);
@@ -406,12 +264,13 @@ function previewToast(button) {
 
   &:hover:not(:disabled) {
     border-color: color-mix(in srgb, var(--bs-success) 50%, var(--color-border));
-    background: color-mix(in srgb, var(--bs-success) 6%, var(--ui-surface, var(--color-primary-background)));
+    background: color-mix(in srgb, var(--bs-success) 10%, var(--color-primary-background));
   }
 }
 
 .toast-preview-btn--info {
   border-color: color-mix(in srgb, var(--bs-info) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--bs-info) 6%, var(--color-primary-background));
 
   .toast-preview-btn__icon {
     color: var(--bs-info);
@@ -420,12 +279,13 @@ function previewToast(button) {
 
   &:hover:not(:disabled) {
     border-color: color-mix(in srgb, var(--bs-info) 50%, var(--color-border));
-    background: color-mix(in srgb, var(--bs-info) 6%, var(--ui-surface, var(--color-primary-background)));
+    background: color-mix(in srgb, var(--bs-info) 10%, var(--color-primary-background));
   }
 }
 
 .toast-preview-btn--warning {
   border-color: color-mix(in srgb, var(--bs-warning) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--bs-warning) 6%, var(--color-primary-background));
 
   .toast-preview-btn__icon {
     color: var(--bs-warning);
@@ -434,12 +294,13 @@ function previewToast(button) {
 
   &:hover:not(:disabled) {
     border-color: color-mix(in srgb, var(--bs-warning) 50%, var(--color-border));
-    background: color-mix(in srgb, var(--bs-warning) 6%, var(--ui-surface, var(--color-primary-background)));
+    background: color-mix(in srgb, var(--bs-warning) 10%, var(--color-primary-background));
   }
 }
 
 .toast-preview-btn--error {
   border-color: color-mix(in srgb, var(--bs-danger) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--bs-danger) 6%, var(--color-primary-background));
 
   .toast-preview-btn__icon {
     color: var(--bs-danger);
@@ -448,7 +309,7 @@ function previewToast(button) {
 
   &:hover:not(:disabled) {
     border-color: color-mix(in srgb, var(--bs-danger) 50%, var(--color-border));
-    background: color-mix(in srgb, var(--bs-danger) 6%, var(--ui-surface, var(--color-primary-background)));
+    background: color-mix(in srgb, var(--bs-danger) 10%, var(--color-primary-background));
   }
 }
 

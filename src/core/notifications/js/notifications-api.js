@@ -36,10 +36,6 @@ export const notificationsApi = {
     return apiClient.post(ep.hideFromSidebar(id), {})
   },
 
-  softDelete(id) {
-    return apiClient.post(ep.softDelete(id), {})
-  },
-
   executeAction(id, actionId) {
     return apiClient.post(ep.executeAction(id), { action_id: actionId })
   },

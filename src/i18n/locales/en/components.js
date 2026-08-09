@@ -1,6 +1,7 @@
 export default {
   searchInput: {
     placeholder: 'Search...',
+    clear: 'Clear search',
   },
   selectBox: {
     all: 'All',

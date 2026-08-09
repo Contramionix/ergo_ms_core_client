@@ -1,21 +1,14 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  Archive,
-  ArchiveRestore,
-  Check,
-  EyeOff,
-  ExternalLink,
-  Trash2,
-} from 'lucide-vue-next'
+import { Archive, ArchiveRestore, EyeOff, } from 'lucide-vue-next'
 import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
 import NotificationActions from '@/core/notifications/components/NotificationActions.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
-import { formatDateTime, getRelativeTime } from '@/js/utils/timeUtils.js'
-import { confirmDelete } from '@/js/utils/confirm.js'
+import { formatDateTime, formatDateWeekdayTime } from '@/js/utils/timeUtils.js'
+import { expandedNotificationId } from '@/core/notifications/js/expandedNotification.js'
 
 const { t } = useAppI18n()
 
@@ -41,10 +34,6 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  relativeTime: {
-    type: Boolean,
-    default: false,
-  },
   /**
    * Как показывать дату в списке:
    * time — только ЧЧ:ММ (группы «Сегодня» / «Вчера»);
@@ -64,13 +53,13 @@ const emit = defineEmits([
   'archive',
   'unarchive',
   'hide-sidebar',
-  'delete',
   'hover-start',
   'hover-end',
 ])
 
 const router = useRouter()
-const expanded = ref(false)
+
+const expanded = computed(() => expandedNotificationId.value === props.notification.id)
 
 const levelClass = computed(() => {
   switch (props.notification.level) {
@@ -127,10 +116,6 @@ function formatWeekdayTime(iso) {
 }
 
 const formattedDate = computed(() => {
-  if (props.relativeTime) {
-    const relative = getRelativeTime(props.notification.created_at)
-    if (relative) return relative
-  }
   if (props.dateStyle === 'time') {
     return formatTimeOnly(props.notification.created_at)
   }
@@ -141,30 +126,19 @@ const formattedDate = computed(() => {
   return formatted === '—' ? '' : formatted
 })
 
-const absoluteDateTooltip = computed(() => {
-  const formatted = formatDateTime(props.notification.created_at)
-  return formatted === '—' ? '' : formatted
-})
+const dateTooltip = computed(() => formatDateWeekdayTime(props.notification.created_at))
 
-const dateTooltip = computed(() => {
-  const parts = [absoluteDateTooltip.value, readAtTooltip.value].filter(Boolean)
-  return parts.join(' · ')
-})
-
-const readAtTooltip = computed(() => {
-  if (props.notification.is_read && props.notification.read_at) {
-    const formatted = formatDateTime(props.notification.read_at)
-    return formatted === '—'
-      ? t('settings.inbox.read')
-      : t('settings.inbox.readAt', { time: formatted })
+async function onBodyClick() {
+  if (!props.notification.body) return
+  if (!expanded.value) {
+    expandedNotificationId.value = props.notification.id
+    return
   }
-  return t('settings.inbox.unread')
-})
-
-function onBodyClick() {
-  if (props.notification.body) {
-    expanded.value = !expanded.value
+  if (hasTarget.value) {
+    await navigate()
+    return
   }
+  expandedNotificationId.value = null
 }
 
 async function navigate() {
@@ -188,8 +162,21 @@ async function navigate() {
   }
 }
 
-function onMarkRead() {
-  emit('mark-read', props.notification.id)
+async function onItemClick() {
+  if (hasTarget.value) {
+    await navigate()
+    return
+  }
+  if (!props.notification.is_read) {
+    emit('mark-read', props.notification.id)
+  }
+}
+
+function onItemKeydown(event) {
+  if (event.target !== event.currentTarget) return
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  onItemClick()
 }
 
 function onArchive() {
@@ -203,127 +190,52 @@ function onUnarchive() {
 function onHideSidebar() {
   emit('hide-sidebar', props.notification.id)
 }
-
-async function onDelete() {
-  const ok = await confirmDelete(
-    t('settings.inbox.deleteTitle'),
-    t('settings.inbox.deleteMessage'),
-  )
-  if (!ok) return
-  emit('delete', props.notification.id)
-}
 </script>
 
 <template>
-  <li
-    class="notif-item"
-    :class="[
-      levelClass,
-      {
-        'is-unread': !notification.is_read,
-        'is-compact': compact,
-        'is-page': !compact,
-        'is-highlighted': highlighted,
-        'is-expanded': expanded,
-      },
-    ]"
-    :data-notification-id="notification.id"
-    :aria-label="notification.is_read ? notification.title : `${notification.title}, ${t('settings.inbox.unreadSuffix')}`"
-    @mouseenter="emit('hover-start', notification)"
-    @mouseleave="emit('hover-end', notification)"
-  >
+  <li class="notif-item" :class="[ levelClass, { 'is-unread': !notification.is_read, 'is-compact': compact, 'is-page': !compact, 'is-highlighted': highlighted, 'is-clickable': hasTarget || !notification.is_read, }, ]" :data-notification-id="notification.id" tabindex="-1" :aria-label="notification.is_read ? notification.title : `${notification.title}, ${t('settings.inbox.unreadSuffix')}`" @click="onItemClick" @keydown="onItemKeydown" @mouseenter="emit('hover-start', notification)" @mouseleave="emit('hover-end', notification)">
     <div class="notif-item__icon" :class="levelClass" aria-hidden="true">
       <LucideIcon :name="iconName" :size="compact ? 18 : 20" />
     </div>
 
     <div class="notif-item__body-col">
-      <!-- Строка 1: заголовок + дата -->
       <div class="notif-item__top">
-        <div class="notif-item__title" :title="notification.title">{{ notification.title }}</div>
-        <HoverTooltip :text="dateTooltip">
+        <HoverTooltip :text="notification.title" only-when-truncated class="notif-item__title-tip">
+          <div class="notif-item__title">{{ notification.title }}</div>
+        </HoverTooltip>
+        <HoverTooltip :text="dateTooltip" class="notif-item__date-tip">
           <time class="notif-item__date" :datetime="notification.created_at">
             {{ formattedDate }}
           </time>
         </HoverTooltip>
       </div>
 
-      <!-- Строка 2: описание -->
-      <button
-        v-if="notification.body"
-        type="button"
-        class="notif-item__text"
-        :class="{ 'is-clamped': !expanded }"
-        @click.stop="onBodyClick"
-      >
+      <button v-if="notification.body" type="button" class="notif-item__text" :class="{ 'is-clamped': !expanded }" @click.stop="onBodyClick">
         {{ notification.body }}
       </button>
 
-      <NotificationActions :notification="notification" :compact="compact" @click.stop />
+      <NotificationActions :notification="notification" @click.stop />
 
-      <!-- Строка 3: модуль + действия -->
       <div class="notif-item__bottom" @click.stop>
-        <span v-if="sourceLabel" class="notif-item__source">{{ sourceLabel }}</span>
+        <HoverTooltip v-if="sourceLabel" :text="sourceLabel" only-when-truncated class="notif-item__source-tip">
+          <span class="notif-item__source">{{ sourceLabel }}</span>
+        </HoverTooltip>
         <span v-else class="notif-item__source-spacer" aria-hidden="true" />
 
         <div class="notif-item__actions">
-          <HoverTooltip v-if="hasTarget" :text="t('settings.inbox.open')">
-            <button
-              type="button"
-              class="notif-item__action-btn"
-              :aria-label="t('settings.inbox.open')"
-              @click="navigate"
-            >
-              <ExternalLink :size="14" aria-hidden="true" />
-            </button>
-          </HoverTooltip>
-          <HoverTooltip v-if="!notification.is_read" :text="t('settings.inbox.markRead')">
-            <button
-              type="button"
-              class="notif-item__action-btn"
-              :aria-label="t('settings.inbox.markRead')"
-              @click="onMarkRead"
-            >
-              <Check :size="14" aria-hidden="true" />
-            </button>
-          </HoverTooltip>
           <HoverTooltip v-if="showSidebarHide" :text="t('settings.inbox.hideFromBell')">
-            <button
-              type="button"
-              class="notif-item__action-btn"
-              :aria-label="t('settings.inbox.hideFromBell')"
-              @click="onHideSidebar"
-            >
+            <button type="button" class="notif-item__action-btn" :aria-label="t('settings.inbox.hideFromBell')" @click="onHideSidebar">
               <EyeOff :size="14" aria-hidden="true" />
             </button>
           </HoverTooltip>
-          <HoverTooltip v-if="archivedView" :text="t('settings.inbox.restoreFromArchive')">
-            <button
-              type="button"
-              class="notif-item__action-btn"
-              :aria-label="t('settings.inbox.restoreFromArchive')"
-              @click="onUnarchive"
-            >
+          <HoverTooltip v-if="!compact && archivedView" :text="t('settings.inbox.restoreFromArchive')">
+            <button type="button" class="notif-item__action-btn" :aria-label="t('settings.inbox.restoreFromArchive')" @click="onUnarchive">
               <ArchiveRestore :size="14" aria-hidden="true" />
             </button>
           </HoverTooltip>
-          <HoverTooltip v-else :text="t('settings.inbox.toArchive')">
-            <button
-              type="button"
-              class="notif-item__action-btn"
-              :aria-label="t('settings.inbox.toArchive')"
-              @click="onArchive"
-            >
+          <HoverTooltip v-else-if="!compact" :text="t('settings.inbox.toArchive')">
+            <button type="button" class="notif-item__action-btn" :aria-label="t('settings.inbox.toArchive')" @click="onArchive">
               <Archive :size="14" aria-hidden="true" />
-            </button>
-          </HoverTooltip>
-          <HoverTooltip :text="t('common.delete')">
-            <button
-              type="button"
-              class="notif-item__action-btn notif-item__action-btn--danger"
-              :aria-label="t('common.delete')"
-              @click="onDelete"
-            >
-              <Trash2 :size="14" aria-hidden="true" />
             </button>
           </HoverTooltip>
         </div>
@@ -334,15 +246,14 @@ async function onDelete() {
 
 <style scoped lang="scss">
 .notif-item {
-  /* Две колонки: иконка | контент (дата и действия внутри контента) */
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   column-gap: 0.75rem;
-  align-items: start;
+  align-items: center;
   padding: 0.75rem 1rem;
   position: relative;
-  background-color: var(--ui-surface);
-  border-bottom: 1px solid var(--ui-border);
+  background-color: var(--bs-card-bg);
+  border-bottom: 1px solid var(--color-border);
   transition: background-color 0.15s ease;
   cursor: default;
 
@@ -351,17 +262,30 @@ async function onDelete() {
   }
 
   &:hover {
-    background-color: var(--color-hover-background, var(--ui-surface-2));
+    background-color: var(--color-hover-background);
+  }
+
+  &.is-clickable {
+    cursor: pointer;
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent, var(--bs-primary));
+    outline-offset: -2px;
+    z-index: 1;
   }
 
   &.is-compact {
-    align-items: center;
     padding: 0.75rem 0.875rem;
     column-gap: 0.625rem;
   }
 
   &.is-unread {
-    background-color: var(--ui-surface-2);
+    background-color: var(--color-secondary-background);
 
     .notif-item__title {
       font-weight: 600;
@@ -380,23 +304,6 @@ async function onDelete() {
       z-index: 1;
     }
   }
-
-  &.level--success::after,
-  &.level--warning::after,
-  &.level--error::after,
-  &.level--info::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-  }
-
-  &.level--success::after { background: var(--bs-success); }
-  &.level--warning::after { background: var(--bs-warning); }
-  &.level--error::after { background: var(--bs-danger); }
-  &.level--info::after { background: var(--bs-info); }
 
   &.is-highlighted {
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent, var(--bs-primary)) 35%, transparent);
@@ -427,9 +334,9 @@ async function onDelete() {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background-color: var(--ui-surface-2);
-  border: 1px solid var(--ui-border);
-  color: var(--ui-text);
+  background-color: var(--color-secondary-background);
+  border: 1px solid var(--color-border);
+  color: var(--color-primary-text);
 
   &.level--success {
     color: var(--bs-success);
@@ -456,11 +363,6 @@ async function onDelete() {
 .notif-item.is-page .notif-item__icon {
   width: 40px;
   height: 40px;
-  margin-top: 0.05rem;
-}
-
-.notif-item.is-compact .notif-item__icon {
-  align-self: center;
 }
 
 .notif-item__body-col {
@@ -470,7 +372,6 @@ async function onDelete() {
   gap: 0.25rem;
 }
 
-/* Заголовок слева — дата сразу справа от него (не у края экрана) */
 .notif-item__top {
   display: flex;
   align-items: baseline;
@@ -478,23 +379,30 @@ async function onDelete() {
   min-width: 0;
 }
 
-.notif-item__title {
+.notif-item__title-tip {
   flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.notif-item__title {
+  display: block;
+  width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.875rem;
   line-height: 1.35;
-  color: var(--ui-text);
+  color: var(--color-primary-text);
 }
 
 .notif-item.is-page .notif-item__title {
   font-size: 0.9375rem;
 }
 
-/* HoverTooltip — flex-ребёнок; без shrink время не сжимается и не перекрывается */
-.notif-item__top :deep(.hover-tooltip) {
+.notif-item__date-tip {
   flex: 0 0 auto;
   max-width: none;
 }
@@ -503,7 +411,7 @@ async function onDelete() {
   flex: 0 0 auto;
   font-size: 0.75rem;
   line-height: 1.35;
-  color: var(--ui-text-muted);
+  color: var(--color-secondary-text);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -522,7 +430,7 @@ async function onDelete() {
   text-align: left;
   font-size: 0.8125rem;
   line-height: 1.45;
-  color: var(--ui-text-muted);
+  color: var(--color-secondary-text);
   word-break: break-word;
   white-space: pre-wrap;
   cursor: pointer;
@@ -546,7 +454,6 @@ async function onDelete() {
   font-size: 0.875rem;
 }
 
-/* Модуль слева — действия справа в одной строке с описанием */
 .notif-item__bottom {
   display: flex;
   align-items: center;
@@ -555,14 +462,25 @@ async function onDelete() {
   margin-top: 0.1rem;
 }
 
-.notif-item__source {
+.notif-item__source-tip {
   flex: 1 1 auto;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.notif-item__source {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.7rem;
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--ui-text-muted);
+  color: var(--color-secondary-text);
 }
 
 .notif-item__source-spacer {
@@ -587,13 +505,13 @@ async function onDelete() {
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
-  color: var(--ui-text-muted);
+  color: var(--color-secondary-text);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
 
   &:hover {
-    background-color: var(--ui-surface-2);
-    color: var(--ui-text);
+    background-color: var(--color-secondary-background);
+    color: var(--color-primary-text);
   }
 
   &:focus-visible {
@@ -601,9 +519,6 @@ async function onDelete() {
     outline-offset: 1px;
   }
 
-  &--danger:hover {
-    color: var(--bs-danger);
-  }
 }
 
 @media (width < $ui-bp-sm) {

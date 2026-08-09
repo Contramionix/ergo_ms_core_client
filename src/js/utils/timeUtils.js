@@ -96,6 +96,32 @@ export function formatDateTime(date) {
 }
 
 /**
+ * Форматирует дату: «03 августа 2026 (понедельник), 15:35»
+ * @param {string|Date} date - Дата в ISO формате или объект Date
+ * @returns {string} Отформатированная дата со днём недели и временем
+ */
+export function formatDateWeekdayTime(date) {
+    const targetDate = parseDate(date)
+    if (!targetDate) return ''
+
+    try {
+        const locale = getCurrentBcp47()
+        const datePart = formatDate(date)
+        if (!datePart) return ''
+        const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' })
+            .format(targetDate)
+            .toLowerCase()
+        const time = new Intl.DateTimeFormat(locale, {
+            hour: '2-digit',
+            minute: '2-digit',
+        }).format(targetDate)
+        return `${datePart} (${weekday}), ${time}`
+    } catch {
+        return ''
+    }
+}
+
+/**
  * Форматирует дату в полный формат с относительным временем
  * @param {string|Date} date - Дата в ISO формате или объект Date
  * @returns {string} Полный формат даты с относительным временем

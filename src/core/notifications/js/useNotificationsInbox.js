@@ -7,35 +7,60 @@ import { isHttpPollingMode, isSseMode } from '@/js/realtime/config.js'
 import { isRealtimeEnvelope } from '@/js/realtime/envelope.js'
 import { notificationsApi } from './notifications-api'
 
-const SIDEBAR_WEEK_MS = 7 * 24 * 60 * 60 * 1000
-const HISTORY_PAGE_SIZE = 30
+const HISTORY_PAGE_SIZE = 10
 const SIDEBAR_PAGE_SIZE = 20
+const SIDEBAR_ACTIVITY_DAYS_MIN = 1
+const SIDEBAR_ACTIVITY_DAYS_MAX = 7
+const SIDEBAR_ACTIVITY_DAYS_DEFAULT = 3
+const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 const items = ref([])
 const sidebarItems = ref([])
 const unreadCount = ref(0)
 const loading = ref(false)
-const loadingMore = ref(false)
 const sidebarLoading = ref(false)
-const connected = ref(false)
-const hasMore = ref(false)
 const listTotal = ref(0)
 const sourceModules = ref([])
 const listArchived = ref(false)
+/** Окно прочитанных в колокольчике (дни), синхронизируется с preferences */
+const sidebarActivityDays = ref(SIDEBAR_ACTIVITY_DAYS_DEFAULT)
 
 let wsConnection = null
 let intentionalClose = false
 let initialized = false
-let listOffset = 0
-let listFilters = { is_read: null, source_module: '' }
+let activityDaysLoaded = false
+let listFilters = { is_read: null, source_module: '', q: '' }
 
-export function matchesSidebarFilter(notification) {
+function clampSidebarActivityDays(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return SIDEBAR_ACTIVITY_DAYS_DEFAULT
+  return Math.min(
+    SIDEBAR_ACTIVITY_DAYS_MAX,
+    Math.max(SIDEBAR_ACTIVITY_DAYS_MIN, Math.round(n)),
+  )
+}
+
+function matchesSidebarFilter(notification) {
   if (notification?.sidebar_hidden_at) return false
   if (notification?.archived_at || notification?.deleted_at) return false
   if (!notification?.is_read) return true
-  const refDate = notification.read_at || notification.created_at
-  if (!refDate) return false
-  return Date.now() - new Date(refDate).getTime() <= SIDEBAR_WEEK_MS
+
+  const createdAt = notification.created_at ? new Date(notification.created_at).getTime() : NaN
+  if (!Number.isFinite(createdAt)) return false
+  const windowMs = clampSidebarActivityDays(sidebarActivityDays.value) * MS_PER_DAY
+  return Date.now() - createdAt <= windowMs
+}
+
+/**
+ * Обновить окно колокольчика; при reload=true перезагрузить список sidebar.
+ */
+export function setSidebarActivityDays(days, { reload = false } = {}) {
+  sidebarActivityDays.value = clampSidebarActivityDays(days)
+  activityDaysLoaded = true
+  if (reload) {
+    return loadSidebar()
+  }
+  return Promise.resolve()
 }
 
 function applyReadState(notification, readAt) {
@@ -78,7 +103,6 @@ function openSocket() {
 
   wsConnection = connectNotificationsTransport({
     onAuthenticated: () => {
-      connected.value = true
       syncPollingCursorFromItems()
     },
     onMessage: handleSocketMessage,
@@ -88,13 +112,9 @@ function openSocket() {
       }
     },
     onClose: (_event, wasIntentional) => {
-      connected.value = false
       if (wasIntentional || intentionalClose) {
         wsConnection = null
       }
-    },
-    onError: () => {
-      connected.value = false
     },
   })
 }
@@ -112,75 +132,70 @@ function parseListResponse(listResp) {
   }
 }
 
-async function loadInitial(filters = {}) {
+function buildListParams(page = 1) {
+  const pageNum = Math.max(1, Number(page) || 1)
+  const offset = (pageNum - 1) * HISTORY_PAGE_SIZE
+  const params = {
+    limit: HISTORY_PAGE_SIZE,
+    offset,
+  }
+  if (listFilters.is_read === false) params.is_read = 'false'
+  if (listFilters.source_module) params.source_module = listFilters.source_module
+  if (listFilters.q) params.q = listFilters.q
+  if (listArchived.value) params.archived = '1'
+  return { params, pageNum }
+}
+
+async function loadPage(page = 1, filters = {}) {
   if (loading.value) return
   loading.value = true
   listFilters = {
-    is_read: filters.is_read ?? null,
-    source_module: filters.source_module || '',
+    is_read: filters.is_read ?? listFilters.is_read ?? null,
+    source_module: filters.source_module ?? listFilters.source_module ?? '',
+    q: Object.prototype.hasOwnProperty.call(filters, 'q')
+      ? String(filters.q || '').trim()
+      : (listFilters.q || ''),
   }
-  listArchived.value = Boolean(filters.archived)
-  listOffset = 0
+  if (Object.prototype.hasOwnProperty.call(filters, 'archived')) {
+    listArchived.value = Boolean(filters.archived)
+  }
+  const { params, pageNum } = buildListParams(page)
   try {
-    const params = {
-      limit: HISTORY_PAGE_SIZE,
-      offset: 0,
-    }
-    if (listFilters.is_read === true) params.is_read = 'true'
-    if (listFilters.is_read === false) params.is_read = 'false'
-    if (listFilters.source_module) params.source_module = listFilters.source_module
-    if (listArchived.value) params.archived = '1'
-
     const [listResp, countResp, modulesResp] = await Promise.all([
       notificationsApi.list(params),
       notificationsApi.unreadCount(),
       notificationsApi.sourceModules().catch(() => null),
     ])
-    const { list, total, next } = parseListResponse(listResp)
+    const { list, total } = parseListResponse(listResp)
     items.value = list
     listTotal.value = total
-    hasMore.value = Boolean(next) || list.length < total
-    listOffset = list.length
     unreadCount.value = Number(countResp?.data?.count ?? 0)
     if (modulesResp?.data?.results) {
       sourceModules.value = modulesResp.data.results
     }
     syncPollingCursorFromItems()
+    return pageNum
   } catch {
     items.value = []
     listTotal.value = 0
-    hasMore.value = false
     unreadCount.value = 0
+    return pageNum
   } finally {
     loading.value = false
   }
 }
 
-async function loadMore() {
-  if (loadingMore.value || loading.value || !hasMore.value) return
-  loadingMore.value = true
+async function loadSidebarActivityDays({ force = false } = {}) {
+  if (activityDaysLoaded && !force) return
   try {
-    const params = {
-      limit: HISTORY_PAGE_SIZE,
-      offset: listOffset,
-    }
-    if (listFilters.is_read === true) params.is_read = 'true'
-    if (listFilters.is_read === false) params.is_read = 'false'
-    if (listFilters.source_module) params.source_module = listFilters.source_module
-    if (listArchived.value) params.archived = '1'
-
-    const listResp = await notificationsApi.list(params)
-    const { list, total, next } = parseListResponse(listResp)
-    const existing = new Set(items.value.map((n) => n.id))
-    const appended = list.filter((n) => !existing.has(n.id))
-    items.value = [...items.value, ...appended]
-    listTotal.value = total
-    listOffset += list.length
-    hasMore.value = Boolean(next) || listOffset < total
-  } catch (e) {
-    logError('notifications loadMore:', e)
-  } finally {
-    loadingMore.value = false
+    const response = await notificationsApi.getPreferences()
+    const days = clampSidebarActivityDays(
+      response?.data?.sidebar_activity_days ?? SIDEBAR_ACTIVITY_DAYS_DEFAULT,
+    )
+    sidebarActivityDays.value = days
+    activityDaysLoaded = true
+  } catch {
+    /* оставляем текущее / default */
   }
 }
 
@@ -188,6 +203,7 @@ async function loadSidebar() {
   if (sidebarLoading.value) return
   sidebarLoading.value = true
   try {
+    await loadSidebarActivityDays()
     const listResp = await notificationsApi.list({
       limit: SIDEBAR_PAGE_SIZE,
       offset: 0,
@@ -297,6 +313,30 @@ async function archive(id) {
   return false
 }
 
+function reinsertIntoInbox(notification) {
+  if (!notification?.id) return
+  const inItems = items.value.find((n) => n.id === notification.id)
+  if (inItems) {
+    Object.assign(inItems, notification)
+  } else {
+    items.value.unshift(notification)
+  }
+
+  const inSidebar = sidebarItems.value.find((n) => n.id === notification.id)
+  if (matchesSidebarFilter(notification)) {
+    if (inSidebar) {
+      Object.assign(inSidebar, notification)
+    } else {
+      sidebarItems.value.unshift(notification)
+      if (sidebarItems.value.length > SIDEBAR_PAGE_SIZE) {
+        sidebarItems.value = sidebarItems.value.slice(0, SIDEBAR_PAGE_SIZE)
+      }
+    }
+  } else if (inSidebar) {
+    sidebarItems.value = sidebarItems.value.filter((n) => n.id !== notification.id)
+  }
+}
+
 async function unarchive(id) {
   try {
     const resp = await notificationsApi.unarchive(id)
@@ -306,7 +346,7 @@ async function unarchive(id) {
       if (listArchived.value) {
         removeFromLists(id)
       } else if (data.notification) {
-        applyNotificationUpdate(data.notification)
+        reinsertIntoInbox(data.notification)
       }
       return true
     }
@@ -332,21 +372,6 @@ async function hideFromSidebar(id) {
   return false
 }
 
-async function softDelete(id) {
-  try {
-    const resp = await notificationsApi.softDelete(id)
-    const data = resp?.data ?? resp
-    if (data?.success || resp?.success) {
-      syncUnreadFromResponse(data)
-      removeFromLists(id)
-      return true
-    }
-  } catch (e) {
-    logError('softDelete notification:', e)
-  }
-  return false
-}
-
 const TOAST_METHOD_BY_LEVEL = {
   info: 'info',
   success: 'success',
@@ -364,6 +389,20 @@ function showIncomingToast(notification) {
 
 function handleSocketMessage(_event, data) {
   if (!isRealtimeEnvelope(data)) {
+    return
+  }
+  if (data.type === 'notification_revoked') {
+    const id = data.payload?.id
+    if (id != null) {
+      const wasUnread = Boolean(
+        items.value.find((n) => n.id === id && !n.is_read)
+        || sidebarItems.value.find((n) => n.id === id && !n.is_read),
+      )
+      removeFromLists(id)
+      if (wasUnread && unreadCount.value > 0) {
+        unreadCount.value -= 1
+      }
+    }
     return
   }
   if (data.type === 'notification_new' || data.type === 'notification_updated') {
@@ -417,14 +456,13 @@ function disconnect() {
   intentionalClose = true
   wsConnection?.close()
   wsConnection = null
-  connected.value = false
 }
 
 async function ensureInitialized(options = {}) {
   if (initialized) return
   initialized = true
   if (!options.skipLoad) {
-    await loadInitial()
+    await loadPage(1)
   } else {
     try {
       const countResp = await notificationsApi.unreadCount()
@@ -436,15 +474,21 @@ async function ensureInitialized(options = {}) {
   openSocket()
 }
 
-function reset() {
+/** Сброс inbox и транспорта (logout / смена сессии). */
+export function resetNotificationsInbox() {
   disconnect()
   items.value = []
   sidebarItems.value = []
   unreadCount.value = 0
-  hasMore.value = false
   listTotal.value = 0
   sourceModules.value = []
+  listArchived.value = false
+  listFilters = { is_read: null, source_module: '', q: '' }
+  sidebarActivityDays.value = SIDEBAR_ACTIVITY_DAYS_DEFAULT
+  activityDaysLoaded = false
   initialized = false
+  loading.value = false
+  sidebarLoading.value = false
 }
 
 export function useNotificationsInbox() {
@@ -453,26 +497,21 @@ export function useNotificationsInbox() {
     sidebarItems,
     unreadCount,
     loading,
-    loadingMore,
     sidebarLoading,
-    connected,
-    hasMore,
     listTotal,
     sourceModules,
     listArchived,
+    sidebarActivityDays,
     hasUnread: computed(() => unreadCount.value > 0),
+    listPageSize: HISTORY_PAGE_SIZE,
     ensureInitialized,
-    loadInitial,
-    loadMore,
+    loadPage,
     loadSidebar,
+    setSidebarActivityDays,
     markRead,
     markAllRead,
     archive,
     unarchive,
     hideFromSidebar,
-    softDelete,
-    executeAction,
-    disconnect,
-    reset,
   }
 }

@@ -45,12 +45,6 @@ export function getToastDurationPresetOptions() {
   }))
 }
 
-/** ID-only stubs for consumers that only need option ids. Prefer getToastPositionOptions(). */
-export const TOAST_POSITION_OPTIONS = TOAST_POSITION_IDS.map((id) => ({ id, name: id }))
-
-/** ID-only stubs for consumers that only need option ids. Prefer getToastDurationPresetOptions(). */
-export const TOAST_DURATION_PRESET_OPTIONS = TOAST_DURATION_PRESET_IDS.map((id) => ({ id, name: id }))
-
 export const TOAST_MAX_OPTIONS = [1, 2, 3, 4, 5, 6].map((value) => ({
   id: value,
   name: String(value),

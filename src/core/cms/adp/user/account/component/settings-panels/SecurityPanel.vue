@@ -1,6 +1,8 @@
 <script setup>
 import { computed, ref, onMounted, watch, defineAsyncComponent } from 'vue'
 import SelectBox from '@/components/SelectBox.vue'
+import SettingsCard from '@/components/SettingsCard.vue'
+import SettingsCardRow from '@/components/SettingsCardRow.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useProfile } from '@/core/cms/js/profileService.js'
@@ -119,42 +121,27 @@ onMounted(() => {
   <div class="settings-panel">
     <h1 class="settings-panel__title">{{ t('settings.security.title') }}</h1>
 
-    <div class="settings-card settings-card--stack">
-      <div class="settings-card__row">
-        <label class="settings-card__label" for="security-privacy">{{ t('settings.security.privacy') }}</label>
-        <div class="settings-card__control">
-          <SelectBox id="security-privacy" v-model="privacyLockedValue" :options="PROFILE_VISIBILITY_OPTIONS" :include-all-option="false" disabled />
-        </div>
-      </div>
+    <SettingsCard class="security-panel__stack">
+      <SettingsCardRow :label="t('settings.security.privacy')" label-for="security-privacy">
+        <SelectBox id="security-privacy" v-model="privacyLockedValue" :options="PROFILE_VISIBILITY_OPTIONS" :include-all-option="false" disabled/>
+      </SettingsCardRow>
 
-      <div class="settings-card__row settings-card__row--last">
-        <div class="settings-card__label-block">
-          <span class="settings-card__label">{{ t('settings.security.password') }}</span>
-          <span class="settings-card__hint">{{ t('settings.security.passwordHint') }}</span>
-        </div>
-        <div class="settings-card__control settings-card__control--actions">
-          <button type="button" class="btn btn-sm profile-card__save" @click="showPasswordModal = true">
-            {{ t('settings.security.changePasswordBtn') }}
-          </button>
-        </div>
-      </div>
-    </div>
+      <SettingsCardRow :label="t('settings.security.password')" :hint="t('settings.security.passwordHint')" control-size="auto" last>
+        <button type="button" class="btn btn-sm profile-card__save" @click="showPasswordModal = true">
+          {{ t('settings.security.changePasswordBtn') }}
+        </button>
+      </SettingsCardRow>
+    </SettingsCard>
 
     <p class="sessions-block__caption">{{ t('settings.security.activeSessions') }}</p>
-    <div class="settings-card settings-card--sessions">
+    <SettingsCard>
       <LoadingContentArea :loading="loading" min-height="6rem">
-      <div v-if="paginationTotal === 0" class="sessions__empty text-muted small py-3 px-2">
+        <div v-if="paginationTotal === 0" class="sessions__empty text-muted small py-3 px-2">
           {{ t('settings.security.noSessions') }}
         </div>
 
         <div v-else class="sessions__list">
-          <SessionCard
-            v-for="device in rowsForPage"
-            :key="device.id"
-            :device="device"
-            :revoking="deletingDeviceId === device.id"
-            @revoke="handleRevoke"
-          />
+          <SessionCard v-for="device in rowsForPage" :key="device.id" :device="device" :revoking="deletingDeviceId === device.id" @revoke="handleRevoke"/>
         </div>
 
         <div v-if="paginationTotal > 0" class="sessions__footer">
@@ -172,17 +159,13 @@ onMounted(() => {
           </div>
         </div>
       </LoadingContentArea>
-    </div>
+    </SettingsCard>
 
     <p class="sessions__disclaimer text-muted small mt-2 mb-0">
       {{ t('settings.security.sessionsDisclaimer') }}
     </p>
 
-    <ChangePasswordModal
-      v-if="showPasswordModal"
-      :show="showPasswordModal"
-      @close="showPasswordModal = false"
-    />
+    <ChangePasswordModal v-if="showPasswordModal" :show="showPasswordModal" @close="showPasswordModal = false"/>
   </div>
 </template>
 
@@ -198,82 +181,8 @@ onMounted(() => {
   margin-bottom: 0.75rem;
 }
 
-.settings-card {
-  width: 100%;
-  background: var(--color-primary-background);
-  border: 1px solid var(--color-border);
-  border-radius: 0.625rem;
-  overflow: hidden;
-}
-
-.settings-card--stack {
+.security-panel__stack {
   margin-bottom: 1rem;
-}
-
-.settings-card__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.875rem 1rem;
-  border-bottom: 1px solid var(--color-border);
-
-  @media (width < $ui-bp-sm) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-  }
-}
-
-.settings-card__row--last {
-  border-bottom: none;
-}
-
-.settings-card__label {
-  flex: 1 1 auto;
-  font-size: 0.875rem;
-  color: var(--color-primary-text);
-  margin: 0;
-}
-
-.settings-card__label-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
-}
-
-.settings-card__hint {
-  font-size: 0.75rem;
-  color: var(--color-secondary-text);
-  opacity: 0.85;
-}
-
-.settings-card__control {
-  flex: 0 0 auto;
-  width: clamp(11rem, 50%, 14rem);
-  min-width: 0;
-
-  @media (width < $ui-bp-sm) {
-    width: 100%;
-  }
-
-  &--actions {
-    width: auto;
-    flex-shrink: 0;
-  }
-
-  :deep(.select-box) {
-    --select-box-font-size: 0.8125rem;
-    --select-box-icon-size: 14px;
-    --select-box-trigger-min-height: 30px;
-    --select-box-item-padding-y: 0.25rem;
-    --select-box-item-padding-x: 0.5rem;
-  }
-
-  :deep(.select-trigger) {
-    line-height: 1.2;
-  }
 }
 
 .profile-card__save {
@@ -302,10 +211,6 @@ onMounted(() => {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-secondary-text, rgba(128, 128, 128, 0.95));
-}
-
-.settings-card--sessions {
-  padding: 0;
 }
 
 .sessions__list {

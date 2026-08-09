@@ -31,10 +31,10 @@ export default {
   notifications: {
     title: 'Уведомления',
     empty: 'Пока нет уведомлений',
-    markRead: 'Прочитано',
     markAllRead: 'Прочитать все',
     viewAll: 'Все уведомления',
     openPage: 'Открыть страницу уведомлений',
+    listAria: 'Список уведомлений',
   },
   userMenu: {
     account: 'Аккаунт',

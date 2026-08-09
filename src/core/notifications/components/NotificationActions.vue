@@ -10,13 +10,7 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  compact: {
-    type: Boolean,
-    default: false,
-  },
 })
-
-const emit = defineEmits(['executed'])
 
 const { t } = useAppI18n()
 const executingId = ref('')
@@ -29,8 +23,7 @@ const STYLE_CLASS = {
 }
 
 function btnClass(style) {
-  const base = props.compact ? 'btn btn-sm' : 'btn btn-sm'
-  return `${base} ${STYLE_CLASS[style] || STYLE_CLASS.secondary}`
+  return `btn btn-sm ${STYLE_CLASS[style] || STYLE_CLASS.secondary}`
 }
 
 function hasPendingActions(item) {
@@ -52,7 +45,6 @@ async function runAction(actionId) {
     const result = await executeNotificationAction(props.notification.id, actionId)
     if (result?.success) {
       if (result.message) toast.success(result.message)
-      emit('executed', result.notification)
     } else if (result?.message) {
       toast.error(result.message)
     } else {
@@ -69,20 +61,8 @@ async function runAction(actionId) {
 
 <template>
   <div v-if="hasPendingActions(notification)" class="notification-actions" @click.stop>
-    <button
-      v-for="action in notification.actions"
-      :key="action.id"
-      type="button"
-      :class="btnClass(action.style)"
-      :disabled="Boolean(executingId)"
-      @click="runAction(action.id)"
-    >
-      <span
-        v-if="executingId === action.id"
-        class="spinner-border spinner-border-sm me-1"
-        role="status"
-        aria-hidden="true"
-      />
+    <button v-for="action in notification.actions" :key="action.id" type="button" :class="btnClass(action.style)" :disabled="Boolean(executingId)" @click="runAction(action.id)">
+      <span v-if="executingId === action.id" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"/>
       <span>{{ executingId === action.id ? t('common.loading') : action.label }}</span>
     </button>
   </div>

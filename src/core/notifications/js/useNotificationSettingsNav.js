@@ -6,8 +6,23 @@ import { nextTick, ref, shallowRef } from 'vue'
 
 export const NOTIFICATION_NAV_KEY = Symbol('notificationNav')
 
+/** Линия scroll spy: доля высоты scroll-root сверху */
+const SPY_LINE_RATIO = 0.16
+
+export function anchorIdBrowser() {
+  return 'notif-browser'
+}
+
+export function anchorIdRetention() {
+  return 'notif-retention'
+}
+
 export function anchorIdGlobal() {
   return 'notif-global'
+}
+
+export function anchorIdModules() {
+  return 'notif-modules'
 }
 
 export function anchorIdModule(module) {
@@ -18,19 +33,29 @@ export function anchorIdCategory(module, category) {
   return `notif-${module}-${category}`
 }
 
-export function collectAnchorIds(sections = []) {
-  const ids = [anchorIdGlobal()]
-  for (const section of sections) {
-    ids.push(anchorIdModule(section.module))
-    for (const category of section.categories || []) {
-      ids.push(anchorIdCategory(section.module, category.category))
-    }
-  }
-  return ids
+const CORE_ANCHOR_IDS = [
+  anchorIdBrowser(),
+  anchorIdRetention(),
+  anchorIdGlobal(),
+]
+
+function isModuleRelatedAnchor(sections, anchorId) {
+  if (!anchorId) return false
+  if (anchorId === anchorIdModules()) return true
+  return Boolean(findModuleForAnchor(sections, anchorId))
 }
 
-export function collectVisibleAnchorIds(sections = [], expandedModulesSet) {
-  const ids = [anchorIdGlobal()]
+function collectVisibleAnchorIds(
+  sections = [],
+  expandedModulesSet,
+  modulesGroupExpanded = true,
+) {
+  const ids = [...CORE_ANCHOR_IDS]
+  if (!sections.length) return ids
+
+  ids.push(anchorIdModules())
+  if (!modulesGroupExpanded) return ids
+
   for (const section of sections) {
     ids.push(anchorIdModule(section.module))
     if (expandedModulesSet?.has?.(section.module)) {
@@ -43,7 +68,9 @@ export function collectVisibleAnchorIds(sections = [], expandedModulesSet) {
 }
 
 function findModuleForAnchor(sections, anchorId) {
-  if (!anchorId || anchorId === anchorIdGlobal()) return null
+  if (!anchorId || CORE_ANCHOR_IDS.includes(anchorId) || anchorId === anchorIdModules()) {
+    return null
+  }
   for (const section of sections) {
     if (anchorId === anchorIdModule(section.module)) {
       return section.module
@@ -59,9 +86,11 @@ function findModuleForAnchor(sections, anchorId) {
 
 export function createNotificationNavController(panelWrapRef) {
   const sections = shallowRef([])
-  const activeAnchorId = ref(anchorIdGlobal())
+  const activeAnchorId = ref(anchorIdBrowser())
   const expandedModules = ref(new Set())
-  let observer = null
+  const modulesGroupExpanded = ref(true)
+  let observedAnchorIds = []
+  let spyScrollHandler = null
   let observerLocked = false
   let unlockTimer = null
   let scrollSettleHandler = null
@@ -78,17 +107,20 @@ export function createNotificationNavController(panelWrapRef) {
     scrollSettleHandler = null
   }
 
-  function unlockObserver() {
+  function unlockObserver({ refreshActive = true } = {}) {
     observerLocked = false
     if (unlockTimer) {
       clearTimeout(unlockTimer)
       unlockTimer = null
     }
     clearScrollSettle()
+    if (refreshActive) {
+      updateActiveFromScroll()
+    }
   }
 
   /**
-   * Пока идёт программный скролл / раскрытие секции, IntersectionObserver
+   * Пока идёт программный скролл / раскрытие секции, scroll spy
    * не должен дёргать активный пункт меню.
    */
   function lockObserver(durationMs = 700) {
@@ -117,8 +149,28 @@ export function createNotificationNavController(panelWrapRef) {
     return expandedModules.value.has(module)
   }
 
+  function isModulesGroupExpanded() {
+    return modulesGroupExpanded.value
+  }
+
+  async function expandModulesGroup() {
+    if (modulesGroupExpanded.value) return
+    modulesGroupExpanded.value = true
+    lockObserver(400)
+    await nextTick()
+    syncAnchors()
+  }
+
+  async function toggleModulesGroupExpanded() {
+    modulesGroupExpanded.value = !modulesGroupExpanded.value
+    lockObserver(400)
+    await nextTick()
+    syncAnchors()
+  }
+
   async function expandModule(module) {
     if (!module || expandedModules.value.has(module)) return
+    await expandModulesGroup()
     expandedModules.value = new Set([...expandedModules.value, module])
     lockObserver(400)
     await nextTick()
@@ -126,6 +178,7 @@ export function createNotificationNavController(panelWrapRef) {
   }
 
   async function toggleModuleExpanded(module) {
+    await expandModulesGroup()
     const next = new Set(expandedModules.value)
     if (next.has(module)) {
       next.delete(module)
@@ -140,6 +193,9 @@ export function createNotificationNavController(panelWrapRef) {
 
   function initExpandedModules(sectionsList) {
     expandedModules.value = new Set((sectionsList || []).map((s) => s.module))
+    if ((sectionsList || []).length) {
+      modulesGroupExpanded.value = true
+    }
   }
 
   function scrollElementIntoRoot(root, el) {
@@ -157,6 +213,11 @@ export function createNotificationNavController(panelWrapRef) {
     const root = getScrollRoot()
     if (!root || !anchorId) return
 
+    if (isModuleRelatedAnchor(sections.value, anchorId)) {
+      await expandModulesGroup()
+      await nextTick()
+    }
+
     const module = findModuleForAnchor(sections.value, anchorId)
     if (module && !isModuleExpanded(module)) {
       await expandModule(module)
@@ -166,60 +227,67 @@ export function createNotificationNavController(panelWrapRef) {
     const el = root.querySelector(`#${CSS.escape(anchorId)}`)
     if (!el) return
 
-    // Сразу фиксируем активный пункт; observer не должен перебить его во время скролла.
+    // Сразу фиксируем активный пункт; spy не должен перебить его во время скролла.
     activeAnchorId.value = anchorId
     lockObserver(800)
     scrollElementIntoRoot(root, el)
   }
 
-  function teardownObserver() {
-    if (observer) {
-      observer.disconnect()
-      observer = null
+  /**
+   * Классический scroll spy: активен последний якорь, чей верх выше линии
+   * SPY_LINE_RATIO от верха scroll-root.
+   */
+  function updateActiveFromScroll() {
+    if (observerLocked) return
+    const root = getScrollRoot()
+    if (!root || !observedAnchorIds.length) return
+
+    const rootRect = root.getBoundingClientRect()
+    const spyY = rootRect.top + root.clientHeight * SPY_LINE_RATIO
+
+    let bestId = null
+    for (const id of observedAnchorIds) {
+      const el = root.querySelector(`#${CSS.escape(id)}`)
+      if (!el) continue
+      if (el.getBoundingClientRect().top <= spyY) {
+        bestId = id
+      }
     }
-    unlockObserver()
+
+    if (!bestId) {
+      bestId = observedAnchorIds.find((id) => root.querySelector(`#${CSS.escape(id)}`)) || null
+    }
+
+    if (bestId && bestId !== activeAnchorId.value) {
+      activeAnchorId.value = bestId
+    }
+  }
+
+  function teardownObserver() {
+    const root = getScrollRoot()
+    if (root && spyScrollHandler) {
+      root.removeEventListener('scroll', spyScrollHandler)
+    }
+    spyScrollHandler = null
+    observedAnchorIds = []
+    unlockObserver({ refreshActive: false })
   }
 
   function setupObserver(anchorIds) {
-    if (observer) {
-      observer.disconnect()
-      observer = null
-    }
     const root = getScrollRoot()
-    if (!root || !anchorIds?.length) return
-
-    const visible = new Map()
-
-    observer = new IntersectionObserver(
-      (entries) => {
-        if (observerLocked) return
-        for (const entry of entries) {
-          visible.set(entry.target.id, entry.isIntersecting ? entry.intersectionRatio : 0)
-        }
-        let bestId = null
-        let bestRatio = 0
-        for (const id of anchorIds) {
-          const ratio = visible.get(id) || 0
-          if (ratio > bestRatio) {
-            bestRatio = ratio
-            bestId = id
-          }
-        }
-        if (bestId && bestId !== activeAnchorId.value) {
-          activeAnchorId.value = bestId
-        }
-      },
-      {
-        root,
-        rootMargin: '-12% 0px -60% 0px',
-        threshold: [0, 0.25, 0.5, 0.75, 1],
-      },
-    )
-
-    for (const id of anchorIds) {
-      const el = root.querySelector(`#${CSS.escape(id)}`)
-      if (el) observer.observe(el)
+    if (root && spyScrollHandler) {
+      root.removeEventListener('scroll', spyScrollHandler)
+      spyScrollHandler = null
     }
+
+    observedAnchorIds = Array.isArray(anchorIds) ? [...anchorIds] : []
+    if (!root || !observedAnchorIds.length) return
+
+    spyScrollHandler = () => {
+      updateActiveFromScroll()
+    }
+    root.addEventListener('scroll', spyScrollHandler, { passive: true })
+    updateActiveFromScroll()
   }
 
   function setSections(nextSections) {
@@ -232,7 +300,11 @@ export function createNotificationNavController(panelWrapRef) {
   }
 
   function syncAnchors() {
-    const ids = collectVisibleAnchorIds(sections.value, expandedModules.value)
+    const ids = collectVisibleAnchorIds(
+      sections.value,
+      expandedModules.value,
+      modulesGroupExpanded.value,
+    )
     setupObserver(ids)
     return ids
   }
@@ -241,16 +313,16 @@ export function createNotificationNavController(panelWrapRef) {
     sections,
     activeAnchorId,
     expandedModules,
+    modulesGroupExpanded,
     setSections,
     scrollToAnchor,
-    setupObserver,
     teardownObserver,
     syncAnchors,
-    collectAnchorIds,
-    collectVisibleAnchorIds,
     isModuleExpanded,
     toggleModuleExpanded,
     expandModule,
-    initExpandedModules,
+    isModulesGroupExpanded,
+    toggleModulesGroupExpanded,
+    expandModulesGroup,
   }
 }
