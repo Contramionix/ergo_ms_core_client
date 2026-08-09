@@ -1,40 +1,18 @@
 <template>
-  <div
-    class="search-input"
-    :class="[
-      `search-input--layout-${layout}`,
-      { 'search-input--no-icon': !showIcon },
-      `search-input--bg-${background}`,
-      `search-input--focus-${focusBorder}`,
-    ]"
-  >
+  <div class="search-input" :class="[ `search-input--layout-${layout}`, { 'search-input--no-icon': !showIcon }, { 'search-input--clearable': showClearButton }, `search-input--bg-${background}`, `search-input--focus-${focusBorder}`, ]">
     <label v-if="label" :for="inputId" class="form-label mb-1">{{ label }}</label>
     <div class="search-input__wrap">
-      <LucideIcon
-        v-if="showIcon"
-        name="Search"
-        :size="iconSize"
-        class="search-input__icon"
-        icon-class="search-input__icon"
-      />
-      <input
-        :id="inputId"
-        :value="modelValue"
-        :type="inputType"
-        class="form-control search-input__control"
-        :placeholder="resolvedPlaceholder"
-        :disabled="disabled"
-        :aria-label="ariaLabel"
-        @input="onInput"
-        @focus="emit('focus', $event)"
-        @blur="emit('blur', $event)"
-      />
+      <LucideIcon v-if="showIcon" name="Search" :size="iconSize" class="search-input__icon" icon-class="search-input__icon"/>
+      <input :id="inputId" ref="inputEl" :value="modelValue" :type="inputType" class="form-control search-input__control" :placeholder="resolvedPlaceholder" :disabled="disabled" :aria-label="ariaLabel" @input="onInput" @focus="emit('focus', $event)" @blur="emit('blur', $event)"/>
+      <button v-if="showClearButton" type="button" class="search-input__clear" :aria-label="t('components.searchInput.clear')" :disabled="disabled" @click="clear">
+        <LucideIcon name="X" :size="iconSize" aria-hidden="true" />
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, useId } from 'vue'
+import { computed, ref, useId } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
@@ -69,6 +47,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  /** Крестик очистки поля; по умолчанию включён */
+  clearable: {
+    type: Boolean,
+    default: true,
+  },
   background: {
     type: String,
     default: 'primary',
@@ -86,8 +69,9 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'input', 'focus', 'blur'])
+const emit = defineEmits(['update:modelValue', 'input', 'focus', 'blur', 'clear'])
 
+const inputEl = ref(null)
 const generatedId = useId()
 const inputId = computed(() => props.id || generatedId)
 const resolvedPlaceholder = computed(
@@ -95,11 +79,22 @@ const resolvedPlaceholder = computed(
 )
 const ariaLabel = computed(() => props.label || resolvedPlaceholder.value)
 const iconSize = 16
+const showClearButton = computed(
+  () => props.clearable && !props.disabled && String(props.modelValue ?? '').length > 0,
+)
 
 function onInput(event) {
   const value = event?.target?.value ?? ''
   emit('update:modelValue', value)
   emit('input', value)
+}
+
+function clear() {
+  if (props.disabled) return
+  emit('update:modelValue', '')
+  emit('input', '')
+  emit('clear')
+  inputEl.value?.focus()
 }
 </script>
 
@@ -111,14 +106,16 @@ function onInput(event) {
   --search-input-border-radius: 6px;
   --search-input-padding-start: 40px;
   --search-input-padding-start-no-icon: 0.75rem;
+  --search-input-padding-end: 0.75rem;
+  --search-input-padding-end-clearable: 2.25rem;
 
   min-width: 0;
   max-width: 100%;
-  width: 100%;
   box-sizing: border-box;
 
   &--layout-grow {
-    flex: 1 1 auto;
+    flex: 1 1 0;
+    width: auto;
     min-width: 200px;
 
     @media (width < $ui-bp-md) {
@@ -130,6 +127,7 @@ function onInput(event) {
 
   &--layout-fixed {
     flex: 0 1 280px;
+    width: auto;
     min-width: 180px;
 
     @media (width < $ui-bp-md) {
@@ -155,6 +153,40 @@ function onInput(event) {
     z-index: 1;
   }
 
+  &__clear {
+    position: absolute;
+    right: 0.35rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: none;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--bs-secondary-color);
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      color: var(--color-primary-text);
+      background: var(--color-hover-background, color-mix(in srgb, var(--color-primary-text) 8%, transparent));
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-primary-text);
+      outline-offset: 1px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
   &__control {
     width: 100%;
     box-sizing: border-box;
@@ -163,10 +195,22 @@ function onInput(event) {
     border-radius: var(--search-input-border-radius);
     border: 1px solid var(--color-border);
     color: var(--color-primary-text);
+    padding-right: var(--search-input-padding-end);
 
     &::placeholder {
       color: var(--color-secondary-text);
     }
+
+    /* Скрываем нативный крестик type=search — используем свой */
+    &::-webkit-search-cancel-button,
+    &::-webkit-search-decoration {
+      -webkit-appearance: none;
+      appearance: none;
+    }
+  }
+
+  &--clearable .search-input__control {
+    padding-right: var(--search-input-padding-end-clearable);
   }
 
   &:not(.search-input--no-icon) .search-input__control {
