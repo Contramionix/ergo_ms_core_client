@@ -236,6 +236,7 @@ export default {
     undoArchiveFailed: "Impossible de restaurer la notification depuis l'archive",
     undoArchiveKind: 'Archivage de notification',
     done: 'Terminé',
+    settings: 'Paramètres des notifications',
     refresh: 'Actualiser',
     readByFilter: 'Marquer les filtrées comme lues',
     readAll: 'Tout marquer comme lu',

@@ -204,20 +204,21 @@ defineExpose({
 .profile-card {
   --profile-cover-h: 72px;
   --profile-overlap: 36px;
-  --profile-card-shadow: 0 2px 12px color-mix(in srgb, var(--color-primary-text) 6%, transparent);
-  --profile-card-shadow-hover: 0 8px 22px color-mix(in srgb, var(--color-primary-text) 12%, transparent);
+  --profile-card-shadow: 0 2px 12px color-mix(in srgb, var(--color-accent) 10%, transparent);
+  --profile-card-shadow-hover: 0 8px 22px color-mix(in srgb, var(--color-accent) 18%, transparent);
   overflow: hidden;
-  border: 1px solid var(--ui-border, var(--color-border));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, var(--color-border));
   border-radius: 0.625rem;
-  background: var(--ui-surface, var(--color-primary-background));
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-primary-background));
   box-shadow: var(--profile-card-shadow);
   /* Только opacity — transform оставлен для soft lift на hover */
   animation: profile-card-fade 0.25s ease-out backwards;
-  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
 
   &:hover {
     transform: translateY(-2px);
     box-shadow: var(--profile-card-shadow-hover);
+    border-color: color-mix(in srgb, var(--color-accent) 34%, var(--color-border));
   }
 
   @media (width < $ui-bp-lg) {
@@ -235,10 +236,12 @@ defineExpose({
   position: relative;
   height: var(--profile-cover-h);
   overflow: hidden;
-  /* Тон самой карточки (surface-2), чуть темнее белого тела — полоса читается как
-     часть карточки, а не отдельный баннер, независимо от акцента активной темы */
-  background: var(--ui-surface-2, var(--color-secondary-background));
-  border-bottom: 1px solid var(--ui-border, var(--color-border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-accent) 22%, var(--color-secondary-background)),
+    color-mix(in srgb, var(--color-accent) 8%, var(--color-secondary-background))
+  );
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 24%, var(--color-border));
 }
 
 .profile-card__cover-gleam {
@@ -249,7 +252,7 @@ defineExpose({
   transform-origin: 88% 0%;
   background: radial-gradient(
     70% 130% at 88% 0%,
-    color-mix(in srgb, var(--color-accent, var(--bs-primary)) 16%, transparent),
+    color-mix(in srgb, var(--color-accent) 32%, transparent),
     transparent 60%
   );
   opacity: 0.85;
@@ -314,9 +317,10 @@ defineExpose({
   border-radius: 50%;
   overflow: hidden;
   box-shadow:
-    0 0 0 3px var(--ui-surface, var(--color-primary-background)),
-    0 6px 16px color-mix(in srgb, var(--color-primary-text) 12%, transparent);
-  background: var(--ui-surface, var(--color-primary-background));
+    0 0 0 3px color-mix(in srgb, var(--color-accent) 6%, var(--color-primary-background)),
+    0 0 0 5px color-mix(in srgb, var(--color-accent) 40%, transparent),
+    0 6px 16px color-mix(in srgb, var(--color-accent) 16%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-primary-background));
   animation: profile-reveal 0.28s ease-out backwards;
 
   :deep(.user-avatar-wrap),
@@ -382,13 +386,13 @@ defineExpose({
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 
   &:hover {
-    background-color: var(--ui-surface-2, var(--color-secondary-background));
-    color: var(--color-primary-text);
-    border-color: var(--ui-border, var(--color-border));
+    background-color: color-mix(in srgb, var(--color-accent) 12%, var(--color-primary-background));
+    color: var(--color-accent);
+    border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-accent, var(--bs-primary));
+    outline: 2px solid var(--color-accent);
     outline-offset: 1px;
   }
 
@@ -420,9 +424,9 @@ defineExpose({
   white-space: nowrap;
 
   &--role {
-    color: var(--bs-primary-text-emphasis, var(--color-primary-text));
-    background-color: var(--bs-primary-bg-subtle, var(--ui-surface-2));
-    border-color: var(--bs-primary-border-subtle, var(--ui-border));
+    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 14%, var(--color-primary-background));
+    border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
   }
 }
 
@@ -454,7 +458,7 @@ defineExpose({
 
 .profile-card__meta-icon {
   flex-shrink: 0;
-  color: color-mix(in srgb, var(--color-primary-text) 65%, transparent);
+  color: color-mix(in srgb, var(--color-accent) 55%, var(--color-primary-text));
 }
 
 @media (width < $ui-bp-sm) {

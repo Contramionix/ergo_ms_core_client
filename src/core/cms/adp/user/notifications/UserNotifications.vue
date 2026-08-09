@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
-import { Archive, ArchiveRestore, Bell, BellOff, CheckCheck, FilterX, Loader2, RefreshCw, } from 'lucide-vue-next'
+import { Archive, ArchiveRestore, Bell, BellOff, CheckCheck, FilterX, Loader2, RefreshCw, Settings, } from 'lucide-vue-next'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
 import { groupNotificationsByDate } from '@/core/notifications/js/groupByDate.js'
 import NotificationItem from '@/core/notifications/components/NotificationItem.vue'
@@ -182,6 +182,12 @@ async function handleMarkAllRead() {
   }
 }
 
+function openNotificationSettings() {
+  window.dispatchEvent(new CustomEvent('ergo:open-user-settings', {
+    detail: { tab: 'notifications' },
+  }))
+}
+
 function refresh() {
   reloadFromFilters()
 }
@@ -332,6 +338,16 @@ onMounted(async () => {
         </span>
       </h1>
       <div class="notif-page__header-actions">
+        <HoverTooltip :text="t('settings.inbox.settings')">
+          <button
+            type="button"
+            class="notif-page__icon-btn"
+            :aria-label="t('settings.inbox.settings')"
+            @click="openNotificationSettings"
+          >
+            <Settings :size="16" aria-hidden="true" />
+          </button>
+        </HoverTooltip>
         <HoverTooltip :text="t('settings.inbox.refresh')">
           <button type="button" class="notif-page__icon-btn" :disabled="loading" :aria-label="t('settings.inbox.refresh')" @click="refresh">
             <RefreshCw :size="16" :class="{ spin: loading }" aria-hidden="true" />

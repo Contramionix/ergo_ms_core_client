@@ -236,6 +236,7 @@ export default {
     undoArchiveFailed: 'Не удалось вернуть уведомление из архива',
     undoArchiveKind: 'Архивация уведомления',
     done: 'Готово',
+    settings: 'Настройки уведомлений',
     refresh: 'Обновить',
     readByFilter: 'Прочитать по фильтру',
     readAll: 'Прочитать все',

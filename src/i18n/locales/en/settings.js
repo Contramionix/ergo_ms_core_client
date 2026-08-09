@@ -236,6 +236,7 @@ export default {
     undoArchiveFailed: 'Could not restore the notification from archive',
     undoArchiveKind: 'Notification archive',
     done: 'Done',
+    settings: 'Notification settings',
     refresh: 'Refresh',
     readByFilter: 'Mark filtered as read',
     readAll: 'Mark all as read',
