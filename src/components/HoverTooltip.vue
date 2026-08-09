@@ -8,6 +8,8 @@ import {
 
 const LONG_PRESS_MS = 400
 const MOVE_CANCEL_PX = 10
+/** После клика игнорировать синтетический mouseenter/focus, пока курсор реально не сдвинется. */
+const POINTER_RESUME_PX = 4
 
 const props = defineProps({
   text: { type: String, default: '' },
@@ -28,6 +30,14 @@ let touchStartY = 0
 let touchListenersBound = false
 let documentDismissBound = false
 let suppressNextClick = false
+/**
+ * После pointerdown на триггере: не показывать тултип на focus restore / mouseenter
+ * после закрытия модалки (backdrop даёт ложный leave→enter без движения мыши).
+ */
+let blockUntilPointerMove = false
+let blockPointerX = 0
+let blockPointerY = 0
+let pointerResumeBound = false
 
 function canHoverFine() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -84,7 +94,47 @@ function showNow() {
   }
 }
 
+function isShowBlocked() {
+  return blockUntilPointerMove
+}
+
+function unbindPointerResume() {
+  if (!pointerResumeBound || typeof document === 'undefined') {
+    return
+  }
+  pointerResumeBound = false
+  document.removeEventListener('pointermove', onDocumentPointerMove, true)
+}
+
+function clearPointerBlock() {
+  blockUntilPointerMove = false
+  unbindPointerResume()
+}
+
+function bindPointerResume() {
+  if (pointerResumeBound || typeof document === 'undefined') {
+    return
+  }
+  pointerResumeBound = true
+  document.addEventListener('pointermove', onDocumentPointerMove, true)
+}
+
+function onDocumentPointerMove(event) {
+  if (!blockUntilPointerMove) {
+    unbindPointerResume()
+    return
+  }
+  const dx = Math.abs(event.clientX - blockPointerX)
+  const dy = Math.abs(event.clientY - blockPointerY)
+  if (dx > POINTER_RESUME_PX || dy > POINTER_RESUME_PX) {
+    clearPointerBlock()
+  }
+}
+
 function onEnter() {
+  if (isShowBlocked()) {
+    return
+  }
   showNow()
 }
 
@@ -93,10 +143,24 @@ function onLeave() {
 }
 
 function onFocus() {
+  if (isShowBlocked()) {
+    return
+  }
   showNow()
 }
 
 function onBlur() {
+  hideNow()
+}
+
+function onPointerDown(event) {
+  if (!canHoverFine()) {
+    return
+  }
+  blockUntilPointerMove = true
+  blockPointerX = event.clientX
+  blockPointerY = event.clientY
+  bindPointerResume()
   hideNow()
 }
 
@@ -191,6 +255,7 @@ function bindEvents() {
   if (canHoverFine()) {
     triggerTarget.addEventListener('mouseenter', onEnter)
     triggerTarget.addEventListener('mouseleave', onLeave)
+    triggerTarget.addEventListener('pointerdown', onPointerDown)
   } else {
     touchListenersBound = true
     triggerTarget.addEventListener('touchstart', onTouchStart, { passive: true })
@@ -207,12 +272,14 @@ function bindEvents() {
 function unbindEvents() {
   clearLongPressTimer()
   unbindDocumentDismiss()
+  clearPointerBlock()
   suppressNextClick = false
   if (!triggerTarget) {
     return
   }
   triggerTarget.removeEventListener('mouseenter', onEnter)
   triggerTarget.removeEventListener('mouseleave', onLeave)
+  triggerTarget.removeEventListener('pointerdown', onPointerDown)
   if (touchListenersBound) {
     triggerTarget.removeEventListener('touchstart', onTouchStart)
     triggerTarget.removeEventListener('touchmove', onTouchMove)

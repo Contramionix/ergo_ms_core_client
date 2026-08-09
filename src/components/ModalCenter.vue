@@ -7,6 +7,7 @@ import {
   acquireScrollLock,
   releaseScrollLock,
 } from '@/js/utils/modalStack.js'
+import { hideAllHoverTooltips } from '@/js/utils/hoverTooltipLayer.js'
 import { activateFocusTrap } from '@/js/utils/focusTrap.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
@@ -155,6 +156,8 @@ watch(
       deactivateFocusTrap = null
       unregisterFromStack()
       document.removeEventListener('keydown', onKeydown)
+      // После закрытия: убрать тултип, если focus/synthetic mouseenter уже успели его поднять.
+      hideAllHoverTooltips()
     }
   },
   // v-if + уже visible=true: без immediate модалка не попадает в modalStack
