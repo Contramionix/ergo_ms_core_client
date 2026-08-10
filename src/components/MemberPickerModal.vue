@@ -73,7 +73,7 @@ import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useToast } from '@/js/utils/toast.js'
 import { logError, logWarn } from '@/js/utils/logError.js'
-import { parseFullNameParts, seedUserPublicInfoCache } from '@/js/userAvatar'
+import { seedUserPublicInfoCache } from '@/js/userAvatar'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const { t } = useAppI18n()
@@ -212,15 +212,17 @@ const filteredUsers = computed(() => {
 function normalizeModalUser(raw) {
   const fullName = raw.full_name || raw.fullName || ''
   const fallbackName = fullName || raw.username || ''
-  const { firstName, lastName } = parseFullNameParts(fallbackName)
+  // Только поля с API — разбор full_name делает UserAvatar.
+  const firstName = (raw.first_name || raw.firstName || '').trim()
+  const lastName = (raw.last_name || raw.lastName || '').trim()
 
   return {
     id: raw.id,
     public_id: raw.public_id ?? raw.publicId ?? null,
     username: raw.username || '',
     full_name: fallbackName,
-    first_name: firstName,
-    last_name: lastName,
+    first_name: firstName || null,
+    last_name: lastName || null,
     position: raw.position || '',
     role_group_name: raw.role_group_name || '',
     avatar_url: raw.avatar_url ?? null,
