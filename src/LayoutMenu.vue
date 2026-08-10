@@ -34,6 +34,8 @@ import {
   scheduleLayoutPluginsFromBootstrap,
 } from '@/js/layoutPlugins.js'
 import MenuList from '@/components/menu/MenuList.vue'
+import { COLLAPSED_MENU_WIDTH } from '@/components/menu/composables/menuLayoutPadding.js'
+import { readMenuCollapsedPreference } from '@/components/menu/composables/useMenuCollapsedPreference.js'
 import LayoutBackdrop from '@/components/LayoutBackdrop.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
@@ -66,12 +68,18 @@ const sidebarBrandTo = computed(() =>
 
 let resizeTimeout = null
 
-const leftPadding = ref('279px')
-const menuRightEdge = ref('260px')
+const initialMenuCollapsed = readMenuCollapsedPreference()
+const leftPadding = ref(
+  initialMenuCollapsed ? `${COLLAPSED_MENU_WIDTH}px` : '279px',
+)
+// До первого emit MenuList — иначе мини-чат после F5 прыгает с 260px на край свёрнутого меню
+const menuRightEdge = ref(
+  initialMenuCollapsed ? `${COLLAPSED_MENU_WIDTH}px` : '260px',
+)
 const isMenuVisible = ref(viewportWidth.value >= SHELL_DESKTOP_MIN)
 const isMenuToggledManually = ref(false)
 const isOverlayVisible = ref(false)
-const isMenuCollapsed = ref(false)
+const isMenuCollapsed = ref(initialMenuCollapsed)
 const menuWidth = ref(260)
 const isMenuLayoutTransitioning = ref(false)
 
