@@ -1,14 +1,16 @@
-/* Критический CSS маски загрузки — внешний файл для CSP style-src 'self'. */
+/* Критический CSS маски загрузки — внешний файл для CSP style-src 'self'.
+ *
+ * #app скрыт opacity:0 на время bootstrap — этого достаточно против FOUC.
+ * Нельзя ставить animation:none на #app * : виджеты (typing-dots и т.п.),
+ * смонтированные до снятия маски, после F5 за nginx остаются без анимации
+ * (браузер не перезапускает infinite animation после снятия !important).
+ */
 html.app-bootstrapping #app {
   opacity: 0;
+  transition: none !important;
 }
 html #app {
   transition: opacity 0.28s ease;
-}
-html.app-bootstrapping #app,
-html.app-bootstrapping #app * {
-  transition: none !important;
-  animation: none !important;
 }
 #ergo-boot-loader {
   position: fixed;
