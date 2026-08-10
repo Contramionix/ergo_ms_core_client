@@ -77,9 +77,33 @@ export function parseFullNameParts(fullName) {
 }
 
 /**
+ * Компактное «Фамилия И.О.» (get_initials_name) — не путать с Ergo «Имя Фамилия».
+ */
+function parseCompactInitialsName(fullName) {
+  const parts = (fullName || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length !== 2) return null
+  const initialsBlock = parts[1]
+  // «М.В.» / «М.В» / «И.»
+  if (!/^[A-Za-zА-Яа-яЁё](?:\.[A-Za-zА-Яа-яЁё])+\.?$/u.test(initialsBlock)) {
+    return null
+  }
+  const letters = initialsBlock.replace(/\./g, '')
+  if (!letters) return null
+  return {
+    lastName: parts[0],
+    firstName: letters[0],
+    middleName: letters.slice(1) || '',
+  }
+}
+
+/**
  * Разбирает ERGO-ФИО «Имя Отчество Фамилия» в части имени.
+ * Также понимает компактное «Фамилия И.О.».
  */
 export function parseErgoFullNameParts(fullName) {
+  const compact = parseCompactInitialsName(fullName)
+  if (compact) return compact
+
   const parts = (fullName || '').trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) {
     return { lastName: '', firstName: '', middleName: '' }
@@ -95,6 +119,44 @@ export function parseErgoFullNameParts(fullName) {
     firstName: parts[0],
     middleName: parts.slice(1, -1).join(' '),
   }
+}
+
+/**
+ * Единая точка для инициалов аватара: структурированные поля или Ergo-ФИО в title.
+ * Callers не должны парсить full_name сами — передавать first/last с API или только title.
+ */
+export function resolveAvatarNameParts({ firstName, lastName, fullName } = {}) {
+  const fn = trimNamePart(firstName)
+  const ln = trimNamePart(lastName)
+  if (fn && ln) {
+    return { firstName: fn, lastName: ln }
+  }
+  const parsed = parseErgoFullNameParts(fullName)
+  return {
+    firstName: parsed.firstName || fn,
+    lastName: parsed.lastName || ln,
+  }
+}
+
+/** Инициалы «фамилия + имя» (два символа) либо null. */
+export function formatAvatarInitials({ firstName, lastName, fullName } = {}) {
+  const { firstName: fn, lastName: ln } = resolveAvatarNameParts({ firstName, lastName, fullName })
+  if (!fn || !ln) return null
+  return (ln[0] + fn[0]).toUpperCase()
+}
+
+/**
+ * Индекс цвета default-аватара от public_id (не от инициалов/ФИО).
+ * Пустой ключ → 0.
+ */
+export function avatarColorIndex(publicId, paletteSize) {
+  const size = Number(paletteSize)
+  if (!Number.isFinite(size) || size <= 0) return 0
+  const key = publicId == null ? '' : String(publicId).trim()
+  if (!key) return 0
+  let hash = 0
+  for (const ch of key) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff
+  return hash % size
 }
 
 /**

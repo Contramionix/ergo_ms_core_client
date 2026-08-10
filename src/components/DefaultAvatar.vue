@@ -11,6 +11,7 @@
 import { computed } from 'vue'
 import { User } from 'lucide-vue-next'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { avatarColorIndex, formatAvatarInitials } from '@/js/userAvatar'
 
 const { t } = useAppI18n()
 
@@ -53,23 +54,17 @@ const props = defineProps({
 
 const resolvedTitle = computed(() => props.title ?? t('common.user'))
 
-const initials = computed(() => {
-  const first = props.firstName?.trim()
-  const last = props.lastName?.trim()
-  if (first && last) return (last[0] + first[0]).toUpperCase()
+const initials = computed(() =>
+  formatAvatarInitials({
+    firstName: props.firstName,
+    lastName: props.lastName,
+    fullName: resolvedTitle.value,
+  }),
+)
 
-  const words = resolvedTitle.value.trim().split(/\s+/).filter(w => w.length > 0)
-  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase()
-
-  return null
-})
-
-const gradientIndex = computed(() => {
-  const key = (props.colorKey || '').trim() || initials.value || resolvedTitle.value.trim()
-  let hash = 0
-  for (const ch of key) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff
-  return hash % GRADIENTS.length
-})
+const gradientIndex = computed(() =>
+  avatarColorIndex(props.colorKey, GRADIENTS.length),
+)
 
 const avatarStyle = computed(() => ({
   width: `${props.size}px`,

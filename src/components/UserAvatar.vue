@@ -1,17 +1,9 @@
 <template>
   <div class="user-avatar-wrap" :style="avatarStyle">
     <div class="user-avatar" :class="{ 'user-avatar--clickable': clickable }" :title="resolvedTitle">
-      <ContentImage
-        v-if="showPhoto"
-        :src="readyPhotoSrc"
-        :alt="resolvedTitle"
-        class="user-avatar-image"
-        loading="eager"
-        decoding="async"
-        @error="onImageError"
-      />
+      <ContentImage v-if="showPhoto" :src="readyPhotoSrc" :alt="resolvedTitle" class="user-avatar-image" loading="eager" decoding="async" @error="onImageError"/>
       <div v-else-if="isAvatarPending" class="user-avatar-placeholder" aria-hidden="true" />
-      <DefaultAvatar v-else :size="size" :clickable="clickable" :title="resolvedTitle" :first-name="effectiveFirstName" :last-name="effectiveLastName" :color-key="avatarColorKey"/>
+      <DefaultAvatar v-else :size="size" :clickable="clickable" :title="resolvedTitle" :first-name="avatarNameParts.firstName" :last-name="avatarNameParts.lastName" :color-key="resolvedPublicId"/>
     </div>
     <PresenceIndicator v-if="showOnlineStatus" :visible="isKnown" :is-online="isOnline" :last-seen="lastSeen" :show-tooltip="showPresenceTooltip" :size="size"/>
   </div>
@@ -24,7 +16,7 @@ import ContentImage from './ContentImage.vue'
 import DefaultAvatar from './DefaultAvatar.vue'
 import PresenceIndicator from '@/core/cms/adp/components/PresenceIndicator.vue'
 import { usePresenceStatus } from '@/core/cms/adp/js/presence/usePresenceStatus.js'
-import { getUserPublicInfoByRef, getCachedUserPublicInfoByRef, invalidateUserPublicInfoByRef, } from '@/js/userAvatar'
+import { getUserPublicInfoByRef, getCachedUserPublicInfoByRef, invalidateUserPublicInfoByRef, resolveAvatarNameParts, } from '@/js/userAvatar'
 import { avatarCacheKey, ensureAvatarDisplaySrc, invalidateAvatar, peekAvatarDisplaySrc, } from '@/js/avatarCache.js'
 import { logError } from '@/js/utils/logError.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
@@ -87,6 +79,12 @@ const activeCacheKey = ref('')
 
 let refreshGeneration = 0
 
+function pickNamePair(first, last) {
+  const fn = (first || '').trim()
+  const ln = (last || '').trim()
+  return fn && ln ? { firstName: fn, lastName: ln } : null
+}
+
 const avatarStyle = computed(() => ({
   width: `${props.size}px`,
   height: `${props.size}px`
@@ -94,7 +92,13 @@ const avatarStyle = computed(() => ({
 
 const resolvedTitle = computed(() => props.title ?? t('common.user'))
 
-const avatarColorKey = computed(() => (props.userRef ? String(props.userRef) : null))
+const resolvedPublicId = computed(() => {
+  if (props.userRef) return String(props.userRef)
+  const storeRef = userStore.user?.public_id
+  if (storeRef) return String(storeRef)
+  const fromLoaded = loadedPublicInfo.value?.publicId || loadedPublicInfo.value?.public_id
+  return fromLoaded ? String(fromLoaded) : null
+})
 
 const isCurrentUser = computed(() => {
   if (props.userRef) {
@@ -105,41 +109,36 @@ const isCurrentUser = computed(() => {
 })
 
 const presencePublicId = computed(() => {
-  if (!props.showOnlineStatus) {
-    return null
-  }
-
+  if (!props.showOnlineStatus) return null
   // Явный prop: только non-numeric public_id (числовой pk игнорируем).
   const explicit = props.presenceUserId != null ? String(props.presenceUserId).trim() : ''
-  if (explicit && !/^\d+$/.test(explicit)) {
-    return explicit
-  }
-
-  if (props.userRef) {
-    return String(props.userRef)
-  }
-
-  if (isCurrentUser.value) {
-    const storeRef = userStore.user?.public_id
-    return storeRef ? String(storeRef) : null
-  }
-
-  const fromLoaded = loadedPublicInfo.value?.publicId || loadedPublicInfo.value?.public_id
-  return fromLoaded ? String(fromLoaded) : null
+  if (explicit && !/^\d+$/.test(explicit)) return explicit
+  return resolvedPublicId.value
 })
 
 const { isOnline, lastSeen, isKnown } = usePresenceStatus(presencePublicId)
 
-const effectiveFirstName = computed(() => {
-  if (props.firstName) return props.firstName
-  if (isCurrentUser.value && userStore.user?.first_name) return userStore.user.first_name
-  return loadedPublicInfo.value?.firstName || null
-})
+const hasPropNames = computed(() => Boolean(pickNamePair(props.firstName, props.lastName)))
 
-const effectiveLastName = computed(() => {
-  if (props.lastName) return props.lastName
-  if (isCurrentUser.value && userStore.user?.last_name) return userStore.user.last_name
-  return loadedPublicInfo.value?.lastName || null
+const avatarNameParts = computed(() => {
+  const fromProps = pickNamePair(props.firstName, props.lastName)
+  if (fromProps) return fromProps
+
+  if (isCurrentUser.value) {
+    const fromStore = pickNamePair(
+      userStore.user?.first_name || userStore.profile?.firstName,
+      userStore.user?.last_name || userStore.profile?.lastName,
+    )
+    if (fromStore) return fromStore
+  }
+
+  const fromPublic = pickNamePair(
+    loadedPublicInfo.value?.firstName,
+    loadedPublicInfo.value?.lastName,
+  )
+  if (fromPublic) return fromPublic
+
+  return resolveAvatarNameParts({ fullName: resolvedTitle.value })
 })
 
 const displayAvatarUrl = computed(() => {
@@ -207,9 +206,9 @@ watch(displayAvatarUrl, refreshAvatarSrc, { immediate: true })
 const needsPublicInfoLoad = computed(() => {
   if (isCurrentUser.value) return false
   if (!props.userRef) return false
-  const hasNames = Boolean(props.firstName) && Boolean(props.lastName)
+  // Только реальные props first/last с API — не локальный разбор full_name.
   const hasExplicitAvatar = props.avatarUrl !== undefined || props.customAvatarUrl !== undefined
-  return !hasNames || !hasExplicitAvatar
+  return !hasPropNames.value || !hasExplicitAvatar
 })
 
 async function loadUserInfo() {

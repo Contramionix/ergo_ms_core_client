@@ -141,7 +141,7 @@ watch(isOpen, async (newValue) => {
       <li class="dropdown-header px-3 py-2 border-bottom">
         <div class="d-flex align-items-center">
           <div class="me-2">
-            <UserAvatar :size="32" :title="userName"/>
+            <UserAvatar :size="32" :title="userName" />
           </div>
           <div class="flex-grow-1 min-width-0">
             <div class="fw-semibold text-truncate">{{ userName }}</div>
