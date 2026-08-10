@@ -310,10 +310,12 @@ const displayItems = computed(() => {
 })
 
 const displayNumberOffset = computed(() => {
-  if (!props.enablePagination) {
-    return props.numberOffset
+  // При enablePagination смещение уже из currentPage — numberOffset не добавляем
+  // (иначе серверные списки, передающие оба, получают удвоенные №).
+  if (props.enablePagination) {
+    return (props.currentPage - 1) * props.itemsPerPage
   }
-  return props.numberOffset + (props.currentPage - 1) * props.itemsPerPage
+  return props.numberOffset
 })
 </script>
 
