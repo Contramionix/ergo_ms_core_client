@@ -138,6 +138,11 @@ const avatarNameParts = computed(() => {
   )
   if (fromPublic) return fromPublic
 
+  // Ждём public-info по user-ref: не парсим title (орг. «Фамилия Имя Отчество» ≠ Ergo-ФИО).
+  if (props.userRef && !isCurrentUser.value && loadedPublicInfo.value === null) {
+    return { firstName: '', lastName: '' }
+  }
+
   return resolveAvatarNameParts({ fullName: resolvedTitle.value })
 })
 
@@ -219,7 +224,7 @@ async function loadUserInfo() {
 
   if (props.userRef) {
     const cachedByRef = getCachedUserPublicInfoByRef(props.userRef)
-    if (cachedByRef) {
+    if (cachedByRef && pickNamePair(cachedByRef.firstName, cachedByRef.lastName)) {
       loadedPublicInfo.value = cachedByRef
       return
     }

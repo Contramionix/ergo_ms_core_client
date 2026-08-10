@@ -208,13 +208,21 @@ export function buildActorNameVariants({ lastName, firstName, middleName, fallba
   }
 }
 
+function hasStructuredNames(info) {
+  return Boolean(trimNamePart(info?.firstName) && trimNamePart(info?.lastName))
+}
+
 /**
  * Прогревает кеш публичных данных из уже загруженных списков (members, candidates).
+ * Без first/last не сидим: иначе UserAvatar не сходит в public-info и разбирает
+ * title «Фамилия Имя Отчество» как Ergo-ФИО — в инициалы попадает отчество.
  */
 export function seedUserPublicInfoCache(entries) {
   if (!Array.isArray(entries)) return
   for (const entry of entries) {
-    indexInfo(normalizeInfo(entry))
+    const info = normalizeInfo(entry)
+    if (!info || !hasStructuredNames(info)) continue
+    indexInfo(info)
   }
 }
 
@@ -229,7 +237,9 @@ export async function getUserPublicInfoByRef(ref) {
 
   if (userInfoByRefCache.has(key)) {
     const cached = userInfoByRefCache.get(key)
-    if (!isAvatarUrlExpired(cached?.avatarUrl)) return cached
+    if (!isAvatarUrlExpired(cached?.avatarUrl) && hasStructuredNames(cached)) {
+      return cached
+    }
     userInfoByRefCache.delete(key)
   }
 
