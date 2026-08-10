@@ -1,10 +1,12 @@
 import tokenService from '@/core/cms/js/tokenService'
+import { useUserStore } from '@/core/cms/js/userStore.js'
 import { connectPresenceTransport } from '@/js/realtime/presenceTransport.js'
 import {
   PRESENCE_PING_EVENT,
   PRESENCE_USER_TOPIC,
   buildClientEnvelope,
 } from '@/js/realtime/envelope.js'
+import { clearLiveSelfPresence, setLiveSelfPresence } from './presenceStore.js'
 
 const PING_INTERVAL_MS = 45000
 
@@ -36,6 +38,14 @@ function startPingTimer() {
   }, PING_INTERVAL_MS)
 }
 
+function syncLiveSelfPresence() {
+  try {
+    setLiveSelfPresence(useUserStore().user?.public_id)
+  } catch {
+    // Pinia ещё не готов — batch/подключение повторят позже.
+  }
+}
+
 function openSocket() {
   if (!tokenService.getAccess()) {
     return
@@ -51,10 +61,14 @@ function openSocket() {
   wsConnection = connectPresenceTransport({
     onAuthenticated: () => {
       startPingTimer()
+      // Индикатор в меню читает presenceStore; без этой записи он остаётся
+      // offline после batch, который успел ответить до heartbeat/WS.
+      syncLiveSelfPresence()
     },
     onClose: (_event, wasIntentional) => {
       clearPingTimer()
       if (wasIntentional || intentionalClose) {
+        clearLiveSelfPresence()
         wsConnection = null
       }
     },
@@ -70,6 +84,7 @@ export function ensurePresenceConnected() {
   }
 
   if (wsConnection?.isAuthenticated()) {
+    syncLiveSelfPresence()
     return Promise.resolve()
   }
 
@@ -92,6 +107,7 @@ export function ensurePresenceConnected() {
 export function disconnectPresenceConnection() {
   intentionalClose = true
   clearPingTimer()
+  clearLiveSelfPresence()
   wsConnection?.close()
   wsConnection = null
 }

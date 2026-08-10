@@ -16,6 +16,9 @@ const fetchQueue = new Set()
 let flushTimer = null
 const FLUSH_DELAY_MS = 16
 
+/** public_id текущего пользователя с активным presence-транспортом (WS/SSE/poll). */
+let liveSelfPublicId = null
+
 function flushFetchQueue() {
   flushTimer = null
   if (!fetchQueue.size) {
@@ -60,6 +63,48 @@ function normalizePublicId(value) {
   return raw
 }
 
+function writeEntry(id, raw) {
+  const entry = normalizeEntry(raw)
+  // Пока локальная presence-сессия жива, не даём устаревшему batch
+  // (запрос ушёл до heartbeat/WS connect) затереть «в сети» у аватара в меню.
+  if (id === liveSelfPublicId) {
+    state.entries[id] = {
+      isOnline: true,
+      lastSeen: entry.lastSeen || new Date().toISOString(),
+    }
+    return
+  }
+  state.entries[id] = entry
+}
+
+/**
+ * Пометить текущего пользователя онлайн по факту подключения presence-транспорта.
+ * Нужен для индикатора в UserMenu: batch часто отвечает раньше heartbeat.
+ */
+export function setLiveSelfPresence(publicId) {
+  const id = normalizePublicId(publicId)
+  liveSelfPublicId = id
+  if (!id) {
+    return
+  }
+  state.entries[id] = {
+    isOnline: true,
+    lastSeen: new Date().toISOString(),
+  }
+}
+
+export function clearLiveSelfPresence() {
+  const id = liveSelfPublicId
+  liveSelfPublicId = null
+  if (!id || !state.entries[id]) {
+    return
+  }
+  state.entries[id] = {
+    isOnline: false,
+    lastSeen: new Date().toISOString(),
+  }
+}
+
 export function mergeSnapshot(users) {
   if (!Array.isArray(users)) {
     return
@@ -70,7 +115,7 @@ export function mergeSnapshot(users) {
     if (!id) {
       continue
     }
-    state.entries[id] = normalizeEntry(user)
+    writeEntry(id, user)
   }
 }
 
@@ -84,7 +129,7 @@ export function applyBatch(presenceObject) {
     if (!id) {
       continue
     }
-    state.entries[id] = normalizeEntry(entry)
+    writeEntry(id, entry)
   }
 }
 
@@ -156,6 +201,7 @@ export function resetPresenceStore() {
     flushTimer = null
   }
   fetchQueue.clear()
+  liveSelfPublicId = null
 
   for (const key of Object.keys(state.entries)) {
     delete state.entries[key]
@@ -171,6 +217,8 @@ export const presenceStore = {
   fetchBatch,
   enqueueFetch,
   seedFromUsers,
+  setLiveSelfPresence,
+  clearLiveSelfPresence,
   reset: resetPresenceStore,
 }
 
