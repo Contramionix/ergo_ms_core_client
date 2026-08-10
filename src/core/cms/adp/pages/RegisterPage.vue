@@ -6,6 +6,7 @@ import { registration, fetchRegistrationSettings, validateInvitationToken } from
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { validateRegistrationForm } from '@/js/validation'
 import { prefetchRouteByName } from '@/js/utils/prefetchRoute.js'
+import { logError } from '@/js/utils/logError'
 
 const router = useRouter()
 const route = useRoute()
@@ -24,6 +25,9 @@ const registrationSettings = ref({
 })
 const invitationToken = ref('')
 const invitationStatus = ref(null)
+const inviteCodeInput = ref('')
+const isValidatingInvite = ref(false)
+const inviteCodeError = ref(null)
 
 const form = reactive({
   firstName: '',
@@ -66,7 +70,7 @@ const pageDescription = computed(() => {
     return t('auth.register.descriptionClosed')
   }
   if (invitationRequired.value && !invitationValid.value) {
-    return t('auth.register.descriptionInviteRequired')
+    return t('auth.register.descriptionInviteCode')
   }
   if (invitationRequired.value && invitationValid.value) {
     return t('auth.register.descriptionInviteFor', { email: invitationStatus.value.email })
@@ -84,12 +88,10 @@ onMounted(async () => {
   try {
     registrationSettings.value = await fetchRegistrationSettings()
     invitationToken.value = (route.query.invite || '').toString().trim()
+    inviteCodeInput.value = invitationToken.value
 
     if (registrationSettings.value.invitation_required && invitationToken.value) {
-      invitationStatus.value = await validateInvitationToken(invitationToken.value)
-      if (invitationStatus.value?.valid && invitationStatus.value.email) {
-        form.email = invitationStatus.value.email
-      }
+      await applyInvitationToken(invitationToken.value)
     }
   } catch (error) {
     logError('Registration bootstrap error:', error)
@@ -98,6 +100,39 @@ onMounted(async () => {
     isBootstrapping.value = false
   }
 })
+
+async function applyInvitationToken(token) {
+  const normalized = (token || '').toString().trim()
+  inviteCodeError.value = null
+  if (!normalized) {
+    inviteCodeError.value = t('auth.register.inviteCodeRequired')
+    return
+  }
+  isValidatingInvite.value = true
+  try {
+    invitationToken.value = normalized
+    invitationStatus.value = await validateInvitationToken(normalized)
+    if (invitationStatus.value?.valid && invitationStatus.value.email) {
+      form.email = invitationStatus.value.email
+      if (route.query.invite !== normalized) {
+        router.replace({ query: { ...route.query, invite: normalized } })
+      }
+    } else {
+      inviteCodeError.value = invitationStatus.value?.message
+        || t('auth.invite.invalid')
+    }
+  } catch (error) {
+    logError('Invitation validate error:', error)
+    inviteCodeError.value = t('auth.invite.invalid')
+    invitationStatus.value = { valid: false }
+  } finally {
+    isValidatingInvite.value = false
+  }
+}
+
+async function submitInviteCode() {
+  await applyInvitationToken(inviteCodeInput.value)
+}
 
 const validateForm = () => {
   errors.firstName = !form.firstName || !form.firstName.trim()
@@ -276,9 +311,34 @@ const showSuccessMessage = () => {
       </div>
 
       <div v-else-if="invitationRequired && !invitationValid" class="text-center">
-        <div class="alert alert-info" role="alert">
-          {{ t('auth.register.inviteContactAdmin') }}
-        </div>
+        <p class="text-muted mb-3">{{ t('auth.register.inviteCodeHint') }}</p>
+        <form class="auth-invite-code" @submit.prevent="submitInviteCode">
+          <div class="form-floating mb-3 text-start">
+            <input
+              id="inviteCode"
+              v-model.trim="inviteCodeInput"
+              type="text"
+              class="form-control"
+              :class="{ 'is-invalid': inviteCodeError }"
+              :placeholder="t('auth.register.inviteCode')"
+              :disabled="isValidatingInvite"
+              autocomplete="off"
+              spellcheck="false"
+            >
+            <label for="inviteCode">{{ t('auth.register.inviteCode') }}</label>
+            <div v-if="inviteCodeError" class="invalid-feedback">{{ inviteCodeError }}</div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 mb-3" :disabled="isValidatingInvite">
+            <span
+              v-if="isValidatingInvite"
+              class="spinner-border spinner-border-sm me-2"
+              role="status"
+              aria-hidden="true"
+            />
+            {{ isValidatingInvite ? t('common.loading') : t('auth.register.inviteCodeApply') }}
+          </button>
+        </form>
+        <p class="small text-muted mb-3">{{ t('auth.register.inviteContactAdmin') }}</p>
         <RouterLink :to="{ name: 'Login' }" class="btn btn-outline-primary" @mouseenter="prefetchLogin" @focusin="prefetchLogin">
           {{ t('auth.register.login') }}
         </RouterLink>

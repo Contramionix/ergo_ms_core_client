@@ -96,6 +96,17 @@ const isLayoutTransitionActive = ref(false)
 const isVisibilityTransitionActive = ref(false)
 const isWordmarkHiding = ref(false)
 const menuRef = ref(null)
+const menuScrollRef = ref(null)
+const isMenuScrolled = ref(false)
+
+function onMenuScroll() {
+  const el = menuScrollRef.value
+  isMenuScrolled.value = Boolean(el && el.scrollTop > 0)
+}
+
+function syncMenuScrollShadow() {
+  onMenuScroll()
+}
 
 function onWindowResize() {
   updateWidth()
@@ -488,6 +499,7 @@ watch(menuSections, () => {
   if (allowMenuTransitions.value) {
     updateWidth()
   }
+  nextTick(syncMenuScrollShadow)
 }, { deep: true })
 
 watch(sidebarBrandMeasureText, () => {
@@ -564,6 +576,9 @@ onMounted(async () => {
     }
     setupWidthTracking(onWindowResize)
     menuRef.value?.addEventListener('transitionend', onMenuTransitionEnd)
+    await nextTick()
+    syncMenuScrollShadow()
+    menuScrollRef.value?.addEventListener('scroll', onMenuScroll, { passive: true })
     return
   }
 
@@ -586,6 +601,9 @@ onMounted(async () => {
   await finishMenuBootstrap()
 
   menuRef.value?.addEventListener('transitionend', onMenuTransitionEnd)
+  await nextTick()
+  syncMenuScrollShadow()
+  menuScrollRef.value?.addEventListener('scroll', onMenuScroll, { passive: true })
 })
 
 // Удаляем слушатель при размонтировании
@@ -594,6 +612,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('session-scope-changed', handleSessionScopeChange)
   window.removeEventListener('resize', onWindowResize)
   menuRef.value?.removeEventListener('transitionend', onMenuTransitionEnd)
+  menuScrollRef.value?.removeEventListener('scroll', onMenuScroll)
   clearLayoutTransitionTimer()
   clearWordmarkHideTimer()
   if (layoutSyncFrame) {
@@ -641,8 +660,12 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <div class="side-menu__body" @mouseenter="handleMouseEnter">
-      <div class="side-header__shadow" aria-hidden="true"></div>
-      <div class="side-menu__scroll">
+      <div
+        class="side-header__shadow"
+        :class="{ 'side-header__shadow--visible': isMenuScrolled }"
+        aria-hidden="true"
+      ></div>
+      <div ref="menuScrollRef" class="side-menu__scroll">
         <ul v-show="isMenuReady" class="side-menu__list p-2" :class="{ short: isCollapsed && !isHovering }">
         <li v-for="(section, index) in menuSections" :key="section.id ?? section.routeName ?? index">
           <div v-if="shouldShowSeparator(index)" class="side-divider py-2">

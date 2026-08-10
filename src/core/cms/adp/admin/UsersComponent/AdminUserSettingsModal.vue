@@ -5,6 +5,7 @@ import { useToast } from '@/js/utils/toast.js'
 import ModalCenter from '@/components/ModalCenter.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { confirmAction, confirmDelete } from '@/js/utils/confirm.js'
+import { logError } from '@/js/utils/logError.js'
 import AvatarBlock from '@/core/cms/adp/user/account/component/settings-panels/AvatarBlock.vue'
 import UserProfileFields from '@/core/cms/adp/user/account/component/settings-panels/UserProfileFields.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
@@ -129,6 +130,9 @@ watch(
       resetState()
     }
   },
+  // v-if монтирует модалку уже с show=true — без immediate loadUser не вызывается,
+  // user_id/роль остаются пустыми и assign-role при сохранении пропускается.
+  { immediate: true },
 )
 
 const handleStatusChanged = (nextActive) => {
@@ -192,7 +196,11 @@ const handleSave = async () => {
     const dataToSend = buildUserProfilePayload(formData.value, PROFILE_FIELDS)
     await updateAdminUser(props.userRef, dataToSend)
 
-    if (selectedRoleId.value && loadedUserId.value) {
+    if (selectedRoleId.value) {
+      if (!loadedUserId.value) {
+        toast.error(tGlobal('admin.users.settingsSaveError'))
+        return
+      }
       await assignRoleToUser({
         user_id: loadedUserId.value,
         role_id: selectedRoleId.value,

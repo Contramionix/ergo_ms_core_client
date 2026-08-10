@@ -263,7 +263,14 @@
   background: linear-gradient(var(--bs-card-bg) 41%, transparent);
   pointer-events: none;
   z-index: 2;
-  transition: background $transition;
+  opacity: 0;
+  transition:
+    background $transition,
+    opacity $transition;
+
+  &--visible {
+    opacity: 1;
+  }
 }
 
 .side-header__title {
