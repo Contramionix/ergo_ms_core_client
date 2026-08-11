@@ -94,10 +94,19 @@ const resolvedOptional = computed(
 }
 
 .form-field--align-center {
+  display: flex;
   align-items: center;
+  justify-content: flex-start;
+  column-gap: 0.5rem;
 
   .form-field__label {
+    flex: 0 1 auto;
+    max-width: calc(100% - 2rem);
     padding-top: 0;
+  }
+
+  .form-field__control {
+    flex: 0 0 auto;
   }
 }
 
