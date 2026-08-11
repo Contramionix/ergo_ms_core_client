@@ -22,7 +22,12 @@ import { hideBootstrapMask } from '@/js/bootstrapMask.js'
 const route = useRoute()
 const router = useRouter()
 const { maintenanceActive, maintenanceDetail } = useMaintenanceMode()
-const { rateLimitActive, retryAfterSeconds, dismissRateLimitNotice } = useRateLimitNotice()
+const {
+  rateLimitActive,
+  retryAfterSeconds,
+  rateLimitRetrying,
+  retryRateLimitNotice,
+} = useRateLimitNotice()
 
 const isReady = ref(false)
 
@@ -86,7 +91,8 @@ const currentLayout = computed(() => {
         v-if="rateLimitActive && !maintenanceActive"
         overlay
         :retry-after="retryAfterSeconds"
-        @retry="dismissRateLimitNotice"
+        :retrying="rateLimitRetrying"
+        @retry="retryRateLimitNotice"
       />
     </Transition>
   </div>

@@ -2,8 +2,10 @@ import { ref } from 'vue'
 
 const rateLimitActive = ref(false)
 const retryAfterSeconds = ref(0)
+const rateLimitRetrying = ref(false)
 
 let countdownTimer = null
+let rateLimitRetryInProgress = false
 
 const AUTH_PATH_PARTS = [
   '/login',
@@ -76,7 +78,9 @@ function startCountdown(seconds) {
   }
   countdownTimer = setInterval(() => {
     if (retryAfterSeconds.value <= 1) {
-      dismissRateLimitNotice()
+      // Только разблокируем кнопку — без авто-retry (иначе мигание оверлея).
+      clearCountdown()
+      retryAfterSeconds.value = 0
       return
     }
     retryAfterSeconds.value -= 1
@@ -85,20 +89,105 @@ function startCountdown(seconds) {
 
 export function showRateLimitNotice(retryAfter = 0) {
   rateLimitActive.value = true
-  startCountdown(retryAfter)
+  const seconds = Math.max(Number(retryAfter) || 0, 0)
+  // Уже на оверлее: обновить таймер на месте, не «сбрасывать» UI.
+  if (seconds > 0 || retryAfterSeconds.value <= 0) {
+    startCountdown(seconds)
+  }
 }
 
 export function dismissRateLimitNotice() {
   clearCountdown()
   rateLimitActive.value = false
   retryAfterSeconds.value = 0
+  rateLimitRetrying.value = false
+}
+
+/** Пока идёт «Повторить» — не пускать авто-logout на логин. */
+export function isRateLimitRetryInProgress() {
+  return rateLimitRetryInProgress
+}
+
+async function probeApiAvailable() {
+  const { resolveApiClientBaseUrl } = await import('@/js/api/baseUrl.js')
+  const axios = (await import('axios')).default
+  const { getAccess } = await import('@/core/cms/js/tokenStorage.js')
+  const headers = { 'Content-Type': 'application/json' }
+  const access = getAccess()
+  if (access) {
+    headers.Authorization = `Bearer ${access}`
+  }
+  const response = await axios.get(
+    `${resolveApiClientBaseUrl()}cms/adp/session-bootstrap/`,
+    {
+      headers,
+      withCredentials: true,
+      validateStatus: (status) => status === 200 || status === 401 || status === 429,
+    },
+  )
+  if (response.status === 429) {
+    return { ok: false, rateLimited: true, retryAfter: parseRetryAfterSeconds(response) }
+  }
+  // 200 — ок; 401 с живым hint обработает обычный auth, это не «ещё лимит».
+  return { ok: true, rateLimited: false, retryAfter: 0 }
+}
+
+/**
+ * Кнопка «Повторить»: оверлей не снимаем, пока API снова не ответит нормально.
+ * Без reload «на удачу» — иначе мигает страница под оверлеем.
+ */
+export async function retryRateLimitNotice() {
+  if (rateLimitRetryInProgress) {
+    return
+  }
+  if (retryAfterSeconds.value > 0) {
+    return
+  }
+
+  rateLimitRetryInProgress = true
+  rateLimitRetrying.value = true
+  rateLimitActive.value = true
+
+  try {
+    const { retrySessionAfterRateLimit } = await import('@/core/cms/js/tokenRefresh.js')
+    const result = await retrySessionAfterRateLimit()
+
+    if (result === 'rate_limited') {
+      if (!rateLimitActive.value) {
+        showRateLimitNotice(0)
+      }
+      return
+    }
+
+    if (result === 'gone') {
+      dismissRateLimitNotice()
+      return
+    }
+
+    // Сессия есть — проверяем, что API уже принимает запросы.
+    const probe = await probeApiAvailable()
+    if (probe.rateLimited) {
+      showRateLimitNotice(probe.retryAfter || 0)
+      return
+    }
+
+    const { showBootstrapMask } = await import('@/js/bootstrapMask.js')
+    showBootstrapMask()
+    dismissRateLimitNotice()
+    if (typeof window !== 'undefined' && window.location) {
+      window.location.reload()
+    }
+  } catch {
+    showRateLimitNotice(retryAfterSeconds.value > 0 ? retryAfterSeconds.value : 0)
+  } finally {
+    rateLimitRetryInProgress = false
+    rateLimitRetrying.value = false
+  }
 }
 
 export function shouldIgnoreRateLimitOverlay(error) {
-  if (isSilentRateLimitUrl(error)) {
-    return true
-  }
-  return isAuthLocation()
+  // Фоновые URL — без оверлея; страницы логина НЕ глушим.
+  return isSilentRateLimitUrl(error)
 }
 
 export function applyRateLimitFromResponse(error) {
@@ -112,6 +201,10 @@ export function applyRateLimitFromResponse(error) {
   return true
 }
 
+export function isRateLimitActive() {
+  return rateLimitActive.value || rateLimitRetryInProgress
+}
+
 export function shouldSuppressRateLimitToast() {
   return rateLimitActive.value || isAuthLocation()
 }
@@ -120,6 +213,8 @@ export function useRateLimitNotice() {
   return {
     rateLimitActive,
     retryAfterSeconds,
+    rateLimitRetrying,
     dismissRateLimitNotice,
+    retryRateLimitNotice,
   }
 }

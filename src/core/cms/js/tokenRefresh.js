@@ -8,6 +8,11 @@ import {
   isExpired,
   setTokens,
 } from '@/core/cms/js/tokenStorage.js'
+import {
+  isRateLimitResponse,
+  parseRetryAfterSeconds,
+  showRateLimitNotice,
+} from '@/composables/useRateLimitNotice.js'
 import { logWarn } from '@/js/utils/logError.js'
 
 const AUTH_REFRESH_PATH = 'cms/adp/token-refresh/'
@@ -15,7 +20,10 @@ const AUTH_LOGOUT_PATH = 'cms/adp/logout/'
 /** sessionStorage: переживает reload вкладки, но не новый браузерный сеанс. */
 const LOGOUT_GATE_STORAGE_KEY = 'ergo_server_logout_finalized'
 
+/** Отказ auth: сессии больше нет. */
 const EXPECTED_REFRESH_FAILURE = new Set([400, 401])
+/** Временный отказ: сессию не трогаем (лимит / бэкенд мигнул). */
+const TRANSIENT_REFRESH_STATUSES = new Set([429, 502, 503, 504])
 
 let refreshInProgress = null
 let sessionRestorePromise = null
@@ -30,6 +38,10 @@ let serverLogoutPromise = null
 let logoutFinalized = false
 /** Payload session-bootstrap из успешного token-refresh (один RTT на F5). */
 let pendingSessionBootstrap = null
+/** Последний refresh упал из‑за 429/5xx — нельзя считать сессию мёртвой. */
+let lastRefreshWasTransient = false
+/** Не спамить повторными refresh, пока действует Retry-After. */
+let refreshBackoffUntil = 0
 
 function readPersistedLogoutGate() {
   if (typeof sessionStorage === 'undefined') {
@@ -87,10 +99,54 @@ export function canAttemptTokenRefresh() {
   return hasSessionHintCookie()
 }
 
+/** Refresh временно недоступен (429/5xx) — сессия на сервере может быть жива. */
+export function wasLastRefreshTransient() {
+  return lastRefreshWasTransient
+}
+
+/** Сброс backoff перед кнопкой «Повторить» на оверлее 429. */
+export function clearRefreshBackoff() {
+  refreshBackoffUntil = 0
+  lastRefreshWasTransient = false
+  // Разрешить повторный restore после временного отказа.
+  if (sessionRestoreResolved === false && hasSessionHintCookie() && !logoutFinalized) {
+    sessionRestoreResolved = null
+  }
+}
+
+/**
+ * Повтор после оверлея 429: снять backoff и восстановить access.
+ * @returns {Promise<'ok'|'rate_limited'|'gone'>}
+ */
+export async function retrySessionAfterRateLimit() {
+  clearRefreshBackoff()
+
+  const access = getAccess()
+  if (access && !isExpired(access)) {
+    markSessionRestoreResult(true)
+    return 'ok'
+  }
+
+  if (!canAttemptTokenRefresh()) {
+    return 'gone'
+  }
+
+  const newAccess = await performTokenRefresh()
+  if (newAccess) {
+    return 'ok'
+  }
+  if (lastRefreshWasTransient || canAttemptTokenRefresh()) {
+    return 'rate_limited'
+  }
+  return 'gone'
+}
+
 export function invalidateSessionRestoreCache() {
   sessionRestoreResolved = false
   sessionRestorePromise = null
   pendingSessionBootstrap = null
+  lastRefreshWasTransient = false
+  refreshBackoffUntil = 0
   clearSessionHintCookie()
 }
 
@@ -101,9 +157,22 @@ function markSessionRestoreResult(hasSession) {
   }
 }
 
+function noteTransientRefreshFailure(errorOrResponse) {
+  lastRefreshWasTransient = true
+  const retryAfter = parseRetryAfterSeconds(errorOrResponse)
+  const waitMs = Math.max(retryAfter, 1) * 1000
+  refreshBackoffUntil = Math.max(refreshBackoffUntil, Date.now() + waitMs)
+  // token-refresh в SILENT_URL_PARTS — оверлей зовём явно, иначе F5 под лимитом
+  // выглядит как «тихий» разлогин без объяснения.
+  if (isRateLimitResponse(errorOrResponse)) {
+    showRateLimitNotice(retryAfter)
+  }
+}
+
 /**
  * Однократная попытка восстановить сессию (main.js + startRoute guard).
  * Без подсказки о refresh не обращается к API — нет лишних 400 в консоли.
+ * 429/5xx не помечают сессию мёртвой и не снимают session-hint cookie.
  */
 export async function restoreSession() {
   if (logoutFinalized) {
@@ -128,9 +197,16 @@ export async function restoreSession() {
   if (!sessionRestorePromise) {
     sessionRestorePromise = (async () => {
       const newAccess = await performTokenRefresh()
-      const ok = Boolean(newAccess)
-      markSessionRestoreResult(ok)
-      return ok
+      if (newAccess) {
+        markSessionRestoreResult(true)
+        return true
+      }
+      // Временный отказ — кэш «сессии нет» не ставим, hint cookie оставляем.
+      if (lastRefreshWasTransient || canAttemptTokenRefresh()) {
+        return false
+      }
+      markSessionRestoreResult(false)
+      return false
     })().finally(() => {
       sessionRestorePromise = null
     })
@@ -172,6 +248,11 @@ export async function performTokenRefresh() {
     return null
   }
 
+  if (Date.now() < refreshBackoffUntil) {
+    lastRefreshWasTransient = true
+    return null
+  }
+
   refreshInProgress = (async () => {
     try {
       const response = await axios.post(
@@ -181,7 +262,9 @@ export async function performTokenRefresh() {
           headers: { 'Content-Type': 'application/json' },
           withCredentials: true,
           validateStatus: (status) =>
-            status === 200 || EXPECTED_REFRESH_FAILURE.has(status),
+            status === 200
+            || EXPECTED_REFRESH_FAILURE.has(status)
+            || TRANSIENT_REFRESH_STATUSES.has(status),
         },
       )
 
@@ -189,13 +272,23 @@ export async function performTokenRefresh() {
         return null
       }
 
+      if (TRANSIENT_REFRESH_STATUSES.has(response.status)) {
+        noteTransientRefreshFailure(response)
+        logWarn('[tokenRefresh] временный отказ refresh', {
+          status: response.status,
+        })
+        return null
+      }
+
       if (response.status !== 200) {
+        lastRefreshWasTransient = false
         markSessionRestoreResult(false)
         return null
       }
 
       const newAccess = response.data?.access ?? response.data?.data?.access
       if (!newAccess) {
+        lastRefreshWasTransient = false
         markSessionRestoreResult(false)
         return null
       }
@@ -204,10 +297,20 @@ export async function performTokenRefresh() {
         response.data?.session_bootstrap ?? response.data?.data?.session_bootstrap
       storePendingSessionBootstrap(bootstrap)
 
+      lastRefreshWasTransient = false
+      refreshBackoffUntil = 0
       setTokens(newAccess)
       markSessionRestoreResult(true)
       return newAccess
     } catch (error) {
+      // Сеть/таймаут — не снимаем session-hint и не закрываем гейт.
+      lastRefreshWasTransient = true
+      const retryAfter = parseRetryAfterSeconds(error)
+      if (retryAfter > 0 || error?.response?.status === 429) {
+        noteTransientRefreshFailure(error)
+      } else {
+        refreshBackoffUntil = Math.max(refreshBackoffUntil, Date.now() + 2000)
+      }
       logWarn('[tokenRefresh] unexpected refresh failure', error)
       return null
     } finally {

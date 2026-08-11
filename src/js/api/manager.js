@@ -6,13 +6,16 @@ import {
   canAttemptTokenRefresh,
   ensureAccessToken,
   performServerLogout,
+  wasLastRefreshTransient,
 } from '@/core/cms/js/tokenRefresh.js'
 import { savePostLoginReturnPath } from '@/core/cms/js/postLoginReturn.js'
 import { hasSessionHintCookie } from '@/core/cms/js/tokenStorage.js'
 import { applyMaintenanceFromResponse, isMaintenanceResponse } from '@/composables/useMaintenanceMode.js'
 import {
   applyRateLimitFromResponse,
+  isRateLimitActive,
   isRateLimitResponse,
+  showRateLimitNotice,
 } from '@/composables/useRateLimitNotice.js'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
 import { logError, logWarn, sanitizeError } from '@/js/utils/logError.js'
@@ -109,9 +112,12 @@ class ApiClient {
               this._addAuthToken(originalRequest)
               return this.client(originalRequest)
             }
-            logWarn('[apiClient] 401 без Bearer: не удалось восстановить access', {
-              url: requestUrl,
-            })
+            // Во время backoff refresh не шумим на каждый параллельный 401.
+            if (!wasLastRefreshTransient()) {
+              logWarn('[apiClient] 401 без Bearer: не удалось восстановить access', {
+                url: requestUrl,
+              })
+            }
             return Promise.reject(error)
           }
 
@@ -125,6 +131,13 @@ class ApiClient {
           if (access) {
             this._addAuthToken(originalRequest)
             return this.client(originalRequest)
+          }
+          // Лимит / временный отказ refresh — оверлей 429, не страница логина.
+          if (wasLastRefreshTransient() || isRateLimitActive() || canAttemptTokenRefresh()) {
+            if (!isRateLimitActive() && wasLastRefreshTransient()) {
+              showRateLimitNotice(0)
+            }
+            return Promise.reject(error)
           }
           savePostLoginReturnPath()
           this.logout()

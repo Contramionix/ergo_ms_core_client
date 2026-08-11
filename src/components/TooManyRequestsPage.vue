@@ -15,15 +15,34 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  retrying: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['retry'])
 
+const retryDisabled = computed(() => props.retrying || props.retryAfter > 0)
+
 const hintText = computed(() => {
+  if (props.retrying) {
+    return t('components.tooManyRequests.retrying')
+  }
   if (props.retryAfter > 0) {
     return t('components.tooManyRequests.retryIn', { seconds: props.retryAfter })
   }
   return t('components.tooManyRequests.hint')
+})
+
+const retryLabel = computed(() => {
+  if (props.retrying) {
+    return t('components.tooManyRequests.retrying')
+  }
+  if (props.retryAfter > 0) {
+    return t('components.tooManyRequests.retryIn', { seconds: props.retryAfter })
+  }
+  return t('components.tooManyRequests.retry')
 })
 </script>
 
@@ -54,9 +73,11 @@ const hintText = computed(() => {
       <button
         class="ui-btn ui-btn--primary too-many-requests__retry"
         type="button"
+        :disabled="retryDisabled"
+        :aria-busy="retrying ? 'true' : 'false'"
         @click="emit('retry')"
       >
-        {{ t('components.tooManyRequests.retry') }}
+        {{ retryLabel }}
       </button>
     </section>
   </main>

@@ -15,9 +15,15 @@ import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
 import {
+  canAttemptTokenRefresh,
   isServerLogoutFinalized,
   performServerLogout,
+  wasLastRefreshTransient,
 } from '@/core/cms/js/tokenRefresh.js'
+import {
+  isRateLimitActive,
+  showRateLimitNotice,
+} from '@/composables/useRateLimitNotice.js'
 import {
   consumePostLoginReturnPath,
   savePostLoginReturnPath,
@@ -262,6 +268,14 @@ function setupRouterGuards(router) {
       }
 
       if (to.meta.requiresAuth && !(await runCheckToken())) {
+        // F5 под rate-limit / мигание API: session-hint жив — не чистим сессию
+        // и не уводим на StartPage (иначе «прозрачный» 429 выглядит как logout).
+        if (wasLastRefreshTransient() || isRateLimitActive() || canAttemptTokenRefresh()) {
+          if (!isRateLimitActive()) {
+            showRateLimitNotice(0)
+          }
+          return safeNext()
+        }
         // Сброс СИНХРОННО до next(StartPage): vue-router вызывает вложенный
         // beforeEach внутри next(), а import().then(clear) ещё не успевает —
         // startRoute видит access+userStore и возвращает на requiresAuth → шторм logout.

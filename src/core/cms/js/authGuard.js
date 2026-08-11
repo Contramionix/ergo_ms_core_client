@@ -2,6 +2,14 @@ import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { isTransientNetworkError } from '@/core/cms/js/isTransientNetworkError.js'
 import { savePostLoginReturnPath } from '@/core/cms/js/postLoginReturn.js'
+import {
+  canAttemptTokenRefresh,
+  wasLastRefreshTransient,
+} from '@/core/cms/js/tokenRefresh.js'
+import {
+  isRateLimitActive,
+  showRateLimitNotice,
+} from '@/composables/useRateLimitNotice.js'
 import { logError, logWarn } from '@/js/utils/logError.js'
 
 /**
@@ -83,15 +91,34 @@ export class AuthGuard {
       // Валидация на сервере (динамический импорт для избежания циркулярной зависимости)
       const { authService } = await import('@/core/cms/adp/js/auth')
       const isValid = await authService.checkToken()
-      if (!isValid) this.forceLogout()
+      if (!isValid) {
+        // 429/мигание refresh — оверлей, не страница логина
+        if (wasLastRefreshTransient() || isRateLimitActive() || canAttemptTokenRefresh()) {
+          if (!isRateLimitActive()) {
+            showRateLimitNotice(0)
+          }
+          logWarn('Проверка токена отложена: сессия ещё может быть жива')
+          return
+        }
+        this.forceLogout()
+      }
     } catch (error) {
       if (isTransientNetworkError(error)) {
+        if (error.response?.status === 429 && !isRateLimitActive()) {
+          showRateLimitNotice(0)
+        }
         logWarn('Проверка токена пропущена: API временно недоступен', error)
         return
       }
       logError('Ошибка при проверке токена:', error)
       // Явный отказ auth / неожиданная ошибка с ответом сервера
       if (error.response?.status === 401 || error.response?.status === 403) {
+        if (wasLastRefreshTransient() || isRateLimitActive() || canAttemptTokenRefresh()) {
+          if (!isRateLimitActive()) {
+            showRateLimitNotice(0)
+          }
+          return
+        }
         this.forceLogout()
       }
     } finally {

@@ -103,6 +103,7 @@ export default {
     hint: 'Requests are temporarily limited. Try again in a little while.',
     retryIn: 'Try again in {seconds} sec',
     retry: 'Try again',
+    retrying: 'Checking…',
   },
   avatarCrop: {
     title: 'Crop photo',

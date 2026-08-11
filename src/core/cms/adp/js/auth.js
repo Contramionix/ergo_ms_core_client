@@ -12,7 +12,13 @@ import {
   resetServerLogoutGate,
   ensureAccessToken,
   isServerLogoutFinalized,
+  canAttemptTokenRefresh,
+  wasLastRefreshTransient,
 } from '@/core/cms/js/tokenRefresh.js'
+import {
+  isRateLimitActive,
+  showRateLimitNotice,
+} from '@/composables/useRateLimitNotice.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
 import { resetNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
@@ -130,11 +136,20 @@ export const authService = {
                             tokenCheckCache = { at: Date.now(), result: retry.success }
                             return retry.success
                         } catch (retryError) {
+                            if (isTransientNetworkError(retryError)) {
+                                resetTokenCheckCache()
+                                return true
+                            }
                             if (retryError.response?.status !== 401) {
                                 resetTokenCheckCache()
                                 return false
                             }
                         }
+                    }
+                    // Refresh упёрся в 429/5xx — сессию не трогаем.
+                    if (wasLastRefreshTransient() || canAttemptTokenRefresh()) {
+                        resetTokenCheckCache()
+                        return Boolean(access && !isExpired(access))
                     }
                     resetTokenCheckCache()
                     tokenService.clear()
@@ -165,6 +180,15 @@ export const authService = {
     },
     
     async logout(reason = 'authService.logout') {
+        const isManualLogout = reason === 'authService.logout'
+        // Авто-logout при лимите — оверлей 429, не страница логина.
+        // Ручной выход из меню пропускаем дальше.
+        if (!isManualLogout && (isRateLimitActive() || wasLastRefreshTransient())) {
+            if (!isRateLimitActive()) {
+                showRateLimitNotice(0)
+            }
+            return
+        }
         // Явный выход — не возвращать на старую страницу после следующего входа.
         // При forceLogout путь уже сохранён; cookie не трогаем.
         if (reason !== 'authGuard.forceLogout') {

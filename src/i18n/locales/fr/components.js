@@ -103,6 +103,7 @@ export default {
     hint: 'Les requêtes sont temporairement limitées. Réessayez dans un instant.',
     retryIn: 'Réessayer dans {seconds} s',
     retry: 'Réessayer',
+    retrying: 'Vérification…',
   },
   avatarCrop: {
     title: 'Recadrer la photo',
