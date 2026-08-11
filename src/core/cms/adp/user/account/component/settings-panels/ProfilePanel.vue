@@ -39,7 +39,9 @@ const formData = ref({})
 const errors = ref({})
 const profileSelfEditEnabled = ref(true)
 
-const identityReadonly = computed(() => profileSelfEditEnabled.value === false)
+const identityReadonly = computed(
+  () => profileSelfEditEnabled.value === false && !userStore.accessToPanel,
+)
 
 const fetchProfile = async () => {
   try {
