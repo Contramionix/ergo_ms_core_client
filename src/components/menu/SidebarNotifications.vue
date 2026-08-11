@@ -136,7 +136,8 @@ function unbindPanelKeys() {
 }
 
 onMounted(() => {
-  ensureInitialized()
+  // Не грузим полную историю inbox на mount toolbar — только unread + socket.
+  ensureInitialized({ skipLoad: true })
 })
 
 onUnmounted(() => {
@@ -154,6 +155,7 @@ watch(isOpen, async (open) => {
   }
 
   bindPanelKeys()
+  await loadSidebar()
   await nextTick()
   panelRef.value?.focus?.()
 })
