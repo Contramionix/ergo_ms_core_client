@@ -37,7 +37,25 @@ function resolveBootString(key, fallback) {
   return fallback
 }
 
-function getBootFailureCopy() {
+const STALE_FALLBACK = {
+  badge: 'Устаревшая версия',
+  title: 'Страница устарела после обновления',
+  failed: 'Загружена старая версия интерфейса. Обновите страницу, чтобы подтянуть новый клиент.',
+  hint: 'Если сообщение повторяется, закройте лишние вкладки приложения и откройте сайт заново.',
+  failedLog: 'Устаревший клиент после деплоя:',
+}
+
+function getBootFailureCopy(variant = 'boot') {
+  if (variant === 'stale') {
+    return {
+      badge: resolveBootString('errors.stale.badge', STALE_FALLBACK.badge),
+      title: resolveBootString('errors.stale.title', STALE_FALLBACK.title),
+      failed: resolveBootString('errors.stale.failed', STALE_FALLBACK.failed),
+      hint: resolveBootString('errors.stale.hint', STALE_FALLBACK.hint),
+      reload: resolveBootString('common.refresh', FALLBACK.reload),
+      failedLog: resolveBootString('errors.stale.failedLog', STALE_FALLBACK.failedLog),
+    }
+  }
   return {
     badge: resolveBootString('errors.boot.badge', FALLBACK.badge),
     title: resolveBootString('errors.boot.title', FALLBACK.title),
@@ -99,10 +117,15 @@ function buildBootFailurePage(copy) {
   return page
 }
 
-/** Отдельный чанк: не должен попадать в sync/preload граф main на Slow 3G. */
-export async function showBootFailure(error) {
+/**
+ * Отдельный чанк: не должен попадать в sync/preload граф main на Slow 3G.
+ * @param {unknown} error
+ * @param {{ variant?: 'boot'|'stale' }} [options]
+ */
+export async function showBootFailure(error, options = {}) {
   hideBootstrapMask()
-  const copy = getBootFailureCopy()
+  const variant = options.variant === 'stale' ? 'stale' : 'boot'
+  const copy = getBootFailureCopy(variant)
   try {
     const { logError } = await import('@/js/utils/logError.js')
     logError(copy.failedLog, error)

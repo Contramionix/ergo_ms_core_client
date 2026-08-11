@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from 'node:url'
 import path from 'path'
 import fs from 'fs'
+import crypto from 'node:crypto'
 import { createRequire, isBuiltin } from 'node:module'
 import { loadProjectEnv, mergeModuleEnv } from './scripts/lib/module-env.js'
 import {
@@ -360,6 +361,29 @@ function resolveManualChunk(id) {
  * Build: raw asset с content-hash в /assets/ (immutable).
  * Dev: middleware на /js/bootstrap-early.js из src (без HMR-обёртки).
  */
+/** Идентификатор сборки: в бандле (define) и в dist/client-build.json для staleClientGuard. */
+const ERGO_CLIENT_BUILD_ID = crypto
+  .createHash('sha256')
+  .update(`${process.pid}-${Date.now()}-${Math.random()}`)
+  .digest('hex')
+  .slice(0, 20)
+
+function clientBuildIdPlugin(buildId) {
+  return {
+    name: 'ergo-client-build-id',
+    apply: 'build',
+    closeBundle() {
+      const outDir = path.resolve(__dirname, 'dist')
+      fs.mkdirSync(outDir, { recursive: true })
+      fs.writeFileSync(
+        path.join(outDir, 'client-build.json'),
+        `${JSON.stringify({ buildId })}\n`,
+        'utf8',
+      )
+    },
+  }
+}
+
 function bootstrapEarlyAssetPlugin() {
   const earlySrc = path.resolve(__dirname, 'src/js/bootstrap-early.js')
   const devUrl = '/js/bootstrap-early.js'
@@ -422,6 +446,7 @@ function bootstrapEarlyAssetPlugin() {
 const plugins = [
   resolveFromNpmRootPlugin(),
   bootstrapEarlyAssetPlugin(),
+  clientBuildIdPlugin(ERGO_CLIENT_BUILD_ID),
   vue(),
   AutoImport({
     imports: [
@@ -590,7 +615,10 @@ export default defineConfig(() => ({
       ],
     },
   },
-  define: buildClientEnvDefines(runtimeEnv),
+  define: {
+    ...buildClientEnvDefines(runtimeEnv),
+    'import.meta.env.ERGO_CLIENT_BUILD_ID': JSON.stringify(ERGO_CLIENT_BUILD_ID),
+  },
   optimizeDeps: {
     exclude: ['@vite-ignore', 'vue3-apexcharts'],
     include: OPTIMIZE_DEPS_INCLUDE,

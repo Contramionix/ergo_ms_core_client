@@ -15,6 +15,10 @@ import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
 import {
+  isServerLogoutFinalized,
+  performServerLogout,
+} from '@/core/cms/js/tokenRefresh.js'
+import {
   consumePostLoginReturnPath,
   savePostLoginReturnPath,
 } from '@/core/cms/js/postLoginReturn.js'
@@ -24,6 +28,7 @@ import { runSessionScopeGuard } from '@/js/session/sessionScopeGuard.js'
 import { whenSessionReady } from '@/js/sessionReady.js'
 import { teGlobal, tGlobal } from '@/i18n/index.js'
 import { logError } from '@/js/utils/logError.js'
+import { isStaleClientError, recoverFromStaleClient } from '@/js/staleClientGuard.js'
 
 let cachedPermissionRules = null
 let cachedRouteGuards = null
@@ -191,6 +196,11 @@ async function checkRouteAccess(to) {
 }
 
 async function runCheckToken() {
+  // После logout не доверяем короткому пути userStore: иначе startRoute
+  // синхронно снова шлёт на AppHome до завершения clear().
+  if (isServerLogoutFinalized()) {
+    return false
+  }
   const access = tokenService.getAccess()
   if (access && !isExpired(access)) {
     try {
@@ -203,6 +213,16 @@ async function runCheckToken() {
     }
   }
   return checkToken()
+}
+
+/** Локальный сброс сессии до next() — иначе nested beforeEach видит старый access. */
+function clearSessionLocally() {
+  tokenService.clear()
+  try {
+    useUserStore().finalizeSession()
+  } catch {
+    /* pinia ещё не готов */
+  }
 }
 
 function setupRouterGuards(router) {
@@ -242,15 +262,12 @@ function setupRouterGuards(router) {
       }
 
       if (to.meta.requiresAuth && !(await runCheckToken())) {
-        // Локальный сброс + один серверный logout (дедуп в tokenRefresh).
-        // Не auth.logout() с location.href — иначе цикл со startRoute → AppHome.
+        // Сброс СИНХРОННО до next(StartPage): vue-router вызывает вложенный
+        // beforeEach внутри next(), а import().then(clear) ещё не успевает —
+        // startRoute видит access+userStore и возвращает на requiresAuth → шторм logout.
         savePostLoginReturnPath(to.fullPath)
-        import('@/core/cms/js/tokenRefresh.js').then(({ performServerLogout }) => {
-          performServerLogout('router.requiresAuth')
-        })
-        import('@/core/cms/js/tokenService').then(({ tokenService }) => {
-          tokenService.clear()
-        })
+        clearSessionLocally()
+        await performServerLogout('router.requiresAuth')
         return safeNext({ name: 'StartPage' })
       }
 
@@ -296,16 +313,20 @@ function setupRouterGuards(router) {
 
       return safeNext()
     } catch (error) {
-      logError('[routers] beforeEach failed; clearing session', error)
-      savePostLoginReturnPath(to?.fullPath)
-      import('@/core/cms/js/tokenRefresh.js').then(({ performServerLogout }) => {
-        performServerLogout('router.beforeEach-error')
-      })
-      import('@/core/cms/js/tokenService').then(({ tokenService }) => {
-        tokenService.clear()
-      })
+      // Ошибка guard/chunk — не auth-logout: иначе 404 устаревшего чанка после
+      // client-build превращается в шторм POST /logout/ на /start-page.
+      logError('[routers] beforeEach failed', error)
       accessDeniedState.active = false
-      next({ name: 'StartPage' })
+      if (isStaleClientError(error)) {
+        recoverFromStaleClient('router.beforeEach')
+        next(false)
+        return
+      }
+      if (to?.name === 'StartPage' || to?.meta?.startRoute === true) {
+        next(false)
+      } else {
+        next({ name: 'StartPage' })
+      }
     }
   })
 
@@ -315,8 +336,11 @@ function setupRouterGuards(router) {
     finishRouteProgress()
   })
 
-  router.onError(() => {
+  router.onError((error) => {
     finishRouteProgress()
+    if (isStaleClientError(error)) {
+      recoverFromStaleClient('router.onError')
+    }
   })
 }
 

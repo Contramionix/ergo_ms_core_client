@@ -5,7 +5,14 @@ import { clearPostLoginReturnPath } from '@/core/cms/js/postLoginReturn.js'
 import { isExpired } from '@/core/cms/js/tokenStorage.js'
 import { isTransientNetworkError } from '@/core/cms/js/isTransientNetworkError.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { performServerLogout, restoreSession, invalidateSessionRestoreCache, resetServerLogoutGate, ensureAccessToken } from '@/core/cms/js/tokenRefresh.js'
+import {
+  performServerLogout,
+  restoreSession,
+  invalidateSessionRestoreCache,
+  resetServerLogoutGate,
+  ensureAccessToken,
+  isServerLogoutFinalized,
+} from '@/core/cms/js/tokenRefresh.js'
 import { resetPresenceConnection } from '@/core/cms/adp/js/presence/usePresenceConnection.js'
 import { resetPresenceStore } from '@/core/cms/adp/js/presence/presenceStore.js'
 import { resetNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
@@ -82,6 +89,9 @@ export const authService = {
     },
     
     async checkToken({ force = false } = {}) {
+        if (isServerLogoutFinalized()) {
+            return false
+        }
         const access = tokenService.getAccess()
         if (access && !isExpired(access)) {
             if (!force) {

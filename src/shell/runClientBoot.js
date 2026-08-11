@@ -83,6 +83,10 @@ export async function runClientBoot(options = {}) {
   ])
 
   app.use(router)
+
+  const { installStaleClientGuards } = await import('@/js/staleClientGuard.js')
+  installStaleClientGuards({ app, router })
+
   app.mount(mount)
 
   void import('@/js/bootstrapSession.js').then(({ bootstrapAppSession }) => {

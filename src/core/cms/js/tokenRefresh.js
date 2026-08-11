@@ -12,6 +12,8 @@ import { logWarn } from '@/js/utils/logError.js'
 
 const AUTH_REFRESH_PATH = 'cms/adp/token-refresh/'
 const AUTH_LOGOUT_PATH = 'cms/adp/logout/'
+/** sessionStorage: переживает reload вкладки, но не новый браузерный сеанс. */
+const LOGOUT_GATE_STORAGE_KEY = 'ergo_server_logout_finalized'
 
 const EXPECTED_REFRESH_FAILURE = new Set([400, 401])
 
@@ -28,6 +30,39 @@ let serverLogoutPromise = null
 let logoutFinalized = false
 /** Payload session-bootstrap из успешного token-refresh (один RTT на F5). */
 let pendingSessionBootstrap = null
+
+function readPersistedLogoutGate() {
+  if (typeof sessionStorage === 'undefined') {
+    return false
+  }
+  try {
+    return sessionStorage.getItem(LOGOUT_GATE_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function persistLogoutGate(finalized) {
+  if (typeof sessionStorage === 'undefined') {
+    return
+  }
+  try {
+    if (finalized) {
+      sessionStorage.setItem(LOGOUT_GATE_STORAGE_KEY, '1')
+    } else {
+      sessionStorage.removeItem(LOGOUT_GATE_STORAGE_KEY)
+    }
+  } catch {
+    // private mode / quota — остаётся только in-memory гейт
+  }
+}
+
+// F5 после logout: не повторять POST /logout/ и не оживлять refresh по cookie-подсказке.
+if (readPersistedLogoutGate()) {
+  logoutFinalized = true
+  serverLogoutPromise = Promise.resolve()
+  sessionRestoreResolved = false
+}
 
 /**
  * Забирает bootstrap из последнего token-refresh (если был). Повторный вызов — null.
@@ -187,10 +222,11 @@ export async function performTokenRefresh() {
 export function resetServerLogoutGate() {
   serverLogoutPromise = null
   logoutFinalized = false
+  persistLogoutGate(false)
 }
 
 export function isServerLogoutFinalized() {
-  return logoutFinalized
+  return logoutFinalized || readPersistedLogoutGate()
 }
 
 /**
@@ -203,6 +239,7 @@ export async function performServerLogout(reason = 'unspecified') {
   }
 
   logoutFinalized = true
+  persistLogoutGate(true)
   logWarn('[tokenRefresh] refresh-гейт закрыт', { reason })
   invalidateSessionRestoreCache()
 

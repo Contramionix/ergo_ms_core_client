@@ -281,6 +281,12 @@ class ApiClient {
   async logout() {
     // Сначала локально — параллельные 401 перестают слать Authorization
     tokenService.clear()
+    try {
+      const { useUserStore } = await import('@/core/cms/js/userStore.js')
+      useUserStore().finalizeSession()
+    } catch {
+      /* pinia ещё не готов */
+    }
     await performServerLogout('apiClient-401')
   }
 

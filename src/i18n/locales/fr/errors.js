@@ -6,6 +6,13 @@ export default {
     hint: "Si l'erreur persiste, assurez-vous que le serveur API est disponible et réessayez.",
     failedLog: 'Échec du démarrage du client :',
   },
+  stale: {
+    badge: 'Version obsolète',
+    title: 'Cette page est obsolète après une mise à jour',
+    failed: "Une ancienne version de l'interface est encore chargée. Actualisez la page pour obtenir le nouveau client.",
+    hint: "Si le message revient, fermez les onglets supplémentaires de l'application et rouvrez le site.",
+    failedLog: 'Client obsolète après déploiement :',
+  },
   api: {
     generic: "Une erreur s'est produite",
     tryLater: "Une erreur s'est produite. Veuillez réessayer plus tard.",

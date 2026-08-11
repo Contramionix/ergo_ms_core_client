@@ -56,12 +56,23 @@ export function findComponentLoader(componentPath, componentsMap) {
  * @param {() => Object<string, Function>} getComponentsMap
  * @returns {() => Promise<*>}
  */
+function wrapStaleAwareLoad(promise) {
+  return promise.catch((error) => {
+    void import('@/js/staleClientGuard.js').then(({ isStaleClientError, recoverFromStaleClient }) => {
+      if (isStaleClientError(error)) {
+        recoverFromStaleClient('deferred-component')
+      }
+    })
+    throw error
+  })
+}
+
 export function createDeferredComponentImport(componentPath, getComponentsMap) {
   return () => {
     const loader = findComponentLoader(componentPath, getComponentsMap())
 
     if (loader) {
-      return loader()
+      return wrapStaleAwareLoad(Promise.resolve().then(() => loader()))
     }
 
     // Новые .vue до перезапуска Vite: glob ещё без файла.
@@ -69,7 +80,9 @@ export function createDeferredComponentImport(componentPath, getComponentsMap) {
     if (import.meta.env.DEV) {
       const relativePath = componentPathToGlobKey(componentPath)
       if (relativePath) {
-        return import(/* @vite-ignore */ new URL(relativePath, import.meta.url).href)
+        return wrapStaleAwareLoad(
+          import(/* @vite-ignore */ new URL(relativePath, import.meta.url).href),
+        )
       }
     }
 
