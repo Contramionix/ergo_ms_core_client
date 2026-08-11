@@ -4,8 +4,11 @@
  * Не использовать target=_blank для attachment: вкладка мигает и закрывается
  * после Content-Disposition: attachment.
  *
+ * Не использовать скрытый iframe: CSP `frame-ancestors 'none'` и X-Frame-Options: DENY
+ * блокируют framing `/serve/` — скачивание не начинается.
+ *
  * Режимы:
- * - attachment (по умолчанию) — тихий download через скрытый iframe + ?download=1
+ * - attachment (по умолчанию) — тихий download через `<a download>` + ?download=1
  * - blob — fetch → object URL (контроль имени; не для очень больших файлов)
  * - new_tab — открыть в новой вкладке для просмотра (без force download)
  */
@@ -17,8 +20,6 @@ export const MEDIA_DOWNLOAD_MODE = Object.freeze({
   BLOB: 'blob',
   NEW_TAB: 'new_tab',
 })
-
-const IFRAME_CLEANUP_MS = 60_000
 
 /**
  * Добавить ?download=1 (media_api → Content-Disposition: attachment).
@@ -57,16 +58,21 @@ export function withoutMediaDownloadParam(url) {
   }
 }
 
-function downloadViaIframe(url) {
-  const iframe = document.createElement('iframe')
-  iframe.setAttribute('aria-hidden', 'true')
-  iframe.tabIndex = -1
-  iframe.style.cssText = 'position:fixed;width:0;height:0;border:0;opacity:0;pointer-events:none'
-  iframe.src = url
-  document.body.appendChild(iframe)
-  window.setTimeout(() => {
-    iframe.remove()
-  }, IFRAME_CLEANUP_MS)
+function downloadViaAnchor(url, filename) {
+  const href = withMediaDownloadParam(url)
+  const anchor = document.createElement('a')
+  anchor.href = href
+  // Имя подсказки; при redirect / cross-origin браузер может взять имя из Content-Disposition
+  if (filename) {
+    anchor.setAttribute('download', filename)
+  } else {
+    anchor.setAttribute('download', '')
+  }
+  anchor.rel = 'noopener'
+  anchor.style.cssText = 'display:none'
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
   return true
 }
 
@@ -76,7 +82,7 @@ function openInNewTab(url) {
 }
 
 async function downloadViaBlob(url, filename) {
-  const response = await fetch(url, { credentials: 'omit', mode: 'cors' })
+  const response = await fetch(url, { credentials: 'same-origin', mode: 'cors' })
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`)
   }
@@ -114,8 +120,8 @@ export async function downloadMedia(url, options = {}) {
     return downloadViaBlob(url, options.filename)
   }
 
-  // attachment — silent, без новой вкладки
-  return downloadViaIframe(withMediaDownloadParam(url))
+  // attachment — без iframe (CSP frame-ancestors) и без новой вкладки
+  return downloadViaAnchor(url, options.filename)
 }
 
 /**
