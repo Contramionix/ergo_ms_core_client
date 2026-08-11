@@ -71,6 +71,13 @@ export function parseApiErrorData(data, options = {}) {
  * @returns {string}
  */
 export function extractApiError(error, fallback) {
+  const status = error?.response?.status
+  if (status === 429) {
+    return tGlobal('errors.api.tooManyRequests')
+  }
+  if (status === 413) {
+    return tGlobal('errors.api.payloadTooLarge')
+  }
   return parseApiErrorData(error?.response?.data ?? error, {
     fallback: fallback ?? defaultFallback(),
     mode: 'first',

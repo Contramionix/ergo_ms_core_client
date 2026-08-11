@@ -78,6 +78,9 @@ const resolveEmailSendError = (error) => {
   if (status === 403) {
     return t('auth.forgot.sendFailedAdminHint')
   }
+  if (status === 429) {
+    return t('errors.api.tooManyRequests')
+  }
   if (!isTechnicalErrorMessage(message)) {
     return message
   }

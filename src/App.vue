@@ -6,6 +6,7 @@ const LayoutMenu = defineAsyncComponent(() => import('@/LayoutMenu.vue'))
 const LayoutStart = defineAsyncComponent(() => import('@/LayoutStart.vue'))
 const LayoutPublic = defineAsyncComponent(() => import('@/LayoutPublic.vue'))
 import MaintenancePage from '@/components/MaintenancePage.vue'
+import TooManyRequestsPage from '@/components/TooManyRequestsPage.vue'
 import NotificationProvider from '@/components/NotificationProvider.vue'
 import HoverTooltipLayer from '@/components/HoverTooltipLayer.vue'
 import RouteProgressBar from '@/components/RouteProgressBar.vue'
@@ -15,11 +16,13 @@ import {
   stopMaintenancePolling,
   useMaintenanceMode,
 } from '@/composables/useMaintenanceMode.js'
+import { useRateLimitNotice } from '@/composables/useRateLimitNotice.js'
 import { hideBootstrapMask } from '@/js/bootstrapMask.js'
 
 const route = useRoute()
 const router = useRouter()
 const { maintenanceActive, maintenanceDetail } = useMaintenanceMode()
+const { rateLimitActive, retryAfterSeconds, dismissRateLimitNotice } = useRateLimitNotice()
 
 const isReady = ref(false)
 
@@ -75,6 +78,15 @@ const currentLayout = computed(() => {
         v-if="maintenanceActive"
         :detail="maintenanceDetail"
         overlay
+      />
+    </Transition>
+
+    <Transition name="maintenance-overlay" appear>
+      <TooManyRequestsPage
+        v-if="rateLimitActive && !maintenanceActive"
+        overlay
+        :retry-after="retryAfterSeconds"
+        @retry="dismissRateLimitNotice"
       />
     </Transition>
   </div>

@@ -123,7 +123,9 @@ async function applyInvitationToken(token) {
     }
   } catch (error) {
     logError('Invitation validate error:', error)
-    inviteCodeError.value = t('auth.invite.invalid')
+    inviteCodeError.value = error.response?.status === 429
+      ? t('errors.api.tooManyRequests')
+      : t('auth.invite.invalid')
     invitationStatus.value = { valid: false }
   } finally {
     isValidatingInvite.value = false
@@ -202,6 +204,8 @@ const submitForm = async () => {
       if (error.response.status === 400) {
         const errorData = error.response.data
         handleServerErrors(errorData)
+      } else if (error.response.status === 429) {
+        errors.general = t('errors.api.tooManyRequests')
       } else if (error.response.status >= 500) {
         errors.general = t('auth.login.serverError')
       } else {

@@ -11,6 +11,7 @@ import {
   subscribeToastSettingsChange,
 } from '@/js/utils/toastSettings.js'
 import { extractApiError } from '@/js/utils/apiErrorMessage.js'
+import { shouldSuppressRateLimitToast } from '@/composables/useRateLimitNotice.js'
 import { clientEnv } from '@/js/clientEnv.js'
 import { tGlobal } from '@/i18n/index.js'
 import { reportUndo } from '@/core/audit/js/reportUndo.js'
@@ -316,6 +317,18 @@ subscribeToastSettingsChange(() => {
 })
 
 export async function handleApiError(error, defaultMessage) {
+  const status = error?.response?.status
+  if (status === 429) {
+    if (shouldSuppressRateLimitToast()) {
+      return
+    }
+    showError(tGlobal('errors.api.tooManyRequests'))
+    return
+  }
+  if (status === 413) {
+    showError(tGlobal('errors.api.payloadTooLarge'))
+    return
+  }
   const fallback = defaultMessage ?? tGlobal('components.toast.errorFallback')
   showError(extractApiError(error, fallback))
 }

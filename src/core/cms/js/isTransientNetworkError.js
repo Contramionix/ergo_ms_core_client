@@ -1,5 +1,5 @@
 /**
- * Сетевой/временный сбой API (отказ соединения, таймаут, 502–504),
+ * Сетевой/временный сбой API (отказ соединения, таймаут, 429, 502–504),
  * а не отказ в аутентификации.
  */
 export function isTransientNetworkError(error) {
@@ -8,7 +8,7 @@ export function isTransientNetworkError(error) {
   }
 
   const status = error.response?.status
-  if (status === 502 || status === 503 || status === 504) {
+  if (status === 429 || status === 502 || status === 503 || status === 504) {
     return true
   }
 

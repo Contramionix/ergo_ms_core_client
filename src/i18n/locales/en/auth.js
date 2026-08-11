@@ -18,6 +18,8 @@ export default {
     connectionError: 'Could not connect to the server',
     noConnection: 'No connection to the server',
     unknownError: 'An unknown error occurred',
+    tooManyAttempts: 'Too many sign-in attempts. Please try again later.',
+    accountSuspended: 'This account is suspended. Contact the administrator.',
   },
   start: {
     title: 'Sign in to continue',

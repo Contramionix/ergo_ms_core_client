@@ -172,6 +172,8 @@ const submitForm = async () => {
       } else if (error.response.status === 403) {
         errors.general = sanitizeError(error).message
           || t('auth.reset.resetDisabled')
+      } else if (error.response.status === 429) {
+        errors.general = t('errors.api.tooManyRequests')
       } else if (error.response.status >= 500) {
         errors.general = error.response.data?.detail || error.response.data?.error || t('auth.login.serverError')
       } else {

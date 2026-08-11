@@ -96,6 +96,14 @@ export default {
     detail: 'Le système est temporairement indisponible. Nous mettons à jour et serons de retour sous peu.',
     hint: 'Cette page se rafraîchira automatiquement lorsque le système sera de nouveau disponible.',
   },
+  tooManyRequests: {
+    badge: 'Veuillez patienter',
+    title: 'Trop de requêtes',
+    detail: 'Veuillez patienter un moment et réessayer.',
+    hint: 'Les requêtes sont temporairement limitées. Réessayez dans un instant.',
+    retryIn: 'Réessayer dans {seconds} s',
+    retry: 'Réessayer',
+  },
   avatarCrop: {
     title: 'Recadrer la photo',
     empty: 'Image non chargée',

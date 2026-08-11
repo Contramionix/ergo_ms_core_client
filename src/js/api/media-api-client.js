@@ -1,6 +1,22 @@
 import { apiClient } from '@/js/api/manager'
+import { tGlobal } from '@/i18n/index.js'
+import { showError } from '@/js/utils/toast.js'
 
 const UPLOAD_TOKEN_ENDPOINT = 'utils/media/upload-token/'
+
+function throwUploadHttpError(status, data) {
+  if (status === 429) {
+    const message = tGlobal('errors.api.tooManyRequests')
+    showError(message)
+    throw Object.assign(new Error(message), { status })
+  }
+  if (status === 413) {
+    const message = tGlobal('errors.api.payloadTooLarge')
+    showError(message)
+    throw Object.assign(new Error(message), { status })
+  }
+  throw new Error(data?.error || `Upload failed: ${status}`)
+}
 
 /**
  * Клиент для работы с media_api (загрузка файлов через CDN-сервис).
@@ -59,7 +75,7 @@ class MediaApiClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: response.statusText }))
-        throw new Error(error.error || `Upload failed: ${response.status}`)
+        throwUploadHttpError(response.status, error)
       }
 
       return response.json()
@@ -90,7 +106,11 @@ class MediaApiClient {
           return
         }
 
-        reject(new Error(data?.error || `Upload failed: ${xhr.status}`))
+        try {
+          throwUploadHttpError(xhr.status, data)
+        } catch (error) {
+          reject(error)
+        }
       }
 
       xhr.onerror = () => {

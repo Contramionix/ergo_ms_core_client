@@ -21,6 +21,8 @@ export default {
     notFound: 'Ressource introuvable',
     validation: 'Veuillez vérifier les champs du formulaire',
     server: 'Erreur serveur',
+    tooManyRequests: 'Trop de requêtes. Veuillez patienter un moment et réessayer.',
+    payloadTooLarge: 'Le fichier est trop volumineux',
   },
   page: {
     notFound: 'Page introuvable',

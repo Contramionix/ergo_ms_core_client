@@ -18,6 +18,8 @@ export default {
     connectionError: 'Impossible de se connecter au serveur',
     noConnection: 'Aucune connexion au serveur',
     unknownError: "Une erreur inconnue s'est produite",
+    tooManyAttempts: 'Trop de tentatives de connexion. Veuillez réessayer plus tard.',
+    accountSuspended: 'Ce compte est suspendu. Contactez l’administrateur.',
   },
   start: {
     title: 'Connectez-vous pour continuer',

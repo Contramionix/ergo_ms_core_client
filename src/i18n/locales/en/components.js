@@ -96,6 +96,14 @@ export default {
     detail: 'The system is temporarily unavailable. We are updating and will be back shortly.',
     hint: 'This page will refresh automatically when the system is available again.',
   },
+  tooManyRequests: {
+    badge: 'Please wait',
+    title: 'Too many requests',
+    detail: 'Please wait a moment and try again.',
+    hint: 'Requests are temporarily limited. Try again in a little while.',
+    retryIn: 'Try again in {seconds} sec',
+    retry: 'Try again',
+  },
   avatarCrop: {
     title: 'Crop photo',
     empty: 'Image not loaded',

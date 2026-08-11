@@ -10,6 +10,10 @@ import {
 import { savePostLoginReturnPath } from '@/core/cms/js/postLoginReturn.js'
 import { hasSessionHintCookie } from '@/core/cms/js/tokenStorage.js'
 import { applyMaintenanceFromResponse, isMaintenanceResponse } from '@/composables/useMaintenanceMode.js'
+import {
+  applyRateLimitFromResponse,
+  isRateLimitResponse,
+} from '@/composables/useRateLimitNotice.js'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
 import { logError, logWarn, sanitizeError } from '@/js/utils/logError.js'
 import { getCurrentLocale } from '@/i18n/index.js'
@@ -77,6 +81,9 @@ class ApiClient {
       async (error) => {
         const originalRequest = error.config
         if (applyMaintenanceFromResponse(error)) {
+          return Promise.reject(error)
+        }
+        if (applyRateLimitFromResponse(error)) {
           return Promise.reject(error)
         }
 
@@ -345,6 +352,16 @@ class ApiClient {
 
     // Ожидаемый 503 режима технических works — оверлей уже показан, без шума в консоли.
     if (isMaintenanceResponse(error)) {
+      const { message } = sanitizeError(error)
+      return {
+        success: false,
+        message,
+        status,
+        errors: error.response?.data,
+      }
+    }
+
+    if (isRateLimitResponse(error)) {
       const { message } = sanitizeError(error)
       return {
         success: false,

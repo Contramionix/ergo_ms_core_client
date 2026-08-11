@@ -118,6 +118,11 @@ const submitForm = async () => {
         }
       } else if (error.response.status === 401) {
         errors.general = t('auth.login.invalidCredentials')
+      } else if (error.response.status === 403) {
+        const errorData = error.response.data
+        errors.general = errorData?.message || errorData?.detail || t('auth.login.accountSuspended')
+      } else if (error.response.status === 429) {
+        errors.general = t('auth.login.tooManyAttempts')
       } else if (error.response.status >= 500) {
         errors.general = t('auth.login.serverError')
       } else {
