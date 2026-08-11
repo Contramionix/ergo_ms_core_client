@@ -12,7 +12,7 @@ import {
   isRateLimitResponse,
   parseRetryAfterSeconds,
   showRateLimitNotice,
-} from '@/composables/useRateLimitNotice.js'
+} from '@/composables/rateLimitNoticeState.js'
 import { logWarn } from '@/js/utils/logError.js'
 
 const AUTH_REFRESH_PATH = 'cms/adp/token-refresh/'
