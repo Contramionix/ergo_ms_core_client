@@ -1,4 +1,8 @@
 export default {
+  alphabetFilter: {
+    all: 'Все',
+    ariaLabel: 'Фильтр по первой букве фамилии',
+  },
   searchInput: {
     placeholder: 'Поиск...',
     clear: 'Очистить поиск',

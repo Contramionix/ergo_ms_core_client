@@ -1,4 +1,8 @@
 export default {
+  alphabetFilter: {
+    all: 'All',
+    ariaLabel: 'Filter by surname first letter',
+  },
   searchInput: {
     placeholder: 'Search...',
     clear: 'Clear search',

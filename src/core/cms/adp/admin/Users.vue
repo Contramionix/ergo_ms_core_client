@@ -16,6 +16,8 @@ import SelectBox from '@/components/SelectBox.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import SearchInput from '@/components/SearchInput.vue'
+import AlphabetFilter from '@/components/AlphabetFilter.vue'
+import { resolveAlphabetLetters } from '@/composables/alphabetFilterLetters.js'
 import { getPresenceFilterOptions } from '@/core/cms/js/adminSelectOptions.js'
 import { fetchProfileSettings } from '@/core/cms/adp/js/profileSettings.js'
 import { fetchAdminProfileChangeRequests } from '@/core/cms/adp/admin/js/profileChangeRequestService.js'
@@ -58,10 +60,17 @@ const { state: listState, patchState, watchState } = useRouteQueryState({
   q: { default: '' },
   page: { default: 1, type: 'number' },
   presence: { default: 'all', enum: ['all', 'online', 'offline'] },
+  letter: { default: '', enum: [...resolveAlphabetLetters('all')] },
 }, { debounceKeys: ['q'] })
 
 const searchQuery = computed(() => listState.value.q)
 const currentPage = computed(() => listState.value.page)
+const letterFilter = computed({
+  get: () => listState.value.letter,
+  set: (value) => {
+    patchState({ letter: value || '' }, { immediate: true })
+  },
+})
 const presenceFilter = computed({
   get: () => listState.value.presence,
   set: (value) => {
@@ -173,6 +182,7 @@ const loadUsers = async () => {
       page_size: rowsPerPage.value,
       q: searchQuery.value.trim() || undefined,
       online_only: isOnlineFilter.value || undefined,
+      letter: letterFilter.value || undefined,
     })
     rows.value = (data.users || []).map(mapUserToRow)
     seedFromUsers(data.users || [])
@@ -408,6 +418,11 @@ const getItemKey = (item) => item.user_id
           </div>
         </div>
 
+    <AlphabetFilter
+      v-model="letterFilter"
+      alphabet="all"
+      class="users-alphabet-filter"
+    />
     <LoadingContentArea :loading="isLoadingUsers">
     <DataTable :items="rows" :columns="columns" :items-per-page="rowsPerPage" :current-page="currentPage" :total-items="totalUsers" :get-item-key="getItemKey" :enable-pagination="true" @update:current-page="handlePageChange">
       <template #cell-user="{ item }">
@@ -474,6 +489,10 @@ const getItemKey = (item) => item.user_id
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
+}
+
+.users-alphabet-filter {
+  margin: 0.25rem 0 0.5rem;
 }
 
 :deep(.users-breadcrumbs) {
