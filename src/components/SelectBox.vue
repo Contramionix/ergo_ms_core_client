@@ -10,7 +10,10 @@
             <button
                 :id="triggerId"
                 class="btn btn-light w-100 d-flex align-items-center justify-content-between select-trigger"
-                :class="{ 'select-trigger--open': isOpen }"
+                :class="{
+                    'select-trigger--open': isOpen,
+                    'select-trigger--open-up': isOpen && menuOpensUpward,
+                }"
                 type="button"
                 :disabled="disabled"
                 :aria-label="triggerAriaLabel"

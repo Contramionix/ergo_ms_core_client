@@ -20,10 +20,16 @@
     line-height: 1.5;
 }
 
-.select-trigger--open {
+.select-trigger--open:not(.select-trigger--open-up) {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
     border-bottom-color: transparent;
+}
+
+.select-trigger--open-up {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top-color: transparent;
 }
 
 .select-trigger {
