@@ -64,7 +64,7 @@ const isActive = ref(true)
 const initialRoleIsAdmin = ref(false)
 
 const displayName = computed(() => {
-  const parts = [formData.value.first_name, formData.value.middle_name, formData.value.last_name]
+  const parts = [formData.value.last_name, formData.value.first_name, formData.value.middle_name]
     .map((part) => (part || '').trim())
     .filter(Boolean)
   return parts.join(' ') || username.value || tGlobal('admin.users.colUser')

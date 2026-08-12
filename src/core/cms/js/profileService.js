@@ -75,11 +75,11 @@ export const profileService = {
       lastName: user.last_name || '',
       middleName: user.middle_name || '',
       fullName: (() => {
-        // Собираем полное имя из отдельных полей
+        // Собираем полное имя из отдельных полей («Фамилия Имя Отчество»)
         const firstName = user.first_name?.trim() || ''
         const middleName = user.middle_name?.trim() || ''
         const lastName = user.last_name?.trim() || ''
-        const nameParts = [firstName, middleName, lastName].filter(part => part && part.trim())
+        const nameParts = [lastName, firstName, middleName].filter(part => part && part.trim())
         return nameParts.length > 0 ? nameParts.join(' ') : user.username
       })(),
       isActive: user.is_active,

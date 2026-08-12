@@ -69,7 +69,7 @@ function trimNamePart(value) {
 }
 
 /**
- * Разбирает ФИО формата «Имя Отчество Фамилия» для UserAvatar без запроса public-info.
+ * Разбирает ФИО формата «Фамилия Имя Отчество» для UserAvatar без запроса public-info.
  */
 export function parseFullNameParts(fullName) {
   const { firstName, lastName } = parseErgoFullNameParts(fullName)
@@ -77,7 +77,7 @@ export function parseFullNameParts(fullName) {
 }
 
 /**
- * Компактное «Фамилия И.О.» (get_initials_name) — не путать с Ergo «Имя Фамилия».
+ * Компактное «Фамилия И.О.» (get_initials_name) — не путать с полным Ergo-ФИО.
  */
 function parseCompactInitialsName(fullName) {
   const parts = (fullName || '').trim().split(/\s+/).filter(Boolean)
@@ -97,7 +97,7 @@ function parseCompactInitialsName(fullName) {
 }
 
 /**
- * Разбирает ERGO-ФИО «Имя Отчество Фамилия» в части имени.
+ * Разбирает ERGO-ФИО «Фамилия Имя Отчество» в части имени.
  * Также понимает компактное «Фамилия И.О.».
  */
 export function parseErgoFullNameParts(fullName) {
@@ -112,12 +112,12 @@ export function parseErgoFullNameParts(fullName) {
     return { lastName: parts[0], firstName: parts[0], middleName: '' }
   }
   if (parts.length === 2) {
-    return { lastName: parts[1], firstName: parts[0], middleName: '' }
+    return { lastName: parts[0], firstName: parts[1], middleName: '' }
   }
   return {
-    lastName: parts[parts.length - 1],
-    firstName: parts[0],
-    middleName: parts.slice(1, -1).join(' '),
+    lastName: parts[0],
+    firstName: parts[1],
+    middleName: parts.slice(2).join(' '),
   }
 }
 
@@ -168,7 +168,7 @@ export function buildActorNameVariants({ lastName, firstName, middleName, fallba
   const mn = trimNamePart(middleName)
   const hasMiddleName = Boolean(mn)
 
-  const parts = [fn, mn, ln].filter(Boolean)
+  const parts = [ln, fn, mn].filter(Boolean)
   let fullName = parts.join(' ')
   if (!fullName) {
     fullName = trimNamePart(fallbackLabel)
@@ -177,7 +177,7 @@ export function buildActorNameVariants({ lastName, firstName, middleName, fallba
   let expandedDisplay = fullName
   if (!hasMiddleName) {
     if (fn && ln) {
-      expandedDisplay = `${fn} ${ln}`
+      expandedDisplay = `${ln} ${fn}`
     } else if (ln) {
       expandedDisplay = ln
     } else if (fn) {
@@ -214,8 +214,8 @@ function hasStructuredNames(info) {
 
 /**
  * Прогревает кеш публичных данных из уже загруженных списков (members, candidates).
- * Без first/last не сидим: иначе UserAvatar не сходит в public-info и разбирает
- * title «Фамилия Имя Отчество» как Ergo-ФИО — в инициалы попадает отчество.
+ * Без first/last не сидим: иначе UserAvatar не сходит в public-info и
+ * инициалы зависят только от разбора title.
  */
 export function seedUserPublicInfoCache(entries) {
   if (!Array.isArray(entries)) return

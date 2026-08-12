@@ -138,7 +138,7 @@ const avatarNameParts = computed(() => {
   )
   if (fromPublic) return fromPublic
 
-  // Ждём public-info по user-ref: не парсим title (орг. «Фамилия Имя Отчество» ≠ Ergo-ФИО).
+  // Ждём public-info по user-ref: не парсим title до ответа (нужны структурные first/last).
   if (props.userRef && !isCurrentUser.value && loadedPublicInfo.value === null) {
     return { firstName: '', lastName: '' }
   }

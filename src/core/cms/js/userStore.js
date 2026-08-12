@@ -59,7 +59,7 @@ export const useUserStore = defineStore('userStore', () => {
     const middleName = user.value.middle_name?.trim() || ''
     const lastName = user.value.last_name?.trim() || ''
     
-    const nameParts = [firstName, middleName, lastName].filter(part => part && part.trim())
+    const nameParts = [lastName, firstName, middleName].filter(part => part && part.trim())
     const fullNameValue = nameParts.join(' ')
 
     // Если нет ни имени, ни фамилии, возвращаем username или «Гость»
@@ -77,7 +77,7 @@ export const useUserStore = defineStore('userStore', () => {
     const guestLabel = tGlobal('components.profileCard.guest')
     if (name === guestLabel) return name
     
-    // Если имя длинное, сокращаем до "Имя Ф."
+    // Если имя длинное, сокращаем до «Фамилия И.»
     const parts = name.split(' ')
     if (parts.length >= 2 && parts[0] && parts[1]) {
       return `${parts[0]} ${parts[1].charAt(0)}.`
