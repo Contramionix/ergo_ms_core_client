@@ -89,8 +89,8 @@ export class RouteGenerator {
         errors.push(`Роут "${route.name}" не содержит path`)
       }
 
-      if (!route.component) {
-        errors.push(`Роут "${route.name}" не содержит component`)
+      if (!route.component && !route.redirect) {
+        errors.push(`Путь "${route.name}" не содержит component`)
       }
 
       if (route.children) {
