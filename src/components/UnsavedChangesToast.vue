@@ -91,13 +91,13 @@ const resolvedSavingLabel = computed(
 
 <style scoped lang="scss">
 .permission-unsaved-toast {
-  --unsaved-toast-bg: #1f1f1f;
-  --unsaved-toast-color: #ffffff;
-  --unsaved-toast-border: rgba(255, 255, 255, 0.08);
-  --unsaved-toast-icon-color: #fccc5c;
-  --unsaved-toast-link-color: rgba(255, 255, 255, 0.85);
-  --unsaved-toast-link-color-hover: #ffffff;
-  --unsaved-toast-muted-color: rgba(255, 255, 255, 0.75);
+  --unsaved-toast-bg: var(--color-primary-background);
+  --unsaved-toast-color: var(--color-primary-text);
+  --unsaved-toast-border: var(--color-border);
+  --unsaved-toast-icon-color: var(--ui-warning, var(--bs-warning));
+  --unsaved-toast-link-color: var(--color-primary-text);
+  --unsaved-toast-link-color-hover: var(--color-accent);
+  --unsaved-toast-muted-color: var(--color-secondary-text);
 
   position: fixed;
   bottom: calc(32px + env(safe-area-inset-bottom, 0px));
@@ -109,7 +109,7 @@ const resolvedSavingLabel = computed(
   background-color: var(--unsaved-toast-bg);
   color: var(--unsaved-toast-color);
   border: 1px solid var(--unsaved-toast-border);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--color-primary-text) 16%, transparent);
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
@@ -215,27 +215,5 @@ const resolvedSavingLabel = computed(
       width: 100%;
     }
   }
-}
-
-:global([data-bs-theme='light'] .permission-unsaved-toast) {
-  --unsaved-toast-bg: var(--color-primary-background, #ffffff);
-  --unsaved-toast-color: var(--bs-body-color, #1f1f1f);
-  --unsaved-toast-border: rgba(15, 23, 42, 0.08);
-  --unsaved-toast-icon-color: #ffb020;
-  --unsaved-toast-link-color: var(--bs-primary, #0d6efd);
-  --unsaved-toast-link-color-hover: var(--bs-primary-hover, #0b5ed7);
-  --unsaved-toast-muted-color: var(--bs-secondary-color, #667085);
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
-}
-
-:global([data-bs-theme='dark'] .permission-unsaved-toast) {
-  --unsaved-toast-bg: #1f1f1f;
-  --unsaved-toast-color: #ffffff;
-  --unsaved-toast-border: rgba(255, 255, 255, 0.08);
-  --unsaved-toast-icon-color: #ffd666;
-  --unsaved-toast-link-color: rgba(255, 255, 255, 0.85);
-  --unsaved-toast-link-color-hover: #ffffff;
-  --unsaved-toast-muted-color: rgba(255, 255, 255, 0.75);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
 }
 </style>
