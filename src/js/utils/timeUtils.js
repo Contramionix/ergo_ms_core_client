@@ -233,6 +233,17 @@ export function formatDateRangeShort(startDate, endDate) {
 }
 
 /**
+ * Склоняет длительность в днях: «21 день», «22 дня», «25 дней».
+ * @param {number} days
+ * @returns {string}
+ */
+export function formatDurationDays(days) {
+    const n = Math.abs(Math.trunc(Number(days)))
+    if (!Number.isFinite(n)) return ''
+    return tGlobal('time.duration.days', n)
+}
+
+/**
  * Форматирует диапазон дат в формат месяца/месяцев
  */
 export function formatMonthRange(startDate, endDate) {

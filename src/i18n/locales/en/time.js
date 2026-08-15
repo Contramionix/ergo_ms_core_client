@@ -9,6 +9,9 @@ export default {
     monthsAgo: '{n} month ago | {n} months ago',
     yearsAgo: '{n} year ago | {n} years ago',
   },
+  duration: {
+    days: '{n} day | {n} days',
+  },
   months: {
     all: 'all months',
     1: 'January',
