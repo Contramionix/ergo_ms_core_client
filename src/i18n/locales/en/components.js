@@ -151,6 +151,12 @@ export default {
     all: 'All',
     loadError: 'Failed to load users',
   },
+  datePicker: {
+    placeholder: 'dd.MM.yyyy',
+    placeholderDateTime: 'dd.MM.yyyy HH:mm',
+    placeholderDateTime12: 'dd.MM.yyyy hh:mm AM',
+    clear: 'Clear date',
+  },
   passwordInput: {
     label: 'Password',
     show: 'Show password',

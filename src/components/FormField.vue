@@ -1,17 +1,6 @@
 <template>
-  <div
-    class="form-field"
-    :class="[
-      `form-field--align-${align}`,
-      { 'form-field--last': last },
-    ]"
-  >
-    <component
-      :is="labelFor ? 'label' : 'div'"
-      v-if="label || $slots.label"
-      class="form-field__label"
-      :for="labelFor || undefined"
-    >
+  <div class="form-field" :class="[ `form-field--align-${align}`, { 'form-field--last': last }, ]">
+    <component :is="labelFor ? 'label' : 'div'" v-if="label || $slots.label" class="form-field__label" :for="labelFor || undefined">
       <slot name="label">
         {{ label }}
       </slot>
@@ -178,7 +167,8 @@ const resolvedOptional = computed(
   font-family: inherit;
 }
 
-.form-field__control :deep(.decimal-input) {
+.form-field__control :deep(.decimal-input),
+.form-field__control :deep(.date-picker) {
   width: 100%;
 }
 </style>

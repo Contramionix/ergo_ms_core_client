@@ -293,6 +293,28 @@ export function toISODate(value) {
     return ''
 }
 
+/**
+ * Нормализует значение к локальной строке YYYY-MM-DDTHH:mm.
+ */
+export function toISODateTime(value) {
+    if (!value) return ''
+    if (typeof value === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return value
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) return value.slice(0, 16)
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value}T00:00`
+        const parsed = parseDate(value)
+        return parsed ? formatDateTimeLocal(parsed) : ''
+    }
+    if (value instanceof Date && !isNaN(value)) return formatDateTimeLocal(value)
+    return ''
+}
+
+function formatDateTimeLocal(date) {
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${formatDateLocal(date)}T${hours}:${minutes}`
+}
+
 function convertDateObjectToString(dateObj) {
     if (!dateObj || typeof dateObj !== 'object') return ''
     const { day, month, year } = dateObj

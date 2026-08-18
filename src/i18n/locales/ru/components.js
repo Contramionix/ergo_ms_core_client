@@ -151,6 +151,12 @@ export default {
     all: 'Все',
     loadError: 'Ошибка загрузки пользователей',
   },
+  datePicker: {
+    placeholder: 'дд.мм.гггг',
+    placeholderDateTime: 'дд.мм.гггг чч:мм',
+    placeholderDateTime12: 'дд.мм.гггг чч:мм AM',
+    clear: 'Очистить дату',
+  },
   passwordInput: {
     label: 'Пароль',
     show: 'Показать пароль',

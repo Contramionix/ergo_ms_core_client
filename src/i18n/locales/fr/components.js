@@ -151,6 +151,12 @@ export default {
     all: 'Tous',
     loadError: 'Échec du chargement des utilisateurs',
   },
+  datePicker: {
+    placeholder: 'jj.mm.aaaa',
+    placeholderDateTime: 'jj.mm.aaaa HH:mm',
+    placeholderDateTime12: 'jj.mm.aaaa hh:mm AM',
+    clear: 'Effacer la date',
+  },
   passwordInput: {
     label: 'Mot de passe',
     show: 'Afficher le mot de passe',
