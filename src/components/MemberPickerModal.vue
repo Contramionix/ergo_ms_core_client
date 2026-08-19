@@ -12,8 +12,7 @@
 
       <div v-if="resolvedTabs.length > 1" class="px-3 pb-2 border-bottom tabs-container">
         <div class="d-flex gap-2 tabs-scroll">
-          <button v-for="tab in resolvedTabs" :key="tab.key" type="button" class="btn btn-sm border-0 px-3 py-1 filter-tab text-nowrap"
-            :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
+          <button v-for="tab in resolvedTabs" :key="tab.key" type="button" class="btn btn-sm border-0 px-3 py-1 filter-tab text-nowrap" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
             {{ tab.label }}
           </button>
         </div>
@@ -26,13 +25,7 @@
           </div>
 
           <div v-else class="users-list">
-          <div v-for="user in filteredUsers" :key="user.id" class="user-item"
-            :class="{
-              'user-item-assigned': isAssigned(user.id),
-              'user-item-selected': isSelected(user.id)
-            }"
-            @click="selectUser(user)"
-          >
+          <div v-for="user in filteredUsers" :key="user.id" class="user-item" :class="{ 'user-item-assigned': isAssigned(user.id), 'user-item-selected': isSelected(user.id) }" @click="selectUser(user)">
             <div class="d-flex align-items-center gap-3 p-3">
               <div class="avatar-wrapper">
                 <UserAvatar :user-ref="user.public_id" :size="48" :title="user.full_name || user.username" :avatar-url="user.avatar_url" :first-name="user.first_name" :last-name="user.last_name" />
@@ -115,13 +108,15 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  modalId: {
+    type: String,
+    default: 'memberPickerModal',
+  },
 })
 
 const emit = defineEmits(['close', 'selected', 'selectedMultiple', 'deselected'])
 
 const toast = useToast()
-
-const modalId = 'memberPickerModal'
 
 const searchQuery = ref('')
 const activeTab = ref('all')

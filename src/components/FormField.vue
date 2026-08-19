@@ -4,7 +4,7 @@
       <slot name="label">
         {{ label }}
       </slot>
-      <span v-if="optional" class="form-field__optional">{{ resolvedOptional }}</span>
+      <span v-if="required" class="form-field__required" :title="t('common.required')" aria-hidden="true">*</span>
     </component>
 
     <div class="form-field__control">
@@ -18,10 +18,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
-const props = defineProps({
+defineProps({
   label: {
     type: String,
     default: '',
@@ -38,13 +37,9 @@ const props = defineProps({
     type: String,
     default: '',
   },
-  optional: {
+  required: {
     type: Boolean,
     default: false,
-  },
-  optionalLabel: {
-    type: String,
-    default: '',
   },
   last: {
     type: Boolean,
@@ -58,9 +53,6 @@ const props = defineProps({
 })
 
 const { t } = useAppI18n()
-const resolvedOptional = computed(
-  () => props.optionalLabel || t('common.optional'),
-)
 </script>
 
 <style scoped lang="scss">
@@ -113,20 +105,11 @@ const resolvedOptional = computed(
   overflow-wrap: anywhere;
 }
 
-.form-field__optional {
-  display: inline-block;
-  flex: 0 1 auto;
-  max-width: 100%;
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  background: var(--color-border);
-  color: var(--color-secondary-text);
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  white-space: nowrap;
+.form-field__required {
+  flex: 0 0 auto;
+  color: var(--ui-danger);
+  font-weight: 700;
+  line-height: 1;
 }
 
 .form-field__control {

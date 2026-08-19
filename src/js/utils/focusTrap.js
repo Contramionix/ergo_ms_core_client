@@ -26,7 +26,7 @@ export function getFocusableElements(container) {
 
 /**
  * @param {HTMLElement} container
- * @param {{ initialFocus?: HTMLElement | null, restoreFocus?: boolean }} [options]
+ * @param {{ initialFocus?: HTMLElement | null, restoreFocus?: boolean, isActive?: () => boolean }} [options]
  * @returns {() => void} deactivate
  */
 export function activateFocusTrap(container, options = {}) {
@@ -34,11 +34,16 @@ export function activateFocusTrap(container, options = {}) {
     return () => {}
   }
 
+  const isActive = typeof options.isActive === 'function'
+    ? options.isActive
+    : () => true
+
   const previouslyFocused =
     document.activeElement instanceof HTMLElement ? document.activeElement : null
   const restoreFocus = options.restoreFocus !== false
 
   const focusInitial = () => {
+    if (!isActive()) return
     const preferred = options.initialFocus
     if (preferred && container.contains(preferred) && isVisible(preferred)) {
       preferred.focus()
@@ -57,6 +62,7 @@ export function activateFocusTrap(container, options = {}) {
 
   const onKeydown = (event) => {
     if (event.key !== 'Tab') return
+    if (!isActive()) return
     const items = getFocusableElements(container)
     if (!items.length) {
       event.preventDefault()

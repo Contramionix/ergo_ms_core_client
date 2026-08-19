@@ -150,7 +150,9 @@ watch(
       document.addEventListener('keydown', onKeydown)
       await nextTick()
       deactivateFocusTrap?.()
-      deactivateFocusTrap = activateFocusTrap(standaloneRootRef.value)
+      deactivateFocusTrap = activateFocusTrap(standaloneRootRef.value, {
+        isActive: () => isTopModal(props.modalId),
+      })
     } else {
       deactivateFocusTrap?.()
       deactivateFocusTrap = null
