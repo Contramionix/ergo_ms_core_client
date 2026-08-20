@@ -1,5 +1,6 @@
 import axios from 'axios'
 
+import { loadCollector } from '@/core/client_monitor/loadCollector.js'
 import tokenService from '@/core/cms/js/tokenService'
 import { clientEnv } from '@/js/clientEnv.js'
 import {
@@ -42,7 +43,7 @@ class ApiClient {
 
     // Сессионный мониторинг API — только если включён, не в стартовом чанке.
     if (clientEnv.monitoringEnabled) {
-      void import('@/core/client_monitor/collector.js').then(({ installAxiosMonitor }) => {
+      void loadCollector().then(({ installAxiosMonitor }) => {
         installAxiosMonitor(this.client)
       })
     }

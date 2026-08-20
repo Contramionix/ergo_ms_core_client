@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 
 import { bootLocalesPromise, i18n } from '@/i18n/index.js'
+import { clientEnv } from '@/js/clientEnv.js'
 
 /**
  * Откладывает некритичную работу после первого paint (не конкурирует с layout/session на 3G).
@@ -94,13 +95,16 @@ export async function runClientBoot(options = {}) {
 
   if (enableIdlePostBoot) {
     runWhenIdle(() => {
-      void import('@/core/client_monitor/index.js')
-        .then(({ initClientMonitor }) => {
-          void import('@/js/api/manager.js').then(({ apiClient }) => {
-            initClientMonitor({ app, router, axiosInstance: apiClient.client })
+      if (clientEnv.monitoringEnabled) {
+        void import('@/core/client_monitor/loadCollector.js')
+          .then(({ loadCollector }) => loadCollector())
+          .then(({ initClientMonitor }) => {
+            void import('@/js/api/manager.js').then(({ apiClient }) => {
+              initClientMonitor({ app, router, axiosInstance: apiClient.client })
+            })
           })
-        })
-        .catch(() => {})
+          .catch(() => {})
+      }
 
       void import('@/js/theme-service.js')
         .then(({ syncSiteThemeFromApi }) => syncSiteThemeFromApi())
