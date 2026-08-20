@@ -17,7 +17,9 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { enUS, fr, ru } from 'date-fns/locale'
+import { enUS } from 'date-fns/locale/en-US'
+import { fr } from 'date-fns/locale/fr'
+import { ru } from 'date-fns/locale/ru'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 import LucideIcon from '@/components/LucideIcon.vue'

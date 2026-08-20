@@ -365,7 +365,10 @@ function resolveManualChunk(id) {
   if (normalizedId.includes('foliate-js')) {
     return 'vendor_epub'
   }
-  if (normalizedId.includes('@vuepic/vue-datepicker')) {
+  if (
+    normalizedId.includes('@vuepic/vue-datepicker')
+    || normalizedId.includes('/date-fns/')
+  ) {
     return 'vendor_datepicker'
   }
   // lucide: не форсируем один vendor_lucide — иначе barrel+все named icons
