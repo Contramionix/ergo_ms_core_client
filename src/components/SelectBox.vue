@@ -65,6 +65,9 @@
                                 <li v-if="includeAllOption && !hasActiveSearch">
                                     <a class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" @click.prevent="choose(null)">{{ resolvedAllLabel }}</a>
                                 </li>
+                                <li v-if="!hasListContent">
+                                    <span class="dropdown-item dropdown-item--empty" role="status">{{ t('components.selectBox.nothingFound') }}</span>
+                                </li>
                                 <li v-for="opt in filteredOptions" :key="opt.key">
                                     <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" :style="getDropdownItemStyle(opt)" @click.prevent="choose(opt.value)">
                                         <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)" :depth="getOptionDepth(opt.raw)">
@@ -93,7 +96,12 @@
                             </ul>
                         </template>
                         <template v-else>
-                            <div class="dropdown-menu-list-virtual-wrap">
+                            <ul v-if="!hasListContent" class="dropdown-menu-list" role="presentation">
+                                <li>
+                                    <span class="dropdown-item dropdown-item--empty" role="status">{{ t('components.selectBox.nothingFound') }}</span>
+                                </li>
+                            </ul>
+                            <div v-else class="dropdown-menu-list-virtual-wrap">
                                 <div ref="listContainerRef" class="dropdown-menu-list virtual-list-container" @scroll="onListScroll">
                                     <div class="virtual-list-spacer" :style="{ height: totalHeight + 'px', position: 'relative' }">
                                         <div class="virtual-list-inner" :style="{ position: 'absolute', top: 0, left: 0, right: 0, transform: 'translateY(' + virtualOffsetY + 'px)' }">
@@ -329,6 +337,11 @@ const filteredOptions = computed(() => {
         const extraLower = getSearchExtraText(opt).toLowerCase()
         return Boolean(extraLower && extraLower.includes(qLower))
     })
+})
+
+const hasListContent = computed(() => {
+    if (props.includeAllOption && !hasActiveSearch.value) return true
+    return filteredOptions.value.length > 0
 })
 
 const isOpen = ref(false)

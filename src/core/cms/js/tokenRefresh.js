@@ -261,6 +261,7 @@ export async function performTokenRefresh() {
         {
           headers: { 'Content-Type': 'application/json' },
           withCredentials: true,
+          timeout: 8000,
           validateStatus: (status) =>
             status === 200
             || EXPECTED_REFRESH_FAILURE.has(status)
@@ -360,6 +361,7 @@ export async function performServerLogout(reason = 'unspecified') {
         {
           headers,
           withCredentials: true,
+          timeout: 8000,
           validateStatus: (status) =>
             (status >= 200 && status < 300) || status === 401 || status === 429,
         },

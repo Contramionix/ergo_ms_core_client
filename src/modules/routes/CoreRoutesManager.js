@@ -6,7 +6,9 @@
  * ВАЖНО: Использует глобы из ModuleLoader для единой точки загрузки
  */
 
+import { logError, logWarn } from '@/js/utils/logError.js'
 import { ModuleLoader } from '../core/ModuleLoader.js'
+import { authRoutes as fileAuthRoutes, coreRoutes as fileCoreRoutes } from '@/config/routes.js'
 import {
   buildNormalizedComponentsMap,
   componentPathToGlobKey,
@@ -14,12 +16,25 @@ import {
   findComponentLoader,
 } from './resolveComponentLoader.js'
 
-// Создаем один экземпляр ModuleLoader для доступа к общим глобам
 const sharedLoader = new ModuleLoader()
+
+function asRouteList(value) {
+  return Array.isArray(value) ? value : []
+}
 
 export class CoreRoutesManager {
   constructor(coreRoutesConfig) {
-    this.coreRoutesConfig = coreRoutesConfig
+    const fromArg = coreRoutesConfig && typeof coreRoutesConfig === 'object'
+      ? coreRoutesConfig
+      : {}
+    const coreList = asRouteList(fromArg.coreRoutes)
+    const authList = asRouteList(fromArg.authRoutes)
+    const fileCore = asRouteList(fileCoreRoutes)
+    const fileAuth = asRouteList(fileAuthRoutes)
+    this.coreRoutesConfig = {
+      coreRoutes: coreList.length ? coreList : fileCore,
+      authRoutes: authList.some((route) => route?.name === 'Login') ? authList : fileAuth,
+    }
   }
 
   getComponentsMap() {

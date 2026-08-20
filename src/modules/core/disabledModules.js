@@ -11,7 +11,10 @@ let disabledSet = null
 let fetchPromise = null
 
 function parseFromEnv() {
-  const raw = clientEnv.disabledModules
+  const raw = clientEnv?.disabledModules
+  if (typeof raw !== 'string' || !raw.trim()) {
+    return new Set()
+  }
   return new Set(raw.split(',').map(s => s.trim()).filter(Boolean))
 }
 

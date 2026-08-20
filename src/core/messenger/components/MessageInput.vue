@@ -66,7 +66,7 @@
 
 <script setup>
 import { ref, watch, nextTick, computed, defineAsyncComponent } from 'vue'
-import { Paperclip, Smile, SendHorizonal, Pencil, X, Check, FileText, CornerDownLeft } from 'lucide-vue-next'
+import { Paperclip, Smile, SendHorizonal, Pencil, X, Check, FileText, CornerDownLeft } from '@lucide/vue'
 import ContentImage from '@/components/ContentImage.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { getSafeHref } from '@/js/utils/urlUtils.js'

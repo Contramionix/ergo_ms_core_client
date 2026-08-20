@@ -1,7 +1,7 @@
 <script setup>
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, computed, defineAsyncComponent } from 'vue'
-import { Plus } from 'lucide-vue-next'
+import { Plus } from '@lucide/vue'
 import SearchInput from '@/components/SearchInput.vue'
 import SelectBox from '@/components/SelectBox.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'

@@ -15,6 +15,6 @@ onMounted(async () => {
     authGuard.stopTokenValidation()
     clearPostLoginReturnPath()
     await logout()
-    router.push({name:'StartPage'})
+    router.push({ name: 'Login' })
 })
 </script>

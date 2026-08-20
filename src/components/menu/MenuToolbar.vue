@@ -59,7 +59,6 @@
 <script setup>
 import UserMenu from '@/components/header/UserMenu.vue'
 import SettingsMenu from '@/components/menu/SettingsMenu.vue'
-import SidebarNotifications from '@/components/menu/SidebarNotifications.vue'
 import {
   computed,
   defineAsyncComponent,
@@ -69,10 +68,14 @@ import {
   ref,
   watch,
 } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { initUserSettings } from '@/core/cms/js/uiSettings.js'
 
 const AppsMenu = defineAsyncComponent(() => import('@/components/menu/AppsMenu.vue'))
+const SidebarNotifications = defineAsyncComponent(() =>
+  import('@/components/menu/SidebarNotifications.vue'),
+)
 const UserSettingsModal = defineAsyncComponent(() =>
   import('@/core/cms/adp/user/account/component/UserSettingsModal.vue'),
 )
@@ -107,6 +110,7 @@ const props = defineProps({
 const emit = defineEmits(['dropdown-state-change'])
 
 const userStore = useUserStore()
+const router = useRouter()
 const toolsRef = ref(null)
 const userMenuRef = ref(null)
 const notificationsMenuRef = ref(null)
@@ -123,6 +127,10 @@ let resizeObserver = null
 const toolbarIconSize = computed(() => (isCompact.value ? 18 : 20))
 
 function openUserSettingsModal(tab = 'profile') {
+  if (!userStore.isAuthenticated) {
+    router.push({ name: 'Login' })
+    return
+  }
   userSettingsInitialTab.value = tab || 'profile'
   userSettingsMounted.value = true
   showUserSettingsModal.value = true

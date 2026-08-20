@@ -23,6 +23,7 @@ export default {
     server: 'Server error',
     tooManyRequests: 'Too many requests. Please wait a moment and try again.',
     payloadTooLarge: 'The file is too large',
+    moduleUnavailable: 'This section is temporarily unavailable. The rest of the app still works.',
   },
   page: {
     notFound: 'Page not found',

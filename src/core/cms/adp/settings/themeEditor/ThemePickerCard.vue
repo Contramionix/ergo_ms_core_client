@@ -11,7 +11,7 @@ import {
   RotateCcw,
   Sun,
   Trash2,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import {
   resolveThemeDisplayDescription,
   resolveThemeDisplayName,

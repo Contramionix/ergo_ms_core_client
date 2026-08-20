@@ -17,7 +17,7 @@ fs.mkdirSync(outDir, { recursive: true })
 
 const packJson = {
   name: '@ergo-ms/client-shell',
-  version: '2.7.8',
+  version: '3.0.0',
   private: false,
   type: 'module',
   description: 'ERGO MS client shell for standalone module SPAs',
@@ -27,9 +27,10 @@ const packJson = {
     './shell': './src/shell/index.js',
   },
   peerDependencies: {
-    vue: '^3.5.0',
-    'vue-router': '^4.5.0',
-    pinia: '^2.3.0',
+    vue: '^3.5.34',
+    'vue-router': '^5.2.0',
+    pinia: '^4.0.0',
+    '@vue/devtools-api': '^8.1.5',
     'vue-i18n': '^11.0.0',
   },
 }

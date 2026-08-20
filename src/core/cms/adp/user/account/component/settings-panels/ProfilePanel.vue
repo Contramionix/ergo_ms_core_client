@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
-import { Save } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { Save } from '@lucide/vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import FormCard from '@/components/FormCard.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
@@ -27,6 +28,7 @@ const ProfileChangeRequestBlock = defineAsyncComponent(() =>
 )
 
 const { t } = useAppI18n()
+const router = useRouter()
 const toast = useToast()
 const userStore = useUserStore()
 const { updateProfile } = useProfile()
@@ -43,14 +45,23 @@ const identityReadonly = computed(
   () => profileSelfEditEnabled.value === false && !userStore.accessToPanel,
 )
 
+function goToLogin() {
+  router.push({ name: 'Login' })
+}
+
 const fetchProfile = async () => {
   try {
     loading.value = true
 
-    const settingsPromise = fetchProfileSettings()
     if (!userStore.isInitialized) {
       await userStore.ensureUserReady()
     }
+    if (!userStore.isAuthenticated) {
+      profileData.value = null
+      return
+    }
+
+    const settingsPromise = fetchProfileSettings()
 
     const [settings] = await Promise.all([
       settingsPromise,
@@ -181,9 +192,24 @@ onMounted(() => {
     </template>
 
     <div v-else class="profile-panel__empty text-center py-4">
-      <p class="text-muted mb-3">{{ t('settings.profile.loadFailed') }}</p>
-      <button type="button" class="btn btn-outline-primary btn-sm" @click="fetchProfile">
+      <p class="text-muted mb-3">
+        {{ userStore.isAuthenticated ? t('settings.profile.loadFailed') : t('auth.start.subtitle') }}
+      </p>
+      <button
+        v-if="userStore.isAuthenticated"
+        type="button"
+        class="ui-btn ui-btn--primary"
+        @click="fetchProfile"
+      >
         {{ t('settings.profile.tryAgain') }}
+      </button>
+      <button
+        v-else
+        type="button"
+        class="ui-btn ui-btn--primary"
+        @click="goToLogin"
+      >
+        {{ t('auth.login.submit') }}
       </button>
     </div>
     </LoadingContentArea>

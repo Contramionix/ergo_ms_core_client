@@ -94,6 +94,8 @@ const config = defineConfig({
       scss: {
         additionalData: `@use "@/scss/_inject.scss"as *;\n`,
         loadPaths: [npmModules],
+        quietDeps: true,
+        silenceDeprecations: ['import', 'global-builtin', 'color-functions'],
       },
     },
   },
@@ -106,7 +108,7 @@ const config = defineConfig({
       formats: ['es'],
       fileName: () => 'remoteEntry.js',
     },
-    rollupOptions: {
+    rolldownOptions: {
       external: [...sharedList, 'ergo-shared/module-bridge'],
       output: {
         assetFileNames: 'assets/[name]-[hash][extname]',

@@ -421,6 +421,10 @@ async function onHideSidebar(id) {
 }
 
 .notifications-dropdown__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 1.5rem 1rem;
   text-align: center;
   font-size: 0.875rem;

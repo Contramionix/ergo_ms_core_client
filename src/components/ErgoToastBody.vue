@@ -1,5 +1,5 @@
 <script setup>
-import { CheckCircle, AlertCircle, AlertTriangle, Info, X } from 'lucide-vue-next'
+import { CheckCircle, AlertCircle, AlertTriangle, Info, X } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { tGlobal } from '@/i18n/index.js'
 import { logError } from '@/js/utils/logError.js'
@@ -27,6 +27,14 @@ const props = defineProps({
     type: Function,
     default: null,
   },
+  duration: {
+    type: Number,
+    default: 0,
+  },
+  hideProgressBar: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['close-toast'])
@@ -43,7 +51,7 @@ const iconMap = {
 
 const IconComponent = computed(() => iconMap[props.type] || iconMap.info)
 
-// Toast рендерится в отдельном app vue-toastification — useI18n/inject там ненадёжен.
+// Toast рендерится через vue-sonner (custom) — useI18n/inject там ненадёжен.
 const closeLabel = computed(() => tGlobal('common.close'))
 
 const hasAction = computed(
@@ -55,6 +63,14 @@ const hasSecondaryAction = computed(
 )
 
 const hasAnyAction = computed(() => hasAction.value || hasSecondaryAction.value)
+
+const showProgress = computed(
+  () => !props.hideProgressBar && Number(props.duration) > 0 && Number.isFinite(props.duration),
+)
+
+const progressStyle = computed(() => (
+  showProgress.value ? { animationDuration: `${props.duration}ms` } : null
+))
 
 const iconColorVar = computed(() => {
   switch (props.type) {
@@ -154,15 +170,23 @@ async function runSecondaryAction() {
     >
       <X :size="16" />
     </button>
+    <span
+      v-if="showProgress"
+      class="ergo-toast-body__progress"
+      :style="progressStyle"
+      aria-hidden="true"
+    />
   </div>
 </template>
 
 <style scoped>
 .ergo-toast-body {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
+  padding: 10px 14px;
   color: var(--ui-text);
 }
 
@@ -297,5 +321,47 @@ async function runSecondaryAction() {
 
 .ergo-toast-body__close:hover {
   opacity: 1;
+}
+
+.ergo-toast-body__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  transform: scaleX(1);
+  transform-origin: left center;
+  opacity: 0.55;
+  pointer-events: none;
+  animation-name: ergo-toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+.ergo-toast-body--success .ergo-toast-body__progress {
+  background: var(--bs-success);
+}
+
+.ergo-toast-body--error .ergo-toast-body__progress {
+  background: var(--bs-danger);
+}
+
+.ergo-toast-body--warning .ergo-toast-body__progress {
+  background: var(--bs-warning);
+}
+
+.ergo-toast-body--info .ergo-toast-body__progress,
+.ergo-toast-body--default .ergo-toast-body__progress {
+  background: var(--bs-info);
+}
+
+@keyframes ergo-toast-progress {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
 }
 </style>

@@ -27,7 +27,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { MessageSquareMore } from 'lucide-vue-next'
+import { MessageSquareMore } from '@lucide/vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { getCurrentBcp47 } from '@/i18n/index.js'
 import MessageBubble from './MessageBubble.vue'

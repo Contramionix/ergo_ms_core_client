@@ -1,7 +1,7 @@
 <script setup>
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, watch } from 'vue'
-import { Copy, Mail } from 'lucide-vue-next'
+import { Copy, Mail } from '@lucide/vue'
 import { createInvitation } from '@/core/cms/adp/admin/js/invitationService'
 import { copyTextToClipboard } from '@/js/utils/clipboard.js'
 import { extractApiError } from '@/js/utils/apiErrorMessage.js'

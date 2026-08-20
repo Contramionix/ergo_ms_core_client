@@ -1,6 +1,6 @@
 /**
- * Ленивая загрузка иконок Lucide по одной (dist/esm/icons/*.js),
- * без import всего barrel lucide-vue-next в критический путь.
+ * Ленивая загрузка иконок Lucide по одной (dist/esm/icons/*.mjs),
+ * без import всего barrel @lucide/vue в критический путь.
  *
  * Канонический формат имени — Lucide PascalCase (`User`, `MessageSquareText`).
  * Модули и API передают строку; рендер — через LucideIcon / getLucideIconAsync.
@@ -11,7 +11,7 @@
  * Путь от src/js к virtual_env/npm/node_modules (см. npm-workspace).
  */
 const iconModules = import.meta.glob(
-  '../../../../virtual_env/npm/node_modules/lucide-vue-next/dist/esm/icons/*.js',
+  '../../../../virtual_env/npm/node_modules/@lucide/vue/dist/esm/icons/*.mjs',
 )
 
 /**
@@ -58,7 +58,7 @@ export function normalizeLucideIconName(name) {
 const iconLoaderByFile = new Map()
 for (const [key, loader] of Object.entries(iconModules)) {
   const normalized = key.replace(/\\/g, '/')
-  const match = normalized.match(/\/icons\/([^/]+)\.js$/)
+  const match = normalized.match(/\/icons\/([^/]+)\.m?js$/)
   if (match) {
     iconLoaderByFile.set(match[1], loader)
   }

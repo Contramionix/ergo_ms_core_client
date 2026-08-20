@@ -169,7 +169,11 @@ export const modulesComponents = ${buildModuleComponentsExport()}
 `
 
 fs.mkdirSync(path.dirname(outputPath), { recursive: true })
-fs.writeFileSync(outputPath, content, 'utf8')
+if (fs.existsSync(outputPath) && fs.readFileSync(outputPath, 'utf8') === content) {
+  console.log('[SKIP] sharedGlobs.generated.js: содержимое не изменилось')
+} else {
+  fs.writeFileSync(outputPath, content, 'utf8')
+}
 
 if (skipModuleGlobs) {
   console.log(

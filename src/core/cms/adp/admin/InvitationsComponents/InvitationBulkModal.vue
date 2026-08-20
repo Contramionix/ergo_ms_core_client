@@ -15,7 +15,7 @@ import {
   Users,
   CheckCircle2,
   AlertTriangle,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import {
   downloadInvitationTemplate,
   parseInvitationEmailsFromFile,

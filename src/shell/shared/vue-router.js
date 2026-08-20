@@ -1,3 +1,2 @@
-/** Shared vue-router для federated remotes. */
+/** Shared vue-router для federated remotes. Vue Router 5 — только named export. */
 export * from 'vue-router'
-export { default } from 'vue-router'

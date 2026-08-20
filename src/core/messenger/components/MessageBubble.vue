@@ -75,7 +75,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
-import { Paperclip, Pencil, Trash2, Reply } from 'lucide-vue-next'
+import { Paperclip, Pencil, Trash2, Reply } from '@lucide/vue'
 import ContentImage from '@/components/ContentImage.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'

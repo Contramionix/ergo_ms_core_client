@@ -1,7 +1,7 @@
 <script setup>
 import { ref, defineAsyncComponent } from 'vue'
 import SearchInput from '@/components/SearchInput.vue'
-import { Plus } from 'lucide-vue-next'
+import { Plus } from '@lucide/vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const { t } = useAppI18n()

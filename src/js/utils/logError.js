@@ -1,6 +1,25 @@
+import { isMonitoringEnabled } from '@/core/client_monitor/session.js'
+import { loadCollector } from '@/core/client_monitor/loadCollector.js'
 import { parseApiErrorData } from '@/js/utils/apiErrorMessage.js'
 import { sendBrowserError } from '@/js/utils/clientBrowserLog.js'
-import { trackMonitorError, trackMonitorWarn } from '@/core/client_monitor/collector.js'
+
+function trackMonitorError(message, extra) {
+  if (!isMonitoringEnabled()) {
+    return
+  }
+  void loadCollector()
+    .then((mod) => mod.trackMonitorError(message, extra))
+    .catch(() => {})
+}
+
+function trackMonitorWarn(message, extra) {
+  if (!isMonitoringEnabled()) {
+    return
+  }
+  void loadCollector()
+    .then((mod) => mod.trackMonitorWarn(message, extra))
+    .catch(() => {})
+}
 
 
 const SENSITIVE_KEYS = new Set([
@@ -25,6 +44,10 @@ function isSensitiveKey(key) {
     return false
   }
   const lower = key.toLowerCase()
+  // Цикл импортов: SENSITIVE_KEYS ещё не создан, а logError уже вызвали из конструктора.
+  if (!SENSITIVE_KEYS || typeof SENSITIVE_KEYS.has !== 'function') {
+    return lower.includes('password') || lower.includes('token') || lower.includes('secret')
+  }
   return (
     SENSITIVE_KEYS.has(lower)
     || lower.includes('password')

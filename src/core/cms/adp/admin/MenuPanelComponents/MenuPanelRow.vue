@@ -65,7 +65,7 @@
 <script setup>
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { computed } from 'vue'
-import { Edit, Trash } from 'lucide-vue-next'
+import { Edit, Trash } from '@lucide/vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 
 const { t } = useAppI18n()

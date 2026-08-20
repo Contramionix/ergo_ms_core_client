@@ -78,6 +78,14 @@ export function extractApiError(error, fallback) {
   if (status === 413) {
     return tGlobal('errors.api.payloadTooLarge')
   }
+  if (status === 502 || status === 503 || status === 504) {
+    const data = error?.response?.data
+    const detail = typeof data === 'object' && data ? data.detail : data
+    const header = error?.response?.headers?.['x-ergo-module-unavailable']
+    if (header || detail === 'module_unavailable') {
+      return tGlobal('errors.api.moduleUnavailable')
+    }
+  }
   return parseApiErrorData(error?.response?.data ?? error, {
     fallback: fallback ?? defaultFallback(),
     mode: 'first',

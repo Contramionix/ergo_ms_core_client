@@ -1,6 +1,6 @@
 /**
  * Генерирует lucideIconFiles.generated.js — PascalCase → kebab file
- * из barrel lucide-vue-next (алиасы Home→house и т.п.).
+ * из barrel @lucide/vue (алиасы Home→house и т.п.).
  */
 import fs from 'fs'
 import path from 'path'
@@ -15,9 +15,9 @@ const require = createRequire(import.meta.url)
 
 function resolveLucideBarrel() {
   try {
-    const pkgJson = require.resolve('lucide-vue-next/package.json')
+    const pkgJson = require.resolve('@lucide/vue/package.json')
     const pkgDir = path.dirname(pkgJson)
-    const barrel = path.join(pkgDir, 'dist/esm/lucide-vue-next.js')
+    const barrel = path.join(pkgDir, 'dist/esm/lucide-vue.mjs')
     if (fs.existsSync(barrel)) {
       return barrel
     }
@@ -27,19 +27,19 @@ function resolveLucideBarrel() {
 
   const fallback = path.resolve(
     clientRoot,
-    '../../virtual_env/npm/node_modules/lucide-vue-next/dist/esm/lucide-vue-next.js',
+    '../../virtual_env/npm/node_modules/@lucide/vue/dist/esm/lucide-vue.mjs',
   )
   if (fs.existsSync(fallback)) {
     return fallback
   }
-  throw new Error('[generate-lucide-icon-map] lucide-vue-next barrel not found')
+  throw new Error('[generate-lucide-icon-map] @lucide/vue barrel not found')
 }
 
 function buildMap(barrelSource) {
   /** @type {Record<string, string>} */
   const map = {}
   for (const line of barrelSource.split(/\r?\n/)) {
-    const fileMatch = line.match(/from '\.\/icons\/([^']+)\.js'/)
+    const fileMatch = line.match(/from '\.\/icons\/([^']+)\.mjs'/)
     if (!fileMatch) {
       continue
     }
@@ -73,5 +73,10 @@ const lines = [
   '',
 ]
 
-fs.writeFileSync(outputPath, lines.join('\n'), 'utf8')
-console.log(`[OK] lucideIconFiles.generated.js: ${keys.length} icons`)
+const content = lines.join('\n')
+if (fs.existsSync(outputPath) && fs.readFileSync(outputPath, 'utf8') === content) {
+  console.log(`[SKIP] lucideIconFiles.generated.js: ${keys.length} icons, содержимое не изменилось`)
+} else {
+  fs.writeFileSync(outputPath, content, 'utf8')
+  console.log(`[OK] lucideIconFiles.generated.js: ${keys.length} icons`)
+}

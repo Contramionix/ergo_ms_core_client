@@ -28,8 +28,15 @@ function connectNotificationsSse(handlers) {
     },
   })
 
-  const off = client.on('notification_new', (event, data) => {
-    handlers.onMessage?.(event, data)
+  const notificationTypes = new Set([
+    'notification_new',
+    'notification_updated',
+    'notification_revoked',
+  ])
+  const off = client.on('*', (event, data) => {
+    if (notificationTypes.has(data?.type)) {
+      handlers.onMessage?.(event, data)
+    }
   })
 
   return {

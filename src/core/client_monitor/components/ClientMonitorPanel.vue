@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, computed, defineAsyncComponent } from 'vue'
-import { RefreshCw, Eye, AlertTriangle } from 'lucide-vue-next'
+import { RefreshCw, Eye, AlertTriangle } from '@lucide/vue'
 import { formatDateTime } from '@/js/utils/timeUtils.js'
 import DataTable from '@/components/DataTable.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'

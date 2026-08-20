@@ -1,5 +1,5 @@
 <script setup>
-import { Loader2, RefreshCw } from 'lucide-vue-next'
+import { Loader2, RefreshCw } from '@lucide/vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import PermissionTableHeader from '@/core/cms/adp/admin/PermissionsComponents/PermissionTableHeader.vue'
 import PermissionTable from '@/core/cms/adp/admin/PermissionsComponents/PermissionTable.vue'

@@ -13,7 +13,7 @@ import {
   Sun,
   Moon,
   AlertCircle,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import SelectBox from '@/components/SelectBox.vue'
 import ColorPicker from './ColorPicker.vue'
 import { useThemeEditor, isColorLikeToken } from './useThemeEditor.js'

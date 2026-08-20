@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { AlertTriangle, X } from 'lucide-vue-next'
+import { AlertTriangle, X } from '@lucide/vue'
 import ModalCenter from '@/components/ModalCenter.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
