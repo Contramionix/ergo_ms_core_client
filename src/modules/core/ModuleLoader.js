@@ -97,7 +97,7 @@ export class ModuleLoader {
    */
   _filterDisabledModules(globResult) {
     const disabled = getDisabledModulesSync()
-    if (!disabled.size) return globResult
+    if (!disabled?.size) return globResult
 
     const filtered = {}
     for (const [path, value] of Object.entries(globResult)) {

@@ -9,7 +9,6 @@
  */
 
 import '@/js/utils/logger.js'
-import 'vue-toastification/dist/index.css'
 import '@/scss/styles.scss'
 
 import { initUiPreferences } from '@/js/uiPreferences.js'

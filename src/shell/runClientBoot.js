@@ -40,14 +40,10 @@ export async function runClientBoot(options = {}) {
 
   const [
     appModule,
-    toastModule,
-    toastUtils,
     autoAnimateModule,
     wordmarkModule,
   ] = await Promise.all([
     import('@/App.vue'),
-    import('vue-toastification'),
-    import('@/js/utils/toast.js'),
     import('@/js/utils/autoAnimatePlugin.js'),
     import('@/js/siteWordmark.js'),
     import('@/core/cms/js/uiSettings.js'),
@@ -60,8 +56,6 @@ export async function runClientBoot(options = {}) {
   app.use(pinia)
   app.use(i18n)
   app.use(autoAnimateModule.gatedAutoAnimatePlugin)
-  app.use(toastModule.default, toastUtils.getToastPluginOptions())
-  toastUtils.syncToastPluginWithSettings()
 
   if (typeof document !== 'undefined') {
     document.title = wordmarkModule.DEFAULT_SITE_NAME
@@ -73,25 +67,30 @@ export async function runClientBoot(options = {}) {
     await beforeMount(ctx)
   }
 
-  await import('@/modules/i18n/LocaleManager.js')
+  // Каталоги модулей дорисуются после оболочки — не держим mount.
+  void import('@/modules/i18n/LocaleManager.js')
     .then(({ preloadModuleLocales }) => preloadModuleLocales())
     .catch(() => {})
 
-  const [, router] = await Promise.all([
-    import('@/js/api/endpoints.js').then((m) => m.initEndpoints()),
-    import('@/js/routers.js').then((m) => m.initRouter()),
+  const [
+    { bootstrapAppSession },
+    { initEndpoints },
+    routersModule,
+  ] = await Promise.all([
+    import('@/js/bootstrapSession.js'),
+    import('@/js/api/endpoints.js'),
+    import('@/js/routers.js'),
   ])
 
+  await initEndpoints()
+  void bootstrapAppSession()
+  const router = await routersModule.initRouter()
   app.use(router)
 
   const { installStaleClientGuards } = await import('@/js/staleClientGuard.js')
   installStaleClientGuards({ app, router })
 
   app.mount(mount)
-
-  void import('@/js/bootstrapSession.js').then(({ bootstrapAppSession }) => {
-    void bootstrapAppSession()
-  })
 
   if (enableIdlePostBoot) {
     runWhenIdle(() => {

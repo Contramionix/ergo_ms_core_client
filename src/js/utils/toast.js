@@ -1,14 +1,10 @@
 import ErgoToastBody from '@/components/ErgoToastBody.vue'
-import {
-  createToastInterface,
-  globalEventBus,
-  useToast as useVueToast,
-} from 'vue-toastification'
+import { h } from 'vue'
+import { toast as sonnerToast } from 'vue-sonner'
 import {
   getToastSettingsSnapshot,
   getToastTimeouts,
   isToastEnabled,
-  subscribeToastSettingsChange,
 } from '@/js/utils/toastSettings.js'
 import { extractApiError } from '@/js/utils/apiErrorMessage.js'
 import { shouldSuppressRateLimitToast } from '@/composables/useRateLimitNotice.js'
@@ -76,10 +72,6 @@ function mapToastType(type) {
   return type
 }
 
-function isCustomToastContent(content) {
-  return content && typeof content === 'object' && (content.component || content.render)
-}
-
 const UNDOABLE_SUCCESS_TIMEOUT = 10000
 
 function resolveToastAction(toast) {
@@ -116,90 +108,100 @@ function resolveToastAction(toast) {
 }
 
 export function createToastFilterBeforeCreate() {
-  return (toast) => {
-    if (isCustomToastContent(toast.content) || typeof toast.content === 'function') {
-      return toast
-    }
+  return (toast) => toast
+}
 
-    const type = mapToastType(toast.type)
-    const {
+function toastDuration(timeout) {
+  if (timeout === false || timeout === 0) {
+    return Infinity
+  }
+  return timeout
+}
+
+function resolveToastId(type, message, options = {}) {
+  if (options.id != null && options.id !== '') {
+    return options.id
+  }
+  if (options.dedupe === false) {
+    return undefined
+  }
+  return `ergo:${type}:${normalizeToastMessage(message)}`
+}
+
+function showTyped(type, message, options = {}) {
+  if (!isToastEnabled()) {
+    return undefined
+  }
+  const normalizedType = mapToastType(type)
+  const {
+    actionLabel,
+    onAction,
+    secondaryActionLabel,
+    onSecondaryAction,
+  } = resolveToastAction(options)
+  const snapshot = getToastSettingsSnapshot()
+  const timeouts = getToastTimeouts()
+  const duration = toastDuration(
+    options.timeout ?? timeouts[normalizedType] ?? timeouts.default ?? TOAST_TIMEOUT.default,
+  )
+  const onClose = typeof options.onClose === 'function' ? options.onClose : null
+  let closed = false
+  const notifyClose = () => {
+    if (closed || !onClose) {
+      return
+    }
+    closed = true
+    onClose()
+  }
+  const hideProgressBar = snapshot.hideProgressBar === true
+  const pauseOnHover = snapshot.pauseOnHover !== false
+  const shouldDedupe = options.dedupe ?? !actionLabel
+  return sonnerToast.custom(
+    (id) => h(ErgoToastBody, {
+      message: normalizeToastMessage(message),
+      type: normalizedType,
+      duration: duration === Infinity ? 0 : duration,
+      hideProgressBar,
       actionLabel,
       onAction,
       secondaryActionLabel,
       onSecondaryAction,
-    } = resolveToastAction(toast)
-    const { action: _action, secondaryAction: _secondaryAction, ...toastRest } = toast
-
-    return {
-      ...toastRest,
-      type,
-      icon: false,
-      closeButton: false,
-      toastClassName: [
-        'ergo-toast',
-        `ergo-toast--${type}`,
-        actionLabel || secondaryActionLabel ? 'ergo-toast--with-action' : null,
-      ].filter(Boolean),
-      bodyClassName: 'ergo-toast__body',
-      content: {
-        component: ErgoToastBody,
-        props: {
-          message: normalizeToastMessage(toast.content),
-          type,
-          actionLabel,
-          onAction,
-          secondaryActionLabel,
-          onSecondaryAction,
-        },
+      onCloseToast: () => {
+        sonnerToast.dismiss(id)
+        notifyClose()
       },
-    }
-  }
+    }),
+    {
+      id: resolveToastId(normalizedType, message, {
+        id: options.id,
+        dedupe: shouldDedupe,
+      }),
+      duration,
+      unstyled: true,
+      class: [
+        'ergo-toast',
+        `ergo-toast--${normalizedType}`,
+        actionLabel || secondaryActionLabel ? 'ergo-toast--with-action' : null,
+        pauseOnHover ? 'ergo-toast--pause-on-hover' : null,
+      ].filter(Boolean).join(' '),
+      onAutoClose: notifyClose,
+      onDismiss: notifyClose,
+    },
+  )
 }
 
 export function getToastPluginOptions() {
   const snapshot = getToastSettingsSnapshot()
   const timeouts = getToastTimeouts(snapshot.durationPreset)
-
   return {
     position: snapshot.position,
     maxToasts: snapshot.maxToasts,
     timeout: timeouts.default,
-    draggable: snapshot.draggable,
-    pauseOnHover: snapshot.pauseOnHover,
-    closeOnClick: false,
-    showCloseButtonOnHover: false,
-    hideProgressBar: snapshot.hideProgressBar,
-    shareAppContext: true,
-    // role=alert + aria-live для дикторов (vue-toastification)
-    containerClassName: 'ergo-toast-container',
-    filterBeforeCreate: createToastFilterBeforeCreate(),
-    toastDefaults: {
-      success: { timeout: timeouts.success },
-      error: { timeout: timeouts.error },
-      warning: { timeout: timeouts.warning },
-      info: { timeout: timeouts.info },
-    },
   }
 }
 
 export function syncToastPluginWithSettings() {
-  const snapshot = getToastSettingsSnapshot()
-  const timeouts = getToastTimeouts(snapshot.durationPreset)
-
-  getToast().updateDefaults({
-    position: snapshot.position,
-    maxToasts: snapshot.maxToasts,
-    timeout: timeouts.default,
-    draggable: snapshot.draggable,
-    pauseOnHover: snapshot.pauseOnHover,
-    hideProgressBar: snapshot.hideProgressBar,
-    toastDefaults: {
-      success: { timeout: timeouts.success },
-      error: { timeout: timeouts.error },
-      warning: { timeout: timeouts.warning },
-      info: { timeout: timeouts.info },
-    },
-  })
+  // Позиция и лимиты читает ErgoToaster из toastSettings.
 }
 
 function mergeOptions(type, options = {}) {
@@ -212,53 +214,16 @@ function mergeOptions(type, options = {}) {
   }
 }
 
-export function wrapToastInterface(rawToast) {
-  if (!rawToast) {
-    return rawToast
-  }
-
-  const show = (message, options = {}) => {
-    if (!isToastEnabled()) {
-      return undefined
-    }
-    return rawToast(normalizeToastMessage(message), options)
-  }
-
-  const wrapped = (message, options = {}) => show(message, options)
-
-  wrapped.clear = rawToast.clear.bind(rawToast)
-  wrapped.dismiss = rawToast.dismiss.bind(rawToast)
-  wrapped.update = rawToast.update.bind(rawToast)
-  wrapped.updateDefaults = rawToast.updateDefaults.bind(rawToast)
-
-  wrapped.success = (message, options = {}) => {
-    if (!isToastEnabled()) {
-      return undefined
-    }
-    return rawToast.success(normalizeToastMessage(message), mergeOptions('success', options))
-  }
-
-  wrapped.error = (message, options = {}) => {
-    if (!isToastEnabled()) {
-      return undefined
-    }
-    return rawToast.error(normalizeToastMessage(message), mergeOptions('error', options))
-  }
-
-  wrapped.warning = (message, options = {}) => {
-    if (!isToastEnabled()) {
-      return undefined
-    }
-    return rawToast.warning(normalizeToastMessage(message), mergeOptions('warning', options))
-  }
-
-  wrapped.info = (message, options = {}) => {
-    if (!isToastEnabled()) {
-      return undefined
-    }
-    return rawToast.info(normalizeToastMessage(message), mergeOptions('info', options))
-  }
-
+function createToastApi() {
+  const wrapped = (message, options = {}) => showTyped(options.type || 'info', message, options)
+  wrapped.clear = () => sonnerToast.dismiss()
+  wrapped.dismiss = (id) => sonnerToast.dismiss(id)
+  wrapped.update = () => {}
+  wrapped.updateDefaults = () => {}
+  wrapped.success = (message, options = {}) => showTyped('success', message, mergeOptions('success', options))
+  wrapped.error = (message, options = {}) => showTyped('error', message, mergeOptions('error', options))
+  wrapped.warning = (message, options = {}) => showTyped('warning', message, mergeOptions('warning', options))
+  wrapped.info = (message, options = {}) => showTyped('info', message, mergeOptions('info', options))
   return wrapped
 }
 
@@ -266,13 +231,13 @@ let globalToastInstance
 
 export function getToast() {
   if (!globalToastInstance) {
-    globalToastInstance = wrapToastInterface(createToastInterface(globalEventBus))
+    globalToastInstance = createToastApi()
   }
   return globalToastInstance
 }
 
 export function useToast() {
-  return wrapToastInterface(useVueToast())
+  return getToast()
 }
 
 export function showSuccess(message, duration) {
@@ -311,10 +276,6 @@ export function showToast(message, type = 'info', duration) {
 
   return toast(message, mergeOptions(normalizedType, { timeout }))
 }
-
-subscribeToastSettingsChange(() => {
-  syncToastPluginWithSettings()
-})
 
 export async function handleApiError(error, defaultMessage) {
   const status = error?.response?.status

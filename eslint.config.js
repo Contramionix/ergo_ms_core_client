@@ -108,6 +108,9 @@ export default defineConfig({
             varsIgnorePattern: '^_',
           },
         ],
+        // ESLint 10 recommended: в кодовой базе ещё есть срабатывания, не валим lint:check.
+        'no-useless-assignment': 'warn',
+        'preserve-caught-error': 'warn',
       },
     },
     {

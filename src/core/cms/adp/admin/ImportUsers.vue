@@ -9,7 +9,7 @@ import {
   Info,
   Users,
   AlertCircle,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import { formatFileSize } from '@/js/utils/file-helpers.js'

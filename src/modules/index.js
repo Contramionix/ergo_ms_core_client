@@ -7,19 +7,22 @@
 
 import { ModuleManager } from './ModuleManager.js'
 import { CoreRoutesManager } from './routes/CoreRoutesManager.js'
-import coreRoutesConfig from '@/config/routes.js'
+import { authRoutes, coreRoutes } from '@/config/routes.js'
 import { resolveRouteTitle } from '@/i18n/resolveRouteTitle.js'
 
 export const moduleManager = new ModuleManager()
-export const coreRoutesManager = new CoreRoutesManager(coreRoutesConfig)
+export const coreRoutesManager = new CoreRoutesManager({
+  coreRoutes,
+  authRoutes,
+})
 
 /**
  * Генерирует все роуты для Vue Router
  * @returns {Promise<Array>}
  */
 export async function generateAllRoutes() {
-  const coreRoutes = coreRoutesManager.getAllCoreRoutes()
-  return await moduleManager.generateAllRoutes(coreRoutes)
+  const baseRoutes = coreRoutesManager.getAllCoreRoutes()
+  return await moduleManager.generateAllRoutes(baseRoutes)
 }
 
 /**

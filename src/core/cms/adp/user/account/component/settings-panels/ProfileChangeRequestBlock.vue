@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { Send } from 'lucide-vue-next'
+import { Send } from '@lucide/vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useToast } from '@/js/utils/toast.js'

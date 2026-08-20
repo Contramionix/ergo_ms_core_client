@@ -48,7 +48,10 @@ const goToApp = async (app) => {
   closeDropdown()
   if (typeof app.onClick === 'function') {
     try {
-      await app.onClick()
+      const opened = await app.onClick()
+      if (opened === false) {
+        logError(`Приложение не открылось (обработчик вернул false): ${app.id || app.name || ''}`)
+      }
     } catch (error) {
       logError('Ошибка открытия приложения:', error)
     }

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onBeforeUnmount, defineAsyncComponent } from 'vue'
-import { Upload, Trash2 } from 'lucide-vue-next'
+import { Upload, Trash2 } from '@lucide/vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'

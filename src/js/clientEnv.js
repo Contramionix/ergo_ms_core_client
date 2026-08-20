@@ -55,7 +55,7 @@ export const clientEnv = {
   realtimePollNotificationsMs: readInt('CLIENT_REALTIME_POLL_NOTIFICATIONS_INTERVAL', 15000),
   realtimePollAdminPresenceMs: readInt('CLIENT_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL', 10000),
   realtimePollMessengerMs: readInt('CLIENT_REALTIME_POLL_MESSENGER_INTERVAL', 5000),
-  systemVersion: readEnv('CLIENT_SYSTEM_VERSION', '2.7.8'),
+  systemVersion: readEnv('CLIENT_SYSTEM_VERSION', '3.0.0'),
   /** Кнопка «Отменить» в toast (редактор тем и др.). */
   toastUndoEnabled: readBool('CLIENT_TOAST_UNDO_ENABLED', false),
   /** Глубина стека отмен для «Стандарт системы» (минимум 1). */

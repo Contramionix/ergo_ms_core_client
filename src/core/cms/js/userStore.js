@@ -18,6 +18,7 @@ import {
   setSessionBootstrapCache,
 } from '@/core/cms/js/sessionBootstrapCache.js'
 import { takePendingSessionBootstrap } from '@/core/cms/js/tokenRefresh.js'
+import tokenService from '@/core/cms/js/tokenService.js'
 import { invalidateAdminAccessCache } from '@/core/cms/adp/admin/js/adminAccessCache.js'
 import { applyRealtimeConfigFromApi } from '@/js/realtime/config.js'
 import {
@@ -208,6 +209,9 @@ export const useUserStore = defineStore('userStore', () => {
         isLoading.value = true
         let data = takePendingSessionBootstrap()
         if (!data) {
+          if (!tokenService.getAccess()) {
+            return false
+          }
           const response = await apiClient.get(endpoints.auth.sessionBootstrap)
           if (!response?.success) {
             throw new Error('Не удалось загрузить данные сессии')

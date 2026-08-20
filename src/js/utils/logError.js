@@ -25,6 +25,10 @@ function isSensitiveKey(key) {
     return false
   }
   const lower = key.toLowerCase()
+  // Цикл импортов: SENSITIVE_KEYS ещё не создан, а logError уже вызвали из конструктора.
+  if (!SENSITIVE_KEYS || typeof SENSITIVE_KEYS.has !== 'function') {
+    return lower.includes('password') || lower.includes('token') || lower.includes('secret')
+  }
   return (
     SENSITIVE_KEYS.has(lower)
     || lower.includes('password')

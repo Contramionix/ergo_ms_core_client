@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { FileText, X } from 'lucide-vue-next'
+import { FileText, X } from '@lucide/vue'
 import ContentImage from '@/components/ContentImage.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 

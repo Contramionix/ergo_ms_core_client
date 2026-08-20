@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { Bell } from 'lucide-vue-next'
+import { Bell } from '@lucide/vue'
 import SettingsCard from '@/components/SettingsCard.vue'
 import SettingsCardRow from '@/components/SettingsCardRow.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'

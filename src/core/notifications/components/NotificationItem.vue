@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Archive, ArchiveRestore, EyeOff, } from 'lucide-vue-next'
+import { Archive, ArchiveRestore, EyeOff, } from '@lucide/vue'
 import { resolveNotificationIconName } from '@/core/notifications/js/icon-resolver.js'
 import NotificationActions from '@/core/notifications/components/NotificationActions.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'

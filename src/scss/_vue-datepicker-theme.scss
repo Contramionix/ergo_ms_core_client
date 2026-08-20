@@ -1,11 +1,11 @@
 // Общие стили VueDatePicker — Bootstrap / ERGO MS theme variables.
 
 @mixin vue-datepicker-theme {
-  :deep(.dp__input_wrap) {
+  :deep(.dp--input-wrap) {
     width: 100%;
   }
 
-  :deep(.dp__input) {
+  :deep(.dp--input) {
     border: 1px solid var(--bs-border-color, var(--color-border));
     border-radius: 0.375rem;
     padding: 0.375rem 0.75rem;
@@ -24,15 +24,15 @@
     }
   }
 
-  :deep(.dp__menu) {
+  :deep(.dp--menu) {
     z-index: 1060 !important;
     border: 1px solid var(--bs-border-color, var(--color-border));
     box-shadow: var(--ui-shadow-md, 0 0.5rem 1rem rgba(0, 0, 0, 0.15));
     background-color: var(--bs-body-bg, var(--color-primary-background));
   }
 
-  :deep(.dp__theme_light),
-  :deep(.dp__theme_dark) {
+  :deep(.dp--theme-light),
+  :deep(.dp--theme-dark) {
     --dp-background-color: var(--bs-body-bg, var(--color-primary-background));
     --dp-text-color: var(--bs-body-color, var(--color-primary-text));
     --dp-hover-color: var(--bs-secondary-bg, var(--color-hover-background));

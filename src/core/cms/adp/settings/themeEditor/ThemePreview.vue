@@ -9,7 +9,7 @@ import {
   ChevronRight,
   FileText,
   MoreVertical,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { useThemeEditor } from './useThemeEditor.js'
 
 const { t } = useAppI18n()

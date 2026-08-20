@@ -16,7 +16,7 @@
 -->
 
 <script setup>
-import { ChevronRight, Dot } from 'lucide-vue-next'
+import { ChevronRight, Dot } from '@lucide/vue'
 import { computed, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import LucideIcon from '@/components/LucideIcon.vue'

@@ -105,6 +105,8 @@ const config = defineConfig({
       scss: {
         additionalData: `@use "@/scss/_inject.scss"as *;\n`,
         loadPaths: [npmModules],
+        quietDeps: true,
+        silenceDeprecations: ['import', 'global-builtin', 'color-functions'],
       },
     },
   },
@@ -118,7 +120,7 @@ const config = defineConfig({
       CLIENT_MODULE_REMOTES: '',
       CLIENT_DEFAULT_LANGUAGE: env.DEFAULT_LANGUAGE || 'ru',
       CLIENT_DISABLED_MODULES: env.DISABLED_MODULES || '',
-      CLIENT_SYSTEM_VERSION: env.VERSION || '2.7.8',
+      CLIENT_SYSTEM_VERSION: env.VERSION || '3.0.0',
     }).map(([k, v]) => [`import.meta.env.${k}`, JSON.stringify(String(v))]),
   ),
   build: {

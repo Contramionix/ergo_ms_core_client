@@ -1,4 +1,4 @@
-import { fileURLToPath, URL } from 'node:url'
+import { fileURLToPath, pathToFileURL, URL } from 'node:url'
 import path from 'path'
 import fs from 'fs'
 import crypto from 'node:crypto'
@@ -22,7 +22,22 @@ const requireFromNpm = createRequire(path.join(npmModules, '_ergo_resolve.js'))
 const vue = requireFromNpm('@vitejs/plugin-vue')
 const AutoImport = requireFromNpm('unplugin-auto-import/vite')
 const { defineConfig } = requireFromNpm('vite')
-const { visualizer } = requireFromNpm('rollup-plugin-visualizer')
+
+/** ESM-only пакеты из virtual_env/npm (createRequire их не грузит). */
+async function importNpmEsm(pkgName) {
+  const dir = path.join(npmModules, pkgName)
+  const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'))
+  const exp = pkg.exports?.['.']
+  const rel = (exp && typeof exp === 'object' ? exp.import : exp) || pkg.module || pkg.main
+  if (!rel || typeof rel !== 'string') {
+    throw new Error(`Нет ESM-точки входа у ${pkgName}`)
+  }
+  return import(pathToFileURL(path.join(dir, rel)).href)
+}
+
+const { visualizer } = analyzeBuild
+  ? await importNpmEsm('rollup-plugin-visualizer')
+  : { visualizer: null }
 
 /** Пакеты лежат в virtual_env/npm/node_modules (не предок core/client). */
 function resolveFromNpmRootPlugin() {
@@ -126,8 +141,6 @@ const OPTIMIZE_DEPS_INCLUDE = [
   'vue-router',
   'pinia',
   'axios',
-  'exceljs',
-  'pdfjs-dist',
 ]
 
 function npmPackageAliases(names) {
@@ -237,7 +250,7 @@ function buildClientEnvDefines(envValues) {
     CLIENT_REALTIME_POLL_NOTIFICATIONS_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_NOTIFICATIONS_INTERVAL', 15000),
     CLIENT_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_ADMIN_PRESENCE_INTERVAL', 10000),
     CLIENT_REALTIME_POLL_MESSENGER_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_MESSENGER_INTERVAL', 5000),
-    CLIENT_SYSTEM_VERSION: envValues.VERSION || '2.7.8',
+    CLIENT_SYSTEM_VERSION: envValues.VERSION || '3.0.0',
     // Байты; те же ключи, что media_api (env/media.env)
     CLIENT_MEDIA_UPLOAD_MAX_SIZE: envValues.MEDIA_UPLOAD_MAX_SIZE || '524288000',
     CLIENT_MEDIA_UPLOAD_HARD_MAX_SIZE:
@@ -294,6 +307,24 @@ function resolveManualChunk(id) {
     }
 
     // ModuleLoader, RouteManager и т.п. — не module_api / module_core (ложное совпадение пути).
+    // Таблица Login/NotFound лежит в src/config/routes.js, не в src/modules/.
+    // Иначе при includeDependenciesRecursively: false её выкидывает из module_runtime.
+    if (/\/src\/config\/routes\.js$/.test(normalizedId)) {
+      return 'module_runtime'
+    }
+
+    // Singleton моста: integrations.js грузится отдельным чанком. Если ModuleBridge
+    // вклеить туда, AppsMenu и хост виджетов смотрят уже другую копию реестра.
+    if (/\/src\/integrations\/ModuleBridge\.js$/.test(normalizedId)) {
+      return 'module_runtime'
+    }
+
+    // Store модулей с module-level ref: обработчик AppsMenu и плавающая панель
+    // живут в разных чанках — без общего чанка клик открывает «чужую» копию.
+    if (/\/modules\/[^/]+\/client\/.*Store\.js$/.test(normalizedId)) {
+      return 'module_stores'
+    }
+
     if (normalizedId.includes(CORE_MODULE_SYSTEM)) {
       return 'module_runtime'
     }
@@ -321,6 +352,7 @@ function resolveManualChunk(id) {
     normalizedId.includes('apexcharts')
     || normalizedId.includes('vue3-apexcharts')
     || normalizedId.includes('chart.js')
+    || normalizedId.includes('vue-chartjs')
   ) {
     return 'vendor_charts'
   }
@@ -330,26 +362,26 @@ function resolveManualChunk(id) {
   if (normalizedId.includes('exceljs') || normalizedId.includes('pdfjs-dist')) {
     return 'vendor_heavy'
   }
-  if (normalizedId.includes('epubjs')) {
+  if (normalizedId.includes('foliate-js')) {
     return 'vendor_epub'
   }
   if (normalizedId.includes('@vuepic/vue-datepicker')) {
     return 'vendor_datepicker'
   }
   // lucide: не форсируем один vendor_lucide — иначе barrel+все named icons
-  // склеиваются в ~900KB; menu грузит icons/*.js точечно через lucideIconLoader.
+  // склеиваются в ~900KB; menu грузит icons/*.mjs точечно через lucideIconLoader.
   if (normalizedId.includes('axios')) {
     return 'vendor_axios'
   }
   if (
     normalizedId.includes('/vue-router/')
     || normalizedId.includes('/pinia/')
-    || (normalizedId.includes('/vue/') && !normalizedId.includes('lucide-vue-next'))
+    || (normalizedId.includes('/vue/') && !normalizedId.includes('@lucide/vue') && !normalizedId.includes('/lucide/vue/'))
     || normalizedId.includes('/@vue/')
   ) {
     return 'vendor_vue'
   }
-  if (normalizedId.includes('bootstrap') || normalizedId.includes('vue-toastification')) {
+  if (normalizedId.includes('bootstrap') || normalizedId.includes('vue-sonner')) {
     return 'vendor_ui'
   }
 
@@ -380,6 +412,28 @@ function clientBuildIdPlugin(buildId) {
         `${JSON.stringify({ buildId })}\n`,
         'utf8',
       )
+    },
+  }
+}
+
+/**
+ * Vite 8 минифицирует CSS через lightningcss до того, как Vue заменит :deep/:slotted/:global.
+ * @vitejs/plugin-vue глушит только префикс [lightningcss], а minify пишет [lightningcss minify].
+ */
+function suppressVueDeepLightningcssMinifyWarnings() {
+  return {
+    name: 'suppress-vue-deep-lightningcss-minify',
+    configResolved(config) {
+      const warn = config.logger.warn.bind(config.logger)
+      config.logger.warn = (...args) => {
+        const msg = String(args[0] ?? '')
+        if (
+          /\[lightningcss minify\] '(deep|slotted|global)' is not recognized as a valid pseudo-/.test(msg)
+        ) {
+          return
+        }
+        warn(...args)
+      }
     },
   }
 }
@@ -448,6 +502,7 @@ const plugins = [
   bootstrapEarlyAssetPlugin(),
   clientBuildIdPlugin(ERGO_CLIENT_BUILD_ID),
   vue(),
+  suppressVueDeepLightningcssMinifyWarnings(),
   AutoImport({
     imports: [
       {
@@ -531,15 +586,12 @@ if (federationShared) {
 
 export default defineConfig(() => ({
   build: {
-    // Согласовано с browserslist: последние 2 версии современных браузеров (без IE)
-    target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],
-    minify: 'esbuild',
+    // Vite 8 baseline widely available ≈ последние 2–3 года браузеров (без IE)
+    target: 'baseline-widely-available',
     cssCodeSplit: true,
     sourcemap: false,
-    rollupOptions: {
-      treeshake: {
-        preset: 'recommended',
-      },
+    rolldownOptions: {
+      // Rolldown не поддерживает Rollup treeshake.preset — дефолт уже recommended.
       ...(isFederatedHost
         ? {
             input: {
@@ -558,8 +610,25 @@ export default defineConfig(() => ({
           }
           return 'assets/[name]-[hash].js'
         },
-        manualChunks(id) {
-          return resolveManualChunk(id)
+        // Как прежний manualChunks: только сам модуль, без рекурсивного захвата зависимостей.
+        // У vendor_vue захват рекурсивный: иначе Rolldown выносит side-effect init в lib-*.js,
+        // получается цикл с vendor_vue и в браузере «e is not a function».
+        codeSplitting: {
+          includeDependenciesRecursively: false,
+          groups: [
+            {
+              test: (id) => resolveManualChunk(id) === 'vendor_vue',
+              name: 'vendor_vue',
+              includeDependenciesRecursively: true,
+            },
+            {
+              test: (id) => {
+                const name = resolveManualChunk(id)
+                return Boolean(name) && name !== 'vendor_vue'
+              },
+              name: (id) => resolveManualChunk(id),
+            },
+          ],
         },
       },
     },
@@ -574,6 +643,11 @@ export default defineConfig(() => ({
         find: /^vue$/,
         replacement: path.join(npmModules, 'vue/dist/vue.esm-bundler.js'),
       },
+      // Официальное имя пакета — @lucide/vue; модули ещё импортируют lucide-vue-next.
+      {
+        find: /^lucide-vue-next$/,
+        replacement: path.join(npmModules, '@lucide/vue'),
+      },
       // vue уже выше (ESM-бандл); остальные — для optimizeDeps.include
       ...npmPackageAliases(OPTIMIZE_DEPS_INCLUDE.filter((name) => name !== 'vue')),
     ],
@@ -586,6 +660,9 @@ export default defineConfig(() => ({
       scss: {
         additionalData: `@use "@/scss/_inject.scss"as *;\n`,
         loadPaths: [npmModules],
+        // Dart Sass 1.80+: @import и глобальные built-in — до Sass 3.0; Bootstrap 5.3 ещё на @import.
+        quietDeps: true,
+        silenceDeprecations: ['import', 'global-builtin', 'color-functions'],
       },
     },
     devSourcemap: false,
@@ -622,33 +699,32 @@ export default defineConfig(() => ({
   optimizeDeps: {
     exclude: ['@vite-ignore', 'vue3-apexcharts'],
     include: OPTIMIZE_DEPS_INCLUDE,
-    esbuildOptions: {
+    rolldownOptions: {
       plugins: [
         {
-          name: 'esbuild-stub-missing-core-imports',
-          setup(build) {
+          name: 'rolldown-stub-missing-core-imports',
+          resolveId(id) {
+            if (id === '\0virtual:empty-vue-component' || id.includes('virtual:empty-vue-component')) {
+              return '\0virtual:empty-vue-component'
+            }
+            if (!id.startsWith('@/core/')) {
+              return null
+            }
             const srcRoot = path.resolve(__dirname, 'src')
+            const filePath = id.slice(2)
+            const resolved = path.join(srcRoot, filePath)
             const exts = ['', '.js', '.vue', '.ts', '.json']
-
-            build.onResolve({ filter: /^@\/core\// }, (args) => {
-              const filePath = args.path.slice(2)
-              const resolved = path.join(srcRoot, filePath)
-              const exists = exts.some((ext) => fs.existsSync(resolved + ext))
-              if (!exists) {
-                return { path: args.path, namespace: 'stub-missing' }
-              }
-            })
-
-            build.onResolve({ filter: /virtual:empty-vue-component/ }, (args) => {
-              return { path: args.path, namespace: 'stub-missing' }
-            })
-
-            build.onLoad({ filter: /.*/, namespace: 'stub-missing' }, () => {
-              return {
-                contents: 'module.exports = new Proxy({}, { get: function(_, k) { return k === "__esModule" ? true : function(){} } })',
-                loader: 'js',
-              }
-            })
+            const exists = exts.some((ext) => fs.existsSync(resolved + ext))
+            if (!exists) {
+              return '\0virtual:empty-vue-component'
+            }
+            return null
+          },
+          load(id) {
+            if (id !== '\0virtual:empty-vue-component') {
+              return null
+            }
+            return 'import { defineComponent } from \'vue\'; export default defineComponent({ render() {} })'
           },
         },
       ],

@@ -165,6 +165,11 @@ const retryLabel = computed(() => {
   margin: 0 0 1.25rem;
 }
 
+.too-many-requests__wordmark :deep(.ergoms-logo__cog) {
+  transform-origin: 240px 66px;
+  animation: too-many-requests-cog 8s linear infinite;
+}
+
 .too-many-requests__badge {
   display: inline-block;
   margin: 0 0 0.75rem;
@@ -215,8 +220,18 @@ const retryLabel = computed(() => {
   }
 }
 
+@keyframes too-many-requests-cog {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 html[data-ergo-motion='reduce'] {
-  .too-many-requests__orb {
+  .too-many-requests__orb,
+  .too-many-requests__wordmark :deep(.ergoms-logo__cog) {
     animation: none !important;
   }
 }

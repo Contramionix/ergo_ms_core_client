@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-vue-next'
+import { CheckCircle, AlertCircle, AlertTriangle, Info } from '@lucide/vue'
 import SelectBox from '@/components/SelectBox.vue'
 import SettingsCard from '@/components/SettingsCard.vue'
 import SettingsCardRow from '@/components/SettingsCardRow.vue'

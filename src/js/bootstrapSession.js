@@ -1,5 +1,5 @@
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { restoreSession } from '@/core/cms/js/tokenRefresh.js'
+import { isServerLogoutFinalized, restoreSession } from '@/core/cms/js/tokenRefresh.js'
 import { getAccess } from '@/core/cms/js/tokenStorage.js'
 import { logError } from '@/js/utils/logError.js'
 import {
@@ -19,6 +19,14 @@ registerSessionBootstrap(async () => {
     const hasSession = await restoreSession()
     if (hasSession) {
       await userStore.loadSessionBootstrap()
+      const { router } = await import('@/js/routers.js')
+      const current = router?.currentRoute?.value
+      const onLoginShell = current?.name === 'Login' || current?.name === 'StartPage'
+      if (onLoginShell && userStore.isAuthenticated && !isServerLogoutFinalized()) {
+        const { consumePostLoginReturnPath } = await import('@/core/cms/js/postLoginReturn.js')
+        const returnPath = consumePostLoginReturnPath()
+        await router.replace(returnPath || { name: 'AppHome' }).catch(() => {})
+      }
     }
   } catch (error) {
     bootstrapError.value = error

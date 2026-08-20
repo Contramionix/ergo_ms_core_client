@@ -73,7 +73,7 @@
 
 <script setup>
 import { computed, ref, watch, nextTick, onBeforeUnmount, useId } from 'vue'
-import { ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight } from '@lucide/vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { hideHoverTooltipForOwner, showHoverTooltip, } from '@/js/utils/hoverTooltipLayer.js'
 import { useFilterMenuFlyout } from '@/composables/useFilterMenuFlyout.js'

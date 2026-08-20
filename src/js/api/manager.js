@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-import { installAxiosMonitor } from '@/core/client_monitor/collector.js'
 import tokenService from '@/core/cms/js/tokenService'
+import { clientEnv } from '@/js/clientEnv.js'
 import {
   canAttemptTokenRefresh,
   ensureAccessToken,
@@ -18,6 +18,7 @@ import {
   showRateLimitNotice,
 } from '@/composables/useRateLimitNotice.js'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
+import { extractApiError } from '@/js/utils/apiErrorMessage.js'
 import { logError, logWarn, sanitizeError } from '@/js/utils/logError.js'
 import { getCurrentLocale } from '@/i18n/index.js'
 
@@ -39,9 +40,12 @@ class ApiClient {
 
     this._setupInterceptors()
 
-    // Сессионный мониторинг API (CLIENT_MONITORING_ENABLED) — без петли на ingest.
-    // Static import: collector уже в бандле через logError / tokenService.
-    installAxiosMonitor(this.client)
+    // Сессионный мониторинг API — только если включён, не в стартовом чанке.
+    if (clientEnv.monitoringEnabled) {
+      void import('@/core/client_monitor/collector.js').then(({ installAxiosMonitor }) => {
+        installAxiosMonitor(this.client)
+      })
+    }
   }
 
 
@@ -133,7 +137,7 @@ class ApiClient {
             return this.client(originalRequest)
           }
           // Лимит / временный отказ refresh — оверлей 429, не страница логина.
-          if (wasLastRefreshTransient() || isRateLimitActive() || canAttemptTokenRefresh()) {
+          if (wasLastRefreshTransient() || isRateLimitActive()) {
             if (!isRateLimitActive() && wasLastRefreshTransient()) {
               showRateLimitNotice(0)
             }
@@ -151,7 +155,7 @@ class ApiClient {
               !path.includes('/forgot-password') &&
               !path.includes('/reset-password')
             ) {
-              window.location.href = '/start-page'
+              window.location.href = '/login'
             }
           }
         }
@@ -381,6 +385,25 @@ class ApiClient {
         message,
         status,
         errors: error.response?.data,
+      }
+    }
+
+    const data = error.response?.data
+    const detail = typeof data === 'object' && data ? data.detail : data
+    const headers = error.response?.headers || {}
+    const moduleGone = Boolean(
+      headers['x-ergo-module-unavailable']
+      || headers['X-Ergo-Module-Unavailable']
+      || detail === 'module_unavailable'
+    )
+    if (moduleGone && (status === 502 || status === 503 || status === 504)) {
+      const message = extractApiError(error)
+      logWarn('[apiClient] module unavailable', { url: requestUrl, status })
+      return {
+        success: false,
+        message,
+        status,
+        errors: data,
       }
     }
 

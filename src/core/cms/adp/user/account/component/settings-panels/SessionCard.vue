@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { Globe, Laptop, Monitor, Smartphone, Tablet } from 'lucide-vue-next'
+import { Globe, Laptop, Monitor, Smartphone, Tablet } from '@lucide/vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const props = defineProps({

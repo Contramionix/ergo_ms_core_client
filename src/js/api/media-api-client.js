@@ -33,6 +33,18 @@ function throwUploadHttpError(status, data) {
  *   // result = { uuid, path, original_name, size, content_type }
  */
 class MediaApiClient {
+  constructor() {
+    /** @type {Map<string, { session: { upload_url: string, token: string }, expiresAt: number }>} */
+    this._sharedTokens = new Map()
+  }
+
+  _tokenCacheKey({ targetDir = '', maxSize, allowedTypes } = {}) {
+    return JSON.stringify({
+      targetDir,
+      maxSize: maxSize ?? null,
+      allowedTypes: allowedTypes || null,
+    })
+  }
 
   /**
    * Запросить upload-токен у core/api.
@@ -52,6 +64,24 @@ class MediaApiClient {
       throw new Error(response.message || 'Не удалось получить upload-токен')
     }
     return response.data
+  }
+
+  /**
+   * Токен с тем же targetDir/maxSize/types на время жизни HMAC (с запасом).
+   * Для пакетной загрузки в один каталог.
+   */
+  async _getReusableUploadToken(options = {}) {
+    const key = this._tokenCacheKey(options)
+    const cached = this._sharedTokens.get(key)
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.session
+    }
+    const session = await this.getUploadToken(options)
+    this._sharedTokens.set(key, {
+      session,
+      expiresAt: Date.now() + 240000,
+    })
+    return session
   }
 
   /**
@@ -129,22 +159,32 @@ class MediaApiClient {
    * @returns {Promise<{uuid, path, original_name, size, content_type}>}
    */
   async upload(file, options = {}, onProgress) {
-    const { upload_url, token } = await this.getUploadToken(options)
-    return this.uploadFile(file, upload_url, token, onProgress)
+    const { reuseUploadToken, ...tokenOptions } = options
+    const session = reuseUploadToken
+      ? await this._getReusableUploadToken(tokenOptions)
+      : await this.getUploadToken(tokenOptions)
+    return this.uploadFile(file, session.upload_url, session.token, onProgress)
   }
 
   /**
    * Загрузить несколько файлов последовательно.
+   * Один upload-токен на весь пакет (одинаковые targetDir / maxSize / types).
    * @param {File[]} files
    * @param {Object} options
    * @param {Function} [onFileProgress]    - (fileIndex, event)
    * @returns {Promise<Array>}             - массив результатов upload
    */
   async uploadMultiple(files, options = {}, onFileProgress) {
+    const session = await this.getUploadToken(options)
     const results = []
     for (let i = 0; i < files.length; i++) {
       const progress = onFileProgress ? (e) => onFileProgress(i, e) : undefined
-      const result = await this.upload(files[i], options, progress)
+      const result = await this.uploadFile(
+        files[i],
+        session.upload_url,
+        session.token,
+        progress,
+      )
       results.push(result)
     }
     return results

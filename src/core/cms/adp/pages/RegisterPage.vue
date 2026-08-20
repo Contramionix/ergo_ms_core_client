@@ -84,11 +84,38 @@ const canShowForm = computed(() => {
     && (!invitationRequired.value || invitationValid.value)
 })
 
+function inviteFromLocation() {
+  const fromQuery = (route.query.invite || '').toString().trim()
+  if (fromQuery) {
+    return fromQuery
+  }
+  const rawHash = (window.location.hash || '').replace(/^#/, '')
+  if (!rawHash) {
+    return ''
+  }
+  return (new URLSearchParams(rawHash).get('invite') || '').trim()
+}
+
+function stripInviteFromAddress() {
+  const nextQuery = { ...route.query }
+  const hadQueryInvite = Object.prototype.hasOwnProperty.call(nextQuery, 'invite')
+  if (hadQueryInvite) {
+    delete nextQuery.invite
+  }
+  const hadHashInvite = Boolean((window.location.hash || '').includes('invite='))
+  if (hadQueryInvite || hadHashInvite) {
+    router.replace({ query: nextQuery, hash: '' })
+  }
+}
+
 onMounted(async () => {
   try {
     registrationSettings.value = await fetchRegistrationSettings()
-    invitationToken.value = (route.query.invite || '').toString().trim()
+    invitationToken.value = inviteFromLocation()
     inviteCodeInput.value = invitationToken.value
+    if (invitationToken.value) {
+      stripInviteFromAddress()
+    }
 
     if (registrationSettings.value.invitation_required && invitationToken.value) {
       await applyInvitationToken(invitationToken.value)
@@ -114,9 +141,6 @@ async function applyInvitationToken(token) {
     invitationStatus.value = await validateInvitationToken(normalized)
     if (invitationStatus.value?.valid && invitationStatus.value.email) {
       form.email = invitationStatus.value.email
-      if (route.query.invite !== normalized) {
-        router.replace({ query: { ...route.query, invite: normalized } })
-      }
     } else {
       inviteCodeError.value = invitationStatus.value?.message
         || t('auth.invite.invalid')

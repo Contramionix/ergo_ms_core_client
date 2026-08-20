@@ -59,7 +59,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { Check } from 'lucide-vue-next'
+import { Check } from '@lucide/vue'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SearchInput from '@/components/SearchInput.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'

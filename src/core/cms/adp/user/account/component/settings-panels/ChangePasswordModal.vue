@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Eye, EyeOff, CheckCircle, Shield } from 'lucide-vue-next'
+import { Eye, EyeOff, CheckCircle, Shield } from '@lucide/vue'
 import ModalCenter from '@/components/ModalCenter.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useProfile } from '@/core/cms/js/profileService.js'

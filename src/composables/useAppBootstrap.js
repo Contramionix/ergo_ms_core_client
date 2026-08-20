@@ -1,6 +1,3 @@
-import { computed } from 'vue'
-
-import { useUserStore } from '@/core/cms/js/userStore.js'
 // side-effect: registerSessionBootstrap
 import '@/js/bootstrapSession.js'
 import {
@@ -10,14 +7,11 @@ import {
 } from '@/js/sessionReady.js'
 
 export function useAppBootstrap() {
-  const userStore = useUserStore()
-
-  const sessionBootstrapping = computed(
-    () => bootstrapping.value || (!userStore.isInitialized && userStore.isLoading),
-  )
-
+  // Скелетон меню смотрит только на одноразовый bootstrap сессии.
+  // userStore.isLoading сюда нельзя: MenuList.ensureUserReady ставит isLoading,
+  // скелетон размонтирует меню, onMounted повторяется → шторм 401 и toast.
   return {
-    bootstrapping: sessionBootstrapping,
+    bootstrapping,
     bootstrapError,
     whenSessionReady,
   }

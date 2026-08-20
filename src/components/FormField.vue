@@ -87,7 +87,17 @@ const { t } = useAppI18n()
   }
 
   .form-field__control {
+    display: flex;
+    align-items: center;
     flex: 0 0 auto;
+    line-height: 0;
+
+    :deep(.form-check-input) {
+      display: block;
+      float: none;
+      margin: 0;
+      vertical-align: middle;
+    }
   }
 }
 

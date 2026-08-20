@@ -3,7 +3,7 @@ import { ref, provide, onMounted, computed, defineAsyncComponent } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { restoreSiteThemeAfterEditor } from '@/js/theme-service.js'
 import { createThemeEditor, THEME_EDITOR_KEY } from './useThemeEditor.js'
-import { Edit, Eye } from 'lucide-vue-next'
+import { Edit, Eye } from '@lucide/vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 

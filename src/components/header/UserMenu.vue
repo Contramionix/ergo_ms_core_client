@@ -69,6 +69,14 @@ defineExpose({
   closeDropdown
 })
 
+function onTriggerClick() {
+  if (!userStore.isAuthenticated) {
+    router.push({ name: 'Login' })
+    return
+  }
+  toggleDropdown()
+}
+
 const handleLogout = async () => {
   closeDropdown()
   await userStore.logout()
@@ -117,7 +125,7 @@ watch(isOpen, async (newValue) => {
       :aria-label="`${t('menu.userMenu.ariaLabel')}: ${userName}`"
       :aria-expanded="isOpen"
       aria-haspopup="menu"
-      @click.stop="toggleDropdown"
+      @click.stop="onTriggerClick"
     >
       <span class="user-menu-trigger__avatar" aria-hidden="true">
         <UserAvatar

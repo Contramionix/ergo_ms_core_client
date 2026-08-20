@@ -4,6 +4,7 @@ import { logError } from '@/js/utils/logError.js'
 import tokenService from '@/core/cms/js/tokenService'
 import { connectNotificationsTransport } from '@/js/realtime/notificationsTransport.js'
 import { isHttpPollingMode, isSseMode } from '@/js/realtime/config.js'
+import { resetSyncNotificationCursor, setSyncLastNotificationId } from '@/js/realtime/syncPollingHub.js'
 import { isRealtimeEnvelope } from '@/js/realtime/envelope.js'
 import { notificationsApi } from './notifications-api'
 
@@ -83,13 +84,19 @@ function removeFromLists(id) {
   sidebarItems.value = sidebarItems.value.filter((n) => n.id !== id)
 }
 
+function maxKnownNotificationId() {
+  const fromItems = items.value.reduce((max, item) => Math.max(max, item?.id ?? 0), 0)
+  const fromSidebar = sidebarItems.value.reduce((max, item) => Math.max(max, item?.id ?? 0), 0)
+  return Math.max(fromItems, fromSidebar)
+}
+
 function syncPollingCursorFromItems() {
-  if (!(isHttpPollingMode() || isSseMode()) || !wsConnection?.setLastNotificationId) {
+  if (!(isHttpPollingMode() || isSseMode())) {
     return
   }
-  const maxId = items.value.reduce((max, item) => Math.max(max, item?.id ?? 0), 0)
+  const maxId = maxKnownNotificationId()
   if (maxId > 0) {
-    wsConnection.setLastNotificationId(maxId)
+    setSyncLastNotificationId(maxId)
   }
 }
 
@@ -211,6 +218,7 @@ async function loadSidebar() {
     })
     const { list } = parseListResponse(listResp)
     sidebarItems.value = list
+    syncPollingCursorFromItems()
   } catch {
     sidebarItems.value = []
   } finally {
@@ -383,7 +391,10 @@ function showIncomingToast(notification) {
   try {
     const toast = useToast()
     const method = TOAST_METHOD_BY_LEVEL[notification.level] || 'info'
-    toast[method](notification.title, { timeout: 6000 })
+    toast[method](notification.title, {
+      timeout: 6000,
+      id: `inbox:${notification.id}`,
+    })
   } catch { /* toast — best effort, инбокс уже обновлён */ }
 }
 
@@ -460,6 +471,9 @@ function disconnect() {
 
 async function ensureInitialized(options = {}) {
   if (initialized) return
+  if (!tokenService.getAccess()) {
+    return
+  }
   initialized = true
   if (!options.skipLoad) {
     await loadPage(1)
@@ -477,6 +491,7 @@ async function ensureInitialized(options = {}) {
 /** Сброс inbox и транспорта (logout / смена сессии). */
 export function resetNotificationsInbox() {
   disconnect()
+  resetSyncNotificationCursor()
   items.value = []
   sidebarItems.value = []
   unreadCount.value = 0

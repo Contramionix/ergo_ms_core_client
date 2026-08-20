@@ -15,7 +15,7 @@ import {
   Upload,
   CheckCircle2,
   Info,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 
 const props = defineProps({
   message: { type: Object, required: true },

@@ -2,10 +2,7 @@ import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { isTransientNetworkError } from '@/core/cms/js/isTransientNetworkError.js'
 import { savePostLoginReturnPath } from '@/core/cms/js/postLoginReturn.js'
-import {
-  canAttemptTokenRefresh,
-  wasLastRefreshTransient,
-} from '@/core/cms/js/tokenRefresh.js'
+import { wasLastRefreshTransient } from '@/core/cms/js/tokenRefresh.js'
 import {
   isRateLimitActive,
   showRateLimitNotice,
@@ -93,7 +90,7 @@ export class AuthGuard {
       const isValid = await authService.checkToken()
       if (!isValid) {
         // 429/мигание refresh — оверлей, не страница логина
-        if (wasLastRefreshTransient() || isRateLimitActive() || canAttemptTokenRefresh()) {
+        if (wasLastRefreshTransient() || isRateLimitActive()) {
           if (!isRateLimitActive()) {
             showRateLimitNotice(0)
           }
@@ -113,7 +110,7 @@ export class AuthGuard {
       logError('Ошибка при проверке токена:', error)
       // Явный отказ auth / неожиданная ошибка с ответом сервера
       if (error.response?.status === 401 || error.response?.status === 403) {
-        if (wasLastRefreshTransient() || isRateLimitActive() || canAttemptTokenRefresh()) {
+        if (wasLastRefreshTransient() || isRateLimitActive()) {
           if (!isRateLimitActive()) {
             showRateLimitNotice(0)
           }
@@ -146,7 +143,7 @@ export class AuthGuard {
         && !path.includes('/login')
         && !path.includes('/register')
       ) {
-        window.location.href = '/start-page'
+        window.location.href = '/login'
       }
     }
   }
