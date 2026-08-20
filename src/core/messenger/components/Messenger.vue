@@ -35,7 +35,7 @@ import MessageInput from './MessageInput.vue'
 
 const props = defineProps({
   contentType: { type: String, required: true },
-  objectId: { type: Number, default: null },
+  objectId: { type: [Number, String], default: null },
   readonly: { type: Boolean, default: false },
   showSystemMessages: { type: Boolean, default: false },
   systemMessages: { type: Array, default: () => [] },
