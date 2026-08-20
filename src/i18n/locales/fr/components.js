@@ -157,6 +157,12 @@ export default {
     placeholderDateTime12: 'jj.mm.aaaa hh:mm AM',
     clear: 'Effacer la date',
   },
+  dropZone: {
+    title: 'Déposez les fichiers ici',
+    or: 'ou',
+    browse: 'sélectionnez sur l’ordinateur',
+    ariaLabel: 'Joindre un fichier',
+  },
   passwordInput: {
     label: 'Mot de passe',
     show: 'Afficher le mot de passe',

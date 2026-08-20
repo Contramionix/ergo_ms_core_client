@@ -157,6 +157,12 @@ export default {
     placeholderDateTime12: 'дд.мм.гггг чч:мм AM',
     clear: 'Очистить дату',
   },
+  dropZone: {
+    title: 'Перетащите файлы сюда',
+    or: 'или',
+    browse: 'выберите на компьютере',
+    ariaLabel: 'Прикрепить файл',
+  },
   passwordInput: {
     label: 'Пароль',
     show: 'Показать пароль',
