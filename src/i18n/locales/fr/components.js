@@ -51,6 +51,14 @@ export default {
   modal: {
     close: 'Fermer',
   },
+  imageLightbox: {
+    image: 'Image',
+    close: 'Fermer',
+    download: 'Télécharger',
+    prev: 'Photo précédente',
+    next: 'Photo suivante',
+    counter: '{current} sur {total}',
+  },
   sideDrawer: {
     close: 'Fermer',
   },

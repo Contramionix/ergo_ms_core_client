@@ -51,6 +51,14 @@ export default {
   modal: {
     close: 'Закрыть',
   },
+  imageLightbox: {
+    image: 'Изображение',
+    close: 'Закрыть',
+    download: 'Скачать',
+    prev: 'Предыдущее фото',
+    next: 'Следующее фото',
+    counter: '{current} из {total}',
+  },
   sideDrawer: {
     close: 'Закрыть',
   },

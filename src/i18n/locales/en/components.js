@@ -51,6 +51,14 @@ export default {
   modal: {
     close: 'Close',
   },
+  imageLightbox: {
+    image: 'Image',
+    close: 'Close',
+    download: 'Download',
+    prev: 'Previous photo',
+    next: 'Next photo',
+    counter: '{current} of {total}',
+  },
   sideDrawer: {
     close: 'Close',
   },
