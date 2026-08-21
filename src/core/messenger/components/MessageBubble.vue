@@ -17,18 +17,30 @@
 
         <div v-if="hasAttachments" class="msng-bubble__attachments">
           <template v-for="att in message.attachments" :key="att.id">
-            <a v-if="getSafeHref(att.file_url)" :href="getSafeHref(att.file_url)" target="_blank" rel="noopener noreferrer" class="msng-bubble__attachment">
+            <a
+              v-if="isImage(att.mime_type) && attachmentHref(att)"
+              :href="attachmentHref(att)"
+              class="msng-bubble__attachment"
+              @click.prevent="openImage(att)"
+            >
               <ContentImage
-                v-if="isImage(att.mime_type)"
-                :src="getSafeHref(att.file_url)"
+                :src="attachmentHref(att)"
                 :alt="att.original_filename || t('settings.messenger.attachment')"
                 class="msng-bubble__attachment-img"
               />
-              <span v-else class="msng-bubble__attachment-file">
+            </a>
+            <button
+              v-else-if="attachmentHref(att)"
+              type="button"
+              class="msng-bubble__attachment msng-bubble__attachment--file"
+              :aria-label="att.original_filename || t('settings.messenger.attachment')"
+              @click="downloadAttachment(att)"
+            >
+              <span class="msng-bubble__attachment-file">
                 <Paperclip :size="14" class="msng-bubble__attachment-icon" aria-hidden="true" />
                 {{ att.original_filename }}
               </span>
-            </a>
+            </button>
             <span v-else class="msng-bubble__attachment-file">
               <Paperclip :size="14" class="msng-bubble__attachment-icon" />
               {{ att.original_filename }}
@@ -81,6 +93,7 @@ import UserAvatar from '@/components/UserAvatar.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { getCurrentBcp47 } from '@/i18n/index.js'
 import { confirmDelete } from '@/js/utils/confirm.js'
+import { downloadMedia } from '@/js/utils/mediaDownload.js'
 import { getSafeHref } from '@/js/utils/urlUtils.js'
 
 const { t } = useAppI18n()
@@ -92,7 +105,7 @@ const props = defineProps({
   showAvatar: { type: Boolean, default: true },
 })
 
-const emit = defineEmits(['delete', 'edit-start', 'reply'])
+const emit = defineEmits(['delete', 'edit-start', 'reply', 'preview-image'])
 
 const showMenu = ref(false)
 const menuStyle = ref({})
@@ -116,6 +129,25 @@ const formattedTime = computed(() => {
 
 function isImage(mimeType) {
   return mimeType && mimeType.startsWith('image/')
+}
+
+function attachmentHref(att) {
+  return getSafeHref(att?.file_url)
+}
+
+function openImage(att) {
+  if (att?.id == null) return
+  emit('preview-image', att.id)
+}
+
+async function downloadAttachment(att) {
+  const href = attachmentHref(att)
+  if (!href) return
+  try {
+    await downloadMedia(href, { filename: att.original_filename })
+  } catch (error) {
+    logError('Не удалось скачать вложение', error)
+  }
 }
 
 function onContextMenu(e) {
@@ -325,6 +357,15 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 
   &__attachment {
     text-decoration: none;
+
+    &--file {
+      display: inline-flex;
+      border: none;
+      background: none;
+      padding: 0;
+      cursor: pointer;
+      text-align: left;
+    }
   }
 
   &__attachment-img,

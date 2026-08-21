@@ -47,9 +47,15 @@ export const messengerApi = {
         feature: 'messengerAttachment',
       }),
     )
+    if (!uploadResult?.path) {
+      throw new Error('Не удалось загрузить файл')
+    }
     return apiClient.post(`${BASE_URL}/attachments/`, {
       message: messageId,
       file_path: uploadResult.path,
+      original_filename: uploadResult.original_name || file.name,
+      file_size: Number(uploadResult.size) || file.size || 0,
+      mime_type: uploadResult.content_type || file.type || '',
     })
   },
 

@@ -20,8 +20,17 @@
         @delete="(id) => emit('delete', id)"
         @edit-start="(msg) => emit('edit-start', msg)"
         @reply="(msg) => emit('reply', msg)"
+        @preview-image="openPreview"
       />
     </template>
+
+    <ImageLightbox
+      :visible="previewIndex != null"
+      :items="imageGallery"
+      :index="previewIndex || 0"
+      @update:index="previewIndex = $event"
+      @close="closePreview"
+    />
   </div>
 </template>
 
@@ -30,6 +39,8 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { MessageSquareMore } from '@lucide/vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { getCurrentBcp47 } from '@/i18n/index.js'
+import { getSafeHref } from '@/js/utils/urlUtils.js'
+import ImageLightbox from '@/components/ImageLightbox.vue'
 import MessageBubble from './MessageBubble.vue'
 import SystemMessage from './SystemMessage.vue'
 
@@ -45,6 +56,7 @@ const props = defineProps({
 const emit = defineEmits(['delete', 'edit-start', 'reply'])
 
 const listRef = ref(null)
+const previewIndex = ref(null)
 let userScrolledUp = false
 
 const sortedItems = computed(() => {
@@ -67,6 +79,33 @@ const sortedItems = computed(() => {
     (a, b) => new Date(a.created_at) - new Date(b.created_at),
   )
 })
+
+const imageGallery = computed(() => {
+  const items = []
+  for (const msg of sortedItems.value) {
+    if (msg._isSystem) continue
+    for (const att of msg.attachments || []) {
+      const src = getSafeHref(att.file_url)
+      if (!att?.mime_type?.startsWith('image/') || !src) continue
+      items.push({
+        id: att.id,
+        src,
+        filename: att.original_filename || '',
+      })
+    }
+  }
+  return items
+})
+
+function openPreview(attId) {
+  const idx = imageGallery.value.findIndex((item) => item.id === attId)
+  if (idx === -1) return
+  previewIndex.value = idx
+}
+
+function closePreview() {
+  previewIndex.value = null
+}
 
 function isFirstInGroup(idx) {
   const item = sortedItems.value[idx]
@@ -129,6 +168,17 @@ watch(
   () => scrollToBottom(),
   { deep: true },
 )
+
+watch(imageGallery, (items) => {
+  if (previewIndex.value == null) return
+  if (!items.length) {
+    previewIndex.value = null
+    return
+  }
+  if (previewIndex.value >= items.length) {
+    previewIndex.value = items.length - 1
+  }
+})
 </script>
 
 <style lang="scss" scoped>
