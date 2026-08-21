@@ -232,11 +232,16 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 .msng-bubble {
   display: flex;
   align-items: flex-end;
+  align-self: flex-start;
   gap: 0.5rem;
+  /* max-content, не fit-content: иначе в flex-колонке шириной становится
+     доступное место (до max-width 80%), а картинка остаётся 240px. */
+  width: max-content;
   max-width: 80%;
   position: relative;
 
   &--own {
+    align-self: flex-end;
     margin-left: auto;
     flex-direction: row-reverse;
 
@@ -269,6 +274,8 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
+    width: max-content;
+    max-width: 100%;
     min-width: 0;
   }
 
@@ -281,6 +288,8 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   }
 
   &__content {
+    width: max-content;
+    max-width: 100%;
     background: var(--bs-tertiary-bg, #f0f2f5);
     padding: 0.5rem 0.75rem;
     border-radius: 1rem 1rem 1rem 0.25rem;
@@ -351,15 +360,27 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   &__attachments {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: 0.35rem;
     margin-top: 0.35rem;
+    width: max-content;
+    max-width: 100%;
+
+    &:first-child {
+      margin-top: 0;
+    }
   }
 
   &__attachment {
+    display: block;
+    line-height: 0;
     text-decoration: none;
+    width: max-content;
+    max-width: 100%;
 
     &--file {
       display: inline-flex;
+      line-height: normal;
       border: none;
       background: none;
       padding: 0;
@@ -368,12 +389,17 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
     }
   }
 
+  /* Без процента в max-width: иначе цикл с шириной облака в flex-колонке. */
   &__attachment-img,
-  :deep(.msng-bubble__attachment-img) {
-    max-width: min(240px, 100%);
+  :deep(.msng-bubble__attachment-img),
+  :deep(.msng-bubble__attachment .ergo-content-image),
+  :deep(.msng-bubble__attachment .ergo-content-image__img) {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 240px;
     max-height: 200px;
     border-radius: 0.5rem;
-    object-fit: cover;
   }
 
   &__attachment-file {
