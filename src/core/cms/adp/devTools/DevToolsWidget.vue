@@ -63,9 +63,13 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  margin: 0;
+  padding: 0;
   border: 1px solid var(--color-border);
   background: var(--color-surface, #fff);
   color: inherit;
+  line-height: 0;
+  cursor: pointer;
   box-shadow: 0 8px 24px color-mix(in srgb, #000 16%, transparent);
 }
 

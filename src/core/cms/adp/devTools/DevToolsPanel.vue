@@ -1,7 +1,9 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import LucideIcon from '@/components/LucideIcon.vue'
 import SearchInput from '@/components/SearchInput.vue'
 import SelectBox from '@/components/SelectBox.vue'
+import ToggleSwitch from '@/components/ToggleSwitch.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useDevToolsStore } from './useDevToolsStore.js'
 
@@ -65,7 +67,7 @@ function userCaption(user) {
 <template>
   <div class="dev-tools-panel">
     <header class="dev-tools-panel__header">
-      <div>
+      <div class="dev-tools-panel__heading">
         <h2 class="dev-tools-panel__title">{{ t('devTools.title') }}</h2>
         <p v-if="previewLabel" class="dev-tools-panel__status">
           {{ t('devTools.nowViewing', { name: previewLabel }) }}
@@ -74,40 +76,41 @@ function userCaption(user) {
       <div class="dev-tools-panel__header-actions">
         <button
           type="button"
-          class="btn btn-sm btn-outline-secondary"
+          class="dev-tools-panel__icon-btn"
           :disabled="store.applying"
+          :aria-label="t('devTools.reset')"
+          :title="t('devTools.reset')"
           @click="store.resetPreview()"
         >
-          {{ t('devTools.reset') }}
+          <LucideIcon name="RotateCcw" :size="16" />
         </button>
         <button
           type="button"
-          class="btn btn-sm btn-outline-secondary"
+          class="dev-tools-panel__icon-btn"
           :aria-label="t('devTools.hide')"
+          :title="t('devTools.hide')"
           @click="store.hideFab()"
         >
-          {{ t('devTools.hide') }}
+          <LucideIcon name="EyeOff" :size="16" />
         </button>
         <button
           type="button"
-          class="btn-close"
+          class="dev-tools-panel__icon-btn"
           :aria-label="t('devTools.close')"
+          :title="t('devTools.close')"
           @click="store.togglePanel()"
-        />
+        >
+          <LucideIcon name="X" :size="16" />
+        </button>
       </div>
     </header>
 
-    <label class="dev-tools-panel__switch">
-      <input
-        class="form-check-input"
-        type="checkbox"
-        role="switch"
-        :checked="store.preview.view_as_regular"
-        :disabled="store.applying"
-        @change="store.setViewAsRegular($event.target.checked)"
-      >
-      <span>{{ t('devTools.viewAsRegular') }}</span>
-    </label>
+    <ToggleSwitch
+      :model-value="store.preview.view_as_regular"
+      :disabled="store.applying"
+      :label="t('devTools.viewAsRegular')"
+      @update:model-value="store.setViewAsRegular($event)"
+    />
     <p class="dev-tools-panel__hint">{{ t('devTools.viewAsRegularHint') }}</p>
 
     <section class="dev-tools-panel__section">
@@ -218,6 +221,10 @@ function userCaption(user) {
   gap: 0.75rem;
 }
 
+.dev-tools-panel__heading {
+  min-width: 0;
+}
+
 .dev-tools-panel__title {
   margin: 0;
   font-size: 1rem;
@@ -232,15 +239,41 @@ function userCaption(user) {
 
 .dev-tools-panel__header-actions {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.25rem;
 }
 
-.dev-tools-panel__switch {
-  display: flex;
+.dev-tools-panel__icon-btn,
+.dev-tools-panel__chip,
+.dev-tools-panel__user {
+  appearance: none;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface, #fff);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.dev-tools-panel__icon-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 500;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 0.5rem;
+  line-height: 0;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-primary);
+  }
 }
 
 .dev-tools-panel__hint,
@@ -275,30 +308,36 @@ function userCaption(user) {
 
 .dev-tools-panel__users {
   flex-direction: column;
+  flex-wrap: nowrap;
   max-height: 9rem;
   overflow: auto;
 }
 
-.dev-tools-panel__chip,
-.dev-tools-panel__user {
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-surface, #fff);
-  color: inherit;
-  text-align: left;
-}
-
 .dev-tools-panel__chip {
-  padding: 0.15rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
   font-size: 0.75rem;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .dev-tools-panel__user {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   width: 100%;
+  padding: 0.4rem 0.6rem;
   border-radius: 0.5rem;
-  padding: 0.35rem 0.55rem;
+  text-align: left;
+  line-height: 1.25;
+
+  span {
+    color: var(--color-text-muted, #6c757d);
+    font-size: 0.75rem;
+  }
 }
 
 .dev-tools-panel__chip.is-active,

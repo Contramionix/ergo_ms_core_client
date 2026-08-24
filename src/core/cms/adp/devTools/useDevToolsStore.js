@@ -151,6 +151,7 @@ export const useDevToolsStore = defineStore('devTools', () => {
     invalidateAdminAccessCache()
     const userStore = useUserStore()
     await userStore.refreshUserData()
+    window.dispatchEvent(new Event('menu-updated'))
     if (router?.currentRoute?.value?.meta?.requiresGlobalAdmin && preview.value.view_as_regular) {
       await router.replace({ name: 'AppHome' })
     }

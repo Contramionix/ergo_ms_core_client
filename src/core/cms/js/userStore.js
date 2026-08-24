@@ -375,6 +375,8 @@ export const useUserStore = defineStore('userStore', () => {
   // Принудительная перезагрузка данных пользователя
   const refreshUserData = async () => {
     isInitialized.value = false
+    takePendingSessionBootstrap()
+    clearSessionBootstrapCache()
     return loadSessionBootstrap()
   }
 
