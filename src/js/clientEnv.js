@@ -60,6 +60,8 @@ export const clientEnv = {
   toastUndoEnabled: readBool('CLIENT_TOAST_UNDO_ENABLED', false),
   /** Глубина стека отмен для «Стандарт системы» (минимум 1). */
   toastUndoStackMax: Math.max(1, readInt('CLIENT_TOAST_UNDO_STACK_MAX', 3)),
+  /** Глазик админа: просмотр как пользователь (только если ERGO_DEV_TOOLS=true). */
+  devToolsEnabled: readBool('CLIENT_DEV_TOOLS_ENABLED', false),
   /** Vite: режим разработки (сборка dev). */
   isDev: import.meta.env.DEV === true,
   /** Vite: production-сборка. */

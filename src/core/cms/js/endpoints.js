@@ -72,6 +72,13 @@ export const cmsEndpoints = {
         profileChangeRequestReject: (id) => `cms/adp/profile-change-requests/${id}/reject/`,
         myPermissions: 'cms/adp/my-permissions/',
         checkURLAccess: 'cms/adp/check-url-access/',
+        devTools: {
+            status: 'cms/adp/dev-tools/status/',
+            session: 'cms/adp/dev-tools/session/',
+            users: 'cms/adp/dev-tools/users/',
+            roles: 'cms/adp/dev-tools/roles/',
+            permissionCatalog: 'cms/adp/dev-tools/permission-catalog/',
+        },
 
         menu: {
             userMenu: 'cms/adp/menu/',

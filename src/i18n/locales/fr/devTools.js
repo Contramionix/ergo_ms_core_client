@@ -1,0 +1,18 @@
+export default {
+  title: 'Mode développeur',
+  open: 'Ouvrir le mode développeur',
+  close: 'Fermer le panneau',
+  hide: 'Masquer le bouton œil',
+  show: 'Afficher le mode développeur',
+  reset: 'Réinitialiser',
+  viewAsRegular: 'Voir comme un utilisateur ordinaire',
+  viewAsRegularHint: 'Les contournements administrateur sont désactivés : menus et pages suivent le rôle Utilisateur.',
+  asRegularUser: 'utilisateur ordinaire',
+  nowViewing: 'Actuellement : {name}',
+  entity: 'Entité testée',
+  searchUser: 'Trouver un utilisateur…',
+  role: 'Rôle',
+  roleCurrent: 'Rôle de l’entité',
+  permissions: 'Droits',
+  searchPermission: 'Trouver un droit…',
+}

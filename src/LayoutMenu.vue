@@ -41,6 +41,7 @@ import AccessDenied from '@/components/AccessDenied.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import SkipLink from '@/components/SkipLink.vue'
 import FloatingWidgetsHost from '@/components/FloatingWidgetsHost.vue'
+import DevToolsWidget from '@/core/cms/adp/devTools/DevToolsWidget.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
@@ -286,6 +287,7 @@ onBeforeUnmount(() => {
     :menuRightEdge="menuRightEdge"
   />
   <FloatingWidgetsHost :menu-right-edge="menuRightEdge" />
+  <DevToolsWidget />
 </template>
 
 <style scoped lang="scss">
