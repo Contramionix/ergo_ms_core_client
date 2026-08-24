@@ -89,6 +89,24 @@ export function applyPermissionsBootstrap(permissionsData) {
   return cachedPermissionsSnapshot
 }
 
+/** Снимок denied_urls хранит шаблон как есть: `/path/**` должен закрывать и `/path`. */
+function deniedUrlMatchesPath(path, entry) {
+  if (!path || typeof entry !== 'string' || !entry) {
+    return false
+  }
+  if (path === entry) {
+    return true
+  }
+  if (!entry.endsWith('/**')) {
+    return false
+  }
+  const prefix = entry.slice(0, -3)
+  if (!prefix) {
+    return true
+  }
+  return path === prefix || path.startsWith(`${prefix}/`)
+}
+
 function isExpectedGuestAuthError(error) {
   const status = error?.response?.status ?? error?.status
   if (status !== 401) {
@@ -165,7 +183,7 @@ export async function checkRouteAdpAccess(path) {
   }
 
   const deniedUrlsSnapshot = permissionsSnapshot?.denied_urls || []
-  if (deniedUrlsSnapshot.includes(path)) {
+  if (deniedUrlsSnapshot.some((entry) => deniedUrlMatchesPath(path, entry))) {
     urlAccessCache.set(path, { allowed: false, expiresAt: now + URL_ACCESS_CACHE_TTL })
     return false
   }
