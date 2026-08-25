@@ -11,6 +11,7 @@ export default {
   nowViewing: 'Actuellement : {name}',
   entity: 'Entité testée',
   searchUser: 'Trouver un utilisateur…',
+  noUsers: 'Aucun utilisateur trouvé',
   role: 'Rôle',
   roleCurrent: 'Rôle de l’entité',
   permissions: 'Droits',

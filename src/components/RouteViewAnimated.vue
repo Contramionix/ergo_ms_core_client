@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import ModuleThemeScope from '@/components/ModuleThemeScope.vue'
 import { useUiModes } from '@/composables/useUiModes.js'
+import { sessionAccessEpoch } from '@/core/cms/adp/js/sessionAccessEpoch.js'
 
 defineProps({
   keepAliveMax: { type: Number, default: 15 },
@@ -36,7 +37,7 @@ function cachedRouteKey(activeRoute) {
 <template>
   <RouterView v-slot="{ Component, route: activeRoute }">
     <Transition name="layout-route" :css="!reducedMotionActive">
-      <div :key="cachedRouteKey(activeRoute)" class="layout-route-view">
+      <div :key="`${cachedRouteKey(activeRoute)}:${sessionAccessEpoch}`" class="layout-route-view">
         <ModuleThemeScope :module-key="activeRoute.meta?.moduleKey || moduleKey">
           <KeepAlive v-if="useKeepAlive" :max="keepAliveMax">
             <component :is="Component" v-if="Component" />

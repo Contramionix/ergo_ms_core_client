@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { clientEnv } from '@/js/clientEnv.js'
-import { router } from '@/js/routers.js'
+import { router, revalidateCurrentRoute } from '@/js/routers.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { invalidatePermissionsSnapshot } from '@/core/cms/adp/js/accessControl.js'
+import { bumpSessionAccessEpoch } from '@/core/cms/adp/js/sessionAccessEpoch.js'
 import { invalidateAdminAccessCache } from '@/core/cms/adp/admin/js/adminAccessCache.js'
 import { logError } from '@/js/utils/logError.js'
 import {
@@ -24,6 +25,7 @@ const EMPTY_PREVIEW = {
   role_name: null,
   extra_grants: [],
   extra_denies: [],
+  effective_is_admin: false,
 }
 
 function readJson(key, fallback) {
@@ -55,6 +57,7 @@ function pickPreview(data) {
     role_name: payload.role_name || null,
     extra_grants: payload.extra_grants || [],
     extra_denies: payload.extra_denies || [],
+    effective_is_admin: Boolean(payload.effective_is_admin),
   }
 }
 
@@ -150,11 +153,15 @@ export const useDevToolsStore = defineStore('devTools', () => {
     invalidatePermissionsSnapshot()
     invalidateAdminAccessCache()
     const userStore = useUserStore()
-    await userStore.refreshUserData()
-    window.dispatchEvent(new Event('menu-updated'))
-    if (router?.currentRoute?.value?.meta?.requiresGlobalAdmin && preview.value.view_as_regular) {
+    await userStore.reloadSessionBootstrap()
+    window.dispatchEvent(new CustomEvent('menu-updated', { detail: { fromCache: true } }))
+    bumpSessionAccessEpoch()
+    const viewingWithoutAdmin = isActive.value && !preview.value.effective_is_admin
+    if (router?.currentRoute?.value?.meta?.requiresGlobalAdmin && viewingWithoutAdmin) {
       await router.replace({ name: 'AppHome' })
+      return
     }
+    await revalidateCurrentRoute()
   }
 
   async function applyPreview(next) {
@@ -218,19 +225,36 @@ export const useDevToolsStore = defineStore('devTools', () => {
   }
 
   async function setRoleName(roleName) {
+    if (!roleName) {
+      return patchPreview({
+        role_name: null,
+        extra_grants: [],
+        extra_denies: [],
+      })
+    }
+    const isAdminRole = roles.value.some(
+      (role) => role.name === roleName && role.role_type === 'admin',
+    )
     return patchPreview({
-      view_as_regular: true,
-      role_name: roleName || null,
+      view_as_regular: !isAdminRole,
+      role_name: roleName,
       extra_grants: [],
       extra_denies: [],
     })
   }
 
   function isPermissionChecked(moduleName, permissionKey) {
-    return effectiveKeys.value.has(pairKey({
+    const key = pairKey({
       module_name: moduleName,
       permission_key: permissionKey,
-    }))
+    })
+    if ((preview.value.extra_denies || []).some((item) => pairKey(item) === key)) {
+      return false
+    }
+    if (preview.value.effective_is_admin) {
+      return true
+    }
+    return effectiveKeys.value.has(key)
   }
 
   async function setPermission(moduleName, permissionKey, granted) {
@@ -238,7 +262,7 @@ export const useDevToolsStore = defineStore('devTools', () => {
     const key = pairKey(pair)
     const grants = (preview.value.extra_grants || []).filter((item) => pairKey(item) !== key)
     const denies = (preview.value.extra_denies || []).filter((item) => pairKey(item) !== key)
-    const baseHas = baseKeys.value.has(key)
+    const baseHas = baseKeys.value.has(key) || Boolean(preview.value.effective_is_admin)
     if (granted && !baseHas) {
       grants.push(pair)
     } else if (!granted && baseHas) {
@@ -254,7 +278,8 @@ export const useDevToolsStore = defineStore('devTools', () => {
   async function searchUsers(query) {
     try {
       const response = await searchDevToolsUsers(query)
-      userResults.value = response?.data?.users || []
+      const payload = response?.data || {}
+      userResults.value = payload.users || []
     } catch (error) {
       userResults.value = []
       logError('Не удалось найти пользователей для режима разработчика', error)

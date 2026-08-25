@@ -207,6 +207,25 @@ async function checkRouteAccess(to) {
   return { allowed: true }
 }
 
+export async function revalidateCurrentRoute() {
+  if (!router) {
+    return
+  }
+  const to = router.currentRoute.value
+  if (!to || to.name === 'AccessDenied') {
+    return
+  }
+  const access = await checkRouteAccess(to)
+  if (!access.allowed) {
+    await router.replace({ name: access.redirect || 'AccessDenied' })
+    return
+  }
+  const moduleOutcome = await runModuleRouteGuards(to, to)
+  if (moduleOutcome && moduleOutcome !== true) {
+    await router.replace(moduleOutcome)
+  }
+}
+
 function hasLiveAccessToken() {
   const access = tokenService.getAccess()
   return Boolean(access && !isExpired(access))

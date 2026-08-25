@@ -53,8 +53,13 @@ function isModulePermissionGranted(snapshot, moduleName, permissionKey) {
   }
 
   const activeGroups = getActiveRoleGroups(snapshot)
+  const listed = snapshot?.module_permissions || []
 
   if (activeGroups.length > 0) {
+    return hasExplicitModulePermission(snapshot, moduleName, permissionKey)
+  }
+
+  if (listed.length > 0) {
     return hasExplicitModulePermission(snapshot, moduleName, permissionKey)
   }
 

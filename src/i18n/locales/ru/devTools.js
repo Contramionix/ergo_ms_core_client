@@ -11,6 +11,7 @@ export default {
   nowViewing: 'Сейчас: {name}',
   entity: 'Тестируемая сущность',
   searchUser: 'Найти пользователя…',
+  noUsers: 'Никого не найдено',
   role: 'Роль',
   roleCurrent: 'Роль сущности',
   permissions: 'Права',

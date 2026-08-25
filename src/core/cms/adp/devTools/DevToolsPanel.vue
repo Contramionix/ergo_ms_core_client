@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import SearchInput from '@/components/SearchInput.vue'
 import SelectBox from '@/components/SelectBox.vue'
@@ -11,8 +11,10 @@ const { t } = useAppI18n()
 const store = useDevToolsStore()
 
 const userQuery = ref('')
+const usersOpen = ref(false)
 const permissionQuery = ref('')
 let searchTimer = null
+let closeUsersTimer = null
 
 const roleOptions = computed(() => store.roles.map((role) => ({
   id: role.name,
@@ -49,15 +51,34 @@ const previewLabel = computed(() => {
 })
 
 watch(userQuery, (value) => {
+  if (!usersOpen.value) {
+    return
+  }
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
     store.searchUsers(value)
   }, 250)
 })
 
-onMounted(() => {
-  store.searchUsers('')
-})
+function openUserSuggestions() {
+  clearTimeout(closeUsersTimer)
+  usersOpen.value = true
+  store.searchUsers(userQuery.value)
+}
+
+function closeUserSuggestions() {
+  clearTimeout(closeUsersTimer)
+  closeUsersTimer = setTimeout(() => {
+    usersOpen.value = false
+  }, 180)
+}
+
+function pickUser(user) {
+  clearTimeout(closeUsersTimer)
+  usersOpen.value = false
+  userQuery.value = ''
+  store.setAsUser(user)
+}
 
 function userCaption(user) {
   return user.full_name || user.username
@@ -123,11 +144,6 @@ function userCaption(user) {
       >
         {{ store.preview.as_user_label }} ×
       </button>
-      <SearchInput
-        v-model="userQuery"
-        :placeholder="t('devTools.searchUser')"
-        :show-icon="true"
-      />
       <div v-if="store.recentUsers.length" class="dev-tools-panel__chips">
         <button
           v-for="user in store.recentUsers"
@@ -140,19 +156,37 @@ function userCaption(user) {
           {{ userCaption(user) }}
         </button>
       </div>
-      <ul class="dev-tools-panel__users">
-        <li v-for="user in store.userResults" :key="user.public_id">
-          <button
-            type="button"
-            class="dev-tools-panel__user"
-            :class="{ 'is-active': store.preview.as_user_public_id === user.public_id }"
-            @click="store.setAsUser(user)"
-          >
-            <strong>{{ userCaption(user) }}</strong>
-            <span>{{ user.username }}<template v-if="user.role_name"> · {{ user.role_name }}</template></span>
-          </button>
-        </li>
-      </ul>
+      <div
+        class="dev-tools-panel__user-search"
+        @focusin="openUserSuggestions"
+        @focusout="closeUserSuggestions"
+      >
+        <SearchInput
+          v-model="userQuery"
+          :placeholder="t('devTools.searchUser')"
+          :show-icon="true"
+        />
+        <ul
+          v-if="usersOpen"
+          class="dev-tools-panel__suggestions"
+          @mousedown.prevent
+        >
+          <li v-if="!store.userResults.length" class="dev-tools-panel__suggestions-empty">
+            {{ t('devTools.noUsers') }}
+          </li>
+          <li v-for="user in store.userResults" :key="user.public_id">
+            <button
+              type="button"
+              class="dev-tools-panel__user"
+              :class="{ 'is-active': store.preview.as_user_public_id === user.public_id }"
+              @click="pickUser(user)"
+            >
+              <strong>{{ userCaption(user) }}</strong>
+              <span>{{ user.username }}<template v-if="user.role_name"> · {{ user.role_name }}</template></span>
+            </button>
+          </li>
+        </ul>
+      </div>
     </section>
 
     <section class="dev-tools-panel__section">
@@ -296,8 +330,7 @@ function userCaption(user) {
   font-weight: 600;
 }
 
-.dev-tools-panel__chips,
-.dev-tools-panel__users {
+.dev-tools-panel__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -306,11 +339,29 @@ function userCaption(user) {
   list-style: none;
 }
 
-.dev-tools-panel__users {
+.dev-tools-panel__user-search {
+  position: relative;
+}
+
+.dev-tools-panel__suggestions {
+  display: flex;
   flex-direction: column;
-  flex-wrap: nowrap;
-  max-height: 9rem;
+  gap: 0.25rem;
+  margin: 0.35rem 0 0;
+  padding: 0.35rem;
+  list-style: none;
+  max-height: 12rem;
   overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface, #fff);
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 12%, transparent);
+}
+
+.dev-tools-panel__suggestions-empty {
+  padding: 0.45rem 0.6rem;
+  color: var(--color-text-muted, #6c757d);
+  font-size: 0.8125rem;
 }
 
 .dev-tools-panel__chip {

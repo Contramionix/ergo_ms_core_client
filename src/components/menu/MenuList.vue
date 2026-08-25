@@ -553,7 +553,21 @@ const loadMenu = async (forceRefresh = false) => {
 }
 
 // Слушаем событие обновления меню
-const handleMenuUpdate = () => loadMenu(true)
+const handleMenuUpdate = (event) => {
+  if (event?.detail?.fromCache) {
+    const cached = peekCachedMenu()
+    if (cached?.menu_items?.length) {
+      applyMenuData(cached, { force: true })
+      applyInitialMenuLayout()
+    } else {
+      menuSections.value = []
+      separatorsConfig.value = { byOrderIndex: {} }
+      appliedMenuData = null
+    }
+    return
+  }
+  loadMenu(true)
+}
 
 function handleSessionScopeChange() {
   // Сразу перефильтровать уже загруженное меню по JWT,

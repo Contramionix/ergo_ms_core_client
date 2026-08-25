@@ -380,6 +380,29 @@ export const useUserStore = defineStore('userStore', () => {
     return loadSessionBootstrap()
   }
 
+  // Перечитать session-bootstrap, не снимая готовность оболочки (меню/аватар не мигают).
+  const reloadSessionBootstrap = async () => {
+    takePendingSessionBootstrap()
+    clearSessionBootstrapCache()
+    if (!tokenService.getAccess()) {
+      return false
+    }
+    try {
+      isLoading.value = true
+      const response = await apiClient.get(endpoints.auth.sessionBootstrap)
+      if (!response?.success) {
+        throw new Error('Не удалось загрузить данные сессии')
+      }
+      await applySessionBootstrapData(response.data || response)
+      return true
+    } catch (error) {
+      logError('Ошибка загрузки session-bootstrap:', error)
+      return false
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   // Обновление всех данных (профиль + аватар) для реактивности компонентов
   const refreshAllData = async () => {
     try {
@@ -428,6 +451,7 @@ export const useUserStore = defineStore('userStore', () => {
     finalizeSession,
     ensureUserReady,
     refreshUserData,
+    reloadSessionBootstrap,
     refreshAllData,
     warmupAvatar,
   }
