@@ -1,6 +1,26 @@
 <template>
   <div ref="rootRef" class="date-picker" :class="{ 'date-picker--invalid': invalid }">
-    <VueDatePicker :model-value="pickerDate" text-input :locale="pickerLocale" :formats="pickerFormats" :input-attrs="inputAttrs" :placeholder="resolvedPlaceholder" :time-config="timeConfig" auto-apply six-weeks :teleport="true" :floating="floatingConfig" :config="pickerConfig" :min-date="minDateParsed" :max-date="maxDateParsed" :disabled="disabled" @update:model-value="onPickerUpdate">
+    <VueDatePicker
+      :model-value="pickerDate"
+      :text-input="!monthPicker"
+      :month-picker="monthPicker"
+      :year-range="yearRange"
+      :prevent-min-max-navigation="Boolean(minDateParsed || maxDateParsed)"
+      :locale="pickerLocale"
+      :formats="pickerFormats"
+      :input-attrs="inputAttrs"
+      :placeholder="resolvedPlaceholder"
+      :time-config="timeConfig"
+      auto-apply
+      six-weeks
+      :teleport="true"
+      :floating="floatingConfig"
+      :config="pickerConfig"
+      :min-date="minDateParsed"
+      :max-date="maxDateParsed"
+      :disabled="disabled"
+      @update:model-value="onPickerUpdate"
+    >
       <template #input-icon>
         <span class="date-picker__glyph">
           <LucideIcon name="Calendar" :size="ICON_SIZE" aria-hidden="true" />
@@ -94,6 +114,10 @@ const props = defineProps({
     default: '24',
     validator: (value) => value === '12' || value === '24',
   },
+  monthPicker: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -101,11 +125,12 @@ const emit = defineEmits(['update:modelValue'])
 const { t, getLocale } = useAppI18n()
 
 const pickerLocale = computed(() => DATE_FNS_LOCALES[getLocale()] || ru)
-const is12Hour = computed(() => props.enableTime && props.timeFormat === '12')
-const useDigitMask = computed(() => !is12Hour.value)
+const is12Hour = computed(() => props.enableTime && props.timeFormat === '12' && !props.monthPicker)
+const useDigitMask = computed(() => !is12Hour.value && !props.monthPicker)
 
 const resolvedPlaceholder = computed(() => {
   if (props.placeholder) return props.placeholder
+  if (props.monthPicker) return t('components.datePicker.placeholderMonth')
   if (!props.enableTime) return t('components.datePicker.placeholder')
   return is12Hour.value
     ? t('components.datePicker.placeholderDateTime12')
@@ -113,27 +138,57 @@ const resolvedPlaceholder = computed(() => {
 })
 
 const pickerFormats = computed(() => ({
-  input: props.enableTime
-    ? is12Hour.value
-      ? 'dd.MM.yyyy hh:mm aa'
-      : 'dd.MM.yyyy HH:mm'
-    : 'dd.MM.yyyy',
+  input: props.monthPicker
+    ? 'LLLL yyyy'
+    : props.enableTime
+      ? is12Hour.value
+        ? 'dd.MM.yyyy hh:mm aa'
+        : 'dd.MM.yyyy HH:mm'
+      : 'dd.MM.yyyy',
 }))
 
 const timeConfig = computed(() => ({
-  enableTimePicker: props.enableTime,
+  enableTimePicker: props.enableTime && !props.monthPicker,
   enableSeconds: false,
   is24: !is12Hour.value,
 }))
 
-const pickerDate = computed(() => parseModelToDate(props.modelValue))
+const pickerDate = computed(() => (
+  props.monthPicker ? parseModelToMonth(props.modelValue) : parseModelToDate(props.modelValue)
+))
 
 const inputAttrs = computed(() => ({
-  inputmode: is12Hour.value ? 'text' : 'numeric',
+  inputmode: props.monthPicker || is12Hour.value ? 'text' : 'numeric',
   autocomplete: 'off',
   hideInputIcon: Boolean(pickerDate.value) && !props.disabled,
   ...(props.id ? { id: props.id } : {}),
 }))
+
+function parseYearMonthKey(value) {
+  if (typeof value !== 'string') return null
+  const match = value.match(/^(\d{4})-(\d{2})$/)
+  if (!match) return null
+  const year = Number(match[1])
+  const month = Number(match[2])
+  if (!Number.isFinite(year) || month < 1 || month > 12) return null
+  return { year, month }
+}
+
+function parseModelToMonth(value) {
+  const parsed = parseYearMonthKey(value)
+  if (!parsed) return null
+  return { year: parsed.year, month: parsed.month - 1 }
+}
+
+function monthModelToKey(value) {
+  if (!value || typeof value !== 'object') return ''
+  const year = Number(value.year)
+  const monthIndex = Number(value.month)
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex)) return ''
+  const month = monthIndex + 1
+  if (month < 1 || month > 12) return ''
+  return `${year}-${String(month).padStart(2, '0')}`
+}
 
 function parseModelToDate(value) {
   if (!value) return null
@@ -149,18 +204,35 @@ function parseModelToDate(value) {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-function parseBoundDate(value) {
+function parseBoundDate(value, bound) {
   if (!value) return undefined
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value
+  const monthKey = parseYearMonthKey(value)
+  if (monthKey) {
+    const { year, month } = monthKey
+    if (bound === 'max') return new Date(year, month, 0, 23, 59, 59)
+    return new Date(year, month - 1, 1, 12, 0, 0)
+  }
   return parseModelToDate(value) ?? undefined
 }
 
-const minDateParsed = computed(() => parseBoundDate(props.minDate))
-const maxDateParsed = computed(() => parseBoundDate(props.maxDate))
+const minDateParsed = computed(() => parseBoundDate(props.minDate, 'min'))
+const maxDateParsed = computed(() => parseBoundDate(props.maxDate, 'max'))
+
+const yearRange = computed(() => {
+  const minY = minDateParsed.value?.getFullYear()
+  const maxY = maxDateParsed.value?.getFullYear()
+  if (minY == null && maxY == null) return [1900, 2100]
+  return [minY ?? maxY, maxY ?? minY]
+})
 
 function onPickerUpdate(value) {
   if (value == null) {
     emit('update:modelValue', '')
+    return
+  }
+  if (props.monthPicker) {
+    emit('update:modelValue', monthModelToKey(value))
     return
   }
   emit('update:modelValue', props.enableTime ? toISODateTime(value) : toISODate(value))

@@ -163,6 +163,7 @@ export default {
     placeholder: 'dd.MM.yyyy',
     placeholderDateTime: 'dd.MM.yyyy HH:mm',
     placeholderDateTime12: 'dd.MM.yyyy hh:mm AM',
+    placeholderMonth: 'month year',
     clear: 'Clear date',
   },
   dropZone: {

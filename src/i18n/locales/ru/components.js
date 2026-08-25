@@ -163,6 +163,7 @@ export default {
     placeholder: 'дд.мм.гггг',
     placeholderDateTime: 'дд.мм.гггг чч:мм',
     placeholderDateTime12: 'дд.мм.гггг чч:мм AM',
+    placeholderMonth: 'месяц год',
     clear: 'Очистить дату',
   },
   dropZone: {

@@ -44,6 +44,22 @@ function hasExplicitModulePermission(snapshot, moduleName, permissionKey) {
   })
 }
 
+function isDefaultRoleViewGranted(snapshot, moduleName) {
+  if (snapshot?.role?.name !== DEFAULT_ROLE_NAME) {
+    return false
+  }
+  if (snapshot?.default_view_grants === 'granted') {
+    return true
+  }
+  if (!moduleName) {
+    return false
+  }
+  return !isDeniedBySnapshot(
+    normalizeApiAccessPath(`/api/${moduleName}/`),
+    snapshot?.denied_api,
+  )
+}
+
 /**
  * Проверка права модуля — зеркало PermissionService.check_module_permission (клиент, UX).
  */
@@ -56,14 +72,26 @@ function isModulePermissionGranted(snapshot, moduleName, permissionKey) {
   const listed = snapshot?.module_permissions || []
 
   if (activeGroups.length > 0) {
-    return hasExplicitModulePermission(snapshot, moduleName, permissionKey)
+    if (hasExplicitModulePermission(snapshot, moduleName, permissionKey)) {
+      return true
+    }
+    if (permissionKey.endsWith('_view') && isDefaultRoleViewGranted(snapshot, moduleName)) {
+      return true
+    }
+    return false
   }
 
   if (listed.length > 0) {
-    return hasExplicitModulePermission(snapshot, moduleName, permissionKey)
+    if (hasExplicitModulePermission(snapshot, moduleName, permissionKey)) {
+      return true
+    }
+    if (permissionKey.endsWith('_view') && isDefaultRoleViewGranted(snapshot, moduleName)) {
+      return true
+    }
+    return false
   }
 
-  if (snapshot?.role?.name === DEFAULT_ROLE_NAME && permissionKey.endsWith('_view')) {
+  if (permissionKey.endsWith('_view') && isDefaultRoleViewGranted(snapshot, moduleName)) {
     return true
   }
 
@@ -94,7 +122,7 @@ export function applyPermissionsBootstrap(permissionsData) {
   return cachedPermissionsSnapshot
 }
 
-/** Снимок denied_urls хранит шаблон как есть: `/path/**` должен закрывать и `/path`. */
+/** Снимок denied_urls / denied_api хранит шаблон как есть: `/path/**` должен закрывать и `/path`. */
 function deniedUrlMatchesPath(path, entry) {
   if (!path || typeof entry !== 'string' || !entry) {
     return false
@@ -110,6 +138,24 @@ function deniedUrlMatchesPath(path, entry) {
     return true
   }
   return path === prefix || path.startsWith(`${prefix}/`)
+}
+
+function normalizeApiAccessPath(path) {
+  let value = String(path || '').split('?', 1)[0].trim()
+  if (!value) {
+    return '/api/'
+  }
+  if (!value.startsWith('/')) {
+    value = `/${value}`
+  }
+  if (value === '/api' || value.startsWith('/api/')) {
+    return value
+  }
+  return `/api${value}`
+}
+
+function isDeniedBySnapshot(path, deniedList) {
+  return (deniedList || []).some((entry) => deniedUrlMatchesPath(path, entry))
 }
 
 function isExpectedGuestAuthError(error) {
@@ -188,7 +234,7 @@ export async function checkRouteAdpAccess(path) {
   }
 
   const deniedUrlsSnapshot = permissionsSnapshot?.denied_urls || []
-  if (deniedUrlsSnapshot.some((entry) => deniedUrlMatchesPath(path, entry))) {
+  if (isDeniedBySnapshot(path, deniedUrlsSnapshot)) {
     urlAccessCache.set(path, { allowed: false, expiresAt: now + URL_ACCESS_CACHE_TTL })
     return false
   }
@@ -223,5 +269,23 @@ export async function hasAnyModulePermission(moduleName, permissionKeys = []) {
 
   return permissionKeys.some((key) =>
     isModulePermissionGranted(permissionsSnapshot, moduleName, key),
+  )
+}
+
+/**
+ * UX-зеркало Policy(policy_type='api'): есть ли deny на API path в снимке прав.
+ * Не заменяет проверку на сервере. Глобальный админ — false.
+ */
+export async function isApiPathDenied(apiPath) {
+  const permissionsSnapshot = await ensurePermissionsSnapshot()
+  if (!permissionsSnapshot) {
+    return false
+  }
+  if (permissionsSnapshot.is_global_admin) {
+    return false
+  }
+  return isDeniedBySnapshot(
+    normalizeApiAccessPath(apiPath),
+    permissionsSnapshot.denied_api,
   )
 }
