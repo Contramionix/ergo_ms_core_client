@@ -5,16 +5,11 @@
 
 import fs from 'fs'
 import path from 'path'
-import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
-import { loadProjectEnv } from './module-env.js'
+import { loadProjectEnv, parseEnv } from './module-env.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.resolve(__dirname, '../../../..')
-const requireFromNpm = createRequire(
-  path.join(projectRoot, 'virtual_env/npm/node_modules', '_ergo_resolve.js'),
-)
-const dotenv = requireFromNpm('dotenv')
 
 /**
  * @param {string} [raw]
@@ -64,7 +59,7 @@ export function parseClientModularityConfig(env = {}) {
 export function loadMergedClientEnv(envPath = path.join(projectRoot, '.env')) {
   const merged = { ...loadProjectEnv(projectRoot) }
   if (envPath && fs.existsSync(envPath)) {
-    Object.assign(merged, dotenv.parse(fs.readFileSync(envPath)))
+    Object.assign(merged, parseEnv(fs.readFileSync(envPath)))
   }
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined && value !== '') {
