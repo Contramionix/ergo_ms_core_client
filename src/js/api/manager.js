@@ -6,6 +6,8 @@ import { clientEnv } from '@/js/clientEnv.js'
 import {
   canAttemptTokenRefresh,
   ensureAccessToken,
+  isLogoutApiUrl,
+  isServerLogoutFinalized,
   performServerLogout,
   wasLastRefreshTransient,
 } from '@/core/cms/js/tokenRefresh.js'
@@ -98,10 +100,16 @@ class ApiClient {
         const requestUrl = String(originalRequest?.url || '')
         // Ingest логов/монитора: 401 гостя не должен рвать сессию и уводить со страницы
         // (forgot-password: send-code 500 → logError → client-log 401 → ложный logout).
+        // POST /logout/ сам по себе не должен снова звать logout (иначе 401/429 → шторм).
         if (
           requestUrl.includes('client-log')
           || requestUrl.includes('client-monitor')
+          || isLogoutApiUrl(requestUrl)
         ) {
+          return Promise.reject(error)
+        }
+
+        if (isServerLogoutFinalized()) {
           return Promise.reject(error)
         }
 
@@ -145,7 +153,7 @@ class ApiClient {
             return Promise.reject(error)
           }
           savePostLoginReturnPath()
-          this.logout()
+          void this.logout()
           if (typeof window !== 'undefined' && window.location) {
             const path = window.location.pathname || ''
             // /start — не маршрут (есть /start-page); уводил на NotFound(requiresAuth) → цикл logout
@@ -304,7 +312,8 @@ class ApiClient {
    * Выход из системы
    */
   async logout() {
-    // Сначала локально — параллельные 401 перестают слать Authorization
+    // Сначала гейт: иначе await import ниже снова пускает параллельные POST.
+    const pending = performServerLogout('apiClient-401')
     tokenService.clear()
     try {
       const { useUserStore } = await import('@/core/cms/js/userStore.js')
@@ -312,7 +321,7 @@ class ApiClient {
     } catch {
       /* pinia ещё не готов */
     }
-    await performServerLogout('apiClient-401')
+    await pending
   }
 
   /**
