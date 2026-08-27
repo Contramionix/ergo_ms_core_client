@@ -22,6 +22,43 @@ export const MEDIA_DOWNLOAD_MODE = Object.freeze({
 })
 
 /**
+ * /serve/ и /upload/ остаются на origin SPA.
+ * Абсолютный URL с IP пира (NGINX_PUBLIC_HOST хоста модулей) иначе
+ * уводит вкладку с публичного сайта.
+ * @param {string} url
+ * @returns {string}
+ */
+function isLiteralIpHost(hostname) {
+  const host = String(hostname || '').replace(/^\[|\]$/g, '')
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(host)) {
+    return true
+  }
+  return host.includes(':')
+}
+
+export function browserMediaUrl(url) {
+  if (!url) return url
+  try {
+    const base = typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'http://localhost'
+    const parsed = new URL(String(url).trim(), base)
+    const sameOrigin = typeof window === 'undefined' || parsed.origin === base
+    const mediaPath = (
+      parsed.pathname.startsWith('/serve/')
+      || parsed.pathname.startsWith('/upload/')
+      || parsed.pathname.startsWith('/api/')
+    )
+    if (!sameOrigin && isLiteralIpHost(parsed.hostname) && mediaPath) {
+      return `${parsed.pathname}${parsed.search}`
+    }
+    return String(url).trim()
+  } catch {
+    return url
+  }
+}
+
+/**
  * Добавить ?download=1 (media_api → Content-Disposition: attachment).
  * @param {string} url
  * @returns {string}
@@ -29,7 +66,7 @@ export const MEDIA_DOWNLOAD_MODE = Object.freeze({
 export function withMediaDownloadParam(url) {
   if (!url) return url
   try {
-    const parsed = new URL(url, window.location.origin)
+    const parsed = new URL(browserMediaUrl(url), window.location.origin)
     if (!parsed.searchParams.has('download')) {
       parsed.searchParams.set('download', '1')
     }
@@ -48,7 +85,7 @@ export function withMediaDownloadParam(url) {
 export function withoutMediaDownloadParam(url) {
   if (!url) return url
   try {
-    const parsed = new URL(url, window.location.origin)
+    const parsed = new URL(browserMediaUrl(url), window.location.origin)
     parsed.searchParams.delete('download')
     return parsed.toString()
   } catch {
@@ -110,18 +147,19 @@ async function downloadViaBlob(url, filename) {
 export async function downloadMedia(url, options = {}) {
   if (!url) return false
 
+  const safeUrl = browserMediaUrl(url)
   const mode = options.mode || MEDIA_DOWNLOAD_MODE.ATTACHMENT
 
   if (mode === MEDIA_DOWNLOAD_MODE.NEW_TAB) {
-    return openInNewTab(withoutMediaDownloadParam(url))
+    return openInNewTab(withoutMediaDownloadParam(safeUrl))
   }
 
   if (mode === MEDIA_DOWNLOAD_MODE.BLOB) {
-    return downloadViaBlob(url, options.filename)
+    return downloadViaBlob(safeUrl, options.filename)
   }
 
   // attachment — без iframe (CSP frame-ancestors) и без новой вкладки
-  return downloadViaAnchor(url, options.filename)
+  return downloadViaAnchor(safeUrl, options.filename)
 }
 
 /**
