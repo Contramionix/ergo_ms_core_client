@@ -46,7 +46,7 @@ export function parseClientModularityConfig(env = {}) {
   const allowlist = allowRaw ? parseCsvList(allowRaw) : null
   const remotesRaw = String(env.CLIENT_MODULE_REMOTES || '').trim()
   const federationShared = parseCsvList(
-    env.CLIENT_FEDERATION_SHARED || 'vue,vue-router,pinia',
+    env.CLIENT_FEDERATION_SHARED || 'vue,vue-router,pinia,vue-i18n',
   )
   return { modularity, disabled, allowlist, remotesRaw, federationShared }
 }

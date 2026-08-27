@@ -35,7 +35,19 @@ if (!fs.existsSync(moduleClientRoot)) {
 const entryFile = ensureFederationEntry(moduleName, moduleClientRoot)
 
 const { federationShared } = loadClientModularityConfig()
-const sharedList = federationShared.length ? federationShared : ['vue', 'vue-router', 'pinia']
+const sharedList = [...new Set([
+  ...(federationShared.length ? federationShared : ['vue', 'vue-router', 'pinia']),
+  'vue-i18n',
+])]
+
+const HOST_SHARED = [
+  'ergo-shared/module-bridge',
+  'ergo-shared/i18n',
+  'ergo-shared/i18n-use',
+  'ergo-shared/api',
+  'ergo-shared/endpoints',
+  'ergo-shared/client-env',
+]
 
 const vue = requireFromNpm('@vitejs/plugin-vue')
 const { build, defineConfig } = requireFromNpm('vite')
@@ -55,7 +67,12 @@ function resolveFromNpmRootPlugin() {
         id.startsWith('/') ||
         id.startsWith('@/') ||
         path.isAbsolute(id) ||
-        isBuiltin(id)
+        isBuiltin(id) ||
+        id === 'vue' ||
+        id === 'vue-router' ||
+        id === 'pinia' ||
+        id === 'vue-i18n' ||
+        id.startsWith('ergo-shared/')
       ) {
         return null
       }
@@ -70,29 +87,44 @@ function resolveFromNpmRootPlugin() {
   }
 }
 
-const alias = {
-  '@': path.resolve(clientRoot, 'src'),
-  '@modules': path.resolve(projectRoot, 'modules'),
-  [`@/modules/${moduleName}`]: path.resolve(projectRoot, 'modules', moduleName),
-  // Не тянуть host ModuleLoader/globs в remote-бандл
-  '@/modules/core/sharedGlobs.generated.js': path.resolve(
-    __dirname,
-    'lib/empty-module.js',
-  ),
-  '@/modules/core/ModuleLoader.js': path.resolve(__dirname, 'lib/empty-module.js'),
-}
-
 const config = defineConfig({
   root: moduleClientRoot,
   plugins: [resolveFromNpmRootPlugin(), vue()],
   resolve: {
-    alias: {
-      ...alias,
-      '@/integrations/ModuleBridge.js': 'ergo-shared/module-bridge',
-      '@/integrations/ModuleBridge': 'ergo-shared/module-bridge',
-      'vue-toastification': path.resolve(clientRoot, 'src/js/utils/vueToastificationCompat.js'),
-      'lucide-vue-next': path.join(npmModules, '@lucide/vue'),
-    },
+    // Точные find раньше `@`, иначе `@/i18n` превращается в абсолютный путь и external не срабатывает.
+    alias: [
+      { find: '@/integrations/ModuleBridge.js', replacement: 'ergo-shared/module-bridge' },
+      { find: '@/integrations/ModuleBridge', replacement: 'ergo-shared/module-bridge' },
+      { find: '@/i18n/useAppI18n.js', replacement: 'ergo-shared/i18n-use' },
+      { find: '@/i18n/useAppI18n', replacement: 'ergo-shared/i18n-use' },
+      { find: '@/i18n/index.js', replacement: 'ergo-shared/i18n' },
+      { find: '@/i18n/index', replacement: 'ergo-shared/i18n' },
+      { find: '@/js/api/manager.js', replacement: 'ergo-shared/api' },
+      { find: '@/js/api/manager', replacement: 'ergo-shared/api' },
+      { find: '@/js/api/endpoints.js', replacement: 'ergo-shared/endpoints' },
+      { find: '@/js/api/endpoints', replacement: 'ergo-shared/endpoints' },
+      { find: '@/js/clientEnv.js', replacement: 'ergo-shared/client-env' },
+      { find: '@/js/clientEnv', replacement: 'ergo-shared/client-env' },
+      {
+        find: '@/modules/core/sharedGlobs.generated.js',
+        replacement: path.resolve(__dirname, 'lib/empty-module.js'),
+      },
+      {
+        find: '@/modules/core/ModuleLoader.js',
+        replacement: path.resolve(__dirname, 'lib/empty-module.js'),
+      },
+      {
+        find: `@/modules/${moduleName}`,
+        replacement: path.resolve(projectRoot, 'modules', moduleName),
+      },
+      { find: '@modules', replacement: path.resolve(projectRoot, 'modules') },
+      { find: '@', replacement: path.resolve(clientRoot, 'src') },
+      {
+        find: 'vue-toastification',
+        replacement: path.resolve(clientRoot, 'src/js/utils/vueToastificationCompat.js'),
+      },
+      { find: 'lucide-vue-next', replacement: path.join(npmModules, '@lucide/vue') },
+    ],
     dedupe: sharedList,
   },
   css: {
@@ -115,7 +147,7 @@ const config = defineConfig({
       fileName: () => 'remoteEntry.js',
     },
     rolldownOptions: {
-      external: [...sharedList, 'ergo-shared/module-bridge'],
+      external: [...sharedList, ...HOST_SHARED],
       output: {
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'chunks/[name]-[hash].js',
@@ -123,21 +155,46 @@ const config = defineConfig({
           vue: 'vue',
           'vue-router': 'vue-router',
           pinia: 'pinia',
+          'vue-i18n': 'vue-i18n',
           'ergo-shared/module-bridge': 'ergo-shared/module-bridge',
+          'ergo-shared/i18n': 'ergo-shared/i18n',
+          'ergo-shared/i18n-use': 'ergo-shared/i18n-use',
+          'ergo-shared/api': 'ergo-shared/api',
+          'ergo-shared/endpoints': 'ergo-shared/endpoints',
+          'ergo-shared/client-env': 'ergo-shared/client-env',
         },
       },
     },
     target: 'esnext',
     minify: true,
-    cssCodeSplit: true,
+    cssCodeSplit: false,
   },
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
 })
 
+function writeRemoteStylesIndex(dir) {
+  const files = []
+  const walk = (current) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const abs = path.join(current, entry.name)
+      if (entry.isDirectory()) {
+        walk(abs)
+        continue
+      }
+      if (entry.name.endsWith('.css')) {
+        files.push(path.relative(dir, abs).replace(/\\/g, '/'))
+      }
+    }
+  }
+  walk(dir)
+  fs.writeFileSync(path.join(dir, 'styles.json'), `${JSON.stringify(files)}\n`)
+}
+
 try {
   await build(config)
+  writeRemoteStylesIndex(outDir)
 } finally {
   if (path.basename(entryFile) === '.federation-entry.generated.js') {
     removeGeneratedFederationEntry(moduleClientRoot)

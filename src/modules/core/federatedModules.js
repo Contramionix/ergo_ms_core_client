@@ -10,6 +10,52 @@ import { parseModuleRemotes } from './parseModuleRemotes.js'
 import { normalizeClientModuleManifest } from './clientModuleManifest.js'
 import { logWarn, logError } from '@/js/utils/logError.js'
 
+function remoteBaseUrl(entryUrl) {
+  return String(entryUrl || '').replace(/\/[^/]+$/, '')
+}
+
+function addStylesheet(href, datasetId) {
+  if (document.querySelector(`link[data-ergo-remote-style="${datasetId}"]`)) {
+    return
+  }
+  const link = document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = href
+  link.dataset.ergoRemoteStyle = datasetId
+  document.head.appendChild(link)
+}
+
+/**
+ * CSS remote-сборки не попадает в JS (lib + cssCodeSplit). Подключаем файлы с того же /remotes/.
+ * @param {string} entryUrl
+ * @param {string} remoteName
+ */
+async function injectRemoteStyles(entryUrl, remoteName) {
+  const base = remoteBaseUrl(entryUrl)
+  if (!base) {
+    return
+  }
+  try {
+    const response = await fetch(`${base}/styles.json`, { cache: 'no-store' })
+    if (response.ok) {
+      const files = await response.json()
+      if (Array.isArray(files)) {
+        files
+          .filter((rel) => typeof rel === 'string' && rel.endsWith('.css'))
+          .forEach((rel, index) => {
+            const href = rel.startsWith('/')
+              ? rel
+              : `${base}/${rel.replace(/^\.\//, '')}`
+            addStylesheet(href, `${remoteName}-${index}`)
+          })
+        return
+      }
+    }
+  } catch {
+    /* без styles.json стили remote не подключаем — сборка remote пишет этот файл */
+  }
+}
+
 /**
  * @returns {{ name: string, entry: string }[]}
  */
@@ -72,6 +118,7 @@ export async function loadFederatedModules() {
   const manifests = []
   for (const { name, entry } of remotes) {
     try {
+      await injectRemoteStyles(entry, name)
       const raw = await importRemoteEntry(entry, name)
       const manifest = normalizeClientModuleManifest(raw, name)
       if (!manifest) {

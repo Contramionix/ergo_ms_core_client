@@ -56,7 +56,7 @@ function resolveFromNpmRootPlugin() {
         id.startsWith('@modules/') ||
         path.isAbsolute(id) ||
         id === 'vue' ||
-        (useFederationShared && (id === 'vue-router' || id === 'pinia')) ||
+        (useFederationShared && (id === 'vue-router' || id === 'pinia' || id === 'vue-i18n')) ||
         isBuiltin(id)
       ) {
         return null
@@ -570,9 +570,15 @@ function federationImportMapBody(isServe) {
       vue: isServe ? '/src/shell/shared/vue.js' : '/shared/vue.js',
       'vue-router': isServe ? '/src/shell/shared/vue-router.js' : '/shared/vue-router.js',
       pinia: isServe ? '/src/shell/shared/pinia.js' : '/shared/pinia.js',
+      'vue-i18n': isServe ? '/src/shell/shared/vue-i18n.js' : '/shared/vue-i18n.js',
       'ergo-shared/module-bridge': isServe
         ? '/src/shell/shared/module-bridge.js'
         : '/shared/module-bridge.js',
+      'ergo-shared/i18n': isServe ? '/src/shell/shared/i18n.js' : '/shared/i18n.js',
+      'ergo-shared/i18n-use': isServe ? '/src/shell/shared/i18n-use.js' : '/shared/i18n-use.js',
+      'ergo-shared/api': isServe ? '/src/shell/shared/api.js' : '/shared/api.js',
+      'ergo-shared/endpoints': isServe ? '/src/shell/shared/endpoints.js' : '/shared/endpoints.js',
+      'ergo-shared/client-env': isServe ? '/src/shell/shared/client-env.js' : '/shared/client-env.js',
     },
   })
 }
@@ -588,6 +594,7 @@ const FEDERATION_BROWSER_RUNTIME = {
   vue: path.join(npmModules, 'vue/dist/vue.runtime.esm-browser.prod.js'),
   'vue-router': path.join(npmModules, 'vue-router/dist/vue-router.esm-browser.prod.js'),
   pinia: path.join(npmModules, 'pinia/dist/pinia.esm-browser.prod.js'),
+  'vue-i18n': path.join(npmModules, 'vue-i18n/dist/vue-i18n.runtime.esm-browser.prod.js'),
 }
 
 function copyFederationBrowserRuntimes(outDir) {
@@ -643,10 +650,15 @@ export default defineConfig(() => ({
             // allow-extension оставляет экспорты entry (нужны для /shared/module-bridge.js).
             preserveEntrySignatures: 'allow-extension',
             // Спецификаторы остаются «vue» / «vue-router» / «pinia» → import map.
-            external: ['vue', 'vue-router', 'pinia'],
+            external: ['vue', 'vue-router', 'pinia', 'vue-i18n'],
             input: {
               main: path.resolve(__dirname, 'index.html'),
               'shared/module-bridge': path.resolve(__dirname, 'src/shell/shared/module-bridge.js'),
+              'shared/i18n': path.resolve(__dirname, 'src/shell/shared/i18n.js'),
+              'shared/i18n-use': path.resolve(__dirname, 'src/shell/shared/i18n-use.js'),
+              'shared/api': path.resolve(__dirname, 'src/shell/shared/api.js'),
+              'shared/endpoints': path.resolve(__dirname, 'src/shell/shared/endpoints.js'),
+              'shared/client-env': path.resolve(__dirname, 'src/shell/shared/client-env.js'),
             },
           }
         : {}),
