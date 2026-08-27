@@ -594,7 +594,9 @@ const FEDERATION_BROWSER_RUNTIME = {
   vue: path.join(npmModules, 'vue/dist/vue.runtime.esm-browser.prod.js'),
   'vue-router': path.join(npmModules, 'vue-router/dist/vue-router.esm-browser.prod.js'),
   pinia: path.join(npmModules, 'pinia/dist/pinia.esm-browser.prod.js'),
-  'vue-i18n': path.join(npmModules, 'vue-i18n/dist/vue-i18n.runtime.esm-browser.prod.js'),
+  // Полная сборка: сообщения локалей — обычные строки, runtime-only не умеет их
+  // разобрать и падает с «unhandled node type: 0» (NodeTypes.Resource).
+  'vue-i18n': path.join(npmModules, 'vue-i18n/dist/vue-i18n.esm-browser.prod.js'),
 }
 
 function copyFederationBrowserRuntimes(outDir) {

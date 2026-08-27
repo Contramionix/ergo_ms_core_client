@@ -41,13 +41,18 @@ export class ModuleManager {
   }
 
   /**
-   * Инициализация всех менеджеров
+   * Инициализация всех менеджеров.
+   * Совпадает с ensureInitialized: прямой вызов из меню/виджетов не должен
+   * запускать вторую загрузку remotes, пока первая ещё не выставила initialized.
    */
   async initialize() {
-    if (this.initialized) {
-      return
-    }
+    await this.ensureInitialized()
+  }
 
+  /**
+   * @returns {Promise<void>}
+   */
+  async _doInitialize() {
     await Promise.all([
       this.routeManager.initialize(),
       this.endpointManager.initialize(),
@@ -243,7 +248,10 @@ export class ModuleManager {
       return
     }
     if (!this._initPromise) {
-      this._initPromise = this.initialize()
+      this._initPromise = this._doInitialize().catch((error) => {
+        this._initPromise = null
+        throw error
+      })
     }
     await this._initPromise
   }
