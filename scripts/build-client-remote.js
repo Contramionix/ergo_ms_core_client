@@ -8,6 +8,10 @@ import path from 'path'
 import { fileURLToPath } from 'node:url'
 import { createRequire, isBuiltin } from 'node:module'
 import { loadClientModularityConfig, clientProjectRoot } from './lib/parse-disabled-modules.js'
+import {
+  ensureFederationEntry,
+  removeGeneratedFederationEntry,
+} from './lib/generate-federation-entry.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const clientRoot = path.resolve(__dirname, '..')
@@ -24,11 +28,11 @@ if (!moduleName) {
 }
 
 const moduleClientRoot = path.resolve(projectRoot, 'modules', moduleName, 'client')
-const entryFile = path.join(moduleClientRoot, 'federation-entry.js')
-if (!fs.existsSync(entryFile)) {
-  console.error(`[ERROR] Нет federation-entry.js: ${entryFile}`)
+if (!fs.existsSync(moduleClientRoot)) {
+  console.error(`[ERROR] Нет каталога клиента: ${moduleClientRoot}`)
   process.exit(1)
 }
+const entryFile = ensureFederationEntry(moduleName, moduleClientRoot)
 
 const { federationShared } = loadClientModularityConfig()
 const sharedList = federationShared.length ? federationShared : ['vue', 'vue-router', 'pinia']
@@ -86,6 +90,7 @@ const config = defineConfig({
       ...alias,
       '@/integrations/ModuleBridge.js': 'ergo-shared/module-bridge',
       '@/integrations/ModuleBridge': 'ergo-shared/module-bridge',
+      'vue-toastification': path.resolve(clientRoot, 'src/js/utils/vueToastificationCompat.js'),
     },
     dedupe: sharedList,
   },
@@ -130,8 +135,14 @@ const config = defineConfig({
   },
 })
 
-await build(config)
+try {
+  await build(config)
+} finally {
+  if (path.basename(entryFile) === '.federation-entry.generated.js') {
+    removeGeneratedFederationEntry(moduleClientRoot)
+  }
+}
 console.log(`[OK] Federated remote собран: ${outDir}/remoteEntry.js`)
 console.log(
-  `[INFO] CLIENT_MODULE_REMOTES=${moduleName}=http://127.0.0.1:<port>/remoteEntry.js`,
+  `[INFO] CLIENT_MODULE_REMOTES=${moduleName}=/remotes/${moduleName}/remoteEntry.js`,
 )

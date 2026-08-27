@@ -7,6 +7,7 @@ import { loadProjectEnv, mergeModuleEnv } from './scripts/lib/module-env.js'
 import {
   loadClientModularityConfig,
   listEnabledModuleNames,
+  parseModuleRemotes,
 } from './scripts/lib/parse-disabled-modules.js'
 
 const require = createRequire(import.meta.url)
@@ -91,6 +92,8 @@ const enabledModuleNames = new Set(
   listEnabledModuleNames(modulesRoot, disabledModules, clientModularity.allowlist),
 )
 const isFederatedHost = clientModularity.modularity === 'federated'
+const hasModuleRemotes = parseModuleRemotes(clientModularity.remotesRaw).length > 0
+const useFederationShared = isFederatedHost || hasModuleRemotes
 
 const externalModuleAliases = fs.existsSync(modulesRoot)
   ? fs.readdirSync(modulesRoot, { withFileTypes: true })
@@ -562,7 +565,7 @@ if (analyzeBuild) {
 
 /** Import map + shared entries для federated remotes (один Vue / ModuleBridge). */
 function federationSharedPlugin() {
-  if (!isFederatedHost) {
+  if (!useFederationShared) {
     return null
   }
   return {
@@ -598,7 +601,7 @@ export default defineConfig(() => ({
     sourcemap: false,
     rolldownOptions: {
       // Rolldown не поддерживает Rollup treeshake.preset — дефолт уже recommended.
-      ...(isFederatedHost
+      ...(useFederationShared
         ? {
             input: {
               main: path.resolve(__dirname, 'index.html'),
@@ -653,6 +656,11 @@ export default defineConfig(() => ({
       {
         find: /^lucide-vue-next$/,
         replacement: path.join(npmModules, '@lucide/vue'),
+      },
+      // Оболочка на vue-sonner; модули ещё импортируют vue-toastification.
+      {
+        find: /^vue-toastification$/,
+        replacement: path.resolve(__dirname, 'src/js/utils/vueToastificationCompat.js'),
       },
       // vue уже выше (ESM-бандл); остальные — для optimizeDeps.include
       ...npmPackageAliases(OPTIMIZE_DEPS_INCLUDE.filter((name) => name !== 'vue')),

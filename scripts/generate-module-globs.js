@@ -4,7 +4,8 @@
  * Учитывает:
  * - DISABLED_MODULES
  * - CLIENT_MODULES (allow-list)
- * - CLIENT_MODULARITY: federated|standalone → пустые modules* globs (host без бандла модулей)
+ * - CLIENT_MODULARITY: standalone → пустые modules* globs
+ * - federated / CLIENT_MODULE_REMOTES — локальные модули в бандле, имена remotes не глобятся
  *
  * Режим wildcard: один glob на тип (быстрее).
  * Режим per-module: отдельный glob на каждый enabled-модуль (при disabled или allow-list).
@@ -16,6 +17,7 @@ import { fileURLToPath } from 'node:url'
 import {
   loadClientModularityConfig,
   listEnabledModuleNames,
+  parseModuleRemotes,
   clientProjectRoot,
 } from './lib/parse-disabled-modules.js'
 
@@ -29,13 +31,20 @@ const envPath = envFileArg
   ? path.resolve(envFileArg.slice('--env-file='.length))
   : path.join(clientProjectRoot, '.env')
 
-const { modularity, disabled: disabledModules, allowlist } = loadClientModularityConfig(envPath)
-const skipModuleGlobs = modularity === 'federated' || modularity === 'standalone'
+const { modularity, disabled: disabledModules, allowlist, remotesRaw } = loadClientModularityConfig(envPath)
+const remoteNames = new Set(parseModuleRemotes(remotesRaw).map((item) => item.name))
+const skipModuleGlobs = modularity === 'standalone'
 const enabledModules = skipModuleGlobs
   ? []
-  : listEnabledModuleNames(modulesRoot, disabledModules, allowlist)
+  : listEnabledModuleNames(modulesRoot, disabledModules, allowlist).filter(
+      (name) => !remoteNames.has(name),
+    )
 
-const usePerModuleGlobs = !skipModuleGlobs && (disabledModules.size > 0 || (allowlist && allowlist.length > 0))
+const usePerModuleGlobs = !skipModuleGlobs && (
+  disabledModules.size > 0
+  || (allowlist && allowlist.length > 0)
+  || remoteNames.size > 0
+)
 const globMode = skipModuleGlobs ? 'none' : usePerModuleGlobs ? 'per-module' : 'wildcard'
 
 const MODULES_GLOB_PREFIX = '../../../../../modules'
@@ -143,6 +152,7 @@ const content = `/**
  * CLIENT_MODULARITY: ${modularity}
  * Disabled modules (${disabledModules.size}): ${[...disabledModules].join(', ') || 'none'}
  * Allow-list: ${allowlist ? allowlist.join(', ') : '(all)'}
+ * Remotes (${remoteNames.size}): ${[...remoteNames].join(', ') || 'none'}
  * Enabled modules with client (${enabledModules.length}): ${enabledModules.join(', ') || 'none'}
  */
 

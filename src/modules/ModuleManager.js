@@ -18,7 +18,7 @@ import { RouteGuardsManager } from './routing/RouteGuardsManager.js'
 import { IntegrationsManager } from './integrations/IntegrationsManager.js'
 import { fetchDisabledModules } from './core/disabledModules.js'
 import { registerClientModule } from './core/registerClientModule.js'
-import { loadFederatedModules } from './core/federatedModules.js'
+import { getConfiguredModuleRemotes, loadFederatedModules } from './core/federatedModules.js'
 import { clientEnv } from '@/js/clientEnv.js'
 import { getLocaleManager } from './i18n/LocaleManager.js'
 import { getThemeDefaultsManager } from './themes/ThemeDefaultsManager.js'
@@ -56,7 +56,7 @@ export class ModuleManager {
       this.integrationsManager.initialize(),
     ])
 
-    if (clientEnv.modularity === 'federated') {
+    if (clientEnv.modularity === 'federated' || getConfiguredModuleRemotes().length) {
       const remotes = await loadFederatedModules()
       for (const manifest of remotes) {
         await this.registerModule(manifest, `remote:${manifest.moduleKey}`)
