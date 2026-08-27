@@ -96,6 +96,29 @@ export function formatDateTime(date) {
 }
 
 /**
+ * Форматирует дату с временем: «20 августа 2026, 09:15»
+ * @param {string|Date} date - Дата в ISO формате или объект Date
+ * @returns {string} Отформатированная дата с месяцем словами и временем или «—» при ошибке
+ */
+export function formatDateTimeLong(date) {
+    if (!date) return '—'
+    const targetDate = parseDate(date)
+    if (!targetDate) return '—'
+
+    try {
+        const datePart = formatDate(date)
+        if (!datePart) return '—'
+        const time = new Intl.DateTimeFormat(getCurrentBcp47(), {
+            hour: '2-digit',
+            minute: '2-digit',
+        }).format(targetDate)
+        return `${datePart}, ${time}`
+    } catch {
+        return '—'
+    }
+}
+
+/**
  * Форматирует дату: «03 августа 2026 (понедельник), 15:35»
  * @param {string|Date} date - Дата в ISO формате или объект Date
  * @returns {string} Отформатированная дата со днём недели и временем
