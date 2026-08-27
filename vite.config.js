@@ -563,6 +563,26 @@ if (analyzeBuild) {
   )
 }
 
+function federationImportMapBody(isServe) {
+  return JSON.stringify({
+    imports: {
+      vue: isServe ? '/src/shell/shared/vue.js' : '/shared/vue.js',
+      'vue-router': isServe ? '/src/shell/shared/vue-router.js' : '/shared/vue-router.js',
+      pinia: isServe ? '/src/shell/shared/pinia.js' : '/shared/pinia.js',
+      'ergo-shared/module-bridge': isServe
+        ? '/src/shell/shared/module-bridge.js'
+        : '/shared/module-bridge.js',
+    },
+  })
+}
+
+function writeFederationImportMapHash(body) {
+  const hash = crypto.createHash('sha256').update(body, 'utf8').digest('base64')
+  const outDir = path.resolve(__dirname, 'dist')
+  fs.mkdirSync(outDir, { recursive: true })
+  fs.writeFileSync(path.join(outDir, 'federation-importmap.hashes'), `sha256-${hash}\n`)
+}
+
 /** Import map + shared entries для federated remotes (один Vue / ModuleBridge). */
 function federationSharedPlugin() {
   if (!useFederationShared) {
@@ -572,17 +592,11 @@ function federationSharedPlugin() {
     name: 'ergo-federation-shared',
     transformIndexHtml(html, ctx) {
       const isServe = Boolean(ctx?.server)
-      const importMap = {
-        imports: {
-          vue: isServe ? '/src/shell/shared/vue.js' : '/shared/vue.js',
-          'vue-router': isServe ? '/src/shell/shared/vue-router.js' : '/shared/vue-router.js',
-          pinia: isServe ? '/src/shell/shared/pinia.js' : '/shared/pinia.js',
-          'ergo-shared/module-bridge': isServe
-            ? '/src/shell/shared/module-bridge.js'
-            : '/shared/module-bridge.js',
-        },
+      const body = federationImportMapBody(isServe)
+      if (!isServe) {
+        writeFederationImportMapHash(body)
       }
-      const tag = `<script type="importmap">${JSON.stringify(importMap)}</script>`
+      const tag = `<script type="importmap">${body}</script>`
       return html.replace('<head>', `<head>\n    ${tag}`)
     },
   }
