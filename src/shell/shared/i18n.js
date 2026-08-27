@@ -1,15 +1,2 @@
-/** Shared vue-i18n instance оболочки для federated remotes. */
-export {
-  applyLocale,
-  bootLocalesPromise,
-  ensureBootLocales,
-  ensureLocaleLoaded,
-  getCurrentBcp47,
-  getCurrentLocale,
-  getI18n,
-  i18n,
-  setAppLocale,
-  setLocaleMessagesReadyHandler,
-  tGlobal,
-  teGlobal,
-} from '@/i18n/index.js'
+/** Shared каталог i18n оболочки: полный набор экспортов index.js, включая FALLBACK_LOCALE. */
+export * from '@/i18n/index.js'
