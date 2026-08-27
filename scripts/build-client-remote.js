@@ -91,6 +91,7 @@ const config = defineConfig({
       '@/integrations/ModuleBridge.js': 'ergo-shared/module-bridge',
       '@/integrations/ModuleBridge': 'ergo-shared/module-bridge',
       'vue-toastification': path.resolve(clientRoot, 'src/js/utils/vueToastificationCompat.js'),
+      'lucide-vue-next': path.join(npmModules, '@lucide/vue'),
     },
     dedupe: sharedList,
   },
