@@ -236,6 +236,8 @@ function buildClientEnvDefines(envValues) {
     CLIENT_DISABLED_MODULES: envValues.DISABLED_MODULES || '',
     CLIENT_MODULARITY: (envValues.CLIENT_MODULARITY || 'bundled').toLowerCase(),
     CLIENT_MODULES: envValues.CLIENT_MODULES || '',
+    CLIENT_MODULE_RUNTIME: (envValues.MODULE_RUNTIME || 'monolith').toLowerCase(),
+    CLIENT_MICROSERVICE_MODULES: envValues.MICROSERVICE_MODULES || '',
     CLIENT_MODULE_REMOTES: envValues.CLIENT_MODULE_REMOTES || '',
     CLIENT_FEDERATION_SHARED: envValues.CLIENT_FEDERATION_SHARED || 'vue,vue-router,pinia',
     CLIENT_PASSWORD_MIN_LENGTH: envValues.API_PASSWORD_MIN_LENGTH || '8',

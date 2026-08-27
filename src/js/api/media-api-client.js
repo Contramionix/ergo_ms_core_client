@@ -1,8 +1,41 @@
 import { apiClient } from '@/js/api/manager'
+import { clientEnv } from '@/js/clientEnv.js'
 import { tGlobal } from '@/i18n/index.js'
 import { showError } from '@/js/utils/toast.js'
 
 const UPLOAD_TOKEN_ENDPOINT = 'utils/media/upload-token/'
+
+function parseCsvSet(raw) {
+  return new Set(
+    String(raw || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
+  )
+}
+
+const LOCAL_MICROSERVICE_MODULES = parseCsvSet(clientEnv.microserviceModules)
+
+/**
+ * Токен для target_dir модуля — у процесса модуля на этом хосте,
+ * иначе у ядра. Так файлы не уезжают на чужой media_api.
+ */
+export function resolveUploadTokenEndpoint(targetDir = '', tokenEndpoint) {
+  if (tokenEndpoint) {
+    return tokenEndpoint
+  }
+  if (clientEnv.moduleRuntime !== 'microservice') {
+    return UPLOAD_TOKEN_ENDPOINT
+  }
+  const prefix = String(targetDir || '')
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter(Boolean)[0] || ''
+  if (prefix && LOCAL_MICROSERVICE_MODULES.has(prefix)) {
+    return `${prefix}/media/upload-token/`
+  }
+  return UPLOAD_TOKEN_ENDPOINT
+}
 
 function throwUploadHttpError(status, data) {
   if (status === 429) {
@@ -38,28 +71,34 @@ class MediaApiClient {
     this._sharedTokens = new Map()
   }
 
-  _tokenCacheKey({ targetDir = '', maxSize, allowedTypes } = {}) {
+  _tokenCacheKey({ targetDir = '', maxSize, allowedTypes, tokenEndpoint } = {}) {
     return JSON.stringify({
       targetDir,
       maxSize: maxSize ?? null,
       allowedTypes: allowedTypes || null,
+      tokenEndpoint: resolveUploadTokenEndpoint(targetDir, tokenEndpoint),
     })
   }
 
   /**
-   * Запросить upload-токен у core/api.
+   * Запросить upload-токен у процесса, который делит диск с media_api.
+   * Модуль в MICROSERVICE_MODULES — свой эндпоинт; иначе ядро.
    * @param {Object} options
    * @param {string}  [options.targetDir='']      - целевая директория внутри хранилища
    * @param {number}  [options.maxSize]            - макс. размер файла (байт)
    * @param {string[]} [options.allowedTypes]      - разрешённые расширения (['pdf','docx'])
+   * @param {string}  [options.tokenEndpoint]     - явный путь, если не выводить из targetDir
    * @returns {Promise<{upload_url: string, token: string}>}
    */
-  async getUploadToken({ targetDir = '', maxSize, allowedTypes } = {}) {
+  async getUploadToken({ targetDir = '', maxSize, allowedTypes, tokenEndpoint } = {}) {
     const body = { target_dir: targetDir }
     if (maxSize != null) body.max_size = maxSize
     if (allowedTypes) body.allowed_types = allowedTypes
 
-    const response = await apiClient.post(UPLOAD_TOKEN_ENDPOINT, body)
+    const response = await apiClient.post(
+      resolveUploadTokenEndpoint(targetDir, tokenEndpoint),
+      body,
+    )
     if (!response.success) {
       throw new Error(response.message || 'Не удалось получить upload-токен')
     }

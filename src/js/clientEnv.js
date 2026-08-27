@@ -41,6 +41,10 @@ export const clientEnv = {
   modularity: readEnv('CLIENT_MODULARITY', 'bundled').toLowerCase() || 'bundled',
   /** CSV allow-list модулей (пусто = все кроме disabled). */
   clientModules: readEnv('CLIENT_MODULES', ''),
+  /** monolith | microservice — из MODULE_RUNTIME, для выбора upload-токена. */
+  moduleRuntime: readEnv('CLIENT_MODULE_RUNTIME', 'monolith').toLowerCase() || 'monolith',
+  /** CSV вынесенных API-модулей (MICROSERVICE_MODULES). */
+  microserviceModules: readEnv('CLIENT_MICROSERVICE_MODULES', ''),
   /** federated: name=url,name2=url2 */
   moduleRemotes: readEnv('CLIENT_MODULE_REMOTES', ''),
   federationShared: readEnv('CLIENT_FEDERATION_SHARED', 'vue,vue-router,pinia'),
