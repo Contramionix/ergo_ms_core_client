@@ -56,6 +56,7 @@ function resolveFromNpmRootPlugin() {
         id.startsWith('@modules/') ||
         path.isAbsolute(id) ||
         id === 'vue' ||
+        (useFederationShared && (id === 'vue-router' || id === 'pinia')) ||
         isBuiltin(id)
       ) {
         return null
@@ -583,7 +584,24 @@ function writeFederationImportMapHash(body) {
   fs.writeFileSync(path.join(outDir, 'federation-importmap.hashes'), `sha256-${hash}\n`)
 }
 
-/** Import map + shared entries для federated remotes (один Vue / ModuleBridge). */
+const FEDERATION_BROWSER_RUNTIME = {
+  vue: path.join(npmModules, 'vue/dist/vue.runtime.esm-browser.prod.js'),
+  'vue-router': path.join(npmModules, 'vue-router/dist/vue-router.esm-browser.prod.js'),
+  pinia: path.join(npmModules, 'pinia/dist/pinia.esm-browser.prod.js'),
+}
+
+function copyFederationBrowserRuntimes(outDir) {
+  const sharedDir = path.join(outDir, 'shared')
+  fs.mkdirSync(sharedDir, { recursive: true })
+  for (const [name, src] of Object.entries(FEDERATION_BROWSER_RUNTIME)) {
+    if (!fs.existsSync(src)) {
+      throw new Error(`Нет браузерного ESM для import map: ${src}`)
+    }
+    fs.copyFileSync(src, path.join(sharedDir, `${name}.js`))
+  }
+}
+
+/** Import map + shared Vue/router/pinia для remotes (не реэкспорт из vendor_vue). */
 function federationSharedPlugin() {
   if (!useFederationShared) {
     return null
@@ -598,6 +616,9 @@ function federationSharedPlugin() {
       }
       const tag = `<script type="importmap">${body}</script>`
       return html.replace('<head>', `<head>\n    ${tag}`)
+    },
+    closeBundle() {
+      copyFederationBrowserRuntimes(path.resolve(__dirname, 'dist'))
     },
   }
 }
@@ -617,11 +638,12 @@ export default defineConfig(() => ({
       // Rolldown не поддерживает Rollup treeshake.preset — дефолт уже recommended.
       ...(useFederationShared
         ? {
+            // Иначе Vite (не lib) снимает экспорты entry — /shared/module-bridge.js пустой.
+            preserveEntrySignatures: 'strict',
+            // Спецификаторы остаются «vue» / «vue-router» / «pinia» → import map.
+            external: ['vue', 'vue-router', 'pinia'],
             input: {
               main: path.resolve(__dirname, 'index.html'),
-              'shared/vue': path.resolve(__dirname, 'src/shell/shared/vue.js'),
-              'shared/vue-router': path.resolve(__dirname, 'src/shell/shared/vue-router.js'),
-              'shared/pinia': path.resolve(__dirname, 'src/shell/shared/pinia.js'),
               'shared/module-bridge': path.resolve(__dirname, 'src/shell/shared/module-bridge.js'),
             },
           }
@@ -662,10 +684,12 @@ export default defineConfig(() => ({
     alias: [
       ...externalModuleAliases,
       { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
-      {
-        find: /^vue$/,
-        replacement: path.join(npmModules, 'vue/dist/vue.esm-bundler.js'),
-      },
+      ...(useFederationShared
+        ? []
+        : [{
+            find: /^vue$/,
+            replacement: path.join(npmModules, 'vue/dist/vue.esm-bundler.js'),
+          }]),
       // Официальное имя пакета — @lucide/vue; модули ещё импортируют lucide-vue-next.
       {
         find: /^lucide-vue-next$/,
@@ -676,8 +700,18 @@ export default defineConfig(() => ({
         find: /^vue-toastification$/,
         replacement: path.resolve(__dirname, 'src/js/utils/vueToastificationCompat.js'),
       },
-      // vue уже выше (ESM-бандл); остальные — для optimizeDeps.include
-      ...npmPackageAliases(OPTIMIZE_DEPS_INCLUDE.filter((name) => name !== 'vue')),
+      // vue / при federation ещё router и pinia — не alias, иначе external не сработает
+      ...npmPackageAliases(
+        OPTIMIZE_DEPS_INCLUDE.filter((name) => {
+          if (name === 'vue') {
+            return false
+          }
+          if (useFederationShared && (name === 'vue-router' || name === 'pinia')) {
+            return false
+          }
+          return true
+        }),
+      ),
     ],
     extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue'],
     modules: [npmModules, 'node_modules'],
