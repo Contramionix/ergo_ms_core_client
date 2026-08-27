@@ -579,6 +579,12 @@ function federationImportMapBody(isServe) {
       'ergo-shared/api': isServe ? '/src/shell/shared/api.js' : '/shared/api.js',
       'ergo-shared/endpoints': isServe ? '/src/shell/shared/endpoints.js' : '/shared/endpoints.js',
       'ergo-shared/client-env': isServe ? '/src/shell/shared/client-env.js' : '/shared/client-env.js',
+      'ergo-shared/access-control': isServe
+        ? '/src/shell/shared/access-control.js'
+        : '/shared/access-control.js',
+      'ergo-shared/token-storage': isServe
+        ? '/src/shell/shared/token-storage.js'
+        : '/shared/token-storage.js',
     },
   })
 }
@@ -661,6 +667,8 @@ export default defineConfig(() => ({
               'shared/api': path.resolve(__dirname, 'src/shell/shared/api.js'),
               'shared/endpoints': path.resolve(__dirname, 'src/shell/shared/endpoints.js'),
               'shared/client-env': path.resolve(__dirname, 'src/shell/shared/client-env.js'),
+              'shared/access-control': path.resolve(__dirname, 'src/shell/shared/access-control.js'),
+              'shared/token-storage': path.resolve(__dirname, 'src/shell/shared/token-storage.js'),
             },
           }
         : {}),
