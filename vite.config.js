@@ -638,8 +638,10 @@ export default defineConfig(() => ({
       // Rolldown не поддерживает Rollup treeshake.preset — дефолт уже recommended.
       ...(useFederationShared
         ? {
-            // Иначе Vite (не lib) снимает экспорты entry — /shared/module-bridge.js пустой.
-            preserveEntrySignatures: 'strict',
+            // strict здесь нельзя: Rolldown ругается на пару со
+            // codeSplitting.includeDependenciesRecursively = false.
+            // allow-extension оставляет экспорты entry (нужны для /shared/module-bridge.js).
+            preserveEntrySignatures: 'allow-extension',
             // Спецификаторы остаются «vue» / «vue-router» / «pinia» → import map.
             external: ['vue', 'vue-router', 'pinia'],
             input: {
