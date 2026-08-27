@@ -20,6 +20,37 @@ const LOCAL_MICROSERVICE_MODULES = parseCsvSet(clientEnv.microserviceModules)
  * Токен для target_dir модуля — у процесса модуля на этом хосте,
  * иначе у ядра. Так файлы не уезжают на чужой media_api.
  */
+/**
+ * fetch/XHR на /upload/ с того же origin, что SPA.
+ * Абсолютный URL из NGINX_PUBLIC_HOST часто не совпадает с адресной строкой,
+ * и CSP connect-src 'self' блокирует запрос. Не ослабляем CSP.
+ */
+export function browserUploadUrl(uploadUrl) {
+  if (!uploadUrl) {
+    return '/upload/'
+  }
+  const raw = String(uploadUrl).trim()
+  if (raw.startsWith('/')) {
+    return raw
+  }
+  try {
+    const base = typeof window !== 'undefined' && window.location?.href
+      ? window.location.href
+      : 'http://localhost/'
+    const parsed = new URL(raw, base)
+    const path = `${parsed.pathname}${parsed.search}` || '/upload/'
+    if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
+      return path
+    }
+    if (clientEnv.useRelativeApi && parsed.pathname.startsWith('/upload')) {
+      return path
+    }
+    return raw
+  } catch {
+    return '/upload/'
+  }
+}
+
 export function resolveUploadTokenEndpoint(targetDir = '', tokenEndpoint) {
   if (tokenEndpoint) {
     return tokenEndpoint
@@ -202,7 +233,7 @@ class MediaApiClient {
     const session = reuseUploadToken
       ? await this._getReusableUploadToken(tokenOptions)
       : await this.getUploadToken(tokenOptions)
-    return this.uploadFile(file, session.upload_url, session.token, onProgress)
+    return this.uploadFile(file, browserUploadUrl(session.upload_url), session.token, onProgress)
   }
 
   /**
@@ -220,7 +251,7 @@ class MediaApiClient {
       const progress = onFileProgress ? (e) => onFileProgress(i, e) : undefined
       const result = await this.uploadFile(
         files[i],
-        session.upload_url,
+        browserUploadUrl(session.upload_url),
         session.token,
         progress,
       )
