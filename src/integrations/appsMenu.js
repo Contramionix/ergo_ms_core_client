@@ -13,6 +13,7 @@
 import bridge from '@/integrations/ModuleBridge.js'
 import { moduleManager } from '@/modules/index.js'
 import { whenSessionReady } from '@/js/sessionReady.js'
+import { getAccess } from '@/core/cms/js/tokenStorage.js'
 import { normalizeLucideIconName } from '@/js/lucideIconLoader.js'
 
 export const APPS_MENU_ITEMS_GROUP = 'apps.menu.items'
@@ -25,16 +26,21 @@ export const APPS_MENU_ITEMS_GROUP = 'apps.menu.items'
  * @property {string|null} [icon] — Lucide PascalCase
  * @property {import('vue-router').RouteLocationRaw} [route]
  * @property {() => void | Promise<void>} [onClick]
- * @property {() => boolean | Promise<boolean>} [isVisible]
+ * @property {() => boolean | Promise<boolean>} [isVisible] — не используется оболочкой:
+ *   пункт виден всем вошедшим. Сервер по-прежнему проверяет доступ при открытии.
  */
 
 /**
- * Собирает видимые приложения из зарегистрированных модулем расширений.
+ * Собирает приложения из зарегистрированных модулем расширений.
+ * Панель показывается всем, у кого есть сессия: не смотрим права модуля.
+ * Иначе при выключенном в ADP модуле кнопка пропадает и у администратора.
  * @returns {Promise<AppsMenuItem[]>}
  */
 export async function collectVisibleAppsMenuItems() {
-  // isVisible смотрит снимок прав: без сессии все чаты скрыты, кнопка не появляется.
   await whenSessionReady()
+  if (!getAccess()) {
+    return []
+  }
   if (!moduleManager.initialized) {
     await moduleManager.initialize()
   }
@@ -53,12 +59,6 @@ export async function collectVisibleAppsMenuItems() {
     const hasAction = typeof item.onClick === 'function'
     if (!hasRoute && !hasAction) {
       continue
-    }
-    if (typeof item.isVisible === 'function') {
-      const show = await item.isVisible()
-      if (!show) {
-        continue
-      }
     }
     visible.push({
       id: item.id,
