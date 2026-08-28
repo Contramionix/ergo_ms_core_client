@@ -6,7 +6,7 @@
  * чтобы не блокировать загрузку роутера в production-сборке.
  */
 
-import { getEndpoints } from '@/modules/index.js'
+import { getEndpoints, moduleManager } from '@/modules/index.js'
 
 const hot = import.meta.hot
 
@@ -45,6 +45,12 @@ async function loadEndpoints() {
         hot.data.endpointsCache = endpointsCache
         hot.data.endpointsPromise = endpointsPromise
       }
+      void moduleManager.ensureInitialized().then(() => {
+        endpointsCache = moduleManager.endpoints.getAllEndpoints()
+        if (hot) {
+          hot.data.endpointsCache = endpointsCache
+        }
+      }).catch(() => {})
       return result
     })
     .catch((err) => {

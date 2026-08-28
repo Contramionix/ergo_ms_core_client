@@ -36,12 +36,14 @@ async function injectRemoteStyles(entryUrl, remoteName) {
     return
   }
   try {
-    const response = await fetch(`${base}/styles.json`, { cache: 'no-store' })
+    const response = await fetch(`${base}/styles.json`)
     if (response.ok) {
       const files = await response.json()
       if (Array.isArray(files)) {
         files
           .filter((rel) => typeof rel === 'string' && rel.endsWith('.css'))
+          // Хостовые токены уже в main.css; этот файл remote только дублирует оболочку.
+          .filter((rel) => !/ergo-ms-root/i.test(rel))
           .forEach((rel, index) => {
             const href = rel.startsWith('/')
               ? rel
@@ -115,20 +117,24 @@ export async function loadFederatedModules() {
     return []
   }
 
-  const manifests = []
-  for (const { name, entry } of remotes) {
-    try {
-      await injectRemoteStyles(entry, name)
-      const raw = await importRemoteEntry(entry, name)
-      const manifest = normalizeClientModuleManifest(raw, name)
-      if (!manifest) {
-        logWarn(`[federated] Remote ${name}: манифест не распознан`)
-        continue
+  const loaded = await Promise.all(
+    remotes.map(async ({ name, entry }) => {
+      try {
+        const [, raw] = await Promise.all([
+          injectRemoteStyles(entry, name),
+          importRemoteEntry(entry, name),
+        ])
+        const manifest = normalizeClientModuleManifest(raw, name)
+        if (!manifest) {
+          logWarn(`[federated] Remote ${name}: манифест не распознан`)
+          return null
+        }
+        return manifest
+      } catch (error) {
+        logError(`[federated] Ошибка загрузки remote ${name}`, error)
+        return null
       }
-      manifests.push(manifest)
-    } catch (error) {
-      logError(`[federated] Ошибка загрузки remote ${name}`, error)
-    }
-  }
-  return manifests
+    }),
+  )
+  return loaded.filter(Boolean)
 }
