@@ -8,6 +8,10 @@ function defaultFallback() {
   return tGlobal('errors.api.tryLater')
 }
 
+function isHtmlBody(value) {
+  return typeof value === 'string' && value.trim().startsWith('<')
+}
+
 /**
  * @param {unknown} data — error.response.data или plain object
  * @param {{ fallback?: string, mode?: 'first' | 'join' }} [options]
@@ -21,7 +25,8 @@ export function parseApiErrorData(data, options = {}) {
     return fallback
   }
   if (typeof data === 'string') {
-    return data
+    // Тело — HTML-страница сервера (debug-трейс, 500, страница прокси): пользователю она бесполезна.
+    return isHtmlBody(data) ? fallback : data
   }
   if (typeof data !== 'object') {
     return String(data)
@@ -78,7 +83,12 @@ export function extractApiError(error, fallback) {
   if (status === 413) {
     return tGlobal('errors.api.payloadTooLarge')
   }
-  return parseApiErrorData(error?.response?.data ?? error, {
+  const data = error?.response?.data
+  if (typeof status === 'number' && status >= 500) {
+    const detail = isHtmlBody(data) ? '' : parseApiErrorData(data, { fallback: '', mode: 'first' })
+    return detail || fallback || tGlobal('errors.api.serverTryLater')
+  }
+  return parseApiErrorData(data ?? error, {
     fallback: fallback ?? defaultFallback(),
     mode: 'first',
   })

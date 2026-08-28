@@ -42,9 +42,6 @@ export const authService = {
         if (response.success && response.data?.access) {
             tokenService.setTokens(response.data.access)
             resetServerLogoutGate()
-            if (tokenService.hasActiveSessionScope()) {
-                window.dispatchEvent(new CustomEvent('session-scope-changed'))
-            }
         }
         
         return response;

@@ -31,6 +31,25 @@ let initialized = false
 let activityDaysLoaded = false
 let listFilters = { is_read: null, source_module: '', q: '' }
 
+const inboxListeners = new Set()
+
+export function onInboxNotification(handler) {
+  if (typeof handler !== 'function') return () => {}
+  inboxListeners.add(handler)
+  return () => inboxListeners.delete(handler)
+}
+
+function emitInboxNotification(notification) {
+  if (!notification) return
+  for (const handler of inboxListeners) {
+    try {
+      handler(notification)
+    } catch {
+      /* слушатель страницы не должен ломать inbox */
+    }
+  }
+}
+
 function clampSidebarActivityDays(value) {
   const n = Number(value)
   if (!Number.isFinite(n)) return SIDEBAR_ACTIVITY_DAYS_DEFAULT
@@ -391,6 +410,10 @@ function handleSocketMessage(_event, data) {
   if (!isRealtimeEnvelope(data)) {
     return
   }
+  if (data.type === 'workspace_signal') {
+    emitInboxNotification(data.payload || {})
+    return
+  }
   if (data.type === 'notification_revoked') {
     const id = data.payload?.id
     if (id != null) {
@@ -432,6 +455,7 @@ function applyIncomingNotification(notification) {
     items.value.unshift(notification)
     if (!notification.is_read) unreadCount.value += 1
     showIncomingToast(notification)
+    emitInboxNotification(notification)
   } else if (notification.archived_at && listArchived.value) {
     items.value.unshift(notification)
   }

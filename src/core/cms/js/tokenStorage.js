@@ -35,10 +35,36 @@ export function getAccess() {
   return _accessToken.value || null
 }
 
-export function setTokens(access) {
-  if (access) {
-    _accessToken.value = access
+function sessionScopeSnapshot() {
+  const claims = getSessionScopeGatingClaims()
+  if (claims.length === 0) {
+    return ''
   }
+  return claims.map((name) => `${name}:${getSessionClaim(name) ?? ''}`).join('|')
+}
+
+function notifyIfSessionScopeChanged(previous) {
+  // Меню session-scope пунктов собирается с API. Без события боковая панель
+  // остаётся со старым деревом до F5 (вход в компанию, выход, login со scope).
+  if (sessionScopeSnapshot() === previous) {
+    return
+  }
+  if (typeof window === 'undefined') {
+    return
+  }
+  // После setTokens вызывающий код ещё кладёт cookie/store; меню грузим на следующем тике.
+  queueMicrotask(() => {
+    window.dispatchEvent(new CustomEvent('session-scope-changed'))
+  })
+}
+
+export function setTokens(access) {
+  if (!access) {
+    return
+  }
+  const previous = sessionScopeSnapshot()
+  _accessToken.value = access
+  notifyIfSessionScopeChanged(previous)
 }
 
 /** Подсказка от сервера: есть HttpOnly refresh (без секретов в JS). */
@@ -55,8 +81,10 @@ export function clearSessionHintCookie() {
 }
 
 export function clearTokens() {
+  const previous = sessionScopeSnapshot()
   _accessToken.value = null
   clearSessionHintCookie()
+  notifyIfSessionScopeChanged(previous)
 }
 
 export function shouldRefresh(thresholdSeconds = 120) {

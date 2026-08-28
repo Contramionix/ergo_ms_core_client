@@ -12,6 +12,8 @@ const props = defineProps({
   menuMinWidth: { type: Number, default: 160 },
   /** Компактные пункты (меньший шрифт и отступы) */
   compact: { type: Boolean, default: false },
+  /** bottom — под триггером; right — справа от триггера (длинные каталоги) */
+  placement: { type: String, default: 'bottom' },
 })
 
 const emit = defineEmits(['dropdown-toggle'])
@@ -20,6 +22,7 @@ const menuEl = ref(null)
 const menuStyle = ref({
   '--dropdown-menu-top': '0px',
   '--dropdown-menu-left': '0px',
+  '--dropdown-menu-max-height': 'min(80dvh, calc(100dvh - 16px))',
   minWidth: '0px',
 })
 
@@ -52,51 +55,63 @@ function updateMenuPosition() {
   const minWidth = Math.min(Math.max(props.menuMinWidth, triggerRect.width), maxWidth)
 
   const menuRect = menuEl.value?.getBoundingClientRect()
-  // Реальная ширина после рендера — иначе длинные подписи уезжают за край при align-end
   const menuWidth = Math.min(
     Math.max(menuRect?.width || 0, minWidth),
     maxWidth,
   )
   const menuHeight = menuRect?.height || 0
-  const maxHeight = Math.max(0, vh - VIEWPORT_PADDING * 2)
+  const spaceBelow = vh - VIEWPORT_PADDING - (triggerRect.bottom + gap)
+  const spaceAbove = triggerRect.top - gap - VIEWPORT_PADDING
 
   let left
-  if (alignEnd.value) {
-    left = triggerRect.right - menuWidth
-  } else if (props.makeCenter) {
-    left = triggerRect.left + triggerRect.width / 2 - menuWidth / 2
-  } else {
-    left = triggerRect.left
-  }
-  left = Math.min(left, vw - VIEWPORT_PADDING - menuWidth)
-  left = Math.max(VIEWPORT_PADDING, left)
+  let top
+  let available
 
-  let top = triggerRect.bottom + gap
-  if (menuHeight) {
-    const spaceBelow = vh - VIEWPORT_PADDING - (triggerRect.bottom + gap)
-    const spaceAbove = triggerRect.top - gap - VIEWPORT_PADDING
-    if (menuHeight > spaceBelow && spaceAbove > spaceBelow) {
-      top = triggerRect.top - menuHeight - gap
+  if (props.placement === 'right') {
+    left = triggerRect.right + gap
+    if (left + menuWidth > vw - VIEWPORT_PADDING) {
+      left = triggerRect.left - gap - menuWidth
     }
-    // Финальный clamp — меню целиком в viewport (как в ConnectionFiles SheetContextMenu)
-    top = Math.min(top, vh - VIEWPORT_PADDING - Math.min(menuHeight, maxHeight))
+    const maxBox = Math.max(0, vh - VIEWPORT_PADDING * 2)
+    top = triggerRect.top
+    if (menuHeight) {
+      top = Math.min(top, vh - VIEWPORT_PADDING - Math.min(menuHeight, maxBox))
+    }
+    top = Math.min(Math.max(top, VIEWPORT_PADDING), vh - VIEWPORT_PADDING)
+    available = Math.max(0, vh - VIEWPORT_PADDING - top)
+  } else {
+    if (alignEnd.value) {
+      left = triggerRect.right - menuWidth
+    } else if (props.makeCenter) {
+      left = triggerRect.left + triggerRect.width / 2 - menuWidth / 2
+    } else {
+      left = triggerRect.left
+    }
+    const openUp = menuHeight
+      ? menuHeight > spaceBelow && spaceAbove > spaceBelow
+      : spaceBelow < 240 && spaceAbove > spaceBelow
+    available = Math.max(0, openUp ? spaceAbove : spaceBelow)
+    if (openUp) {
+      const usedHeight = menuHeight ? Math.min(menuHeight, available) : available
+      top = triggerRect.top - gap - usedHeight
+    } else {
+      top = triggerRect.bottom + gap
+    }
+    top = Math.min(top, vh - VIEWPORT_PADDING - Math.min(menuHeight || available, available))
     top = Math.max(VIEWPORT_PADDING, top)
   }
 
-  const style = {
+  left = Math.min(left, vw - VIEWPORT_PADDING - menuWidth)
+  left = Math.max(VIEWPORT_PADDING, left)
+
+  menuStyle.value = {
     '--dropdown-menu-top': `${top}px`,
     '--dropdown-menu-left': `${left}px`,
+    '--dropdown-menu-max-height': `${available}px`,
     minWidth: `${minWidth}px`,
     maxWidth: `${maxWidth}px`,
     zIndex: OVERLAY_MENU_Z_INDEX,
   }
-
-  if (menuHeight > maxHeight) {
-    style.maxHeight = `${maxHeight}px`
-    style.overflowY = 'auto'
-  }
-
-  menuStyle.value = style
 }
 
 watch(isOpen, (open) => {
@@ -202,8 +217,9 @@ defineExpose({
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: auto !important;
-  max-height: none !important;
-  overflow: visible;
+  max-height: var(--dropdown-menu-max-height, min(80dvh, calc(100dvh - 16px))) !important;
+  overflow-x: hidden;
+  overflow-y: auto !important;
   transform: none !important;
   margin: 0 !important;
   background-color: var(--bs-card-bg, var(--bs-body-bg));

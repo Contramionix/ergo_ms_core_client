@@ -28,13 +28,17 @@ function connectNotificationsSse(handlers) {
     },
   })
 
-  const off = client.on('notification_new', (event, data) => {
+  const offNew = client.on('notification_new', (event, data) => {
+    handlers.onMessage?.(event, data)
+  })
+  const offSignal = client.on('workspace_signal', (event, data) => {
     handlers.onMessage?.(event, data)
   })
 
   return {
     close() {
-      off?.()
+      offNew?.()
+      offSignal?.()
       handlers.onClose?.({}, true)
     },
     getSocket() {

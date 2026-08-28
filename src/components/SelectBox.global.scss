@@ -49,6 +49,33 @@
 }
 
 .fixed-menu {
+    /* Кастомный #option собирается в родителе — scoped-стили SelectBox на слот не действуют. */
+    .select-box-option-row {
+        display: flex;
+        align-items: center;
+        gap: 0.55em;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .select-box-option-row .select-box-option-checkbox,
+    .select-box-option-row .form-check-input {
+        width: 1em;
+        height: 1em;
+        min-width: 1em;
+        margin: 0;
+        flex-shrink: 0;
+        float: none;
+        position: static;
+        vertical-align: middle;
+        cursor: pointer;
+    }
+
+    .select-box-option-label {
+        flex: 1;
+        min-width: 0;
+    }
+
     .select-box-nested-option {
         display: flex;
         flex-direction: column;

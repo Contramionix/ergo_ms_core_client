@@ -9,7 +9,7 @@ import {
   wasLastRefreshTransient,
 } from '@/core/cms/js/tokenRefresh.js'
 import { savePostLoginReturnPath } from '@/core/cms/js/postLoginReturn.js'
-import { hasSessionHintCookie } from '@/core/cms/js/tokenStorage.js'
+import { hasSessionHintCookie, isExpired } from '@/core/cms/js/tokenStorage.js'
 import { applyMaintenanceFromResponse, isMaintenanceResponse } from '@/composables/useMaintenanceMode.js'
 import {
   applyRateLimitFromResponse,
@@ -20,6 +20,15 @@ import {
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
 import { logError, logWarn, sanitizeError } from '@/js/utils/logError.js'
 import { getCurrentLocale } from '@/i18n/index.js'
+
+function bearerAccess(headers) {
+  const raw = headers?.Authorization || headers?.authorization || ''
+  if (typeof raw !== 'string') {
+    return ''
+  }
+  const prefix = 'Bearer '
+  return raw.startsWith(prefix) ? raw.slice(prefix.length) : ''
+}
 
 /**
  * Класс для работы с API
@@ -124,6 +133,21 @@ class ApiClient {
           // Гостевой 401 без Bearer — ожидаемо для публичных эндпоинтов
           if (!hadAuthHeader) {
             return Promise.reject(error)
+          }
+
+          const sentAccess = bearerAccess(headers)
+          const currentAccess = tokenService.getAccess()
+          // Вход в session-scope уже подменил access; старый Bearer в полёте не должен
+          // запускать refresh по отозванному cookie и logout.
+          if (
+            currentAccess
+            && sentAccess
+            && currentAccess !== sentAccess
+            && !isExpired(currentAccess)
+          ) {
+            originalRequest._retry = true
+            this._addAuthToken(originalRequest)
+            return this.client(originalRequest)
           }
 
           originalRequest._retry = true

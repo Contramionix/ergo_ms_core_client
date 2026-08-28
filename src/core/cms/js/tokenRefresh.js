@@ -254,6 +254,7 @@ export async function performTokenRefresh() {
   }
 
   refreshInProgress = (async () => {
+    const accessAtStart = getAccess()
     try {
       const response = await axios.post(
         `${resolveApiClientBaseUrl()}${AUTH_REFRESH_PATH}`,
@@ -281,6 +282,12 @@ export async function performTokenRefresh() {
       }
 
       if (response.status !== 200) {
+        const accessNow = getAccess()
+        if (accessNow && accessNow !== accessAtStart && !isExpired(accessNow)) {
+          lastRefreshWasTransient = false
+          markSessionRestoreResult(true)
+          return accessNow
+        }
         lastRefreshWasTransient = false
         markSessionRestoreResult(false)
         return null

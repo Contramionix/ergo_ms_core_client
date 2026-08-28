@@ -128,6 +128,7 @@ const OPTIMIZE_DEPS_INCLUDE = [
   'axios',
   'exceljs',
   'pdfjs-dist',
+  'docx-preview',
 ]
 
 function npmPackageAliases(names) {
@@ -327,7 +328,7 @@ function resolveManualChunk(id) {
   if (normalizedId.includes('codemirror') || normalizedId.includes('vue-codemirror')) {
     return 'vendor_editors'
   }
-  if (normalizedId.includes('exceljs') || normalizedId.includes('pdfjs-dist')) {
+  if (normalizedId.includes('exceljs') || normalizedId.includes('pdfjs-dist') || normalizedId.includes('docx-preview')) {
     return 'vendor_heavy'
   }
   if (normalizedId.includes('epubjs')) {

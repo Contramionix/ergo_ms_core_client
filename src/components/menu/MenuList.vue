@@ -534,6 +534,10 @@ const loadMenu = async (forceRefresh = false) => {
       return
     }
 
+    if (forceRefresh && menuSections.value.length) {
+      return
+    }
+
     resetMenu()
     toast.warning(t('menu.sidebar.notConfigured'))
   } catch (error) {

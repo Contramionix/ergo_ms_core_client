@@ -89,13 +89,19 @@ const resolvedZIndex = computed(() => {
   return stackZIndex.value
 })
 
+const standaloneBackdropClass = computed(() => `mc-standalone--${props.backdropEffect}`)
+
 const standaloneRootStyle = computed(() => {
-  const value = resolvedZIndex.value
-  if (value == null || value === '') return undefined
-  return {
-    '--bs-modal-zindex': value,
-    zIndex: value,
+  const blurPx = Number.isFinite(props.backdropBlur) ? Math.max(0, props.backdropBlur) : 4
+  const style = {
+    '--mc-backdrop-blur': `${blurPx}px`,
   }
+  const value = resolvedZIndex.value
+  if (value != null && value !== '') {
+    style['--bs-modal-zindex'] = value
+    style.zIndex = value
+  }
+  return style
 })
 
 const handleClose = () => {
@@ -181,7 +187,7 @@ onBeforeUnmount(() => {
       :id="modalId"
       ref="standaloneRootRef"
       class="modal fade show d-block mc-standalone"
-      :class="customClass"
+      :class="[customClass, standaloneBackdropClass]"
       tabindex="-1"
       role="dialog"
       aria-modal="true"
@@ -229,6 +235,27 @@ onBeforeUnmount(() => {
   background-color: rgba(0, 0, 0, var(--bs-backdrop-opacity, 0.5));
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+.mc-standalone--blur {
+  background-color: rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(var(--mc-backdrop-blur, 4px));
+  -webkit-backdrop-filter: blur(var(--mc-backdrop-blur, 4px));
+}
+
+.mc-standalone--both {
+  backdrop-filter: blur(var(--mc-backdrop-blur, 4px));
+  -webkit-backdrop-filter: blur(var(--mc-backdrop-blur, 4px));
+}
+
+:global(html[data-ergo-motion='reduce']) .mc-standalone--blur,
+:global(html[data-ergo-motion='reduce']) .mc-standalone--both {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+:global(html[data-ergo-motion='reduce']) .mc-standalone--blur {
+  background-color: rgba(0, 0, 0, var(--bs-backdrop-opacity, 0.5));
 }
 
 .mc-standalone__dialog {

@@ -21,6 +21,7 @@ export default {
     notFound: 'Resource not found',
     validation: 'Please check the form fields',
     server: 'Server error',
+    serverTryLater: 'The server could not process the request. Please try again later.',
     tooManyRequests: 'Too many requests. Please wait a moment and try again.',
     payloadTooLarge: 'The file is too large',
   },

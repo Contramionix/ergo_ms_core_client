@@ -26,22 +26,22 @@
           </div>
 
           <div v-else class="users-list">
-          <div v-for="user in filteredUsers" :key="user.id" class="user-item"
+          <div v-for="user in filteredUsers" :key="userIdentity(user)" class="user-item"
             :class="{
-              'user-item-assigned': isAssigned(user.id),
-              'user-item-selected': isSelected(user.id)
+              'user-item-assigned': isAssigned(user),
+              'user-item-selected': isSelected(user)
             }"
             @click="selectUser(user)"
           >
             <div class="d-flex align-items-center gap-3 p-3">
               <div class="avatar-wrapper">
                 <UserAvatar :user-ref="user.public_id" :size="48" :title="user.full_name || user.username" :avatar-url="user.avatar_url" :first-name="user.first_name" :last-name="user.last_name" />
-                <div v-if="isSelected(user.id) || isAssigned(user.id)" class="check-badge" :class="{ 'check-badge-assigned': isAssigned(user.id) && !isSelected(user.id) }">
+                <div v-if="isSelected(user) || isAssigned(user)" class="check-badge" :class="{ 'check-badge-assigned': isAssigned(user) && !isSelected(user) }">
                   <Check :size="12" stroke-width="3" />
                 </div>
               </div>
               <div class="flex-grow-1 min-width-0">
-                <div class="fw-semibold text-truncate" :class="{ 'text-primary': isSelected(user.id), 'text-success': isAssigned(user.id) && !isSelected(user.id) }">
+                <div class="fw-semibold text-truncate" :class="{ 'text-primary': isSelected(user), 'text-success': isAssigned(user) && !isSelected(user) }">
                   {{ user.full_name || user.username }}
                 </div>
                 <div v-if="user.role_group_name" class="text-muted small text-truncate">{{ user.role_group_name }}</div>
@@ -115,6 +115,10 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  assignLabel: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits(['close', 'selected', 'selectedMultiple', 'deselected'])
@@ -156,21 +160,35 @@ const activeRoleGroupId = computed(() => {
   return tab?.roleGroupId ?? tab?.role_group_id ?? tab?.role_group ?? null
 })
 
-const assignedUserIdsSet = computed(() => {
-  const ids = Array.isArray(props.assignedUserIds) ? props.assignedUserIds : []
-  return new Set(ids.map(id => Number(id)).filter(id => Number.isFinite(id)))
-})
-
-function isAssigned(userId) {
-  if (!userId) return false
-  const numId = Number(userId)
-  if (deselectedAssignedIds.value.has(numId)) return false
-  return assignedUserIdsSet.value.has(numId)
+function userIdentity(user) {
+  if (user == null) return ''
+  if (typeof user !== 'object') {
+    const value = String(user).trim()
+    return value
+  }
+  const ref = user.public_id ?? user.user_ref ?? user.id
+  if (ref == null || ref === '') return ''
+  return String(ref)
 }
 
-function isSelected(userId) {
-  if (!userId) return false
-  return selectedUsers.value.some(u => u.id === userId)
+function identitySet(ids) {
+  const list = Array.isArray(ids) ? ids : []
+  return new Set(list.map((id) => String(id).trim()).filter(Boolean))
+}
+
+const assignedUserIdsSet = computed(() => identitySet(props.assignedUserIds))
+
+function isAssigned(user) {
+  const key = userIdentity(user)
+  if (!key) return false
+  if (deselectedAssignedIds.value.has(key)) return false
+  return assignedUserIdsSet.value.has(key)
+}
+
+function isSelected(user) {
+  const key = userIdentity(user)
+  if (!key) return false
+  return selectedUsers.value.some((item) => userIdentity(item) === key)
 }
 
 const hasChanges = computed(() => {
@@ -190,35 +208,37 @@ const buttonText = computed(() => {
       deselected: deselectedCount,
     })
   }
+  if (props.assignLabel) {
+    return `${props.assignLabel} (${selectedCount})`
+  }
   return t('components.memberPicker.assignCount', { count: selectedCount })
 })
 
-const excludedUserIdsSet = computed(() => {
-  const ids = Array.isArray(props.excludedUserIds) ? props.excludedUserIds : []
-  return new Set(ids.map(id => Number(id)).filter(id => Number.isFinite(id) && id > 0))
-})
+const excludedUserIdsSet = computed(() => identitySet(props.excludedUserIds))
 
 const filteredUsers = computed(() => {
   if (excludedUserIdsSet.value.size === 0) {
     return users.value
   }
-  return users.value.filter(user => {
-    if (!user?.id) return true
-    const userId = Number(user.id)
-    return !excludedUserIdsSet.value.has(userId)
+  return users.value.filter((user) => {
+    const key = userIdentity(user)
+    return !key || !excludedUserIdsSet.value.has(key)
   })
 })
 
 function normalizeModalUser(raw) {
-  const fullName = raw.full_name || raw.fullName || ''
+  const fullName = raw.full_name || raw.fullName || raw.name || ''
   const fallbackName = fullName || raw.username || ''
   // Только поля с API — разбор full_name делает UserAvatar.
   const firstName = (raw.first_name || raw.firstName || '').trim()
   const lastName = (raw.last_name || raw.lastName || '').trim()
+  const publicId = raw.public_id ?? raw.publicId ?? raw.user_ref ?? null
+  const identity = publicId ?? raw.id ?? null
 
   return {
-    id: raw.id,
-    public_id: raw.public_id ?? raw.publicId ?? null,
+    id: identity,
+    public_id: publicId,
+    user_ref: raw.user_ref ?? publicId,
     username: raw.username || '',
     full_name: fallbackName,
     first_name: firstName || null,
@@ -244,8 +264,10 @@ async function loadCandidates() {
   }
   try {
     isLoading.value = true
+    const query = searchQuery.value || ''
     const list = await props.fetchUsers({
-      q: searchQuery.value || '',
+      q: query,
+      search: query,
       activeTab: activeTab.value,
       roleGroupId: activeRoleGroupId.value,
     })
@@ -265,23 +287,22 @@ function handleSearch() {
 }
 
 function selectUser(user) {
-  if (!user?.id) return
+  const key = userIdentity(user)
+  if (!key) return
 
-  const userId = user.id
-  const numId = Number(userId)
-  const isCurrentlyAssigned = assignedUserIdsSet.value.has(numId)
-  const isDeselected = deselectedAssignedIds.value.has(numId)
+  const isCurrentlyAssigned = assignedUserIdsSet.value.has(key)
+  const isDeselected = deselectedAssignedIds.value.has(key)
 
   if (isCurrentlyAssigned) {
     if (isDeselected) {
-      deselectedAssignedIds.value.delete(numId)
+      deselectedAssignedIds.value.delete(key)
     } else {
-      deselectedAssignedIds.value.add(numId)
+      deselectedAssignedIds.value.add(key)
     }
     return
   }
 
-  const index = selectedUsers.value.findIndex(u => u.id === userId)
+  const index = selectedUsers.value.findIndex((item) => userIdentity(item) === key)
 
   if (index >= 0) {
     selectedUsers.value.splice(index, 1)
@@ -344,11 +365,7 @@ watch(resolvedTabs, () => {
 })
 
 watch(
-  () => [...(Array.isArray(props.assignedUserIds) ? props.assignedUserIds : [])]
-    .map((id) => Number(id))
-    .filter((id) => Number.isFinite(id))
-    .sort((a, b) => a - b)
-    .join(','),
+  () => [...identitySet(props.assignedUserIds)].sort().join(','),
   () => {
     if (!props.show) return
     deselectedAssignedIds.value = new Set()
