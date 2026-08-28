@@ -49,6 +49,7 @@ const HOST_SHARED = [
   'ergo-shared/client-env',
   'ergo-shared/access-control',
   'ergo-shared/token-storage',
+  'ergo-shared/lucide-icons',
 ]
 
 const vue = requireFromNpm('@vitejs/plugin-vue')
@@ -111,6 +112,8 @@ const config = defineConfig({
       { find: '@/core/cms/adp/js/accessControl', replacement: 'ergo-shared/access-control' },
       { find: '@/core/cms/js/tokenStorage.js', replacement: 'ergo-shared/token-storage' },
       { find: '@/core/cms/js/tokenStorage', replacement: 'ergo-shared/token-storage' },
+      { find: '@/js/lucideIconLoader.js', replacement: 'ergo-shared/lucide-icons' },
+      { find: '@/js/lucideIconLoader', replacement: 'ergo-shared/lucide-icons' },
       {
         find: '@/modules/core/sharedGlobs.generated.js',
         replacement: path.resolve(__dirname, 'lib/empty-module.js'),
@@ -170,6 +173,7 @@ const config = defineConfig({
           'ergo-shared/client-env': 'ergo-shared/client-env',
           'ergo-shared/access-control': 'ergo-shared/access-control',
           'ergo-shared/token-storage': 'ergo-shared/token-storage',
+          'ergo-shared/lucide-icons': 'ergo-shared/lucide-icons',
         },
       },
     },

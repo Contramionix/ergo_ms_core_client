@@ -585,6 +585,9 @@ function federationImportMapBody(isServe) {
       'ergo-shared/token-storage': isServe
         ? '/src/shell/shared/token-storage.js'
         : '/shared/token-storage.js',
+      'ergo-shared/lucide-icons': isServe
+        ? '/src/shell/shared/lucide-icons.js'
+        : '/shared/lucide-icons.js',
     },
   })
 }
@@ -669,6 +672,7 @@ export default defineConfig(() => ({
               'shared/client-env': path.resolve(__dirname, 'src/shell/shared/client-env.js'),
               'shared/access-control': path.resolve(__dirname, 'src/shell/shared/access-control.js'),
               'shared/token-storage': path.resolve(__dirname, 'src/shell/shared/token-storage.js'),
+              'shared/lucide-icons': path.resolve(__dirname, 'src/shell/shared/lucide-icons.js'),
             },
           }
         : {}),

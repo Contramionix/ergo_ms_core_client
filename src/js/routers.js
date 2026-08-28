@@ -402,10 +402,16 @@ function setupRouterGuards(router) {
     }
   })
 
-  router.afterEach(() => {
+  router.afterEach((to) => {
     // Всегда гасим полоску: при редиректе guard'а обратно на тот же path
     // (Back на /login → AppHome) to.path === from.path, иначе зависает.
     finishRouteProgress()
+    const moduleKey = to.meta?.moduleKey
+    if (typeof moduleKey === 'string' && moduleKey) {
+      void import('@/modules/core/federatedModules.js')
+        .then(({ ensureRemoteStyles }) => ensureRemoteStyles(moduleKey))
+        .catch(() => {})
+    }
   })
 
   router.onError((error) => {

@@ -9,6 +9,7 @@ import { clientEnv } from '@/js/clientEnv.js'
 import { parseModuleRemotes } from './parseModuleRemotes.js'
 import { normalizeClientModuleManifest } from './clientModuleManifest.js'
 import { logWarn, logError } from '@/js/utils/logError.js'
+import bridge from '@/integrations/ModuleBridge.js'
 
 function remoteBaseUrl(entryUrl) {
   return String(entryUrl || '').replace(/\/[^/]+$/, '')
@@ -25,8 +26,11 @@ function addStylesheet(href, datasetId) {
   document.head.appendChild(link)
 }
 
+const injectedRemoteStyles = new Set()
+
 /**
  * CSS remote-сборки не попадает в JS (lib + cssCodeSplit). Подключаем файлы с того же /remotes/.
+ * На старте не зовём: семь копий хостового UI (~740 КБ) иначе качаются на каждой странице.
  * @param {string} entryUrl
  * @param {string} remoteName
  */
@@ -42,8 +46,6 @@ async function injectRemoteStyles(entryUrl, remoteName) {
       if (Array.isArray(files)) {
         files
           .filter((rel) => typeof rel === 'string' && rel.endsWith('.css'))
-          // Хостовые токены уже в main.css; этот файл remote только дублирует оболочку.
-          .filter((rel) => !/ergo-ms-root/i.test(rel))
           .forEach((rel, index) => {
             const href = rel.startsWith('/')
               ? rel
@@ -64,6 +66,26 @@ async function injectRemoteStyles(entryUrl, remoteName) {
 export function getConfiguredModuleRemotes() {
   return parseModuleRemotes(clientEnv.moduleRemotes || '')
 }
+
+/**
+ * Подключает CSS remote, когда открыта страница или виджет этого модуля.
+ * @param {string} remoteName
+ * @returns {Promise<void>}
+ */
+export async function ensureRemoteStyles(remoteName) {
+  const name = String(remoteName || '').trim()
+  if (!name || injectedRemoteStyles.has(name)) {
+    return
+  }
+  const found = getConfiguredModuleRemotes().find((item) => item.name === name)
+  if (!found) {
+    return
+  }
+  injectedRemoteStyles.add(name)
+  await injectRemoteStyles(found.entry, name)
+}
+
+bridge.provide('shell.ensure_remote_styles', ensureRemoteStyles, { override: true })
 
 /**
  * @param {string} entryUrl
@@ -120,10 +142,7 @@ export async function loadFederatedModules() {
   const loaded = await Promise.all(
     remotes.map(async ({ name, entry }) => {
       try {
-        const [, raw] = await Promise.all([
-          injectRemoteStyles(entry, name),
-          importRemoteEntry(entry, name),
-        ])
+        const raw = await importRemoteEntry(entry, name)
         const manifest = normalizeClientModuleManifest(raw, name)
         if (!manifest) {
           logWarn(`[federated] Remote ${name}: манифест не распознан`)
