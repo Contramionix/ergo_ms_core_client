@@ -36,25 +36,72 @@ function isLiteralIpHost(hostname) {
   return host.includes(':')
 }
 
+function stripAccidentalApiPrefix(pathname) {
+  const path = String(pathname || '')
+  if (path.startsWith('/api/serve/') || path.startsWith('/api/upload/')) {
+    return path.slice('/api'.length)
+  }
+  return path
+}
+
+function isMediaBrowserPath(pathname) {
+  return pathname.startsWith('/serve/') || pathname.startsWith('/upload/')
+}
+
 export function browserMediaUrl(url) {
   if (!url) return url
+  try {
+    const raw = String(url).trim()
+    const base = typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'http://localhost'
+    const parsed = new URL(raw, base)
+    const pathname = stripAccidentalApiPrefix(parsed.pathname)
+    const search = parsed.search
+    if (!isMediaBrowserPath(pathname)) {
+      return raw
+    }
+    const sameOrigin = typeof window === 'undefined' || parsed.origin === base
+    if (!sameOrigin && isLiteralIpHost(parsed.hostname)) {
+      return `${pathname}${search}`
+    }
+    if (sameOrigin || pathname !== parsed.pathname) {
+      return `${pathname}${search}`
+    }
+    return raw
+  } catch {
+    return url
+  }
+}
+
+/**
+ * Для axios с baseURL ``…/api/``: иначе ``/serve/…`` превращается в ``/api/serve/…``.
+ * @param {string} url
+ * @returns {{ url: string, baseURL: string }|null}
+ */
+export function axiosSameOriginMediaRequest(url) {
+  const safe = browserMediaUrl(url)
+  if (!safe) return null
   try {
     const base = typeof window !== 'undefined' && window.location?.origin
       ? window.location.origin
       : 'http://localhost'
-    const parsed = new URL(String(url).trim(), base)
-    const sameOrigin = typeof window === 'undefined' || parsed.origin === base
-    const mediaPath = (
-      parsed.pathname.startsWith('/serve/')
-      || parsed.pathname.startsWith('/upload/')
-      || parsed.pathname.startsWith('/api/')
-    )
-    if (!sameOrigin && isLiteralIpHost(parsed.hostname) && mediaPath) {
-      return `${parsed.pathname}${parsed.search}`
+    const parsed = new URL(safe, base)
+    if (!isMediaBrowserPath(stripAccidentalApiPrefix(parsed.pathname))) {
+      return null
     }
-    return String(url).trim()
+    if (safe.startsWith('/') || parsed.origin === base) {
+      return {
+        url: `${stripAccidentalApiPrefix(parsed.pathname)}${parsed.search}`,
+        baseURL: '',
+      }
+    }
+    return { url: safe, baseURL: '' }
   } catch {
-    return url
+    if (isMediaBrowserPath(String(safe))) {
+      return { url: safe, baseURL: '' }
+    }
+    return null
   }
 }
 

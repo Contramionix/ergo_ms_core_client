@@ -22,6 +22,7 @@ import {
 } from '@/composables/useRateLimitNotice.js'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
 import { extractApiError } from '@/js/utils/apiErrorMessage.js'
+import { axiosSameOriginMediaRequest } from '@/js/utils/mediaDownload.js'
 import { logError, logWarn, sanitizeError } from '@/js/utils/logError.js'
 import { getCurrentLocale } from '@/i18n/index.js'
 
@@ -58,6 +59,11 @@ class ApiClient {
   _setupInterceptors() {
     // Интерцептор запросов: тихий refresh перед отправкой
     this.client.interceptors.request.use(async (config) => {
+      const mediaReq = axiosSameOriginMediaRequest(config.url)
+      if (mediaReq) {
+        config.url = mediaReq.url
+        config.baseURL = mediaReq.baseURL
+      }
       if (config._needToken && !tokenService.getAccess()) {
         const access = await ensureAccessToken()
         if (access) {
