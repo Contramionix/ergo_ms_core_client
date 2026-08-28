@@ -96,6 +96,29 @@ export function formatDateTime(date) {
 }
 
 /**
+ * Форматирует дату с временем: «20 августа 2026, 09:15»
+ * @param {string|Date} date - Дата в ISO формате или объект Date
+ * @returns {string} Отформатированная дата с месяцем словами и временем или «—» при ошибке
+ */
+export function formatDateTimeLong(date) {
+    if (!date) return '—'
+    const targetDate = parseDate(date)
+    if (!targetDate) return '—'
+
+    try {
+        const datePart = formatDate(date)
+        if (!datePart) return '—'
+        const time = new Intl.DateTimeFormat(getCurrentBcp47(), {
+            hour: '2-digit',
+            minute: '2-digit',
+        }).format(targetDate)
+        return `${datePart}, ${time}`
+    } catch {
+        return '—'
+    }
+}
+
+/**
  * Форматирует дату: «03 августа 2026 (понедельник), 15:35»
  * @param {string|Date} date - Дата в ISO формате или объект Date
  * @returns {string} Отформатированная дата со днём недели и временем
@@ -291,6 +314,28 @@ export function toISODate(value) {
         return convertDateObjectToString(value)
     }
     return ''
+}
+
+/**
+ * Нормализует значение к локальной строке YYYY-MM-DDTHH:mm.
+ */
+export function toISODateTime(value) {
+    if (!value) return ''
+    if (typeof value === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return value
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) return value.slice(0, 16)
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value}T00:00`
+        const parsed = parseDate(value)
+        return parsed ? formatDateTimeLocal(parsed) : ''
+    }
+    if (value instanceof Date && !isNaN(value)) return formatDateTimeLocal(value)
+    return ''
+}
+
+function formatDateTimeLocal(date) {
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${formatDateLocal(date)}T${hours}:${minutes}`
 }
 
 function convertDateObjectToString(dateObj) {

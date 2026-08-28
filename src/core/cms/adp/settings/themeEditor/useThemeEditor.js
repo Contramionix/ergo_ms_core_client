@@ -15,7 +15,7 @@ import {
 } from '@/js/theme-manager'
 import { previewModuleThemeSet, applyModuleThemeSet, normalizeModuleThemeSetPayload, clearModuleTheme } from '@/js/module-theme-manager.js'
 import { syncUiSettingsFromStorage } from '@/core/cms/js/uiSettings.js'
-import { Sun, Moon } from 'lucide-vue-next'
+import { Sun, Moon } from '@lucide/vue'
 import { contrastRatio } from './themeContrast.js'
 import { createThemeEditorActions } from './themeEditorActions.js'
 import { resetSystemThemeRecord } from './themeEditorReset.js'

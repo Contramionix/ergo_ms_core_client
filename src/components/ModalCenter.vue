@@ -156,7 +156,9 @@ watch(
       document.addEventListener('keydown', onKeydown)
       await nextTick()
       deactivateFocusTrap?.()
-      deactivateFocusTrap = activateFocusTrap(standaloneRootRef.value)
+      deactivateFocusTrap = activateFocusTrap(standaloneRootRef.value, {
+        isActive: () => isTopModal(props.modalId),
+      })
     } else {
       deactivateFocusTrap?.()
       deactivateFocusTrap = null
@@ -305,6 +307,11 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   color: var(--color-primary-text);
   border-bottom: 1px solid var(--color-secondary-background);
+
+  .modal-title :deep(svg) {
+    display: block;
+    flex-shrink: 0;
+  }
 
   .btn-close:focus {
     box-shadow: none;

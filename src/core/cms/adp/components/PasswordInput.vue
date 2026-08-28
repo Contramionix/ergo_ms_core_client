@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { Eye, EyeOff } from 'lucide-vue-next'
+import { Eye, EyeOff } from '@lucide/vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 defineOptions({

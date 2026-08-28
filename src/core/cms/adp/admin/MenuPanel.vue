@@ -85,7 +85,7 @@
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, onMounted, onUnmounted, computed, nextTick, defineAsyncComponent } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { LayersPlus, SeparatorHorizontal, Settings, RotateCcw } from 'lucide-vue-next'
+import { LayersPlus, SeparatorHorizontal, Settings, RotateCcw } from '@lucide/vue'
 import { useToast } from '@/js/utils/toast.js'
 import { confirmAction } from '@/js/utils/confirm.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'

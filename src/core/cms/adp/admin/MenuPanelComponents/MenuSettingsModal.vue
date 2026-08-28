@@ -1,7 +1,7 @@
 <script setup>
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, watch, onMounted } from 'vue'
-import { Settings } from 'lucide-vue-next'
+import { Settings } from '@lucide/vue'
 import Cookies from 'js-cookie'
 import ModalCenter from '@/components/ModalCenter.vue'
 

@@ -17,18 +17,30 @@
 
         <div v-if="hasAttachments" class="msng-bubble__attachments">
           <template v-for="att in message.attachments" :key="att.id">
-            <a v-if="getSafeHref(att.file_url)" :href="getSafeHref(att.file_url)" target="_blank" rel="noopener noreferrer" class="msng-bubble__attachment">
+            <a
+              v-if="isImage(att.mime_type) && attachmentHref(att)"
+              :href="attachmentHref(att)"
+              class="msng-bubble__attachment"
+              @click.prevent="openImage(att)"
+            >
               <ContentImage
-                v-if="isImage(att.mime_type)"
-                :src="getSafeHref(att.file_url)"
+                :src="attachmentHref(att)"
                 :alt="att.original_filename || t('settings.messenger.attachment')"
                 class="msng-bubble__attachment-img"
               />
-              <span v-else class="msng-bubble__attachment-file">
+            </a>
+            <button
+              v-else-if="attachmentHref(att)"
+              type="button"
+              class="msng-bubble__attachment msng-bubble__attachment--file"
+              :aria-label="att.original_filename || t('settings.messenger.attachment')"
+              @click="downloadAttachment(att)"
+            >
+              <span class="msng-bubble__attachment-file">
                 <Paperclip :size="14" class="msng-bubble__attachment-icon" aria-hidden="true" />
                 {{ att.original_filename }}
               </span>
-            </a>
+            </button>
             <span v-else class="msng-bubble__attachment-file">
               <Paperclip :size="14" class="msng-bubble__attachment-icon" />
               {{ att.original_filename }}
@@ -75,12 +87,13 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
-import { Paperclip, Pencil, Trash2, Reply } from 'lucide-vue-next'
+import { Paperclip, Pencil, Trash2, Reply } from '@lucide/vue'
 import ContentImage from '@/components/ContentImage.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { getCurrentBcp47 } from '@/i18n/index.js'
 import { confirmDelete } from '@/js/utils/confirm.js'
+import { downloadMedia } from '@/js/utils/mediaDownload.js'
 import { getSafeHref } from '@/js/utils/urlUtils.js'
 
 const { t } = useAppI18n()
@@ -92,7 +105,7 @@ const props = defineProps({
   showAvatar: { type: Boolean, default: true },
 })
 
-const emit = defineEmits(['delete', 'edit-start', 'reply'])
+const emit = defineEmits(['delete', 'edit-start', 'reply', 'preview-image'])
 
 const showMenu = ref(false)
 const menuStyle = ref({})
@@ -116,6 +129,25 @@ const formattedTime = computed(() => {
 
 function isImage(mimeType) {
   return mimeType && mimeType.startsWith('image/')
+}
+
+function attachmentHref(att) {
+  return getSafeHref(att?.file_url)
+}
+
+function openImage(att) {
+  if (att?.id == null) return
+  emit('preview-image', att.id)
+}
+
+async function downloadAttachment(att) {
+  const href = attachmentHref(att)
+  if (!href) return
+  try {
+    await downloadMedia(href, { filename: att.original_filename })
+  } catch (error) {
+    logError('Не удалось скачать вложение', error)
+  }
 }
 
 function onContextMenu(e) {
@@ -200,11 +232,16 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 .msng-bubble {
   display: flex;
   align-items: flex-end;
+  align-self: flex-start;
   gap: 0.5rem;
+  /* max-content, не fit-content: иначе в flex-колонке шириной становится
+     доступное место (до max-width 80%), а картинка остаётся 240px. */
+  width: max-content;
   max-width: 80%;
   position: relative;
 
   &--own {
+    align-self: flex-end;
     margin-left: auto;
     flex-direction: row-reverse;
 
@@ -237,6 +274,8 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
+    width: max-content;
+    max-width: 100%;
     min-width: 0;
   }
 
@@ -249,6 +288,8 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   }
 
   &__content {
+    width: max-content;
+    max-width: 100%;
     background: var(--bs-tertiary-bg, #f0f2f5);
     padding: 0.5rem 0.75rem;
     border-radius: 1rem 1rem 1rem 0.25rem;
@@ -319,20 +360,46 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   &__attachments {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: 0.35rem;
     margin-top: 0.35rem;
+    width: max-content;
+    max-width: 100%;
+
+    &:first-child {
+      margin-top: 0;
+    }
   }
 
   &__attachment {
+    display: block;
+    line-height: 0;
     text-decoration: none;
+    width: max-content;
+    max-width: 100%;
+
+    &--file {
+      display: inline-flex;
+      line-height: normal;
+      border: none;
+      background: none;
+      padding: 0;
+      cursor: pointer;
+      text-align: left;
+    }
   }
 
+  /* Без процента в max-width: иначе цикл с шириной облака в flex-колонке. */
   &__attachment-img,
-  :deep(.msng-bubble__attachment-img) {
-    max-width: min(240px, 100%);
+  :deep(.msng-bubble__attachment-img),
+  :deep(.msng-bubble__attachment .ergo-content-image),
+  :deep(.msng-bubble__attachment .ergo-content-image__img) {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 240px;
     max-height: 200px;
     border-radius: 0.5rem;
-    object-fit: cover;
   }
 
   &__attachment-file {

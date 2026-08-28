@@ -56,7 +56,7 @@ export async function fetchRegistrationSettings(force = false) {
 }
 
 export async function validateInvitationToken(token) {
-  const response = await apiClient.get(
+  const response = await apiClient.post(
     cmsEndpoints.auth.validateInvitation,
     { token },
     false,

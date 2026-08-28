@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, onBeforeUnmount, provide, ref, watch, nextTick, computed } from 'vue'
-import { ChevronLeft, Minus } from 'lucide-vue-next'
+import { ChevronLeft, Minus } from '@lucide/vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { useToast } from '@/js/utils/toast.js'
@@ -41,6 +41,8 @@ import {
 } from './composables/useMenuCollapsedPreference.js'
 import { isOffcanvasSidebarOpen, openOffcanvasSidebar } from '@/js/useOffcanvasSidebarStore.js'
 import { SHELL_DESKTOP_MIN } from '@/composables/useBreakpoint.js'
+import tokenService from '@/core/cms/js/tokenService.js'
+import { whenSessionReady } from '@/js/sessionReady.js'
 
 const props = defineProps({
   isVisible: Boolean,
@@ -90,6 +92,7 @@ const sidebarBrandMeasureText = computed(() =>
 
 const isToolbarDropdownActive = ref(false)
 const menuSections = ref([])
+let emptyMenuWarned = false
 const isMenuReady = ref(false)
 const allowMenuTransitions = ref(false)
 const isLayoutTransitionActive = ref(false)
@@ -527,6 +530,7 @@ const loadMenu = async (forceRefresh = false) => {
     const menuData = await getUserMenu(forceRefresh)
 
     if (menuData?.menu_items?.length > 0) {
+      emptyMenuWarned = false
       const applied = applyMenuData(menuData, { force: forceRefresh })
       if (applied && forceRefresh) {
         applyInitialMenuLayout()
@@ -539,7 +543,10 @@ const loadMenu = async (forceRefresh = false) => {
     }
 
     resetMenu()
-    toast.warning(t('menu.sidebar.notConfigured'))
+    if (tokenService.getAccess() && !emptyMenuWarned) {
+      emptyMenuWarned = true
+      toast.warning(t('menu.sidebar.notConfigured'))
+    }
   } catch (error) {
     if (!menuSections.value.length) {
       resetMenu()
@@ -550,7 +557,21 @@ const loadMenu = async (forceRefresh = false) => {
 }
 
 // Слушаем событие обновления меню
-const handleMenuUpdate = () => loadMenu(true)
+const handleMenuUpdate = (event) => {
+  if (event?.detail?.fromCache) {
+    const cached = peekCachedMenu()
+    if (cached?.menu_items?.length) {
+      applyMenuData(cached, { force: true })
+      applyInitialMenuLayout()
+    } else {
+      menuSections.value = []
+      separatorsConfig.value = { byOrderIndex: {} }
+      appliedMenuData = null
+    }
+    return
+  }
+  loadMenu(true)
+}
 
 function handleSessionScopeChange() {
   // Сразу перефильтровать уже загруженное меню по JWT,
@@ -568,8 +589,21 @@ onMounted(async () => {
   window.addEventListener('menu-updated', handleMenuUpdate)
   window.addEventListener('session-scope-changed', handleSessionScopeChange)
 
+  await whenSessionReady()
   if (!userStore.isInitialized) {
     await userStore.ensureUserReady()
+  }
+
+  if (!tokenService.getAccess()) {
+    isMenuReady.value = true
+    await finishMenuBootstrap()
+    scheduleLayoutOffsetSync()
+    setupWidthTracking(onWindowResize)
+    menuRef.value?.addEventListener('transitionend', onMenuTransitionEnd)
+    await nextTick()
+    syncMenuScrollShadow()
+    menuScrollRef.value?.addEventListener('scroll', onMenuScroll, { passive: true })
+    return
   }
 
   if (isMenuReady.value && isMenuCacheFresh()) {

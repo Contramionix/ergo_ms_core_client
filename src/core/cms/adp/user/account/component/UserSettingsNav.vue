@@ -1,6 +1,6 @@
 <script setup>
 import { computed, inject, nextTick, ref, watch } from 'vue'
-import { ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { ChevronDown, ChevronUp } from '@lucide/vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import SearchInput from '@/components/SearchInput.vue'
 import {

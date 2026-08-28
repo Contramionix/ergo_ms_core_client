@@ -12,8 +12,7 @@
 
       <div v-if="resolvedTabs.length > 1" class="px-3 pb-2 border-bottom tabs-container">
         <div class="d-flex gap-2 tabs-scroll">
-          <button v-for="tab in resolvedTabs" :key="tab.key" type="button" class="btn btn-sm border-0 px-3 py-1 filter-tab text-nowrap"
-            :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
+          <button v-for="tab in resolvedTabs" :key="tab.key" type="button" class="btn btn-sm border-0 px-3 py-1 filter-tab text-nowrap" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
             {{ tab.label }}
           </button>
         </div>
@@ -66,7 +65,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { Check } from 'lucide-vue-next'
+import { Check } from '@lucide/vue'
 import ModalCenter from '@/components/ModalCenter.vue'
 import SearchInput from '@/components/SearchInput.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
@@ -119,13 +118,15 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  modalId: {
+    type: String,
+    default: 'memberPickerModal',
+  },
 })
 
 const emit = defineEmits(['close', 'selected', 'selectedMultiple', 'deselected'])
 
 const toast = useToast()
-
-const modalId = 'memberPickerModal'
 
 const searchQuery = ref('')
 const activeTab = ref('all')

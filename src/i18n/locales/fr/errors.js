@@ -24,6 +24,7 @@ export default {
     serverTryLater: "Le serveur n'a pas pu traiter la requête. Veuillez réessayer plus tard.",
     tooManyRequests: 'Trop de requêtes. Veuillez patienter un moment et réessayer.',
     payloadTooLarge: 'Le fichier est trop volumineux',
+    moduleUnavailable: 'Cette section est temporairement indisponible. Le reste de l’application fonctionne.',
   },
   page: {
     notFound: 'Page introuvable',

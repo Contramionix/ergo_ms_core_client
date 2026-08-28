@@ -4,7 +4,8 @@
 
 import { createRouter, createWebHistory, START_LOCATION } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
-import { generateAllRoutes, validateAll, getPermissionRules, getRouteGuards } from '@/modules/index.js'
+import { generateAllRoutes, validateAll, getPermissionRules, getRouteGuards, coreRoutesManager } from '@/modules/index.js'
+import { authRoutes as configAuthRoutes, coreRoutes as configCoreRoutes } from '@/config/routes.js'
 import {
   checkRouteAdpAccess,
   hasAnyModulePermission,
@@ -13,17 +14,13 @@ import {
 } from '@/core/cms/adp/js/accessControl'
 import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
-import { isExpired } from '@/core/cms/js/tokenStorage.js'
+import { hasSessionHintCookie, isExpired } from '@/core/cms/js/tokenStorage.js'
 import {
-  canAttemptTokenRefresh,
   isServerLogoutFinalized,
   performServerLogout,
-  wasLastRefreshTransient,
 } from '@/core/cms/js/tokenRefresh.js'
-import {
-  isRateLimitActive,
-  showRateLimitNotice,
-} from '@/composables/useRateLimitNotice.js'
+import { showRateLimitNotice } from '@/composables/useRateLimitNotice.js'
+import { isAnonymousRoute, routeNeedsAuth, shouldKeepUnverifiedSession } from '@/js/authRoutePolicy.js'
 import {
   consumePostLoginReturnPath,
   savePostLoginReturnPath,
@@ -31,10 +28,11 @@ import {
 import { accessDeniedState } from './accessDeniedState'
 import { finishRouteProgress, startRouteProgress } from '@/js/routeProgressState.js'
 import { runSessionScopeGuard } from '@/js/session/sessionScopeGuard.js'
-import { whenSessionReady } from '@/js/sessionReady.js'
+import { whenSessionReady } from '@/js/bootstrapSession.js'
 import { teGlobal, tGlobal } from '@/i18n/index.js'
 import { logError } from '@/js/utils/logError.js'
 import { isStaleClientError, recoverFromStaleClient } from '@/js/staleClientGuard.js'
+import { traceClientBoot } from '@/js/clientBootTrace.js'
 
 let cachedPermissionRules = null
 let cachedRouteGuards = null
@@ -62,16 +60,26 @@ async function getCachedRouteGuards() {
   return cachedRouteGuards
 }
 
+function resolveInnerGuardOutcome(result, aborted, redirect) {
+  if (result === false || aborted) {
+    return false
+  }
+  if (result && result !== true) {
+    return result
+  }
+  return redirect || null
+}
+
 /**
  * Вызывает route guards всех модулей по порядку (алфавит по имени модуля).
- * @returns {Promise<object|null>} redirect для router или null
+ * @returns {Promise<object|false|null>} redirect для router, false или null
  */
 async function runModuleRouteGuards(to, from) {
   const guards = await getCachedRouteGuards()
   for (let i = 0; i < guards.length; i++) {
     let redirect = null
     let aborted = false
-    await guards[i](to, from, (redirectTo) => {
+    const result = await guards[i](to, from, (redirectTo) => {
       if (redirectTo === false) {
         aborted = true
         return
@@ -80,11 +88,9 @@ async function runModuleRouteGuards(to, from) {
         redirect = redirectTo
       }
     })
-    if (aborted) {
-      return false
-    }
-    if (redirect) {
-      return redirect
+    const outcome = resolveInnerGuardOutcome(result, aborted, redirect)
+    if (outcome != null) {
+      return outcome
     }
   }
   return null
@@ -201,6 +207,44 @@ async function checkRouteAccess(to) {
   return { allowed: true }
 }
 
+export async function revalidateCurrentRoute() {
+  if (!router) {
+    return
+  }
+  const to = router.currentRoute.value
+  if (!to || to.name === 'AccessDenied') {
+    return
+  }
+  const access = await checkRouteAccess(to)
+  if (!access.allowed) {
+    await router.replace({ name: access.redirect || 'AccessDenied' })
+    return
+  }
+  const moduleOutcome = await runModuleRouteGuards(to, to)
+  if (moduleOutcome && moduleOutcome !== true) {
+    await router.replace(moduleOutcome)
+  }
+}
+
+function hasLiveAccessToken() {
+  const access = tokenService.getAccess()
+  return Boolean(access && !isExpired(access))
+}
+
+async function restoreSessionIfHintPresent() {
+  if (isServerLogoutFinalized() || hasLiveAccessToken()) {
+    return
+  }
+  if (!hasSessionHintCookie()) {
+    return
+  }
+  try {
+    await whenSessionReady()
+  } catch {
+    /* cookie есть, restore не удался — дальше уйдём на вход */
+  }
+}
+
 async function runCheckToken() {
   // После logout не доверяем короткому пути userStore: иначе startRoute
   // синхронно снова шлёт на AppHome до завершения clear().
@@ -221,7 +265,7 @@ async function runCheckToken() {
   return checkToken()
 }
 
-/** Локальный сброс сессии до next() — иначе nested beforeEach видит старый access. */
+/** Локальный сброс сессии до редиректа — иначе вложенный beforeEach видит старый access. */
 function clearSessionLocally() {
   tokenService.clear()
   try {
@@ -232,7 +276,7 @@ function clearSessionLocally() {
 }
 
 function setupRouterGuards(router) {
-  router.beforeEach(async (to, from, next) => {
+  router.beforeEach(async (to, from) => {
     const sameCacheGroup =
       from.meta?.cacheGroup &&
       to.meta?.cacheGroup &&
@@ -250,39 +294,55 @@ function setupRouterGuards(router) {
         }
       }
 
-      const safeNext = (params) => {
+      const guardResult = (params) => {
         clearDeniedUnlessAccessDeniedTarget(params)
-        return next(params)
+        return params === undefined ? true : params
       }
 
       if (to.meta?.startRoute === true) {
-        // Раньше LayoutStart/LoginPage: к моменту отрисовки настройки уже в памяти.
         import('@/composables/useAuthSettingsPreload.js').then(({ preloadAuthSettings }) => {
           preloadAuthSettings()
         })
-      }
-
-      if (to.meta?.startRoute === true && (await runCheckToken())) {
-        const returnPath = consumePostLoginReturnPath()
-        return safeNext(returnPath || { name: 'AppHome' })
-      }
-
-      if (to.meta.requiresAuth && !(await runCheckToken())) {
-        // F5 под rate-limit / мигание API: session-hint жив — не чистим сессию
-        // и не уводим на StartPage (иначе «прозрачный» 429 выглядит как logout).
-        if (wasLastRefreshTransient() || isRateLimitActive() || canAttemptTokenRefresh()) {
-          if (!isRateLimitActive()) {
-            showRateLimitNotice(0)
+        await restoreSessionIfHintPresent()
+        if (!isServerLogoutFinalized()) {
+          try {
+            const userStore = useUserStore()
+            if (userStore.isInitialized && userStore.isAuthenticated) {
+              const returnPath = consumePostLoginReturnPath()
+              return guardResult(returnPath || { name: 'AppHome' })
+            }
+          } catch (_) {
+            /* pinia ещё не готов */
           }
-          return safeNext()
         }
-        // Сброс СИНХРОННО до next(StartPage): vue-router вызывает вложенный
-        // beforeEach внутри next(), а import().then(clear) ещё не успевает —
-        // startRoute видит access+userStore и возвращает на requiresAuth → шторм logout.
+      }
+
+      if (isAnonymousRoute(to)) {
+        return guardResult()
+      }
+
+      if (routeNeedsAuth(to) && !hasLiveAccessToken()) {
+        await restoreSessionIfHintPresent()
+      }
+
+      if (routeNeedsAuth(to) && !hasLiveAccessToken()) {
+        savePostLoginReturnPath(to.fullPath)
+        return guardResult({ path: '/login' })
+      }
+
+      if (routeNeedsAuth(to) && !(await runCheckToken())) {
+        // F5 под 429: оставляем маршрут только если access ещё в памяти.
+        // Гость без токена всегда идёт на форму входа, не в оболочку «Гость».
+        if (shouldKeepUnverifiedSession()) {
+          showRateLimitNotice(0)
+          return guardResult()
+        }
+        // Сброс СИНХРОННО до редиректа на Login. logout не await —
+        // иначе первый переход (/ → AppHome) не завершается и маска не снимается.
         savePostLoginReturnPath(to.fullPath)
         clearSessionLocally()
-        await performServerLogout('router.requiresAuth')
-        return safeNext({ name: 'StartPage' })
+        void performServerLogout('router.requiresAuth')
+        return guardResult({ path: '/login' })
       }
 
       // F5 / прямой заход: session-bootstrap ещё может не успеть — без него
@@ -297,18 +357,18 @@ function setupRouterGuards(router) {
 
       const scopeRedirect = await runPlatformSessionScopeGuard(to, from)
       if (scopeRedirect === false) {
-        return next(false)
+        return false
       }
       if (scopeRedirect) {
-        return safeNext(scopeRedirect)
+        return guardResult(scopeRedirect)
       }
 
       const moduleRedirect = await runModuleRouteGuards(to, from)
       if (moduleRedirect === false) {
-        return next(false)
+        return false
       }
       if (moduleRedirect) {
-        return safeNext(moduleRedirect)
+        return guardResult(moduleRedirect)
       }
 
       const accessResult = await checkRouteAccess(to)
@@ -318,14 +378,14 @@ function setupRouterGuards(router) {
           // Иначе оставляем текущий URL и показываем overlay (без ложного
           // ухода на /access-denied при remount / смене режимов UI).
           if (from === START_LOCATION || to.name === 'AccessDenied') {
-            return next({ name: 'AccessDenied' })
+            return { name: 'AccessDenied' }
           }
-          return next(false)
+          return false
         }
-        return accessResult.redirect ? safeNext({ name: accessResult.redirect }) : next()
+        return accessResult.redirect ? guardResult({ name: accessResult.redirect }) : true
       }
 
-      return safeNext()
+      return guardResult()
     } catch (error) {
       // Ошибка guard/chunk — не auth-logout: иначе 404 устаревшего чанка после
       // client-build превращается в шторм POST /logout/ на /start-page.
@@ -333,27 +393,85 @@ function setupRouterGuards(router) {
       accessDeniedState.active = false
       if (isStaleClientError(error)) {
         recoverFromStaleClient('router.beforeEach')
-        next(false)
-        return
+        return false
       }
-      if (to?.name === 'StartPage' || to?.meta?.startRoute === true) {
-        next(false)
-      } else {
-        next({ name: 'StartPage' })
+      if (to?.name === 'StartPage' || to?.name === 'Login' || to?.meta?.startRoute === true) {
+        return false
       }
+      return { path: '/login' }
     }
   })
 
-  router.afterEach(() => {
+  router.afterEach((to) => {
     // Всегда гасим полоску: при редиректе guard'а обратно на тот же path
     // (Back на /login → AppHome) to.path === from.path, иначе зависает.
     finishRouteProgress()
+    const moduleKey = to.meta?.moduleKey
+    if (typeof moduleKey === 'string' && moduleKey) {
+      void import('@/modules/core/federatedModules.js')
+        .then(({ ensureRemoteStyles }) => ensureRemoteStyles(moduleKey))
+        .catch(() => {})
+    }
   })
 
   router.onError((error) => {
     finishRouteProgress()
     if (isStaleClientError(error)) {
       recoverFromStaleClient('router.onError')
+      return
+    }
+    logError('[routers] onError', error)
+  })
+}
+
+function asRouteList(value) {
+  return Array.isArray(value) ? value : []
+}
+
+function isCatchAllRoute(route) {
+  return typeof route?.path === 'string' && route.path.includes(':pathMatch(.*)')
+}
+
+function prependMissingRoutes(routes, extras) {
+  const names = new Set(routes.map((route) => route?.name).filter(Boolean))
+  const paths = new Set(routes.map((route) => route?.path).filter(Boolean))
+  const pendingCatchAll = []
+  for (let i = extras.length - 1; i >= 0; i -= 1) {
+    const extra = extras[i]
+    if (!extra) {
+      continue
+    }
+    if (extra.name && names.has(extra.name)) {
+      continue
+    }
+    if (!extra.name && extra.path && paths.has(extra.path)) {
+      continue
+    }
+    if (isCatchAllRoute(extra)) {
+      pendingCatchAll.push(extra)
+      continue
+    }
+    routes.unshift(extra)
+    if (extra.name) {
+      names.add(extra.name)
+    }
+    if (extra.path) {
+      paths.add(extra.path)
+    }
+  }
+  pendingCatchAll.forEach((extra) => {
+    if (extra.name && names.has(extra.name)) {
+      return
+    }
+    if (extra.path && paths.has(extra.path)) {
+      return
+    }
+    routes.push(extra)
+    if (extra.name) {
+      names.add(extra.name)
+    }
+    if (extra.path) {
+      paths.add(extra.path)
     }
   })
 }
@@ -364,6 +482,21 @@ function setupRouterGuards(router) {
  */
 export async function initRouter() {
   const routes = await generateAllRoutes()
+  prependMissingRoutes(routes, [
+    ...asRouteList(configCoreRoutes),
+    ...asRouteList(configAuthRoutes),
+    ...coreRoutesManager.loadAuthRoutes(),
+  ])
+  if (!routes.some((route) => route.name === 'Login')) {
+    logError('[routers] маршрут Login отсутствует в таблице, добавлен запасной /login')
+    traceClientBoot('missing-login-route')
+    routes.unshift({
+      path: '/login',
+      name: 'Login',
+      component: () => import('@/core/cms/adp/pages/LoginPage.vue'),
+      meta: { startRoute: true, requiresAuth: false },
+    })
+  }
 
   if (import.meta.env.DEV) {
     void validateAll()

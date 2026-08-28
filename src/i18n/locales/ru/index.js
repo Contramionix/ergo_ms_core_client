@@ -7,6 +7,7 @@ import menu from './menu.js'
 import errors from './errors.js'
 import time from './time.js'
 import routes from './routes.js'
+import devTools from './devTools.js'
 
 export default {
   common,
@@ -18,4 +19,5 @@ export default {
   errors,
   time,
   routes,
+  devTools,
 }

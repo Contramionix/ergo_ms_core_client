@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
-import { Archive, ArchiveRestore, Bell, BellOff, CheckCheck, FilterX, Loader2, RefreshCw, Settings, } from 'lucide-vue-next'
+import { Archive, ArchiveRestore, Bell, BellOff, CheckCheck, FilterX, Loader2, RefreshCw, Settings, } from '@lucide/vue'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
 import { groupNotificationsByDate } from '@/core/notifications/js/groupByDate.js'
 import NotificationItem from '@/core/notifications/components/NotificationItem.vue'
@@ -654,6 +654,9 @@ onMounted(async () => {
 }
 
 .notif-page__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
   padding: 3rem 1rem;
 

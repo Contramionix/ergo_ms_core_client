@@ -51,6 +51,14 @@ export default {
   modal: {
     close: 'Fermer',
   },
+  imageLightbox: {
+    image: 'Image',
+    close: 'Fermer',
+    download: 'Télécharger',
+    prev: 'Photo précédente',
+    next: 'Photo suivante',
+    counter: '{current} sur {total}',
+  },
   sideDrawer: {
     close: 'Fermer',
   },
@@ -150,6 +158,19 @@ export default {
     changeMixed: 'Modifier ({selected} + {deselected})',
     all: 'Tous',
     loadError: 'Échec du chargement des utilisateurs',
+  },
+  datePicker: {
+    placeholder: 'jj.mm.aaaa',
+    placeholderDateTime: 'jj.mm.aaaa HH:mm',
+    placeholderDateTime12: 'jj.mm.aaaa hh:mm AM',
+    placeholderMonth: 'mois année',
+    clear: 'Effacer la date',
+  },
+  dropZone: {
+    title: 'Déposez les fichiers ici',
+    or: 'ou',
+    browse: 'sélectionnez sur l’ordinateur',
+    ariaLabel: 'Joindre un fichier',
   },
   passwordInput: {
     label: 'Mot de passe',

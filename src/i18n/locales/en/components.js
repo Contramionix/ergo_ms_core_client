@@ -51,6 +51,14 @@ export default {
   modal: {
     close: 'Close',
   },
+  imageLightbox: {
+    image: 'Image',
+    close: 'Close',
+    download: 'Download',
+    prev: 'Previous photo',
+    next: 'Next photo',
+    counter: '{current} of {total}',
+  },
   sideDrawer: {
     close: 'Close',
   },
@@ -150,6 +158,19 @@ export default {
     changeMixed: 'Change ({selected} + {deselected})',
     all: 'All',
     loadError: 'Failed to load users',
+  },
+  datePicker: {
+    placeholder: 'dd.MM.yyyy',
+    placeholderDateTime: 'dd.MM.yyyy HH:mm',
+    placeholderDateTime12: 'dd.MM.yyyy hh:mm AM',
+    placeholderMonth: 'month year',
+    clear: 'Clear date',
+  },
+  dropZone: {
+    title: 'Drop files here',
+    or: 'or',
+    browse: 'choose on your computer',
+    ariaLabel: 'Attach a file',
   },
   passwordInput: {
     label: 'Password',

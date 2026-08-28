@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } fr
 import { useRouter } from 'vue-router'
 import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
 import { useToast } from '@/js/utils/toast.js'
-import { Settings, Upload, MailPlus, UserPlus, FilePenLine } from 'lucide-vue-next'
+import { Settings, Upload, MailPlus, UserPlus, FilePenLine } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'

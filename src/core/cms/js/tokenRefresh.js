@@ -17,8 +17,16 @@ import { logWarn } from '@/js/utils/logError.js'
 
 const AUTH_REFRESH_PATH = 'cms/adp/token-refresh/'
 const AUTH_LOGOUT_PATH = 'cms/adp/logout/'
-/** sessionStorage: переживает reload вкладки, но не новый браузерный сеанс. */
+/** sessionStorage + localStorage: F5, новая вкладка, не новый браузерный профиль. */
 const LOGOUT_GATE_STORAGE_KEY = 'ergo_server_logout_finalized'
+/** Общий гейт на window: переживает дубликат модуля в бандле. */
+const LOGOUT_GATE_GLOBAL = '__ERGO_MS_LOGOUT_GATE__'
+
+/** Без интерцепторов apiClient: 401/429 на /logout/ не должны снова звать logout. */
+const authBareClient = axios.create({
+  withCredentials: true,
+  timeout: 8000,
+})
 
 /** Отказ auth: сессии больше нет. */
 const EXPECTED_REFRESH_FAILURE = new Set([400, 401])
@@ -43,37 +51,117 @@ let lastRefreshWasTransient = false
 /** Не спамить повторными refresh, пока действует Retry-After. */
 let refreshBackoffUntil = 0
 
-function readPersistedLogoutGate() {
-  if (typeof sessionStorage === 'undefined') {
-    return false
-  }
+function storageGetGate(store) {
   try {
-    return sessionStorage.getItem(LOGOUT_GATE_STORAGE_KEY) === '1'
+    return store.getItem(LOGOUT_GATE_STORAGE_KEY) === '1'
   } catch {
     return false
   }
+}
+
+function storageSetGate(store, finalized) {
+  try {
+    if (finalized) {
+      store.setItem(LOGOUT_GATE_STORAGE_KEY, '1')
+    } else {
+      store.removeItem(LOGOUT_GATE_STORAGE_KEY)
+    }
+  } catch {
+    // private mode / quota
+  }
+}
+
+function readPersistedLogoutGate() {
+  try {
+    if (typeof sessionStorage !== 'undefined' && storageGetGate(sessionStorage)) {
+      return true
+    }
+  } catch {
+    /* нет sessionStorage */
+  }
+  try {
+    if (typeof localStorage !== 'undefined' && storageGetGate(localStorage)) {
+      return true
+    }
+  } catch {
+    /* нет localStorage */
+  }
+  return false
 }
 
 function persistLogoutGate(finalized) {
-  if (typeof sessionStorage === 'undefined') {
-    return
-  }
   try {
-    if (finalized) {
-      sessionStorage.setItem(LOGOUT_GATE_STORAGE_KEY, '1')
-    } else {
-      sessionStorage.removeItem(LOGOUT_GATE_STORAGE_KEY)
+    if (typeof sessionStorage !== 'undefined') {
+      storageSetGate(sessionStorage, finalized)
     }
   } catch {
-    // private mode / quota — остаётся только in-memory гейт
+    /* нет sessionStorage */
+  }
+  try {
+    if (typeof localStorage !== 'undefined') {
+      storageSetGate(localStorage, finalized)
+    }
+  } catch {
+    /* нет localStorage */
   }
 }
 
+function getSharedLogoutGate() {
+  if (typeof window === 'undefined') {
+    return null
+  }
+  const existing = window[LOGOUT_GATE_GLOBAL]
+  if (existing && typeof existing === 'object') {
+    return existing
+  }
+  const created = { promise: null }
+  window[LOGOUT_GATE_GLOBAL] = created
+  return created
+}
+
+export function isLogoutApiUrl(url) {
+  return String(url || '').includes(AUTH_LOGOUT_PATH)
+}
+
 // F5 после logout: не повторять POST /logout/ и не оживлять refresh по cookie-подсказке.
-if (readPersistedLogoutGate()) {
+{
+  const sharedAtBoot = getSharedLogoutGate()
+  if (sharedAtBoot?.promise) {
+    logoutFinalized = true
+    serverLogoutPromise = sharedAtBoot.promise
+    sessionRestoreResolved = false
+  } else if (readPersistedLogoutGate()) {
+    logoutFinalized = true
+    serverLogoutPromise = Promise.resolve()
+    sessionRestoreResolved = false
+    if (sharedAtBoot) {
+      sharedAtBoot.promise = serverLogoutPromise
+    }
+  }
+}
+
+function closeLogoutGateFromOtherTab() {
   logoutFinalized = true
-  serverLogoutPromise = Promise.resolve()
+  if (!serverLogoutPromise) {
+    serverLogoutPromise = Promise.resolve()
+  }
   sessionRestoreResolved = false
+  const shared = getSharedLogoutGate()
+  if (shared) {
+    shared.promise = serverLogoutPromise
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key !== LOGOUT_GATE_STORAGE_KEY) {
+      return
+    }
+    // Только закрывать: сброс в другой вкладке (login) не открывает POST в этой.
+    if (event.newValue === '1') {
+      closeLogoutGateFromOtherTab()
+    }
+  })
 }
 
 /**
@@ -256,12 +344,11 @@ export async function performTokenRefresh() {
   refreshInProgress = (async () => {
     const accessAtStart = getAccess()
     try {
-      const response = await axios.post(
+      const response = await authBareClient.post(
         `${resolveApiClientBaseUrl()}${AUTH_REFRESH_PATH}`,
         {},
         {
           headers: { 'Content-Type': 'application/json' },
-          withCredentials: true,
           validateStatus: (status) =>
             status === 200
             || EXPECTED_REFRESH_FAILURE.has(status)
@@ -333,6 +420,10 @@ export function resetServerLogoutGate() {
   serverLogoutPromise = null
   logoutFinalized = false
   persistLogoutGate(false)
+  const shared = getSharedLogoutGate()
+  if (shared) {
+    shared.promise = null
+  }
 }
 
 export function isServerLogoutFinalized() {
@@ -341,40 +432,69 @@ export function isServerLogoutFinalized() {
 
 /**
  * Один POST /logout/ на волну истечения сессии до следующего login.
+ * Гейт ставится синхронно до любого await — параллельные 401 не открывают второй POST.
  * @param {string} [reason] — кто закрыл гейт (для client-browser.log)
  */
-export async function performServerLogout(reason = 'unspecified') {
+export function performServerLogout(reason = 'unspecified') {
+  const shared = getSharedLogoutGate()
+  if (shared?.promise) {
+    logoutFinalized = true
+    serverLogoutPromise = shared.promise
+    return shared.promise
+  }
   if (serverLogoutPromise) {
+    if (shared) {
+      shared.promise = serverLogoutPromise
+    }
     return serverLogoutPromise
+  }
+  if (logoutFinalized || readPersistedLogoutGate()) {
+    const done = Promise.resolve()
+    logoutFinalized = true
+    serverLogoutPromise = done
+    if (shared) {
+      shared.promise = done
+    }
+    return done
   }
 
   logoutFinalized = true
   persistLogoutGate(true)
-  logWarn('[tokenRefresh] refresh-гейт закрыт', { reason })
-  invalidateSessionRestoreCache()
 
-  serverLogoutPromise = (async () => {
+  const headers = {}
+  const access = getAccess()
+  if (access && !isExpired(access)) {
+    headers.Authorization = `Bearer ${access}`
+  }
+
+  let settle = () => {}
+  const pending = new Promise((resolve) => {
+    settle = resolve
+  })
+  serverLogoutPromise = pending
+  if (shared) {
+    shared.promise = pending
+  }
+
+  void (async () => {
     try {
-      // Bearer до clearTokens: logout без refresh всё равно узнаёт user_id для ergo_prev_user.
-      const headers = {}
-      const access = getAccess()
-      if (access && !isExpired(access)) {
-        headers.Authorization = `Bearer ${access}`
-      }
-      await axios.post(
+      logWarn('[tokenRefresh] refresh-гейт закрыт', { reason })
+      invalidateSessionRestoreCache()
+      await authBareClient.post(
         `${resolveApiClientBaseUrl()}${AUTH_LOGOUT_PATH}`,
         {},
         {
           headers,
-          withCredentials: true,
           validateStatus: (status) =>
             (status >= 200 && status < 300) || status === 401 || status === 429,
         },
       )
     } catch {
       // ignore — локальная очистка всё равно выполняется вызывающим кодом
+    } finally {
+      settle()
     }
   })()
 
-  return serverLogoutPromise
+  return pending
 }

@@ -1,3 +1,5 @@
+import { loadCollector } from '@/core/client_monitor/loadCollector.js'
+import { isMonitoringEnabled, resetMonitorSession } from '@/core/client_monitor/session.js'
 import { performTokenRefresh } from '@/core/cms/js/tokenRefresh.js'
 import {
   clearTokens,
@@ -10,13 +12,22 @@ import {
 } from '@/core/cms/js/tokenStorage.js'
 import bridge from '@/integrations/ModuleBridge.js'
 import { CORE_AUTH_CLEAR_LEGACY_STORAGE } from '@/integrations/moduleContracts.js'
-import { onMonitorLogout } from '@/core/client_monitor/collector.js'
+
+function notifyMonitorLogout() {
+  if (!isMonitoringEnabled()) {
+    resetMonitorSession()
+    return
+  }
+  void loadCollector()
+    .then(({ onMonitorLogout }) => onMonitorLogout())
+    .catch(() => resetMonitorSession())
+}
 
 export const tokenService = {
   getAccess,
   setTokens,
   clear() {
-    onMonitorLogout()
+    notifyMonitorLogout()
     clearTokens()
     bridge.emit(CORE_AUTH_CLEAR_LEGACY_STORAGE)
   },

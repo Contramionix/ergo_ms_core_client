@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { Copy } from 'lucide-vue-next'
+import { Copy } from '@lucide/vue'
 import ModalCenter from '@/components/ModalCenter.vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import Pagination from '@/components/Pagination.vue'

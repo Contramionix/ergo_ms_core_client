@@ -9,7 +9,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { User } from 'lucide-vue-next'
+import { User } from '@lucide/vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { avatarColorIndex, formatAvatarInitials } from '@/js/userAvatar'
 

@@ -1,7 +1,7 @@
 <script setup>
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { computed, ref, watch, defineAsyncComponent } from 'vue'
-import { Settings, Trash2 } from 'lucide-vue-next'
+import { Settings, Trash2 } from '@lucide/vue'
 import { deleteRoleGroup } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import Pagination from '@/components/Pagination.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint.js'

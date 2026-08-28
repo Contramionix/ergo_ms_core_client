@@ -14,7 +14,7 @@
 
 <script setup>
 import { computed, useId } from 'vue'
-import { ChevronUp, ChevronDown } from 'lucide-vue-next'
+import { ChevronUp, ChevronDown } from '@lucide/vue'
 
 const props = defineProps({
   modelValue: {

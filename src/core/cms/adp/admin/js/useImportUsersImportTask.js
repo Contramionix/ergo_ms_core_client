@@ -4,7 +4,7 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import { apiClient } from '@/js/api/manager'
 import { logError } from '@/js/utils/logError.js'
 import { mediaApiClient } from '@/js/api/media-api-client.js'

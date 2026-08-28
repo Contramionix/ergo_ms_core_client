@@ -38,7 +38,7 @@
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, watch, nextTick } from 'vue'
 import { SlickList, SlickItem, HandleDirective as vHandle } from 'vue-slicksort'
-import { Minus, GripVertical, Settings, Trash, Eye, EyeOff } from 'lucide-vue-next'
+import { Minus, GripVertical, Settings, Trash, Eye, EyeOff } from '@lucide/vue'
 import DraggableMenuRow from './DraggableMenuRow.vue'
 
 const { t } = useAppI18n()

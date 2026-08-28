@@ -35,7 +35,7 @@ import MessageInput from './MessageInput.vue'
 
 const props = defineProps({
   contentType: { type: String, required: true },
-  objectId: { type: Number, default: null },
+  objectId: { type: [Number, String], default: null },
   readonly: { type: Boolean, default: false },
   showSystemMessages: { type: Boolean, default: false },
   systemMessages: { type: Array, default: () => [] },
@@ -91,6 +91,25 @@ async function handleEditSave({ messageId, text, attachmentIdsToRemove = [], fil
   height: 100%;
   overflow: hidden;
   box-sizing: border-box;
+
+  :deep(.loading-content-area) {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  :deep(.loading-content-area__slot) {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  :deep(.msng-input) {
+    flex-shrink: 0;
+  }
 
   @media (width < $ui-shell-desktop-min) {
     min-height: 100%;

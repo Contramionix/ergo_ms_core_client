@@ -1,4 +1,4 @@
-import { fileURLToPath, URL } from 'node:url'
+import { fileURLToPath, pathToFileURL, URL } from 'node:url'
 import path from 'path'
 import fs from 'fs'
 import crypto from 'node:crypto'
@@ -7,6 +7,7 @@ import { loadProjectEnv, mergeModuleEnv } from './scripts/lib/module-env.js'
 import {
   loadClientModularityConfig,
   listEnabledModuleNames,
+  parseModuleRemotes,
 } from './scripts/lib/parse-disabled-modules.js'
 
 const require = createRequire(import.meta.url)
@@ -22,7 +23,22 @@ const requireFromNpm = createRequire(path.join(npmModules, '_ergo_resolve.js'))
 const vue = requireFromNpm('@vitejs/plugin-vue')
 const AutoImport = requireFromNpm('unplugin-auto-import/vite')
 const { defineConfig } = requireFromNpm('vite')
-const { visualizer } = requireFromNpm('rollup-plugin-visualizer')
+
+/** ESM-only пакеты из virtual_env/npm (createRequire их не грузит). */
+async function importNpmEsm(pkgName) {
+  const dir = path.join(npmModules, pkgName)
+  const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'))
+  const exp = pkg.exports?.['.']
+  const rel = (exp && typeof exp === 'object' ? exp.import : exp) || pkg.module || pkg.main
+  if (!rel || typeof rel !== 'string') {
+    throw new Error(`Нет ESM-точки входа у ${pkgName}`)
+  }
+  return import(pathToFileURL(path.join(dir, rel)).href)
+}
+
+const { visualizer } = analyzeBuild
+  ? await importNpmEsm('rollup-plugin-visualizer')
+  : { visualizer: null }
 
 /** Пакеты лежат в virtual_env/npm/node_modules (не предок core/client). */
 function resolveFromNpmRootPlugin() {
@@ -40,6 +56,7 @@ function resolveFromNpmRootPlugin() {
         id.startsWith('@modules/') ||
         path.isAbsolute(id) ||
         id === 'vue' ||
+        (useFederationShared && (id === 'vue-router' || id === 'pinia' || id === 'vue-i18n')) ||
         isBuiltin(id)
       ) {
         return null
@@ -76,6 +93,8 @@ const enabledModuleNames = new Set(
   listEnabledModuleNames(modulesRoot, disabledModules, clientModularity.allowlist),
 )
 const isFederatedHost = clientModularity.modularity === 'federated'
+const hasModuleRemotes = parseModuleRemotes(clientModularity.remotesRaw).length > 0
+const useFederationShared = isFederatedHost || hasModuleRemotes
 
 const externalModuleAliases = fs.existsSync(modulesRoot)
   ? fs.readdirSync(modulesRoot, { withFileTypes: true })
@@ -126,9 +145,6 @@ const OPTIMIZE_DEPS_INCLUDE = [
   'vue-router',
   'pinia',
   'axios',
-  'exceljs',
-  'pdfjs-dist',
-  'docx-preview',
 ]
 
 function npmPackageAliases(names) {
@@ -224,6 +240,8 @@ function buildClientEnvDefines(envValues) {
     CLIENT_DISABLED_MODULES: envValues.DISABLED_MODULES || '',
     CLIENT_MODULARITY: (envValues.CLIENT_MODULARITY || 'bundled').toLowerCase(),
     CLIENT_MODULES: envValues.CLIENT_MODULES || '',
+    CLIENT_MODULE_RUNTIME: (envValues.MODULE_RUNTIME || 'monolith').toLowerCase(),
+    CLIENT_MICROSERVICE_MODULES: envValues.MICROSERVICE_MODULES || '',
     CLIENT_MODULE_REMOTES: envValues.CLIENT_MODULE_REMOTES || '',
     CLIENT_FEDERATION_SHARED: envValues.CLIENT_FEDERATION_SHARED || 'vue,vue-router,pinia',
     CLIENT_PASSWORD_MIN_LENGTH: envValues.API_PASSWORD_MIN_LENGTH || '8',
@@ -238,7 +256,8 @@ function buildClientEnvDefines(envValues) {
     CLIENT_REALTIME_POLL_NOTIFICATIONS_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_NOTIFICATIONS_INTERVAL', 15000),
     CLIENT_REALTIME_POLL_ADMIN_PRESENCE_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_ADMIN_PRESENCE_INTERVAL', 10000),
     CLIENT_REALTIME_POLL_MESSENGER_INTERVAL: resolvePollIntervalMs('REALTIME_POLL_MESSENGER_INTERVAL', 5000),
-    CLIENT_SYSTEM_VERSION: envValues.VERSION || '2.7.8',
+    CLIENT_SYSTEM_VERSION: envValues.VERSION || '3.0.0',
+    CLIENT_DEV_TOOLS_ENABLED: envValues.CLIENT_DEV_TOOLS_ENABLED || envValues.ERGO_DEV_TOOLS || 'false',
     // Байты; те же ключи, что media_api (env/media.env)
     CLIENT_MEDIA_UPLOAD_MAX_SIZE: envValues.MEDIA_UPLOAD_MAX_SIZE || '524288000',
     CLIENT_MEDIA_UPLOAD_HARD_MAX_SIZE:
@@ -295,6 +314,24 @@ function resolveManualChunk(id) {
     }
 
     // ModuleLoader, RouteManager и т.п. — не module_api / module_core (ложное совпадение пути).
+    // Таблица Login/NotFound лежит в src/config/routes.js, не в src/modules/.
+    // Иначе при includeDependenciesRecursively: false её выкидывает из module_runtime.
+    if (/\/src\/config\/routes\.js$/.test(normalizedId)) {
+      return 'module_runtime'
+    }
+
+    // Singleton моста: integrations.js грузится отдельным чанком. Если ModuleBridge
+    // вклеить туда, AppsMenu и хост виджетов смотрят уже другую копию реестра.
+    if (/\/src\/integrations\/ModuleBridge\.js$/.test(normalizedId)) {
+      return 'module_runtime'
+    }
+
+    // Store модулей с module-level ref: обработчик AppsMenu и плавающая панель
+    // живут в разных чанках — без общего чанка клик открывает «чужую» копию.
+    if (/\/modules\/[^/]+\/client\/.*Store\.js$/.test(normalizedId)) {
+      return 'module_stores'
+    }
+
     if (normalizedId.includes(CORE_MODULE_SYSTEM)) {
       return 'module_runtime'
     }
@@ -322,6 +359,7 @@ function resolveManualChunk(id) {
     normalizedId.includes('apexcharts')
     || normalizedId.includes('vue3-apexcharts')
     || normalizedId.includes('chart.js')
+    || normalizedId.includes('vue-chartjs')
   ) {
     return 'vendor_charts'
   }
@@ -331,26 +369,29 @@ function resolveManualChunk(id) {
   if (normalizedId.includes('exceljs') || normalizedId.includes('pdfjs-dist') || normalizedId.includes('docx-preview')) {
     return 'vendor_heavy'
   }
-  if (normalizedId.includes('epubjs')) {
+  if (normalizedId.includes('foliate-js')) {
     return 'vendor_epub'
   }
-  if (normalizedId.includes('@vuepic/vue-datepicker')) {
+  if (
+    normalizedId.includes('@vuepic/vue-datepicker')
+    || normalizedId.includes('/date-fns/')
+  ) {
     return 'vendor_datepicker'
   }
   // lucide: не форсируем один vendor_lucide — иначе barrel+все named icons
-  // склеиваются в ~900KB; menu грузит icons/*.js точечно через lucideIconLoader.
+  // склеиваются в ~900KB; menu грузит icons/*.mjs точечно через lucideIconLoader.
   if (normalizedId.includes('axios')) {
     return 'vendor_axios'
   }
   if (
     normalizedId.includes('/vue-router/')
     || normalizedId.includes('/pinia/')
-    || (normalizedId.includes('/vue/') && !normalizedId.includes('lucide-vue-next'))
+    || (normalizedId.includes('/vue/') && !normalizedId.includes('@lucide/vue') && !normalizedId.includes('/lucide/vue/'))
     || normalizedId.includes('/@vue/')
   ) {
     return 'vendor_vue'
   }
-  if (normalizedId.includes('bootstrap') || normalizedId.includes('vue-toastification')) {
+  if (normalizedId.includes('bootstrap') || normalizedId.includes('vue-sonner')) {
     return 'vendor_ui'
   }
 
@@ -381,6 +422,28 @@ function clientBuildIdPlugin(buildId) {
         `${JSON.stringify({ buildId })}\n`,
         'utf8',
       )
+    },
+  }
+}
+
+/**
+ * Vite 8 минифицирует CSS через lightningcss до того, как Vue заменит :deep/:slotted/:global.
+ * @vitejs/plugin-vue глушит только префикс [lightningcss], а minify пишет [lightningcss minify].
+ */
+function suppressVueDeepLightningcssMinifyWarnings() {
+  return {
+    name: 'suppress-vue-deep-lightningcss-minify',
+    configResolved(config) {
+      const warn = config.logger.warn.bind(config.logger)
+      config.logger.warn = (...args) => {
+        const msg = String(args[0] ?? '')
+        if (
+          /\[lightningcss minify\] '(deep|slotted|global)' is not recognized as a valid pseudo-/.test(msg)
+        ) {
+          return
+        }
+        warn(...args)
+      }
     },
   }
 }
@@ -449,6 +512,7 @@ const plugins = [
   bootstrapEarlyAssetPlugin(),
   clientBuildIdPlugin(ERGO_CLIENT_BUILD_ID),
   vue(),
+  suppressVueDeepLightningcssMinifyWarnings(),
   AutoImport({
     imports: [
       {
@@ -500,27 +564,79 @@ if (analyzeBuild) {
   )
 }
 
-/** Import map + shared entries для federated remotes (один Vue / ModuleBridge). */
+function federationImportMapBody(isServe) {
+  return JSON.stringify({
+    imports: {
+      vue: isServe ? '/src/shell/shared/vue.js' : '/shared/vue.js',
+      'vue-router': isServe ? '/src/shell/shared/vue-router.js' : '/shared/vue-router.js',
+      pinia: isServe ? '/src/shell/shared/pinia.js' : '/shared/pinia.js',
+      'vue-i18n': isServe ? '/src/shell/shared/vue-i18n.js' : '/shared/vue-i18n.js',
+      'ergo-shared/module-bridge': isServe
+        ? '/src/shell/shared/module-bridge.js'
+        : '/shared/module-bridge.js',
+      'ergo-shared/i18n': isServe ? '/src/shell/shared/i18n.js' : '/shared/i18n.js',
+      'ergo-shared/i18n-use': isServe ? '/src/shell/shared/i18n-use.js' : '/shared/i18n-use.js',
+      'ergo-shared/api': isServe ? '/src/shell/shared/api.js' : '/shared/api.js',
+      'ergo-shared/endpoints': isServe ? '/src/shell/shared/endpoints.js' : '/shared/endpoints.js',
+      'ergo-shared/client-env': isServe ? '/src/shell/shared/client-env.js' : '/shared/client-env.js',
+      'ergo-shared/access-control': isServe
+        ? '/src/shell/shared/access-control.js'
+        : '/shared/access-control.js',
+      'ergo-shared/token-storage': isServe
+        ? '/src/shell/shared/token-storage.js'
+        : '/shared/token-storage.js',
+      'ergo-shared/lucide-icons': isServe
+        ? '/src/shell/shared/lucide-icons.js'
+        : '/shared/lucide-icons.js',
+    },
+  })
+}
+
+function writeFederationImportMapHash(body) {
+  const hash = crypto.createHash('sha256').update(body, 'utf8').digest('base64')
+  const outDir = path.resolve(__dirname, 'dist')
+  fs.mkdirSync(outDir, { recursive: true })
+  fs.writeFileSync(path.join(outDir, 'federation-importmap.hashes'), `sha256-${hash}\n`)
+}
+
+const FEDERATION_BROWSER_RUNTIME = {
+  vue: path.join(npmModules, 'vue/dist/vue.runtime.esm-browser.prod.js'),
+  'vue-router': path.join(npmModules, 'vue-router/dist/vue-router.esm-browser.prod.js'),
+  pinia: path.join(npmModules, 'pinia/dist/pinia.esm-browser.prod.js'),
+  // Полная сборка: сообщения локалей — обычные строки, runtime-only не умеет их
+  // разобрать и падает с «unhandled node type: 0» (NodeTypes.Resource).
+  'vue-i18n': path.join(npmModules, 'vue-i18n/dist/vue-i18n.esm-browser.prod.js'),
+}
+
+function copyFederationBrowserRuntimes(outDir) {
+  const sharedDir = path.join(outDir, 'shared')
+  fs.mkdirSync(sharedDir, { recursive: true })
+  for (const [name, src] of Object.entries(FEDERATION_BROWSER_RUNTIME)) {
+    if (!fs.existsSync(src)) {
+      throw new Error(`Нет браузерного ESM для import map: ${src}`)
+    }
+    fs.copyFileSync(src, path.join(sharedDir, `${name}.js`))
+  }
+}
+
+/** Import map + shared Vue/router/pinia для remotes (не реэкспорт из vendor_vue). */
 function federationSharedPlugin() {
-  if (!isFederatedHost) {
+  if (!useFederationShared) {
     return null
   }
   return {
     name: 'ergo-federation-shared',
     transformIndexHtml(html, ctx) {
       const isServe = Boolean(ctx?.server)
-      const importMap = {
-        imports: {
-          vue: isServe ? '/src/shell/shared/vue.js' : '/shared/vue.js',
-          'vue-router': isServe ? '/src/shell/shared/vue-router.js' : '/shared/vue-router.js',
-          pinia: isServe ? '/src/shell/shared/pinia.js' : '/shared/pinia.js',
-          'ergo-shared/module-bridge': isServe
-            ? '/src/shell/shared/module-bridge.js'
-            : '/shared/module-bridge.js',
-        },
+      const body = federationImportMapBody(isServe)
+      if (!isServe) {
+        writeFederationImportMapHash(body)
       }
-      const tag = `<script type="importmap">${JSON.stringify(importMap)}</script>`
+      const tag = `<script type="importmap">${body}</script>`
       return html.replace('<head>', `<head>\n    ${tag}`)
+    },
+    closeBundle() {
+      copyFederationBrowserRuntimes(path.resolve(__dirname, 'dist'))
     },
   }
 }
@@ -532,23 +648,31 @@ if (federationShared) {
 
 export default defineConfig(() => ({
   build: {
-    // Согласовано с browserslist: последние 2 версии современных браузеров (без IE)
-    target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],
-    minify: 'esbuild',
+    // Vite 8 baseline widely available ≈ последние 2–3 года браузеров (без IE)
+    target: 'baseline-widely-available',
     cssCodeSplit: true,
     sourcemap: false,
-    rollupOptions: {
-      treeshake: {
-        preset: 'recommended',
-      },
-      ...(isFederatedHost
+    rolldownOptions: {
+      // Rolldown не поддерживает Rollup treeshake.preset — дефолт уже recommended.
+      ...(useFederationShared
         ? {
+            // strict здесь нельзя: Rolldown ругается на пару со
+            // codeSplitting.includeDependenciesRecursively = false.
+            // allow-extension оставляет экспорты entry (нужны для /shared/module-bridge.js).
+            preserveEntrySignatures: 'allow-extension',
+            // Спецификаторы остаются «vue» / «vue-router» / «pinia» → import map.
+            external: ['vue', 'vue-router', 'pinia', 'vue-i18n'],
             input: {
               main: path.resolve(__dirname, 'index.html'),
-              'shared/vue': path.resolve(__dirname, 'src/shell/shared/vue.js'),
-              'shared/vue-router': path.resolve(__dirname, 'src/shell/shared/vue-router.js'),
-              'shared/pinia': path.resolve(__dirname, 'src/shell/shared/pinia.js'),
               'shared/module-bridge': path.resolve(__dirname, 'src/shell/shared/module-bridge.js'),
+              'shared/i18n': path.resolve(__dirname, 'src/shell/shared/i18n.js'),
+              'shared/i18n-use': path.resolve(__dirname, 'src/shell/shared/i18n-use.js'),
+              'shared/api': path.resolve(__dirname, 'src/shell/shared/api.js'),
+              'shared/endpoints': path.resolve(__dirname, 'src/shell/shared/endpoints.js'),
+              'shared/client-env': path.resolve(__dirname, 'src/shell/shared/client-env.js'),
+              'shared/access-control': path.resolve(__dirname, 'src/shell/shared/access-control.js'),
+              'shared/token-storage': path.resolve(__dirname, 'src/shell/shared/token-storage.js'),
+              'shared/lucide-icons': path.resolve(__dirname, 'src/shell/shared/lucide-icons.js'),
             },
           }
         : {}),
@@ -559,8 +683,25 @@ export default defineConfig(() => ({
           }
           return 'assets/[name]-[hash].js'
         },
-        manualChunks(id) {
-          return resolveManualChunk(id)
+        // Как прежний manualChunks: только сам модуль, без рекурсивного захвата зависимостей.
+        // У vendor_vue захват рекурсивный: иначе Rolldown выносит side-effect init в lib-*.js,
+        // получается цикл с vendor_vue и в браузере «e is not a function».
+        codeSplitting: {
+          includeDependenciesRecursively: false,
+          groups: [
+            {
+              test: (id) => resolveManualChunk(id) === 'vendor_vue',
+              name: 'vendor_vue',
+              includeDependenciesRecursively: true,
+            },
+            {
+              test: (id) => {
+                const name = resolveManualChunk(id)
+                return Boolean(name) && name !== 'vendor_vue'
+              },
+              name: (id) => resolveManualChunk(id),
+            },
+          ],
         },
       },
     },
@@ -571,12 +712,34 @@ export default defineConfig(() => ({
     alias: [
       ...externalModuleAliases,
       { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
+      ...(useFederationShared
+        ? []
+        : [{
+            find: /^vue$/,
+            replacement: path.join(npmModules, 'vue/dist/vue.esm-bundler.js'),
+          }]),
+      // Официальное имя пакета — @lucide/vue; модули ещё импортируют lucide-vue-next.
       {
-        find: /^vue$/,
-        replacement: path.join(npmModules, 'vue/dist/vue.esm-bundler.js'),
+        find: /^lucide-vue-next$/,
+        replacement: path.join(npmModules, '@lucide/vue'),
       },
-      // vue уже выше (ESM-бандл); остальные — для optimizeDeps.include
-      ...npmPackageAliases(OPTIMIZE_DEPS_INCLUDE.filter((name) => name !== 'vue')),
+      // Оболочка на vue-sonner; модули ещё импортируют vue-toastification.
+      {
+        find: /^vue-toastification$/,
+        replacement: path.resolve(__dirname, 'src/js/utils/vueToastificationCompat.js'),
+      },
+      // vue / при federation ещё router и pinia — не alias, иначе external не сработает
+      ...npmPackageAliases(
+        OPTIMIZE_DEPS_INCLUDE.filter((name) => {
+          if (name === 'vue') {
+            return false
+          }
+          if (useFederationShared && (name === 'vue-router' || name === 'pinia')) {
+            return false
+          }
+          return true
+        }),
+      ),
     ],
     extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue'],
     modules: [npmModules, 'node_modules'],
@@ -587,6 +750,9 @@ export default defineConfig(() => ({
       scss: {
         additionalData: `@use "@/scss/_inject.scss"as *;\n`,
         loadPaths: [npmModules],
+        // Dart Sass 1.80+: @import и глобальные built-in — до Sass 3.0; Bootstrap 5.3 ещё на @import.
+        quietDeps: true,
+        silenceDeprecations: ['import', 'global-builtin', 'color-functions'],
       },
     },
     devSourcemap: false,
@@ -623,33 +789,32 @@ export default defineConfig(() => ({
   optimizeDeps: {
     exclude: ['@vite-ignore', 'vue3-apexcharts'],
     include: OPTIMIZE_DEPS_INCLUDE,
-    esbuildOptions: {
+    rolldownOptions: {
       plugins: [
         {
-          name: 'esbuild-stub-missing-core-imports',
-          setup(build) {
+          name: 'rolldown-stub-missing-core-imports',
+          resolveId(id) {
+            if (id === '\0virtual:empty-vue-component' || id.includes('virtual:empty-vue-component')) {
+              return '\0virtual:empty-vue-component'
+            }
+            if (!id.startsWith('@/core/')) {
+              return null
+            }
             const srcRoot = path.resolve(__dirname, 'src')
+            const filePath = id.slice(2)
+            const resolved = path.join(srcRoot, filePath)
             const exts = ['', '.js', '.vue', '.ts', '.json']
-
-            build.onResolve({ filter: /^@\/core\// }, (args) => {
-              const filePath = args.path.slice(2)
-              const resolved = path.join(srcRoot, filePath)
-              const exists = exts.some((ext) => fs.existsSync(resolved + ext))
-              if (!exists) {
-                return { path: args.path, namespace: 'stub-missing' }
-              }
-            })
-
-            build.onResolve({ filter: /virtual:empty-vue-component/ }, (args) => {
-              return { path: args.path, namespace: 'stub-missing' }
-            })
-
-            build.onLoad({ filter: /.*/, namespace: 'stub-missing' }, () => {
-              return {
-                contents: 'module.exports = new Proxy({}, { get: function(_, k) { return k === "__esModule" ? true : function(){} } })',
-                loader: 'js',
-              }
-            })
+            const exists = exts.some((ext) => fs.existsSync(resolved + ext))
+            if (!exists) {
+              return '\0virtual:empty-vue-component'
+            }
+            return null
+          },
+          load(id) {
+            if (id !== '\0virtual:empty-vue-component') {
+              return null
+            }
+            return 'import { defineComponent } from \'vue\'; export default defineComponent({ render() {} })'
           },
         },
       ],

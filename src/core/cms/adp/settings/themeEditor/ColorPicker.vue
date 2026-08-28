@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Droplet } from 'lucide-vue-next'
+import { Droplet } from '@lucide/vue'
 import { logError } from '@/js/utils/logError.js'
 import {
   normalizeColorToHex,

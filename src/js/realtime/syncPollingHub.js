@@ -19,6 +19,7 @@ const listeners = {
 }
 
 let lastNotificationId = 0
+let notificationCursorReady = false
 let unregisterPoll = null
 let syncInFlight = false
 let authenticated = false
@@ -80,12 +81,13 @@ async function runSync() {
   }
 
   const params = {}
-    if (wantNotifications) {
-      if (lastNotificationId > 0) {
-        params.notifications_after_id = lastNotificationId
-      }
-      channels.notifications.lastRun = Date.now()
+  if (wantNotifications) {
+    if (notificationCursorReady || lastNotificationId > 0) {
+      params.notifications_after_id = lastNotificationId
+      notificationCursorReady = true
     }
+    channels.notifications.lastRun = Date.now()
+  }
   if (wantPresence) {
     params.presence_heartbeat = true
     channels.presence.lastRun = Date.now()
@@ -113,8 +115,12 @@ async function runSync() {
     }
 
     if (wantNotifications) {
-      for (const handler of listeners.notifications) {
-        handler.onPollMeta?.({ unreadCount: Number(data?.unread_count ?? 0) })
+      if (!notificationCursorReady) {
+        const latest = Number(data?.latest_notification_id)
+        if (Number.isFinite(latest) && latest > lastNotificationId) {
+          lastNotificationId = latest
+        }
+        notificationCursorReady = true
       }
       const items = Array.isArray(data?.notifications) ? data.notifications : []
       for (const notification of items) {
@@ -124,6 +130,9 @@ async function runSync() {
         for (const handler of listeners.notifications) {
           handler.onMessage?.(null, buildClientEnvelope('notification_new', notification))
         }
+      }
+      for (const handler of listeners.notifications) {
+        handler.onPollMeta?.({ unreadCount: Number(data?.unread_count ?? 0) })
       }
     }
 
@@ -175,7 +184,14 @@ export function setSyncLastNotificationId(id) {
   const parsed = Number.parseInt(String(id ?? ''), 10)
   if (Number.isFinite(parsed) && parsed > lastNotificationId) {
     lastNotificationId = parsed
+    notificationCursorReady = true
   }
+}
+
+/** Сброс курсора polling при logout / смене сессии. */
+export function resetSyncNotificationCursor() {
+  lastNotificationId = 0
+  notificationCursorReady = false
 }
 
 export function isSyncPollingAuthenticated() {

@@ -25,6 +25,12 @@
   min-width: 0;
 }
 
+.form-card:has(> .form-card__footer) .form-card__body {
+  :deep(.form-field:last-child) {
+    border-bottom: none;
+  }
+}
+
 .form-card__footer {
   display: flex;
   justify-content: flex-end;

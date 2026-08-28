@@ -9,6 +9,56 @@ import { clientEnv } from '@/js/clientEnv.js'
 import { parseModuleRemotes } from './parseModuleRemotes.js'
 import { normalizeClientModuleManifest } from './clientModuleManifest.js'
 import { logWarn, logError } from '@/js/utils/logError.js'
+import bridge from '@/integrations/ModuleBridge.js'
+
+function remoteBaseUrl(entryUrl) {
+  return String(entryUrl || '').replace(/\/[^/]+$/, '')
+}
+
+function addStylesheet(href, datasetId) {
+  if (document.querySelector(`link[data-ergo-remote-style="${datasetId}"]`)) {
+    return
+  }
+  const link = document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = href
+  link.dataset.ergoRemoteStyle = datasetId
+  document.head.appendChild(link)
+}
+
+const injectedRemoteStyles = new Set()
+
+/**
+ * CSS remote-сборки не попадает в JS (lib + cssCodeSplit). Подключаем файлы с того же /remotes/.
+ * На старте не зовём: семь копий хостового UI (~740 КБ) иначе качаются на каждой странице.
+ * @param {string} entryUrl
+ * @param {string} remoteName
+ */
+async function injectRemoteStyles(entryUrl, remoteName) {
+  const base = remoteBaseUrl(entryUrl)
+  if (!base) {
+    return
+  }
+  try {
+    const response = await fetch(`${base}/styles.json`)
+    if (response.ok) {
+      const files = await response.json()
+      if (Array.isArray(files)) {
+        files
+          .filter((rel) => typeof rel === 'string' && rel.endsWith('.css'))
+          .forEach((rel, index) => {
+            const href = rel.startsWith('/')
+              ? rel
+              : `${base}/${rel.replace(/^\.\//, '')}`
+            addStylesheet(href, `${remoteName}-${index}`)
+          })
+        return
+      }
+    }
+  } catch {
+    /* без styles.json стили remote не подключаем — сборка remote пишет этот файл */
+  }
+}
 
 /**
  * @returns {{ name: string, entry: string }[]}
@@ -16,6 +66,26 @@ import { logWarn, logError } from '@/js/utils/logError.js'
 export function getConfiguredModuleRemotes() {
   return parseModuleRemotes(clientEnv.moduleRemotes || '')
 }
+
+/**
+ * Подключает CSS remote, когда открыта страница или виджет этого модуля.
+ * @param {string} remoteName
+ * @returns {Promise<void>}
+ */
+export async function ensureRemoteStyles(remoteName) {
+  const name = String(remoteName || '').trim()
+  if (!name || injectedRemoteStyles.has(name)) {
+    return
+  }
+  const found = getConfiguredModuleRemotes().find((item) => item.name === name)
+  if (!found) {
+    return
+  }
+  injectedRemoteStyles.add(name)
+  await injectRemoteStyles(found.entry, name)
+}
+
+bridge.provide('shell.ensure_remote_styles', ensureRemoteStyles, { override: true })
 
 /**
  * @param {string} entryUrl
@@ -69,19 +139,21 @@ export async function loadFederatedModules() {
     return []
   }
 
-  const manifests = []
-  for (const { name, entry } of remotes) {
-    try {
-      const raw = await importRemoteEntry(entry, name)
-      const manifest = normalizeClientModuleManifest(raw, name)
-      if (!manifest) {
-        logWarn(`[federated] Remote ${name}: манифест не распознан`)
-        continue
+  const loaded = await Promise.all(
+    remotes.map(async ({ name, entry }) => {
+      try {
+        const raw = await importRemoteEntry(entry, name)
+        const manifest = normalizeClientModuleManifest(raw, name)
+        if (!manifest) {
+          logWarn(`[federated] Remote ${name}: манифест не распознан`)
+          return null
+        }
+        return manifest
+      } catch (error) {
+        logError(`[federated] Ошибка загрузки remote ${name}`, error)
+        return null
       }
-      manifests.push(manifest)
-    } catch (error) {
-      logError(`[federated] Ошибка загрузки remote ${name}`, error)
-    }
-  }
-  return manifests
+    }),
+  )
+  return loaded.filter(Boolean)
 }

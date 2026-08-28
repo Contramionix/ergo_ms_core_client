@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { Check, RotateCcw } from 'lucide-vue-next'
+import { Check, RotateCcw } from '@lucide/vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useThemeMode } from '@/composables/useThemeMode.js'

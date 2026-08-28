@@ -2,7 +2,7 @@
 import { ref, onUnmounted, onMounted, computed, defineAsyncComponent } from 'vue'
 import { useToast } from '@/js/utils/toast.js'
 import { logError } from '@/js/utils/logError.js'
-import { RotateCw, RotateCcw, Check } from 'lucide-vue-next'
+import { RotateCw, RotateCcw, Check } from '@lucide/vue'
 import ModalCenter from './ModalCenter.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 

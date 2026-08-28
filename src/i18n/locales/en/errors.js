@@ -24,6 +24,7 @@ export default {
     serverTryLater: 'The server could not process the request. Please try again later.',
     tooManyRequests: 'Too many requests. Please wait a moment and try again.',
     payloadTooLarge: 'The file is too large',
+    moduleUnavailable: 'This section is temporarily unavailable. The rest of the app still works.',
   },
   page: {
     notFound: 'Page not found',

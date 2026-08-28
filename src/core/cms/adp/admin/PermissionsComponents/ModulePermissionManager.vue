@@ -1,7 +1,7 @@
 <script setup>
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { ref, computed, watch, onMounted } from 'vue'
-import { Trash2 } from 'lucide-vue-next'
+import { Trash2 } from '@lucide/vue'
 import SelectBox from '@/components/SelectBox.vue'
 import {
   getModulePermissions,

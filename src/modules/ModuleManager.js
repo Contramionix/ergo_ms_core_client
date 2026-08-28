@@ -18,10 +18,11 @@ import { RouteGuardsManager } from './routing/RouteGuardsManager.js'
 import { IntegrationsManager } from './integrations/IntegrationsManager.js'
 import { fetchDisabledModules } from './core/disabledModules.js'
 import { registerClientModule } from './core/registerClientModule.js'
-import { loadFederatedModules } from './core/federatedModules.js'
+import { getConfiguredModuleRemotes, loadFederatedModules } from './core/federatedModules.js'
 import { clientEnv } from '@/js/clientEnv.js'
 import { getLocaleManager } from './i18n/LocaleManager.js'
 import { getThemeDefaultsManager } from './themes/ThemeDefaultsManager.js'
+import { logError } from '@/js/utils/logError.js'
 
 export class ModuleManager {
   constructor() {
@@ -37,17 +38,50 @@ export class ModuleManager {
     this.registeredManifests = []
 
     this.initialized = false
+    this.coreReady = false
     this._initPromise = null
+    this._coreReadyPromise = null
+    this._resolveCoreReady = null
   }
 
   /**
-   * Инициализация всех менеджеров
+   * Инициализация всех менеджеров.
+   * Совпадает с ensureInitialized: прямой вызов из меню/виджетов не должен
+   * запускать вторую загрузку remotes, пока первая ещё не выставила initialized.
    */
   async initialize() {
-    if (this.initialized) {
+    await this.ensureInitialized()
+  }
+
+  /**
+   * @returns {Promise<void>}
+   */
+  _markCoreReady() {
+    if (this.coreReady) {
       return
     }
+    this.coreReady = true
+    this._resolveCoreReady?.()
+  }
 
+  _startInitialize() {
+    if (this._initPromise) {
+      return
+    }
+    this._coreReadyPromise = new Promise((resolve) => {
+      this._resolveCoreReady = resolve
+    })
+    this._initPromise = this._doInitialize().catch((error) => {
+      this._initPromise = null
+      if (!this.coreReady) {
+        this._coreReadyPromise = null
+        this._resolveCoreReady = null
+      }
+      throw error
+    })
+  }
+
+  async _doInitialize() {
     await Promise.all([
       this.routeManager.initialize(),
       this.endpointManager.initialize(),
@@ -56,14 +90,22 @@ export class ModuleManager {
       this.integrationsManager.initialize(),
     ])
 
-    if (clientEnv.modularity === 'federated') {
+    this.routeGenerator = new RouteGenerator(this.routeManager)
+    this._markCoreReady()
+
+    if (clientEnv.modularity === 'federated' || getConfiguredModuleRemotes().length) {
       const remotes = await loadFederatedModules()
       for (const manifest of remotes) {
-        await this.registerModule(manifest, `remote:${manifest.moduleKey}`)
+        try {
+          await this.registerModule(manifest, `remote:${manifest.moduleKey}`)
+        } catch (error) {
+          logError(
+            `[federated] Не удалось зарегистрировать remote ${manifest.moduleKey}`,
+            error,
+          )
+        }
       }
     }
-
-    this.routeGenerator = new RouteGenerator(this.routeManager)
 
     this.initialized = true
   }
@@ -110,7 +152,7 @@ export class ModuleManager {
    * @returns {Object}
    */
   async getEndpoints() {
-    await this.ensureInitialized()
+    await this.ensureCoreReady()
     return this.endpointManager.getAllEndpoints()
   }
 
@@ -232,7 +274,21 @@ export class ModuleManager {
     this.integrationsManager.clearCache()
     this.registeredManifests = []
     this.initialized = false
+    this.coreReady = false
     this._initPromise = null
+    this._coreReadyPromise = null
+    this._resolveCoreReady = null
+  }
+
+  /**
+   * Ядровые менеджеры готовы. Remotes могут ещё грузиться — сессия уже может идти.
+   */
+  async ensureCoreReady() {
+    if (this.coreReady) {
+      return
+    }
+    this._startInitialize()
+    await this._coreReadyPromise
   }
 
   /**
@@ -242,9 +298,7 @@ export class ModuleManager {
     if (this.initialized) {
       return
     }
-    if (!this._initPromise) {
-      this._initPromise = this.initialize()
-    }
+    this._startInitialize()
     await this._initPromise
   }
 

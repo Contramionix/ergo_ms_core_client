@@ -51,6 +51,14 @@ export default {
   modal: {
     close: 'Закрыть',
   },
+  imageLightbox: {
+    image: 'Изображение',
+    close: 'Закрыть',
+    download: 'Скачать',
+    prev: 'Предыдущее фото',
+    next: 'Следующее фото',
+    counter: '{current} из {total}',
+  },
   sideDrawer: {
     close: 'Закрыть',
   },
@@ -150,6 +158,19 @@ export default {
     changeMixed: 'Изменить ({selected} + {deselected})',
     all: 'Все',
     loadError: 'Ошибка загрузки пользователей',
+  },
+  datePicker: {
+    placeholder: 'дд.мм.гггг',
+    placeholderDateTime: 'дд.мм.гггг чч:мм',
+    placeholderDateTime12: 'дд.мм.гггг чч:мм AM',
+    placeholderMonth: 'месяц год',
+    clear: 'Очистить дату',
+  },
+  dropZone: {
+    title: 'Перетащите файлы сюда',
+    or: 'или',
+    browse: 'выберите на компьютере',
+    ariaLabel: 'Прикрепить файл',
   },
   passwordInput: {
     label: 'Пароль',

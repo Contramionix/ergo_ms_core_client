@@ -1,21 +1,10 @@
 <template>
-  <div
-    class="form-field"
-    :class="[
-      `form-field--align-${align}`,
-      { 'form-field--last': last },
-    ]"
-  >
-    <component
-      :is="labelFor ? 'label' : 'div'"
-      v-if="label || $slots.label"
-      class="form-field__label"
-      :for="labelFor || undefined"
-    >
+  <div class="form-field" :class="[ `form-field--align-${align}`, { 'form-field--last': last }, ]">
+    <component :is="labelFor ? 'label' : 'div'" v-if="label || $slots.label" class="form-field__label" :for="labelFor || undefined">
       <slot name="label">
         {{ label }}
       </slot>
-      <span v-if="optional" class="form-field__optional">{{ resolvedOptional }}</span>
+      <span v-if="required" class="form-field__required" :title="t('common.required')" aria-hidden="true">*</span>
     </component>
 
     <div class="form-field__control">
@@ -29,10 +18,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
-const props = defineProps({
+defineProps({
   label: {
     type: String,
     default: '',
@@ -49,13 +37,9 @@ const props = defineProps({
     type: String,
     default: '',
   },
-  optional: {
+  required: {
     type: Boolean,
     default: false,
-  },
-  optionalLabel: {
-    type: String,
-    default: '',
   },
   last: {
     type: Boolean,
@@ -69,9 +53,6 @@ const props = defineProps({
 })
 
 const { t } = useAppI18n()
-const resolvedOptional = computed(
-  () => props.optionalLabel || t('common.optional'),
-)
 </script>
 
 <style scoped lang="scss">
@@ -106,7 +87,17 @@ const resolvedOptional = computed(
   }
 
   .form-field__control {
+    display: flex;
+    align-items: center;
     flex: 0 0 auto;
+    line-height: 0;
+
+    :deep(.form-check-input) {
+      display: block;
+      float: none;
+      margin: 0;
+      vertical-align: middle;
+    }
   }
 }
 
@@ -124,20 +115,11 @@ const resolvedOptional = computed(
   overflow-wrap: anywhere;
 }
 
-.form-field__optional {
-  display: inline-block;
-  flex: 0 1 auto;
-  max-width: 100%;
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  background: var(--color-border);
-  color: var(--color-secondary-text);
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  white-space: nowrap;
+.form-field__required {
+  flex: 0 0 auto;
+  color: var(--ui-danger);
+  font-weight: 700;
+  line-height: 1;
 }
 
 .form-field__control {
@@ -178,7 +160,8 @@ const resolvedOptional = computed(
   font-family: inherit;
 }
 
-.form-field__control :deep(.decimal-input) {
+.form-field__control :deep(.decimal-input),
+.form-field__control :deep(.date-picker) {
   width: 100%;
 }
 </style>

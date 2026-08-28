@@ -126,7 +126,7 @@ import {
   Trash,
   Eye,
   EyeOff
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 
 const { t } = useAppI18n()

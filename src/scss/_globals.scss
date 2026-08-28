@@ -6,6 +6,17 @@
   flex-shrink: 0;
 }
 
+// Lucide по умолчанию inline и сидит на baseline. display:block чинит зазор
+// строки, но растягивает SVG на 100% ширины родителя — глиф становится плоским.
+svg.lucide {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  aspect-ratio: 1;
+  overflow: visible;
+  max-width: none;
+}
+
 // Секция при наведении
 .hover-section {
   transition:

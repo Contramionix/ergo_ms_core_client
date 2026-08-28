@@ -1,6 +1,6 @@
 <script setup>
 import { computed, inject, onActivated, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { ChevronDown, ChevronUp } from '@lucide/vue'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
 import SelectBox from '@/components/SelectBox.vue'
 import SettingsCard from '@/components/SettingsCard.vue'

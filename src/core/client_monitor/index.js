@@ -1,12 +1,6 @@
-export {
-  initClientMonitor,
-  installAxiosMonitor,
-  installGlobalErrorMonitor,
-  installRouterMonitor,
-  onMonitorLogout,
-  trackMonitorError,
-  trackMonitorLifecycle,
-  trackMonitorWarn,
-} from './collector.js'
-
 export { isMonitoringEnabled, resetMonitorSession } from './session.js'
+export { loadCollector } from './loadCollector.js'
+
+export function initClientMonitor(options) {
+  return loadCollector().then(({ initClientMonitor: init }) => init(options))
+}

@@ -1,3 +1,2 @@
-/** Shared pinia для federated remotes. */
+/** Shared pinia для federated remotes. Pinia 4 — только named export. */
 export * from 'pinia'
-export { default } from 'pinia'

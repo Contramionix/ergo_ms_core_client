@@ -11,7 +11,49 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const requireFromNpm = createRequire(
   path.join(projectRoot, 'virtual_env/npm/node_modules', '_ergo_resolve.js'),
 )
-const dotenv = requireFromNpm('dotenv')
+
+/**
+ * Разбор KEY=VALUE как в env_file_loader.py.
+ * Нужен, когда node_modules ещё нет: install:all импортирует этот файл до npm install.
+ */
+export function parseEnvText(content) {
+  const result = {}
+  const text = Buffer.isBuffer(content) ? content.toString('utf8') : String(content)
+  for (const line of text.split(/\r?\n/)) {
+    const stripped = line.trim()
+    if (!stripped || stripped.startsWith('#') || !stripped.includes('=')) {
+      continue
+    }
+    const eq = stripped.indexOf('=')
+    const key = stripped.slice(0, eq).trim()
+    if (!key) {
+      continue
+    }
+    let raw = stripped.slice(eq + 1).trim()
+    if (
+      (raw.startsWith('"') && raw.endsWith('"') && raw.length >= 2) ||
+      (raw.startsWith("'") && raw.endsWith("'") && raw.length >= 2)
+    ) {
+      raw = raw.slice(1, -1)
+    }
+    result[key] = raw
+  }
+  return result
+}
+
+function loadEnvParser() {
+  try {
+    const dotenv = requireFromNpm('dotenv')
+    return (content) => dotenv.parse(content)
+  } catch (error) {
+    if (error && error.code === 'MODULE_NOT_FOUND') {
+      return parseEnvText
+    }
+    throw error
+  }
+}
+
+export const parseEnv = loadEnvParser()
 
 const FRAGMENT_PRIORITY = [
   'nginx.env',
@@ -38,7 +80,7 @@ export function loadProjectEnv(rootDir = projectRoot) {
   const merged = {}
   const mainEnvPath = path.join(rootDir, '.env')
   if (fs.existsSync(mainEnvPath)) {
-    Object.assign(merged, dotenv.parse(fs.readFileSync(mainEnvPath)))
+    Object.assign(merged, parseEnv(fs.readFileSync(mainEnvPath)))
   }
 
   const fragmentsDir = path.join(rootDir, 'env')
@@ -67,7 +109,7 @@ export function loadProjectEnv(rootDir = projectRoot) {
 
   for (const filePath of ordered) {
     try {
-      Object.assign(merged, dotenv.parse(fs.readFileSync(filePath)))
+      Object.assign(merged, parseEnv(fs.readFileSync(filePath)))
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.warn(`Не удалось прочитать фрагмент env/: ${filePath}`, message)
@@ -125,7 +167,7 @@ export function mergeModuleEnv(modulesRoot, baseEnv) {
 
   for (const filePath of envFiles) {
     try {
-      const parsed = dotenv.parse(fs.readFileSync(filePath))
+      const parsed = parseEnv(fs.readFileSync(filePath))
       Object.assign(merged, parsed)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

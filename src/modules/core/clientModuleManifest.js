@@ -15,6 +15,30 @@
  */
 
 /**
+ * Federation отдаёт `import * as hook` → `{ <name>Endpoints: { <name>: … } }`.
+ * Снимаем только ключ-обёртку экспорта. Иначе единственное пространство имён
+ * модуля схлопывается, и разные remotes получают одинаковые плоские ключи.
+ * @param {Record<string, unknown>} endpoints
+ * @returns {Record<string, unknown>}
+ */
+function unwrapEndpointModuleExport(endpoints) {
+  const keys = Object.keys(endpoints)
+  if (keys.length !== 1) {
+    return endpoints
+  }
+  const [key] = keys
+  const only = endpoints[key]
+  if (!only || typeof only !== 'object' || Array.isArray(only)) {
+    return endpoints
+  }
+  if ('moduleKey' in only) {
+    return endpoints
+  }
+  const isWrapper = key === 'default' || key === 'endpoints' || /Endpoints$/i.test(key)
+  return isWrapper ? /** @type {Record<string, unknown>} */ (only) : endpoints
+}
+
+/**
  * @param {unknown} raw
  * @param {string} [fallbackKey]
  * @returns {ClientModuleManifest|null}
@@ -40,14 +64,7 @@ export function normalizeClientModuleManifest(raw, fallbackKey = '') {
 
   let endpoints = source.endpoints
   if (endpoints && typeof endpoints === 'object') {
-    const values = Object.values(endpoints)
-    if (values.length === 1 && values[0] && typeof values[0] === 'object' && !Array.isArray(values[0])) {
-      // federation/bundled могут отдать { moduleTemplateEndpoints: {...} }
-      const only = values[0]
-      if (!('moduleKey' in /** @type {object} */ (only))) {
-        endpoints = only
-      }
-    }
+    endpoints = unwrapEndpointModuleExport(endpoints)
   }
 
   let permissionRules = source.permissionRules

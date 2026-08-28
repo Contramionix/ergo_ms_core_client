@@ -4,6 +4,8 @@
  * сверка /client-build.json с ERGO_CLIENT_BUILD_ID (не в DEV).
  */
 
+import { logError } from '@/js/utils/logError.js'
+
 const RELOAD_GATE_KEY = 'ergo_stale_client_reload'
 const BUILD_JSON_PATH = '/client-build.json'
 const GATE_CLEAR_AFTER_MS = 15000
@@ -239,6 +241,7 @@ export function installStaleClientGuards(options = {}) {
         recoverFromStaleClient('vue.errorHandler')
         return
       }
+      logError(`[vue] ${info || 'errorHandler'}`, err)
       if (typeof previous === 'function') {
         previous(err, instance, info)
       }

@@ -41,6 +41,7 @@ import AccessDenied from '@/components/AccessDenied.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import SkipLink from '@/components/SkipLink.vue'
 import FloatingWidgetsHost from '@/components/FloatingWidgetsHost.vue'
+import DevToolsWidget from '@/core/cms/adp/devTools/DevToolsWidget.vue'
 import { accessDeniedState } from './js/accessDeniedState'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
@@ -157,28 +158,39 @@ function onHamburgerClick() {
   toggleMenu(!isMenuVisible.value)
 }
 
+function runWhenIdle(fn) {
+  if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(() => fn(), { timeout: 4000 })
+    return
+  }
+  setTimeout(fn, 1)
+}
+
 watch(
   () => userStore.isInitialized,
   (initialized) => {
     if (initialized) {
-      scheduleLayoutPluginsFromBootstrap(getSessionBootstrapCache())
+      runWhenIdle(() => {
+        scheduleLayoutPluginsFromBootstrap(getSessionBootstrapCache())
+      })
     }
   },
 )
 
-onMounted(async () => {
+onMounted(() => {
   updateMenuVisibilityImmediate()
   window.addEventListener('resize', updateMenuVisibility)
 
-  await whenSessionReady()
-
-  if (userStore.isAuthenticated) {
-    ensurePresenceConnected()
-  }
-
-  if (userStore.isInitialized) {
-    scheduleLayoutPluginsFromBootstrap(getSessionBootstrapCache())
-  }
+  void whenSessionReady().then(() => {
+    runWhenIdle(() => {
+      if (userStore.isAuthenticated) {
+        ensurePresenceConnected()
+      }
+      if (userStore.isInitialized) {
+        scheduleLayoutPluginsFromBootstrap(getSessionBootstrapCache())
+      }
+    })
+  })
 })
 
 onBeforeUnmount(() => {
@@ -219,7 +231,8 @@ onBeforeUnmount(() => {
       <SpinnerLoading color="primary" />
     </aside>
     <MenuList
-      v-else-if="!isFullPage"
+      v-if="!isFullPage"
+      v-show="!showMenuSkeleton"
       id="side-menu"
       @left-padding="leftToggle"
       @menu-right-edge="handleMenuRightEdge"
@@ -274,6 +287,7 @@ onBeforeUnmount(() => {
     :menuRightEdge="menuRightEdge"
   />
   <FloatingWidgetsHost :menu-right-edge="menuRightEdge" />
+  <DevToolsWidget />
 </template>
 
 <style scoped lang="scss">

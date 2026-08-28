@@ -1,8 +1,95 @@
 import { apiClient } from '@/js/api/manager'
+import { clientEnv } from '@/js/clientEnv.js'
 import { tGlobal } from '@/i18n/index.js'
 import { showError } from '@/js/utils/toast.js'
 
 const UPLOAD_TOKEN_ENDPOINT = 'utils/media/upload-token/'
+
+function parseCsvSet(raw) {
+  return new Set(
+    String(raw || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
+  )
+}
+
+const LOCAL_MICROSERVICE_MODULES = parseCsvSet(clientEnv.microserviceModules)
+
+function moduleUploadPrefix(targetDir = '') {
+  if (clientEnv.moduleRuntime !== 'microservice') {
+    return ''
+  }
+  const prefix = String(targetDir || '')
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter(Boolean)[0] || ''
+  if (prefix && LOCAL_MICROSERVICE_MODULES.has(prefix)) {
+    return prefix
+  }
+  return ''
+}
+
+function withModuleUploadPrefix(pathOrUrl, targetDir = '') {
+  const prefix = moduleUploadPrefix(targetDir)
+  if (!prefix) {
+    return pathOrUrl
+  }
+  if (pathOrUrl === '/upload/' || String(pathOrUrl).endsWith('/upload/')) {
+    return String(pathOrUrl).replace(/\/upload\/$/, `/upload/${prefix}/`)
+  }
+  return pathOrUrl
+}
+
+/**
+ * fetch/XHR на /upload/ с того же origin, что SPA.
+ * Абсолютный URL из NGINX_PUBLIC_HOST часто не совпадает с адресной строкой,
+ * и CSP connect-src 'self' блокирует запрос. Не ослабляем CSP.
+ * Для target_dir модуля — /upload/<module>/, чтобы nginx ядра не клал
+ * файл на диск ядра.
+ */
+export function browserUploadUrl(uploadUrl, targetDir = '') {
+  if (!uploadUrl) {
+    return withModuleUploadPrefix('/upload/', targetDir)
+  }
+  const raw = String(uploadUrl).trim()
+  if (raw.startsWith('/')) {
+    return withModuleUploadPrefix(raw, targetDir)
+  }
+  try {
+    const base = typeof window !== 'undefined' && window.location?.href
+      ? window.location.href
+      : 'http://localhost/'
+    const parsed = new URL(raw, base)
+    const path = `${parsed.pathname}${parsed.search}` || '/upload/'
+    if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
+      return withModuleUploadPrefix(path, targetDir)
+    }
+    if (clientEnv.useRelativeApi && parsed.pathname.startsWith('/upload')) {
+      return withModuleUploadPrefix(path, targetDir)
+    }
+    return withModuleUploadPrefix(raw, targetDir)
+  } catch {
+    return withModuleUploadPrefix('/upload/', targetDir)
+  }
+}
+
+export function resolveUploadTokenEndpoint(targetDir = '', tokenEndpoint) {
+  if (tokenEndpoint) {
+    return tokenEndpoint
+  }
+  if (clientEnv.moduleRuntime !== 'microservice') {
+    return UPLOAD_TOKEN_ENDPOINT
+  }
+  const prefix = String(targetDir || '')
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter(Boolean)[0] || ''
+  if (prefix && LOCAL_MICROSERVICE_MODULES.has(prefix)) {
+    return `${prefix}/media/upload-token/`
+  }
+  return UPLOAD_TOKEN_ENDPOINT
+}
 
 function throwUploadHttpError(status, data) {
   if (status === 429) {
@@ -33,25 +120,61 @@ function throwUploadHttpError(status, data) {
  *   // result = { uuid, path, original_name, size, content_type }
  */
 class MediaApiClient {
+  constructor() {
+    /** @type {Map<string, { session: { upload_url: string, token: string }, expiresAt: number }>} */
+    this._sharedTokens = new Map()
+  }
+
+  _tokenCacheKey({ targetDir = '', maxSize, allowedTypes, tokenEndpoint } = {}) {
+    return JSON.stringify({
+      targetDir,
+      maxSize: maxSize ?? null,
+      allowedTypes: allowedTypes || null,
+      tokenEndpoint: resolveUploadTokenEndpoint(targetDir, tokenEndpoint),
+    })
+  }
 
   /**
-   * Запросить upload-токен у core/api.
+   * Запросить upload-токен у процесса, который делит диск с media_api.
+   * Модуль в MICROSERVICE_MODULES — свой эндпоинт; иначе ядро.
    * @param {Object} options
    * @param {string}  [options.targetDir='']      - целевая директория внутри хранилища
    * @param {number}  [options.maxSize]            - макс. размер файла (байт)
    * @param {string[]} [options.allowedTypes]      - разрешённые расширения (['pdf','docx'])
+   * @param {string}  [options.tokenEndpoint]     - явный путь, если не выводить из targetDir
    * @returns {Promise<{upload_url: string, token: string}>}
    */
-  async getUploadToken({ targetDir = '', maxSize, allowedTypes } = {}) {
+  async getUploadToken({ targetDir = '', maxSize, allowedTypes, tokenEndpoint } = {}) {
     const body = { target_dir: targetDir }
     if (maxSize != null) body.max_size = maxSize
     if (allowedTypes) body.allowed_types = allowedTypes
 
-    const response = await apiClient.post(UPLOAD_TOKEN_ENDPOINT, body)
+    const response = await apiClient.post(
+      resolveUploadTokenEndpoint(targetDir, tokenEndpoint),
+      body,
+    )
     if (!response.success) {
       throw new Error(response.message || 'Не удалось получить upload-токен')
     }
     return response.data
+  }
+
+  /**
+   * Токен с тем же targetDir/maxSize/types на время жизни HMAC (с запасом).
+   * Для пакетной загрузки в один каталог.
+   */
+  async _getReusableUploadToken(options = {}) {
+    const key = this._tokenCacheKey(options)
+    const cached = this._sharedTokens.get(key)
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.session
+    }
+    const session = await this.getUploadToken(options)
+    this._sharedTokens.set(key, {
+      session,
+      expiresAt: Date.now() + 240000,
+    })
+    return session
   }
 
   /**
@@ -129,22 +252,37 @@ class MediaApiClient {
    * @returns {Promise<{uuid, path, original_name, size, content_type}>}
    */
   async upload(file, options = {}, onProgress) {
-    const { upload_url, token } = await this.getUploadToken(options)
-    return this.uploadFile(file, upload_url, token, onProgress)
+    const { reuseUploadToken, ...tokenOptions } = options
+    const session = reuseUploadToken
+      ? await this._getReusableUploadToken(tokenOptions)
+      : await this.getUploadToken(tokenOptions)
+    return this.uploadFile(
+      file,
+      browserUploadUrl(session.upload_url, tokenOptions.targetDir),
+      session.token,
+      onProgress,
+    )
   }
 
   /**
    * Загрузить несколько файлов последовательно.
+   * Один upload-токен на весь пакет (одинаковые targetDir / maxSize / types).
    * @param {File[]} files
    * @param {Object} options
    * @param {Function} [onFileProgress]    - (fileIndex, event)
    * @returns {Promise<Array>}             - массив результатов upload
    */
   async uploadMultiple(files, options = {}, onFileProgress) {
+    const session = await this.getUploadToken(options)
     const results = []
     for (let i = 0; i < files.length; i++) {
       const progress = onFileProgress ? (e) => onFileProgress(i, e) : undefined
-      const result = await this.upload(files[i], options, progress)
+      const result = await this.uploadFile(
+        files[i],
+        browserUploadUrl(session.upload_url, options.targetDir),
+        session.token,
+        progress,
+      )
       results.push(result)
     }
     return results

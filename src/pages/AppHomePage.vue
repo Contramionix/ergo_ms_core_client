@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { Bot, Boxes, Cloud, Code2, GitBranch, Layers, ServerCog, ShieldCheck } from 'lucide-vue-next'
+import { Bot, Boxes, Cloud, FlaskConical, GitBranch, Layers, ServerCog, ShieldCheck } from '@lucide/vue'
 
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
@@ -53,7 +53,7 @@ const highlights = computed(() => [
     inProgress: true,
   },
   {
-    icon: Code2,
+    icon: FlaskConical,
     title: t('settings.home.h4Title'),
     text: t('settings.home.h4Text'),
     inProgress: true,

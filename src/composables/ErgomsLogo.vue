@@ -1,5 +1,5 @@
 <script setup>
-import { Cog } from 'lucide-vue-next'
+import { Cog } from '@lucide/vue'
 
 defineProps({
   compact: {

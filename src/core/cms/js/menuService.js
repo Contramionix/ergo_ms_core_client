@@ -51,6 +51,10 @@ export function isMenuCacheFresh() {
  * @returns {Promise<Object>} - Объект с menu_items и separators
  */
 export async function getUserMenu(forceRefresh = false) {
+  if (!tokenService.getAccess()) {
+    return menuCache || { menu_items: [], separators: [] }
+  }
+
   // Проверяем кеш
   if (!forceRefresh && menuCache && cacheTimestamp) {
     const now = Date.now()
