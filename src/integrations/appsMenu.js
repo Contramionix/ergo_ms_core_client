@@ -12,6 +12,7 @@
 
 import bridge from '@/integrations/ModuleBridge.js'
 import { moduleManager } from '@/modules/index.js'
+import { whenSessionReady } from '@/js/sessionReady.js'
 import { normalizeLucideIconName } from '@/js/lucideIconLoader.js'
 
 export const APPS_MENU_ITEMS_GROUP = 'apps.menu.items'
@@ -32,6 +33,8 @@ export const APPS_MENU_ITEMS_GROUP = 'apps.menu.items'
  * @returns {Promise<AppsMenuItem[]>}
  */
 export async function collectVisibleAppsMenuItems() {
+  // isVisible смотрит снимок прав: без сессии все чаты скрыты, кнопка не появляется.
+  await whenSessionReady()
   if (!moduleManager.initialized) {
     await moduleManager.initialize()
   }
