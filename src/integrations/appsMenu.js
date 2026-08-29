@@ -11,12 +11,13 @@
  */
 
 import bridge from '@/integrations/ModuleBridge.js'
+import { APPS_MENU_ITEMS_GROUP } from '@/integrations/moduleContracts.js'
 import { moduleManager } from '@/modules/index.js'
 import { whenSessionReady } from '@/js/sessionReady.js'
 import { getAccess } from '@/core/cms/js/tokenStorage.js'
 import { normalizeLucideIconName } from '@/js/lucideIconLoader.js'
 
-export const APPS_MENU_ITEMS_GROUP = 'apps.menu.items'
+export { APPS_MENU_ITEMS_GROUP }
 
 /**
  * @typedef {Object} AppsMenuItem
@@ -36,13 +37,26 @@ export const APPS_MENU_ITEMS_GROUP = 'apps.menu.items'
  * Иначе при выключенном в ADP модуле кнопка пропадает и у администратора.
  * @returns {Promise<AppsMenuItem[]>}
  */
+function resolveItemTitle(item) {
+  try {
+    const title = typeof item.title === 'function' ? item.title() : item.title
+    if (typeof title === 'string' && title.trim()) {
+      return title
+    }
+  } catch {
+    /* ключ локали модуля может ещё не быть в каталоге */
+  }
+  return item.id
+}
+
 export async function collectVisibleAppsMenuItems() {
   await whenSessionReady()
   if (!getAccess()) {
     return []
   }
-  if (!moduleManager.initialized) {
-    await moduleManager.initialize()
+  await moduleManager.ensureInitialized()
+  if (typeof moduleManager.retryMissingRemotes === 'function') {
+    await moduleManager.retryMissingRemotes()
   }
 
   const items = Object.values(bridge.all(APPS_MENU_ITEMS_GROUP)).sort(
@@ -64,7 +78,7 @@ export async function collectVisibleAppsMenuItems() {
       id: item.id,
       name: item.id,
       order: item.order ?? 0,
-      title: typeof item.title === 'function' ? item.title() : item.title,
+      title: resolveItemTitle(item),
       icon: normalizeLucideIconName(item.icon),
       route: item.route || null,
       onClick: hasAction ? item.onClick : null,

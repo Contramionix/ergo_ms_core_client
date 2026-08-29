@@ -8,9 +8,10 @@
  */
 
 import bridge from '@/integrations/ModuleBridge.js'
+import { SHELL_SIDEBAR_BRAND_GROUP } from '@/integrations/moduleContracts.js'
 import { moduleManager } from '@/modules/index.js'
 
-export const SHELL_SIDEBAR_BRAND_GROUP = 'shell.sidebar_brand'
+export { SHELL_SIDEBAR_BRAND_GROUP }
 
 /**
  * @typedef {Object} SidebarBrandContext

@@ -8,10 +8,11 @@
  */
 
 import bridge from '@/integrations/ModuleBridge.js'
+import { HEADER_USER_MENU_ITEMS_GROUP } from '@/integrations/moduleContracts.js'
 import { moduleManager } from '@/modules/index.js'
 import { normalizeLucideIconName } from '@/js/lucideIconLoader.js'
 
-export const HEADER_USER_MENU_ITEMS_GROUP = 'header.userMenu.items'
+export { HEADER_USER_MENU_ITEMS_GROUP }
 
 /**
  * @typedef {Object} HeaderUserMenuTrailingAction

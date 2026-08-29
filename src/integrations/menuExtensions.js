@@ -3,9 +3,12 @@
  */
 
 import bridge from '@/integrations/ModuleBridge.js'
+import {
+  MENU_REMOVED_ROUTE_NAMES_GROUP,
+  MENU_SCOPE_REQUIRED_ROUTE_PREFIXES_GROUP,
+} from '@/integrations/moduleContracts.js'
 
-export const MENU_REMOVED_ROUTE_NAMES_GROUP = 'menu.removed_route_names'
-export const MENU_SCOPE_REQUIRED_ROUTE_PREFIXES_GROUP = 'menu.scope_required_route_prefixes'
+export { MENU_REMOVED_ROUTE_NAMES_GROUP, MENU_SCOPE_REQUIRED_ROUTE_PREFIXES_GROUP }
 
 export function collectRemovedMenuRouteNames() {
   return new Set(

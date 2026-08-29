@@ -6,9 +6,10 @@
  */
 
 import bridge from '@/integrations/ModuleBridge.js'
+import { FLOATING_WIDGETS_GROUP } from '@/integrations/moduleContracts.js'
 import { moduleManager } from '@/modules/index.js'
 
-export const FLOATING_WIDGETS_GROUP = 'shell.floating_widgets'
+export { FLOATING_WIDGETS_GROUP }
 
 /**
  * @typedef {Object} FloatingWidgetRegistration

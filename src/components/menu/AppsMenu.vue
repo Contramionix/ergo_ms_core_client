@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDropdown } from '@/composables/useDropdown.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
@@ -7,6 +7,7 @@ import HoverTooltip from '@/components/HoverTooltip.vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { CORE_ICON } from '@/config/coreIconNames.js'
 import { collectVisibleAppsMenuItems } from '@/integrations/appsMenu.js'
+import { useUserStore } from '@/core/cms/js/userStore.js'
 import { logError } from '@/js/utils/logError.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
@@ -20,17 +21,28 @@ const props = defineProps({
 const { t } = useAppI18n()
 const emit = defineEmits(['dropdown-toggle', 'visibility-change'])
 const router = useRouter()
+const userStore = useUserStore()
 const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 const apps = ref([])
 const isLoading = ref(true)
 const hasLoaded = ref(false)
+let retryTimer = null
 
-const isButtonVisible = computed(() => hasLoaded.value && apps.value.length > 0)
+const isButtonVisible = computed(() => (
+  hasLoaded.value && userStore.isAuthenticated
+))
 
-const loadApps = async () => {
+const loadApps = async ({ retryIfEmpty = true } = {}) => {
   try {
     isLoading.value = true
     apps.value = await collectVisibleAppsMenuItems()
+    if (retryIfEmpty && userStore.isAuthenticated && apps.value.length === 0) {
+      window.clearTimeout(retryTimer)
+      retryTimer = window.setTimeout(() => {
+        retryTimer = null
+        void loadApps({ retryIfEmpty: false })
+      }, 2000)
+    }
   } catch (error) {
     logError('Ошибка загрузки приложений:', error)
     apps.value = []
@@ -66,9 +78,22 @@ onMounted(async () => {
   await loadApps()
 })
 
+onUnmounted(() => {
+  window.clearTimeout(retryTimer)
+  retryTimer = null
+})
+
 watch(isOpen, async (open) => {
   if (open) {
+    await loadApps({ retryIfEmpty: false })
+  }
+})
+
+watch(() => userStore.isAuthenticated, async (authenticated) => {
+  if (authenticated) {
     await loadApps()
+  } else {
+    apps.value = []
   }
 })
 

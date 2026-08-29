@@ -5,8 +5,9 @@
  */
 
 import bridge from '@/integrations/ModuleBridge.js'
+import { LAYOUT_PLUGIN_REGISTRY_GROUP } from '@/integrations/moduleContracts.js'
 
-export const LAYOUT_PLUGIN_REGISTRY_GROUP = 'layout.plugin_registry'
+export { LAYOUT_PLUGIN_REGISTRY_GROUP }
 
 /**
  * @returns {Record<string, { routeNamePrefixes?: string[], offcanvasPages?: string[] }>}

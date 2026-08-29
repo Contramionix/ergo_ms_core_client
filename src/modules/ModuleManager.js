@@ -42,6 +42,9 @@ export class ModuleManager {
     this._initPromise = null
     this._coreReadyPromise = null
     this._resolveCoreReady = null
+    /** @type {Set<string>} */
+    this._loadedRemoteKeys = new Set()
+    this._retryRemotesPromise = null
   }
 
   /**
@@ -94,20 +97,57 @@ export class ModuleManager {
     this._markCoreReady()
 
     if (clientEnv.modularity === 'federated' || getConfiguredModuleRemotes().length) {
-      const remotes = await loadFederatedModules()
-      for (const manifest of remotes) {
-        try {
-          await this.registerModule(manifest, `remote:${manifest.moduleKey}`)
-        } catch (error) {
-          logError(
-            `[federated] Не удалось зарегистрировать remote ${manifest.moduleKey}`,
-            error,
-          )
-        }
-      }
+      await this._registerFederatedManifests(await loadFederatedModules())
     }
 
     this.initialized = true
+  }
+
+  /**
+   * @param {import('./core/clientModuleManifest.js').ClientModuleManifest[]} remotes
+   */
+  async _registerFederatedManifests(remotes) {
+    for (const manifest of remotes) {
+      if (!manifest?.moduleKey || this._loadedRemoteKeys.has(manifest.moduleKey)) {
+        continue
+      }
+      try {
+        await this.registerModule(manifest, `remote:${manifest.moduleKey}`)
+        this._loadedRemoteKeys.add(manifest.moduleKey)
+      } catch (error) {
+        logError(
+          `[federated] Не удалось зарегистрировать remote ${manifest.moduleKey}`,
+          error,
+        )
+      }
+    }
+  }
+
+  /**
+   * Повторно тянет remotes, которые не зарегистрировались (502, сеть).
+   * Уже загруженные не дублирует.
+   */
+  async retryMissingRemotes() {
+    const configured = getConfiguredModuleRemotes()
+    if (!configured.length) {
+      return
+    }
+    const missing = configured.some((item) => !this._loadedRemoteKeys.has(item.name))
+    if (!missing) {
+      return
+    }
+    if (this._retryRemotesPromise) {
+      await this._retryRemotesPromise
+      return
+    }
+    this._retryRemotesPromise = this._registerFederatedManifests(await loadFederatedModules())
+      .catch((error) => {
+        logError('[federated] Повторная загрузка remotes не удалась', error)
+      })
+      .finally(() => {
+        this._retryRemotesPromise = null
+      })
+    await this._retryRemotesPromise
   }
 
   /**
@@ -278,6 +318,8 @@ export class ModuleManager {
     this._initPromise = null
     this._coreReadyPromise = null
     this._resolveCoreReady = null
+    this._loadedRemoteKeys = new Set()
+    this._retryRemotesPromise = null
   }
 
   /**

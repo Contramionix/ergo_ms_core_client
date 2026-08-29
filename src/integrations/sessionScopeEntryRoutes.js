@@ -8,8 +8,9 @@
  */
 
 import bridge from '@/integrations/ModuleBridge.js'
+import { SESSION_SCOPE_ENTRY_ROUTES_GROUP } from '@/integrations/moduleContracts.js'
 
-export const SESSION_SCOPE_ENTRY_ROUTES_GROUP = 'session.scope_entry_routes'
+export { SESSION_SCOPE_ENTRY_ROUTES_GROUP }
 
 function _routeName(value, fallback) {
   if (typeof value === 'string' && value.length > 0) {

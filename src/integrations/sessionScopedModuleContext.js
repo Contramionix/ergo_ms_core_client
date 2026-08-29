@@ -6,8 +6,9 @@
  */
 
 import bridge from '@/integrations/ModuleBridge.js'
+import { SESSION_SCOPED_MODULE_CONTEXT_GROUP } from '@/integrations/moduleContracts.js'
 
-export const SESSION_SCOPED_MODULE_CONTEXT_GROUP = 'session_scope.module_context'
+export { SESSION_SCOPED_MODULE_CONTEXT_GROUP }
 
 /**
  * @returns {Array<{ pathPrefix: string, homeRoute: string, overviewRoute?: string, entryRouteNames?: string[], excludedPaths?: string[] }>}
