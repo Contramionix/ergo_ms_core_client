@@ -354,6 +354,11 @@
     padding-left: max(#{$padding-external}, env(safe-area-inset-left, 0px));
     padding-right: max(#{$padding-external}, env(safe-area-inset-right, 0px));
   }
+
+  /* Логотип уже в mobile-header — в выезжающем меню он только дублирует шапку. */
+  .side-menu__header {
+    display: none;
+  }
 }
 
 .side-divider {
