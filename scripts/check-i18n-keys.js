@@ -10,6 +10,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const localesRoot = path.resolve(__dirname, '../src/i18n/locales')
 const supportedPath = path.resolve(__dirname, '../src/i18n/supportedLocales.js')
+const minigamesPackPath = path.resolve(
+  __dirname,
+  '../src/components/minigames/locales.js',
+)
 
 function flattenKeys(obj, prefix = '', out = []) {
   if (obj == null || typeof obj !== 'object' || Array.isArray(obj)) {
@@ -99,6 +103,46 @@ async function main() {
       }
       if (extra.length > 40) {
         console.error(`  … и ещё ${extra.length - 40}`)
+      }
+    }
+  }
+
+  if (fs.existsSync(minigamesPackPath)) {
+    const packMod = await import(pathToFileURL(minigamesPackPath).href)
+    const pack = packMod.default || packMod
+    const packBase = pack[baseLocale]
+    if (!packBase || typeof packBase !== 'object') {
+      failed = true
+      console.error(`[ERROR] Нет пакета мини-игр для ${baseLocale}`)
+    } else {
+      const packBaseKeys = flattenKeys(packBase)
+      counts[`${baseLocale}:minigames`] = packBaseKeys.length
+      for (const locale of locales) {
+        if (locale === baseLocale) continue
+        const messages = pack[locale]
+        if (!messages || typeof messages !== 'object') {
+          failed = true
+          console.error(`[ERROR] Нет пакета мини-игр для ${locale}`)
+          continue
+        }
+        const keys = flattenKeys(messages)
+        counts[`${locale}:minigames`] = keys.length
+        const missing = diffKeys(packBaseKeys, keys)
+        const extra = diffKeys(keys, packBaseKeys)
+        if (missing.length) {
+          failed = true
+          console.error(`[ERROR] Ключи мини-игр есть в ${baseLocale}, нет в ${locale}:`)
+          for (const key of missing) {
+            console.error(`  - ${key}`)
+          }
+        }
+        if (extra.length) {
+          failed = true
+          console.error(`[ERROR] Ключи мини-игр есть в ${locale}, нет в ${baseLocale}:`)
+          for (const key of extra) {
+            console.error(`  - ${key}`)
+          }
+        }
       }
     }
   }

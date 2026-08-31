@@ -1,8 +1,11 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import SkipLink from '@/components/SkipLink.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
+import '@/components/minigames/ensureMinigamesLocales.js'
+
+const MinigamesModal = defineAsyncComponent(() => import('@/components/minigames/MinigamesModal.vue'))
 
 const { t } = useAppI18n()
 
@@ -17,7 +20,15 @@ const props = defineProps({
   },
 })
 
+const gamesOpen = ref(false)
+const gamesMounted = ref(false)
+
 const resolvedDetail = computed(() => props.detail ?? t('components.maintenance.detail'))
+
+function openGames() {
+  gamesMounted.value = true
+  gamesOpen.value = true
+}
 </script>
 
 <template>
@@ -27,8 +38,6 @@ const resolvedDetail = computed(() => props.detail ?? t('components.maintenance.
     class="maintenance-page"
     :class="{ 'maintenance-page--overlay': overlay }"
     tabindex="-1"
-    role="alert"
-    aria-live="polite"
   >
     <div class="maintenance-page__backdrop" aria-hidden="true">
       <span class="maintenance-page__orb maintenance-page__orb--1" />
@@ -39,9 +48,11 @@ const resolvedDetail = computed(() => props.detail ?? t('components.maintenance.
     <section class="maintenance-page__card">
       <SiteWordmark class="site-wordmark--hero site-wordmark--centered maintenance-page__wordmark" />
 
-      <p class="maintenance-page__badge">{{ t('components.maintenance.badge') }}</p>
-      <h1 class="maintenance-page__title">{{ t('components.maintenance.title') }}</h1>
-      <p class="maintenance-page__text">{{ resolvedDetail }}</p>
+      <div role="status" aria-live="polite">
+        <p class="maintenance-page__badge">{{ t('components.maintenance.badge') }}</p>
+        <h1 class="maintenance-page__title">{{ t('components.maintenance.title') }}</h1>
+        <p class="maintenance-page__text">{{ resolvedDetail }}</p>
+      </div>
 
       <div class="maintenance-page__progress" aria-hidden="true">
         <span class="maintenance-page__progress-bar" data-ergo-motion-safe="pulse" />
@@ -50,7 +61,23 @@ const resolvedDetail = computed(() => props.detail ?? t('components.maintenance.
       <p class="maintenance-page__hint">
         {{ t('components.maintenance.hint') }}
       </p>
+
+      <button
+        type="button"
+        class="maintenance-page__games-toggle"
+        :aria-expanded="gamesOpen ? 'true' : 'false'"
+        aria-haspopup="dialog"
+        @click="openGames"
+      >
+        {{ t('minigames.open') }}
+      </button>
     </section>
+
+    <MinigamesModal
+      v-if="gamesMounted"
+      :show="gamesOpen"
+      @close="gamesOpen = false"
+    />
   </main>
 </template>
 
@@ -66,7 +93,8 @@ const resolvedDetail = computed(() => props.detail ?? t('components.maintenance.
   align-items: center;
   justify-content: center;
   padding: clamp(1rem, 4vw, 2.5rem);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--ui-bg, var(--color-background, #f5f6f8));
   color: var(--ui-text, var(--color-primary-text, #14151a));
 }
@@ -197,6 +225,38 @@ const resolvedDetail = computed(() => props.detail ?? t('components.maintenance.
   line-height: 1.5;
   color: var(--ui-text-muted, var(--color-secondary-text, #5b616e));
   opacity: 0.85;
+}
+
+.maintenance-page__games-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  margin-top: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--ui-text-muted, var(--color-secondary-text, #5b616e));
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+  opacity: 0.9;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--ui-text, var(--color-primary-text, #14151a));
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--maint-accent) 45%, transparent);
+    outline-offset: 2px;
+  }
 }
 
 @keyframes maintenance-float {
