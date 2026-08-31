@@ -6,6 +6,13 @@ import {
 } from '@/js/utils/overlayZIndex.js'
 
 const VIEWPORT_PADDING = 8
+const DATE_PICKER_OVERLAY_SELECTOR = [
+  '.dp__menu',
+  '.dp--menu',
+  '.dp__overlay',
+  '.dp--overlay',
+  '.dp__outer_menu_wrap',
+].join(', ')
 
 /**
  * Позиционирование главной панели и бокового flyout для FilterMenu.
@@ -39,14 +46,28 @@ export function useFilterMenuFlyout(options = {}) {
   function scheduleFlyoutClose() {
     clearHoverCloseTimer()
     hoverCloseTimer = setTimeout(() => {
-      if (!pinnedFlyoutKey.value) {
-        activeFlyoutKey.value = null
+      if (pinnedFlyoutKey.value) {
+        hoverCloseTimer = null
+        return
       }
+      const hovered = document.querySelector(`${DATE_PICKER_OVERLAY_SELECTOR}:hover`)
+      if (hovered) {
+        hoverCloseTimer = null
+        return
+      }
+      activeFlyoutKey.value = null
       hoverCloseTimer = null
     }, hoverCloseDelay)
   }
 
+  function isDatePickerOverlay(target) {
+    const el = target instanceof Element ? target : target?.parentElement
+    if (!(el instanceof Element)) return false
+    return Boolean(el.closest(DATE_PICKER_OVERLAY_SELECTOR))
+  }
+
   function flyoutContains(target) {
+    if (isDatePickerOverlay(target)) return true
     if (!(target instanceof Node)) return false
     const main = mainPanelEl.value
     const flyout = flyoutPanelEl.value
@@ -194,6 +215,12 @@ export function useFilterMenuFlyout(options = {}) {
     pinnedFlyoutKey.value = null
   }
 
+  function pinActiveFlyout() {
+    if (activeFlyoutKey.value) {
+      pinnedFlyoutKey.value = activeFlyoutKey.value
+    }
+  }
+
   function onRowEnter(fieldKey, rowEl) {
     if (pinnedFlyoutKey.value && pinnedFlyoutKey.value !== fieldKey) return
     openFlyout(fieldKey, rowEl)
@@ -208,8 +235,9 @@ export function useFilterMenuFlyout(options = {}) {
     clearHoverCloseTimer()
   }
 
-  function onFlyoutLeave() {
+  function onFlyoutLeave(event) {
     if (pinnedFlyoutKey.value) return
+    if (isDatePickerOverlay(event?.relatedTarget)) return
     scheduleFlyoutClose()
   }
 
@@ -268,6 +296,7 @@ export function useFilterMenuFlyout(options = {}) {
     closeMain,
     openFlyout,
     closeFlyout,
+    pinActiveFlyout,
     onRowEnter,
     onRowLeave,
     onFlyoutEnter,
