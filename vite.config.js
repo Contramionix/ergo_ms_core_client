@@ -366,7 +366,7 @@ function resolveManualChunk(id) {
   if (normalizedId.includes('codemirror') || normalizedId.includes('vue-codemirror')) {
     return 'vendor_editors'
   }
-  if (normalizedId.includes('exceljs') || normalizedId.includes('pdfjs-dist') || normalizedId.includes('docx-preview')) {
+  if (normalizedId.includes('exceljs') || normalizedId.includes('pdfjs-dist')) {
     return 'vendor_heavy'
   }
   if (normalizedId.includes('foliate-js')) {

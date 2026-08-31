@@ -60,10 +60,12 @@
             <label :for="`filter-menu-date-${activeField.key}`" class="form-label mb-1">
               {{ activeField.label }}
             </label>
-            <input :id="`filter-menu-date-${activeField.key}`" :value="getFieldRawValue(activeField.key)" type="date" class="form-control" @change="onDateChange(activeField, $event)"/>
-            <button type="button" class="btn btn-sm btn-link filter-menu__date-clear px-0" :disabled="isEmptyValue(activeField.key)" @click="clearDateValue(activeField)">
-              {{ t('components.filterMenu.clear') }}
-            </button>
+            <DatePicker
+              :id="`filter-menu-date-${activeField.key}`"
+              :model-value="getFieldRawValue(activeField.key)"
+              @update:model-value="onDateChange(activeField, $event)"
+              @focusin="pinActiveFlyout"
+            />
           </div>
         </template>
       </div>
@@ -75,6 +77,7 @@
 import { computed, ref, watch, nextTick, onBeforeUnmount, useId } from 'vue'
 import { ChevronDown, ChevronRight } from '@lucide/vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import DatePicker from '@/components/DatePicker.vue'
 import { hideHoverTooltipForOwner, showHoverTooltip, } from '@/js/utils/hoverTooltipLayer.js'
 import { useFilterMenuFlyout } from '@/composables/useFilterMenuFlyout.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
@@ -124,6 +127,7 @@ const {
   toggleMain,
   openFlyout,
   closeFlyout,
+  pinActiveFlyout,
   onRowEnter,
   onRowLeave,
   onFlyoutEnter,
@@ -362,13 +366,8 @@ function chooseSelectValue(field, value) {
   emitApplyIfNeeded()
 }
 
-function onDateChange(field, event) {
-  patchModelValue(field.key, event.target.value || '')
-  emitApplyIfNeeded()
-}
-
-function clearDateValue(field) {
-  patchModelValue(field.key, '')
+function onDateChange(field, value) {
+  patchModelValue(field.key, value || '')
   emitApplyIfNeeded()
 }
 
@@ -524,19 +523,6 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
-
-  .form-control {
-    min-height: 38px;
-  }
-}
-
-.filter-menu__date-clear {
-  align-self: flex-start;
-  text-decoration: none;
-
-  &:hover:not(:disabled) {
-    text-decoration: underline;
-  }
 }
 </style>
 

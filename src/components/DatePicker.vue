@@ -14,6 +14,7 @@
       auto-apply
       six-weeks
       :teleport="true"
+      :dark="isDark"
       :floating="floatingConfig"
       :config="pickerConfig"
       :min-date="minDateParsed"
@@ -44,6 +45,7 @@ import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { useThemeMode } from '@/composables/useThemeMode.js'
 import { advanceCaretToNextDateSection, applyDigitToDateInput, applyPastedDigitsToDateInput, normalizeDateInputMask, } from '@/js/utils/dateInputMask.js'
 import { toISODate, toISODateTime } from '@/js/utils/timeUtils.js'
 
@@ -123,6 +125,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const { t, getLocale } = useAppI18n()
+const { isDark } = useThemeMode()
 
 const pickerLocale = computed(() => DATE_FNS_LOCALES[getLocale()] || ru)
 const is12Hour = computed(() => props.enableTime && props.timeFormat === '12' && !props.monthPicker)
@@ -393,13 +396,13 @@ onBeforeUnmount(() => {
 </style>
 
 <style lang="scss">
+@import '@/scss/vue-datepicker-theme';
+
+@include vue-datepicker-overlay-theme;
+
 .dp__menu,
 .dp__menu_inner {
   max-height: none !important;
   overflow: visible !important;
-}
-
-.dp__menu {
-  z-index: var(--ui-z-overlay-menu, 1070) !important;
 }
 </style>

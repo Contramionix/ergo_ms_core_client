@@ -28,13 +28,6 @@ export function getPolicyPathModeOptions() {
   ]
 }
 
-export function getPresenceFilterOptions() {
-  return [
-    { id: 'all', name: tGlobal('admin.users.presenceAll') },
-    { id: 'online', name: tGlobal('admin.users.presenceOnline') },
-  ]
-}
-
 export function mapRoleSelectOptions(roles = []) {
   return roles.map((role) => ({
     id: role.id,

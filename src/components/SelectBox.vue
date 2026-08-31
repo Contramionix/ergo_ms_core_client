@@ -213,7 +213,7 @@ const props = defineProps({
     hoverCloseDelay: { type: Number, default: 120 },
 })
 
-const emit = defineEmits(['update:modelValue', 'change', 'blur'])
+const emit = defineEmits(['update:modelValue', 'change', 'blur', 'search'])
 
 const generatedId = useId()
 const triggerId = computed(() => props.id || generatedId)
@@ -689,7 +689,8 @@ watch([() => (props.virtualized ? effectiveOptionsForVirtual.value.length : filt
     }
 })
 
-watch(searchQuery, () => {
+watch(searchQuery, (value) => {
+    emit('search', String(value || ''))
     if (props.virtualized && isOpen.value && listContainerRef.value) {
         listContainerRef.value.scrollTop = 0
         nextTick(updateVisibleRange)

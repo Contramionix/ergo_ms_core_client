@@ -29,7 +29,7 @@ const hasLoaded = ref(false)
 let retryTimer = null
 
 const isButtonVisible = computed(() => (
-  hasLoaded.value && userStore.isAuthenticated
+  hasLoaded.value && userStore.isAuthenticated && apps.value.length > 0
 ))
 
 const loadApps = async ({ retryIfEmpty = true } = {}) => {

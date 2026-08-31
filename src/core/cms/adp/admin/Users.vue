@@ -1,8 +1,9 @@
 ﻿<script setup>
 import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
-import { useRouteQueryState } from '@/composables/useRouteQueryState.js'
+import { useRouteQueryState, filtersObjectFromState, filtersObjectToPatch } from '@/composables/useRouteQueryState.js'
 import { useToast } from '@/js/utils/toast.js'
+import { logError } from '@/js/utils/logError.js'
 import { Settings, Upload, MailPlus, UserPlus, FilePenLine } from '@lucide/vue'
 import DataTable from '@/components/DataTable.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
@@ -12,13 +13,18 @@ import { formatDateShort, formatDateTime } from '@/js/utils/timeUtils.js'
 import { getAdminUsers, getRoles, getRoleGroupOptions, checkAccessToAdminPanel } from '@/core/cms/adp/admin/js/adminAccessApi.js'
 import { presenceStore, seedFromUsers } from '@/core/cms/adp/js/presence/presenceStore.js'
 import { useAdminPresenceFeed } from '@/core/cms/adp/admin/js/useAdminPresenceFeed.js'
-import SelectBox from '@/components/SelectBox.vue'
+import FilterMenu from '@/components/FilterMenu.vue'
 import Breadcrumbs from '@/components/Breadcrumbs.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import SearchInput from '@/components/SearchInput.vue'
 import AlphabetFilter from '@/components/AlphabetFilter.vue'
 import { resolveAlphabetLetters } from '@/composables/alphabetFilterLetters.js'
-import { getPresenceFilterOptions } from '@/core/cms/js/adminSelectOptions.js'
+import {
+  USERS_FILTER_MAP,
+  getUsersFilterFields,
+  buildUsersFiltersTooltip,
+  buildAdminUsersQueryParams,
+} from '@/core/cms/adp/admin/js/usersListFilters.js'
 import { fetchProfileSettings } from '@/core/cms/adp/js/profileSettings.js'
 import { fetchAdminProfileChangeRequests } from '@/core/cms/adp/admin/js/profileChangeRequestService.js'
 import { accessDeniedState } from '@/js/accessDeniedState'
@@ -39,8 +45,6 @@ const breadcrumbItems = computed(() => [
   { label: tGlobal('admin.users.breadcrumb') },
 ])
 
-const presenceFilterOptions = computed(() => getPresenceFilterOptions())
-
 const { connect: connectAdminPresenceFeed, disconnect: disconnectAdminPresenceFeed } = useAdminPresenceFeed()
 const rows = ref([])
 const totalUsers = ref(0)
@@ -59,7 +63,12 @@ const profileSelfEditEnabled = ref(true)
 const { state: listState, patchState, watchState } = useRouteQueryState({
   q: { default: '' },
   page: { default: 1, type: 'number' },
-  presence: { default: 'all', enum: ['all', 'online', 'offline'] },
+  presence: { default: '', enum: ['', 'online', 'offline'] },
+  role: { default: '' },
+  joined_from: { default: '' },
+  joined_to: { default: '' },
+  last_seen_from: { default: '' },
+  last_seen_to: { default: '' },
   letter: { default: '', enum: [...resolveAlphabetLetters('all')] },
 }, { debounceKeys: ['q'] })
 
@@ -71,16 +80,22 @@ const letterFilter = computed({
     patchState({ letter: value || '' }, { immediate: true })
   },
 })
-const presenceFilter = computed({
-  get: () => listState.value.presence,
-  set: (value) => {
-    patchState({ presence: value }, { immediate: true })
+const usersFilters = computed({
+  get: () => filtersObjectFromState(listState.value, USERS_FILTER_MAP),
+  set: (filters) => {
+    patchState(filtersObjectToPatch(filters, USERS_FILTER_MAP), { immediate: true })
   },
 })
+const usersFilterFields = computed(() => getUsersFilterFields(roles.value))
+const usersFiltersTooltip = computed(() =>
+  buildUsersFiltersTooltip(usersFilterFields.value, usersFilters.value)
+    || tGlobal('admin.users.filterTooltip'),
+)
 const pendingProfileChangeCount = ref(0)
 const isQueryWatchReady = ref(false)
 
-const isOnlineFilter = computed(() => presenceFilter.value === 'online')
+const isOnlineFilter = computed(() => listState.value.presence === 'online')
+const isOfflineFilter = computed(() => listState.value.presence === 'offline')
 
 const profileChangeRequestsTooltip = computed(() => {
   const label = tGlobal('admin.users.profileChangeLink')
@@ -142,6 +157,31 @@ watch(
       return
     }
 
+    if (isOfflineFilter.value) {
+      const prevCount = rows.value.length
+      rows.value = rows.value
+        .filter((row) => {
+          const status = statusFor(row)
+          return status ? !status.isOnline : !row.is_online
+        })
+        .map((row) => {
+          const status = statusFor(row)
+          if (!status) {
+            return row
+          }
+          return {
+            ...row,
+            is_online: status.isOnline,
+            last_seen: status.lastSeen,
+          }
+        })
+
+      if (rows.value.length !== prevCount) {
+        totalUsers.value = Math.max(0, totalUsers.value - (prevCount - rows.value.length))
+      }
+      return
+    }
+
     rows.value = rows.value.map((row) => {
       const status = statusFor(row)
       if (!status) {
@@ -177,13 +217,7 @@ const mapUserToRow = (user) => ({
 const loadUsers = async () => {
   isLoadingUsers.value = true
   try {
-    const data = await getAdminUsers({
-      page: currentPage.value,
-      page_size: rowsPerPage.value,
-      q: searchQuery.value.trim() || undefined,
-      online_only: isOnlineFilter.value || undefined,
-      letter: letterFilter.value || undefined,
-    })
+    const data = await getAdminUsers(buildAdminUsersQueryParams(listState.value, rowsPerPage.value))
     rows.value = (data.users || []).map(mapUserToRow)
     seedFromUsers(data.users || [])
     totalUsers.value = data.total ?? rows.value.length
@@ -387,10 +421,16 @@ const getItemKey = (item) => item.user_id
         <div class="content-card">
         <div class="table-header users-toolbar">
           <div class="filters-wrapper">
-            <SearchInput id="users-search" :model-value="searchQuery" layout="fixed" :placeholder="tGlobal('admin.users.search')" :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
-            <div class="presence-filter">
-              <HoverTooltip :text="tGlobal('admin.users.filterTooltip')">
-                <SelectBox id="users-presence-filter" v-model="presenceFilter" :options="presenceFilterOptions" value-key="id" label-key="name" :include-all-option="false"/>
+            <SearchInput id="users-search" :model-value="searchQuery" layout="grow" :placeholder="tGlobal('admin.users.search')" :show-icon="true" background="primary" focus-border="primary" @update:model-value="handleSearchQuery"/>
+            <div class="users-filter-menu-wrap">
+              <HoverTooltip :text="usersFiltersTooltip" wrap>
+                <FilterMenu
+                  v-model="usersFilters"
+                  class="users-filter-menu"
+                  :fields="usersFilterFields"
+                  :trigger-label="tGlobal('components.filterMenu.trigger')"
+                  apply-on-change
+                />
               </HoverTooltip>
             </div>
           </div>
@@ -546,32 +586,63 @@ const getItemKey = (item) => item.user_id
   gap: 0.75rem;
 
   .filters-wrapper {
-    display: grid;
-    grid-template-columns: minmax(180px, 1fr) 220px;
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
     gap: 0.75rem;
     min-width: 0;
   }
 
-  .presence-filter {
-    width: 220px;
+  :deep(.search-input) {
+    --search-input-font-size: 0.875rem;
   }
 
   @media (width < $ui-bp-md) {
     grid-template-columns: 1fr;
 
-    .filters-wrapper {
-      grid-template-columns: 1fr;
-    }
-
-    .presence-filter {
-      width: 100%;
-      max-width: none;
-    }
-
     .actions-wrapper {
       width: 100%;
       justify-content: flex-start;
     }
+  }
+}
+
+.users-filter-menu-wrap {
+  flex: 0 0 220px;
+  width: 220px;
+  max-width: 100%;
+
+  :deep(.filter-menu) {
+    width: 100%;
+    min-width: 220px;
+  }
+
+  :deep(.hover-tooltip) {
+    display: contents;
+  }
+
+  @media (width < $ui-bp-md) {
+    flex: 1 1 auto;
+    width: 100%;
+
+    :deep(.filter-menu) {
+      min-width: 0;
+    }
+  }
+}
+
+.users-filter-menu {
+  width: 100%;
+  min-width: 220px;
+
+  --filter-menu-trigger-font-size: 0.875rem;
+  --select-box-font-size: 0.875rem;
+  --select-box-trigger-min-height: 38px;
+
+  :deep(.filter-menu__trigger) {
+    min-height: 38px;
+    height: 38px;
+    padding: 0 0.75rem;
   }
 }
 
@@ -605,36 +676,6 @@ const getItemKey = (item) => item.user_id
     height: 44px;
     min-width: 44px;
     min-height: 44px;
-  }
-}
-
-.presence-filter {
-  width: 220px;
-  max-width: 220px;
-  box-sizing: border-box;
-
-  @media (width < $ui-bp-md) {
-    width: 100%;
-    max-width: none;
-  }
-
-  :deep(.hover-tooltip) {
-    display: contents;
-  }
-
-  :deep(.select-box),
-  :deep(.dropdown) {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-
-  :deep(.select-trigger) {
-    display: flex;
-    width: 100%;
-    max-width: 100%;
-    min-height: 38px;
-    box-sizing: border-box;
   }
 }
 
