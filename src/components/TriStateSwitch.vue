@@ -96,8 +96,8 @@ function onTrackClick(event) {
 <style scoped lang="scss">
 .tri-state-switch {
   --ios-toggle-track-off: color-mix(in srgb, var(--bs-body-color) 16%, var(--bs-body-bg));
-  --ios-toggle-track-on: #34c759;
-  --ios-toggle-track-deny: #ff3b30;
+  --ios-toggle-track-on: var(--ui-success, #34c759);
+  --ios-toggle-track-deny: var(--ui-danger, #ff3b30);
   --ios-toggle-thumb: #ffffff;
   --ios-toggle-thumb-shadow:
     0 2px 6px rgba(0, 0, 0, 0.2),

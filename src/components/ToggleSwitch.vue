@@ -64,7 +64,7 @@ function onActivate() {
 <style scoped lang="scss">
 .toggle-switch {
   --ios-toggle-track-off: color-mix(in srgb, var(--bs-body-color) 16%, var(--bs-body-bg));
-  --ios-toggle-track-on: #34c759;
+  --ios-toggle-track-on: var(--ui-success, #34c759);
   --ios-toggle-thumb: #ffffff;
   --ios-toggle-thumb-shadow:
     0 2px 6px rgba(0, 0, 0, 0.2),
