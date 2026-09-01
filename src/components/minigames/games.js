@@ -25,6 +25,12 @@ export const MINIGAMES = [
     icon: 'Hash',
     component: markRaw(defineAsyncComponent(() => import('./twenty48/Twenty48Game.vue'))),
   },
+  {
+    id: 'minesweeper',
+    labelKey: 'minigames.tabMinesweeper',
+    icon: 'Bomb',
+    component: markRaw(defineAsyncComponent(() => import('./minesweeper/MinesweeperGame.vue'))),
+  },
 ]
 
 export const DEFAULT_MINIGAME_ID = MINIGAMES[0].id
