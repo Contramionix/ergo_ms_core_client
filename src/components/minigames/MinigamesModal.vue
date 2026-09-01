@@ -59,7 +59,10 @@ function handleClose() {
           </li>
         </ul>
       </nav>
-      <div class="minigames-modal__panel">
+      <div
+        class="minigames-modal__panel"
+        :class="{ 'minigames-modal__panel--fill': activeId === 'pulsehop' }"
+      >
         <KeepAlive>
           <component :is="activeGame.component" :key="activeGame.id" />
         </KeepAlive>
@@ -191,6 +194,19 @@ function handleClose() {
 
   @media (width < $ui-bp-md) {
     padding: 1rem;
+  }
+
+  &--fill {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+
+    > * {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100%;
+    }
   }
 }
 </style>

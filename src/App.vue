@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 const LayoutMenu = defineAsyncComponent(() => import('@/LayoutMenu.vue'))
 const LayoutStart = defineAsyncComponent(() => import('@/LayoutStart.vue'))
 const LayoutPublic = defineAsyncComponent(() => import('@/LayoutPublic.vue'))
-import MaintenancePage from '@/components/MaintenancePage.vue'
+const MaintenancePage = defineAsyncComponent(() => import('@/components/MaintenancePage.vue'))
 import TooManyRequestsPage from '@/components/TooManyRequestsPage.vue'
 import NotificationProvider from '@/components/NotificationProvider.vue'
 import HoverTooltipLayer from '@/components/HoverTooltipLayer.vue'

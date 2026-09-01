@@ -13,6 +13,12 @@ export const MINIGAMES = [
     icon: 'Ship',
     component: markRaw(defineAsyncComponent(() => import('./battleship/BattleshipGame.vue'))),
   },
+  {
+    id: 'pulsehop',
+    labelKey: 'minigames.tabPulsehop',
+    icon: 'Zap',
+    component: markRaw(defineAsyncComponent(() => import('./pulsehop/PulseHopGame.vue'))),
+  },
 ]
 
 export const DEFAULT_MINIGAME_ID = MINIGAMES[0].id
