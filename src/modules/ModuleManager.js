@@ -173,6 +173,13 @@ export class ModuleManager {
       } catch {
         /* locales optional at early boot */
       }
+      // Proxy endpoints кэширует снимок до remotes — обновить без циклического import.
+      try {
+        const { syncEndpointsCache } = await import('@/js/api/endpoints.js')
+        syncEndpointsCache()
+      } catch {
+        /* boot до загрузки endpoints.js */
+      }
     }
     return registered
   }

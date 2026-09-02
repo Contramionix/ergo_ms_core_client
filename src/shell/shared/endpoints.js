@@ -1,2 +1,7 @@
 /** Shared реестр эндпоинтов оболочки (после initEndpoints). */
-export { endpoints, initEndpoints, isEndpointsReady } from '@/js/api/endpoints.js'
+export {
+  endpoints,
+  initEndpoints,
+  isEndpointsReady,
+  syncEndpointsCache,
+} from '@/js/api/endpoints.js'
