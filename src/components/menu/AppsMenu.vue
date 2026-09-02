@@ -7,6 +7,8 @@ import HoverTooltip from '@/components/HoverTooltip.vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { CORE_ICON } from '@/config/coreIconNames.js'
 import { collectVisibleAppsMenuItems } from '@/integrations/appsMenu.js'
+import { APPS_MENU_ITEMS_GROUP } from '@/integrations/moduleContracts.js'
+import bridge from '@/integrations/ModuleBridge.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { logError } from '@/js/utils/logError.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
@@ -26,29 +28,64 @@ const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
 const apps = ref([])
 const isLoading = ref(true)
 const hasLoaded = ref(false)
-let retryTimer = null
+/** Повторные попытки: remotes/токен часто появляются позже первой сборки. */
+const RETRY_DELAYS_MS = [800, 2000, 4000, 7000, 11000]
+let retryTimers = []
+let retryAttempt = 0
+let loadSeq = 0
 
 const isButtonVisible = computed(() => (
   hasLoaded.value && userStore.isAuthenticated && apps.value.length > 0
 ))
 
-const loadApps = async ({ retryIfEmpty = true } = {}) => {
+function clearRetryTimers() {
+  retryTimers.forEach((id) => window.clearTimeout(id))
+  retryTimers = []
+}
+
+function scheduleEmptyRetries() {
+  clearRetryTimers()
+  if (!userStore.isAuthenticated || apps.value.length > 0) {
+    return
+  }
+  RETRY_DELAYS_MS.slice(retryAttempt).forEach((delay) => {
+    const timer = window.setTimeout(() => {
+      retryAttempt += 1
+      void loadApps({ scheduleRetries: false })
+    }, delay)
+    retryTimers.push(timer)
+  })
+}
+
+const loadApps = async ({ scheduleRetries = true } = {}) => {
+  const seq = ++loadSeq
   try {
     isLoading.value = true
-    apps.value = await collectVisibleAppsMenuItems()
-    if (retryIfEmpty && userStore.isAuthenticated && apps.value.length === 0) {
-      window.clearTimeout(retryTimer)
-      retryTimer = window.setTimeout(() => {
-        retryTimer = null
-        void loadApps({ retryIfEmpty: false })
-      }, 2000)
+    const next = await collectVisibleAppsMenuItems()
+    if (seq !== loadSeq) {
+      return
+    }
+    apps.value = next
+    if (next.length > 0) {
+      retryAttempt = RETRY_DELAYS_MS.length
+      clearRetryTimers()
+    } else if (scheduleRetries) {
+      scheduleEmptyRetries()
     }
   } catch (error) {
+    if (seq !== loadSeq) {
+      return
+    }
     logError('Ошибка загрузки приложений:', error)
     apps.value = []
+    if (scheduleRetries) {
+      scheduleEmptyRetries()
+    }
   } finally {
-    isLoading.value = false
-    hasLoaded.value = true
+    if (seq === loadSeq) {
+      isLoading.value = false
+      hasLoaded.value = true
+    }
   }
 }
 
@@ -74,26 +111,49 @@ const goToApp = async (app) => {
   }
 }
 
+function onAccessOrScopeChanged() {
+  if (!userStore.isAuthenticated) {
+    return
+  }
+  retryAttempt = 0
+  void loadApps({ scheduleRetries: true })
+}
+
+function onBridgeGroupChanged(payload) {
+  if (payload?.group !== APPS_MENU_ITEMS_GROUP) {
+    return
+  }
+  onAccessOrScopeChanged()
+}
+
 onMounted(async () => {
+  window.addEventListener('access-token-changed', onAccessOrScopeChanged)
+  window.addEventListener('session-scope-changed', onAccessOrScopeChanged)
+  bridge.subscribe('group.changed', onBridgeGroupChanged)
   await loadApps()
 })
 
 onUnmounted(() => {
-  window.clearTimeout(retryTimer)
-  retryTimer = null
+  window.removeEventListener('access-token-changed', onAccessOrScopeChanged)
+  window.removeEventListener('session-scope-changed', onAccessOrScopeChanged)
+  bridge.unsubscribe('group.changed', onBridgeGroupChanged)
+  clearRetryTimers()
 })
 
 watch(isOpen, async (open) => {
   if (open) {
-    await loadApps({ retryIfEmpty: false })
+    await loadApps({ scheduleRetries: false })
   }
 })
 
 watch(() => userStore.isAuthenticated, async (authenticated) => {
   if (authenticated) {
-    await loadApps()
+    retryAttempt = 0
+    await loadApps({ scheduleRetries: true })
   } else {
+    clearRetryTimers()
     apps.value = []
+    hasLoaded.value = true
   }
 })
 

@@ -58,12 +58,24 @@ function notifyIfSessionScopeChanged(previous) {
   })
 }
 
+function notifyAccessTokenChanged() {
+  if (typeof window === 'undefined') {
+    return
+  }
+  // AppsMenu / виджеты: после refresh токена пункты bridge уже есть, а кнопка
+  // остаётся скрытой, если первая сборка попала в окно без access.
+  queueMicrotask(() => {
+    window.dispatchEvent(new CustomEvent('access-token-changed'))
+  })
+}
+
 export function setTokens(access) {
   if (!access) {
     return
   }
   const previous = sessionScopeSnapshot()
   _accessToken.value = access
+  notifyAccessTokenChanged()
   notifyIfSessionScopeChanged(previous)
 }
 
@@ -84,6 +96,7 @@ export function clearTokens() {
   const previous = sessionScopeSnapshot()
   _accessToken.value = null
   clearSessionHintCookie()
+  notifyAccessTokenChanged()
   notifyIfSessionScopeChanged(previous)
 }
 

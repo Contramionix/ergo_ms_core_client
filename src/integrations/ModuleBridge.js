@@ -114,6 +114,9 @@ class ModuleBridge {
       this._groups.set(group, new Map())
     }
     this._groups.get(group).set(key, obj)
+    // Оболочка (AppsMenu и др.) пересобирает список, когда remote успевает
+    // позже первой загрузки страницы.
+    this.emit('group.changed', { group, key })
   }
 
   all(group) {
