@@ -27,6 +27,16 @@ const { defineConfig, esmExternalRequirePlugin } = requireFromNpm('vite')
 /** Shared через import map: external только у плагина, не в top-level (иначе require(vue) остаётся). */
 const FEDERATION_SHARED_EXTERNALS = ['vue', 'vue-router', 'pinia', 'vue-i18n']
 
+/**
+ * Query на /shared/*.js: имена без хеша, браузер иначе держит старый module-bridge
+ * на другой module_runtime после client-build. index.html — no-store, import map меняется.
+ */
+const FEDERATION_SHARED_CACHE_BUST = crypto
+  .createHash('sha256')
+  .update(`${Date.now()}:${process.pid}:${Math.random()}`)
+  .digest('hex')
+  .slice(0, 12)
+
 /** ESM-only пакеты из virtual_env/npm (createRequire их не грузит). */
 async function importNpmEsm(pkgName) {
   const dir = path.join(npmModules, pkgName)
@@ -567,30 +577,29 @@ if (analyzeBuild) {
   )
 }
 
+function federationSharedUrl(fileName, isServe) {
+  if (isServe) {
+    return `/src/shell/shared/${fileName}`
+  }
+  return `/shared/${fileName}?v=${FEDERATION_SHARED_CACHE_BUST}`
+}
+
 function federationImportMapBody(isServe) {
   return JSON.stringify({
     imports: {
-      vue: isServe ? '/src/shell/shared/vue.js' : '/shared/vue.js',
-      'vue-router': isServe ? '/src/shell/shared/vue-router.js' : '/shared/vue-router.js',
-      pinia: isServe ? '/src/shell/shared/pinia.js' : '/shared/pinia.js',
-      'vue-i18n': isServe ? '/src/shell/shared/vue-i18n.js' : '/shared/vue-i18n.js',
-      'ergo-shared/module-bridge': isServe
-        ? '/src/shell/shared/module-bridge.js'
-        : '/shared/module-bridge.js',
-      'ergo-shared/i18n': isServe ? '/src/shell/shared/i18n.js' : '/shared/i18n.js',
-      'ergo-shared/i18n-use': isServe ? '/src/shell/shared/i18n-use.js' : '/shared/i18n-use.js',
-      'ergo-shared/api': isServe ? '/src/shell/shared/api.js' : '/shared/api.js',
-      'ergo-shared/endpoints': isServe ? '/src/shell/shared/endpoints.js' : '/shared/endpoints.js',
-      'ergo-shared/client-env': isServe ? '/src/shell/shared/client-env.js' : '/shared/client-env.js',
-      'ergo-shared/access-control': isServe
-        ? '/src/shell/shared/access-control.js'
-        : '/shared/access-control.js',
-      'ergo-shared/token-storage': isServe
-        ? '/src/shell/shared/token-storage.js'
-        : '/shared/token-storage.js',
-      'ergo-shared/lucide-icons': isServe
-        ? '/src/shell/shared/lucide-icons.js'
-        : '/shared/lucide-icons.js',
+      vue: federationSharedUrl('vue.js', isServe),
+      'vue-router': federationSharedUrl('vue-router.js', isServe),
+      pinia: federationSharedUrl('pinia.js', isServe),
+      'vue-i18n': federationSharedUrl('vue-i18n.js', isServe),
+      'ergo-shared/module-bridge': federationSharedUrl('module-bridge.js', isServe),
+      'ergo-shared/i18n': federationSharedUrl('i18n.js', isServe),
+      'ergo-shared/i18n-use': federationSharedUrl('i18n-use.js', isServe),
+      'ergo-shared/api': federationSharedUrl('api.js', isServe),
+      'ergo-shared/endpoints': federationSharedUrl('endpoints.js', isServe),
+      'ergo-shared/client-env': federationSharedUrl('client-env.js', isServe),
+      'ergo-shared/access-control': federationSharedUrl('access-control.js', isServe),
+      'ergo-shared/token-storage': federationSharedUrl('token-storage.js', isServe),
+      'ergo-shared/lucide-icons': federationSharedUrl('lucide-icons.js', isServe),
     },
   })
 }
