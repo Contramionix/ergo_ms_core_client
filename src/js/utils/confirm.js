@@ -1,43 +1,66 @@
 import { ref } from 'vue'
 import { tGlobal } from '@/i18n/index.js'
 
-export const confirmDialog = ref({
-  show: false,
-  title: '',
-  message: '',
-  confirmText: '',
-  cancelText: '',
-  variant: 'danger',
-  loading: false,
-  confirmCountdownSeconds: 0,
-  zIndex: null,
-  onConfirm: null,
-  onCancel: null,
-})
+// Federated remote печёт свою копию этого файла. Окно рендерит оболочка,
+// поэтому refs и resolver должны быть одни на страницу, не на чанк.
+const SHARED_KEY = '__ergoMsConfirmDialogs'
 
-export const choiceDialog = ref({
-  show: false,
-  title: '',
-  message: '',
-  choices: [],
-  loading: false,
-  zIndex: null,
-  onChoice: null,
-  onCancel: null,
-})
+function emptyConfirmState() {
+  return {
+    show: false,
+    title: '',
+    message: '',
+    confirmText: '',
+    cancelText: '',
+    variant: 'danger',
+    loading: false,
+    confirmCountdownSeconds: 0,
+    zIndex: null,
+    onConfirm: null,
+    onCancel: null,
+  }
+}
 
-let confirmResolver = null
-let choiceResolver = null
+function emptyChoiceState() {
+  return {
+    show: false,
+    title: '',
+    message: '',
+    choices: [],
+    loading: false,
+    zIndex: null,
+    onChoice: null,
+    onCancel: null,
+  }
+}
+
+function sharedDialogs() {
+  const root = globalThis
+  if (!root[SHARED_KEY]) {
+    root[SHARED_KEY] = {
+      confirmDialog: ref(emptyConfirmState()),
+      choiceDialog: ref(emptyChoiceState()),
+      confirmResolver: null,
+      choiceResolver: null,
+    }
+  }
+  return root[SHARED_KEY]
+}
+
+export const confirmDialog = sharedDialogs().confirmDialog
+export const choiceDialog = sharedDialogs().choiceDialog
 
 function settleConfirm(result) {
-  const resolve = confirmResolver
-  confirmResolver = null
+  const shared = sharedDialogs()
+  const resolve = shared.confirmResolver
+  shared.confirmResolver = null
   resolve?.(result)
 }
 
 function settleChoice(result) {
-  const resolve = choiceResolver
-  choiceResolver = null
+  const shared = sharedDialogs()
+  const resolve = shared.choiceResolver
+  shared.choiceResolver = null
   resolve?.(result)
 }
 
@@ -79,7 +102,7 @@ export function confirmAction(options = {}) {
       return
     }
 
-    confirmResolver = resolve
+    sharedDialogs().confirmResolver = resolve
     confirmDialog.value = {
       show: true,
       title: options.title ?? tGlobal('components.confirm.title'),
@@ -133,7 +156,7 @@ export function confirmChoice(options = {}) {
       return
     }
 
-    choiceResolver = resolve
+    sharedDialogs().choiceResolver = resolve
     choiceDialog.value = {
       show: true,
       title: options.title ?? tGlobal('components.confirm.choiceTitle'),
