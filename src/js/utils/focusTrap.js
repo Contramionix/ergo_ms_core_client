@@ -46,18 +46,18 @@ export function activateFocusTrap(container, options = {}) {
     if (!isActive()) return
     const preferred = options.initialFocus
     if (preferred && container.contains(preferred) && isVisible(preferred)) {
-      preferred.focus()
+      preferred.focus({ preventScroll: true })
       return
     }
     const items = getFocusableElements(container)
     if (items.length) {
-      items[0].focus()
+      items[0].focus({ preventScroll: true })
       return
     }
     if (!container.hasAttribute('tabindex')) {
       container.setAttribute('tabindex', '-1')
     }
-    container.focus()
+    container.focus({ preventScroll: true })
   }
 
   const onKeydown = (event) => {
@@ -75,13 +75,13 @@ export function activateFocusTrap(container, options = {}) {
     if (event.shiftKey) {
       if (active === first || !container.contains(active)) {
         event.preventDefault()
-        last.focus()
+        last.focus({ preventScroll: true })
       }
       return
     }
     if (active === last || !container.contains(active)) {
       event.preventDefault()
-      first.focus()
+      first.focus({ preventScroll: true })
     }
   }
 
@@ -96,7 +96,7 @@ export function activateFocusTrap(container, options = {}) {
     document.removeEventListener('keydown', onKeydown)
     if (restoreFocus && previouslyFocused && typeof previouslyFocused.focus === 'function') {
       try {
-        previouslyFocused.focus()
+        previouslyFocused.focus({ preventScroll: true })
       } catch {
         /* element may be gone */
       }

@@ -31,6 +31,11 @@ import { runSessionScopeGuard } from '@/js/session/sessionScopeGuard.js'
 import { whenSessionReady } from '@/js/bootstrapSession.js'
 import { teGlobal, tGlobal } from '@/i18n/index.js'
 import { logError } from '@/js/utils/logError.js'
+import {
+  applyLayoutPageScroll,
+  rememberLayoutPageScroll,
+  restoreLayoutPageScroll,
+} from '@/js/utils/layoutPageScroll.js'
 import { isStaleClientError, recoverFromStaleClient } from '@/js/staleClientGuard.js'
 import { traceClientBoot } from '@/js/clientBootTrace.js'
 
@@ -277,6 +282,10 @@ function clearSessionLocally() {
 
 function setupRouterGuards(router) {
   router.beforeEach(async (to, from) => {
+    if (from !== START_LOCATION && to.path !== from.path) {
+      rememberLayoutPageScroll(from.fullPath)
+    }
+
     const sameCacheGroup =
       from.meta?.cacheGroup &&
       to.meta?.cacheGroup &&
@@ -514,12 +523,19 @@ export async function initRouter() {
     routes,
     scrollBehavior(to, from, savedPosition) {
       if (savedPosition) {
-        return savedPosition
+        return new Promise((resolve) => {
+          requestAnimationFrame(() => {
+            restoreLayoutPageScroll(to.fullPath)
+            resolve(savedPosition)
+          })
+        })
       }
       // Фильтры / сортировка / page в query не должны дёргать страницу вверх.
       if (from && to.path === from.path) {
         return false
       }
+      applyLayoutPageScroll(0)
+      requestAnimationFrame(() => applyLayoutPageScroll(0))
       return { top: 0 }
     },
   })
