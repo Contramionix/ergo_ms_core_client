@@ -237,9 +237,13 @@ watch(isButtonVisible, (visible) => {
   @include dropdown-menu-base;
   left: 50%;
   transform: translate(-50%, -8px);
-  min-width: min(240px, calc(100vw - 1rem));
-  max-width: min(320px, calc(100vw - 1rem));
+  // Три пункта с длинными подписями («Вопросы по…») не влезают в 320px.
+  width: max-content;
+  min-width: min(22.5rem, calc(100vw - 1rem));
+  max-width: min(26.5rem, calc(100vw - 1rem));
   padding: 0.375rem;
+  overflow: visible;
+  box-sizing: border-box;
 
   :deep(.loading-content-area--content) {
     min-height: 0 !important;
@@ -255,11 +259,12 @@ watch(isButtonVisible, (visible) => {
 
 .apps-menu__grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.25rem;
+  width: 100%;
 
   @media (width < $ui-bp-sm) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -274,7 +279,9 @@ watch(isButtonVisible, (visible) => {
   cursor: pointer;
   transition: background-color 0.15s ease, transform 0.15s ease;
   text-align: center;
+  min-width: 0;
   min-height: 0;
+  overflow: hidden;
 
   &:hover {
     background-color: var(--color-hover-background);
@@ -325,10 +332,12 @@ watch(isButtonVisible, (visible) => {
   font-size: 0.6875rem;
   color: var(--color-primary-text);
   text-align: center;
-  word-break: break-word;
+  overflow-wrap: anywhere;
+  word-break: normal;
   line-height: 1.25;
   font-weight: 500;
   max-width: 100%;
+  min-width: 0;
 }
 </style>
 
