@@ -53,10 +53,12 @@ let loadSeq = 0
 
 const VIEWPORT_PADDING = 8
 const MENU_GAP = 8
-/** Квадратная ячейка иконки (кнопка без подписи). */
-const CELL_PX = 44
-const CELL_GAP_PX = 4
-const MENU_PAD_PX = 6
+/** Квадратная плитка без подписи: крупнее кнопок тулбара, чтобы сетка читалась. */
+const CELL_PX = 56
+const ICON_PX = 24
+const CELL_GAP_PX = 8
+const MENU_PAD_PX = 10
+const BORDER_PX = 2
 const MAX_COLS = 4
 
 const isButtonVisible = computed(() => (
@@ -126,28 +128,36 @@ const loadApps = async ({ scheduleRetries = true } = {}) => {
   }
 }
 
+function chromePx() {
+  return MENU_PAD_PX * 2 + BORDER_PX
+}
+
+function gridSize(count, stride) {
+  return count * CELL_PX + Math.max(0, count - 1) * stride
+}
+
 /**
  * Сколько колонок/рядов влезает в свободное место у кнопки.
- * Ширина панели фиксируется под сетку, лишние ряды уходят в прокрутку.
+ * Высота панели = содержимое + рамка; прокрутка только если ряды не влезают.
  */
 function computeGridMetrics(count, availableWidth, availableHeight) {
   const n = Math.max(count, 1)
-  const maxColsByWidth = Math.max(
-    1,
-    Math.floor((availableWidth - MENU_PAD_PX * 2 + CELL_GAP_PX) / (CELL_PX + CELL_GAP_PX)),
-  )
+  const innerWidth = Math.max(CELL_PX, availableWidth - chromePx())
+  const innerHeight = Math.max(CELL_PX, availableHeight - chromePx())
+  const maxColsByWidth = Math.max(1, Math.floor((innerWidth + CELL_GAP_PX) / (CELL_PX + CELL_GAP_PX)))
   // 1–2: в ряд; до 6: до 3 колонок; дальше до 4 — чтобы панель не раздувалась.
   const preferred = n <= 2 ? n : n <= 6 ? Math.min(3, n) : Math.min(MAX_COLS, n)
   const cols = Math.max(1, Math.min(MAX_COLS, maxColsByWidth, preferred))
-  const maxRowsByHeight = Math.max(
-    1,
-    Math.floor((availableHeight - MENU_PAD_PX * 2 + CELL_GAP_PX) / (CELL_PX + CELL_GAP_PX)),
-  )
+  const maxRowsByHeight = Math.max(1, Math.floor((innerHeight + CELL_GAP_PX) / (CELL_PX + CELL_GAP_PX)))
   const rowsNeeded = Math.ceil(n / cols)
   const visibleRows = Math.min(rowsNeeded, maxRowsByHeight)
-  const width = MENU_PAD_PX * 2 + cols * CELL_PX + Math.max(0, cols - 1) * CELL_GAP_PX
-  const maxHeight = MENU_PAD_PX * 2 + visibleRows * CELL_PX + Math.max(0, visibleRows - 1) * CELL_GAP_PX
-  return { cols, width, maxHeight }
+  const fits = rowsNeeded <= maxRowsByHeight
+  return {
+    cols,
+    width: chromePx() + gridSize(cols, CELL_GAP_PX),
+    height: chromePx() + gridSize(visibleRows, CELL_GAP_PX),
+    overflowY: fits ? 'hidden' : 'auto',
+  }
 }
 
 function updateMenuPosition() {
@@ -162,8 +172,8 @@ function updateMenuPosition() {
   const spaceAbove = triggerRect.top - MENU_GAP - VIEWPORT_PADDING
   const spaceBelow = vh - VIEWPORT_PADDING - (triggerRect.bottom + MENU_GAP)
   const openUp = spaceAbove >= spaceBelow
-  const availableHeight = Math.max(CELL_PX + MENU_PAD_PX * 2, openUp ? spaceAbove : spaceBelow)
-  const availableWidth = Math.max(CELL_PX + MENU_PAD_PX * 2, vw - VIEWPORT_PADDING * 2)
+  const availableHeight = Math.max(chromePx() + CELL_PX, openUp ? spaceAbove : spaceBelow)
+  const availableWidth = Math.max(chromePx() + CELL_PX, vw - VIEWPORT_PADDING * 2)
 
   const metrics = computeGridMetrics(apps.value.length, availableWidth, availableHeight)
 
@@ -173,7 +183,7 @@ function updateMenuPosition() {
 
   let top
   if (openUp) {
-    top = triggerRect.top - MENU_GAP - metrics.maxHeight
+    top = triggerRect.top - MENU_GAP - metrics.height
   } else {
     top = triggerRect.bottom + MENU_GAP
   }
@@ -183,7 +193,8 @@ function updateMenuPosition() {
     top: `${top}px`,
     left: `${left}px`,
     width: `${metrics.width}px`,
-    maxHeight: `${metrics.maxHeight}px`,
+    height: `${metrics.height}px`,
+    overflowY: metrics.overflowY,
     zIndex: OVERLAY_MENU_Z_INDEX,
     '--apps-cols': String(metrics.cols),
     '--apps-cell': `${CELL_PX}px`,
@@ -323,7 +334,7 @@ watch(() => apps.value.length, () => {
           :aria-label="t('menu.apps.title')"
           @click.stop
         >
-          <LoadingContentArea :loading="isLoading" min-height="2.75rem">
+          <LoadingContentArea :loading="isLoading" min-height="0">
             <div v-if="apps.length === 0" class="apps-menu__empty text-muted text-center py-2">
               {{ t('menu.apps.empty') }}
             </div>
@@ -338,7 +349,7 @@ watch(() => apps.value.length, () => {
                     @click="goToApp(app)"
                   >
                     <span class="apps-menu__icon" aria-hidden="true">
-                      <LucideIcon v-if="app.icon" :name="app.icon" :size="18" />
+                      <LucideIcon v-if="app.icon" :name="app.icon" :size="ICON_PX" />
                       <span v-else class="apps-menu__icon-placeholder">{{ app.title.charAt(0) }}</span>
                     </span>
                   </button>
@@ -376,16 +387,19 @@ watch(() => apps.value.length, () => {
   position: fixed;
   box-sizing: border-box;
   margin: 0;
-  padding: var(--apps-pad, 6px);
+  padding: var(--apps-pad, 10px);
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   background-color: var(--bs-card-bg, var(--color-secondary-background, #fff));
   border: 1px solid color-mix(in srgb, var(--color-border, #dee2e6) 80%, transparent);
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   box-shadow: 0 0.25rem 0.75rem 0 rgba(34, 48, 62, 0.14);
 
-  .loading-content-area--content {
+  .loading-content-area,
+  .loading-content-area--content,
+  .loading-content-area__slot {
     min-height: 0 !important;
+    height: 100%;
   }
 }
 
@@ -399,16 +413,17 @@ watch(() => apps.value.length, () => {
 
 .apps-menu__grid {
   display: grid;
-  grid-template-columns: repeat(var(--apps-cols, 3), var(--apps-cell, 44px));
-  gap: var(--apps-gap, 4px);
+  grid-template-columns: repeat(var(--apps-cols, 3), var(--apps-cell, 56px));
+  grid-auto-rows: var(--apps-cell, 56px);
+  gap: var(--apps-gap, 8px);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .apps-menu__cell {
-  width: var(--apps-cell, 44px);
-  height: var(--apps-cell, 44px);
+  width: var(--apps-cell, 56px);
+  height: var(--apps-cell, 56px);
   margin: 0;
   padding: 0;
 
@@ -457,11 +472,11 @@ watch(() => apps.value.length, () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
+  width: 2.5rem;
+  height: 2.5rem;
   color: var(--color-primary-text);
   border: 1px solid color-mix(in srgb, var(--color-border, #dee2e6) 80%, transparent);
-  border-radius: 0.5rem;
+  border-radius: 0.625rem;
   background-color: color-mix(
     in srgb,
     var(--color-secondary-background, #f8f9fa) 88%,
