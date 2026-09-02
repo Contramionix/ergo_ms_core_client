@@ -65,7 +65,15 @@ const loadApps = async ({ scheduleRetries = true } = {}) => {
     if (seq !== loadSeq) {
       return
     }
+    // null — токен/снимок прав ещё не готовы: не фиксируем «пусто», ждём retry.
+    if (next === null) {
+      if (scheduleRetries) {
+        scheduleEmptyRetries()
+      }
+      return
+    }
     apps.value = next
+    hasLoaded.value = true
     if (next.length > 0) {
       retryAttempt = RETRY_DELAYS_MS.length
       clearRetryTimers()
@@ -78,13 +86,13 @@ const loadApps = async ({ scheduleRetries = true } = {}) => {
     }
     logError('Ошибка загрузки приложений:', error)
     apps.value = []
+    hasLoaded.value = true
     if (scheduleRetries) {
       scheduleEmptyRetries()
     }
   } finally {
     if (seq === loadSeq) {
       isLoading.value = false
-      hasLoaded.value = true
     }
   }
 }

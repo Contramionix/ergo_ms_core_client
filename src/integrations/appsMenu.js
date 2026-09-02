@@ -16,6 +16,10 @@ import { moduleManager } from '@/modules/index.js'
 import { whenSessionReady } from '@/js/sessionReady.js'
 import { getAccess } from '@/core/cms/js/tokenStorage.js'
 import { normalizeLucideIconName } from '@/js/lucideIconLoader.js'
+import {
+  getPermissionsSnapshot,
+  hasModulePermission,
+} from '@/core/cms/adp/js/accessControl.js'
 
 export { APPS_MENU_ITEMS_GROUP }
 
@@ -27,15 +31,14 @@ export { APPS_MENU_ITEMS_GROUP }
  * @property {string|null} [icon] — Lucide PascalCase
  * @property {import('vue-router').RouteLocationRaw} [route]
  * @property {() => void | Promise<void>} [onClick]
- * @property {() => boolean | Promise<boolean>} [isVisible] — не используется оболочкой:
- *   пункт виден всем вошедшим. Сервер по-прежнему проверяет доступ при открытии.
+ * @property {string} [permissionModule] — UX: скрыть без права (глобальный админ видит)
+ * @property {string} [permission]
+ * @property {() => boolean | Promise<boolean>} [isVisible] — доп. UX-проверка
  */
 
 /**
- * Собирает приложения из зарегистрированных модулем расширений.
- * Пункты не фильтруются по праву модуля; кнопка в toolbar только при непустом списке.
- * Иначе при выключенном в ADP модуле панель пустеет и у администратора.
- * @returns {Promise<AppsMenuItem[]>}
+ * null — сессия/снимок прав ещё не готовы (AppsMenu должен повторить, а не спрятать кнопку).
+ * @returns {Promise<AppsMenuItem[]|null>}
  */
 function resolveItemTitle(item) {
   try {
@@ -49,11 +52,32 @@ function resolveItemTitle(item) {
   return item.id
 }
 
+/**
+ * @param {object} item
+ * @returns {Promise<boolean>}
+ */
+async function isAppsMenuItemAllowed(item) {
+  if (typeof item.isVisible === 'function') {
+    return Boolean(await item.isVisible())
+  }
+  if (item.permissionModule && item.permission) {
+    return hasModulePermission(item.permissionModule, item.permission)
+  }
+  return true
+}
+
 export async function collectVisibleAppsMenuItems() {
   await whenSessionReady()
   if (!getAccess()) {
-    return []
+    return null
   }
+
+  const snapshot = await getPermissionsSnapshot()
+  if (!snapshot) {
+    // Как в 18518be: пустой снимок ≠ «прав нет» — иначе всё скрыто до F5.
+    return null
+  }
+
   await moduleManager.ensureInitialized()
   if (typeof moduleManager.retryMissingRemotes === 'function') {
     await moduleManager.retryMissingRemotes()
@@ -72,6 +96,9 @@ export async function collectVisibleAppsMenuItems() {
     const hasRoute = Boolean(item.route)
     const hasAction = typeof item.onClick === 'function'
     if (!hasRoute && !hasAction) {
+      continue
+    }
+    if (!(await isAppsMenuItemAllowed(item))) {
       continue
     }
     visible.push({
