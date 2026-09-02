@@ -1,5 +1,13 @@
 <script setup>
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch,
+} from 'vue'
 import { useRouter } from 'vue-router'
 import { useDropdown } from '@/composables/useDropdown.js'
 import LoadingContentArea from '@/components/LoadingContentArea.vue'
@@ -12,6 +20,7 @@ import bridge from '@/integrations/ModuleBridge.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { logError } from '@/js/utils/logError.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { OVERLAY_MENU_Z_INDEX } from '@/js/utils/overlayZIndex.js'
 
 const props = defineProps({
   iconSize: {
@@ -24,7 +33,14 @@ const { t } = useAppI18n()
 const emit = defineEmits(['dropdown-toggle', 'visibility-change'])
 const router = useRouter()
 const userStore = useUserStore()
-const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit)
+const menuEl = ref(null)
+const triggerBtn = ref(null)
+const menuStyle = ref({})
+
+const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit, {
+  getExtraNodes: () => [menuEl.value].filter(Boolean),
+})
+
 const apps = ref([])
 const isLoading = ref(true)
 const hasLoaded = ref(false)
@@ -34,8 +50,17 @@ let retryTimers = []
 let retryAttempt = 0
 let loadSeq = 0
 
+const VIEWPORT_PADDING = 8
+const MENU_GAP = 8
+const MENU_MIN_WIDTH = 240
+const MENU_MAX_WIDTH = 320
+
 const isButtonVisible = computed(() => (
   hasLoaded.value && userStore.isAuthenticated && apps.value.length > 0
+))
+
+const tooltipText = computed(() => (
+  isOpen.value ? '' : t('menu.apps.title')
 ))
 
 function clearRetryTimers() {
@@ -97,6 +122,52 @@ const loadApps = async ({ scheduleRetries = true } = {}) => {
   }
 }
 
+function updateMenuPosition() {
+  const trigger = triggerBtn.value
+  if (!trigger) {
+    return
+  }
+
+  const triggerRect = trigger.getBoundingClientRect()
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const maxWidth = Math.min(MENU_MAX_WIDTH, Math.max(0, vw - VIEWPORT_PADDING * 2))
+  const minWidth = Math.min(MENU_MIN_WIDTH, maxWidth)
+
+  const menuRect = menuEl.value?.getBoundingClientRect()
+  const menuWidth = Math.min(Math.max(menuRect?.width || minWidth, minWidth), maxWidth)
+  const menuHeight = menuRect?.height || 0
+  const spaceAbove = triggerRect.top - MENU_GAP - VIEWPORT_PADDING
+  const spaceBelow = vh - VIEWPORT_PADDING - (triggerRect.bottom + MENU_GAP)
+  // В toolbar меню почти всегда открываем вверх.
+  const openUp = menuHeight
+    ? menuHeight > spaceBelow && spaceAbove >= spaceBelow
+    : spaceAbove >= spaceBelow
+
+  let left = triggerRect.left + triggerRect.width / 2 - menuWidth / 2
+  left = Math.min(left, vw - VIEWPORT_PADDING - menuWidth)
+  left = Math.max(VIEWPORT_PADDING, left)
+
+  const available = Math.max(0, openUp ? spaceAbove : spaceBelow)
+  let top
+  if (openUp) {
+    const usedHeight = menuHeight ? Math.min(menuHeight, available) : available
+    top = triggerRect.top - MENU_GAP - usedHeight
+  } else {
+    top = triggerRect.bottom + MENU_GAP
+  }
+  top = Math.min(Math.max(top, VIEWPORT_PADDING), vh - VIEWPORT_PADDING)
+
+  menuStyle.value = {
+    top: `${top}px`,
+    left: `${left}px`,
+    minWidth: `${minWidth}px`,
+    maxWidth: `${maxWidth}px`,
+    maxHeight: `${Math.max(available, 120)}px`,
+    zIndex: OVERLAY_MENU_Z_INDEX,
+  }
+}
+
 defineExpose({
   closeDropdown,
 })
@@ -134,9 +205,18 @@ function onBridgeGroupChanged(payload) {
   onAccessOrScopeChanged()
 }
 
+function onWindowChange() {
+  if (!isOpen.value) {
+    return
+  }
+  updateMenuPosition()
+}
+
 onMounted(async () => {
   window.addEventListener('access-token-changed', onAccessOrScopeChanged)
   window.addEventListener('session-scope-changed', onAccessOrScopeChanged)
+  window.addEventListener('resize', onWindowChange)
+  window.addEventListener('scroll', onWindowChange, true)
   bridge.subscribe('group.changed', onBridgeGroupChanged)
   await loadApps()
 })
@@ -144,13 +224,22 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('access-token-changed', onAccessOrScopeChanged)
   window.removeEventListener('session-scope-changed', onAccessOrScopeChanged)
+  window.removeEventListener('resize', onWindowChange)
+  window.removeEventListener('scroll', onWindowChange, true)
   bridge.unsubscribe('group.changed', onBridgeGroupChanged)
+  clearRetryTimers()
+})
+
+onBeforeUnmount(() => {
   clearRetryTimers()
 })
 
 watch(isOpen, async (open) => {
   if (open) {
     await loadApps({ scheduleRetries: false })
+    await nextTick()
+    updateMenuPosition()
+    requestAnimationFrame(() => updateMenuPosition())
   }
 })
 
@@ -175,8 +264,9 @@ watch(isButtonVisible, (visible) => {
 
 <template>
   <div v-if="isButtonVisible" ref="dropdownRef" class="apps-menu-wrapper">
-    <HoverTooltip :text="t('menu.apps.title')">
+    <HoverTooltip :text="tooltipText">
       <button
+        ref="triggerBtn"
         type="button"
         class="header-btn apps-menu-btn"
         :class="{ 'apps-menu-btn--open': isOpen }"
@@ -188,31 +278,42 @@ watch(isButtonVisible, (visible) => {
         <LucideIcon :name="CORE_ICON.apps" :size="props.iconSize" aria-hidden="true" />
       </button>
     </HoverTooltip>
-    <Transition name="dropdown">
-      <div v-if="isOpen" class="apps-dropdown-menu">
-        <LoadingContentArea :loading="isLoading" min-height="3rem">
-          <div v-if="apps.length === 0" class="apps-menu__empty text-muted text-center py-3">
-            {{ t('menu.apps.empty') }}
-          </div>
-          <div v-else class="apps-menu__grid">
-            <div
-              v-for="(app, index) in apps"
-              :key="app.name"
-              @click="goToApp(app)"
-              class="apps-menu__item"
-              :title="app.title"
-              :style="{ transitionDelay: `${index * 30}ms` }"
-            >
-              <div class="apps-menu__icon">
-                <LucideIcon v-if="app.icon" :name="app.icon" :size="18" />
-                <span v-else class="apps-menu__icon-placeholder">{{ app.title.charAt(0) }}</span>
-              </div>
-              <div class="apps-menu__title">{{ app.title }}</div>
+    <Teleport to="body">
+      <Transition name="apps-dropdown">
+        <div
+          v-if="isOpen"
+          ref="menuEl"
+          class="apps-dropdown-menu"
+          :style="menuStyle"
+          role="menu"
+          :aria-label="t('menu.apps.title')"
+          @click.stop
+        >
+          <LoadingContentArea :loading="isLoading" min-height="3rem">
+            <div v-if="apps.length === 0" class="apps-menu__empty text-muted text-center py-3">
+              {{ t('menu.apps.empty') }}
             </div>
-          </div>
-        </LoadingContentArea>
-      </div>
-    </Transition>
+            <ul v-else class="apps-menu__list">
+              <li v-for="app in apps" :key="app.name">
+                <button
+                  type="button"
+                  class="apps-menu__item"
+                  role="menuitem"
+                  :title="app.title"
+                  @click="goToApp(app)"
+                >
+                  <span class="apps-menu__icon" aria-hidden="true">
+                    <LucideIcon v-if="app.icon" :name="app.icon" :size="18" />
+                    <span v-else class="apps-menu__icon-placeholder">{{ app.title.charAt(0) }}</span>
+                  </span>
+                  <span class="apps-menu__title">{{ app.title }}</span>
+                </button>
+              </li>
+            </ul>
+          </LoadingContentArea>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -226,26 +327,30 @@ watch(isButtonVisible, (visible) => {
   border: none;
   background-color: transparent;
   color: inherit;
-  // Scoped background перекрывает глобальный .header-btn:hover
+
   &:hover,
   &--open {
     background-color: var(--color-hover-background);
   }
 }
+</style>
 
+<!-- Teleport в body: scoped-стили на меню не действуют без :global / отдельного блока -->
+<style lang="scss">
 .apps-dropdown-menu {
-  @include dropdown-menu-base;
-  left: 50%;
-  transform: translate(-50%, -8px);
-  // Три пункта с длинными подписями («Вопросы по…») не влезают в 320px.
-  width: max-content;
-  min-width: min(22.5rem, calc(100vw - 1rem));
-  max-width: min(26.5rem, calc(100vw - 1rem));
+  position: fixed;
+  margin: 0;
   padding: 0.375rem;
-  overflow: visible;
   box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  list-style: none;
+  background-color: var(--bs-card-bg, var(--color-secondary-background, #fff));
+  border: 1px solid color-mix(in srgb, var(--color-border, #dee2e6) 80%, transparent);
+  border-radius: 0.5rem;
+  box-shadow: 0 0.25rem 0.75rem 0 rgba(34, 48, 62, 0.14);
 
-  :deep(.loading-content-area--content) {
+  .loading-content-area--content {
     min-height: 0 !important;
   }
 }
@@ -254,37 +359,38 @@ watch(isButtonVisible, (visible) => {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1.25rem;
+  padding: 1rem 0.75rem;
 }
 
-.apps-menu__grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.25rem;
-  width: 100%;
-
-  @media (width < $ui-bp-sm) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.apps-menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .apps-menu__item {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 2rem 1fr;
   align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  padding: 0.625rem 0.375rem;
-  border-radius: 10px;
+  column-gap: 0.75rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.5rem 0.625rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: inherit;
+  text-align: start;
   cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.15s ease;
-  text-align: center;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
+  transition: background-color 0.15s ease;
 
-  &:hover {
+  &:hover,
+  &:focus-visible {
     background-color: var(--color-hover-background);
+    outline: none;
 
     .apps-menu__icon {
       background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-secondary-background, #f8f9fa));
@@ -292,24 +398,18 @@ watch(isButtonVisible, (visible) => {
       color: var(--color-accent);
     }
   }
-
-  &:active {
-    transform: scale(0.97);
-  }
-
-  @include ui-reduced-motion;
 }
 
 .apps-menu__icon {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 2rem;
+  height: 2rem;
   color: var(--color-primary-text);
   border: 1px solid color-mix(in srgb, var(--color-border, #dee2e6) 80%, transparent);
-  border-radius: 9px;
+  border-radius: 0.5rem;
   background-color: color-mix(
     in srgb,
     var(--color-secondary-background, #f8f9fa) 88%,
@@ -329,41 +429,23 @@ watch(isButtonVisible, (visible) => {
 }
 
 .apps-menu__title {
-  font-size: 0.6875rem;
+  min-width: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.3;
   color: var(--color-primary-text);
-  text-align: center;
   overflow-wrap: anywhere;
   word-break: normal;
-  line-height: 1.25;
-  font-weight: 500;
-  max-width: 100%;
-  min-width: 0;
-}
-</style>
-
-<style lang="scss">
-.apps-dropdown-menu.dropdown-enter-active,
-.apps-dropdown-menu.dropdown-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.apps-dropdown-menu.dropdown-enter-from {
+.apps-dropdown-enter-active,
+.apps-dropdown-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.apps-dropdown-enter-from,
+.apps-dropdown-leave-to {
   opacity: 0;
-  transform: translate(-50%, -16px) !important;
-}
-
-.apps-dropdown-menu.dropdown-enter-to {
-  opacity: 1;
-  transform: translate(-50%, -8px) !important;
-}
-
-.apps-dropdown-menu.dropdown-leave-from {
-  opacity: 1;
-  transform: translate(-50%, -8px) !important;
-}
-
-.apps-dropdown-menu.dropdown-leave-to {
-  opacity: 0;
-  transform: translate(-50%, -16px) !important;
+  transform: translateY(6px);
 }
 </style>
