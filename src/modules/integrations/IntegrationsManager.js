@@ -41,6 +41,10 @@ export class IntegrationsManager extends ModuleLoader {
     if (!integrations) {
       return
     }
+    if (integrations === true) {
+      this.loadedModules.push(pathTag)
+      return
+    }
     if (typeof integrations === 'function') {
       await integrations()
       this.loadedModules.push(pathTag)
