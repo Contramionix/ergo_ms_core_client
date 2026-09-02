@@ -19,6 +19,7 @@ import { APPS_MENU_ITEMS_GROUP } from '@/integrations/moduleContracts.js'
 import bridge from '@/integrations/ModuleBridge.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { logError } from '@/js/utils/logError.js'
+import { hideAllHoverTooltips } from '@/js/utils/hoverTooltipLayer.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { OVERLAY_MENU_Z_INDEX } from '@/js/utils/overlayZIndex.js'
 
@@ -52,8 +53,11 @@ let loadSeq = 0
 
 const VIEWPORT_PADDING = 8
 const MENU_GAP = 8
-const MENU_MIN_WIDTH = 240
-const MENU_MAX_WIDTH = 320
+/** Квадратная ячейка иконки (кнопка без подписи). */
+const CELL_PX = 44
+const CELL_GAP_PX = 4
+const MENU_PAD_PX = 6
+const MAX_COLS = 4
 
 const isButtonVisible = computed(() => (
   hasLoaded.value && userStore.isAuthenticated && apps.value.length > 0
@@ -122,6 +126,30 @@ const loadApps = async ({ scheduleRetries = true } = {}) => {
   }
 }
 
+/**
+ * Сколько колонок/рядов влезает в свободное место у кнопки.
+ * Ширина панели фиксируется под сетку, лишние ряды уходят в прокрутку.
+ */
+function computeGridMetrics(count, availableWidth, availableHeight) {
+  const n = Math.max(count, 1)
+  const maxColsByWidth = Math.max(
+    1,
+    Math.floor((availableWidth - MENU_PAD_PX * 2 + CELL_GAP_PX) / (CELL_PX + CELL_GAP_PX)),
+  )
+  // 1–2: в ряд; до 6: до 3 колонок; дальше до 4 — чтобы панель не раздувалась.
+  const preferred = n <= 2 ? n : n <= 6 ? Math.min(3, n) : Math.min(MAX_COLS, n)
+  const cols = Math.max(1, Math.min(MAX_COLS, maxColsByWidth, preferred))
+  const maxRowsByHeight = Math.max(
+    1,
+    Math.floor((availableHeight - MENU_PAD_PX * 2 + CELL_GAP_PX) / (CELL_PX + CELL_GAP_PX)),
+  )
+  const rowsNeeded = Math.ceil(n / cols)
+  const visibleRows = Math.min(rowsNeeded, maxRowsByHeight)
+  const width = MENU_PAD_PX * 2 + cols * CELL_PX + Math.max(0, cols - 1) * CELL_GAP_PX
+  const maxHeight = MENU_PAD_PX * 2 + visibleRows * CELL_PX + Math.max(0, visibleRows - 1) * CELL_GAP_PX
+  return { cols, width, maxHeight }
+}
+
 function updateMenuPosition() {
   const trigger = triggerBtn.value
   if (!trigger) {
@@ -131,28 +159,21 @@ function updateMenuPosition() {
   const triggerRect = trigger.getBoundingClientRect()
   const vw = window.innerWidth
   const vh = window.innerHeight
-  const maxWidth = Math.min(MENU_MAX_WIDTH, Math.max(0, vw - VIEWPORT_PADDING * 2))
-  const minWidth = Math.min(MENU_MIN_WIDTH, maxWidth)
-
-  const menuRect = menuEl.value?.getBoundingClientRect()
-  const menuWidth = Math.min(Math.max(menuRect?.width || minWidth, minWidth), maxWidth)
-  const menuHeight = menuRect?.height || 0
   const spaceAbove = triggerRect.top - MENU_GAP - VIEWPORT_PADDING
   const spaceBelow = vh - VIEWPORT_PADDING - (triggerRect.bottom + MENU_GAP)
-  // В toolbar меню почти всегда открываем вверх.
-  const openUp = menuHeight
-    ? menuHeight > spaceBelow && spaceAbove >= spaceBelow
-    : spaceAbove >= spaceBelow
+  const openUp = spaceAbove >= spaceBelow
+  const availableHeight = Math.max(CELL_PX + MENU_PAD_PX * 2, openUp ? spaceAbove : spaceBelow)
+  const availableWidth = Math.max(CELL_PX + MENU_PAD_PX * 2, vw - VIEWPORT_PADDING * 2)
 
-  let left = triggerRect.left + triggerRect.width / 2 - menuWidth / 2
-  left = Math.min(left, vw - VIEWPORT_PADDING - menuWidth)
+  const metrics = computeGridMetrics(apps.value.length, availableWidth, availableHeight)
+
+  let left = triggerRect.left + triggerRect.width / 2 - metrics.width / 2
+  left = Math.min(left, vw - VIEWPORT_PADDING - metrics.width)
   left = Math.max(VIEWPORT_PADDING, left)
 
-  const available = Math.max(0, openUp ? spaceAbove : spaceBelow)
   let top
   if (openUp) {
-    const usedHeight = menuHeight ? Math.min(menuHeight, available) : available
-    top = triggerRect.top - MENU_GAP - usedHeight
+    top = triggerRect.top - MENU_GAP - metrics.maxHeight
   } else {
     top = triggerRect.bottom + MENU_GAP
   }
@@ -161,10 +182,13 @@ function updateMenuPosition() {
   menuStyle.value = {
     top: `${top}px`,
     left: `${left}px`,
-    minWidth: `${minWidth}px`,
-    maxWidth: `${maxWidth}px`,
-    maxHeight: `${Math.max(available, 120)}px`,
+    width: `${metrics.width}px`,
+    maxHeight: `${metrics.maxHeight}px`,
     zIndex: OVERLAY_MENU_Z_INDEX,
+    '--apps-cols': String(metrics.cols),
+    '--apps-cell': `${CELL_PX}px`,
+    '--apps-gap': `${CELL_GAP_PX}px`,
+    '--apps-pad': `${MENU_PAD_PX}px`,
   }
 }
 
@@ -173,6 +197,7 @@ defineExpose({
 })
 
 const goToApp = async (app) => {
+  hideAllHoverTooltips()
   closeDropdown()
   if (typeof app.onClick === 'function') {
     try {
@@ -236,10 +261,13 @@ onBeforeUnmount(() => {
 
 watch(isOpen, async (open) => {
   if (open) {
+    hideAllHoverTooltips()
     await loadApps({ scheduleRetries: false })
     await nextTick()
     updateMenuPosition()
     requestAnimationFrame(() => updateMenuPosition())
+  } else {
+    hideAllHoverTooltips()
   }
 })
 
@@ -260,6 +288,12 @@ watch(isButtonVisible, (visible) => {
     closeDropdown()
   }
 }, { immediate: true })
+
+watch(() => apps.value.length, () => {
+  if (isOpen.value) {
+    nextTick(() => updateMenuPosition())
+  }
+})
 </script>
 
 <template>
@@ -289,25 +323,26 @@ watch(isButtonVisible, (visible) => {
           :aria-label="t('menu.apps.title')"
           @click.stop
         >
-          <LoadingContentArea :loading="isLoading" min-height="3rem">
-            <div v-if="apps.length === 0" class="apps-menu__empty text-muted text-center py-3">
+          <LoadingContentArea :loading="isLoading" min-height="2.75rem">
+            <div v-if="apps.length === 0" class="apps-menu__empty text-muted text-center py-2">
               {{ t('menu.apps.empty') }}
             </div>
-            <ul v-else class="apps-menu__list">
-              <li v-for="app in apps" :key="app.name">
-                <button
-                  type="button"
-                  class="apps-menu__item"
-                  role="menuitem"
-                  :title="app.title"
-                  @click="goToApp(app)"
-                >
-                  <span class="apps-menu__icon" aria-hidden="true">
-                    <LucideIcon v-if="app.icon" :name="app.icon" :size="18" />
-                    <span v-else class="apps-menu__icon-placeholder">{{ app.title.charAt(0) }}</span>
-                  </span>
-                  <span class="apps-menu__title">{{ app.title }}</span>
-                </button>
+            <ul v-else class="apps-menu__grid">
+              <li v-for="app in apps" :key="app.name" class="apps-menu__cell">
+                <HoverTooltip :text="app.title">
+                  <button
+                    type="button"
+                    class="apps-menu__item"
+                    role="menuitem"
+                    :aria-label="app.title"
+                    @click="goToApp(app)"
+                  >
+                    <span class="apps-menu__icon" aria-hidden="true">
+                      <LucideIcon v-if="app.icon" :name="app.icon" :size="18" />
+                      <span v-else class="apps-menu__icon-placeholder">{{ app.title.charAt(0) }}</span>
+                    </span>
+                  </button>
+                </HoverTooltip>
               </li>
             </ul>
           </LoadingContentArea>
@@ -335,16 +370,15 @@ watch(isButtonVisible, (visible) => {
 }
 </style>
 
-<!-- Teleport в body: scoped-стили на меню не действуют без :global / отдельного блока -->
+<!-- Teleport в body: scoped-стили на меню не действуют без отдельного блока -->
 <style lang="scss">
 .apps-dropdown-menu {
   position: fixed;
-  margin: 0;
-  padding: 0.375rem;
   box-sizing: border-box;
+  margin: 0;
+  padding: var(--apps-pad, 6px);
   overflow-x: hidden;
   overflow-y: auto;
-  list-style: none;
   background-color: var(--bs-card-bg, var(--color-secondary-background, #fff));
   border: 1px solid color-mix(in srgb, var(--color-border, #dee2e6) 80%, transparent);
   border-radius: 0.5rem;
@@ -359,33 +393,47 @@ watch(isButtonVisible, (visible) => {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1rem 0.75rem;
+  padding: 0.5rem;
+  font-size: 0.8125rem;
 }
 
-.apps-menu__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
+.apps-menu__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--apps-cols, 3), var(--apps-cell, 44px));
+  gap: var(--apps-gap, 4px);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.apps-menu__item {
-  display: grid;
-  grid-template-columns: 2rem 1fr;
-  align-items: center;
-  column-gap: 0.75rem;
-  width: 100%;
+.apps-menu__cell {
+  width: var(--apps-cell, 44px);
+  height: var(--apps-cell, 44px);
   margin: 0;
-  padding: 0.5rem 0.625rem;
+  padding: 0;
+
+  /* Перебивает inline-flex из HoverTooltip (scoped), чтобы ячейка была квадратом. */
+  > .hover-tooltip.hover-tooltip {
+    display: flex;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.apps-menu__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
   border: none;
   border-radius: 0.5rem;
   background: transparent;
   color: inherit;
-  text-align: start;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, transform 0.15s ease;
 
   &:hover,
   &:focus-visible {
@@ -397,6 +445,10 @@ watch(isButtonVisible, (visible) => {
       border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-border, #dee2e6));
       color: var(--color-accent);
     }
+  }
+
+  &:active {
+    transform: scale(0.96);
   }
 }
 
@@ -426,16 +478,6 @@ watch(isButtonVisible, (visible) => {
   font-size: 0.8125rem;
   line-height: 1;
   color: inherit;
-}
-
-.apps-menu__title {
-  min-width: 0;
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 1.3;
-  color: var(--color-primary-text);
-  overflow-wrap: anywhere;
-  word-break: normal;
 }
 
 .apps-dropdown-enter-active,
