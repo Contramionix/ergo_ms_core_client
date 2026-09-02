@@ -53,7 +53,7 @@ const HOST_SHARED = [
 ]
 
 const vue = requireFromNpm('@vitejs/plugin-vue')
-const { build, defineConfig } = requireFromNpm('vite')
+const { build, defineConfig, esmExternalRequirePlugin } = requireFromNpm('vite')
 
 const outDir = path.resolve(projectRoot, 'virtual_env/client-remotes', moduleName)
 
@@ -92,7 +92,12 @@ function resolveFromNpmRootPlugin() {
 
 const config = defineConfig({
   root: moduleClientRoot,
-  plugins: [resolveFromNpmRootPlugin(), vue()],
+  plugins: [
+    resolveFromNpmRootPlugin(),
+    vue(),
+    // require('vue') из CJS/UMD → import; top-level external иначе оставляет require в браузере.
+    esmExternalRequirePlugin({ external: [...sharedList] }),
+  ],
   resolve: {
     // Точные find раньше `@`, иначе `@/i18n` превращается в абсолютный путь и external не срабатывает.
     alias: [
@@ -133,6 +138,10 @@ const config = defineConfig({
         replacement: path.resolve(clientRoot, 'src/js/utils/vueToastificationCompat.js'),
       },
       { find: 'lucide-vue-next', replacement: path.join(npmModules, '@lucide/vue') },
+      {
+        find: /^vue-slicksort$/,
+        replacement: path.join(npmModules, 'vue-slicksort/dist/vue-slicksort.esm.js'),
+      },
     ],
     dedupe: sharedList,
   },
@@ -156,7 +165,8 @@ const config = defineConfig({
       fileName: () => 'remoteEntry.js',
     },
     rolldownOptions: {
-      external: [...sharedList, ...HOST_SHARED],
+      // sharedList — у esmExternalRequirePlugin; HOST_SHARED остаётся top-level.
+      external: [...HOST_SHARED],
       output: {
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'chunks/[name]-[hash].js',

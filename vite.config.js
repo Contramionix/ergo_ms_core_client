@@ -22,7 +22,10 @@ const npmRoot = path.resolve(projectRoot, 'virtual_env/npm')
 const requireFromNpm = createRequire(path.join(npmModules, '_ergo_resolve.js'))
 const vue = requireFromNpm('@vitejs/plugin-vue')
 const AutoImport = requireFromNpm('unplugin-auto-import/vite')
-const { defineConfig } = requireFromNpm('vite')
+const { defineConfig, esmExternalRequirePlugin } = requireFromNpm('vite')
+
+/** Shared через import map: external только у плагина, не в top-level (иначе require(vue) остаётся). */
+const FEDERATION_SHARED_EXTERNALS = ['vue', 'vue-router', 'pinia', 'vue-i18n']
 
 /** ESM-only пакеты из virtual_env/npm (createRequire их не грузит). */
 async function importNpmEsm(pkgName) {
@@ -644,6 +647,8 @@ function federationSharedPlugin() {
 const federationShared = federationSharedPlugin()
 if (federationShared) {
   plugins.push(federationShared)
+  // require('vue') из CJS/UMD (vue-slicksort и т.п.) → import; top-level external это ломает.
+  plugins.push(esmExternalRequirePlugin({ external: [...FEDERATION_SHARED_EXTERNALS] }))
 }
 
 export default defineConfig(() => ({
@@ -660,8 +665,7 @@ export default defineConfig(() => ({
             // codeSplitting.includeDependenciesRecursively = false.
             // allow-extension оставляет экспорты entry (нужны для /shared/module-bridge.js).
             preserveEntrySignatures: 'allow-extension',
-            // Спецификаторы остаются «vue» / «vue-router» / «pinia» → import map.
-            external: ['vue', 'vue-router', 'pinia', 'vue-i18n'],
+            // external для vue/router/pinia/i18n — у esmExternalRequirePlugin, не здесь.
             input: {
               main: path.resolve(__dirname, 'index.html'),
               'shared/module-bridge': path.resolve(__dirname, 'src/shell/shared/module-bridge.js'),
@@ -718,6 +722,11 @@ export default defineConfig(() => ({
             find: /^vue$/,
             replacement: path.join(npmModules, 'vue/dist/vue.esm-bundler.js'),
           }]),
+      // browser → UMD с require('vue'); при federation external это падает в браузере.
+      {
+        find: /^vue-slicksort$/,
+        replacement: path.join(npmModules, 'vue-slicksort/dist/vue-slicksort.esm.js'),
+      },
       // Официальное имя пакета — @lucide/vue; модули ещё импортируют lucide-vue-next.
       {
         find: /^lucide-vue-next$/,
