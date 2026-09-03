@@ -35,6 +35,44 @@ function bearerAccess(headers) {
   return raw.startsWith(prefix) ? raw.slice(prefix.length) : ''
 }
 
+const AXIOS_GET_CONFIG_KEYS = new Set([
+  'params',
+  'headers',
+  'signal',
+  'timeout',
+  'responseType',
+  'onUploadProgress',
+  'onDownloadProgress',
+  'cancelToken',
+])
+
+/**
+ * apiClient.get(url, query) — второй аргумент уже query.
+ * Частый вызов в стиле axios get(url, { params, responseType }) иначе уходит
+ * как params[from]=… и сервер не видит from / organization_id.
+ */
+function splitAxiosStyleGetArgs(params) {
+  if (!params || typeof params !== 'object' || Array.isArray(params) || params instanceof FormData) {
+    return { query: params, requestConfig: {} }
+  }
+  const keys = Object.keys(params)
+  const nested = params.params
+  const hasNestedQuery = nested != null && typeof nested === 'object' && !Array.isArray(nested)
+  const extraKeys = keys.filter((key) => key !== 'params')
+  const extrasAreAxios = extraKeys.every((key) => AXIOS_GET_CONFIG_KEYS.has(key))
+  if (hasNestedQuery && extrasAreAxios) {
+    const requestConfig = {}
+    extraKeys.forEach((key) => {
+      requestConfig[key] = params[key]
+    })
+    return { query: nested, requestConfig }
+  }
+  if (keys.length && keys.every((key) => AXIOS_GET_CONFIG_KEYS.has(key) && key !== 'params')) {
+    return { query: {}, requestConfig: { ...params } }
+  }
+  return { query: params, requestConfig: {} }
+}
+
 /**
  * Класс для работы с API
  */
@@ -256,7 +294,8 @@ class ApiClient {
 
   // HTTP методы
   async get(endpoint, params = {}, needToken = true, options = {}) {
-    return this._request('GET', endpoint, params, needToken, {}, options)
+    const { query, requestConfig } = splitAxiosStyleGetArgs(params)
+    return this._request('GET', endpoint, query, needToken, requestConfig, options)
   }
 
   async post(endpoint, data = {}, needToken = true) {

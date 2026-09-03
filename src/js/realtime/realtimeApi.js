@@ -7,7 +7,7 @@ export const realtimeApi = {
   },
 
   sync(params = {}) {
-    return apiClient.get('realtime/sync/', { params })
+    return apiClient.get('realtime/sync/', params)
   },
 
   subscribe(topic) {
