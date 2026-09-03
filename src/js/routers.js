@@ -4,7 +4,7 @@
 
 import { createRouter, createWebHistory, START_LOCATION } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
-import { generateAllRoutes, validateAll, getPermissionRules, getRouteGuards, coreRoutesManager } from '@/modules/index.js'
+import { generateAllRoutes, validateAll, getPermissionRules, getRouteGuards, coreRoutesManager, moduleManager } from '@/modules/index.js'
 import { authRoutes as configAuthRoutes, coreRoutes as configCoreRoutes } from '@/config/routes.js'
 import {
   checkRouteAdpAccess,
@@ -542,5 +542,36 @@ export async function initRouter() {
 
   setupRouterGuards(routerInstance)
   router = routerInstance
+  void moduleManager.ensureInitialized().then(() => {
+    applyLateModuleRoutes(routerInstance)
+  })
   return routerInstance
+}
+
+/**
+ * Remotes догружаются после первого кадра bundled-страницы.
+ * Новые маршруты добавляем сюда, иначе глубокая ссылка на remote даёт NotFound.
+ */
+function applyLateModuleRoutes(routerInstance) {
+  cachedPermissionRules = null
+  cachedRouteGuards = null
+  const generator = moduleManager.routeGenerator
+  if (!generator) {
+    return
+  }
+  const existingNames = new Set(
+    routerInstance.getRoutes().map((route) => route.name).filter(Boolean),
+  )
+  const extras = generator.generateMissingRoutes(existingNames)
+  extras.forEach((route) => {
+    if (!isCatchAllRoute(route)) {
+      routerInstance.addRoute(route)
+    }
+  })
+  const current = routerInstance.currentRoute.value
+  if (current?.name === 'NotFound') {
+    void routerInstance.replace(current.fullPath)
+    return
+  }
+  void revalidateCurrentRoute()
 }

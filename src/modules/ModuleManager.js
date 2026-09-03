@@ -24,6 +24,23 @@ import { getLocaleManager } from './i18n/LocaleManager.js'
 import { getThemeDefaultsManager } from './themes/ThemeDefaultsManager.js'
 import { logError } from '@/js/utils/logError.js'
 
+function yieldToBundledNavigation() {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') {
+      resolve()
+      return
+    }
+    const finish = () => resolve()
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        window.setTimeout(finish, 0)
+      })
+      return
+    }
+    window.setTimeout(finish, 0)
+  })
+}
+
 export class ModuleManager {
   constructor() {
     this.routeManager = new RouteManager()
@@ -95,6 +112,10 @@ export class ModuleManager {
 
     this.routeGenerator = new RouteGenerator(this.routeManager)
     this._markCoreReady()
+
+    // Дать оболочке посадить bundled-маршруты и запросить чанк страницы,
+    // иначе remotes занимают HTTP/1.1 слоты раньше текущего маршрута.
+    await yieldToBundledNavigation()
 
     if (clientEnv.modularity === 'federated' || getConfiguredModuleRemotes().length) {
       await this._registerFederatedManifests(await loadFederatedModules())
@@ -190,7 +211,7 @@ export class ModuleManager {
    * @returns {Array}
    */
   async generateAllRoutes(coreRoutes = []) {
-    await this.ensureInitialized()
+    await this.ensureCoreReady()
     return this.routeGenerator.generateAllRoutes(coreRoutes)
   }
 
@@ -208,7 +229,7 @@ export class ModuleManager {
    * @returns {Array}
    */
   async getPermissionRules() {
-    await this.ensureInitialized()
+    await this.ensureCoreReady()
     return this.permissionRulesManager.getAllRules()
   }
 
@@ -217,7 +238,7 @@ export class ModuleManager {
    * @returns {Function[]}
    */
   async getRouteGuards() {
-    await this.ensureInitialized()
+    await this.ensureCoreReady()
     return this.routeGuardsManager.getAllGuards()
   }
 
