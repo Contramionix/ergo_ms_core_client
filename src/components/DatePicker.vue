@@ -242,7 +242,9 @@ function onPickerUpdate(value) {
 }
 
 function isDateInputTarget(target) {
-  return target instanceof HTMLInputElement && target.classList.contains('dp__input')
+  return target instanceof HTMLInputElement && (
+    target.classList.contains('dp__input') || target.classList.contains('dp--input')
+  )
 }
 
 function onKeydown(event) {
@@ -313,9 +315,10 @@ onBeforeUnmount(() => {
 
   @include vue-datepicker-theme;
 
-  :deep(.dp__input) {
+  :deep(.dp__input),
+  :deep(.dp--input) {
     padding: 0.375rem 2.5rem 0.375rem 0.75rem;
-    font-size: 1rem;
+    font-size: 0.875rem;
     line-height: 1.5;
     background: var(--color-primary-background);
     color: var(--color-primary-text);
@@ -340,13 +343,19 @@ onBeforeUnmount(() => {
     }
   }
 
-  :deep(.dp__input_icon_pad) {
+  :deep(.dp__input_icon_pad),
+  :deep(.dp--input-icon-pad) {
+    padding-left: 0.75rem;
+    padding-right: 2.5rem;
     padding-inline-start: 0.75rem;
     padding-inline-end: 2.5rem;
   }
 
   :deep(.dp__input_icon),
+  :deep(.dp--input-icon),
   :deep(.dp--clear-btn) {
+    left: auto;
+    right: 0.5rem;
     inset-inline-start: auto;
     inset-inline-end: 0.5rem;
     display: inline-flex;
@@ -390,7 +399,8 @@ onBeforeUnmount(() => {
   }
 }
 
-.date-picker--invalid :deep(.dp__input) {
+.date-picker--invalid :deep(.dp__input),
+.date-picker--invalid :deep(.dp--input) {
   border-color: var(--bs-form-invalid-border-color, var(--bs-danger, #dc3545));
 }
 </style>
@@ -401,7 +411,8 @@ onBeforeUnmount(() => {
 @include vue-datepicker-overlay-theme;
 
 .dp__menu,
-.dp__menu_inner {
+.dp__menu_inner,
+.dp--menu {
   max-height: none !important;
   overflow: visible !important;
 }
