@@ -1,5 +1,5 @@
 <template>
-    <div class="select-box" ref="rootEl" :style="rootCssVars" v-bind="$attrs">
+    <div class="select-box" ref="rootEl" v-csp-style="rootCssVars" v-bind="$attrs">
         <label v-if="label" class="form-label mb-1" :for="triggerId">{{ label }}</label>
         <div
             class="dropdown"
@@ -38,7 +38,7 @@
                         'select-box-menu-anchor--up': menuOpensUpward,
                         'select-box-menu-anchor--side': placement === 'right',
                     }"
-                    :style="menuAnchorStyle"
+                    v-csp-style="menuAnchorStyle"
                     @mouseenter="onHoverZoneEnter"
                     @mouseleave="onHoverZoneLeave"
                 >
@@ -48,7 +48,7 @@
                         role="listbox"
                         :aria-labelledby="triggerId"
                         :class="dropdownTeleportMenuClass"
-                        :style="fixedMenuStyle"
+                        v-csp-style="fixedMenuStyle"
                     >
                         <input
                             v-if="searchable"
@@ -69,7 +69,7 @@
                                     <span class="dropdown-item dropdown-item--empty" role="status">{{ t('components.selectBox.nothingFound') }}</span>
                                 </li>
                                 <li v-for="opt in filteredOptions" :key="opt.key">
-                                    <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" :style="getDropdownItemStyle(opt)" @click.prevent="choose(opt.value)">
+                                    <a class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" v-csp-style="getDropdownItemStyle(opt)" @click.prevent="choose(opt.value)">
                                         <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)" :depth="getOptionDepth(opt.raw)">
                                             <div v-if="multiple && showCheckboxesWhenMultiple" class="select-box-option-row">
                                                 <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input select-box-option-checkbox" @change="() => {}" />
@@ -103,11 +103,11 @@
                             </ul>
                             <div v-else class="dropdown-menu-list-virtual-wrap">
                                 <div ref="listContainerRef" class="dropdown-menu-list virtual-list-container" @scroll="onListScroll">
-                                    <div class="virtual-list-spacer" :style="{ height: totalHeight + 'px', position: 'relative' }">
-                                        <div class="virtual-list-inner" :style="{ position: 'absolute', top: 0, left: 0, right: 0, transform: 'translateY(' + virtualOffsetY + 'px)' }">
+                                    <div class="virtual-list-spacer" v-csp-style="virtualSpacerStyle">
+                                        <div class="virtual-list-inner" v-csp-style="virtualInnerStyle">
                                             <template v-for="opt in visibleOptions" :key="opt.key">
-                                                <a v-if="opt.key === '__all__'" class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" :style="{ minHeight: itemHeight + 'px' }" @click.prevent="choose(null)">{{ opt.label }}</a>
-                                                <a v-else class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" :style="{ minHeight: itemHeight + 'px', ...getDropdownItemStyle(opt) }" @click.prevent="choose(opt.value)">
+                                                <a v-if="opt.key === '__all__'" class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" v-csp-style="virtualItemStyle" @click.prevent="choose(null)">{{ opt.label }}</a>
+                                                <a v-else class="dropdown-item multi-line" :class="{ active: isSelected(opt.value) }" href="#" v-csp-style="virtualItemStyleFor(opt)" @click.prevent="choose(opt.value)">
                                                     <slot name="option" :option="opt.raw" :label="opt.label" :value="opt.value" :active="isSelected(opt.value)" :depth="getOptionDepth(opt.raw)">
                                                         <div v-if="multiple && showCheckboxesWhenMultiple" class="select-box-option-row">
                                                             <input type="checkbox" :checked="isSelected(opt.value)" class="form-check-input select-box-option-checkbox" @change="() => {}" />
@@ -221,8 +221,9 @@ const listboxId = computed(() => `${triggerId.value}-listbox`)
 const triggerAriaLabel = computed(() => (props.label ? undefined : (props.ariaLabel || undefined)))
 
 const rootCssVars = computed(() => {
-    const vars = {
-        '--select-box-nested-indent-per-level': `${props.optionIndentPerLevel}rem`,
+    const vars = {}
+    if (props.optionIndentPerLevel) {
+        vars['--select-box-nested-indent-per-level'] = `${props.optionIndentPerLevel}rem`
     }
     if (props.nestedOptionFontSize) {
         vars['--select-box-nested-font-size'] = props.nestedOptionFontSize
@@ -230,7 +231,7 @@ const rootCssVars = computed(() => {
     if (props.nestedSecondaryFontSize) {
         vars['--select-box-nested-secondary-font-size'] = props.nestedSecondaryFontSize
     }
-    return vars
+    return Object.keys(vars).length ? vars : undefined
 })
 
 function getOptionDepth(raw) {
@@ -642,6 +643,26 @@ const effectiveOptionsForVirtual = computed(() => {
 })
 
 const totalHeight = computed(() => (props.virtualized ? effectiveOptionsForVirtual.value.length * props.itemHeight : 0))
+const virtualSpacerStyle = computed(() => ({
+    height: `${totalHeight.value}px`,
+    position: 'relative',
+}))
+const virtualInnerStyle = computed(() => ({
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    transform: `translateY(${virtualOffsetY.value}px)`,
+}))
+const virtualItemStyle = computed(() => ({
+    minHeight: `${props.itemHeight}px`,
+}))
+function virtualItemStyleFor(opt) {
+    return {
+        ...virtualItemStyle.value,
+        ...getDropdownItemStyle(opt),
+    }
+}
 const visibleOptions = computed(() => {
     if (!props.virtualized) return filteredOptions.value
     const list = effectiveOptionsForVirtual.value

@@ -55,7 +55,7 @@ onBeforeUnmount(() => {
         `hover-tooltip__popup--${hoverTooltipState.variant}`,
         { 'hover-tooltip__popup--wrap': hoverTooltipState.wrap },
       ]"
-      :style="hoverTooltipState.style"
+      v-csp-style="hoverTooltipState.style"
       role="tooltip"
     >{{ hoverTooltipState.text }}</span>
   </Teleport>

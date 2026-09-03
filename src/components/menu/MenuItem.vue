@@ -159,8 +159,6 @@ const itemIconName = computed(() =>
   typeof props.item.icon === 'string' ? props.item.icon : '',
 )
 
-// Вычисление отступа в зависимости от уровня вложенности
-const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
 </script>
 
 <template>
@@ -168,7 +166,7 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
     <div
       class="menu-item__content nav-btn"
       :class="{ 'menu-item--active': isActive || isGroupActive }"
-      :style="{ paddingLeft: paddingLeft }"
+      :data-menu-level="level"
       @pointerenter="prefetchItemRoute"
       @focusin="prefetchItemRoute"
       @click="handleClick"
@@ -206,7 +204,6 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
           :level="level + 1"
           :isHovering="isHovering"
           :openStates="openStates"
-          :style="{ transitionDelay: `${index * 30}ms` }"
           @navigate="$emit('navigate', $event)"
           @toggle-group="$emit('toggle-group', $event)"
         />
@@ -226,6 +223,11 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
   color: var(--color-primary-text);
   text-decoration: none;
   padding: $padding-internal $padding-external;
+  @for $level from 0 through 8 {
+    &[data-menu-level='#{$level}'] {
+      padding-left: #{20 + $level * 16}px;
+    }
+  }
   min-height: var(--menu-item-height, 36px);
   box-sizing: border-box;
   border-radius: $radius-small;
@@ -327,5 +329,11 @@ const paddingLeft = computed(() => `${20 + (props.level * 16)}px`)
   transition:
     opacity 0.25s ease,
     transform 0.25s ease;
+
+  @for $index from 0 through 24 {
+    &:nth-child(#{$index + 1}) {
+      transition-delay: #{$index * 30}ms;
+    }
+  }
 }
 </style> 

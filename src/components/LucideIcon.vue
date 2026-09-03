@@ -28,19 +28,24 @@ const props = defineProps({
 
 const IconComponent = shallowRef(null)
 
-const sizeCss = computed(() => {
+const sizePx = computed(() => {
   const raw = props.size
   if (typeof raw === 'number' && Number.isFinite(raw)) {
-    return `${raw}px`
+    return String(Math.round(raw))
   }
   const text = String(raw ?? '').trim()
-  if (!text) {
-    return '1em'
-  }
   if (/^\d+(\.\d+)?$/.test(text)) {
-    return `${text}px`
+    return String(Math.round(Number(text)))
   }
-  return text
+  return ''
+})
+
+const sizeCss = computed(() => {
+  if (sizePx.value) {
+    return `${sizePx.value}px`
+  }
+  const text = String(props.size ?? '').trim()
+  return text || '1em'
 })
 
 watch(
@@ -57,7 +62,8 @@ watch(
   <span
     v-if="IconComponent"
     class="icon-flex lucide-icon-host"
-    :style="{ width: sizeCss, height: sizeCss }"
+    :data-icon-size="sizePx || null"
+    v-csp-style="sizePx ? undefined : { width: sizeCss, height: sizeCss }"
   >
     <component
       :is="IconComponent"
@@ -70,7 +76,16 @@ watch(
 
 <style scoped lang="scss">
 .lucide-icon-host {
+  width: 1em;
+  height: 1em;
   line-height: 0;
+
+  @for $size from 10 through 64 {
+    &[data-icon-size='#{$size}'] {
+      width: #{$size}px;
+      height: #{$size}px;
+    }
+  }
 
   :deep(svg) {
     display: block;

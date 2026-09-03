@@ -42,10 +42,12 @@ export async function runClientBoot(options = {}) {
   const [
     appModule,
     autoAnimateModule,
+    cspStyleModule,
     wordmarkModule,
   ] = await Promise.all([
     import('@/App.vue'),
     import('@/js/utils/autoAnimatePlugin.js'),
+    import('@/js/cspInlineStyle.js'),
     import('@/js/siteWordmark.js'),
     import('@/core/cms/js/uiSettings.js'),
     import('@/js/bootstrapMask.js'),
@@ -57,6 +59,7 @@ export async function runClientBoot(options = {}) {
   app.use(pinia)
   app.use(i18n)
   app.use(autoAnimateModule.gatedAutoAnimatePlugin)
+  app.use(cspStyleModule.cspStyleDirectivePlugin)
 
   if (typeof document !== 'undefined') {
     document.title = wordmarkModule.DEFAULT_SITE_NAME

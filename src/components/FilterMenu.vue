@@ -7,7 +7,7 @@
     </button>
 
     <Teleport to="body">
-      <div v-if="isMainOpen" :id="panelId" ref="mainPanelEl" class="filter-menu__panel dropdown-menu show fixed-menu" role="menu" :style="mainPanelStyle" data-filter-menu-panel @mousedown.stop>
+      <div v-if="isMainOpen" :id="panelId" ref="mainPanelEl" class="filter-menu__panel dropdown-menu show fixed-menu" role="menu" v-csp-style="mainPanelStyle" data-filter-menu-panel @mousedown.stop>
         <ul class="filter-menu__list">
           <template v-for="field in fields" :key="fieldKey(field)">
             <li v-if="field.type === 'heading'" class="filter-menu__heading">
@@ -36,7 +36,7 @@
         </div>
       </div>
 
-      <div v-if="isMainOpen && activeFlyoutKey && activeField" ref="flyoutPanelEl" class="filter-menu__flyout dropdown-menu show fixed-menu" :style="flyoutPanelStyle" data-filter-menu-flyout @mousedown.stop @mouseenter="onFlyoutEnter" @mouseleave="onFlyoutLeave">
+      <div v-if="isMainOpen && activeFlyoutKey && activeField" ref="flyoutPanelEl" class="filter-menu__flyout dropdown-menu show fixed-menu" v-csp-style="flyoutPanelStyle" data-filter-menu-flyout @mousedown.stop @mouseenter="onFlyoutEnter" @mouseleave="onFlyoutLeave">
         <template v-if="activeField.type === 'select'">
           <input v-if="activeField.searchable" ref="flyoutSearchEl" v-model="flyoutSearchQuery" type="text" class="filter-menu__search select-box-search" :placeholder="t('components.searchInput.placeholder')" autocomplete="off" @mousedown.stop/>
           <ul class="dropdown-menu-list">
