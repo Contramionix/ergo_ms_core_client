@@ -10,9 +10,10 @@
  * Vite разбивает каждый файл на отдельный чанк при dynamic import через glob.
  * Путь от src/js к virtual_env/npm/node_modules (см. npm-workspace).
  */
-const iconModules = import.meta.glob(
+const iconModules = import.meta.glob([
   '../../../../virtual_env/npm/node_modules/@lucide/vue/dist/esm/icons/*.mjs',
-)
+  '!../../../../virtual_env/npm/node_modules/@lucide/vue/dist/esm/icons/index.mjs',
+])
 
 /**
  * Приводит произвольную строку к каноническому Lucide PascalCase.
@@ -59,7 +60,7 @@ const iconLoaderByFile = new Map()
 for (const [key, loader] of Object.entries(iconModules)) {
   const normalized = key.replace(/\\/g, '/')
   const match = normalized.match(/\/icons\/([^/]+)\.m?js$/)
-  if (match) {
+  if (match && match[1] !== 'index') {
     iconLoaderByFile.set(match[1], loader)
   }
 }
