@@ -29,7 +29,7 @@ const props = defineProps({
   },
 })
 
-const hasLoadedOnce = ref(false)
+const hasLoadedOnce = ref(!props.loading)
 
 watch(
   () => props.loading,
