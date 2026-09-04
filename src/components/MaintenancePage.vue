@@ -1,11 +1,10 @@
 <script setup>
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import SiteWordmark from '@/components/SiteWordmark.vue'
 import SkipLink from '@/components/SkipLink.vue'
+import { collectMaintenanceExtras } from '@/integrations/maintenanceExtras.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
-import '@/components/minigames/ensureMinigamesLocales.js'
-
-const MinigamesModal = defineAsyncComponent(() => import('@/components/minigames/MinigamesModal.vue'))
+import { logError } from '@/js/utils/logError.js'
 
 const { t } = useAppI18n()
 
@@ -20,15 +19,18 @@ const props = defineProps({
   },
 })
 
-const gamesOpen = ref(false)
-const gamesMounted = ref(false)
+const extras = ref([])
 
 const resolvedDetail = computed(() => props.detail ?? t('components.maintenance.detail'))
 
-function openGames() {
-  gamesMounted.value = true
-  gamesOpen.value = true
-}
+onMounted(async () => {
+  try {
+    extras.value = await collectMaintenanceExtras()
+  } catch (error) {
+    logError('Ошибка загрузки дополнений страницы обслуживания:', error)
+    extras.value = []
+  }
+})
 </script>
 
 <template>
@@ -62,22 +64,12 @@ function openGames() {
         {{ t('components.maintenance.hint') }}
       </p>
 
-      <button
-        type="button"
-        class="maintenance-page__games-toggle"
-        :aria-expanded="gamesOpen ? 'true' : 'false'"
-        aria-haspopup="dialog"
-        @click="openGames"
-      >
-        {{ t('minigames.open') }}
-      </button>
+      <component
+        v-for="extra in extras"
+        :key="extra.id"
+        :is="extra.component"
+      />
     </section>
-
-    <MinigamesModal
-      v-if="gamesMounted"
-      :show="gamesOpen"
-      @close="gamesOpen = false"
-    />
   </main>
 </template>
 
@@ -225,38 +217,6 @@ function openGames() {
   line-height: 1.5;
   color: var(--ui-text-muted, var(--color-secondary-text, #5b616e));
   opacity: 0.85;
-}
-
-.maintenance-page__games-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.75rem;
-  margin-top: 0.35rem;
-  padding: 0.35rem 0.5rem;
-  font: inherit;
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  color: var(--ui-text-muted, var(--color-secondary-text, #5b616e));
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
-  text-decoration-thickness: 1px;
-  opacity: 0.9;
-
-  &:hover,
-  &:focus-visible {
-    color: var(--ui-text, var(--color-primary-text, #14151a));
-    opacity: 1;
-  }
-
-  &:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--maint-accent) 45%, transparent);
-    outline-offset: 2px;
-  }
 }
 
 @keyframes maintenance-float {
