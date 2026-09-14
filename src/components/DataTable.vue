@@ -7,9 +7,40 @@
           <component :is="sortIcon(column)" :size="14" aria-hidden="true" />
         </button>
       </div>
-      <div v-if="!displayItems.length" class="data-table-cards__empty">
+      <div v-if="!hasRows" class="data-table-cards__empty">
         <slot name="empty">{{ resolvedEmptyText }}</slot>
       </div>
+      <template v-else-if="useGroups">
+        <div v-for="(group, groupIndex) in displayGroups" :key="group.key" class="data-table-group-block">
+          <div class="data-table-group-title">
+            <slot name="group-header" :group="group">{{ group.label }}</slot>
+          </div>
+          <article
+            v-for="(item, idx) in group.items"
+            :key="groupedItemKey(group, item, idx)"
+            class="data-table-card"
+            :class="[getRowClass(item, groupedItemIndex(groupIndex, idx)), { 'data-table-card--clickable': clickable }]"
+            @click="handleRowClick(item, groupedItemIndex(groupIndex, idx))"
+          >
+            <div v-if="showNumberColumn" class="data-table-card__meta text-muted">
+              № {{ groupedItemNumber(groupIndex, idx) }}
+            </div>
+            <div v-for="column in cardBodyColumns" :key="column.key" class="data-table-card__row">
+              <div v-if="column.label" class="data-table-card__label">{{ column.label }}</div>
+              <div class="data-table-card__value" :class="column.cellClass">
+                <slot :name="`cell-${column.key}`" :item="item" :index="groupedItemIndex(groupIndex, idx)" :column="column">
+                  {{ getCellValue(item, column) }}
+                </slot>
+              </div>
+            </div>
+            <div v-if="actionsColumn" class="data-table-card__actions" @click.stop>
+              <slot :name="`cell-${actionsColumn.key}`" :item="item" :index="groupedItemIndex(groupIndex, idx)" :column="actionsColumn">
+                {{ getCellValue(item, actionsColumn) }}
+              </slot>
+            </div>
+          </article>
+        </div>
+      </template>
       <article v-for="(item, idx) in displayItems" v-else :key="getItemKey(item, idx)" class="data-table-card" :class="[getRowClass(item, idx), { 'data-table-card--clickable': clickable }]" @click="handleRowClick(item, idx)">
         <div v-if="showNumberColumn" class="data-table-card__meta text-muted">
           № {{ displayNumberOffset + idx + 1 }}
@@ -45,11 +76,33 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-if="!displayItems.length" class="data-table-empty-row">
+          <tr v-if="!hasRows" class="data-table-empty-row">
             <td :colspan="totalColumnCount" class="data-table-empty-cell">
               <slot name="empty">{{ resolvedEmptyText }}</slot>
             </td>
           </tr>
+          <template v-else-if="useGroups">
+            <template v-for="(group, groupIndex) in displayGroups" :key="group.key">
+              <tr class="data-table-group">
+                <td :colspan="totalColumnCount">
+                  <slot name="group-header" :group="group">{{ group.label }}</slot>
+                </td>
+              </tr>
+              <tr
+                v-for="(item, idx) in group.items"
+                :key="groupedItemKey(group, item, idx)"
+                :class="getRowClass(item, groupedItemIndex(groupIndex, idx))"
+                @click="handleRowClick(item, groupedItemIndex(groupIndex, idx))"
+              >
+                <td v-if="showNumberColumn" class="text-muted">{{ groupedItemNumber(groupIndex, idx) }}</td>
+                <td v-for="column in visibleColumns" :key="column.key" :class="column.cellClass" :style="column.cellStyle">
+                  <slot :name="`cell-${column.key}`" :item="item" :index="groupedItemIndex(groupIndex, idx)" :column="column">
+                    {{ getCellValue(item, column) }}
+                  </slot>
+                </td>
+              </tr>
+            </template>
+          </template>
           <tr v-for="(item, idx) in displayItems" v-else :key="getItemKey(item, idx)" :class="getRowClass(item, idx)" @click="handleRowClick(item, idx)">
             <td v-if="showNumberColumn" class="text-muted">{{ displayNumberOffset + idx + 1 }}</td>
             <td v-for="column in visibleColumns" :key="column.key" :class="column.cellClass" :style="column.cellStyle">
@@ -59,15 +112,18 @@
             </td>
           </tr>
         </tbody>
+        <tfoot v-if="hasFooter && hasRows">
+          <slot name="footer" :colspan="totalColumnCount" />
+        </tfoot>
       </table>
     </div>
 
-    <Pagination v-if="enablePagination" :model-value="currentPage" :total-pages="totalPages" :total-items="paginationTotalItems" :page-size="itemsPerPage" :visible-count="displayItems.length" :variant="paginationVariant" layout="toolbar" :has-next-page="paginationHasNext" :has-previous-page="paginationHasPrevious" @update:model-value="handlePageChange"/>
+    <Pagination v-if="showPagination" :model-value="currentPage" :total-pages="totalPages" :total-items="paginationTotalItems" :page-size="itemsPerPage" :visible-count="displayItems.length" :variant="paginationVariant" layout="toolbar" :has-next-page="paginationHasNext" :has-previous-page="paginationHasPrevious" @update:model-value="handlePageChange"/>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, useSlots } from 'vue'
 import { ArrowUpDown, ChevronDown, ChevronUp } from '@lucide/vue'
 import Pagination from '@/components/Pagination.vue'
 import { BREAKPOINTS, useBreakpoint } from '@/composables/useBreakpoint.js'
@@ -158,7 +214,18 @@ const props = defineProps({
     default: 'asc',
     validator: (value) => ['asc', 'desc'].includes(value),
   },
+  /**
+   * Группы строк вместо плоского списка: [{ key, label, items, meta }].
+   * С пагинацией не сочетается — Pagination не рендерится.
+   */
+  groups: {
+    type: Array,
+    default: null,
+  },
 })
+
+const slots = useSlots()
+const hasFooter = computed(() => Boolean(slots.footer))
 
 const emit = defineEmits(['rowClick', 'update:currentPage', 'pageChange', 'update:sortKey', 'update:sortDirection'])
 
@@ -331,7 +398,32 @@ const paginationHasPrevious = computed(() =>
   useSimpleServerPagination.value ? props.hasPreviousPage : null,
 )
 
+const useGroups = computed(() => Array.isArray(props.groups))
+
+const displayGroups = computed(() => {
+  if (!useGroups.value) return []
+  return (props.groups || []).map((group, index) => ({
+    key: group?.key ?? index,
+    label: group?.label || t('components.dataTable.groupDefault'),
+    items: Array.isArray(group?.items) ? group.items : [],
+    meta: group?.meta ?? null,
+  }))
+})
+
+const groupedOffsets = computed(() => {
+  const offsets = []
+  let offset = 0
+  for (const group of displayGroups.value) {
+    offsets.push(offset)
+    offset += group.items.length
+  }
+  return offsets
+})
+
 const displayItems = computed(() => {
+  if (useGroups.value) {
+    return displayGroups.value.flatMap((group) => group.items)
+  }
   if (!props.enablePagination) {
     return props.items
   }
@@ -342,6 +434,21 @@ const displayItems = computed(() => {
   const end = start + props.itemsPerPage
   return props.items.slice(start, end)
 })
+
+const hasRows = computed(() => displayItems.value.length > 0)
+const showPagination = computed(() => props.enablePagination && !useGroups.value)
+
+function groupedItemIndex(groupIndex, itemIndex) {
+  return (groupedOffsets.value[groupIndex] || 0) + itemIndex
+}
+
+function groupedItemNumber(groupIndex, itemIndex) {
+  return displayNumberOffset.value + groupedItemIndex(groupIndex, itemIndex) + 1
+}
+
+function groupedItemKey(group, item, itemIndex) {
+  return `${group.key}:${props.getItemKey(item, itemIndex)}`
+}
 
 const displayNumberOffset = computed(() => {
   // При enablePagination смещение уже из currentPage — numberOffset не добавляем
@@ -416,6 +523,26 @@ const displayNumberOffset = computed(() => {
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+}
+
+.data-table-group td {
+  padding: 0.65rem 0.75rem;
+  background: var(--ui-surface-2, var(--color-secondary-background));
+  color: var(--ui-text, var(--color-primary-text));
+  font-weight: 650;
+  border-bottom: 1px solid var(--ui-border, var(--color-border));
+}
+
+.data-table-group-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.data-table-group-title {
+  padding: 0.15rem 0.1rem;
+  font-weight: 650;
+  color: var(--ui-text, var(--color-primary-text));
 }
 
 .table-row-click {

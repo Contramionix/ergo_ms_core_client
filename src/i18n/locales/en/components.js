@@ -43,6 +43,7 @@ export default {
     actions: 'Actions',
     sortToolbar: 'Sort',
     sortColumn: 'Sort by “{column}”',
+    groupDefault: 'Group',
   },
   spinner: {
     loading: 'Loading...',
