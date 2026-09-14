@@ -20,9 +20,11 @@ import { fetchDisabledModules } from './core/disabledModules.js'
 import { registerClientModule } from './core/registerClientModule.js'
 import { getConfiguredModuleRemotes, loadFederatedModules } from './core/federatedModules.js'
 import { clientEnv } from '@/js/clientEnv.js'
+import { authRoutes, coreRoutes } from '@/config/routes.js'
 import { getLocaleManager } from './i18n/LocaleManager.js'
 import { getThemeDefaultsManager } from './themes/ThemeDefaultsManager.js'
 import { logError } from '@/js/utils/logError.js'
+import { routeMapCoversPath, routesCoverPath } from './routes/vueRoutePath.js'
 
 function yieldToBundledNavigation() {
   return new Promise((resolve) => {
@@ -113,15 +115,36 @@ export class ModuleManager {
     this.routeGenerator = new RouteGenerator(this.routeManager)
     this._markCoreReady()
 
-    // Дать оболочке посадить bundled-маршруты и запросить чанк страницы,
-    // иначе remotes занимают HTTP/1.1 слоты раньше текущего маршрута.
-    await yieldToBundledNavigation()
+    // На bundled-странице remotes ждут кадр, чтобы не забить HTTP/1.1.
+    // Глубокая ссылка на remote — наоборот, грузим сразу, иначе первый
+    // переход попадает в NotFound до addRoute.
+    if (this._shouldYieldForBundledLanding()) {
+      await yieldToBundledNavigation()
+    }
 
     if (clientEnv.modularity === 'federated' || getConfiguredModuleRemotes().length) {
       await this._registerFederatedManifests(await loadFederatedModules())
     }
 
     this.initialized = true
+  }
+
+  /**
+   * Оболочка и вход уже есть в bundled-таблице — remotes можно подождать кадр.
+   * Иначе это глубокая ссылка: yield только откладывает маршруты remote.
+   */
+  _shouldYieldForBundledLanding() {
+    if (typeof window === 'undefined') {
+      return true
+    }
+    if (clientEnv.modularity !== 'federated' && !getConfiguredModuleRemotes().length) {
+      return true
+    }
+    const pathname = window.location.pathname || '/'
+    if (routesCoverPath([...coreRoutes, ...authRoutes], pathname)) {
+      return true
+    }
+    return routeMapCoversPath(this.routeManager.getAllRoutes(), pathname)
   }
 
   /**

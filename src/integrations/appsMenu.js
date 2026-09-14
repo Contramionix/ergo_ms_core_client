@@ -82,6 +82,8 @@ export async function collectVisibleAppsMenuItems() {
   if (typeof moduleManager.retryMissingRemotes === 'function') {
     await moduleManager.retryMissingRemotes()
   }
+  const { syncLateModuleRoutes } = await import('@/js/routers.js')
+  await syncLateModuleRoutes()
 
   const items = Object.values(bridge.all(APPS_MENU_ITEMS_GROUP)).sort(
     (a, b) => (a.order ?? 0) - (b.order ?? 0),
