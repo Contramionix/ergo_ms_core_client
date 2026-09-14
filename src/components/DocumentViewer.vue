@@ -160,6 +160,7 @@
         v-else-if="kind === 'docx'"
         ref="docxHost"
         class="document-viewer__docx"
+        v-csp-style="docxFitStyle"
       />
       <div v-else class="document-viewer__state">
         <p class="mb-2">{{ t('components.documentViewer.unsupported') }}</p>
@@ -207,10 +208,15 @@ import {
   lastVisiblePage,
   layoutColumns,
   pageRotation,
-  stepStartPage,
   visiblePageNumbers,
   waitForBox,
 } from '@/js/utils/documentViewerLayout.js'
+import { fitDocxToStage, renderDocxDocument } from '@/js/utils/documentViewerDocx.js'
+import {
+  bindViewerStage,
+  handlePdfStageWheel,
+  unbindViewerStage,
+} from '@/js/utils/documentViewerStage.js'
 
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 3
@@ -249,11 +255,13 @@ const orientation = ref('portrait')
 const pagesPerView = ref(1)
 const canvasStyles = ref([])
 const emptyStyle = {}
+const docxFitStyle = ref({})
 const docxHost = ref(null)
 const stageRef = ref(null)
 const canvasEls = []
 
 let pdfDoc = null
+let docxNative = null
 let loadToken = 0
 let renderToken = 0
 let wheelAt = 0
@@ -310,68 +318,53 @@ function onStageWheel(event) {
   if (kind.value !== DOCUMENT_PREVIEW_KIND.PDF) {
     return
   }
-  if (event.ctrlKey) {
-    event.preventDefault()
-    changeZoom(event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP)
+  const next = handlePdfStageWheel(event, {
+    stage: stageRef.value,
+    page: page.value,
+    pageCount: pageCount.value,
+    pagesPerView: pagesPerView.value,
+    wheelAt,
+    wheelPageMs: WHEEL_PAGE_MS,
+    zoomStep: ZOOM_STEP,
+    changeZoom,
+  })
+  if (!next) {
     return
   }
-  const stage = stageRef.value
-  if (!stage || pageCount.value <= 1) {
-    return
-  }
-  const delta = event.deltaY
-  if (delta === 0) {
-    return
-  }
-  const goingDown = delta > 0
-  const atTop = stage.scrollTop <= 1
-  const atBottom = stage.scrollTop + stage.clientHeight >= stage.scrollHeight - 1
-  const canFlip =
-    (goingDown && atBottom && canGoNext(page.value, pagesPerView.value, pageCount.value))
-    || (!goingDown && atTop && page.value > 1)
-  if (!canFlip) {
-    return
-  }
-  event.preventDefault()
-  const now = Date.now()
-  if (now - wheelAt < WHEEL_PAGE_MS) {
-    return
-  }
-  wheelAt = now
-  scrollAfterRender = goingDown ? 'top' : 'bottom'
-  goPage(stepStartPage(page.value, goingDown ? 1 : -1, pagesPerView.value, pageCount.value))
+  wheelAt = next.wheelAt
+  scrollAfterRender = next.scrollAfterRender
+  goPage(next.page)
 }
 
 function bindStage(el) {
-  if (!el) {
-    return
-  }
-  el.addEventListener('wheel', onStageWheel, { passive: false })
-  if (stageObserver) {
-    stageObserver.observe(el)
-  }
+  bindViewerStage(el, onStageWheel, stageObserver)
 }
 
 function unbindStage(el) {
-  if (!el) {
-    return
-  }
-  el.removeEventListener('wheel', onStageWheel)
-  if (stageObserver) {
-    stageObserver.unobserve(el)
-  }
+  unbindViewerStage(el, onStageWheel, stageObserver)
 }
 
-function schedulePdfRerender() {
+function applyDocxFit() {
+  const result = fitDocxToStage(docxHost.value, stageRef.value, docxNative, STAGE_PAD)
+  docxNative = result.native
+  docxFitStyle.value = result.style
+}
+
+function scheduleStageFit() {
   window.clearTimeout(resizeTimer)
   resizeTimer = window.setTimeout(() => {
-    if (!loading.value && pdfDoc && kind.value === DOCUMENT_PREVIEW_KIND.PDF) {
+    if (loading.value) {
+      return
+    }
+    if (pdfDoc && kind.value === DOCUMENT_PREVIEW_KIND.PDF) {
       renderCurrentPdfPage()
+    } else if (kind.value === DOCUMENT_PREVIEW_KIND.DOCX) {
+      applyDocxFit()
     }
   }, 80)
 }
 
-stageObserver = new ResizeObserver(schedulePdfRerender)
+stageObserver = new ResizeObserver(scheduleStageFit)
 
 async function downloadFile() {
   if (!props.src) {
@@ -391,6 +384,8 @@ function resetView() {
   zoom.value = 1
   errorText.value = ''
   kind.value = detectDocumentPreviewKind(props.filename)
+  docxNative = null
+  docxFitStyle.value = {}
   if (docxHost.value) {
     docxHost.value.replaceChildren()
   }
@@ -464,15 +459,13 @@ async function renderDocx(buffer) {
   if (!docxHost.value) {
     return
   }
-  docxHost.value.replaceChildren()
-  const { renderAsync } = await import('docx-preview')
-  await renderAsync(buffer, docxHost.value, undefined, {
-    inWrapper: true,
-    ignoreWidth: false,
-    ignoreHeight: false,
-    breakPages: true,
-    experimental: true,
-  })
+  await renderDocxDocument(buffer, docxHost.value)
+  docxNative = null
+  const stage = await waitForBox(() => stageRef.value)
+  if (!stage) {
+    return
+  }
+  applyDocxFit()
 }
 
 async function loadDocument() {
@@ -667,8 +660,9 @@ onUnmounted(() => {
 
 .document-viewer__canvas {
   display: block;
-  max-width: 100%;
-  height: auto;
+  // Размер задаёт fit страницы. max-width + фиксированная высота сжимают лист
+  // по горизонтали и превращают текст в кашу.
+  max-width: none;
   background: var(--ui-surface);
   box-shadow: var(--ui-shadow-sm, none);
 }
@@ -680,6 +674,11 @@ onUnmounted(() => {
   :deep(.docx-wrapper) {
     background: transparent;
     padding: 0;
+    width: var(--docx-page-width, auto);
+    margin-inline: auto;
+    transform: scale(var(--docx-fit-scale, 1));
+    transform-origin: top center;
+    margin-bottom: calc(var(--docx-wrapper-height, 0px) * (var(--docx-fit-scale, 1) - 1));
   }
 
   :deep(.docx) {
