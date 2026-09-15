@@ -16,6 +16,7 @@ export const COLOR_VAR_MAP = {
   secondaryBackground: '--color-secondary-background',
   hoverBackground: '--color-hover-background',
   accent: '--color-accent',
+  accentText: '--color-accent-text',
 }
 
 export const BOOTSTRAP_BRIDGE_FROM_COLORS = {
@@ -134,6 +135,13 @@ export function buildThemeCss({
   }
 
   cssRules += buildModuleTokensCss(moduleKey, moduleTokens)
+
+  if (!colors.accentText) {
+    const accentText = baseTheme === 'dark'
+      ? (colors.primaryText || '#c9cccf')
+      : '#ffffff'
+    cssRules += `  --color-accent-text: ${accentText} !important;\n`
+  }
 
   if (colors.accent) {
     const rgb = parseAccentRgb(colors.accent)

@@ -37,7 +37,8 @@ $dark-accent: #f14336;
   $primary-bg,
   $secondary-bg,
   $hover-bg,
-  $accent
+  $accent,
+  $accent-text
 ) {
   --color-header-background: #{$header-background};
   --color-auth-background: #{$auth-background};
@@ -49,6 +50,7 @@ $dark-accent: #f14336;
   --color-secondary-background: #{$secondary-bg};
   --color-hover-background: #{$hover-bg};
   --color-accent: #{$accent};
+  --color-accent-text: #{$accent-text};
 }
 
 // $accent-rgb — «r, g, b» для утилит Bootstrap (.text-primary и т.п.),
@@ -96,7 +98,8 @@ body {
     $light-primary-background,
     $light-secondary-background,
     $light-hover-background,
-    $light-accent
+    $light-accent,
+    #fff
   );
   @include bootstrap-theme-bridge('208, 50, 45'); // #d0322d
 }
@@ -112,7 +115,8 @@ body {
     $dark-primary-background,
     $dark-secondary-background,
     $dark-hover-background,
-    $dark-accent
+    $dark-accent,
+    $dark-primary-text
   );
   @include bootstrap-theme-bridge('241, 67, 54'); // #f14336
 }

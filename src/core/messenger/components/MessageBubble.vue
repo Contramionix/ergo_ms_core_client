@@ -241,26 +241,27 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   position: relative;
 
   &--own {
+    --msng-own-fg: var(--ui-accent-text, var(--color-accent-text, var(--color-primary-text)));
     align-self: flex-end;
     margin-left: auto;
     flex-direction: row-reverse;
 
     .msng-bubble__content {
       background: var(--color-accent);
-      color: var(--color-primary-background);
+      color: var(--msng-own-fg);
       border-radius: 1rem 1rem 0.25rem 1rem;
     }
 
     .msng-bubble__time {
-      color: color-mix(in srgb, var(--color-primary-background) 70%, transparent);
+      color: color-mix(in srgb, var(--msng-own-fg) 70%, transparent);
     }
 
     .msng-bubble__edited {
-      color: color-mix(in srgb, var(--color-primary-background) 50%, transparent);
+      color: color-mix(in srgb, var(--msng-own-fg) 50%, transparent);
     }
 
     .msng-bubble__attachment-file {
-      color: color-mix(in srgb, var(--color-primary-background) 90%, transparent);
+      color: color-mix(in srgb, var(--msng-own-fg) 90%, transparent);
     }
   }
 
@@ -324,16 +325,16 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
   }
 
   &--own .msng-bubble__reply-quote {
-    background: rgba(255, 255, 255, 0.15);
-    border-left-color: rgba(255, 255, 255, 0.6);
+    background: color-mix(in srgb, var(--msng-own-fg) 14%, transparent);
+    border-left-color: color-mix(in srgb, var(--msng-own-fg) 55%, transparent);
   }
 
   &--own .msng-bubble__reply-author {
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--msng-own-fg);
   }
 
   &--own .msng-bubble__reply-text {
-    color: rgba(255, 255, 255, 0.7);
+    color: color-mix(in srgb, var(--msng-own-fg) 78%, transparent);
   }
 
   &__text {
@@ -418,6 +419,10 @@ onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
     flex-shrink: 0;
   }
 
+}
+
+[data-bs-theme='dark'] .msng-bubble--own .msng-bubble__content {
+  background: color-mix(in srgb, var(--color-accent) 40%, var(--color-primary-background));
 }
 
 @media (width < $ui-bp-sm) {
