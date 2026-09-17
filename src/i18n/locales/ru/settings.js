@@ -536,6 +536,7 @@ export default {
     attachFile: 'Прикрепить файл',
     emoji: 'Эмодзи',
     placeholder: 'Введите сообщение...',
+    sendError: 'Не удалось отправить сообщение',
     editingPlaceholder: 'Редактирование сообщения...',
     empty: 'Сообщений пока нет',
     today: 'Сегодня',

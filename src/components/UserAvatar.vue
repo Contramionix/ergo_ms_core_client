@@ -5,7 +5,7 @@
       <div v-else-if="isAvatarPending" class="user-avatar-placeholder" aria-hidden="true" />
       <DefaultAvatar v-else :size="size" :clickable="clickable" :title="resolvedTitle" :first-name="avatarNameParts.firstName" :last-name="avatarNameParts.lastName" :color-key="resolvedPublicId"/>
     </div>
-    <PresenceIndicator v-if="showOnlineStatus" :visible="isKnown" :is-online="isOnline" :last-seen="lastSeen" :show-tooltip="showPresenceTooltip" :size="size"/>
+    <PresenceIndicator v-if="showOnlineStatus" :visible="isOnline" :is-online="isOnline" :last-seen="lastSeen" :show-tooltip="showPresenceTooltip" :size="size"/>
   </div>
 </template>
 
@@ -116,7 +116,7 @@ const presencePublicId = computed(() => {
   return resolvedPublicId.value
 })
 
-const { isOnline, lastSeen, isKnown } = usePresenceStatus(presencePublicId)
+const { isOnline, lastSeen } = usePresenceStatus(presencePublicId)
 
 const hasPropNames = computed(() => Boolean(pickNamePair(props.firstName, props.lastName)))
 
@@ -288,6 +288,7 @@ async function onImageError() {
 .user-avatar-wrap {
   position: relative;
   flex-shrink: 0;
+  overflow: visible;
 }
 
 .user-avatar {

@@ -6,6 +6,8 @@ export const WS_CONTROL_TOPIC = 'ws:control'
 export const WS_AUTH_EVENT = 'ws_auth'
 export const WS_AUTH_OK_EVENT = 'ws_auth_ok'
 export const PRESENCE_PING_EVENT = 'presence_ping'
+export const PRESENCE_WATCH_EVENT = 'presence_watch'
+export const PRESENCE_DELTA_EVENT = 'presence_delta'
 export const PRESENCE_USER_TOPIC = 'presence:user'
 
 export function isRealtimeEnvelope(data) {

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import { formatPresenceTooltip } from '@/core/cms/adp/js/presence/formatPresenceTooltip.js'
+import { readPresenceNow } from '@/core/cms/adp/js/presence/presenceStore.js'
 
 const props = defineProps({
   isOnline: { type: Boolean, default: false },
@@ -29,7 +30,9 @@ const dotStyle = computed(() => {
   }
 })
 
-const tooltipText = computed(() => formatPresenceTooltip(props.isOnline, props.lastSeen))
+const tooltipText = computed(() => (
+  formatPresenceTooltip(props.isOnline, props.lastSeen, readPresenceNow())
+))
 </script>
 
 <template>

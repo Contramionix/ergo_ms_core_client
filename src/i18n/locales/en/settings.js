@@ -536,6 +536,7 @@ export default {
     attachFile: 'Attach file',
     emoji: 'Emoji',
     placeholder: 'Enter a message...',
+    sendError: 'Could not send the message',
     editingPlaceholder: 'Editing message...',
     empty: 'No messages yet',
     today: 'Today',

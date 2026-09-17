@@ -536,6 +536,7 @@ export default {
     attachFile: 'Joindre un fichier',
     emoji: 'Emoji',
     placeholder: 'Saisir un message...',
+    sendError: 'Impossible d’envoyer le message',
     editingPlaceholder: 'Modification du message...',
     empty: 'Aucun message pour le moment',
     today: "Aujourd'hui",

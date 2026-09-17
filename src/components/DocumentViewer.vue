@@ -3,13 +3,7 @@
     <div v-if="showToolbar && !loading && !errorText" class="document-viewer__toolbar">
       <div v-if="kind === 'pdf'" class="document-viewer__nav">
         <HoverTooltip :text="t('components.documentViewer.prevPage')" wrap>
-          <button
-            type="button"
-            class="document-viewer__icon-btn"
-            :disabled="page <= 1"
-            :aria-label="t('components.documentViewer.prevPage')"
-            @click="goPage(page - pagesPerView)"
-          >
+          <button type="button" class="document-viewer__icon-btn" :disabled="page <= 1" :aria-label="t('components.documentViewer.prevPage')" @click="goPage(page - pagesPerView)">
             <ChevronLeft :size="18" aria-hidden="true" />
           </button>
         </HoverTooltip>
@@ -17,111 +11,53 @@
           {{ pageLabel }}
         </span>
         <HoverTooltip :text="t('components.documentViewer.nextPage')" wrap>
-          <button
-            type="button"
-            class="document-viewer__icon-btn"
-            :disabled="!canNextPage"
-            :aria-label="t('components.documentViewer.nextPage')"
-            @click="goPage(page + pagesPerView)"
-          >
+          <button type="button" class="document-viewer__icon-btn" :disabled="!canNextPage" :aria-label="t('components.documentViewer.nextPage')" @click="goPage(page + pagesPerView)">
             <ChevronRight :size="18" aria-hidden="true" />
           </button>
         </HoverTooltip>
       </div>
       <div v-if="kind === 'pdf'" class="document-viewer__zoom">
         <HoverTooltip :text="t('components.documentViewer.zoomOut')" wrap>
-          <button
-            type="button"
-            class="document-viewer__icon-btn"
-            :disabled="zoom <= ZOOM_MIN"
-            :aria-label="t('components.documentViewer.zoomOut')"
-            @click="changeZoom(-ZOOM_STEP)"
-          >
+          <button type="button" class="document-viewer__icon-btn" :disabled="zoom <= ZOOM_MIN" :aria-label="t('components.documentViewer.zoomOut')" @click="changeZoom(-ZOOM_STEP)">
             <ZoomOut :size="18" aria-hidden="true" />
           </button>
         </HoverTooltip>
         <span class="document-viewer__zoom-label">{{ zoomLabel }}</span>
         <HoverTooltip :text="t('components.documentViewer.zoomIn')" wrap>
-          <button
-            type="button"
-            class="document-viewer__icon-btn"
-            :disabled="zoom >= ZOOM_MAX"
-            :aria-label="t('components.documentViewer.zoomIn')"
-            @click="changeZoom(ZOOM_STEP)"
-          >
+          <button type="button" class="document-viewer__icon-btn" :disabled="zoom >= ZOOM_MAX" :aria-label="t('components.documentViewer.zoomIn')" @click="changeZoom(ZOOM_STEP)">
             <ZoomIn :size="18" aria-hidden="true" />
           </button>
         </HoverTooltip>
       </div>
       <div v-if="kind === 'pdf' && !compact" class="document-viewer__layout">
         <HoverTooltip :text="t('components.documentViewer.portrait')" wrap>
-          <button
-            type="button"
-            class="document-viewer__icon-btn"
-            :class="{ 'document-viewer__icon-btn--active': orientation === 'portrait' }"
-            :aria-label="t('components.documentViewer.portrait')"
-            :aria-pressed="orientation === 'portrait'"
-            @click="orientation = 'portrait'"
-          >
+          <button type="button" class="document-viewer__icon-btn" :class="{ 'document-viewer__icon-btn--active': orientation === 'portrait' }" :aria-label="t('components.documentViewer.portrait')" :aria-pressed="orientation === 'portrait'" @click="orientation = 'portrait'">
             <RectangleVertical :size="18" aria-hidden="true" />
           </button>
         </HoverTooltip>
         <HoverTooltip :text="t('components.documentViewer.landscape')" wrap>
-          <button
-            type="button"
-            class="document-viewer__icon-btn"
-            :class="{ 'document-viewer__icon-btn--active': orientation === 'landscape' }"
-            :aria-label="t('components.documentViewer.landscape')"
-            :aria-pressed="orientation === 'landscape'"
-            @click="orientation = 'landscape'"
-          >
+          <button type="button" class="document-viewer__icon-btn" :class="{ 'document-viewer__icon-btn--active': orientation === 'landscape' }" :aria-label="t('components.documentViewer.landscape')" :aria-pressed="orientation === 'landscape'" @click="orientation = 'landscape'">
             <RectangleHorizontal :size="18" aria-hidden="true" />
           </button>
         </HoverTooltip>
         <HoverTooltip :text="t('components.documentViewer.pagesOne')" wrap>
-          <button
-            type="button"
-            class="document-viewer__icon-btn"
-            :class="{ 'document-viewer__icon-btn--active': pagesPerView === 1 }"
-            :aria-label="t('components.documentViewer.pagesOne')"
-            :aria-pressed="pagesPerView === 1"
-            @click="pagesPerView = 1"
-          >
+          <button type="button" class="document-viewer__icon-btn" :class="{ 'document-viewer__icon-btn--active': pagesPerView === 1 }" :aria-label="t('components.documentViewer.pagesOne')" :aria-pressed="pagesPerView === 1" @click="pagesPerView = 1">
             <Square :size="18" aria-hidden="true" />
           </button>
         </HoverTooltip>
         <HoverTooltip :text="t('components.documentViewer.pagesTwo')" wrap>
-          <button
-            type="button"
-            class="document-viewer__icon-btn"
-            :class="{ 'document-viewer__icon-btn--active': pagesPerView === 2 }"
-            :aria-label="t('components.documentViewer.pagesTwo')"
-            :aria-pressed="pagesPerView === 2"
-            @click="pagesPerView = 2"
-          >
+          <button type="button" class="document-viewer__icon-btn" :class="{ 'document-viewer__icon-btn--active': pagesPerView === 2 }" :aria-label="t('components.documentViewer.pagesTwo')" :aria-pressed="pagesPerView === 2" @click="pagesPerView = 2">
             <Columns2 :size="18" aria-hidden="true" />
           </button>
         </HoverTooltip>
         <HoverTooltip :text="t('components.documentViewer.pagesFour')" wrap>
-          <button
-            type="button"
-            class="document-viewer__icon-btn"
-            :class="{ 'document-viewer__icon-btn--active': pagesPerView === 4 }"
-            :aria-label="t('components.documentViewer.pagesFour')"
-            :aria-pressed="pagesPerView === 4"
-            @click="pagesPerView = 4"
-          >
+          <button type="button" class="document-viewer__icon-btn" :class="{ 'document-viewer__icon-btn--active': pagesPerView === 4 }" :aria-label="t('components.documentViewer.pagesFour')" :aria-pressed="pagesPerView === 4" @click="pagesPerView = 4">
             <LayoutGrid :size="18" aria-hidden="true" />
           </button>
         </HoverTooltip>
       </div>
       <HoverTooltip v-if="src" :text="t('components.documentViewer.download')" wrap>
-        <button
-          type="button"
-          class="document-viewer__icon-btn"
-          :aria-label="t('components.documentViewer.download')"
-          @click="downloadFile"
-        >
+        <button type="button" class="document-viewer__icon-btn" :aria-label="t('components.documentViewer.download')" @click="downloadFile">
           <Download :size="18" aria-hidden="true" />
         </button>
       </HoverTooltip>
@@ -133,90 +69,38 @@
       </div>
       <div v-else-if="errorText" class="document-viewer__state document-viewer__state--error">
         <p class="mb-2">{{ errorText }}</p>
-        <button
-          v-if="src"
-          type="button"
-          class="ui-btn ui-btn--secondary"
-          @click="downloadFile"
-        >
+        <button v-if="src" type="button" class="ui-btn ui-btn--secondary" @click="downloadFile">
           {{ t('components.documentViewer.download') }}
         </button>
       </div>
-      <div
-        v-else-if="kind === 'pdf'"
-        class="document-viewer__pdf"
-        :class="`document-viewer__pdf--cols-${pdfCols}`"
-      >
-        <canvas
-          v-for="(n, idx) in visiblePages"
-          :key="`${n}-${orientation}`"
-          :ref="(el) => bindCanvas(idx, el)"
-          class="document-viewer__canvas"
-          v-csp-style="canvasStyles[idx] || emptyStyle"
-          :aria-label="pageAriaLabel"
-        />
+      <div v-else-if="kind === 'pdf'" class="document-viewer__pdf" :class="`document-viewer__pdf--cols-${pdfCols}`">
+        <canvas v-for="(n, idx) in visiblePages" :key="`${n}-${orientation}`" :ref="(el) => bindCanvas(idx, el)" class="document-viewer__canvas" v-csp-style="canvasStyles[idx] || emptyStyle" :aria-label="pageAriaLabel"/>
       </div>
-      <div
-        v-else-if="kind === 'docx'"
-        ref="docxHost"
-        class="document-viewer__docx"
-        v-csp-style="docxFitStyle"
-      />
+      <div v-else-if="kind === 'docx'" ref="docxHost" class="document-viewer__docx" v-csp-style="docxFitStyle"/>
       <div v-else class="document-viewer__state">
         <p class="mb-2">{{ t('components.documentViewer.unsupported') }}</p>
-        <button
-          v-if="src"
-          type="button"
-          class="ui-btn ui-btn--primary"
-          @click="downloadFile"
-        >
+        <button v-if="src" type="button" class="ui-btn ui-btn--primary" @click="downloadFile">
           {{ t('components.documentViewer.download') }}
         </button>
       </div>
     </div>
+    <DocumentViewerPageHud :stage="stageRef" :host="docxHost" :active="kind === 'docx' && !loading && !errorText"/>
   </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Columns2,
-  Download,
-  LayoutGrid,
-  RectangleHorizontal,
-  RectangleVertical,
-  Square,
-  ZoomIn,
-  ZoomOut,
-} from '@lucide/vue'
+import { ChevronLeft, ChevronRight, Columns2, Download, LayoutGrid, RectangleHorizontal, RectangleVertical, Square, ZoomIn, ZoomOut, } from '@lucide/vue'
+import DocumentViewerPageHud from '@/components/DocumentViewerPageHud.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { logError } from '@/js/utils/logError.js'
 import { downloadMedia } from '@/js/utils/mediaDownload.js'
-import {
-  DOCUMENT_PREVIEW_KIND,
-  detectDocumentPreviewKind,
-  fetchMediaBlob,
-} from '@/js/utils/mediaPreview.js'
-import {
-  PAGE_GAP,
-  canGoNext,
-  fitPagesScale,
-  lastVisiblePage,
-  layoutColumns,
-  pageRotation,
-  visiblePageNumbers,
-  waitForBox,
-} from '@/js/utils/documentViewerLayout.js'
+import { DOCUMENT_PREVIEW_KIND, detectDocumentPreviewKind, fetchMediaBlob, } from '@/js/utils/mediaPreview.js'
+import { PAGE_GAP, canGoNext, fitPagesScale, lastVisiblePage, layoutColumns, pageRotation, visiblePageNumbers, waitForBox, } from '@/js/utils/documentViewerLayout.js'
 import { fitDocxToStage, renderDocxDocument } from '@/js/utils/documentViewerDocx.js'
-import {
-  bindViewerStage,
-  handlePdfStageWheel,
-  unbindViewerStage,
-} from '@/js/utils/documentViewerStage.js'
+import { bindViewerStage, handlePdfStageWheel, unbindViewerStage, } from '@/js/utils/documentViewerStage.js'
 
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 3
@@ -244,7 +128,6 @@ const props = defineProps({
 })
 
 const { t } = useAppI18n()
-
 const loading = ref(false)
 const errorText = ref('')
 const kind = ref(DOCUMENT_PREVIEW_KIND.UNSUPPORTED)
@@ -259,7 +142,6 @@ const docxFitStyle = ref({})
 const docxHost = ref(null)
 const stageRef = ref(null)
 const canvasEls = []
-
 let pdfDoc = null
 let docxNative = null
 let loadToken = 0
@@ -476,13 +358,13 @@ async function loadDocument() {
     return
   }
   loading.value = true
+  let docxBuffer = null
   try {
     const result = await fetchMediaBlob(props.src, { filename: props.filename })
     if (token !== loadToken) {
       return
     }
     kind.value = result.kind
-    let docxBuffer = null
     if (result.kind === DOCUMENT_PREVIEW_KIND.PDF) {
       const { openPdfDocument } = await import('@/js/utils/documentViewerPdf.js')
       pdfDoc = await openPdfDocument(await result.blob.arrayBuffer())
@@ -546,6 +428,7 @@ onUnmounted(() => {
 @use '@/scss/ui/mixins' as *;
 
 .document-viewer {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -663,13 +546,15 @@ onUnmounted(() => {
   // Размер задаёт fit страницы. max-width + фиксированная высота сжимают лист
   // по горизонтали и превращают текст в кашу.
   max-width: none;
-  background: var(--ui-surface);
+  background: #fff;
   box-shadow: var(--ui-shadow-sm, none);
 }
 
 .document-viewer__docx {
+  width: 100%;
   padding: 0.75rem;
-  color: var(--ui-text);
+  // Лист как бумага: белый фон и тёмный текст даже в тёмной теме.
+  color: #111;
 
   :deep(.docx-wrapper) {
     background: transparent;
@@ -682,10 +567,11 @@ onUnmounted(() => {
   }
 
   :deep(.docx) {
-    background: var(--ui-surface);
-    color: var(--ui-text);
+    background: #fff;
+    color: #111;
     box-shadow: var(--ui-shadow-sm, none);
-    margin: 0 auto;
+    margin: 0 auto 1.5rem;
+    overflow: hidden;
   }
 }
 </style>

@@ -9,6 +9,9 @@ export default {
     monthsAgo: '{n} month ago | {n} months ago',
     yearsAgo: '{n} year ago | {n} years ago',
   },
+  chatList: {
+    yesterday: 'yesterday',
+  },
   duration: {
     days: '{n} day | {n} days',
   },

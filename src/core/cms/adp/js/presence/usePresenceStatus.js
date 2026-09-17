@@ -1,6 +1,14 @@
 import { computed, ref, toValue, watch } from 'vue'
 
-import { enqueueFetch, getStatus, hasStatus, presenceStore } from './presenceStore.js'
+import {
+  enqueueFetch,
+  getStatus,
+  hasStatus,
+  presenceStore,
+  readPresenceNow,
+  unwatchPresence,
+  watchPresence,
+} from './presenceStore.js'
 
 /**
  * Composable для отображения онлайн-статуса пользователя по public_id.
@@ -23,11 +31,19 @@ export function usePresenceStatus(publicIdSource) {
 
   const status = computed(() => getStatus(publicId.value))
   const isKnown = computed(() => publicId.value != null && hasStatus(publicId.value))
+  const now = computed(() => readPresenceNow())
 
   watch(
     publicId,
-    (id) => {
-      if (id == null || hasStatus(id)) {
+    (id, _prev, onCleanup) => {
+      if (id == null) {
+        isLoading.value = false
+        return
+      }
+
+      watchPresence(id)
+      onCleanup(() => unwatchPresence(id))
+      if (hasStatus(id)) {
         isLoading.value = false
         return
       }
@@ -49,6 +65,7 @@ export function usePresenceStatus(publicIdSource) {
     lastSeen: computed(() => status.value.lastSeen),
     isKnown,
     isLoading,
+    now,
     presenceStore,
   }
 }

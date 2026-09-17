@@ -15,6 +15,44 @@ const pendingBatches = new Map()
 const fetchQueue = new Set()
 let flushTimer = null
 const FLUSH_DELAY_MS = 16
+const WATCH_NOTIFY_MS = 50
+const WATCH_LIMIT = 100
+
+const watchCounts = new Map()
+let watchListener = null
+let watchNotifyTimer = null
+
+const CLOCK_MS = 10000
+const clock = reactive({ now: Date.now() })
+let clockTimer = null
+
+function onPresenceClockVisible() {
+  if (document.visibilityState === 'visible') {
+    clock.now = Date.now()
+  }
+}
+
+function syncPresenceClock() {
+  const shouldRun = watchCounts.size > 0
+  if (shouldRun && !clockTimer) {
+    clock.now = Date.now()
+    clockTimer = window.setInterval(() => {
+      clock.now = Date.now()
+    }, CLOCK_MS)
+    document.addEventListener('visibilitychange', onPresenceClockVisible)
+    return
+  }
+  if (!shouldRun && clockTimer) {
+    window.clearInterval(clockTimer)
+    clockTimer = null
+    document.removeEventListener('visibilitychange', onPresenceClockVisible)
+  }
+}
+
+/** Текущий тик часов presence — чтобы «только что» сменялось без перезагрузки. */
+export function readPresenceNow() {
+  return clock.now
+}
 
 /** public_id текущего пользователя с активным presence-транспортом (WS/SSE/poll). */
 let liveSelfPublicId = null
@@ -28,6 +66,58 @@ function flushFetchQueue() {
   const ids = [...fetchQueue]
   fetchQueue.clear()
   void fetchBatch(ids)
+}
+
+export function setPresenceWatchListener(listener) {
+  watchListener = listener
+  if (watchCounts.size && listener) {
+    notifyWatchListener()
+  }
+}
+
+function notifyWatchListener() {
+  if (!watchListener) {
+    return
+  }
+  if (watchNotifyTimer) {
+    return
+  }
+  watchNotifyTimer = setTimeout(() => {
+    watchNotifyTimer = null
+    watchListener(listWatchedPublicIds())
+  }, WATCH_NOTIFY_MS)
+}
+
+export function listWatchedPublicIds() {
+  return [...watchCounts.keys()].slice(0, WATCH_LIMIT)
+}
+
+export function watchPresence(publicId) {
+  const id = normalizePublicId(publicId)
+  if (!id) {
+    return
+  }
+  const previous = watchCounts.get(id) || 0
+  watchCounts.set(id, previous + 1)
+  if (previous === 0) {
+    syncPresenceClock()
+    notifyWatchListener()
+  }
+}
+
+export function unwatchPresence(publicId) {
+  const id = normalizePublicId(publicId)
+  if (!id || !watchCounts.has(id)) {
+    return
+  }
+  const next = watchCounts.get(id) - 1
+  if (next <= 0) {
+    watchCounts.delete(id)
+    syncPresenceClock()
+    notifyWatchListener()
+    return
+  }
+  watchCounts.set(id, next)
 }
 
 export function enqueueFetch(publicId) {
@@ -200,8 +290,14 @@ export function resetPresenceStore() {
     clearTimeout(flushTimer)
     flushTimer = null
   }
+  if (watchNotifyTimer) {
+    clearTimeout(watchNotifyTimer)
+    watchNotifyTimer = null
+  }
   fetchQueue.clear()
+  watchCounts.clear()
   liveSelfPublicId = null
+  syncPresenceClock()
 
   for (const key of Object.keys(state.entries)) {
     delete state.entries[key]
@@ -216,6 +312,11 @@ export const presenceStore = {
   hasStatus,
   fetchBatch,
   enqueueFetch,
+  watchPresence,
+  unwatchPresence,
+  listWatchedPublicIds,
+  readPresenceNow,
+  setPresenceWatchListener,
   seedFromUsers,
   setLiveSelfPresence,
   clearLiveSelfPresence,

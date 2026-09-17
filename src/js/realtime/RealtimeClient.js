@@ -151,4 +151,8 @@ export function presenceAdminTopic() {
   return 'presence:admin'
 }
 
+export function presencePeerTopic(publicId) {
+  return `presence:peer:${publicId}`
+}
+
 export { isHttpPollingMode, isSseMode, isWebSocketMode }

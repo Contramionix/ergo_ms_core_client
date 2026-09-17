@@ -1,3 +1,27 @@
+export function countDocxPages(host) {
+  return host?.querySelectorAll('section.docx')?.length || 0
+}
+
+export function docxPageAtViewport(host, stage) {
+  const pages = host?.querySelectorAll('section.docx')
+  if (!pages?.length || !stage) {
+    return 1
+  }
+  const stageBox = stage.getBoundingClientRect()
+  const mid = stageBox.top + stageBox.height / 2
+  let best = 1
+  let bestDist = Infinity
+  pages.forEach((el, index) => {
+    const box = el.getBoundingClientRect()
+    const dist = Math.abs(box.top + box.height / 2 - mid)
+    if (dist < bestDist) {
+      bestDist = dist
+      best = index + 1
+    }
+  })
+  return best
+}
+
 export function measureDocxNative(host) {
   const wrapper = host?.querySelector('.docx-wrapper')
   const page = wrapper?.querySelector('section.docx')
@@ -13,11 +37,12 @@ export function measureDocxNative(host) {
   return { pageW, pageH, wrapperH }
 }
 
-export function computeDocxFitStyle(native, availW, availH) {
-  if (!native) {
+export function computeDocxFitStyle(native, availW) {
+  if (!native?.pageW) {
     return {}
   }
-  const scale = Math.min(availW / native.pageW, availH / native.pageH)
+  // Высота всего документа в min() сжимает лист в узкую полоску — по вертикали листаем.
+  const scale = Math.min(1, availW / native.pageW)
   if (!Number.isFinite(scale) || scale <= 0) {
     return {}
   }
@@ -37,6 +62,8 @@ export async function renderDocxDocument(buffer, host) {
     ignoreWidth: false,
     ignoreHeight: false,
     breakPages: true,
+    // Word кладёт границы страниц в lastRenderedPageBreak; иначе одна секция на весь файл.
+    ignoreLastRenderedPageBreak: false,
     experimental: true,
   })
 }
@@ -54,7 +81,6 @@ export function fitDocxToStage(host, stage, native, pad) {
     style: computeDocxFitStyle(
       measured,
       Math.max(80, stage.offsetWidth - pad),
-      Math.max(80, stage.offsetHeight - pad),
     ),
   }
 }

@@ -1,12 +1,8 @@
 import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { connectPresenceTransport } from '@/js/realtime/presenceTransport.js'
-import {
-  PRESENCE_PING_EVENT,
-  PRESENCE_USER_TOPIC,
-  buildClientEnvelope,
-} from '@/js/realtime/envelope.js'
-import { clearLiveSelfPresence, setLiveSelfPresence } from './presenceStore.js'
+import { PRESENCE_PING_EVENT, PRESENCE_USER_TOPIC, buildClientEnvelope, } from '@/js/realtime/envelope.js'
+import { clearLiveSelfPresence, listWatchedPublicIds, setLiveSelfPresence, setPresenceWatchListener, } from './presenceStore.js'
 
 const PING_INTERVAL_MS = 45000
 
@@ -46,6 +42,12 @@ function syncLiveSelfPresence() {
   }
 }
 
+function syncWatchedPeers() {
+  wsConnection?.syncWatchedPublicIds?.(listWatchedPublicIds())
+}
+
+setPresenceWatchListener(syncWatchedPeers)
+
 function openSocket() {
   if (!tokenService.getAccess()) {
     return
@@ -64,6 +66,7 @@ function openSocket() {
       // Индикатор в меню читает presenceStore; без этой записи он остаётся
       // offline после batch, который успел ответить до heartbeat/WS.
       syncLiveSelfPresence()
+      syncWatchedPeers()
     },
     onClose: (_event, wasIntentional) => {
       clearPingTimer()
@@ -85,6 +88,7 @@ export function ensurePresenceConnected() {
 
   if (wsConnection?.isAuthenticated()) {
     syncLiveSelfPresence()
+    syncWatchedPeers()
     return Promise.resolve()
   }
 

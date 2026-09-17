@@ -27,16 +27,26 @@ function parseDate(date) {
     return isNaN(d.getTime()) ? null : d
 }
 
+function resolveNow(nowInput) {
+    if (nowInput == null) {
+        return new Date()
+    }
+    if (typeof nowInput === 'number' && Number.isFinite(nowInput)) {
+        return new Date(nowInput)
+    }
+    return parseDate(nowInput) || new Date()
+}
+
 /**
  * Форматирует дату в относительное время
  * @param {string|Date} date - Дата в ISO формате или объект Date
  * @returns {string} Относительное время
  */
-export function getRelativeTime(date) {
+export function getRelativeTime(date, nowInput) {
     const targetDate = parseDate(date)
     if (!targetDate) return ''
 
-    const now = new Date()
+    const now = resolveNow(nowInput)
     const diffInSeconds = Math.floor((now - targetDate) / 1000)
 
     if (diffInSeconds < 0) return tGlobal('time.relative.future')
@@ -70,6 +80,52 @@ export function getRelativeTime(date) {
 
     const diffInYears = Math.floor(diffInDays / 365)
     return tGlobal('time.relative.yearsAgo', diffInYears)
+}
+
+/**
+ * Компактное время для списка чатов: сегодня — часы, вчера — слово, этот год — дата без года.
+ * @param {string|Date} date
+ * @returns {string}
+ */
+export function formatChatListTime(date) {
+    const targetDate = parseDate(date)
+    if (!targetDate) return ''
+
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const startOfYesterday = new Date(startOfToday)
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1)
+    const startOfTarget = new Date(
+        targetDate.getFullYear(),
+        targetDate.getMonth(),
+        targetDate.getDate(),
+    )
+
+    try {
+        const locale = getCurrentBcp47()
+        if (startOfTarget.getTime() === startOfToday.getTime()) {
+            return new Intl.DateTimeFormat(locale, {
+                hour: '2-digit',
+                minute: '2-digit',
+            }).format(targetDate)
+        }
+        if (startOfTarget.getTime() === startOfYesterday.getTime()) {
+            return tGlobal('time.chatList.yesterday')
+        }
+        if (targetDate.getFullYear() === now.getFullYear()) {
+            return new Intl.DateTimeFormat(locale, {
+                day: '2-digit',
+                month: '2-digit',
+            }).format(targetDate)
+        }
+        return new Intl.DateTimeFormat(locale, {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+        }).format(targetDate)
+    } catch {
+        return ''
+    }
 }
 
 /**
