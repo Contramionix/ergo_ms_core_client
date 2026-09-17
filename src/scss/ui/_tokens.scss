@@ -11,6 +11,7 @@
   --ui-text:        var(--color-primary-text);
   --ui-text-muted:  var(--color-secondary-text);
   --ui-accent:      var(--color-accent);
+  --ui-accent-text: var(--color-accent-text);
 
   --ui-border:        var(--color-border);
   --ui-border-strong: color-mix(in srgb, var(--color-border) 80%, var(--color-primary-text) 20%);

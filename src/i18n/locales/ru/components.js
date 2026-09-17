@@ -43,6 +43,7 @@ export default {
     actions: 'Действия',
     sortToolbar: 'Сортировка',
     sortColumn: 'Сортировать по колонке «{column}»',
+    groupDefault: 'Группа',
   },
   spinner: {
     loading: 'Загрузка...',

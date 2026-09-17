@@ -325,7 +325,7 @@ function onVariantTabKeydown(event) {
                   class="theme-editor__live-btn"
                   :style="{
                     background: liveColors.accent || 'var(--color-accent)',
-                    color: 'var(--color-accent-text, var(--color-primary-background))',
+                    color: 'var(--color-accent-text, var(--color-primary-text))',
                   }"
                   tabindex="-1"
                 >

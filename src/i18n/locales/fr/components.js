@@ -43,6 +43,7 @@ export default {
     actions: 'Actions',
     sortToolbar: 'Tri',
     sortColumn: 'Trier par « {column} »',
+    groupDefault: 'Groupe',
   },
   spinner: {
     loading: 'Chargement...',

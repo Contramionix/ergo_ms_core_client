@@ -35,6 +35,19 @@ function bearerAccess(headers) {
   return raw.startsWith(prefix) ? raw.slice(prefix.length) : ''
 }
 
+function setRequestAuthorization(config, token) {
+  if (!config || !token) {
+    return
+  }
+  const value = `Bearer ${token}`
+  const headers = config.headers
+  if (headers && typeof headers.set === 'function') {
+    headers.set('Authorization', value)
+    return
+  }
+  config.headers = { ...(headers || {}), Authorization: value }
+}
+
 const AXIOS_GET_CONFIG_KEYS = new Set([
   'params',
   'headers',
@@ -114,9 +127,7 @@ class ApiClient {
       if (config._needToken && !tokenService.getAccess()) {
         const access = await ensureAccessToken()
         if (access) {
-          const headers = config.headers || {}
-          headers.Authorization = `Bearer ${access}`
-          config.headers = headers
+          setRequestAuthorization(config, access)
         } else if (!canAttemptTokenRefresh() && hasSessionHintCookie()) {
           logWarn('[apiClient] защищённый запрос без токена: refresh-гейт закрыт', {
             url: config.url,
@@ -127,10 +138,11 @@ class ApiClient {
         if (access) {
           // Токен мог уже истечь к моменту _addAuthToken — подставляем свежий
           // в текущий запрос, иначе уйдёт просроченный Bearer.
-          const headers = config.headers || {}
-          headers.Authorization = `Bearer ${access}`
-          config.headers = headers
+          setRequestAuthorization(config, access)
         }
+      }
+      if (config._needToken) {
+        setRequestAuthorization(config, tokenService.getAccess())
       }
       const headers = config.headers || {}
       headers['Accept-Language'] = getCurrentLocale()
@@ -367,13 +379,7 @@ class ApiClient {
    * Добавление токена авторизации в конфигурацию
    */
   _addAuthToken(config) {
-    const token = tokenService.getAccess()
-    if (token) {
-      if (!config.headers) {
-        config.headers = {}
-      }
-      config.headers.Authorization = `Bearer ${token}`
-    }
+    setRequestAuthorization(config, tokenService.getAccess())
     return config
   }
 

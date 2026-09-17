@@ -5,6 +5,7 @@
 import { createRouter, createWebHistory, START_LOCATION } from 'vue-router'
 import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll, getPermissionRules, getRouteGuards, coreRoutesManager, moduleManager } from '@/modules/index.js'
+import { routesCoverPath } from '@/modules/routes/vueRoutePath.js'
 import { authRoutes as configAuthRoutes, coreRoutes as configCoreRoutes } from '@/config/routes.js'
 import {
   checkRouteAdpAccess,
@@ -507,6 +508,18 @@ export async function initRouter() {
     })
   }
 
+  const landingPath = typeof window !== 'undefined' ? window.location.pathname : ''
+  if (landingPath && !routesCoverPath(routes, landingPath)) {
+    await moduleManager.ensureInitialized()
+    const generator = moduleManager.routeGenerator
+    if (generator) {
+      const extras = generator.generateMissingRoutes(
+        new Set(routes.map((route) => route?.name).filter(Boolean)),
+      )
+      prependMissingRoutes(routes, extras.filter((route) => !isCatchAllRoute(route)))
+    }
+  }
+
   if (import.meta.env.DEV) {
     void validateAll()
   }
@@ -543,16 +556,25 @@ export async function initRouter() {
   setupRouterGuards(routerInstance)
   router = routerInstance
   void moduleManager.ensureInitialized().then(() => {
-    applyLateModuleRoutes(routerInstance)
+    void applyLateModuleRoutes(routerInstance)
   })
   return routerInstance
 }
 
 /**
  * Remotes догружаются после первого кадра bundled-страницы.
- * Новые маршруты добавляем сюда, иначе глубокая ссылка на remote даёт NotFound.
+ * Новые маршруты добавляем сюда и пересчитываем текущий URL:
+ * иначе глубокая ссылка на remote остаётся на NotFound, если addRoute
+ * пришёл во время первого перехода (current ещё START_LOCATION).
  */
-function applyLateModuleRoutes(routerInstance) {
+export async function syncLateModuleRoutes(routerInstance = router) {
+  if (!routerInstance) {
+    return
+  }
+  await applyLateModuleRoutes(routerInstance)
+}
+
+async function applyLateModuleRoutes(routerInstance) {
   cachedPermissionRules = null
   cachedRouteGuards = null
   const generator = moduleManager.routeGenerator
@@ -568,10 +590,45 @@ function applyLateModuleRoutes(routerInstance) {
       routerInstance.addRoute(route)
     }
   })
+
+  try {
+    await routerInstance.isReady()
+  } catch {
+    /* первый переход не завершился — всё равно пробуем resolve */
+  }
+
   const current = routerInstance.currentRoute.value
-  if (current?.name === 'NotFound') {
-    void routerInstance.replace(current.fullPath)
+  const targetPath = current?.fullPath
+    || (typeof window !== 'undefined'
+      ? `${window.location.pathname}${window.location.search}${window.location.hash}`
+      : '')
+  if (!targetPath) {
     return
   }
-  void revalidateCurrentRoute()
+
+  let resolved
+  try {
+    resolved = routerInstance.resolve(targetPath)
+  } catch {
+    resolved = null
+  }
+
+  const resolvedName = resolved?.name
+  if (!resolvedName || resolvedName === 'NotFound') {
+    if (current?.name && current.name !== 'NotFound') {
+      void revalidateCurrentRoute()
+    }
+    return
+  }
+
+  if (current?.name === resolvedName && current.fullPath === targetPath) {
+    void revalidateCurrentRoute()
+    return
+  }
+
+  try {
+    await routerInstance.replace(targetPath)
+  } catch {
+    /* дублирующий переход после addRoute */
+  }
 }

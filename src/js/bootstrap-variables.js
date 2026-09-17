@@ -21,7 +21,8 @@ export const THEME_SCSS_COLORS = {
     primaryBackground: '#ffffff',
     secondaryBackground: '#f1f1f1',
     hoverBackground: '#e1e1e1',
-    accent: '#d0322d'
+    accent: '#d0322d',
+    accentText: '#ffffff'
   },
   dark: {
     // Тёмная тема из _theme.scss
@@ -34,7 +35,8 @@ export const THEME_SCSS_COLORS = {
     primaryBackground: '#18181a',
     secondaryBackground: '#2a2a2c',
     hoverBackground: '#3d3d3f',
-    accent: '#f14336'
+    accent: '#f14336',
+    accentText: '#c9cccf'
   }
 }
 
