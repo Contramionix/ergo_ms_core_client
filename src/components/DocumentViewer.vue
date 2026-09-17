@@ -29,17 +29,19 @@
           </button>
         </HoverTooltip>
       </div>
-      <div v-if="kind === 'pdf' && !compact" class="document-viewer__layout">
-        <HoverTooltip :text="t('components.documentViewer.portrait')" wrap>
-          <button type="button" class="document-viewer__icon-btn" :class="{ 'document-viewer__icon-btn--active': orientation === 'portrait' }" :aria-label="t('components.documentViewer.portrait')" :aria-pressed="orientation === 'portrait'" @click="orientation = 'portrait'">
-            <RectangleVertical :size="18" aria-hidden="true" />
-          </button>
-        </HoverTooltip>
-        <HoverTooltip :text="t('components.documentViewer.landscape')" wrap>
-          <button type="button" class="document-viewer__icon-btn" :class="{ 'document-viewer__icon-btn--active': orientation === 'landscape' }" :aria-label="t('components.documentViewer.landscape')" :aria-pressed="orientation === 'landscape'" @click="orientation = 'landscape'">
-            <RectangleHorizontal :size="18" aria-hidden="true" />
-          </button>
-        </HoverTooltip>
+      <div v-if="(kind === 'pdf' || kind === 'docx') && !compact" class="document-viewer__layout">
+        <template v-if="kind === 'pdf'">
+          <HoverTooltip :text="t('components.documentViewer.portrait')" wrap>
+            <button type="button" class="document-viewer__icon-btn" :class="{ 'document-viewer__icon-btn--active': orientation === 'portrait' }" :aria-label="t('components.documentViewer.portrait')" :aria-pressed="orientation === 'portrait'" @click="orientation = 'portrait'">
+              <RectangleVertical :size="18" aria-hidden="true" />
+            </button>
+          </HoverTooltip>
+          <HoverTooltip :text="t('components.documentViewer.landscape')" wrap>
+            <button type="button" class="document-viewer__icon-btn" :class="{ 'document-viewer__icon-btn--active': orientation === 'landscape' }" :aria-label="t('components.documentViewer.landscape')" :aria-pressed="orientation === 'landscape'" @click="orientation = 'landscape'">
+              <RectangleHorizontal :size="18" aria-hidden="true" />
+            </button>
+          </HoverTooltip>
+        </template>
         <HoverTooltip :text="t('components.documentViewer.pagesOne')" wrap>
           <button type="button" class="document-viewer__icon-btn" :class="{ 'document-viewer__icon-btn--active': pagesPerView === 1 }" :aria-label="t('components.documentViewer.pagesOne')" :aria-pressed="pagesPerView === 1" @click="pagesPerView = 1">
             <Square :size="18" aria-hidden="true" />
@@ -50,8 +52,8 @@
             <Columns2 :size="18" aria-hidden="true" />
           </button>
         </HoverTooltip>
-        <HoverTooltip :text="t('components.documentViewer.pagesFour')" wrap>
-          <button type="button" class="document-viewer__icon-btn" :class="{ 'document-viewer__icon-btn--active': pagesPerView === 4 }" :aria-label="t('components.documentViewer.pagesFour')" :aria-pressed="pagesPerView === 4" @click="pagesPerView = 4">
+        <HoverTooltip :text="pagesOverflowLabel" wrap>
+          <button type="button" class="document-viewer__icon-btn" :class="{ 'document-viewer__icon-btn--active': isDocxFitWidth || (kind === 'pdf' && pagesPerView === 4) }" :aria-label="pagesOverflowLabel" :aria-pressed="isDocxFitWidth || (kind === 'pdf' && pagesPerView === 4)" @click="setPagesOverflow">
             <LayoutGrid :size="18" aria-hidden="true" />
           </button>
         </HoverTooltip>
@@ -99,7 +101,7 @@ import { logError } from '@/js/utils/logError.js'
 import { downloadMedia } from '@/js/utils/mediaDownload.js'
 import { DOCUMENT_PREVIEW_KIND, detectDocumentPreviewKind, fetchMediaBlob, } from '@/js/utils/mediaPreview.js'
 import { PAGE_GAP, canGoNext, fitPagesScale, lastVisiblePage, layoutColumns, pageRotation, visiblePageNumbers, waitForBox, } from '@/js/utils/documentViewerLayout.js'
-import { fitDocxToStage, renderDocxDocument } from '@/js/utils/documentViewerDocx.js'
+import { countDocxPages, DOCX_PAGES_FIT_WIDTH, fitDocxToStage, renderDocxDocument } from '@/js/utils/documentViewerDocx.js'
 import { bindViewerStage, handlePdfStageWheel, unbindViewerStage, } from '@/js/utils/documentViewerStage.js'
 
 const ZOOM_MIN = 0.5
@@ -156,6 +158,15 @@ const visiblePages = computed(() => (
   visiblePageNumbers(page.value, pagesPerView.value, pageCount.value)
 ))
 const pdfCols = computed(() => layoutColumns(pagesPerView.value))
+const isDocxFitWidth = computed(() => (
+  kind.value === DOCUMENT_PREVIEW_KIND.DOCX
+  && (pagesPerView.value === DOCX_PAGES_FIT_WIDTH || pagesPerView.value >= 4)
+))
+const pagesOverflowLabel = computed(() => (
+  kind.value === DOCUMENT_PREVIEW_KIND.DOCX
+    ? t('components.documentViewer.pagesFitWidth')
+    : t('components.documentViewer.pagesFour')
+))
 const canNextPage = computed(() => (
   canGoNext(page.value, pagesPerView.value, pageCount.value)
 ))
@@ -196,6 +207,10 @@ function changeZoom(delta) {
   zoom.value = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(stepped * 100) / 100))
 }
 
+function setPagesOverflow() {
+  pagesPerView.value = kind.value === DOCUMENT_PREVIEW_KIND.DOCX ? DOCX_PAGES_FIT_WIDTH : 4
+}
+
 function onStageWheel(event) {
   if (kind.value !== DOCUMENT_PREVIEW_KIND.PDF) {
     return
@@ -227,7 +242,15 @@ function unbindStage(el) {
 }
 
 function applyDocxFit() {
-  const result = fitDocxToStage(docxHost.value, stageRef.value, docxNative, STAGE_PAD)
+  const result = fitDocxToStage(
+    docxHost.value,
+    stageRef.value,
+    docxNative,
+    STAGE_PAD,
+    pagesPerView.value,
+    pageCount.value,
+    props.compact,
+  )
   docxNative = result.native
   docxFitStyle.value = result.style
 }
@@ -343,6 +366,7 @@ async function renderDocx(buffer) {
   }
   await renderDocxDocument(buffer, docxHost.value)
   docxNative = null
+  pageCount.value = countDocxPages(docxHost.value) || 1
   const stage = await waitForBox(() => stageRef.value)
   if (!stage) {
     return
@@ -399,8 +423,13 @@ async function loadDocument() {
 
 watch(() => [props.src, props.filename], loadDocument, { immediate: true })
 watch([page, zoom, orientation, pagesPerView], () => {
-  if (!loading.value && kind.value === DOCUMENT_PREVIEW_KIND.PDF && pdfDoc) {
+  if (loading.value) {
+    return
+  }
+  if (kind.value === DOCUMENT_PREVIEW_KIND.PDF && pdfDoc) {
     renderCurrentPdfPage()
+  } else if (kind.value === DOCUMENT_PREVIEW_KIND.DOCX) {
+    applyDocxFit()
   }
 })
 
@@ -557,21 +586,32 @@ onUnmounted(() => {
   color: #111;
 
   :deep(.docx-wrapper) {
+    display: grid;
+    justify-content: center;
+    justify-items: stretch;
+    align-items: stretch;
+    align-content: start;
+    // Библиотека вешает на лист margin-bottom: 30px — без перехвата ряды шире колонок.
+    row-gap: 1.5rem;
+    column-gap: 1.5rem;
     background: transparent;
     padding: 0;
-    width: var(--docx-page-width, auto);
+    width: var(--docx-wrapper-width, var(--docx-page-width, auto));
     margin-inline: auto;
     transform: scale(var(--docx-fit-scale, 1));
     transform-origin: top center;
     margin-bottom: calc(var(--docx-wrapper-height, 0px) * (var(--docx-fit-scale, 1) - 1));
+    grid-template-columns: repeat(var(--docx-cols, 1), var(--docx-page-width, max-content));
   }
 
-  :deep(.docx) {
+  :deep(.docx-wrapper > section.docx) {
     background: #fff;
     color: #111;
     box-shadow: var(--ui-shadow-sm, none);
-    margin: 0 auto 1.5rem;
-    overflow: hidden;
+    margin: 0;
+    // Высота как у самого высокого листа, без обрезки полей overflow: hidden.
+    min-height: var(--docx-page-height, auto);
+    overflow: visible;
   }
 }
 </style>

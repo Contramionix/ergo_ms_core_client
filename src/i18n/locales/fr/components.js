@@ -82,6 +82,7 @@ export default {
     pagesOne: 'Une page',
     pagesTwo: 'Deux pages',
     pagesFour: 'Quatre pages',
+    pagesFitWidth: 'Ajuster à la largeur de la fenêtre',
   },
   sideDrawer: {
     close: 'Fermer',

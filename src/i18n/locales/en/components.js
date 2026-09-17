@@ -82,6 +82,7 @@ export default {
     pagesOne: 'Single page',
     pagesTwo: 'Two pages',
     pagesFour: 'Four pages',
+    pagesFitWidth: 'Fit to window width',
   },
   sideDrawer: {
     close: 'Close',

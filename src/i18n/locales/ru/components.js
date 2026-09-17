@@ -82,6 +82,7 @@ export default {
     pagesOne: 'Одна страница',
     pagesTwo: 'Две страницы',
     pagesFour: 'Четыре страницы',
+    pagesFitWidth: 'По ширине окна',
   },
   sideDrawer: {
     close: 'Закрыть',
