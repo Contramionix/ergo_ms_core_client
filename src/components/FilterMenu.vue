@@ -132,6 +132,7 @@ const {
   onRowLeave,
   onFlyoutEnter,
   onFlyoutLeave,
+  updateFlyoutPosition,
 } = useFilterMenuFlyout()
 
 const flyoutSearchQuery = ref('')
@@ -186,6 +187,16 @@ watch(activeFlyoutKey, (key) => {
   nextTick(() => {
     if (activeField.value?.searchable) {
       flyoutSearchEl.value?.focus()
+    }
+  })
+})
+
+watch(filteredFlyoutOptions, () => {
+  if (!activeFlyoutKey.value) return
+  nextTick(() => {
+    const activeRow = mainPanelEl.value?.querySelector('.filter-menu__row--active')
+    if (activeRow) {
+      updateFlyoutPosition(activeRow)
     }
   })
 })
@@ -625,6 +636,8 @@ onBeforeUnmount(() => {
   text-decoration: none;
   border: 0;
   cursor: pointer;
+  white-space: normal;
+  overflow-wrap: break-word;
 
   &:hover {
     background-color: var(--color-hover-background);
@@ -643,8 +656,7 @@ onBeforeUnmount(() => {
   }
 }
 
-.filter-menu__row-value-text,
-.filter-menu__option-label {
+.filter-menu__row-value-text {
   display: block;
   min-width: 0;
   overflow: hidden;
@@ -653,7 +665,11 @@ onBeforeUnmount(() => {
 }
 
 .filter-menu__option-label {
+  display: block;
   flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .filter-menu__option-checkbox {

@@ -6,6 +6,9 @@ import {
 } from '@/js/utils/overlayZIndex.js'
 
 const VIEWPORT_PADDING = 8
+const FLYOUT_MAX_WIDTH = 640
+const FLYOUT_ITEM_GAP = 8
+const FLYOUT_SCROLLBAR_SLACK = 16
 const DATE_PICKER_OVERLAY_SELECTOR = [
   '.dp__menu',
   '.dp--menu',
@@ -13,6 +16,48 @@ const DATE_PICKER_OVERLAY_SELECTOR = [
   '.dp--overlay',
   '.dp__outer_menu_wrap',
 ].join(', ')
+
+let measureCanvas = null
+
+function measureUnwrappedText(el, text) {
+  if (!(el instanceof Element) || !text) return 0
+  const style = getComputedStyle(el)
+  if (!measureCanvas) {
+    measureCanvas = document.createElement('canvas')
+  }
+  const ctx = measureCanvas.getContext('2d')
+  if (!ctx) return 0
+  ctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+  return ctx.measureText(text).width
+}
+
+function measureFlyoutItemWidth(item) {
+  if (!(item instanceof HTMLElement)) return 0
+  const styles = getComputedStyle(item)
+  const pad = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0)
+  const label = item.querySelector('.filter-menu__option-label')
+  const textSource = label instanceof HTMLElement ? label : item
+  const text = (textSource.textContent || '').replace(/\s+/g, ' ').trim()
+  const textWidth = measureUnwrappedText(textSource, text)
+  let extras = 0
+  let extraCount = 0
+  for (const child of item.children) {
+    if (child === label) continue
+    extras += child.getBoundingClientRect().width
+    extraCount += 1
+  }
+  const gap = extraCount > 0 ? extraCount * FLYOUT_ITEM_GAP : 0
+  return textWidth + pad + extras + gap
+}
+
+function measureFlyoutContentWidth(flyout, minWidth) {
+  if (!(flyout instanceof HTMLElement)) return minWidth
+  let widest = minWidth
+  for (const item of flyout.querySelectorAll('.dropdown-item')) {
+    widest = Math.max(widest, measureFlyoutItemWidth(item))
+  }
+  return Math.ceil(widest + FLYOUT_SCROLLBAR_SLACK)
+}
 
 /**
  * Позиционирование главной панели и бокового flyout для FilterMenu.
@@ -130,14 +175,17 @@ export function useFilterMenuFlyout(options = {}) {
     const itemPaddingX = rootStyle?.getPropertyValue('--select-box-item-padding-x').trim() || '0.75rem'
 
     const rowRect = rowEl.getBoundingClientRect()
-    const maxWidth = Math.max(0, window.innerWidth - VIEWPORT_PADDING * 2)
-    const width = Math.min(Math.max(flyoutMinWidth, 200), maxWidth)
+    const maxWidth = Math.max(0, Math.min(FLYOUT_MAX_WIDTH, window.innerWidth - VIEWPORT_PADDING * 2))
+    const contentWidth = measureFlyoutContentWidth(flyoutPanelEl.value, flyoutMinWidth)
+    const width = Math.min(Math.max(flyoutMinWidth, contentWidth), maxWidth)
 
     let left = rowRect.right + flyoutGap
     const fitsRight = left + width <= window.innerWidth - VIEWPORT_PADDING
     if (!fitsRight) {
       left = Math.max(VIEWPORT_PADDING, rowRect.left - flyoutGap - width)
     }
+    left = Math.min(left, window.innerWidth - VIEWPORT_PADDING - width)
+    left = Math.max(VIEWPORT_PADDING, left)
 
     let top = rowRect.top
     const panelHeight = flyoutPanelEl.value?.getBoundingClientRect().height || 0
