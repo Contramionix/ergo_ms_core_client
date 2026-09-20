@@ -5,7 +5,7 @@ import { tGlobal } from '@/i18n/index.js'
 import { logError } from '@/js/utils/logError.js'
 
 const props = defineProps({
-  message: { type: String, required: true },
+  message: { type: String, default: '' },
   type: {
     type: String,
     default: 'info',
@@ -134,7 +134,7 @@ async function runSecondaryAction() {
       <IconComponent :size="20" :color="iconColorVar" class="ergo-toast-body__icon" />
     </span>
     <div class="ergo-toast-body__content">
-      <span class="ergo-toast-body__message">{{ message }}</span>
+      <span v-if="message" class="ergo-toast-body__message">{{ message }}</span>
       <div v-if="hasAnyAction" class="ergo-toast-body__actions">
         <button
           v-if="hasAction"
@@ -166,7 +166,7 @@ async function runSecondaryAction() {
       type="button"
       class="ergo-toast-body__close"
       :aria-label="closeLabel"
-      @click="close"
+      @click.stop="close"
     >
       <X :size="16" />
     </button>
@@ -267,6 +267,8 @@ async function runSecondaryAction() {
 }
 
 .ergo-toast-body__actions {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -306,6 +308,8 @@ async function runSecondaryAction() {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
   padding: 4px;
   border: none;
   background: transparent;

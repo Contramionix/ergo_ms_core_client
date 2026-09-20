@@ -277,6 +277,59 @@ export function showToast(message, type = 'info', duration) {
   return toast(message, mergeOptions(normalizedType, { timeout }))
 }
 
+/**
+ * Toast с произвольным Vue-телом. Модули не импортируют vue-sonner.
+ * @param {import('vue').Component} component
+ * @param {object} [props]
+ * @param {{ id?: string, timeout?: number|false, type?: string, className?: string, onClose?: Function }} [options]
+ */
+export function showCustomToast(component, props = {}, options = {}) {
+  if (!isToastEnabled() || !component) {
+    return undefined
+  }
+  const snapshot = getToastSettingsSnapshot()
+  const timeouts = getToastTimeouts()
+  const variant = options.type ? mapToastType(options.type) : null
+  const duration = toastDuration(
+    options.timeout ?? timeouts.info ?? timeouts.default ?? TOAST_TIMEOUT.default,
+  )
+  const onClose = typeof options.onClose === 'function' ? options.onClose : null
+  let closed = false
+  const notifyClose = () => {
+    if (closed || !onClose) {
+      return
+    }
+    closed = true
+    onClose()
+  }
+  const hideProgressBar = snapshot.hideProgressBar === true
+  const pauseOnHover = snapshot.pauseOnHover !== false
+  return sonnerToast.custom(
+    (id) => h(component, {
+      ...props,
+      duration: duration === Infinity ? 0 : duration,
+      hideProgressBar,
+      onCloseToast: () => {
+        sonnerToast.dismiss(id)
+        notifyClose()
+      },
+    }),
+    {
+      ...(options.id != null && options.id !== '' ? { id: options.id } : {}),
+      duration,
+      unstyled: true,
+      class: [
+        'ergo-toast',
+        variant ? `ergo-toast--${variant}` : null,
+        options.className || null,
+        pauseOnHover ? 'ergo-toast--pause-on-hover' : null,
+      ].filter(Boolean).join(' '),
+      onAutoClose: notifyClose,
+      onDismiss: notifyClose,
+    },
+  )
+}
+
 export async function handleApiError(error, defaultMessage) {
   const status = error?.response?.status
   if (status === 429) {
