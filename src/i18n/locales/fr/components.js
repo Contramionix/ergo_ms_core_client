@@ -3,6 +3,10 @@ export default {
     all: 'Tous',
     ariaLabel: 'Filtrer par la première lettre du nom de famille',
   },
+  tabBar: {
+    ariaLabel: 'Onglets',
+    more: 'Plus',
+  },
   searchInput: {
     placeholder: 'Rechercher...',
     clear: 'Effacer la recherche',

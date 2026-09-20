@@ -3,6 +3,10 @@ export default {
     all: 'Все',
     ariaLabel: 'Фильтр по первой букве фамилии',
   },
+  tabBar: {
+    ariaLabel: 'Вкладки',
+    more: 'Ещё',
+  },
   searchInput: {
     placeholder: 'Поиск...',
     clear: 'Очистить поиск',

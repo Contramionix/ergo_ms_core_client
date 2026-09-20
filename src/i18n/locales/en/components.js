@@ -3,6 +3,10 @@ export default {
     all: 'All',
     ariaLabel: 'Filter by surname first letter',
   },
+  tabBar: {
+    ariaLabel: 'Tabs',
+    more: 'More',
+  },
   searchInput: {
     placeholder: 'Search...',
     clear: 'Clear search',
