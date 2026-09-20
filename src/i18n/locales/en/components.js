@@ -122,7 +122,7 @@ export default {
     subtitle: 'The requested address is unavailable or has been moved',
     cardTitle: 'What happened?',
     cardText:
-      'The page at {path} does not exist. The link may be outdated, the address may be mistyped, or you may not have access to this section.',
+      'The page at {path} does not exist. The link may be outdated or the address may be mistyped.',
     cardHint: 'Check the address or return to the system home page.',
     goHome: 'Go to home',
     infoAria: 'Error information',

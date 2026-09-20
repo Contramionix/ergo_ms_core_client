@@ -122,7 +122,7 @@ export default {
     subtitle: 'L’adresse demandée est indisponible ou a été déplacée',
     cardTitle: 'Que s’est-il passé ?',
     cardText:
-      'La page à l’adresse {path} n’existe pas. Le lien peut être obsolète, l’adresse mal saisie, ou vous n’avez peut-être pas accès à cette section.',
+      'La page à l’adresse {path} n’existe pas. Le lien peut être obsolète ou l’adresse mal saisie.',
     cardHint: 'Vérifiez l’adresse ou revenez à la page d’accueil du système.',
     goHome: 'Aller à l’accueil',
     infoAria: 'Informations sur l’erreur',
