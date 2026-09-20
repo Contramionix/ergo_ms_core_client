@@ -183,9 +183,10 @@ class MediaApiClient {
    * @param {string} uploadUrl             - URL загрузки (от getUploadToken)
    * @param {string} token                 - upload-токен  (от getUploadToken)
    * @param {Function} [onProgress]        - колбэк прогресса (0..1)
+   * @param {AbortSignal} [signal]
    * @returns {Promise<{uuid, path, original_name, size, content_type}>}
    */
-  async uploadFile(file, uploadUrl, token, onProgress) {
+  async uploadFile(file, uploadUrl, token, onProgress, signal) {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('token', token)
@@ -194,6 +195,7 @@ class MediaApiClient {
       const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
+        signal,
       })
 
       if (!response.ok) {
@@ -205,8 +207,18 @@ class MediaApiClient {
     }
 
     return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }))
+        return
+      }
+
       const xhr = new XMLHttpRequest()
       xhr.open('POST', uploadUrl)
+
+      const onAbort = () => {
+        xhr.abort()
+      }
+      signal?.addEventListener('abort', onAbort, { once: true })
 
       xhr.upload.onprogress = (event) => {
         if (!event.lengthComputable) return
@@ -216,6 +228,7 @@ class MediaApiClient {
       }
 
       xhr.onload = () => {
+        signal?.removeEventListener('abort', onAbort)
         let data = null
         try {
           data = xhr.responseText ? JSON.parse(xhr.responseText) : null
@@ -237,7 +250,13 @@ class MediaApiClient {
       }
 
       xhr.onerror = () => {
+        signal?.removeEventListener('abort', onAbort)
         reject(new Error('Сетевая ошибка при загрузке файла'))
+      }
+
+      xhr.onabort = () => {
+        signal?.removeEventListener('abort', onAbort)
+        reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }))
       }
 
       xhr.send(formData)
@@ -252,7 +271,7 @@ class MediaApiClient {
    * @returns {Promise<{uuid, path, original_name, size, content_type}>}
    */
   async upload(file, options = {}, onProgress) {
-    const { reuseUploadToken, ...tokenOptions } = options
+    const { reuseUploadToken, signal, ...tokenOptions } = options
     const session = reuseUploadToken
       ? await this._getReusableUploadToken(tokenOptions)
       : await this.getUploadToken(tokenOptions)
@@ -261,6 +280,7 @@ class MediaApiClient {
       browserUploadUrl(session.upload_url, tokenOptions.targetDir),
       session.token,
       onProgress,
+      signal,
     )
   }
 
