@@ -54,6 +54,10 @@ import { resolveSidebarBrand } from '@/integrations/sidebarBrand.js'
 const { t } = useAppI18n()
 const userStore = useUserStore()
 const route = useRoute()
+// AccessDenied поверх RouteView (v-show), без v-else:
+// иначе краткий accessDeniedState.active размонтирует страницу,
+// onMounted снова дергает checkAccess → ложный /access-denied.
+// notFoundIfDenied — v-if: служебный экран не монтируется и не ходит в API.
 const showNotFoundDenied = computed(
   () => accessDeniedState.active && accessDeniedState.variant === 'notFound',
 )
@@ -229,13 +233,6 @@ onBeforeUnmount(() => {
     <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage, 'layout-page--menu-sync-transition': isMenuLayoutTransitioning }">
       <LayoutBackdrop v-if="!isFullPage && showShellBackdrop" data-ergo-decorative-image />
       <main id="main-content" class="layout-page__content" tabindex="-1">
-        <!--
-          AccessDenied поверх RouteView (v-show), без v-else:
-          иначе краткий accessDeniedState.active размонтирует страницу,
-          onMounted снова дергает checkAccess → ложный /access-denied.
-          Эмуляция 404 (notFoundIfDenied) — v-if: служебный экран
-          не монтируется и не ходит в API.
-        -->
         <template v-if="route.meta?.fullPage">
           <NotFound v-if="showNotFoundDenied" />
           <template v-else>
