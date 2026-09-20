@@ -3,7 +3,7 @@
  * Хост плавающих виджетов модулей (shell.floating_widgets).
  * Не путать с LayoutPlugin / offcanvas.
  */
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, shallowRef } from 'vue'
 import { collectFloatingWidgets } from '@/integrations/floatingWidgets.js'
 import { logError } from '@/js/utils/logError.js'
 
@@ -14,7 +14,7 @@ defineProps({
   },
 })
 
-const widgets = ref([])
+const widgets = shallowRef([])
 let reloadTimer = null
 
 async function reloadWidgets() {

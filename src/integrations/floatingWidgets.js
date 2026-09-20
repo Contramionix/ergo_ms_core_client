@@ -5,6 +5,8 @@
  * Ядро монтирует их в LayoutMenu через FloatingWidgetsHost — без LayoutPlugin.
  */
 
+import { markRaw } from 'vue'
+
 import bridge from '@/integrations/ModuleBridge.js'
 import { FLOATING_WIDGETS_GROUP } from '@/integrations/moduleContracts.js'
 import { moduleManager } from '@/modules/index.js'
@@ -39,7 +41,10 @@ export async function collectFloatingWidgets() {
         continue
       }
     }
-    visible.push(widget)
+    visible.push({
+      ...widget,
+      component: markRaw(widget.component),
+    })
   }
   return visible
 }
