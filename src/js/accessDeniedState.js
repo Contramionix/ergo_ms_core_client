@@ -10,4 +10,5 @@ export const accessDeniedState = reactive({
   active: false,
   title: null,
   message: null,
+  variant: null,
 })

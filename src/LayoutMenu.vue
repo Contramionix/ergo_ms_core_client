@@ -38,6 +38,7 @@ import { COLLAPSED_MENU_WIDTH } from '@/components/menu/composables/menuLayoutPa
 import { readMenuCollapsedPreference } from '@/components/menu/composables/useMenuCollapsedPreference.js'
 import LayoutBackdrop from '@/components/LayoutBackdrop.vue'
 import AccessDenied from '@/components/AccessDenied.vue'
+import NotFound from '@/components/NotFound.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import SkipLink from '@/components/SkipLink.vue'
 import FloatingWidgetsHost from '@/components/FloatingWidgetsHost.vue'
@@ -53,6 +54,12 @@ import { resolveSidebarBrand } from '@/integrations/sidebarBrand.js'
 const { t } = useAppI18n()
 const userStore = useUserStore()
 const route = useRoute()
+const showNotFoundDenied = computed(
+  () => accessDeniedState.active && accessDeniedState.variant === 'notFound',
+)
+const showAccessDenied = computed(
+  () => accessDeniedState.active && accessDeniedState.variant !== 'notFound',
+)
 const { bootstrapping: sessionBootstrapping, whenSessionReady } = useAppBootstrap()
 const { isShellDesktop, width: viewportWidth } = useBreakpoint()
 
@@ -209,37 +216,16 @@ onBeforeUnmount(() => {
         <LucideIcon name="Menu" :size="24" aria-hidden="true" />
       </button>
       <RouterLink :to="sidebarBrandTo" class="mobile-header__brand text-decoration-none">
-        <component
-          v-if="activeSidebarBrand"
-          :is="activeSidebarBrand.component"
-          :compact="false"
-          class="mobile-header__module-brand"
-        />
-        <SiteWordmark
-          v-else
-          class="site-wordmark--mobile site-wordmark--centered"
-        />
+        <component v-if="activeSidebarBrand" :is="activeSidebarBrand.component" :compact="false" class="mobile-header__module-brand"/>
+        <SiteWordmark v-else class="site-wordmark--mobile site-wordmark--centered"/>
       </RouterLink>
     </header>
   </Teleport>
   <div class="layout-container" :class="{ 'layout-container--full-page': isFullPage }">
-    <aside
-      v-if="!isFullPage && showMenuSkeleton"
-      class="menu-skeleton side-menu"
-      aria-hidden="true"
-    >
+    <aside v-if="!isFullPage && showMenuSkeleton" class="menu-skeleton side-menu" aria-hidden="true">
       <SpinnerLoading color="primary" />
     </aside>
-    <MenuList
-      v-if="!isFullPage"
-      v-show="!showMenuSkeleton"
-      id="side-menu"
-      @left-padding="leftToggle"
-      @menu-right-edge="handleMenuRightEdge"
-      @layout-sync-transition="handleMenuLayoutSyncTransition"
-      :is-visible="isMenuVisible"
-      @menu-state-change="handleMenuStateChange"
-    />
+    <MenuList v-if="!isFullPage" v-show="!showMenuSkeleton" id="side-menu" @left-padding="leftToggle" @menu-right-edge="handleMenuRightEdge" @layout-sync-transition="handleMenuLayoutSyncTransition" :is-visible="isMenuVisible" @menu-state-change="handleMenuStateChange"/>
     <div class="layout-page" :class="{ 'layout-page--full-page': isFullPage, 'layout-page--menu-sync-transition': isMenuLayoutTransitioning }">
       <LayoutBackdrop v-if="!isFullPage && showShellBackdrop" data-ergo-decorative-image />
       <main id="main-content" class="layout-page__content" tabindex="-1">
@@ -247,45 +233,29 @@ onBeforeUnmount(() => {
           AccessDenied поверх RouteView (v-show), без v-else:
           иначе краткий accessDeniedState.active размонтирует страницу,
           onMounted снова дергает checkAccess → ложный /access-denied.
+          Эмуляция 404 (notFoundIfDenied) — v-if: служебный экран
+          не монтируется и не ходит в API.
         -->
         <template v-if="route.meta?.fullPage">
-          <AccessDenied
-            v-show="accessDeniedState.active"
-            bordered
-            :title="accessDeniedState.title"
-            :message="accessDeniedState.message"
-          />
-          <RouteViewAnimated v-show="!accessDeniedState.active" />
+          <NotFound v-if="showNotFoundDenied" />
+          <template v-else>
+            <AccessDenied v-show="showAccessDenied" bordered :title="accessDeniedState.title" :message="accessDeniedState.message"/>
+            <RouteViewAnimated v-show="!accessDeniedState.active" />
+          </template>
         </template>
-        <div
-          v-else
-          :class="
-            route.meta?.flushContent && !accessDeniedState.active
-              ? 'layout-content--flush'
-              : 'layout-content-shell py-4'
-          "
-        >
-          <AccessDenied
-            v-show="accessDeniedState.active"
-            bordered
-            :title="accessDeniedState.title"
-            :message="accessDeniedState.message"
-          />
-          <RouteViewAnimated v-show="!accessDeniedState.active" />
+        <div v-else :class=" route.meta?.flushContent && !accessDeniedState.active ? 'layout-content--flush' : 'layout-content-shell py-4' ">
+          <NotFound v-if="showNotFoundDenied" />
+          <template v-else>
+            <AccessDenied v-show="showAccessDenied" bordered :title="accessDeniedState.title" :message="accessDeniedState.message"/>
+            <RouteViewAnimated v-show="!accessDeniedState.active" />
+          </template>
         </div>
       </main>
     </div>
   </div>
 
   <div @click="closeMenu" class="layout-overlay" :class="{ active: isOverlayVisible }" />
-  <component
-    v-for="(plugin, index) in layoutPluginsRef"
-    :key="index"
-    :is="plugin"
-    :isMenuCollapsed="isMenuCollapsed"
-    :menuWidth="menuWidth"
-    :menuRightEdge="menuRightEdge"
-  />
+  <component v-for="(plugin, index) in layoutPluginsRef" :key="index" :is="plugin" :isMenuCollapsed="isMenuCollapsed" :menuWidth="menuWidth" :menuRightEdge="menuRightEdge"/>
   <FloatingWidgetsHost :menu-right-edge="menuRightEdge" />
   <DevToolsWidget />
 </template>

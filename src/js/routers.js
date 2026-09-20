@@ -7,36 +7,22 @@ import { checkToken } from '@/core/cms/adp/js/auth-index'
 import { generateAllRoutes, validateAll, getPermissionRules, getRouteGuards, coreRoutesManager, moduleManager } from '@/modules/index.js'
 import { routesCoverPath } from '@/modules/routes/vueRoutePath.js'
 import { authRoutes as configAuthRoutes, coreRoutes as configCoreRoutes } from '@/config/routes.js'
-import {
-  checkRouteAdpAccess,
-  hasAnyModulePermission,
-  checkGlobalAdminAccess,
-  getPermissionsSnapshot,
-} from '@/core/cms/adp/js/accessControl'
+import { checkRouteAdpAccess, hasAnyModulePermission, checkGlobalAdminAccess, getPermissionsSnapshot, } from '@/core/cms/adp/js/accessControl'
 import tokenService from '@/core/cms/js/tokenService'
 import { useUserStore } from '@/core/cms/js/userStore.js'
 import { hasSessionHintCookie, isExpired } from '@/core/cms/js/tokenStorage.js'
-import {
-  isServerLogoutFinalized,
-  performServerLogout,
-} from '@/core/cms/js/tokenRefresh.js'
+import { isServerLogoutFinalized, performServerLogout, } from '@/core/cms/js/tokenRefresh.js'
 import { showRateLimitNotice } from '@/composables/useRateLimitNotice.js'
 import { isAnonymousRoute, routeNeedsAuth, shouldKeepUnverifiedSession } from '@/js/authRoutePolicy.js'
-import {
-  consumePostLoginReturnPath,
-  savePostLoginReturnPath,
-} from '@/core/cms/js/postLoginReturn.js'
+import { consumePostLoginReturnPath, savePostLoginReturnPath, } from '@/core/cms/js/postLoginReturn.js'
 import { accessDeniedState } from './accessDeniedState'
+import { denyRouteAccess, isConcealedNotFoundRedirect } from './routeConcealment.js'
 import { finishRouteProgress, startRouteProgress } from '@/js/routeProgressState.js'
 import { runSessionScopeGuard } from '@/js/session/sessionScopeGuard.js'
 import { whenSessionReady } from '@/js/bootstrapSession.js'
 import { teGlobal, tGlobal } from '@/i18n/index.js'
 import { logError } from '@/js/utils/logError.js'
-import {
-  applyLayoutPageScroll,
-  rememberLayoutPageScroll,
-  restoreLayoutPageScroll,
-} from '@/js/utils/layoutPageScroll.js'
+import { applyLayoutPageScroll, rememberLayoutPageScroll, restoreLayoutPageScroll, } from '@/js/utils/layoutPageScroll.js'
 import { isStaleClientError, recoverFromStaleClient } from '@/js/staleClientGuard.js'
 import { traceClientBoot } from '@/js/clientBootTrace.js'
 
@@ -147,10 +133,10 @@ async function checkRouteAccess(to) {
   if (to.meta?.requiresGlobalAdmin) {
     const canAccessAdminPanel = await checkGlobalAdminAccess()
     if (!canAccessAdminPanel) {
-      accessDeniedState.active = true
-      accessDeniedState.title = tGlobal('admin.access.deniedTitle')
-      accessDeniedState.message = tGlobal('admin.access.adminRequired')
-      return { allowed: false, redirect: 'AccessDenied' }
+      return denyRouteAccess(to, {
+        title: tGlobal('admin.access.deniedTitle'),
+        message: tGlobal('admin.access.adminRequired'),
+      })
     }
   }
 
@@ -167,10 +153,10 @@ async function checkRouteAccess(to) {
         const hasAccess = await hasAnyModulePermission(rule.module, rule.permissions)
 
         if (!hasAccess) {
-          accessDeniedState.active = true
-          accessDeniedState.title = resolvePermissionRuleText(rule.titleKey, rule.title)
-          accessDeniedState.message = resolvePermissionRuleText(rule.messageKey, rule.message)
-          return { allowed: false, redirect: 'AccessDenied' }
+          return denyRouteAccess(to, {
+            title: resolvePermissionRuleText(rule.titleKey, rule.title),
+            message: resolvePermissionRuleText(rule.messageKey, rule.message),
+          })
         }
 
         if (
@@ -182,16 +168,16 @@ async function checkRouteAccess(to) {
             rule.denyIfHasAnyPermission,
           )
           if (isDenied) {
-            accessDeniedState.active = true
-            accessDeniedState.title = resolvePermissionRuleText(
-              rule.denyTitleKey || rule.titleKey,
-              rule.denyTitle || rule.title,
-            )
-            accessDeniedState.message = resolvePermissionRuleText(
-              rule.denyMessageKey || rule.messageKey,
-              rule.denyMessage || rule.message,
-            )
-            return { allowed: false, redirect: 'AccessDenied' }
+            return denyRouteAccess(to, {
+              title: resolvePermissionRuleText(
+                rule.denyTitleKey || rule.titleKey,
+                rule.denyTitle || rule.title,
+              ),
+              message: resolvePermissionRuleText(
+                rule.denyMessageKey || rule.messageKey,
+                rule.denyMessage || rule.message,
+              ),
+            })
           }
         }
       }
@@ -202,14 +188,15 @@ async function checkRouteAccess(to) {
     try {
       const adpAllowed = await checkRouteAdpAccess(to.path)
       if (!adpAllowed) {
-        return { allowed: false, redirect: 'AccessDenied' }
+        return denyRouteAccess(to, { overlay: false })
       }
     } catch {
-      return { allowed: false, redirect: 'AccessDenied' }
+      return denyRouteAccess(to, { overlay: false })
     }
   }
 
   accessDeniedState.active = false
+  accessDeniedState.variant = null
   return { allowed: true }
 }
 
@@ -223,6 +210,9 @@ export async function revalidateCurrentRoute() {
   }
   const access = await checkRouteAccess(to)
   if (!access.allowed) {
+    if (isConcealedNotFoundRedirect(access)) {
+      return
+    }
     await router.replace({ name: access.redirect || 'AccessDenied' })
     return
   }
@@ -301,6 +291,7 @@ function setupRouterGuards(router) {
         const toName = params && typeof params === 'object' ? params.name : null
         if (toName !== 'AccessDenied') {
           accessDeniedState.active = false
+          accessDeniedState.variant = null
         }
       }
 
@@ -383,6 +374,9 @@ function setupRouterGuards(router) {
 
       const accessResult = await checkRouteAccess(to)
       if (!accessResult.allowed) {
+        if (isConcealedNotFoundRedirect(accessResult)) {
+          return true
+        }
         if (accessResult.redirect === 'AccessDenied') {
           // Прямой заход / reload — нужна страница AccessDenied.
           // Иначе оставляем текущий URL и показываем overlay (без ложного
@@ -401,6 +395,7 @@ function setupRouterGuards(router) {
       // client-build превращается в шторм POST /logout/ на /start-page.
       logError('[routers] beforeEach failed', error)
       accessDeniedState.active = false
+      accessDeniedState.variant = null
       if (isStaleClientError(error)) {
         recoverFromStaleClient('router.beforeEach')
         return false
