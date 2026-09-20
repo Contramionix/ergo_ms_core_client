@@ -142,8 +142,23 @@ function onLeave() {
   hideNow()
 }
 
-function onFocus() {
+function isFocusVisible(el) {
+  if (!(el instanceof Element)) {
+    return false
+  }
+  try {
+    return el.matches(':focus-visible')
+  } catch {
+    return true
+  }
+}
+
+function onFocus(event) {
   if (isShowBlocked()) {
+    return
+  }
+  // Программный focus (ловушка модалки) не должен открывать подсказку.
+  if (!isFocusVisible(event?.target)) {
     return
   }
   showNow()
