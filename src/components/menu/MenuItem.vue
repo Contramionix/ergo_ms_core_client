@@ -27,6 +27,7 @@ import { isMenuItemActive } from './composables/isMenuItemActive.js'
 import { canNavigateToRoute, isSameMenuRoutePath, safeNavigateByName } from './composables/safeMenuNavigate.js'
 import { buildMenuItemGroupId } from './composables/useMenuNavigation.js'
 import MenuPeekLabel from '@/components/menu/MenuPeekLabel.vue'
+import MenuItemTrailingHost from '@/components/menu/MenuItemTrailingHost.vue'
 import { prefetchRouteByName } from '@/js/utils/prefetchRoute.js'
 
 const props = defineProps({
@@ -163,50 +164,24 @@ const itemIconName = computed(() =>
 
 <template>
   <li class="menu-item" :class="{ 'menu-item--group': isGroup }">
-    <div
-      class="menu-item__content nav-btn"
-      :class="{ 'menu-item--active': isActive || isGroupActive }"
-      :data-menu-level="level"
-      @pointerenter="prefetchItemRoute"
-      @focusin="prefetchItemRoute"
-      @click="handleClick"
-    >
+    <div class="menu-item__content nav-btn" :class="{ 'menu-item--active': isActive || isGroupActive }" :data-menu-level="level" @pointerenter="prefetchItemRoute" @focusin="prefetchItemRoute" @click="handleClick">
       <div class="menu-item__label">
         <div class="menu-item__icon icon-flex">
-          <LucideIcon
-            v-if="itemIconName"
-            :name="itemIconName"
-            :size="iconSizes.item"
-          />
+          <LucideIcon v-if="itemIconName" :name="itemIconName" :size="iconSizes.item"/>
           <Dot v-else :size="iconSizes.item" />
         </div>
-        <MenuPeekLabel
-          :text="displayTitle"
-          :visible="isHovering"
-          :title="displayTitle"
-          class="menu-item__name"
-        />
+        <MenuPeekLabel :text="displayTitle" :visible="isHovering" :title="displayTitle" class="menu-item__name"/>
       </div>
-      <div
-        v-if="isGroup"
-        class="menu-item__chevron icon-flex text-smooth-animation"
-        :class="{ hidden: !isHovering }"
-      >
-        <ChevronRight :size="iconSizes.chevronNested" :class="{ rotated: isOpen }" />
+      <div class="menu-item__trailing">
+        <MenuItemTrailingHost :item="item" />
+        <div v-if="isGroup" class="menu-item__chevron icon-flex text-smooth-animation" :class="{ hidden: !isHovering }">
+          <ChevronRight :size="iconSizes.chevronNested" :class="{ rotated: isOpen }" />
+        </div>
       </div>
     </div>
     <div v-if="isGroup" class="menu-item__children-wrap" :class="{ 'is-open': isOpen }">
       <ul class="menu-item__children">
-        <MenuItem
-          v-for="(child, index) in allChildren"
-          :key="index"
-          :item="child"
-          :level="level + 1"
-          :isHovering="isHovering"
-          :openStates="openStates"
-          @navigate="$emit('navigate', $event)"
-          @toggle-group="$emit('toggle-group', $event)"
-        />
+        <MenuItem v-for="(child, index) in allChildren" :key="index" :item="child" :level="level + 1" :isHovering="isHovering" :openStates="openStates" @navigate="$emit('navigate', $event)" @toggle-group="$emit('toggle-group', $event)"/>
       </ul>
     </div>
   </li>
@@ -219,6 +194,7 @@ const itemIconName = computed(() =>
 
 .menu-item__content {
   @include flex-row-gap(0, center, space-between);
+  position: relative;
   cursor: pointer;
   color: var(--color-primary-text);
   text-decoration: none;
@@ -234,7 +210,7 @@ const itemIconName = computed(() =>
   transition:
     background-color $transition,
     color $transition;
-  overflow: hidden;
+  overflow: visible;
   
   &:not(.menu-item--active):hover {
     background-color: var(--color-secondary-background);
@@ -261,6 +237,13 @@ const itemIconName = computed(() =>
   flex: 1;
   min-width: 0;
   line-height: var(--menu-label-line-height, 1.25);
+}
+
+.menu-item__trailing {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
 }
 
 .menu-item__chevron svg {

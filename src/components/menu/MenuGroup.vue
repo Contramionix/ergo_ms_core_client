@@ -39,6 +39,7 @@ import { MENU_ICON_SIZES_KEY, getDefaultMenuIconSizes } from './composables/useM
 import { isMenuItemActive } from './composables/isMenuItemActive.js'
 import { canNavigateToRoute, isSameMenuRoutePath, safeNavigateByName } from './composables/safeMenuNavigate.js'
 import MenuPeekLabel from '@/components/menu/MenuPeekLabel.vue'
+import MenuItemTrailingHost from '@/components/menu/MenuItemTrailingHost.vue'
 import { prefetchRouteByName } from '@/js/utils/prefetchRoute.js'
 
 const props = defineProps({
@@ -208,51 +209,25 @@ function routeClick(event) {
 
 <template>
   <li class="side-menu__group side-group">
-    <div
-      class="side-title nav-btn"
-      :class="{ 'side-title--active': isGroupTitleActive }"
-      @pointerenter="prefetchGroupRoute"
-      @focusin="prefetchGroupRoute"
-      @click="routeClick($event)"
-    >
+    <div class="side-title nav-btn" :class="{ 'side-title--active': isGroupTitleActive }" @pointerenter="prefetchGroupRoute" @focusin="prefetchGroupRoute" @click="routeClick($event)">
       <div class="side-title__label">
         <div class="side-icon icon-flex">
           <LucideIcon v-if="groupIconName" :name="groupIconName" :size="iconSizes.item" />
           <Dot v-else :size="iconSizes.item" />
         </div>
-        <MenuPeekLabel
-          :text="displayTitle"
-          :visible="isHovering"
-          :title="displayTitle"
-          class="side-title__name"
-        />
+        <MenuPeekLabel :text="displayTitle" :visible="isHovering" :title="displayTitle" class="side-title__name"/>
       </div>
-      <div
-        v-if="hasMenuItems"
-        class="nav-icon icon-flex text-smooth-animation"
-        :class="{ hidden: !isHovering }"
-      >
-        <ChevronRight :size="iconSizes.chevronGroup" :class="{ rotated: isOpen }" />
+      <div class="side-title__trailing">
+        <MenuItemTrailingHost :item="data" />
+        <div v-if="hasMenuItems" class="nav-icon icon-flex text-smooth-animation" :class="{ hidden: !isHovering }">
+          <ChevronRight :size="iconSizes.chevronGroup" :class="{ rotated: isOpen }" />
+        </div>
       </div>
     </div>
 
-    <div
-      v-if="hasMenuItems"
-      class="side-group__list-wrap"
-      :class="{ 'is-open': (isCollapsed || isHovering) && isOpen }"
-    >
+    <div v-if="hasMenuItems" class="side-group__list-wrap" :class="{ 'is-open': (isCollapsed || isHovering) && isOpen }">
       <ul class="side-group__list">
-        <MenuItem
-          v-for="(item, index) in menuItems"
-          :key="index"
-          :item="item"
-          :level="0"
-          :isHovering="isHovering"
-          :openStates="nestedOpenStates"
-          :style="{ transitionDelay: `${index * 40}ms` }"
-          @navigate="handleNestedNavigate"
-          @toggle-group="handleToggleNested"
-        />
+        <MenuItem v-for="(item, index) in menuItems" :key="index" :item="item" :level="0" :isHovering="isHovering" :openStates="nestedOpenStates" :style="{ transitionDelay: `${index * 40}ms` }" @navigate="handleNestedNavigate" @toggle-group="handleToggleNested"/>
       </ul>
     </div>
   </li>
@@ -266,6 +241,7 @@ function routeClick(event) {
 .side-title,
 .side-subtitle {
   @include flex-row-gap(0, center, space-between);
+  position: relative;
   cursor: pointer;
   color: var(--color-primary-text);
   text-decoration: none;
@@ -274,6 +250,13 @@ function routeClick(event) {
     @include flex-row-gap($padding-internal, center);
     flex: 1;
     min-width: 0; // Позволяет flex элементам сжиматься ниже их естественной ширины
+  }
+
+  &__trailing {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 4px;
   }
 }
 
@@ -296,7 +279,7 @@ function routeClick(event) {
   transition:
     background-color $transition,
     color $transition;
-  overflow: hidden;
+  overflow: visible;
 
   &:not(.side-title--active):hover {
     background-color: var(--color-secondary-background);

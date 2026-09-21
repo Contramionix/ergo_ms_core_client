@@ -166,6 +166,23 @@
     :deep(.nav-btn) {
       padding-inline-start: var(--menu-icon-inset);
       padding-inline-end: 0;
+      overflow: visible;
+    }
+
+    :deep(.menu-item__trailing:has(.menu-item__trailing-extra)),
+    :deep(.side-title__trailing:has(.menu-item__trailing-extra)) {
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline-end: 2px;
+      z-index: 1;
+    }
+
+    :deep(.menu-trailing-badge) {
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      font-size: 9px;
+      line-height: 16px;
     }
 
     :deep(.side-title__label),
