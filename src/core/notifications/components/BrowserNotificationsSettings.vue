@@ -6,6 +6,7 @@ import SettingsCardRow from '@/components/SettingsCardRow.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useToast } from '@/js/utils/toast.js'
 import { BROWSER_NOTIFICATION_PREFS, readBrowserNotificationPref, writeBrowserNotificationPref, } from '@/core/notifications/js/browserNotificationPrefs.js'
+import { playNotificationSound } from '@/core/notifications/js/notificationSound.js'
 
 const { t } = useAppI18n()
 const toast = useToast()
@@ -65,6 +66,7 @@ function setSoundEnabled(enabled) {
 
 async function handlePreview() {
   previewing.value = true
+  playNotificationSound()
   try {
     if (typeof window.Notification === 'undefined') {
       permission.value = 'unsupported'

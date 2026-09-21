@@ -6,6 +6,7 @@ import { connectNotificationsTransport } from '@/js/realtime/notificationsTransp
 import { isHttpPollingMode, isSseMode } from '@/js/realtime/config.js'
 import { resetSyncNotificationCursor, setSyncLastNotificationId } from '@/js/realtime/syncPollingHub.js'
 import { isRealtimeEnvelope } from '@/js/realtime/envelope.js'
+import { playNotificationSound } from './notificationSound.js'
 import { notificationsApi } from './notifications-api'
 
 const HISTORY_PAGE_SIZE = 10
@@ -414,6 +415,7 @@ function showIncomingToast(notification) {
       timeout: 6000,
       id: `inbox:${notification.id}`,
     })
+    playNotificationSound()
   } catch { /* toast — best effort, инбокс уже обновлён */ }
 }
 
