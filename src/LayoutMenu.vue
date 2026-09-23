@@ -82,7 +82,7 @@ let resizeTimeout = null
 
 const initialMenuCollapsed = readMenuCollapsedPreference()
 const leftPadding = ref(
-  initialMenuCollapsed ? `${COLLAPSED_MENU_WIDTH}px` : '279px',
+  initialMenuCollapsed ? `${COLLAPSED_MENU_WIDTH}px` : '260px',
 )
 // До первого emit MenuList — иначе мини-чат после F5 прыгает с 260px на край свёрнутого меню
 const menuRightEdge = ref(

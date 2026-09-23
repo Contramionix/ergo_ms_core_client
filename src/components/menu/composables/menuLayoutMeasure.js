@@ -1,25 +1,14 @@
 import { COLLAPSED_MENU_WIDTH } from './menuLayoutPadding.js'
 
-/** Половина кнопки сворачивания + border, торчит за правый край (.side-menu__toggle) */
-export const EXPANDED_MENU_TOGGLE_OUTSET_PX = 19
-
-/** Fallback до первого замера DOM */
+/** Fallback до первого замера DOM. Контент начинается от правого края панели, без запаса под кнопку сворачивания. */
 export function getMenuLayoutPaddingFallback(isCollapsed, menuWidthValue) {
   const menuOuterWidth = isCollapsed ? COLLAPSED_MENU_WIDTH : menuWidthValue
   return `${menuOuterWidth}px`
 }
 
-/** Стабильный отступ контента при полностью развёрнутом меню */
-export function getExpandedLayoutPaddingTarget(menuWidthValue) {
-  return `${menuWidthValue + EXPANDED_MENU_TOGGLE_OUTSET_PX}px`
-}
-
 /** Отступ основного контента — в collapsed не зависит от hover-peek */
 export function getContentLayoutPadding(isCollapsed, menuWidthValue) {
-  if (isCollapsed) {
-    return getMenuLayoutPaddingFallback(true, menuWidthValue)
-  }
-  return getExpandedLayoutPaddingTarget(menuWidthValue)
+  return getMenuLayoutPaddingFallback(isCollapsed, menuWidthValue)
 }
 
 /** Целевой правый край меню после завершения CSS-перехода ширины */
