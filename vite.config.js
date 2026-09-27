@@ -520,7 +520,32 @@ function bootstrapEarlyAssetPlugin() {
   }
 }
 
+/** Старый пакет. Алиас ниже резолвит его; предупреждение пишется в лог Vite (client-dev.log). */
+function warnLucideVueNextImportPlugin() {
+  const warned = new Set()
+  const projectRoot = path.resolve(__dirname, '../..')
+  return {
+    name: 'warn-lucide-vue-next',
+    enforce: 'pre',
+    resolveId(id, importer) {
+      if (id !== 'lucide-vue-next' && !id.startsWith('lucide-vue-next/')) {
+        return null
+      }
+      const key = importer || id
+      if (!warned.has(key)) {
+        warned.add(key)
+        const where = importer
+          ? path.relative(projectRoot, importer).replaceAll('\\', '/')
+          : id
+        this.warn(`Импорт lucide-vue-next устарел (${where}). Замените на @lucide/vue.`)
+      }
+      return null
+    },
+  }
+}
+
 const plugins = [
+  warnLucideVueNextImportPlugin(),
   resolveFromNpmRootPlugin(),
   bootstrapEarlyAssetPlugin(),
   clientBuildIdPlugin(ERGO_CLIENT_BUILD_ID),
@@ -801,7 +826,7 @@ export default defineConfig(() => ({
         find: /^vue-slicksort$/,
         replacement: path.join(npmModules, 'vue-slicksort/dist/vue-slicksort.esm.js'),
       },
-      // Официальное имя пакета — @lucide/vue; модули ещё импортируют lucide-vue-next.
+      // lucide-vue-next больше не ставится. Предупреждение — warnLucideVueNextImportPlugin.
       {
         find: /^lucide-vue-next$/,
         replacement: path.join(npmModules, '@lucide/vue'),

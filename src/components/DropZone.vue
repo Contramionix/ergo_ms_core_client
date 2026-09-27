@@ -1,26 +1,6 @@
 <template>
-  <label
-    class="drop-zone"
-    :class="{
-      'drop-zone--over': isDragOver,
-      'drop-zone--compact': compact,
-      'drop-zone--disabled': disabled,
-    }"
-    @dragenter="onDragEnter"
-    @dragover="onDragOver"
-    @dragleave="onDragLeave"
-    @drop="onDrop"
-  >
-    <input
-      :id="inputId"
-      class="drop-zone__input"
-      type="file"
-      :multiple="multiple"
-      :accept="accept || undefined"
-      :disabled="disabled"
-      :aria-label="resolvedAriaLabel"
-      @change="onFileChange"
-    />
+  <label class="drop-zone" :class="{ 'drop-zone--over': isDragOver, 'drop-zone--compact': compact, 'drop-zone--disabled': disabled, }" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
+    <input :id="inputId" class="drop-zone__input" type="file" :multiple="multiple" :accept="accept || undefined" :disabled="disabled" :aria-label="resolvedAriaLabel" @change="onFileChange"/>
     <span class="drop-zone__icon" aria-hidden="true">
       <slot name="icon">
         <UploadCloud :size="compact ? 24 : 30"/>
@@ -36,7 +16,7 @@
 
 <script setup>
 import { computed, ref, useId } from 'vue'
-import { UploadCloud } from 'lucide-vue-next'
+import { UploadCloud } from '@lucide/vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 
 const props = defineProps({

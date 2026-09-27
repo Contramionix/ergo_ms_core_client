@@ -57,6 +57,28 @@ const { build, defineConfig, esmExternalRequirePlugin } = requireFromNpm('vite')
 
 const outDir = path.resolve(projectRoot, 'virtual_env/client-remotes', moduleName)
 
+function warnLucideVueNextImportPlugin() {
+  const warned = new Set()
+  return {
+    name: 'warn-lucide-vue-next',
+    enforce: 'pre',
+    resolveId(id, importer) {
+      if (id !== 'lucide-vue-next' && !id.startsWith('lucide-vue-next/')) {
+        return null
+      }
+      const key = importer || id
+      if (!warned.has(key)) {
+        warned.add(key)
+        const where = importer
+          ? path.relative(projectRoot, importer).replaceAll('\\', '/')
+          : id
+        this.warn(`Импорт lucide-vue-next устарел (${where}). Замените на @lucide/vue.`)
+      }
+      return null
+    },
+  }
+}
+
 function resolveFromNpmRootPlugin() {
   const npmImporter = path.join(npmRoot, 'package.json')
   return {
@@ -93,6 +115,7 @@ function resolveFromNpmRootPlugin() {
 const config = defineConfig({
   root: moduleClientRoot,
   plugins: [
+    warnLucideVueNextImportPlugin(),
     resolveFromNpmRootPlugin(),
     vue(),
     // require('vue') из CJS/UMD → import; top-level external иначе оставляет require в браузере.
@@ -137,6 +160,7 @@ const config = defineConfig({
         find: 'vue-toastification',
         replacement: path.resolve(clientRoot, 'src/js/utils/vueToastificationCompat.js'),
       },
+      // lucide-vue-next больше не ставится. Предупреждение — warnLucideVueNextImportPlugin.
       { find: 'lucide-vue-next', replacement: path.join(npmModules, '@lucide/vue') },
       {
         find: /^vue-slicksort$/,
