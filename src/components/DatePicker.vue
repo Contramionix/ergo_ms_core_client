@@ -48,6 +48,8 @@ const DATE_ALLOWED_KEYS = new Set([
 
 const DATE_FNS_LOCALES = { ru, en: enUS, fr }
 const ICON_SIZE = 16
+const YEAR_MIN = 1900
+const YEAR_MAX = 2100
 
 const pickerConfig = {
   allowPreventDefault: true,
@@ -179,7 +181,6 @@ const pickerDate = computed(() => (
 const inputAttrs = computed(() => ({
   inputmode: props.monthPicker || is12Hour.value || !useDigitMask.value ? 'text' : 'numeric',
   autocomplete: 'off',
-  hideInputIcon: Boolean(pickerDate.value) && !props.disabled,
   ...(props.id ? { id: props.id } : {}),
 }))
 
@@ -241,8 +242,7 @@ const maxDateParsed = computed(() => parseBoundDate(props.maxDate, 'max'))
 const yearRange = computed(() => {
   const minY = minDateParsed.value?.getFullYear()
   const maxY = maxDateParsed.value?.getFullYear()
-  if (minY == null && maxY == null) return [1900, 2100]
-  return [minY ?? maxY, maxY ?? minY]
+  return [minY ?? YEAR_MIN, maxY ?? YEAR_MAX]
 })
 
 function onPickerUpdate(value) {
@@ -363,18 +363,32 @@ onBeforeUnmount(() => {
 @import '@/scss/vue-datepicker-theme';
 
 .date-picker {
+  --date-picker-icon-gap: 0.75rem;
+  --date-picker-icon-size: 1rem;
+  --date-picker-pad-inline: calc(
+    var(--date-picker-icon-gap) + var(--date-picker-icon-size) + var(--date-picker-icon-gap)
+  );
+  /* Цифры даты начинаются правее края кегля, иконка стоит от внешней границы.
+     Без этой поправки зазор до даты выглядит шире, чем зазор от левого края до календаря. */
+  --date-picker-pad-start: calc(var(--date-picker-pad-inline) - 0.375rem);
+
   width: 100%;
 
   @include vue-datepicker-theme;
 
   :deep(.dp__input),
   :deep(.dp--input) {
-    padding: 0.375rem 2.5rem 0.375rem 0.75rem;
-    font-size: 0.875rem;
+    box-sizing: border-box;
+    height: 38px;
+    min-height: 38px;
+    padding-block: 0.375rem;
+    padding-inline: var(--date-picker-pad-start) var(--date-picker-pad-inline);
+    font-size: 1rem;
     line-height: 1.5;
     background: var(--color-primary-background);
     color: var(--color-primary-text);
     border: 1px solid var(--color-border);
+    border-radius: var(--bs-border-radius, 0.5rem);
     box-shadow: none;
 
     &:hover {
@@ -399,26 +413,26 @@ onBeforeUnmount(() => {
 
   :deep(.dp__input_icon_pad),
   :deep(.dp--input-icon-pad) {
-    padding-left: 0.75rem;
-    padding-right: 2.5rem;
-    padding-inline-start: 0.75rem;
-    padding-inline-end: 2.5rem;
+    padding-left: var(--date-picker-pad-start);
+    padding-right: var(--date-picker-pad-inline);
+    padding-inline-start: var(--date-picker-pad-start);
+    padding-inline-end: var(--date-picker-pad-inline);
   }
 
   :deep(.dp__input_icon),
   :deep(.dp--input-icon),
   :deep(.dp--clear-btn) {
-    left: auto;
-    right: 0.5rem;
-    inset-inline-start: auto;
-    inset-inline-end: 0.5rem;
+    position: absolute;
+    top: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1rem;
-    height: 1rem;
+    width: var(--date-picker-icon-size);
+    height: var(--date-picker-icon-size);
+    margin: 0;
     padding: 0;
     box-sizing: border-box;
+    transform: translateY(-50%);
     color: var(--color-secondary-text);
     cursor: pointer;
     transition: color 0.15s ease;
@@ -426,6 +440,23 @@ onBeforeUnmount(() => {
     &:hover {
       color: var(--color-accent, var(--bs-primary));
     }
+  }
+
+  :deep(.dp__input_icon),
+  :deep(.dp--input-icon) {
+    left: var(--date-picker-icon-gap);
+    right: auto;
+    inset-inline-start: var(--date-picker-icon-gap);
+    inset-inline-end: auto;
+    /* Кольца календаря торчат над прямоугольником, из-за этого глиф выглядит выше цифр. */
+    transform: translateY(calc(-50% + 1px));
+  }
+
+  :deep(.dp--clear-btn) {
+    left: auto;
+    right: var(--date-picker-icon-gap);
+    inset-inline-start: auto;
+    inset-inline-end: var(--date-picker-icon-gap);
   }
 
   :deep(.dp--clear-btn:focus-visible) {
@@ -446,6 +477,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   width: 1rem;
   height: 1rem;
+  line-height: 0;
   padding: 0;
   border: none;
   background: transparent;
