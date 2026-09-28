@@ -19,7 +19,7 @@
             v-for="(item, idx) in group.items"
             :key="groupedItemKey(group, item, idx)"
             class="data-table-card"
-            :class="[getRowClass(item, groupedItemIndex(groupIndex, idx)), { 'data-table-card--clickable': clickable }]"
+            :class="[getRowClass(item, groupedItemIndex(groupIndex, idx)), { 'data-table-card--clickable': rowIsClickable(item, groupedItemIndex(groupIndex, idx)) }]"
             @click="handleRowClick(item, groupedItemIndex(groupIndex, idx))"
           >
             <div v-if="showNumberColumn" class="data-table-card__meta text-muted">
@@ -41,7 +41,7 @@
           </article>
         </div>
       </template>
-      <article v-for="(item, idx) in displayItems" v-else :key="getItemKey(item, idx)" class="data-table-card" :class="[getRowClass(item, idx), { 'data-table-card--clickable': clickable }]" @click="handleRowClick(item, idx)">
+      <article v-for="(item, idx) in displayItems" v-else :key="getItemKey(item, idx)" class="data-table-card" :class="[getRowClass(item, idx), { 'data-table-card--clickable': rowIsClickable(item, idx) }]" @click="handleRowClick(item, idx)">
         <div v-if="showNumberColumn" class="data-table-card__meta text-muted">
           № {{ displayNumberOffset + idx + 1 }}
         </div>
@@ -159,8 +159,8 @@ const props = defineProps({
     default: ''
   },
   clickable: {
-    type: Boolean,
-    default: false
+    type: [Boolean, Function],
+    default: false,
   },
   getItemKey: {
     type: Function,
@@ -319,10 +319,17 @@ function getCellValue(item, column) {
   return item[column.key] ?? ''
 }
 
+function rowIsClickable(item, idx) {
+  if (typeof props.clickable === 'function') {
+    return Boolean(props.clickable(item, idx))
+  }
+  return Boolean(props.clickable)
+}
+
 function getRowClass(item, idx) {
   const classes = []
-  
-  if (props.clickable) {
+
+  if (rowIsClickable(item, idx)) {
     classes.push('table-row-click')
   }
   
@@ -337,7 +344,7 @@ function getRowClass(item, idx) {
 }
 
 function handleRowClick(item, idx) {
-  if (props.clickable) {
+  if (rowIsClickable(item, idx)) {
     emit('rowClick', item, idx)
   }
 }
