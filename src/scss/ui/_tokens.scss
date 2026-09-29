@@ -21,6 +21,7 @@
   --ui-fill:          rgba(17, 18, 35, 0.55);
 
   --ui-success:      rgb(var(--bs-success-rgb));
+  --ui-success-text: color-mix(in srgb, #fff 88%, var(--ui-success));
   --ui-success-soft: rgba(var(--bs-success-rgb), .12);
   --ui-danger:       rgb(var(--bs-danger-rgb));
   --ui-danger-soft:  rgba(var(--bs-danger-rgb), .12);
