@@ -28,7 +28,8 @@ import HoverTooltip from '@/components/HoverTooltip.vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
 import { useThemeMode } from '@/composables/useThemeMode.js'
-import { advanceCaretToNextDateSection, applyDigitToDateInput, applyPastedDigitsToDateInput, normalizeDateInputMask, } from '@/js/utils/dateInputMask.js'
+import { advanceCaretToNextDateSection, applyDigitToDateInput, applyPastedDigitsToDateInput, formatDateDigits, normalizeDateInputMask, } from '@/js/utils/dateInputMask.js'
+import { parseNamedDatePaste } from '@/js/utils/parseNamedDatePaste.js'
 import { toISODate, toISODateTime } from '@/js/utils/timeUtils.js'
 
 const DATE_CHARS_PATTERN = /[^\d.]/
@@ -313,10 +314,35 @@ function onInput(event) {
   }
 }
 
+function applyNamedDatePaste(input, parsed) {
+  const year = String(parsed.year)
+  const yearDigits = useShortYearMask.value ? year.slice(-2) : year
+  let digits = `${String(parsed.day).padStart(2, '0')}${String(parsed.month).padStart(2, '0')}${yearDigits}`
+  const includeTime = props.enableTime && parsed.hours != null && parsed.minutes != null
+  if (includeTime) {
+    digits += `${String(parsed.hours).padStart(2, '0')}${String(parsed.minutes).padStart(2, '0')}`
+  }
+  const formatted = formatDateDigits(digits, includeTime, useShortYearMask.value)
+  input.value = formatted
+  input.setSelectionRange(formatted.length, formatted.length)
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
 function onPaste(event) {
   if (!useDigitMask.value) return
   if (!isDateInputTarget(event.target)) return
   const pasted = event.clipboardData?.getData('text') ?? ''
+  const named = parseNamedDatePaste(pasted)
+  if (named?.day) {
+    event.preventDefault()
+    applyNamedDatePaste(event.target, named)
+    return
+  }
+  if (named?.recognized) {
+    event.preventDefault()
+    return
+  }
+
   const invalidChars = props.enableTime ? DATETIME_CHARS_PATTERN : DATE_CHARS_PATTERN
   if (!invalidChars.test(pasted)) return
 
