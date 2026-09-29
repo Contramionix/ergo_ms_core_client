@@ -195,6 +195,10 @@ export default {
     placeholderMonth: 'month year',
     clear: 'Clear date',
   },
+  timePicker: {
+    placeholder: 'hh:mm',
+    clear: 'Clear time',
+  },
   linkBoard: {
     viewLabel: 'Diagram view',
     viewLinks: 'Links',

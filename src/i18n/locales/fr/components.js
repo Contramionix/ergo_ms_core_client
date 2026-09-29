@@ -195,6 +195,10 @@ export default {
     placeholderMonth: 'mois année',
     clear: 'Effacer la date',
   },
+  timePicker: {
+    placeholder: 'hh:mm',
+    clear: 'Effacer l\'heure',
+  },
   linkBoard: {
     viewLabel: 'Vue du schéma',
     viewLinks: 'Liens',

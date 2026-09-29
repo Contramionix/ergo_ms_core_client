@@ -195,6 +195,10 @@ export default {
     placeholderMonth: 'месяц год',
     clear: 'Очистить дату',
   },
+  timePicker: {
+    placeholder: 'чч:мм',
+    clear: 'Очистить время',
+  },
   linkBoard: {
     viewLabel: 'Вид схемы',
     viewLinks: 'Связи',
