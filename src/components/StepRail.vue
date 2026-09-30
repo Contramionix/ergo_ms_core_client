@@ -2,7 +2,7 @@
   <component :is="interactive ? 'nav' : 'div'" class="step-rail" :role="interactive ? undefined : 'group'" :aria-label="resolvedLabel">
     <ol class="step-rail__list">
       <li v-for="(step, index) in steps" :key="step.id" class="step-rail__item" :class="{ 'step-rail__item--link-done': isLinkDone(step, index) }">
-        <button v-if="interactive" type="button" class="step-rail__step" :class="stepClass(step)" :disabled="!!step.disabled" :aria-current="step.state === 'current' ? 'step' : undefined" @click="onSelect(step)">
+        <button v-if="interactive" type="button" class="step-rail__step" :class="stepClass(step)" :disabled="!!step.disabled" :aria-current="step.state === 'current' ? 'step' : undefined" :aria-pressed="step.disabled ? undefined : (step.selected ? 'true' : 'false')" @click="onSelect(step)">
           <span class="step-rail__marker">
             <Check v-if="step.state === 'passed'" :size="18" aria-hidden="true" />
             <span v-else-if="step.marker" class="step-rail__number">{{ step.marker }}</span>
@@ -57,6 +57,7 @@ function stepClass(step) {
   return {
     'step-rail__step--active': step.state === 'current',
     'step-rail__step--completed': step.state === 'passed',
+    'step-rail__step--selected': !!step.selected,
     'step-rail__step--disabled': props.interactive && !!step.disabled,
   }
 }
@@ -78,6 +79,7 @@ function onSelect(step) {
   --step-rail-text: var(--color-primary-text, var(--ui-text));
   --step-rail-marker-size: 2.25rem;
   --step-rail-marker-font-size: 0.875rem;
+  --step-rail-selected-ring: 4px;
 
   width: 100%;
 }
@@ -88,7 +90,7 @@ function onSelect(step) {
   justify-content: space-between;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: calc(var(--step-rail-selected-ring) + 1px) 0 0;
   gap: 0;
   overflow-x: auto;
   scrollbar-width: thin;
@@ -174,7 +176,14 @@ button.step-rail__step {
   color: var(--step-rail-surface);
 }
 
-.step-rail__step--active .step-rail__label {
+.step-rail__step--selected .step-rail__marker {
+  box-shadow:
+    0 0 0 2px var(--step-rail-surface),
+    0 0 0 var(--step-rail-selected-ring) var(--step-rail-accent);
+}
+
+.step-rail__step--active .step-rail__label,
+.step-rail__step--selected .step-rail__label {
   color: var(--step-rail-text);
   font-weight: var(--u-font-weight-emphasis, 600);
 }
