@@ -397,6 +397,12 @@ onBeforeUnmount(() => {
   /* Цифры даты начинаются правее края кегля, иконка стоит от внешней границы.
      Без этой поправки зазор до даты выглядит шире, чем зазор от левого края до календаря. */
   --date-picker-pad-start: calc(var(--date-picker-pad-inline) - 0.375rem);
+  /* Стрелка SelectBox — 1.125em и стоит внутри рамки. Крестик 1rem позиционируется
+     от внешней границы, поэтому без этих 2px его штрих ближе к краю поля. */
+  --date-picker-clear-inset: calc(var(--date-picker-icon-gap) + 2px);
+  --date-picker-pad-end: calc(
+    var(--date-picker-clear-inset) + var(--date-picker-icon-size) + var(--date-picker-icon-gap)
+  );
 
   width: 100%;
 
@@ -408,7 +414,7 @@ onBeforeUnmount(() => {
     height: 38px;
     min-height: 38px;
     padding-block: 0.375rem;
-    padding-inline: var(--date-picker-pad-start) var(--date-picker-pad-inline);
+    padding-inline: var(--date-picker-pad-start) var(--date-picker-pad-end);
     font-size: 1rem;
     line-height: 1.5;
     background: var(--color-primary-background);
@@ -440,9 +446,9 @@ onBeforeUnmount(() => {
   :deep(.dp__input_icon_pad),
   :deep(.dp--input-icon-pad) {
     padding-left: var(--date-picker-pad-start);
-    padding-right: var(--date-picker-pad-inline);
+    padding-right: var(--date-picker-pad-end);
     padding-inline-start: var(--date-picker-pad-start);
-    padding-inline-end: var(--date-picker-pad-inline);
+    padding-inline-end: var(--date-picker-pad-end);
   }
 
   :deep(.dp__input_icon),
@@ -480,9 +486,9 @@ onBeforeUnmount(() => {
 
   :deep(.dp--clear-btn) {
     left: auto;
-    right: var(--date-picker-icon-gap);
+    right: var(--date-picker-clear-inset);
     inset-inline-start: auto;
-    inset-inline-end: var(--date-picker-icon-gap);
+    inset-inline-end: var(--date-picker-clear-inset);
   }
 
   :deep(.dp--clear-btn:focus-visible) {
