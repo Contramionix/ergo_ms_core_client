@@ -1,0 +1,17 @@
+// Локальные файлы Inter 4.1 (SIL OFL). Браузер качает их только если правило использует семейство Inter.
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../../assets/fonts/inter/InterVariable.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../../assets/fonts/inter/InterVariable-Italic.woff2') format('woff2');
+}
