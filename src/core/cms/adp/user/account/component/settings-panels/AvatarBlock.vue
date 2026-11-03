@@ -39,7 +39,10 @@ const isAdminMode = computed(() => typeof props.onUpload === 'function')
 
 const avatarExplicitUrl = computed(() => {
   if (avatarPreviewUrl.value) return avatarPreviewUrl.value
-  if (isAdminMode.value) return props.avatarUrl || undefined
+  if (isAdminMode.value) {
+    if (!props.userRef) return props.avatarUrl || ''
+    return props.avatarUrl || undefined
+  }
   return undefined
 })
 
