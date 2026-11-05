@@ -158,6 +158,9 @@ const OPTIMIZE_DEPS_INCLUDE = [
   'vue-router',
   'pinia',
   'axios',
+  // Анимированные иконки тянут motion-v отдельным импортом. Без предсборки
+  // обновление deps не успевает записать файл, и глиф падает обратно на LucideIcon.
+  'motion-v',
 ]
 
 function npmPackageAliases(names) {
@@ -839,6 +842,12 @@ export default defineConfig(() => ({
       {
         find: /^lucide-vue-next$/,
         replacement: path.join(npmModules, '@lucide/vue'),
+      },
+      // В опубликованном d3 нет src/index.js. Старый кэш optimizeDeps указывал туда,
+      // пересборка deps обрывалась и не записывала motion-v.
+      {
+        find: /^d3$/,
+        replacement: path.join(npmModules, 'd3/dist/d3.mjs'),
       },
       // Оболочка на vue-sonner; модули ещё импортируют vue-toastification.
       {

@@ -106,6 +106,12 @@ export async function getLucideMotionIconAsync(iconName) {
   return loadIconComponent(iconName)
 }
 
+export async function getLucideAnimateIconKeyAsync() {
+  const { loadAnimateIconModule } = await loadIconGlob()
+  const mod = await loadAnimateIconModule()
+  return mod?.A || null
+}
+
 export function getLucideMotionIconSync(iconName) {
   const key = normalizeLucideIconName(iconName)
   if (!key) {

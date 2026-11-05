@@ -3,6 +3,7 @@ import { ChevronRight } from '@lucide/vue'
 import SelectBox from '@/components/SelectBox.vue'
 import HoverTooltip from '@/components/HoverTooltip.vue'
 import LucideIcon from '@/components/LucideIcon.vue'
+import LucideMotionIcon from '@/components/LucideMotionIcon.vue'
 import { CORE_ICON } from '@/config/coreIconNames.js'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { useUiSettings } from '@/core/cms/js/uiSettings.js'
@@ -34,16 +35,8 @@ function openUserSettings() {
 <template>
   <div ref="dropdownRef" class="settings-menu-wrapper">
     <HoverTooltip :text="t('menu.toolbar.settings')">
-      <button
-        type="button"
-        class="header-btn settings-menu-btn"
-        :class="{ 'settings-menu-btn--open': isOpen }"
-        :aria-label="t('menu.toolbar.settings')"
-        :aria-expanded="isOpen"
-        aria-haspopup="true"
-        @click.stop="toggleDropdown"
-      >
-        <LucideIcon :name="CORE_ICON.settings" :size="props.iconSize" aria-hidden="true" />
+      <button type="button" class="header-btn settings-menu-btn" :class="{ 'settings-menu-btn--open': isOpen }" :aria-label="t('menu.toolbar.settings')" :aria-expanded="isOpen" aria-haspopup="true" @click.stop="toggleDropdown">
+        <LucideMotionIcon :name="CORE_ICON.settings" :size="props.iconSize" animate-on-hover trigger-target="closest:button" aria-hidden="true" />
       </button>
     </HoverTooltip>
     <Transition name="dropdown">
@@ -57,19 +50,7 @@ function openUserSettings() {
           </button>
         </li>
         <li class="settings-menu__theme">
-          <SelectBox
-            v-model="theme"
-            :options="THEME_OPTIONS"
-            :include-all-option="false"
-            open-on-hover
-            placement="right"
-            :placement-gap="0"
-            placement-align="center"
-            hide-chevron
-            :dropdown-min-width="200"
-            dropdown-menu-class="settings-menu__theme-menu"
-            class="settings-menu__theme-select"
-          >
+          <SelectBox v-model="theme" :options="THEME_OPTIONS" :include-all-option="false" open-on-hover placement="right" :placement-gap="0" placement-align="center" hide-chevron :dropdown-min-width="200" dropdown-menu-class="settings-menu__theme-menu" class="settings-menu__theme-select">
             <template #selected="{ label }">
               <span class="settings-menu__theme-trigger">
                 <span class="icon-flex settings-menu__item-icon">
@@ -82,12 +63,7 @@ function openUserSettings() {
             </template>
             <template #option="{ option, label }">
               <span class="settings-menu__option">
-                <LucideIcon
-                  v-if="option?.icon"
-                  :name="option.icon"
-                  :size="15"
-                  icon-class="settings-menu__option-icon"
-                />
+                <LucideIcon v-if="option?.icon" :name="option.icon" :size="15" icon-class="settings-menu__option-icon"/>
                 <span class="settings-menu__option-label">{{ label }}</span>
               </span>
             </template>

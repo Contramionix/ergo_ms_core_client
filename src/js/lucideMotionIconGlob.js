@@ -29,3 +29,17 @@ export function loadMotionIconModule(file) {
   }
   return loader()
 }
+
+const animateIconLoaders = import.meta.glob(
+  '../../../../virtual_env/npm/node_modules/@respeak/lucide-motion-vue/dist/chunks/AnimateIcon.vue_*.js',
+)
+
+let animateIconPromise = null
+
+export function loadAnimateIconModule() {
+  if (!animateIconPromise) {
+    const loader = Object.values(animateIconLoaders)[0]
+    animateIconPromise = loader ? loader() : Promise.resolve(null)
+  }
+  return animateIconPromise
+}
