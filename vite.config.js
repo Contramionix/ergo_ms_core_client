@@ -843,11 +843,10 @@ export default defineConfig(() => ({
         find: /^lucide-vue-next$/,
         replacement: path.join(npmModules, '@lucide/vue'),
       },
-      // В опубликованном d3 нет src/index.js. Старый кэш optimizeDeps указывал туда,
-      // пересборка deps обрывалась и не записывала motion-v.
+      // Пакет d3 отдаёт ESM из src/index.js. dist/d3.js — UMD и в сборке оболочки не резолвится.
       {
         find: /^d3$/,
-        replacement: path.join(npmModules, 'd3/dist/d3.mjs'),
+        replacement: path.join(npmModules, 'd3/src/index.js'),
       },
       // Оболочка на vue-sonner; модули ещё импортируют vue-toastification.
       {
