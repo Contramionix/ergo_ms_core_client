@@ -170,6 +170,15 @@ function npmPackageAliases(names) {
   }))
 }
 
+/** До 7.9.2 ESM лежал в src/index.js, dist/d3.js был UMD. Дальше в пакете только dist/d3.mjs. */
+function resolveD3EsmEntry() {
+  const srcEntry = path.join(npmModules, 'd3/src/index.js')
+  if (fs.existsSync(srcEntry)) {
+    return srcEntry
+  }
+  return path.join(npmModules, 'd3/dist/d3.mjs')
+}
+
 /** Bind-адреса сервера — браузер по ним не ходит (ERR_ADDRESS_INVALID). */
 const BIND_ALL_HOSTS = new Set(['0.0.0.0', '*', '::', '[::]'])
 
@@ -439,7 +448,8 @@ function clientBuildIdPlugin(buildId) {
   return {
     name: 'ergo-client-build-id',
     apply: 'build',
-    closeBundle() {
+    // closeBundle вызывается и при обрыве сборки: номер уехал бы вперёд, а старый бандл остался.
+    writeBundle() {
       const outDir = path.resolve(__dirname, 'dist')
       fs.mkdirSync(outDir, { recursive: true })
       fs.writeFileSync(
@@ -843,10 +853,9 @@ export default defineConfig(() => ({
         find: /^lucide-vue-next$/,
         replacement: path.join(npmModules, '@lucide/vue'),
       },
-      // Пакет d3 отдаёт ESM из src/index.js. dist/d3.js — UMD и в сборке оболочки не резолвится.
       {
         find: /^d3$/,
-        replacement: path.join(npmModules, 'd3/src/index.js'),
+        replacement: resolveD3EsmEntry(),
       },
       // Оболочка на vue-sonner; модули ещё импортируют vue-toastification.
       {
