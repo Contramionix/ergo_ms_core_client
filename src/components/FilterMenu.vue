@@ -39,7 +39,8 @@
       <div v-if="isMainOpen && activeFlyoutKey && activeField" ref="flyoutPanelEl" class="filter-menu__flyout dropdown-menu show fixed-menu" v-csp-style="flyoutPanelStyle" data-filter-menu-flyout @mousedown.stop @mouseenter="onFlyoutEnter" @mouseleave="onFlyoutLeave">
         <template v-if="activeField.type === 'select'">
           <input v-if="activeField.searchable" ref="flyoutSearchEl" v-model="flyoutSearchQuery" type="text" class="filter-menu__search select-box-search" :placeholder="t('components.searchInput.placeholder')" autocomplete="off" @mousedown.stop/>
-          <ul class="dropdown-menu-list">
+          <p v-if="flyoutSearchHint" class="filter-menu__search-hint">{{ flyoutSearchHint }}</p>
+          <ul ref="flyoutListEl" class="dropdown-menu-list" @scroll="onFlyoutListScroll">
             <li v-if="!activeField.multiple && activeField.includeAllOption !== false && !flyoutSearchActive">
               <a href="#" class="dropdown-item" :class="{ active: isEmptyValue(activeField.key) }" @click.prevent="chooseSelectValue(activeField, null)">
                 {{ activeField.allLabel || t('components.selectBox.all') }}
@@ -107,7 +108,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'apply', 'reset'])
+const emit = defineEmits(['update:modelValue', 'apply', 'reset', 'flyout-search', 'flyout-more'])
 
 const triggerId = useId()
 const panelId = computed(() => `${triggerId}-panel`)
@@ -133,6 +134,11 @@ const {
 
 const flyoutSearchQuery = ref('')
 const flyoutSearchEl = ref(null)
+const flyoutListEl = ref(null)
+const moreRequested = ref(false)
+let suppressSearchEmit = false
+let searchTimer = 0
+let searchGeneration = 0
 
 const activeField = computed(() =>
   props.fields.find((field) => field.type !== 'heading' && field.key === activeFlyoutKey.value) || null,
@@ -162,29 +168,105 @@ const flyoutSearchActive = computed(() =>
   Boolean(activeField.value?.searchable && flyoutSearchQuery.value.trim()),
 )
 
-const filteredFlyoutOptions = computed(() => {
+function optionMatchesQuery(opt, query) {
+  const raw = opt.raw
+  const haystack = String(
+    (typeof raw === 'object' && raw !== null && raw.searchLabel) || opt.label || '',
+  ).toLowerCase()
+  return haystack.includes(query)
+}
+
+function pinSelectedOptions(field, options, query) {
+  if (query || !isFieldMultiple(field)) return options
+  const current = props.modelValue?.[field.key]
+  if (!Array.isArray(current) || current.length === 0) return options
+  const present = new Set(options.map((opt) => String(opt.value)))
+  const pinned = current
+    .filter((value) => value && !present.has(String(value)))
+    .map((value) => ({ key: toOptionKey(value), value, label: String(value), raw: value }))
+  return pinned.length ? [...pinned, ...options] : options
+}
+
+function selectedFlyoutOptions(field, options) {
+  if (!isFieldMultiple(field)) return []
+  const current = props.modelValue?.[field.key]
+  if (!Array.isArray(current) || current.length === 0) return []
+  return options.filter((opt) => current.some((item) => valuesAreEqual(item, opt.value)))
+}
+
+const flyoutSelectView = computed(() => {
   const field = activeField.value
-  if (!field || field.type !== 'select') return []
+  if (!field || field.type !== 'select') return { options: [], hint: '' }
   const options = normalizeSelectOptions(field)
   const query = flyoutSearchQuery.value.trim().toLowerCase()
-  if (!query) return options
-  return options.filter((opt) => {
-    const raw = opt.raw
-    const haystack = String(
-      (typeof raw === 'object' && raw !== null && raw.searchLabel) || opt.label || '',
-    ).toLowerCase()
-    return haystack.includes(query)
-  })
+  const minLength = Number(field.searchMinLength) || 0
+  const limit = Number(field.searchLimit) || 0
+  if (field.incremental) {
+    return { options: pinSelectedOptions(field, options, query), hint: '' }
+  }
+  if (minLength && query.length < minLength) {
+    return { options: selectedFlyoutOptions(field, options), hint: field.searchHint || '' }
+  }
+  const matched = query ? options.filter((opt) => optionMatchesQuery(opt, query)) : options
+  if (limit && matched.length > limit) {
+    return { options: matched.slice(0, limit), hint: field.searchLimitHint || '' }
+  }
+  return { options: matched, hint: '' }
 })
 
+const filteredFlyoutOptions = computed(() => flyoutSelectView.value.options)
+const flyoutSearchHint = computed(() => flyoutSelectView.value.hint)
+
+function emitFlyoutSearch(key, query) {
+  emit('flyout-search', { key, query })
+}
+
+function requestMoreIfNearEnd() {
+  const field = activeField.value
+  const el = flyoutListEl.value
+  if (!field?.incremental || !field.hasMore || field.loadingMore || moreRequested.value || !el) return
+  if (el.scrollTop + el.clientHeight < el.scrollHeight - 32) return
+  moreRequested.value = true
+  emit('flyout-more', { key: field.key, query: flyoutSearchQuery.value.trim() })
+}
+
+function onFlyoutListScroll() {
+  requestMoreIfNearEnd()
+}
+
 watch(activeFlyoutKey, (key) => {
+  const field = props.fields.find((item) => item.type !== 'heading' && item.key === key) || null
+  clearTimeout(searchTimer)
+  searchGeneration += 1
+  suppressSearchEmit = true
   flyoutSearchQuery.value = ''
+  suppressSearchEmit = false
+  moreRequested.value = false
+  if (field?.incremental) emitFlyoutSearch(field.key, '')
   if (!key) return
   nextTick(() => {
     if (activeField.value?.searchable) {
       flyoutSearchEl.value?.focus()
     }
   })
+})
+
+watch(flyoutSearchQuery, (value) => {
+  const field = activeField.value
+  if (suppressSearchEmit || !field?.incremental) return
+  const generation = ++searchGeneration
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    if (generation !== searchGeneration) return
+    moreRequested.value = false
+    emitFlyoutSearch(field.key, value.trim())
+  }, 250)
+}, { flush: 'sync' })
+
+watch(() => activeField.value?.loadingMore, (loading) => {
+  if (loading) return
+  moreRequested.value = false
+  nextTick(() => requestMoreIfNearEnd())
 })
 
 watch(filteredFlyoutOptions, () => {
@@ -700,6 +782,13 @@ onBeforeUnmount(() => {
   gap: 0.375rem;
   max-width: 100%;
   min-width: 0;
+}
+
+.filter-menu__search-hint {
+  margin: 0;
+  padding: 0.35rem 0.75rem 0.5rem;
+  color: var(--ui-text-muted, var(--color-secondary-text));
+  font-size: 0.8125rem;
 }
 
 .filter-menu__search.select-box-search {
