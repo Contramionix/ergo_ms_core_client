@@ -499,20 +499,24 @@ function drawFocusEdges(state, vis) {
 function drawFocusArrows(state, vis) {
   const { ctx, css, T } = state
   if (T.k <= 0.8) return
-  const wing = 16
-  const spread = 0.55
   eachFocusEdge(state, vis, (e, _x1, _y1, end) => {
     if (e.k === 2) return
     const ang = Math.atan2(end.uy, end.ux)
+    const lw = 0.8 + e.w * 3.4
+    const wing = Math.max(9, lw * 3)
+    const spread = 0.42
     ctx.setLineDash([])
     ctx.beginPath()
-    ctx.moveTo(end.x, end.y)
-    ctx.lineTo(end.x - Math.cos(ang - spread) * wing, end.y - Math.sin(ang - spread) * wing)
+    ctx.moveTo(end.x - Math.cos(ang - spread) * wing, end.y - Math.sin(ang - spread) * wing)
+    ctx.lineTo(end.x, end.y)
     ctx.lineTo(end.x - Math.cos(ang + spread) * wing, end.y - Math.sin(ang + spread) * wing)
-    ctx.closePath()
-    ctx.fillStyle = [css.cmp, css.inc, css.sim][e.k]
-    ctx.fill()
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.lineWidth = lw
+    ctx.strokeStyle = alpha([css.cmp, css.inc, css.sim][e.k], 0.35 + e.w * 0.6)
+    ctx.stroke()
   })
+  ctx.setLineDash([])
 }
 
 function addRound(path, x, y, r) {
