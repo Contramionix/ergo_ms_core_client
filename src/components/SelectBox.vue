@@ -1,28 +1,8 @@
 <template>
     <div class="select-box" ref="rootEl" v-csp-style="rootCssVars" v-bind="$attrs">
         <label v-if="label" class="form-label mb-1" :for="triggerId">{{ label }}</label>
-        <div
-            class="dropdown"
-            :class="{ 'is-open': isOpen }"
-            @mouseenter="onHoverZoneEnter"
-            @mouseleave="onHoverZoneLeave"
-        >
-            <button
-                :id="triggerId"
-                class="btn btn-light w-100 d-flex align-items-center justify-content-between select-trigger"
-                :class="{
-                    'select-trigger--open': isOpen,
-                    'select-trigger--open-up': isOpen && menuOpensUpward,
-                }"
-                type="button"
-                :disabled="disabled"
-                :aria-label="triggerAriaLabel"
-                :aria-expanded="isOpen"
-                :aria-controls="listboxId"
-                aria-haspopup="listbox"
-                @click="toggle"
-                @blur="$emit('blur')"
-            >
+        <div class="dropdown" :class="{ 'is-open': isOpen }" @mouseenter="onHoverZoneEnter" @mouseleave="onHoverZoneLeave">
+            <button :id="triggerId" class="btn btn-light w-100 d-flex align-items-center justify-content-between select-trigger" :class="{ 'select-trigger--open': isOpen, 'select-trigger--open-up': isOpen && menuOpensUpward, }" type="button" :disabled="disabled" :aria-label="triggerAriaLabel" :aria-expanded="isOpen" :aria-controls="listboxId" aria-haspopup="listbox" @click="toggle" @blur="$emit('blur')">
                 <span class="select-trigger-slot d-flex align-items-center flex-grow-1 me-2">
                     <slot name="selected" :option="selectedOption" :label="currentLabel">
                         <span class="value-text">{{ currentLabel }}</span>
@@ -30,38 +10,10 @@
                 </span>
                 <span v-if="!hideChevron" class="d-inline-flex align-items-center select-trigger-chevron" :class="{ 'select-trigger-chevron--open': isOpen }" aria-hidden="true"><LucideIcon name="ChevronDown" class="icon-center" /></span>
             </button>
-            <teleport to="body">
-                <div
-                    v-if="isOpen"
-                    class="select-box-menu-anchor"
-                    :class="{
-                        'select-box-menu-anchor--up': menuOpensUpward,
-                        'select-box-menu-anchor--side': placement === 'right',
-                    }"
-                    v-csp-style="menuAnchorStyle"
-                    @mouseenter="onHoverZoneEnter"
-                    @mouseleave="onHoverZoneLeave"
-                >
-                    <div
-                        ref="menuEl"
-                        :id="listboxId"
-                        role="listbox"
-                        :aria-labelledby="triggerId"
-                        :class="dropdownTeleportMenuClass"
-                        v-csp-style="fixedMenuStyle"
-                    >
-                        <input
-                            v-if="searchable"
-                            ref="searchInputEl"
-                            v-model="searchQuery"
-                            type="text"
-                            class="select-box-search"
-                            :placeholder="resolvedSearchPlaceholder"
-                            :aria-label="resolvedSearchPlaceholder || t('components.selectBox.search')"
-                            autocomplete="off"
-                        />
+                <div v-if="isOpen" ref="menuAnchorEl" class="dropdown-menu show" :popover="menuTopLayer ? 'manual' : undefined" :class="{ 'dropdown-menu--top-layer': menuTopLayer, 'dropdown-menu--up': menuOpensUpward, 'dropdown-menu--side': placement === 'right', 'dropdown-menu--align-center': placement === 'right' && placementAlign === 'center', 'select-box-menu--uniform-font': uniformDropdownListFont, [dropdownMenuClass]: Boolean(dropdownMenuClass), }" v-csp-style="menuStyle" role="listbox" :id="listboxId" :aria-labelledby="triggerId" @mouseenter="onHoverZoneEnter" @mouseleave="onHoverZoneLeave">
+                        <SearchInput v-if="searchable" ref="searchInputEl" v-model="searchQuery" class="select-box-search" layout="fill" :show-icon="false" :clearable="true" :placeholder="resolvedSearchPlaceholder"/>
                         <template v-if="!virtualized">
-                            <ul class="dropdown-menu-list" role="presentation">
+                            <ul ref="listContainerRef" class="dropdown-menu-list" role="presentation" @scroll="onListScroll">
                                 <li v-if="includeAllOption && !hasActiveSearch">
                                     <a class="dropdown-item" :class="{ active: multiple ? (modelValue?.length === 0) : isSelected(null) }" href="#" @click.prevent="choose(null)">{{ resolvedAllLabel }}</a>
                                 </li>
@@ -136,9 +88,7 @@
                                 </div>
                             </div>
                         </template>
-                    </div>
                 </div>
-            </teleport>
         </div>
     </div>
 </template>
@@ -146,8 +96,9 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick, useId } from 'vue'
 import LucideIcon from '@/components/LucideIcon.vue'
-import { OVERLAY_MENU_Z_INDEX } from '@/js/utils/overlayZIndex.js'
+import SearchInput from '@/components/SearchInput.vue'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
+import { useSelectBoxMenuPosition } from '@/composables/useSelectBoxMenuPosition.js'
 
 defineOptions({ inheritAttrs: false })
 
@@ -179,6 +130,8 @@ const props = defineProps({
     searchByFirstLetters: { type: Boolean, default: false },
     /** Ключ доп. поля в объекте опции для поиска (помимо label); пусто — только label */
     searchExtraKey: { type: String, default: '' },
+    /** false — не фильтровать options локально (удалённый поиск через @search) */
+    filterLocalOptions: { type: Boolean, default: true },
     multiple: { type: Boolean, default: false },
     showCheckboxesWhenMultiple: { type: Boolean, default: false },
     multipleLabelFormat: { type: String, default: 'list', validator: (v) => ['count', 'list'].includes(v) },
@@ -187,7 +140,7 @@ const props = defineProps({
     overscan: { type: Number, default: 6 },
     /** Минимальная ширина выпадающего меню (может быть шире триггера) */
     dropdownMinWidth: { type: Number, default: 0 },
-    /** Доп. класс на выпадающее меню (teleport в body — для стилей с :global у потребителя) */
+    /** Доп. класс на выпадающее меню */
     dropdownMenuClass: { type: String, default: '' },
     /** Одинаковый размер шрифта у всех пунктов списка, включая active (компактные тулбары) */
     uniformDropdownListFont: { type: Boolean, default: false },
@@ -209,11 +162,19 @@ const props = defineProps({
     placementAlign: { type: String, default: 'start', validator: (v) => ['start', 'center'].includes(v) },
     /** Открывать выпадающий список при наведении (удобно для подменю, напр. выбор темы в SettingsMenu) */
     openOnHover: { type: Boolean, default: false },
-    /** Задержка закрытия при уходе курсора, ms — чтобы успеть перейти с триггера на телепортированное меню */
+    /** Задержка закрытия при уходе курсора, ms — чтобы успеть перейти с триггера на меню */
     hoverCloseDelay: { type: Number, default: 120 },
+    /**
+     * compact — список не выше 260px.
+     * screen — список тянется до края окна, как до ограничения высоты.
+     */
+    menuMode: { type: String, default: 'compact', validator: (v) => ['compact', 'screen'].includes(v) },
 })
 
-const emit = defineEmits(['update:modelValue', 'change', 'blur', 'search'])
+const emit = defineEmits(['update:modelValue', 'change', 'blur', 'search', 'load-more'])
+
+const LOAD_MORE_THRESHOLD_PX = 48
+let loadMoreEmittedForBatch = false
 
 const generatedId = useId()
 const triggerId = computed(() => props.id || generatedId)
@@ -267,14 +228,6 @@ function getDropdownItemStyle(opt) {
     }
 }
 
-const dropdownTeleportMenuClass = computed(() => {
-    const parts = ['dropdown-menu', 'show', 'fixed-menu']
-    if (props.placement === 'right') parts.push('fixed-menu--side')
-    if (props.dropdownMenuClass) parts.push(props.dropdownMenuClass)
-    if (props.uniformDropdownListFont) parts.push('select-box-menu--uniform-font')
-    return parts
-})
-
 function toKey(value) {
     if (value === null || value === undefined) return NULL_VALUE
     const type = typeof value
@@ -317,7 +270,9 @@ function getSearchExtraText(opt) {
 }
 
 const filteredOptions = computed(() => {
-    if (!props.searchable || !searchQuery.value.trim()) return normalizedOptions.value
+    if (!props.searchable || !searchQuery.value.trim() || !props.filterLocalOptions) {
+        return normalizedOptions.value
+    }
     const q = searchQuery.value.trim()
     const qLower = q.toLowerCase()
     if (props.searchByFirstLetters) {
@@ -346,112 +301,17 @@ const hasListContent = computed(() => {
 })
 
 const isOpen = ref(false)
-const menuOpensUpward = ref(false)
-const menuAnchorStyle = ref({})
-const fixedMenuStyle = ref({})
+const rootEl = ref(null)
+const menuAnchorEl = ref(null)
+let suppressOutsideClick = false
 
-function resolveContextFontSize(trigger, root) {
-    if (!trigger) return '1rem'
-    const triggerStyle = getComputedStyle(trigger)
-    if (triggerStyle.fontSize) return triggerStyle.fontSize
-    if (root) {
-        const rootStyle = getComputedStyle(root)
-        if (rootStyle.fontSize) return rootStyle.fontSize
-    }
-    return '1rem'
-}
-
-function buildMenuCssVars(trigger, root) {
-    const triggerStyle = getComputedStyle(trigger)
-    const rootStyle = root ? getComputedStyle(root) : null
-    const menuFontSize = resolveContextFontSize(trigger, root)
-    const customFontSize = rootStyle?.getPropertyValue('--select-box-font-size').trim()
-    const resolvedMenuFontSize = customFontSize || menuFontSize
-    const menuLineHeight = triggerStyle.lineHeight || rootStyle?.lineHeight || '1.5'
-    return {
-        fontSize: resolvedMenuFontSize,
-        lineHeight: menuLineHeight,
-        '--select-box-font-size': resolvedMenuFontSize,
-        '--select-box-search-font-size': rootStyle?.getPropertyValue('--select-box-search-font-size').trim() || '1em',
-        '--select-box-compact-font-size': rootStyle?.getPropertyValue('--select-box-compact-font-size').trim() || '1em',
-        '--select-box-item-padding-y': rootStyle?.getPropertyValue('--select-box-item-padding-y').trim() || '0.375rem',
-        '--select-box-item-padding-x': rootStyle?.getPropertyValue('--select-box-item-padding-x').trim() || '0.75rem',
-        '--select-box-nested-indent-per-level': rootStyle?.getPropertyValue('--select-box-nested-indent-per-level').trim() || `${props.optionIndentPerLevel}rem`,
-        '--select-box-nested-font-size': props.nestedOptionFontSize
-            || rootStyle?.getPropertyValue('--select-box-nested-font-size').trim()
-            || '1em',
-        '--select-box-nested-secondary-font-size': props.nestedSecondaryFontSize
-            || rootStyle?.getPropertyValue('--select-box-nested-secondary-font-size').trim()
-            || props.nestedOptionFontSize
-            || '1em',
-    }
-}
-
-function updateMenuPosition() {
-    const root = rootEl.value
-    if (!root) return
-    const trigger = root.querySelector('.select-trigger')
-    if (!trigger) return
-    const triggerRect = trigger.getBoundingClientRect()
-    const anchorEl = props.dropdownAnchorRef?.value
-    const anchorRect = anchorEl ? anchorEl.getBoundingClientRect() : null
-    const rect = (anchorRect && anchorRect.width > 0) ? anchorRect : triggerRect
-    const viewportPadding = 8
-    const minDropdownWidth = 120
-
-    let top
-    let left
-    let width
-    let openUp = false
-
-    if (props.placement === 'right') {
-        const sideGap = props.placementGap
-        const maxWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
-        width = Math.min(Math.max(minDropdownWidth, props.dropdownMinWidth || 0), maxWidth)
-        const fitsRight = triggerRect.right + sideGap + width <= window.innerWidth - viewportPadding
-        left = fitsRight
-            ? triggerRect.right + sideGap
-            : Math.max(viewportPadding, triggerRect.left - sideGap - width)
-
-        if (props.placementAlign === 'center') {
-            const menuHeight = menuEl.value?.getBoundingClientRect().height || triggerRect.height
-            const centerTop = triggerRect.top + triggerRect.height / 2 - menuHeight / 2
-            top = Math.min(
-                Math.max(viewportPadding, centerTop),
-                Math.max(viewportPadding, window.innerHeight - viewportPadding - menuHeight)
-            )
-        } else {
-            top = Math.min(
-                triggerRect.top,
-                window.innerHeight - viewportPadding
-            )
-        }
-    } else {
-        const maxWidth = Math.max(0, window.innerWidth - viewportPadding * 2)
-        const triggerWidth = Math.max(0, rect.width)
-        const minW = Math.max(minDropdownWidth, props.dropdownMinWidth || 0, triggerWidth)
-        width = Math.min(minW, maxWidth)
-        left = Math.abs(width - triggerWidth) < 0.5
-            ? rect.left
-            : Math.min(rect.left, window.innerWidth - viewportPadding - width)
-        const menuHeight = menuEl.value?.getBoundingClientRect().height || 0
-        const spaceBelow = window.innerHeight - viewportPadding - triggerRect.bottom
-        const spaceAbove = triggerRect.top - viewportPadding
-        openUp = menuHeight > 0
-            && spaceBelow < menuHeight
-            && spaceAbove > spaceBelow
-        top = openUp ? triggerRect.top : triggerRect.bottom
-    }
-
-    menuOpensUpward.value = openUp
-    menuAnchorStyle.value = {
-        top: `${top}px`,
-        left: `${left}px`,
-        width: `${width}px`,
-        zIndex: OVERLAY_MENU_Z_INDEX,
-    }
-    fixedMenuStyle.value = buildMenuCssVars(trigger, root)
-}
+const { menuTopLayer, menuOpensUpward, menuStyle, updateMenuPosition } = useSelectBoxMenuPosition({
+    props,
+    rootEl,
+    menuEl: menuAnchorEl,
+    isOpen,
+    onTriggerHidden: () => close(),
+})
 const searchInputEl = ref(null)
 let hoverCloseTimer = null
 
@@ -485,18 +345,20 @@ function onHoverZoneLeave() {
 function open() {
     if (props.disabled || isOpen.value) return
     isOpen.value = true
-    updateMenuPosition()
-    if (props.dropdownAnchorRef) {
-        nextTick(() => {
+    // Иначе document click того же жеста закрывает меню (Яндекс.Браузер, searchable).
+    suppressOutsideClick = true
+    nextTick(() => {
+        updateMenuPosition()
+        requestAnimationFrame(() => {
             updateMenuPosition()
-            requestAnimationFrame(() => updateMenuPosition())
+            if (props.searchable) {
+                searchInputEl.value?.focus({ preventScroll: true })
+            }
+            requestAnimationFrame(() => {
+                suppressOutsideClick = false
+            })
         })
-    } else {
-        requestAnimationFrame(() => updateMenuPosition())
-    }
-    if (props.searchable) {
-        nextTick(() => searchInputEl.value?.focus())
-    }
+    })
     if (props.virtualized) {
         startIndex.value = 0
         endIndex.value = 0
@@ -517,8 +379,10 @@ function toggle() {
 
 function close() {
     clearHoverCloseTimer()
+    suppressOutsideClick = false
     isOpen.value = false
     searchQuery.value = ''
+    menuOpensUpward.value = false
 }
 
 function coerce(val) {
@@ -619,14 +483,19 @@ function isSelected(val) {
 }
 
 function handleClickOutside(e) {
+    if (suppressOutsideClick || !isOpen.value) return
     const root = rootEl.value
     if (!root) return
-    if (menuEl.value?.contains(e.target)) return
-    if (!root.contains(e.target)) close()
+    if (menuAnchorEl.value?.contains(e.target)) return
+    if (root.contains(e.target)) return
+    close()
+    // label[for=trigger]: иначе после close браузер кликнет кнопку и снова откроет меню.
+    const label = e.target instanceof Element ? e.target.closest('label') : null
+    if (label?.htmlFor && label.htmlFor === triggerId.value) {
+        e.preventDefault()
+    }
 }
 
-const rootEl = ref(null)
-const menuEl = ref(null)
 const listContainerRef = ref(null)
 const listScrollTop = ref(0)
 const listViewportHeight = ref(260)
@@ -685,44 +554,52 @@ function updateVisibleRange() {
     endIndex.value = end
 }
 
-function onListScroll() {
-    updateVisibleRange()
+function maybeEmitLoadMore() {
+    const el = listContainerRef.value
+    if (!el || loadMoreEmittedForBatch) return
+    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - LOAD_MORE_THRESHOLD_PX
+    if (!nearBottom) return
+    loadMoreEmittedForBatch = true
+    emit('load-more')
 }
 
-const onResize = () => {
-    updateMenuPosition()
+function onListScroll() {
+    updateVisibleRange()
+    maybeEmitLoadMore()
 }
+
 onMounted(() => {
     document.addEventListener('click', handleClickOutside, true)
-    window.addEventListener('resize', onResize)
-    window.addEventListener('scroll', updateMenuPosition, true)
 })
 onBeforeUnmount(() => {
     clearHoverCloseTimer()
     document.removeEventListener('click', handleClickOutside, true)
-    window.removeEventListener('resize', onResize)
-    window.removeEventListener('scroll', updateMenuPosition, true)
 })
 
 watch([() => (props.virtualized ? effectiveOptionsForVirtual.value.length : filteredOptions.value.length), isOpen], () => {
-    if (props.virtualized && isOpen.value) {
-        nextTick(updateVisibleRange)
-    }
+    loadMoreEmittedForBatch = false
+    nextTick(() => {
+        if (props.virtualized && isOpen.value) {
+            updateVisibleRange()
+        }
+        if (isOpen.value) {
+            maybeEmitLoadMore()
+        }
+    })
 })
 
 watch(searchQuery, (value) => {
+    loadMoreEmittedForBatch = false
     emit('search', String(value || ''))
-    if (props.virtualized && isOpen.value && listContainerRef.value) {
+    if (isOpen.value && listContainerRef.value) {
         listContainerRef.value.scrollTop = 0
-        nextTick(updateVisibleRange)
+        if (props.virtualized) {
+            nextTick(updateVisibleRange)
+        }
     }
 })
 </script>
 
 <style scoped lang="scss">
 @import "./SelectBox.scoped.scss";
-</style>
-
-<style lang="scss">
-@import "./SelectBox.global.scss";
 </style>

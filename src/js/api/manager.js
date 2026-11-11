@@ -21,10 +21,16 @@ import {
   showRateLimitNotice,
 } from '@/composables/useRateLimitNotice.js'
 import { resolveApiBaseUrl } from '@/js/api/baseUrl.js'
-import { extractApiError } from '@/js/utils/apiErrorMessage.js'
+import { extractApiError, isModuleUnavailableError } from '@/js/utils/apiErrorMessage.js'
 import { axiosSameOriginMediaRequest } from '@/js/utils/mediaDownload.js'
 import { logError, logWarn, sanitizeError } from '@/js/utils/logError.js'
 import { getCurrentLocale } from '@/i18n/index.js'
+
+function isRequestAborted(error) {
+  return error?.code === 'ERR_CANCELED'
+    || error?.name === 'CanceledError'
+    || error?.name === 'AbortError'
+}
 
 function bearerAccess(headers) {
   const raw = headers?.Authorization || headers?.authorization || ''
@@ -84,6 +90,28 @@ function splitAxiosStyleGetArgs(params) {
     return { query: {}, requestConfig: { ...params } }
   }
   return { query: params, requestConfig: {} }
+}
+
+async function messageFromDownloadError(error) {
+  const data = error?.response?.data
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text())
+      const detail = parsed.detail || parsed.message
+      if (typeof detail === 'string' && detail.trim()) {
+        return detail
+      }
+    } catch {
+      /* ответ не JSON */
+    }
+  }
+  if (typeof data?.detail === 'string' && data.detail.trim()) {
+    return data.detail
+  }
+  if (typeof data?.message === 'string' && data.message.trim()) {
+    return data.message
+  }
+  return error?.message || 'Ошибка при скачивании файла'
 }
 
 /**
@@ -310,8 +338,8 @@ class ApiClient {
     return this._request('GET', endpoint, query, needToken, requestConfig, options)
   }
 
-  async post(endpoint, data = {}, needToken = true) {
-    return this._request('POST', endpoint, data, needToken)
+  async post(endpoint, data = {}, needToken = true, options = {}) {
+    return this._request('POST', endpoint, data, needToken, {}, options)
   }
 
   async put(endpoint, data = {}, needToken = true) {
@@ -329,10 +357,11 @@ class ApiClient {
   /**
    * Скачивание файлов (бинарные данные)
    */
-  async downloadFile(endpoint, params = {}, method = 'GET', needToken = true) {
+  async downloadFile(endpoint, params = {}, method = 'GET', needToken = true, requestConfig = {}) {
     try {
-      const config = { 
-        responseType: 'blob'
+      const config = {
+        responseType: 'blob',
+        ...requestConfig,
       }
       if (needToken) {
         config._needToken = true
@@ -340,6 +369,13 @@ class ApiClient {
 
       if (needToken) {
         this._addAuthToken(config)
+      }
+
+      if (params instanceof FormData) {
+        config.headers = {
+          ...config.headers,
+          'Content-Type': undefined,
+        }
       }
 
       let response
@@ -368,7 +404,7 @@ class ApiClient {
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || error.message || 'Ошибка при скачивании файла',
+        message: await messageFromDownloadError(error),
         data: null,
         status: error.response?.status
       }
@@ -449,6 +485,15 @@ class ApiClient {
     }
 
 
+    if (isRequestAborted(error)) {
+      return {
+        success: false,
+        message: '',
+        status: undefined,
+        errors: null,
+      }
+    }
+
     const status = error.response?.status
     const hadAuthHeader = Boolean(error?.config?.headers?.Authorization)
 
@@ -474,14 +519,7 @@ class ApiClient {
     }
 
     const data = error.response?.data
-    const detail = typeof data === 'object' && data ? data.detail : data
-    const headers = error.response?.headers || {}
-    const moduleGone = Boolean(
-      headers['x-ergo-module-unavailable']
-      || headers['X-Ergo-Module-Unavailable']
-      || detail === 'module_unavailable'
-    )
-    if (moduleGone && (status === 502 || status === 503 || status === 504)) {
+    if (isModuleUnavailableError(error)) {
       const message = extractApiError(error)
       logWarn('[apiClient] module unavailable', { url: requestUrl, status })
       return {

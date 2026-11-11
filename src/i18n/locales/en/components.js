@@ -6,6 +6,8 @@ export default {
   tabBar: {
     ariaLabel: 'Tabs',
     more: 'More',
+    previous: 'Scroll left',
+    next: 'Scroll right',
   },
   searchInput: {
     placeholder: 'Search...',
@@ -26,6 +28,9 @@ export default {
     clear: 'Clear',
   },
   pagination: {
+    jumpLabel: 'Page',
+    jumpAction: 'Go',
+    jumpError: 'Enter a whole number from 1 to {total}',
     page: 'Page {page} of {total}',
     pageOnly: 'Page {page}',
     pagePosition: 'page {page} of {total}',
@@ -87,6 +92,13 @@ export default {
     pagesTwo: 'Two pages',
     pagesFour: 'Four pages',
     pagesFitWidth: 'Fit to window width',
+    searchPlaceholder: 'Search in file',
+    searchEmpty: 'No matches',
+    searchCount: '{current} of {total}',
+    searchPrev: 'Previous match',
+    searchNext: 'Next match',
+    legendCurrent: 'Orange — the passage the file was opened on',
+    legendOther: 'Yellow — the other matching passages',
   },
   sideDrawer: {
     close: 'Close',
@@ -238,6 +250,11 @@ export default {
     or: 'or',
     browse: 'choose on your computer',
     ariaLabel: 'Attach a file',
+  },
+  fileCard: {
+    download: 'Download',
+    remove: 'Remove',
+    fallbackName: 'File',
   },
   laneGraph: {
     modesLabel: 'Diagram modes',

@@ -158,6 +158,9 @@ const OPTIMIZE_DEPS_INCLUDE = [
   'vue-router',
   'pinia',
   'axios',
+  // Анимированные иконки тянут motion-v отдельным импортом. Без предсборки
+  // обновление deps не успевает записать файл, и глиф падает обратно на LucideIcon.
+  'motion-v',
 ]
 
 function npmPackageAliases(names) {
@@ -165,6 +168,15 @@ function npmPackageAliases(names) {
     find: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
     replacement: path.join(npmModules, name),
   }))
+}
+
+/** До 7.9.2 ESM лежал в src/index.js, dist/d3.js был UMD. Дальше в пакете только dist/d3.mjs. */
+function resolveD3EsmEntry() {
+  const srcEntry = path.join(npmModules, 'd3/src/index.js')
+  if (fs.existsSync(srcEntry)) {
+    return srcEntry
+  }
+  return path.join(npmModules, 'd3/dist/d3.mjs')
 }
 
 /** Bind-адреса сервера — браузер по ним не ходит (ERR_ADDRESS_INVALID). */
@@ -345,6 +357,15 @@ function resolveManualChunk(id) {
       return 'module_stores'
     }
 
+    // Карта всех страниц и код регистрации remotes не нужны до первой отрисовки.
+    // В module_runtime они попали бы в modulepreload вместе с оболочкой.
+    if (
+      normalizedId.includes('/sharedGlobs.generated.js')
+      || normalizedId.includes('/federatedModules.js')
+    ) {
+      return undefined
+    }
+
     if (normalizedId.includes(CORE_MODULE_SYSTEM)) {
       return 'module_runtime'
     }
@@ -427,7 +448,8 @@ function clientBuildIdPlugin(buildId) {
   return {
     name: 'ergo-client-build-id',
     apply: 'build',
-    closeBundle() {
+    // closeBundle вызывается и при обрыве сборки: номер уехал бы вперёд, а старый бандл остался.
+    writeBundle() {
       const outDir = path.resolve(__dirname, 'dist')
       fs.mkdirSync(outDir, { recursive: true })
       fs.writeFileSync(
@@ -831,6 +853,10 @@ export default defineConfig(() => ({
         find: /^lucide-vue-next$/,
         replacement: path.join(npmModules, '@lucide/vue'),
       },
+      {
+        find: /^d3$/,
+        replacement: resolveD3EsmEntry(),
+      },
       // Оболочка на vue-sonner; модули ещё импортируют vue-toastification.
       {
         find: /^vue-toastification$/,
@@ -867,6 +893,8 @@ export default defineConfig(() => ({
   },
   server: {
     port: parseInt(process.env.CLIENT_PORT, 10) || 8001,
+    // Не перескакивать на следующий порт: 8002 занят Jupyter и не входит в CORS dev-список.
+    strictPort: true,
     host: process.env.CLIENT_HOST || 'localhost',
     https: false,
     // Прокси для CLIENT_USE_RELATIVE_API=true без nginx (редко) и ручных запросов к /api на origin Vite.
@@ -899,6 +927,8 @@ export default defineConfig(() => ({
     include: OPTIMIZE_DEPS_INCLUDE,
     rolldownOptions: {
       plugins: [
+        // Предсборка использует тот же корень пакетов, что и обычная сборка.
+        resolveFromNpmRootPlugin(),
         {
           name: 'rolldown-stub-missing-core-imports',
           resolveId(id) {

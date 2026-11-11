@@ -55,6 +55,8 @@
               'lane-graph__edge--dim': isEdgeDim(edge),
               'lane-graph__edge--crit': isEdgeCrit(edge),
               'lane-graph__edge--bad': edge.bad,
+              [`lane-graph__edge--tone-${edge.tone}`]: Boolean(edge.tone) && !edge.bad,
+              'lane-graph__edge--dashed': edge.dashed && !edge.bad,
             }"
             :marker-end="edge.bad ? null : `url(#${markerId})`"
           />
@@ -181,6 +183,10 @@ const props = defineProps({
   showEdges: { type: Boolean, default: true },
   showDetail: { type: Boolean, default: true },
   showWarnings: { type: Boolean, default: true },
+  // Все карточки одной высоты; длинный заголовок обрезается, полный — в подсказке.
+  uniformCards: { type: Boolean, default: false },
+  // full — вся цепочка зависимостей при наведении; direct — только соседи карточки.
+  focusChain: { type: String, default: 'full' },
 })
 
 const emit = defineEmits(['hover', 'select'])
@@ -196,7 +202,9 @@ const markerId = `lane-graph-arrow-${Math.random().toString(36).slice(2, 9)}`
 const layout = computed(() => layoutLaneGraph({
   items: props.items,
   lanes: props.lanes,
+  uniform: props.uniformCards,
 }))
+const directFocus = computed(() => props.focusChain === 'direct')
 
 const resolvedCategories = computed(() => deriveLaneGraphCategories(layout.value.items, props.categories))
 const categoryTone = computed(() => {
@@ -223,6 +231,11 @@ const chainIds = computed(() => {
   const id = focusedId.value
   if (!id) return new Set()
   const ids = new Set([id])
+  if (directFocus.value) {
+    ;(layout.value.parents.get(id) || []).forEach((value) => ids.add(value))
+    ;(layout.value.children.get(id) || []).forEach((value) => ids.add(value))
+    return ids
+  }
   collectUpstream(id, layout.value.parents).forEach((value) => ids.add(value))
   collectDownstream(id, layout.value.children).forEach((value) => ids.add(value))
   return ids
@@ -231,6 +244,9 @@ const chainIds = computed(() => {
 const activeEdges = computed(() => {
   const id = focusedId.value
   if (!id) return new Set()
+  if (directFocus.value) {
+    return new Set(layout.value.edges.filter((edge) => edge.from === id || edge.to === id).map((edge) => edge.id))
+  }
   const up = collectUpstream(id, layout.value.parents)
   const down = collectDownstream(id, layout.value.children)
   const on = new Set()
@@ -382,6 +398,8 @@ function cardClass(item) {
   return {
     [`lane-graph__card--${cardTone(item)}`]: true,
     'lane-graph__card--optional': item.optional,
+    'lane-graph__card--filled': item.filled,
+    'lane-graph__card--uniform': props.uniformCards,
     'lane-graph__card--flag': item.highlight,
     'lane-graph__card--sel': pinnedId.value === item.id,
     'lane-graph__card--dim': dimAll ? !onChain : critDim,
@@ -400,283 +418,4 @@ function isEdgeCrit(edge) {
 }
 </script>
 
-<style scoped lang="scss">
-.lane-graph {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  min-width: 0;
-}
-
-.lane-graph__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.lane-graph__mode {
-  padding: 0.28rem 0.7rem;
-  border: 1px solid var(--ui-border, var(--color-border));
-  border-radius: var(--ui-radius, 0.625rem);
-  background: var(--ui-surface-2, var(--color-secondary-background));
-  color: var(--ui-text-muted, var(--color-secondary-text));
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.lane-graph__mode--on {
-  background: var(--ui-accent-soft, color-mix(in srgb, var(--ui-accent) 12%, var(--ui-surface)));
-  border-color: color-mix(in srgb, var(--ui-accent) 45%, var(--ui-border));
-  color: var(--ui-accent-text, var(--ui-text));
-}
-
-.lane-graph__empty,
-.lane-graph__info-text,
-.lane-graph__warn {
-  margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
-
-.lane-graph__empty,
-.lane-graph__info-text {
-  color: var(--ui-text-muted, var(--color-secondary-text));
-}
-
-.lane-graph__warn {
-  color: var(--ui-danger);
-}
-
-.lane-graph__scroll {
-  overflow-x: auto;
-  max-width: 100%;
-}
-
-.lane-graph__canvas {
-  position: relative;
-  user-select: none;
-}
-
-.lane-graph__svg {
-  position: absolute;
-  left: 0;
-  top: 0;
-  overflow: visible;
-  pointer-events: none;
-}
-
-.lane-graph__edge {
-  fill: none;
-  stroke: var(--ui-border-strong, var(--ui-border));
-  stroke-width: 1.2;
-  transition: opacity 0.15s, stroke-width 0.15s;
-}
-
-.lane-graph__edge--on {
-  stroke: var(--ui-accent);
-  stroke-width: 2;
-}
-
-.lane-graph__edge--dim {
-  opacity: 0.1;
-}
-
-.lane-graph__edge--crit {
-  stroke: var(--ui-warning);
-  stroke-width: 2.2;
-}
-
-.lane-graph__edge--bad {
-  stroke: var(--ui-danger);
-  stroke-dasharray: 4 3;
-  stroke-width: 1.6;
-}
-
-.lane-graph__lane {
-  position: absolute;
-  top: 0;
-  font-size: 0.75rem;
-  color: var(--ui-text-muted, var(--color-secondary-text));
-}
-
-.lane-graph__lane-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.35rem;
-  align-items: baseline;
-}
-
-.lane-graph__lane-head b {
-  font-weight: 600;
-  color: var(--ui-text, var(--color-primary-text));
-}
-
-.lane-graph__lane--over .lane-graph__lane-weight {
-  color: var(--ui-danger);
-}
-
-.lane-graph__bar {
-  height: 4px;
-  margin-top: 5px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: var(--ui-border, var(--color-border));
-}
-
-.lane-graph__bar i {
-  display: block;
-  height: 100%;
-  border-radius: 2px;
-  background: var(--ui-accent);
-}
-
-.lane-graph__bar--over i {
-  background: var(--ui-danger);
-}
-
-.lane-graph__card {
-  position: absolute;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-  transition: opacity 0.15s;
-}
-
-.lane-graph__card-inner {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 0.35rem;
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--ui-border, var(--color-border));
-  border-left-width: 3px;
-  border-radius: var(--ui-radius, 0.625rem);
-  background: var(--ui-surface, var(--color-primary-background));
-  color: var(--ui-text, var(--color-primary-text));
-}
-
-.lane-graph__card-title {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  font-size: 0.8125rem;
-  line-height: 1.3;
-  font-weight: 500;
-}
-
-.lane-graph__card-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.35rem;
-  font-size: 0.75rem;
-  color: var(--ui-text-muted, var(--color-secondary-text));
-}
-
-.lane-graph__card--accent .lane-graph__card-inner {
-  border-left-color: var(--ui-accent);
-}
-
-.lane-graph__card--info .lane-graph__card-inner {
-  border-left-color: var(--ui-info);
-}
-
-.lane-graph__card--success .lane-graph__card-inner {
-  border-left-color: var(--ui-success);
-}
-
-.lane-graph__card--warning .lane-graph__card-inner {
-  border-left-color: var(--ui-warning);
-}
-
-.lane-graph__card--neutral .lane-graph__card-inner {
-  border-left-color: var(--ui-border-strong, var(--ui-border));
-}
-
-.lane-graph__card--optional .lane-graph__card-inner {
-  border-style: dashed;
-}
-
-.lane-graph__card--sel .lane-graph__card-inner {
-  border-width: 2px;
-  border-color: var(--ui-accent);
-}
-
-.lane-graph__card--flag .lane-graph__card-inner {
-  border-color: var(--ui-danger);
-}
-
-.lane-graph__card--dim {
-  opacity: 0.22;
-}
-
-.lane-graph__badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  display: none;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--ui-accent) 45%, var(--ui-border));
-  border-radius: 10px;
-  background: var(--ui-accent-soft);
-  color: var(--ui-accent-text, var(--ui-text));
-  font-size: 0.68rem;
-  font-weight: 600;
-}
-
-.lane-graph__canvas--badges .lane-graph__badge {
-  display: flex;
-}
-
-.lane-graph__legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.85rem;
-  align-items: center;
-  font-size: 0.75rem;
-  color: var(--ui-text-muted, var(--color-secondary-text));
-}
-
-.lane-graph__legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.lane-graph__swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  background: var(--ui-neutral-soft);
-}
-
-.lane-graph__swatch--accent { background: var(--ui-accent); }
-.lane-graph__swatch--info { background: var(--ui-info); }
-.lane-graph__swatch--success { background: var(--ui-success); }
-.lane-graph__swatch--warning { background: var(--ui-warning); }
-.lane-graph__swatch--neutral { background: var(--ui-border-strong, var(--ui-border)); }
-.lane-graph__swatch--optional {
-  background: transparent;
-  border: 1px dashed var(--ui-text-muted);
-}
-
-.lane-graph--static .lane-graph__card,
-.lane-graph--static .lane-graph__edge {
-  transition: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lane-graph__card,
-  .lane-graph__edge {
-    transition: none;
-  }
-}
-</style>
+<style scoped lang="scss" src="./LaneGraph.scss"></style>

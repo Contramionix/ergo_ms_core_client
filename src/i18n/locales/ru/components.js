@@ -6,6 +6,8 @@ export default {
   tabBar: {
     ariaLabel: 'Вкладки',
     more: 'Ещё',
+    previous: 'Прокрутить влево',
+    next: 'Прокрутить вправо',
   },
   searchInput: {
     placeholder: 'Поиск...',
@@ -26,6 +28,9 @@ export default {
     clear: 'Очистить',
   },
   pagination: {
+    jumpLabel: 'Страница',
+    jumpAction: 'Перейти',
+    jumpError: 'Введите целое число от 1 до {total}',
     page: 'Страница {page} из {total}',
     pageOnly: 'Страница {page}',
     pagePosition: 'страница {page} из {total}',
@@ -87,6 +92,13 @@ export default {
     pagesTwo: 'Две страницы',
     pagesFour: 'Четыре страницы',
     pagesFitWidth: 'По ширине окна',
+    searchPlaceholder: 'Поиск по файлу',
+    searchEmpty: 'Нет совпадений',
+    searchCount: '{current} из {total}',
+    searchPrev: 'Предыдущее совпадение',
+    searchNext: 'Следующее совпадение',
+    legendCurrent: 'Оранжевый — фрагмент, к которому открыли файл',
+    legendOther: 'Жёлтый — остальные такие же фрагменты',
   },
   sideDrawer: {
     close: 'Закрыть',
@@ -238,6 +250,11 @@ export default {
     or: 'или',
     browse: 'выберите на компьютере',
     ariaLabel: 'Прикрепить файл',
+  },
+  fileCard: {
+    download: 'Загрузить',
+    remove: 'Удалить',
+    fallbackName: 'Файл',
   },
   laneGraph: {
     modesLabel: 'Режимы схемы',

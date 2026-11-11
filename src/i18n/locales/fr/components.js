@@ -6,6 +6,8 @@ export default {
   tabBar: {
     ariaLabel: 'Onglets',
     more: 'Plus',
+    previous: 'Défiler vers la gauche',
+    next: 'Défiler vers la droite',
   },
   searchInput: {
     placeholder: 'Rechercher...',
@@ -26,6 +28,9 @@ export default {
     clear: 'Effacer',
   },
   pagination: {
+    jumpLabel: 'Page',
+    jumpAction: 'Aller',
+    jumpError: 'Saisissez un nombre entier de 1 à {total}',
     page: 'Page {page} sur {total}',
     pageOnly: 'Page {page}',
     pagePosition: 'page {page} sur {total}',
@@ -87,6 +92,13 @@ export default {
     pagesTwo: 'Deux pages',
     pagesFour: 'Quatre pages',
     pagesFitWidth: 'Ajuster à la largeur de la fenêtre',
+    searchPlaceholder: 'Rechercher dans le fichier',
+    searchEmpty: 'Aucune occurrence',
+    searchCount: '{current} sur {total}',
+    searchPrev: 'Occurrence précédente',
+    searchNext: 'Occurrence suivante',
+    legendCurrent: 'Orange — le passage sur lequel le fichier s’est ouvert',
+    legendOther: 'Jaune — les autres passages identiques',
   },
   sideDrawer: {
     close: 'Fermer',
@@ -238,6 +250,11 @@ export default {
     or: 'ou',
     browse: 'sélectionnez sur l’ordinateur',
     ariaLabel: 'Joindre un fichier',
+  },
+  fileCard: {
+    download: 'Télécharger',
+    remove: 'Supprimer',
+    fallbackName: 'Fichier',
   },
   laneGraph: {
     modesLabel: 'Modes du schéma',

@@ -7,9 +7,17 @@
  *
  * JBIG2 и JPEG2000 pdf.js 5 берёт из wasm. ``?url`` даёт хеш в имени файла,
  * а библиотека дописывает к каталогу фиксированные имена, поэтому каталог — /pdfjs/wasm/.
+ * Воркер живёт на blob:, и import('/pdfjs/...') оттуда не резолвится: запасной
+ * JS-декодер нужен абсолютным URL того же origin.
  */
 
-const PDFJS_WASM_URL = `${import.meta.env.BASE_URL}pdfjs/wasm/`
+function pdfjsWasmBaseUrl() {
+  const relative = `${import.meta.env.BASE_URL}pdfjs/wasm/`
+  if (typeof window === 'undefined' || !window.location?.href) {
+    return relative
+  }
+  return new URL(relative, window.location.href).href
+}
 
 let pdfjsLib = null
 let workerBlobSrc = ''
@@ -65,7 +73,7 @@ export async function loadPdfjs() {
 export async function openPdfDocument(data) {
   const pdfjs = await loadPdfjs()
   const bytes = data instanceof Uint8Array ? data : new Uint8Array(data)
-  return pdfjs.getDocument({ data: bytes, wasmUrl: PDFJS_WASM_URL }).promise
+  return pdfjs.getDocument({ data: bytes, wasmUrl: pdfjsWasmBaseUrl() }).promise
 }
 
 export function pdfPageViewport(page, { scale = 1, rotation = 0 } = {}) {
@@ -190,11 +198,108 @@ export function cancelPdfPageRenders(options = {}) {
   }
 }
 
+const activeTextLayers = new Set()
+
+function releasePdfTextMeasureCanvas() {
+  const cleanup = pdfjsLib?.TextLayer?.cleanup
+  if (!cleanup) {
+    return
+  }
+  try {
+    cleanup.call(pdfjsLib.TextLayer)
+  } catch {
+    // слой ещё рисуется: cleanup сам выходит, пока есть незавершённые слои
+  }
+}
+
+function cancelActiveTextLayers() {
+  for (const layer of [...activeTextLayers]) {
+    try {
+      layer.cancel()
+    } catch {
+      // слой уже завершён или отменён
+    }
+  }
+}
+
 export function clearPdfPageCache() {
   cacheEpoch += 1
   cancelPdfPageRenders()
   pageCache.clear()
   inflightBitmaps.clear()
+  cancelActiveTextLayers()
+  // cancel снимает слой с учёта в микрозадаче promise, раньше этого cleanup.
+  queueMicrotask(releasePdfTextMeasureCanvas)
+}
+
+const textLayerTasks = new WeakMap()
+const textGeneration = new WeakMap()
+
+function bumpTextGeneration(container) {
+  const next = (textGeneration.get(container) || 0) + 1
+  textGeneration.set(container, next)
+  return next
+}
+
+/**
+ * Прозрачный текст поверх холста: тот же масштаб и поворот, что у листа.
+ * Ширину задаёт CSS-переменная pdf.js от масштаба листа, не от пикселей холста,
+ * иначе поиск браузера попадает мимо глифов.
+ */
+export async function renderPdfTextLayer(page, container, scale, options = {}) {
+  if (!container) {
+    return null
+  }
+  const previous = textLayerTasks.get(container)
+  if (previous) {
+    try {
+      previous.cancel()
+    } catch {
+      // слой уже завершён или отменён
+    }
+  }
+  const generation = bumpTextGeneration(container)
+  container.replaceChildren()
+  const pdfjs = await loadPdfjs()
+  if (textGeneration.get(container) !== generation) {
+    return null
+  }
+  if (options.stillCurrent && !options.stillCurrent()) {
+    return null
+  }
+  const rotation = normalizedRotation(options.rotation)
+  const viewport = pdfPageViewport(page, { scale, rotation })
+  const textContent = await page.getTextContent()
+  if (textGeneration.get(container) !== generation || (options.stillCurrent && !options.stillCurrent())) {
+    return null
+  }
+  container.style.setProperty('--scale-factor', String(viewport.scale))
+  const layer = new pdfjs.TextLayer({
+    textContentSource: textContent,
+    container,
+    viewport,
+  })
+  textLayerTasks.set(container, layer)
+  activeTextLayers.add(layer)
+  try {
+    await layer.render()
+  } catch (error) {
+    if (isCancelledRender(error)) {
+      return null
+    }
+    throw error
+  } finally {
+    activeTextLayers.delete(layer)
+    // Библиотека снимает слой с учёта в finally своего promise, раньше этого продолжения.
+    queueMicrotask(releasePdfTextMeasureCanvas)
+  }
+  if (textGeneration.get(container) !== generation) {
+    return null
+  }
+  await new Promise((resolve) => {
+    requestAnimationFrame(resolve)
+  })
+  return layer
 }
 
 export async function renderPdfPage(page, canvas, scale, options = {}) {

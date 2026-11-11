@@ -9,6 +9,8 @@ export const LANE_GRAPH_COLUMN_PITCH = 228
 export const LANE_GRAPH_HEADER_HEIGHT = 46
 export const LANE_GRAPH_ROW_GAP = 14
 export const LANE_GRAPH_ROW_PITCH = LANE_GRAPH_CARD_HEIGHT + LANE_GRAPH_ROW_GAP
+// Одинаковые карточки: три строки заголовка и строка подписи; длинный заголовок обрезается.
+export const LANE_GRAPH_UNIFORM_CARD_HEIGHT = 92
 
 const TONES = ['accent', 'info', 'success', 'warning', 'neutral']
 
@@ -28,11 +30,11 @@ export function estimateLaneGraphCardHeight(title) {
   return Math.max(LANE_GRAPH_CARD_HEIGHT, 14 + lines * 18 + 18)
 }
 
-function placeCards(items) {
+function placeCards(items, uniform = false) {
   const rowCount = items.reduce((max, item) => Math.max(max, (item.row || 0) + 1), 1)
   const rowHeights = Array.from({ length: rowCount }, () => LANE_GRAPH_CARD_HEIGHT)
   for (const item of items) {
-    item.cardHeight = estimateLaneGraphCardHeight(item.title)
+    item.cardHeight = uniform ? LANE_GRAPH_UNIFORM_CARD_HEIGHT : estimateLaneGraphCardHeight(item.title)
     rowHeights[item.row] = Math.max(rowHeights[item.row], item.cardHeight)
   }
   const rowY = []
@@ -81,11 +83,32 @@ function asWeight(value) {
   return Number.isFinite(raw) && raw > 0 ? raw : 0
 }
 
+function linkId(value) {
+  return value && typeof value === 'object' ? asId(value.id) : asId(value)
+}
+
+/** Стиль стрелки от родителя: `dependsOn` принимает id или `{ id, tone, dashed }`. */
+function linkStyles(values) {
+  const styles = {}
+  for (const value of values || []) {
+    if (!value || typeof value !== 'object') continue
+    const id = linkId(value)
+    if (!id) continue
+    styles[id] = {
+      tone: TONES.includes(value.tone) ? value.tone : '',
+      dashed: Boolean(value.dashed),
+      // Связь внутри одной колонки (не нарушение порядка): короткая скоба справа от карточек.
+      sibling: Boolean(value.sibling),
+    }
+  }
+  return styles
+}
+
 function uniqueIds(values) {
   const seen = new Set()
   const ids = []
   for (const value of values || []) {
-    const id = asId(value)
+    const id = linkId(value)
     if (!id || seen.has(id)) continue
     seen.add(id)
     ids.push(id)
@@ -111,7 +134,9 @@ export function normalizeLaneGraphItems(items) {
       badge: String(raw.badge || '').trim(),
       optional: Boolean(raw.optional),
       highlight: Boolean(raw.highlight),
+      filled: Boolean(raw.filled),
       dependsOn: uniqueIds(raw.dependsOn),
+      linkStyles: linkStyles(raw.dependsOn),
       meta: raw.meta && typeof raw.meta === 'object' ? raw.meta : null,
       order: index,
     })
@@ -268,7 +293,7 @@ function portY(list, id, item) {
   return top + (height / 2) + (i - (n - 1) / 2) * spread
 }
 
-function routeEdges(items, byId, children) {
+function routeEdges(items, byId) {
   const outgoing = {}
   const incoming = {}
   for (const item of items) {
@@ -314,7 +339,13 @@ function routeEdges(items, byId, children) {
     const endX = laneGraphX(to.lane) - 3
     let d = ''
     let bad = false
-    if (to.lane <= from.lane) {
+    const style = to.linkStyles?.[from.id] || {}
+    if (to.lane === from.lane && style.sibling) {
+      const x = laneGraphX(from.lane) + LANE_GRAPH_CARD_WIDTH
+      const fromMid = (from.y != null ? from.y : laneGraphY(from.row)) + (from.cardHeight || LANE_GRAPH_CARD_HEIGHT) / 2
+      const toMid = (to.y != null ? to.y : laneGraphY(to.row)) + (to.cardHeight || LANE_GRAPH_CARD_HEIGHT) / 2
+      d = roundedPath([[x, fromMid], [x + 12, fromMid], [x + 12, toMid], [x + 2, toMid]], 5)
+    } else if (to.lane <= from.lane) {
       bad = true
       const x1 = laneGraphX(from.lane) + LANE_GRAPH_CARD_WIDTH / 2
       const y1 = (from.y != null ? from.y : laneGraphY(from.row)) + (from.cardHeight || LANE_GRAPH_CARD_HEIGHT)
@@ -341,6 +372,8 @@ function routeEdges(items, byId, children) {
       to: to.id,
       d,
       bad,
+      tone: style.tone || '',
+      dashed: Boolean(style.dashed),
     })
   }
   return edges
@@ -403,9 +436,9 @@ export function deriveLaneGraphCategories(items, categoriesProp) {
   return [...byId.values()]
 }
 
-export function layoutLaneGraph({ items, lanes } = {}) {
+export function layoutLaneGraph({ items, lanes, uniform = false } = {}) {
   const packed = assignRows(normalizeLaneGraphItems(items))
-  const { rowCount, canvasHeight } = placeCards(packed)
+  const { rowCount, canvasHeight } = placeCards(packed, uniform)
   const maxLane = packed.reduce((max, item) => Math.max(max, item.lane), -1)
   const laneCountFromProp = (lanes || []).reduce((max, lane) => {
     const index = asLane(lane?.id ?? lane?.index)
@@ -414,7 +447,7 @@ export function layoutLaneGraph({ items, lanes } = {}) {
   const laneCount = Math.max(maxLane, laneCountFromProp) + 1
   const { byId, children, parents } = buildAdjacency(packed)
   const metrics = computeMetrics(packed, children, parents)
-  const edges = routeEdges(packed, byId, children)
+  const edges = routeEdges(packed, byId)
   const width = Math.max(LANE_GRAPH_COLUMN_PITCH, laneCount * LANE_GRAPH_COLUMN_PITCH)
   const height = Math.max(LANE_GRAPH_HEADER_HEIGHT + LANE_GRAPH_ROW_PITCH, canvasHeight)
   return {

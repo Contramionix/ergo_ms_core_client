@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onBeforeUnmount, defineAsyncComponent } from 'vue'
-import { Upload, Trash2 } from '@lucide/vue'
+import ImageHoverFrame from '@/components/ImageHoverFrame.vue'
 import SpinnerLoading from '@/components/SpinnerLoading.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useUserStore } from '@/core/cms/js/userStore.js'
@@ -30,7 +30,6 @@ const toast = useToast()
 const userStore = useUserStore()
 
 const fileInputRef = ref(null)
-const avatarRef = ref(null)
 const avatarLoading = ref(false)
 const avatarPreviewUrl = ref('')
 const showCropModal = ref(false)
@@ -40,7 +39,10 @@ const isAdminMode = computed(() => typeof props.onUpload === 'function')
 
 const avatarExplicitUrl = computed(() => {
   if (avatarPreviewUrl.value) return avatarPreviewUrl.value
-  if (isAdminMode.value) return props.avatarUrl || undefined
+  if (isAdminMode.value) {
+    if (!props.userRef) return props.avatarUrl || ''
+    return props.avatarUrl || undefined
+  }
   return undefined
 })
 
@@ -80,7 +82,6 @@ const cleanupCropImage = () => {
 const triggerAvatarUpload = () => {
   if (avatarLoading.value || props.saving) return
   fileInputRef.value?.click()
-  avatarRef.value?.blur()
 }
 
 const handleAvatarFileChange = (event) => {
@@ -175,55 +176,18 @@ onBeforeUnmount(() => {
   <div class="avatar-block">
     <p class="avatar-block__label">{{ t('settings.profile.photoLabel') }}</p>
     <div class="avatar-section">
-      <div ref="avatarRef" class="avatar-preview" tabindex="0" :class="{ 'avatar-preview--loading': avatarLoading }">
-        <UserAvatar
-          :size="200"
-          :user-ref="isAdminMode ? userRef : null"
-          :avatar-url="avatarExplicitUrl"
-          :first-name="isAdminMode ? firstName : null"
-          :last-name="isAdminMode ? lastName : null"
-          :title="avatarTitle"
-        />
-        <div v-if="avatarLoading" class="avatar-preview__overlay avatar-preview__overlay--busy">
+      <ImageHoverFrame class="avatar-preview" editable :busy="avatarLoading" :disabled="props.saving || avatarLoading" :primary-label="uploadAvatarLabel" :remove-label="showAvatarRemove ? t('settings.profile.remove') : ''" @primary="triggerAvatarUpload" @remove="handleAvatarRemove">
+        <UserAvatar :size="200" :user-ref="isAdminMode ? userRef : null" :avatar-url="avatarExplicitUrl" :first-name="isAdminMode ? firstName : null" :last-name="isAdminMode ? lastName : null" :title="avatarTitle"/>
+        <template #busy>
           <SpinnerLoading color="primary" variant="button" />
-        </div>
-        <div v-else class="avatar-preview__hover-layer">
-          <div class="avatar-preview__dimmer" aria-hidden="true" />
-          <div class="avatar-preview__actions">
-            <button type="button" class="avatar-preview__action" :disabled="props.saving || avatarLoading" @click.stop="triggerAvatarUpload">
-              <Upload :size="16" />
-              <span>{{ uploadAvatarLabel }}</span>
-            </button>
-            <button v-if="showAvatarRemove" type="button" class="avatar-preview__action avatar-preview__action--danger" :disabled="props.saving || avatarLoading" @click.stop="handleAvatarRemove">
-              <Trash2 :size="16" />
-              <span>{{ t('settings.profile.remove') }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
+        </template>
+      </ImageHoverFrame>
       <input ref="fileInputRef" type="file" class="visually-hidden" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" @change="handleAvatarFileChange"/>
-      <div class="avatar-buttons avatar-buttons--fallback">
-        <button type="button" class="btn-avatar-action" :disabled="props.saving || avatarLoading" @click="triggerAvatarUpload">
-          <Upload :size="16" />
-          <span>{{ uploadAvatarLabel }}</span>
-        </button>
-        <button v-if="showAvatarRemove" type="button" class="btn-avatar-action btn-avatar-remove" :disabled="props.saving || avatarLoading" @click="handleAvatarRemove">
-          <Trash2 :size="16" />
-          <span>{{ t('settings.profile.remove') }}</span>
-        </button>
-      </div>
     </div>
     <p class="avatar-block__hint">
       {{ t('settings.profile.photoHint', { size: MAX_AVATAR_SIZE_MB }) }}
     </p>
-    <AvatarCropModal
-      v-if="showCropModal || cropImageSrc"
-      :show="showCropModal"
-      :image-src="cropImageSrc"
-      @confirm="handleCropConfirm"
-      @cancel="handleCropCancel"
-      @close="handleCropCancel"
-    />
+    <AvatarCropModal v-if="showCropModal || cropImageSrc" :show="showCropModal" :image-src="cropImageSrc" @confirm="handleCropConfirm" @cancel="handleCropCancel" @close="handleCropCancel"/>
   </div>
 </template>
 
@@ -264,168 +228,13 @@ onBeforeUnmount(() => {
 }
 
 .avatar-preview {
-  position: relative;
   width: min(200px, 45vw);
-  height: min(200px, 45vw);
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 0;
+}
+
+.avatar-preview :deep(.image-hover__media) {
+  height: min(200px, 45vw);
   border-radius: 50%;
-  outline: none;
-
-  &:focus-visible {
-    box-shadow: 0 0 0 2px var(--color-accent);
-  }
-
-  &--loading {
-    pointer-events: none;
-  }
-}
-
-.avatar-preview__overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  z-index: 2;
-
-  &--busy {
-    background: color-mix(in srgb, var(--color-primary-background) 55%, transparent);
-  }
-}
-
-.avatar-preview__hover-layer {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.22s ease;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.avatar-preview:not(.avatar-preview--loading):hover .avatar-preview__hover-layer {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.avatar-preview__dimmer {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.52);
-}
-
-.avatar-preview__actions {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.5rem;
-  padding: 0 0.65rem;
-  width: 100%;
-  max-width: 11.5rem;
-}
-
-.avatar-preview__action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 0.4rem 0.65rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.2;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 0.375rem;
-  background: rgba(0, 0, 0, 0.35);
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-
-  &:hover:not(:disabled) {
-    background: rgba(0, 0, 0, 0.55);
-    border-color: rgba(255, 255, 255, 0.55);
-  }
-
-  &:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-}
-
-.avatar-preview__action--danger {
-  border-color: color-mix(in srgb, #f8b4b4 55%, transparent);
-  color: #ffe8e8;
-
-  &:hover:not(:disabled) {
-    background: rgba(180, 40, 40, 0.55);
-    border-color: rgba(255, 200, 200, 0.65);
-  }
-}
-
-.avatar-buttons {
-  display: none;
-}
-
-.avatar-buttons--fallback {
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-@media (hover: none) {
-  .avatar-preview__hover-layer {
-    display: none;
-  }
-
-  .avatar-buttons--fallback {
-    display: flex;
-  }
-}
-
-.btn-avatar-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
-  border-radius: 0.375rem;
-  border: 1px solid var(--color-border);
-  background: var(--color-primary-background);
-  color: var(--color-primary-text);
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
-
-  &:hover:not(:disabled) {
-    background: var(--color-hover-background);
-    border-color: var(--color-accent);
-    color: var(--color-accent);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-}
-
-.btn-avatar-remove {
-  border-color: color-mix(in srgb, var(--bs-danger, #dc3545) 45%, var(--color-border));
-  color: var(--bs-danger, #dc3545);
-
-  &:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--bs-danger, #dc3545) 12%, transparent);
-    border-color: var(--bs-danger, #dc3545);
-  }
 }
 
 .visually-hidden {

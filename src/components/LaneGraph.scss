@@ -1,0 +1,321 @@
+/* Стили LaneGraph.vue: вынесены, чтобы компонент не превышал лимит строк. */
+
+.lane-graph {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.lane-graph__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.lane-graph__mode {
+  padding: 0.28rem 0.7rem;
+  border: 1px solid var(--ui-border, var(--color-border));
+  border-radius: var(--ui-radius, 0.625rem);
+  background: var(--ui-surface-2, var(--color-secondary-background));
+  color: var(--ui-text-muted, var(--color-secondary-text));
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lane-graph__mode--on {
+  background: var(--ui-accent-soft, color-mix(in srgb, var(--ui-accent) 12%, var(--ui-surface)));
+  border-color: color-mix(in srgb, var(--ui-accent) 45%, var(--ui-border));
+  color: var(--ui-accent-text, var(--ui-text));
+}
+
+.lane-graph__empty,
+.lane-graph__info-text,
+.lane-graph__warn {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.lane-graph__empty,
+.lane-graph__info-text {
+  color: var(--ui-text-muted, var(--color-secondary-text));
+}
+
+.lane-graph__warn {
+  color: var(--ui-danger);
+}
+
+.lane-graph__scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.lane-graph__canvas {
+  position: relative;
+  user-select: none;
+}
+
+.lane-graph__svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.lane-graph__edge {
+  fill: none;
+  stroke: var(--ui-border-strong, var(--ui-border));
+  stroke-width: 1.2;
+  transition: opacity 0.15s, stroke-width 0.15s;
+}
+
+.lane-graph__edge--on {
+  stroke: var(--ui-accent);
+  stroke-width: 2;
+}
+
+.lane-graph__edge--dim {
+  opacity: 0.1;
+}
+
+.lane-graph__edge--crit {
+  stroke: var(--ui-warning);
+  stroke-width: 2.2;
+}
+
+.lane-graph__edge--tone-accent { stroke: var(--ui-accent); }
+.lane-graph__edge--tone-info { stroke: var(--ui-info); }
+.lane-graph__edge--tone-success { stroke: var(--ui-success); }
+.lane-graph__edge--tone-warning { stroke: var(--ui-warning); }
+.lane-graph__edge--tone-neutral { stroke: var(--ui-border-strong, var(--ui-border)); }
+
+.lane-graph__edge--dashed {
+  stroke-dasharray: 5 4;
+}
+
+.lane-graph__edge--bad {
+  stroke: var(--ui-danger);
+  stroke-dasharray: 4 3;
+  stroke-width: 1.6;
+}
+
+.lane-graph__lane {
+  position: absolute;
+  top: 0;
+  font-size: 0.75rem;
+  color: var(--ui-text-muted, var(--color-secondary-text));
+}
+
+.lane-graph__lane-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.35rem;
+  align-items: baseline;
+}
+
+.lane-graph__lane-head b {
+  font-weight: 600;
+  color: var(--ui-text, var(--color-primary-text));
+}
+
+.lane-graph__lane--over .lane-graph__lane-weight {
+  color: var(--ui-danger);
+}
+
+.lane-graph__bar {
+  height: 4px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--ui-border, var(--color-border));
+}
+
+.lane-graph__bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ui-accent);
+}
+
+.lane-graph__bar--over i {
+  background: var(--ui-danger);
+}
+
+.lane-graph__card {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: opacity 0.15s;
+}
+
+.lane-graph__card-inner {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.35rem;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--ui-border, var(--color-border));
+  border-left-width: 3px;
+  border-radius: var(--ui-radius, 0.625rem);
+  background: var(--ui-surface, var(--color-primary-background));
+  color: var(--ui-text, var(--color-primary-text));
+}
+
+.lane-graph__card-title {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  font-weight: 500;
+}
+
+.lane-graph__card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--ui-text-muted, var(--color-secondary-text));
+}
+
+.lane-graph__card--accent .lane-graph__card-inner {
+  border-left-color: var(--ui-accent);
+}
+
+.lane-graph__card--info .lane-graph__card-inner {
+  border-left-color: var(--ui-info);
+}
+
+.lane-graph__card--success .lane-graph__card-inner {
+  border-left-color: var(--ui-success);
+}
+
+.lane-graph__card--warning .lane-graph__card-inner {
+  border-left-color: var(--ui-warning);
+}
+
+.lane-graph__card--neutral .lane-graph__card-inner {
+  border-left-color: var(--ui-border-strong, var(--ui-border));
+}
+
+.lane-graph__card--uniform .lane-graph__card-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.lane-graph__card--filled.lane-graph__card--accent .lane-graph__card-inner {
+  border-color: color-mix(in srgb, var(--ui-accent) 45%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-accent) 12%, var(--ui-surface));
+}
+
+.lane-graph__card--filled.lane-graph__card--info .lane-graph__card-inner {
+  border-color: color-mix(in srgb, var(--ui-info) 45%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-info) 12%, var(--ui-surface));
+}
+
+.lane-graph__card--filled.lane-graph__card--success .lane-graph__card-inner {
+  border-color: color-mix(in srgb, var(--ui-success) 45%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-success) 12%, var(--ui-surface));
+}
+
+.lane-graph__card--filled.lane-graph__card--warning .lane-graph__card-inner {
+  border-color: color-mix(in srgb, var(--ui-warning) 50%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-warning) 14%, var(--ui-surface));
+}
+
+.lane-graph__card--filled.lane-graph__card--neutral .lane-graph__card-inner {
+  background: var(--ui-surface-2, var(--color-secondary-background));
+}
+
+.lane-graph__card--optional .lane-graph__card-inner {
+  border-style: dashed;
+}
+
+.lane-graph__card--sel .lane-graph__card-inner {
+  border-width: 2px;
+  border-color: var(--ui-accent);
+}
+
+.lane-graph__card--flag .lane-graph__card-inner {
+  border-color: var(--ui-danger);
+}
+
+.lane-graph__card--dim {
+  opacity: 0.22;
+}
+
+.lane-graph__badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: none;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 45%, var(--ui-border));
+  border-radius: 10px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text, var(--ui-text));
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.lane-graph__canvas--badges .lane-graph__badge {
+  display: flex;
+}
+
+.lane-graph__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--ui-text-muted, var(--color-secondary-text));
+}
+
+.lane-graph__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.lane-graph__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--ui-neutral-soft);
+}
+
+.lane-graph__swatch--accent { background: var(--ui-accent); }
+.lane-graph__swatch--info { background: var(--ui-info); }
+.lane-graph__swatch--success { background: var(--ui-success); }
+.lane-graph__swatch--warning { background: var(--ui-warning); }
+.lane-graph__swatch--neutral { background: var(--ui-border-strong, var(--ui-border)); }
+.lane-graph__swatch--optional {
+  background: transparent;
+  border: 1px dashed var(--ui-text-muted);
+}
+
+.lane-graph--static .lane-graph__card,
+.lane-graph--static .lane-graph__edge {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lane-graph__card,
+  .lane-graph__edge {
+    transition: none;
+  }
+}

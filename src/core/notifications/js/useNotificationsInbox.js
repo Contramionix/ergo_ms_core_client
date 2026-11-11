@@ -15,6 +15,7 @@ const SIDEBAR_ACTIVITY_DAYS_MIN = 1
 const SIDEBAR_ACTIVITY_DAYS_MAX = 7
 const SIDEBAR_ACTIVITY_DAYS_DEFAULT = 3
 const MS_PER_DAY = 24 * 60 * 60 * 1000
+const SIDEBAR_READ_GRACE_MS = 60 * 60 * 1000
 
 const items = ref([])
 const sidebarItems = ref([])
@@ -65,6 +66,9 @@ function matchesSidebarFilter(notification) {
   if (notification?.sidebar_hidden_at) return false
   if (notification?.archived_at || notification?.deleted_at) return false
   if (!notification?.is_read) return true
+
+  const readAt = notification.read_at ? new Date(notification.read_at).getTime() : NaN
+  if (Number.isFinite(readAt) && Date.now() - readAt <= SIDEBAR_READ_GRACE_MS) return true
 
   const createdAt = notification.created_at ? new Date(notification.created_at).getTime() : NaN
   if (!Number.isFinite(createdAt)) return false
@@ -230,12 +234,14 @@ async function loadSidebar() {
   if (sidebarLoading.value) return
   sidebarLoading.value = true
   try {
-    await loadSidebarActivityDays()
-    const listResp = await notificationsApi.list({
-      limit: SIDEBAR_PAGE_SIZE,
-      offset: 0,
-      inbox: 'sidebar',
-    })
+    const [, listResp] = await Promise.all([
+      loadSidebarActivityDays(),
+      notificationsApi.list({
+        limit: SIDEBAR_PAGE_SIZE,
+        offset: 0,
+        inbox: 'sidebar',
+      }),
+    ])
     const { list } = parseListResponse(listResp)
     sidebarItems.value = list
     syncPollingCursorFromItems()

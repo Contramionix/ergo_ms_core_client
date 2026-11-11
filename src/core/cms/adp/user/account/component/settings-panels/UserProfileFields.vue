@@ -1,8 +1,13 @@
 <script setup>
 import { computed } from 'vue'
+import DatePicker from '@/components/DatePicker.vue'
+import FormField from '@/components/FormField.vue'
+import SelectBox from '@/components/SelectBox.vue'
 import { BIO_MAX_LENGTH } from '@/core/cms/adp/js/userProfileForm.js'
 import { useAppI18n } from '@/i18n/useAppI18n.js'
-import FormField from '@/components/FormField.vue'
+import { toISODate } from '@/js/utils/timeUtils.js'
+
+const BIRTH_DATE_MIN = '1900-01-01'
 
 const formData = defineModel('formData', { type: Object, required: true })
 
@@ -48,6 +53,23 @@ const fieldMeta = computed(() => ({
     autocomplete: 'tel',
     placeholder: '+7 (999) 123-45-67',
   },
+  birth_date: {
+    label: t('settings.profile.birthDate'),
+    type: 'date',
+    minDate: BIRTH_DATE_MIN,
+    maxDate: toISODate(new Date()),
+    inputFormat: 'dd MMMM yyyy',
+    editFormat: 'dd.MM.yyyy',
+  },
+  gender: {
+    label: t('settings.profile.gender'),
+    type: 'select',
+    emptyLabel: t('settings.profile.notSpecified'),
+    options: [
+      { id: 'male', name: t('settings.profile.genderMale') },
+      { id: 'female', name: t('settings.profile.genderFemale') },
+    ],
+  },
   bio: {
     label: t('settings.profile.bio'),
     type: 'textarea',
@@ -63,54 +85,32 @@ const visibleFields = computed(() =>
 
 const inputId = (field) => `${props.idPrefix}-${field}`
 
+function fieldText(field) {
+  const value = formData.value[field.key]
+  if (value == null || String(value).trim() === '') {
+    return t('settings.profile.notSpecified')
+  }
+  if (field.type === 'select') {
+    const option = (field.options || []).find((item) => item.id === value)
+    return option ? option.name : String(value)
+  }
+  return String(value)
+}
+
 const isFieldReadonly = (fieldKey) =>
   (fieldKey === 'email' && props.emailReadonly) || props.readonlyFields.includes(fieldKey)
 </script>
 
 <template>
-  <FormField
-    v-for="(field, index) in visibleFields"
-    :key="field.key"
-    :label="field.label"
-    :label-for="inputId(field.key)"
-    :error="errors[field.key] || ''"
-    :last="index === visibleFields.length - 1"
-  >
-    <span
-      v-if="isFieldReadonly(field.key)"
-      class="form-field-static text-truncate"
-      :title="formData[field.key] || t('settings.profile.notSpecified')"
-    >
-      {{ formData[field.key] || t('settings.profile.notSpecified') }}
+  <FormField v-for="(field, index) in visibleFields" :key="field.key" :label="field.label" :label-for="inputId(field.key)" :error="errors[field.key] || ''" :last="index === visibleFields.length - 1">
+    <span v-if="isFieldReadonly(field.key)" class="form-field-static text-truncate" :title="fieldText(field)">
+      {{ fieldText(field) }}
     </span>
-
-    <textarea
-      v-else-if="field.type === 'textarea'"
-      :id="inputId(field.key)"
-      v-model="formData[field.key]"
-      rows="4"
-      :maxlength="BIO_MAX_LENGTH"
-      class="form-control form-control-sm"
-      :class="{ 'is-invalid': errors[field.key] }"
-      :placeholder="field.placeholder"
-    />
-
-    <input
-      v-else
-      :id="inputId(field.key)"
-      v-model="formData[field.key]"
-      :type="field.type"
-      class="form-control form-control-sm"
-      :class="{ 'is-invalid': errors[field.key] }"
-      :autocomplete="field.autocomplete"
-      :placeholder="field.placeholder"
-    />
-
-    <div
-      v-if="field.key === 'bio' && !isFieldReadonly(field.key)"
-      class="form-field-counter"
-      :class="{ 'form-field-counter--limit': bioCharCount >= BIO_MAX_LENGTH }"
-    >
+    <DatePicker v-else-if="field.type === 'date'" :id="inputId(field.key)" v-model="formData[field.key]" :min-date="field.minDate || null" :max-date="field.maxDate || null" :input-format="field.inputFormat || ''" :edit-format="field.editFormat || ''" :invalid="Boolean(errors[field.key])"/>
+    <SelectBox v-else-if="field.type === 'select'" :id="inputId(field.key)" v-model="formData[field.key]" :options="field.options" value-key="id" label-key="name" :include-all-option="true" :all-label="field.emptyLabel"/>
+    <textarea v-else-if="field.type === 'textarea'" :id="inputId(field.key)" v-model="formData[field.key]" rows="4" :maxlength="BIO_MAX_LENGTH" class="form-control form-control-sm" :class="{ 'is-invalid': errors[field.key] }" :placeholder="field.placeholder"/>
+    <input v-else :id="inputId(field.key)" v-model="formData[field.key]" :type="field.type" class="form-control form-control-sm" :class="{ 'is-invalid': errors[field.key] }" :autocomplete="field.autocomplete" :placeholder="field.placeholder"/>
+    <div v-if="field.key === 'bio' && !isFieldReadonly(field.key)" class="form-field-counter" :class="{ 'form-field-counter--limit': bioCharCount >= BIO_MAX_LENGTH }">
       {{ bioCharCount }}/{{ BIO_MAX_LENGTH }}
     </div>
   </FormField>

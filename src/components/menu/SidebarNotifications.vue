@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import LucideIcon from '@/components/LucideIcon.vue'
+import LucideMotionIcon from '@/components/LucideMotionIcon.vue'
 import { CORE_ICON } from '@/config/coreIconNames.js'
 import { useDropdown } from '@/composables/useDropdown.js'
 import { useNotificationsInbox } from '@/core/notifications/js/useNotificationsInbox.js'
@@ -216,7 +217,7 @@ async function onHideSidebar(id) {
   <div ref="dropdownRef" class="tools__notifications-wrapper">
     <HoverTooltip :text="t('menu.notifications.title')">
       <button ref="triggerBtnRef" type="button" class="header-btn notifications-btn" :class="{ 'has-unread': hasUnread }" :aria-expanded="isOpen" :aria-controls="PANEL_ID" aria-haspopup="dialog" :aria-label="t('menu.notifications.title')" @click.stop="handleToggle">
-        <LucideIcon :name="CORE_ICON.notifications" :size="props.iconSize" aria-hidden="true" />
+        <LucideMotionIcon :name="CORE_ICON.notifications" :size="props.iconSize" animate-on-hover animation="lucide-animated" trigger-target="closest:button" aria-hidden="true" />
         <span v-if="hasUnread" class="notifications-badge" aria-live="polite">{{ badgeLabel }}</span>
       </button>
     </HoverTooltip>
@@ -241,7 +242,7 @@ async function onHideSidebar(id) {
             </div>
 
             <div v-else class="notifications-dropdown__scroll">
-              <ul ref="listRef" class="notifications-list" role="list" :aria-label="t('menu.notifications.listAria')">
+              <ul ref="listRef" class="notifications-list" :aria-label="t('menu.notifications.listAria')">
                 <NotificationItem v-for="item in sidebarItems" :key="item.id" :notification="item" compact show-sidebar-hide :date-style="itemDateStyle(item)" @activate="onActivate" @mark-read="markRead" @hide-sidebar="onHideSidebar" @hover-start="onItemHoverStart" @hover-end="onItemHoverEnd"/>
               </ul>
             </div>
