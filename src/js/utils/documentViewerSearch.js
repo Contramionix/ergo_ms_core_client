@@ -153,5 +153,6 @@ export function scrollSearchRange(range) {
     return
   }
   const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node
-  el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  // По центру окна: с 'nearest' найденный фрагмент прилипал к нижнему краю.
+  el?.scrollIntoView({ block: 'center', inline: 'nearest' })
 }
