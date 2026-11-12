@@ -66,7 +66,7 @@ async function isAppsMenuItemAllowed(item) {
   return true
 }
 
-export async function collectVisibleAppsMenuItems() {
+export async function collectVisibleAppsMenuItems({ loadMissingRemotes = false } = {}) {
   await whenSessionReady()
   if (!getAccess()) {
     return null
@@ -79,7 +79,7 @@ export async function collectVisibleAppsMenuItems() {
   }
 
   await moduleManager.ensureInitialized()
-  if (typeof moduleManager.retryMissingRemotes === 'function') {
+  if (loadMissingRemotes && typeof moduleManager.retryMissingRemotes === 'function') {
     await moduleManager.retryMissingRemotes()
   }
   const { syncLateModuleRoutes } = await import('@/js/routers.js')

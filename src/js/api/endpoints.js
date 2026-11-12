@@ -57,6 +57,14 @@ export function syncEndpointsCache() {
   return endpointsCache
 }
 
+if (typeof window !== 'undefined') {
+  window.addEventListener('ergo-remotes-changed', () => {
+    if (moduleManager.initialized || moduleManager.endpointManager?.initialized) {
+      syncEndpointsCache()
+    }
+  })
+}
+
 function scheduleRemotesEndpointsRefresh() {
   if (remotesEndpointsPromise) {
     return remotesEndpointsPromise

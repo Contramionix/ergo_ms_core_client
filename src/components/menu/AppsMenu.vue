@@ -15,6 +15,7 @@ import HoverTooltip from '@/components/HoverTooltip.vue'
 import LucideIcon from '@/components/LucideIcon.vue'
 import { CORE_ICON } from '@/config/coreIconNames.js'
 import { collectVisibleAppsMenuItems } from '@/integrations/appsMenu.js'
+import { moduleManager } from '@/modules/index.js'
 import { APPS_MENU_ITEMS_GROUP } from '@/integrations/moduleContracts.js'
 import bridge from '@/integrations/ModuleBridge.js'
 import { useUserStore } from '@/core/cms/js/userStore.js'
@@ -45,6 +46,7 @@ const { dropdownRef, isOpen, toggleDropdown, closeDropdown } = useDropdown(emit,
 const apps = ref([])
 const isLoading = ref(true)
 const hasLoaded = ref(false)
+const remotesPending = ref(false)
 /** Повторные попытки: remotes/токен часто появляются позже первой сборки. */
 const RETRY_DELAYS_MS = [800, 2000, 4000, 7000, 11000]
 let retryTimers = []
@@ -62,7 +64,9 @@ const BORDER_PX = 2
 const MAX_COLS = 4
 
 const isButtonVisible = computed(() => (
-  hasLoaded.value && userStore.isAuthenticated && apps.value.length > 0
+  hasLoaded.value
+  && userStore.isAuthenticated
+  && (apps.value.length > 0 || remotesPending.value)
 ))
 
 const tooltipText = computed(() => (
@@ -76,7 +80,7 @@ function clearRetryTimers() {
 
 function scheduleEmptyRetries() {
   clearRetryTimers()
-  if (!userStore.isAuthenticated || apps.value.length > 0) {
+  if (!userStore.isAuthenticated || apps.value.length > 0 || remotesPending.value) {
     return
   }
   RETRY_DELAYS_MS.slice(retryAttempt).forEach((delay) => {
@@ -88,11 +92,11 @@ function scheduleEmptyRetries() {
   })
 }
 
-const loadApps = async ({ scheduleRetries = true } = {}) => {
+const loadApps = async ({ scheduleRetries = true, loadMissingRemotes = false } = {}) => {
   const seq = ++loadSeq
   try {
     isLoading.value = true
-    const next = await collectVisibleAppsMenuItems()
+    const next = await collectVisibleAppsMenuItems({ loadMissingRemotes })
     if (seq !== loadSeq) {
       return
     }
@@ -105,6 +109,8 @@ const loadApps = async ({ scheduleRetries = true } = {}) => {
     }
     apps.value = next
     hasLoaded.value = true
+    remotesPending.value = typeof moduleManager.hasPendingRemotes === 'function'
+      && moduleManager.hasPendingRemotes()
     if (next.length > 0) {
       retryAttempt = RETRY_DELAYS_MS.length
       clearRetryTimers()
@@ -273,7 +279,7 @@ onBeforeUnmount(() => {
 watch(isOpen, async (open) => {
   if (open) {
     hideAllHoverTooltips()
-    await loadApps({ scheduleRetries: false })
+    await loadApps({ scheduleRetries: false, loadMissingRemotes: true })
     await nextTick()
     updateMenuPosition()
     requestAnimationFrame(() => updateMenuPosition())

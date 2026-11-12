@@ -28,6 +28,8 @@ import { traceClientBoot } from '@/js/clientBootTrace.js'
 
 let cachedPermissionRules = null
 let cachedRouteGuards = null
+/** Пути, для которых уже пробовали догрузить remote. Иначе 404 качает модули на каждый заход. */
+const remoteNavTried = new Set()
 
 /**
  * Подпись из permission-rules: ключ i18n (titleKey/messageKey) или литерал title/message.
@@ -331,6 +333,20 @@ function setupRouterGuards(router) {
         return guardResult({ path: '/login' })
       }
 
+      if (
+        to.name === 'NotFound'
+        && moduleManager.hasPendingRemotes()
+        && !remoteNavTried.has(to.path)
+      ) {
+        remoteNavTried.add(to.path)
+        await moduleManager.loadRemotesForPath(to.path)
+        addPendingModuleRoutes(router)
+        const resolved = router.resolve(to.fullPath)
+        if (resolved?.name && resolved.name !== 'NotFound') {
+          return resolved.fullPath
+        }
+      }
+
       if (routeNeedsAuth(to) && !(await runCheckToken())) {
         // F5 под 429: оставляем маршрут только если access ещё в памяти.
         // Гость без токена всегда идёт на форму входа, не в оболочку «Гость».
@@ -550,6 +566,12 @@ export async function initRouter() {
 
   setupRouterGuards(routerInstance)
   router = routerInstance
+  if (typeof window !== 'undefined') {
+    window.addEventListener('ergo-remotes-changed', () => {
+      invalidateModuleRouteCaches()
+      addPendingModuleRoutes(routerInstance)
+    })
+  }
   void moduleManager.ensureInitialized().then(() => {
     void applyLateModuleRoutes(routerInstance)
   })
@@ -557,10 +579,9 @@ export async function initRouter() {
 }
 
 /**
- * Remotes догружаются после первого кадра bundled-страницы.
- * Новые маршруты добавляем сюда и пересчитываем текущий URL:
- * иначе глубокая ссылка на remote остаётся на NotFound, если addRoute
- * пришёл во время первого перехода (current ещё START_LOCATION).
+ * Маршруты remote появляются, когда модуль зарегистрировался.
+ * Добавляем их в роутер и пересчитываем текущий URL: иначе переход,
+ * который начался как NotFound, так и остаётся на заглушке.
  */
 export async function syncLateModuleRoutes(routerInstance = router) {
   if (!routerInstance) {
@@ -569,11 +590,15 @@ export async function syncLateModuleRoutes(routerInstance = router) {
   await applyLateModuleRoutes(routerInstance)
 }
 
-async function applyLateModuleRoutes(routerInstance) {
+function invalidateModuleRouteCaches() {
   cachedPermissionRules = null
   cachedRouteGuards = null
+}
+
+export function addPendingModuleRoutes(routerInstance) {
+  invalidateModuleRouteCaches()
   const generator = moduleManager.routeGenerator
-  if (!generator) {
+  if (!generator || !routerInstance) {
     return
   }
   const existingNames = new Set(
@@ -585,6 +610,10 @@ async function applyLateModuleRoutes(routerInstance) {
       routerInstance.addRoute(route)
     }
   })
+}
+
+async function applyLateModuleRoutes(routerInstance) {
+  addPendingModuleRoutes(routerInstance)
 
   try {
     await routerInstance.isReady()

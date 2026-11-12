@@ -251,10 +251,15 @@ async function importRemoteEntry(entryUrl, remoteName) {
 }
 
 /**
+ * @param {string[]|null} [onlyNames] — если задан, только эти remotes, по одному
  * @returns {Promise<import('./clientModuleManifest.js').ClientModuleManifest[]>}
  */
-export async function loadFederatedModules() {
-  const remotes = getConfiguredModuleRemotes()
+export async function loadFederatedModules(onlyNames = null) {
+  let remotes = getConfiguredModuleRemotes()
+  if (Array.isArray(onlyNames)) {
+    const allow = new Set(onlyNames)
+    remotes = remotes.filter((item) => allow.has(item.name))
+  }
   if (!remotes.length) {
     return []
   }

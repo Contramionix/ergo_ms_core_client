@@ -25,32 +25,20 @@ import { authRoutes, coreRoutes } from '@/config/routes.js'
 import { getLocaleManager } from './i18n/LocaleManager.js'
 import { getThemeDefaultsManager } from './themes/ThemeDefaultsManager.js'
 import { logError } from '@/js/utils/logError.js'
+import bridge from '@/integrations/ModuleBridge.js'
 import { routeMapCoversPath, routesCoverPath } from './routes/vueRoutePath.js'
+
+// Имя контракта строкой: константа из moduleContracts.js лежит в другом чанке,
+// и к моменту new ModuleManager() тот чанк ещё не успевает её присвоить.
+const LOAD_REMOTES_UNTIL_GROUP = 'shell.load_remotes_until_group'
 
 function getConfiguredModuleRemotes() {
   return parseModuleRemotes(clientEnv.moduleRemotes || '')
 }
 
-async function loadFederatedModules() {
+async function loadFederatedModules(onlyNames) {
   const mod = await import('./core/federatedModules.js')
-  return mod.loadFederatedModules()
-}
-
-function yieldToBundledNavigation() {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined') {
-      resolve()
-      return
-    }
-    const finish = () => resolve()
-    if (typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => {
-        window.setTimeout(finish, 0)
-      })
-      return
-    }
-    window.setTimeout(finish, 0)
-  })
+  return mod.loadFederatedModules(onlyNames)
 }
 
 export class ModuleManager {
@@ -73,7 +61,12 @@ export class ModuleManager {
     this._resolveCoreReady = null
     /** @type {Set<string>} */
     this._loadedRemoteKeys = new Set()
-    this._retryRemotesPromise = null
+    this._remoteChain = Promise.resolve()
+    bridge.provide(
+      LOAD_REMOTES_UNTIL_GROUP,
+      (group) => this.loadRemotesUntilGroup(group),
+      { override: true },
+    )
   }
 
   /**
@@ -126,23 +119,24 @@ export class ModuleManager {
     this.routeGenerator = new RouteGenerator(this.routeManager)
     this._markCoreReady()
 
-    // На bundled-странице remotes ждут кадр, чтобы не забить HTTP/1.1.
-    // Глубокая ссылка на remote — наоборот, грузим сразу, иначе первый
-    // переход попадает в NotFound до addRoute.
-    if (this._shouldYieldForBundledLanding()) {
-      await yieldToBundledNavigation()
-    }
-
-    if (clientEnv.modularity === 'federated' || getConfiguredModuleRemotes().length) {
-      await this._registerFederatedManifests(await loadFederatedModules())
+    // Страница ядра (совет, кабинет) не тянет все remoteEntry: на HTTP/1.1
+    // шесть соединений на весь сайт, и каждая вкладка иначе занимает их модулями.
+    // Глубокая ссылка на remote грузит модули по одному, пока маршрут не совпадёт.
+    const landingPath = typeof window !== 'undefined' ? (window.location.pathname || '') : ''
+    if (
+      landingPath
+      && (clientEnv.modularity === 'federated' || getConfiguredModuleRemotes().length)
+      && !this._shouldYieldForBundledLanding()
+    ) {
+      await this.loadRemotesForPath(landingPath)
     }
 
     this.initialized = true
   }
 
   /**
-   * Оболочка и вход уже есть в bundled-таблице — remotes можно подождать кадр.
-   * Иначе это глубокая ссылка: yield только откладывает маршруты remote.
+   * Оболочка и bundled-маршрут не качают remotes на старте.
+   * Глубокая ссылка на remote догружает их до создания роутера.
    */
   _shouldYieldForBundledLanding() {
     if (typeof window === 'undefined') {
@@ -169,6 +163,9 @@ export class ModuleManager {
       try {
         await this.registerModule(manifest, `remote:${manifest.moduleKey}`)
         this._loadedRemoteKeys.add(manifest.moduleKey)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ergo-remotes-changed'))
+        }
       } catch (error) {
         logError(
           `[federated] Не удалось зарегистрировать remote ${manifest.moduleKey}`,
@@ -179,30 +176,161 @@ export class ModuleManager {
   }
 
   /**
-   * Повторно тянет remotes, которые не зарегистрировались (502, сеть).
-   * Уже загруженные не дублирует.
+   * Есть remote из CLIENT_MODULE_REMOTES, который ещё не зарегистрирован.
+   * @returns {boolean}
+   */
+  hasPendingRemotes() {
+    return getConfiguredModuleRemotes().some((item) => !this._loadedRemoteKeys.has(item.name))
+  }
+
+  /**
+   * Грузит ещё не поднятые remotes по одному.
+   * С pathname останавливается, как только маршрут покрыт: соседние модули не качаются.
+   * Без pathname (меню приложений) догружает все оставшиеся.
+   * @param {string} [pathname]
+   * @returns {Promise<boolean>}
+   */
+  loadRemotesForPath(pathname = '') {
+    return this._enqueueRemoteWork(async () => {
+      const configured = getConfiguredModuleRemotes()
+      for (const item of configured) {
+        if (this._loadedRemoteKeys.has(item.name)) {
+          if (pathname && this._pathCoveredByRemotes(pathname)) {
+            return true
+          }
+          continue
+        }
+        try {
+          await this._loadRemoteByName(item.name)
+        } catch (error) {
+          logError(`[federated] Не удалось загрузить remote ${item.name}`, error)
+        }
+        if (pathname && this._pathCoveredByRemotes(pathname)) {
+          return true
+        }
+      }
+      return pathname ? this._pathCoveredByRemotes(pathname) : true
+    })
+  }
+
+  /**
+   * Пункт бокового меню ссылается на имя маршрута, которого ещё нет в таблице.
+   * Грузит remotes по одному, пока имя не появится.
+   * @param {string} routeName
+   * @returns {Promise<boolean>}
+   */
+  loadRemotesUntilRoute(routeName) {
+    const name = String(routeName || '')
+    return this._enqueueRemoteWork(async () => {
+      if (!name || this.routeManager?.hasRoute?.(name)) {
+        return Boolean(name && this.routeManager?.hasRoute?.(name))
+      }
+      const configured = getConfiguredModuleRemotes()
+      for (const item of configured) {
+        if (this.routeManager?.hasRoute?.(name)) {
+          return true
+        }
+        if (this._loadedRemoteKeys.has(item.name)) {
+          continue
+        }
+        try {
+          await this._loadRemoteByName(item.name)
+        } catch (error) {
+          logError(`[federated] Не удалось загрузить remote ${item.name}`, error)
+        }
+        if (this.routeManager?.hasRoute?.(name)) {
+          return true
+        }
+      }
+      return Boolean(this.routeManager?.hasRoute?.(name))
+    })
+  }
+
+  /**
+   * Страница уже открыта своим модулем, а панель в слот кладёт другой remote.
+   * Грузит оставшиеся по одному, пока в группе моста не появится запись.
+   * @param {string} group
+   * @returns {Promise<boolean>}
+   */
+  loadRemotesUntilGroup(group) {
+    const name = String(group || '')
+    return this._enqueueRemoteWork(async () => {
+      if (!name || this._bridgeGroupHasEntries(name)) {
+        return Boolean(name && this._bridgeGroupHasEntries(name))
+      }
+      const configured = getConfiguredModuleRemotes()
+      for (const item of configured) {
+        if (this._bridgeGroupHasEntries(name)) {
+          return true
+        }
+        if (this._loadedRemoteKeys.has(item.name)) {
+          continue
+        }
+        try {
+          await this._loadRemoteByName(item.name)
+        } catch (error) {
+          logError(`[federated] Не удалось загрузить remote ${item.name}`, error)
+        }
+        if (this._bridgeGroupHasEntries(name)) {
+          return true
+        }
+      }
+      return this._bridgeGroupHasEntries(name)
+    })
+  }
+
+  /**
+   * @param {string} group
+   * @returns {boolean}
+   */
+  _bridgeGroupHasEntries(group) {
+    const entries = bridge.all(group)
+    return Boolean(entries && typeof entries === 'object' && Object.keys(entries).length)
+  }
+
+  /**
+   * Меню приложений: все remotes, которые ещё не подняты.
+   * @returns {Promise<void>}
    */
   async retryMissingRemotes() {
-    const configured = getConfiguredModuleRemotes()
-    if (!configured.length) {
+    if (!this.hasPendingRemotes()) {
       return
     }
-    const missing = configured.some((item) => !this._loadedRemoteKeys.has(item.name))
-    if (!missing) {
+    await this.loadRemotesForPath('')
+  }
+
+  /**
+   * @param {string} pathname
+   * @returns {boolean}
+   */
+  _pathCoveredByRemotes(pathname) {
+    return routeMapCoversPath(this.routeManager.getAllRoutes(), pathname)
+  }
+
+  /**
+   * @param {() => Promise<boolean>} work
+   * @returns {Promise<boolean>}
+   */
+  _enqueueRemoteWork(work) {
+    const run = this._remoteChain.then(work, work)
+    this._remoteChain = run.then(() => undefined, () => undefined)
+    return run
+  }
+
+  /**
+   * @param {string} name
+   * @returns {Promise<void>}
+   */
+  async _loadRemoteByName(name) {
+    if (this._loadedRemoteKeys.has(name)) {
       return
     }
-    if (this._retryRemotesPromise) {
-      await this._retryRemotesPromise
+    const manifests = await loadFederatedModules([name])
+    if (!manifests.length) {
       return
     }
-    this._retryRemotesPromise = this._registerFederatedManifests(await loadFederatedModules())
-      .catch((error) => {
-        logError('[federated] Повторная загрузка remotes не удалась', error)
-      })
-      .finally(() => {
-        this._retryRemotesPromise = null
-      })
-    await this._retryRemotesPromise
+    await this._registerFederatedManifests(manifests)
+    this._loadedRemoteKeys.add(name)
   }
 
   /**

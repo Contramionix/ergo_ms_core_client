@@ -36,16 +36,14 @@ function scheduleReload() {
 onMounted(async () => {
   window.addEventListener('access-token-changed', scheduleReload)
   window.addEventListener('session-scope-changed', scheduleReload)
+  window.addEventListener('ergo-remotes-changed', scheduleReload)
   await reloadWidgets()
-  // Снимок прав и remotes часто приходят после первого mount.
-  window.setTimeout(() => {
-    void reloadWidgets()
-  }, 2000)
 })
 
 onUnmounted(() => {
   window.removeEventListener('access-token-changed', scheduleReload)
   window.removeEventListener('session-scope-changed', scheduleReload)
+  window.removeEventListener('ergo-remotes-changed', scheduleReload)
   window.clearTimeout(reloadTimer)
 })
 </script>
