@@ -6,6 +6,7 @@ import {
 } from '@/js/realtime/config.js'
 import { realtimeApi } from '@/js/realtime/realtimeApi.js'
 import { createSseTransport } from '@/js/realtime/transports/sse.js'
+import { startSseTabSession } from '@/js/realtime/sseTabLeader.js'
 
 const FALLBACK_FAILURE_THRESHOLD = 3
 
@@ -19,6 +20,9 @@ export class RealtimeClient {
     this._activeTopics = new Set()
     this._streamFailures = 0
     this._usingFallback = false
+    this._sseSession = null
+    /** @type {Array<(...args: unknown[]) => void>} */
+    this._sseAuthWaiters = []
   }
 
   getCapabilities() {
@@ -79,33 +83,88 @@ export class RealtimeClient {
   }
 
   connectSse(handlers = {}) {
+    this._sseHandlers = handlers
     if (this._connection?.isAuthenticated?.() && isSseMode()) {
       handlers.onAuthenticated?.()
       return this._connection
     }
-    this.disconnect()
-    this._connection = createSseTransport({
-      ...handlers,
-      onAuthenticated: () => {
-        this._streamFailures = 0
-        handlers.onAuthenticated?.()
+    if (handlers.onAuthenticated) {
+      this._sseAuthWaiters.push(handlers.onAuthenticated)
+    }
+    if (this._sseSession) {
+      return this._connection
+    }
+    this._sseSession = startSseTabSession({
+      onBecomeFollower: () => {
+        this._connection?.close?.()
+        this._connection = this._followerLink()
+        this._flushSseAuthenticated()
       },
-      onMessage: (event, data) => {
-        this._dispatch(event, data)
-        handlers.onMessage?.(event, data)
+      onBecomeLeader: ({ publish, announce }) => {
+        this._connection?.close?.()
+        this._connection = createSseTransport({
+          onAuthenticated: () => {
+            this._streamFailures = 0
+            this._resubscribeActiveTopics()
+            announce()
+            this._flushSseAuthenticated()
+          },
+          onMessage: (event, data) => {
+            this._dispatch(event, data)
+            publish(data)
+            this._sseHandlers?.onMessage?.(event, data)
+          },
+          onError: () => {
+            this._streamFailures += 1
+            if (this._streamFailures >= FALLBACK_FAILURE_THRESHOLD) {
+              this._enablePollingFallback(this._sseHandlers || {})
+            }
+            this._sseHandlers?.onError?.()
+          },
+          onClose: (event, intentional) => {
+            this._sseHandlers?.onClose?.(event, intentional)
+          },
+        })
       },
-      onError: () => {
-        this._streamFailures += 1
-        if (this._streamFailures >= FALLBACK_FAILURE_THRESHOLD) {
-          this._enablePollingFallback(handlers)
-        }
-        handlers.onError?.()
+      onEvent: (envelope) => {
+        this._dispatch(null, envelope)
+        this._sseHandlers?.onMessage?.(null, envelope)
       },
-      onClose: (event, intentional) => {
-        handlers.onClose?.(event, intentional)
+      onLeaderUp: () => {
+        this._resubscribeActiveTopics()
+      },
+      onRelease: () => {
+        this._connection?.close?.()
+        this._connection = null
       },
     })
     return this._connection
+  }
+
+  _followerLink() {
+    return {
+      close() {},
+      reconnect() {},
+      getSocket() {
+        return null
+      },
+      isAuthenticated() {
+        return true
+      },
+    }
+  }
+
+  _flushSseAuthenticated() {
+    const waiters = this._sseAuthWaiters.splice(0)
+    for (const waiter of waiters) {
+      waiter()
+    }
+  }
+
+  _resubscribeActiveTopics() {
+    for (const topic of this._activeTopics) {
+      void realtimeApi.subscribe(topic)
+    }
   }
 
   _enablePollingFallback(handlers) {
@@ -119,6 +178,7 @@ export class RealtimeClient {
 
   ensureConnected(handlers = {}) {
     if (this._connection?.isAuthenticated?.()) {
+      handlers.onAuthenticated?.()
       return this._connection
     }
     if (isSseMode() && !this._usingFallback) {
@@ -131,6 +191,8 @@ export class RealtimeClient {
   }
 
   disconnect() {
+    this._sseSession?.stop()
+    this._sseSession = null
     this._connection?.close?.()
     this._connection = null
   }

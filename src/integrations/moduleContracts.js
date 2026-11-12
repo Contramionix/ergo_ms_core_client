@@ -13,6 +13,8 @@ export const LAYOUT_PLUGIN_REGISTRY_GROUP = 'layout.plugin_registry'
 export const HEADER_USER_MENU_ITEMS_GROUP = 'header.userMenu.items'
 export const APPS_MENU_ITEMS_GROUP = 'apps.menu.items'
 export const FLOATING_WIDGETS_GROUP = 'shell.floating_widgets'
+/** Слот страницы пуст, пока remote-провайдер не загружен. */
+export const SHELL_LOAD_REMOTES_UNTIL_GROUP = 'shell.load_remotes_until_group'
 export const SHELL_SIDEBAR_BRAND_GROUP = 'shell.sidebar_brand'
 export const MAINTENANCE_EXTRAS_GROUP = 'shell.maintenance_extras'
 export const MENU_SCOPE_REQUIRED_ROUTE_PREFIXES_GROUP = 'menu.scope_required_route_prefixes'

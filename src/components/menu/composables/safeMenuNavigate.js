@@ -13,9 +13,18 @@ export function canNavigateToRoute(router, routeName) {
   return Boolean(routeName && router.hasRoute(routeName))
 }
 
-export function safeNavigateByName(router, routeName) {
+export async function safeNavigateByName(router, routeName) {
   if (!routeName) {
-    return Promise.resolve()
+    return
+  }
+
+  if (!canNavigateToRoute(router, routeName)) {
+    const { moduleManager } = await import('@/modules/index.js')
+    if (typeof moduleManager.loadRemotesUntilRoute === 'function') {
+      await moduleManager.loadRemotesUntilRoute(routeName)
+      const { addPendingModuleRoutes } = await import('@/js/routers.js')
+      addPendingModuleRoutes(router)
+    }
   }
 
   if (canNavigateToRoute(router, routeName)) {
